@@ -1,0 +1,282 @@
+from __future__ import print_function, division
+import logging
+
+import numpy as np
+import scipy.sparse
+
+logger = logging.getLogger("deblender.operators")
+
+def getSymmetryOp(shape):
+    """Create a linear operator to symmetrize an image
+    
+    Given the ``shape`` of an image, create a linear operator that
+    acts on the flattened image to return its symmetric version.
+    """
+    size = shape[0]*shape[1]
+    idx = np.arange(shape[0]*shape[1])
+    sidx = idx[::-1]
+    symmetryOp = scipy.sparse.identity(size)
+    symmetryOp -= scipy.sparse.coo_matrix((np.ones(size),(idx, sidx)), shape=(size,size))
+    return symmetryOp
+
+def getOffsets(width, coords=None):
+    """Get the offset and slices for a sparse band diagonal array
+
+    For an operator that interacts with its neighbors we want a band diagonal matrix,
+    where each row describes the 8 pixels that are neighbors for the reference pixel
+    (the diagonal). Regardless of the operator, these 8 bands are always the same,
+    so we make a utility function that returns the offsets (passed to scipy.sparse.diags).
+
+    See `diagonalizeArray` for more on the slices and format of the array used to create
+    NxN operators that act on a data vector.
+    """
+    # Use the neighboring pixels by default
+    if coords is None:
+        coords = [(-1,-1), (-1,0), (-1, 1), (0,-1), (0,1), (1, -1), (1,0), (1,1)]
+    offsets = [width*y+x for y,x in coords]
+    slices = [slice(None, s) if s<0 else slice(s, None) for s in offsets]
+    slicesInv = [slice(-s, None) if s<0 else slice(None, -s) for s in offsets]
+    return offsets, slices, slicesInv
+
+def diagonalizeArray(arr, shape=None, dtype=np.float64):
+    """Convert an array to a matrix that compares each pixel to its neighbors
+
+    Given an array with length N, create an 8xN array, where each row will be a
+    diagonal in a diagonalized array. Each column in this matrix is a row in the larger
+    NxN matrix used for an operator, except that this 2D array only contains the values
+    used to create the bands in the band diagonal matrix.
+
+    Because the off-diagonal bands have less than N elements, ``getOffsets`` is used to
+    create a mask that will set the elements of the array that are outside of the matrix to zero.
+
+    ``arr`` is the vector to diagonalize, for example the distance from each pixel to the peak,
+    or the angle of the vector to the peak.
+
+    ``shape`` is the shape of the original image.
+    """
+    if shape is None:
+        height, width = arr.shape
+        data = arr.flatten()
+    elif len(arr.shape)==1:
+        height, width = shape
+        data = np.copy(arr)
+    else:
+        raise ValueError("Expected either a 2D array or a 1D array and a shape")
+    size = width * height
+
+    # We hard code 8 rows, since each row corresponds to a neighbor
+    # of each pixel.
+    diagonals = np.zeros((8, size), dtype=dtype)
+    mask = np.ones((8, size), dtype=bool)
+    offsets, slices, slicesInv = getOffsets(width)
+    for n, s in enumerate(slices):
+        diagonals[n][slicesInv[n]] = data[s]
+        mask[n][slicesInv[n]] = 0
+
+    # Create a mask to hide false neighbors for pixels on the edge
+    # (for example, a pixel on the left edge should not be connected to the
+    # pixel to its immediate left in the flattened vector, since that pixel
+    # is actual the far right pixel on the row above it).
+    mask[0][np.arange(1,height)*width] = 1
+    mask[2][np.arange(height)*width-1] = 1
+    mask[3][np.arange(1,height)*width] = 1
+    mask[4][np.arange(1,height)*width-1] = 1
+    mask[5][np.arange(height)*width] = 1
+    mask[7][np.arange(1,height-1)*width-1] = 1
+
+    return diagonals, mask
+
+def diagonalsToSparse(diagonals, shape, dtype=np.float64):
+    """Convert a diagonalized array into a sparse diagonal matrix
+
+    ``diagonalizeArray`` creates an 8xN array representing the bands that describe the
+    interactions of a pixel with its neighbors. This function takes that 8xN array and converts
+    it into a sparse diagonal matrix.
+
+    See `diagonalizeArray` for the details of the 8xN array.
+    """
+    height, width = shape
+    offsets, slices, slicesInv = getOffsets(width)
+    diags = [diag[slicesInv[n]] for n, diag in enumerate(diagonals)]
+    diagonalArr = scipy.sparse.diags(diags, offsets, dtype=dtype)
+    return diagonalArr
+
+def getRadialMonotonicOp(shape, useNearest=True, minGradient=1):
+    """Create an operator to constrain radial monotonicity
+
+    This version of the radial monotonicity operator selects all of the pixels closer to the peak
+    for each pixel and weights their flux based on their alignment with a vector from the pixel
+    to the peak. In order to quickly create this using sparse matrices, its construction is a bit opaque.
+    """
+    # Center on the center pixel
+    px = int(shape[1]/2)
+    py = int(shape[0]/2)
+    # Calculate the distance between each pixel and the peak
+    size = shape[0]*shape[1]
+    x = np.arange(shape[1])
+    y = np.arange(shape[0])
+    X,Y = np.meshgrid(x,y)
+    X = X - px
+    Y = Y - py
+    distance = np.sqrt(X**2+Y**2)
+
+    # Find each pixels neighbors further from the peak and mark them as invalid
+    # (to be removed later)
+    distArr, mask = diagonalizeArray(distance, dtype=np.float64)
+    relativeDist = (distance.flatten()[:,None]-distArr.T).T
+    invalidPix = relativeDist<=0
+
+    # Calculate the angle between each pixel and the x axis, relative to the peak position
+    # (also avoid dividing by zero and set the tan(infinity) pixel values to pi/2 manually)
+    inf = X==0
+    tX = X.copy()
+    tX[inf] = 1
+    angles = np.arctan2(-Y,-tX)
+    angles[inf&(Y!=0)] = 0.5*np.pi*np.sign(angles[inf&(Y!=0)])
+
+    # Calcualte the angle between each pixel and it's neighbors
+    xArr, m = diagonalizeArray(X)
+    yArr, m = diagonalizeArray(Y)
+    dx = (xArr.T-X.flatten()[:, None]).T
+    dy = (yArr.T-Y.flatten()[:, None]).T
+    # Avoid dividing by zero and set the tan(infinity) pixel values to pi/2 manually
+    inf = dx==0
+    dx[inf] = 1
+    relativeAngles = np.arctan2(dy,dx)
+    relativeAngles[inf&(dy!=0)] = 0.5*np.pi*np.sign(relativeAngles[inf&(dy!=0)])
+
+    # Find the difference between each pixels angle with the peak
+    # and the relative angles to its neighbors, and take the
+    # cos to find its neighbors weight
+    dAngles = (angles.flatten()[:, None]-relativeAngles.T).T
+    cosWeight = np.cos(dAngles)
+    # Mask edge pixels, array elements outside the operator (for offdiagonal bands with < N elements),
+    # and neighbors further from the peak than the reference pixel
+    cosWeight[invalidPix] = 0
+    cosWeight[mask] = 0
+
+    if useNearest:
+        # Only use a single pixel most in line with peak
+        cosNorm = np.zeros_like(cosWeight)
+        columnIndices =  np.arange(cosWeight.shape[1])
+        maxIndices = np.argmax(cosWeight, axis=0)
+        indices = maxIndices*cosNorm.shape[1]+columnIndices
+        indices = np.unravel_index(indices, cosNorm.shape)
+        cosNorm[indices] = minGradient
+        # Remove the reference for the peak pixel
+        cosNorm[:,px+py*shape[1]] = 0
+    else:
+        # Normalize the cos weights for each pixel
+        normalize = np.sum(cosWeight, axis=0)
+        normalize[normalize==0] = 1
+        cosNorm = (cosWeight.T/normalize[:,None]).T
+        cosNorm[mask] = 0
+    cosArr = diagonalsToSparse(cosNorm, shape)
+
+    # The identity with the peak pixel removed represents the reference pixels
+    diagonal = np.ones(size)
+    diagonal[px+py*shape[1]] = -1
+    monotonic = cosArr-scipy.sparse.diags(diagonal)
+
+    return monotonic.tocoo()
+
+def getPSFOp(psfImg, imgShape, threshold=1e-2):
+    """Create an operator to convolve intensities with the PSF
+
+    Given a psf image ``psfImg`` and the shape of the blended image ``imgShape``,
+    make a banded matrix out of all the pixels in ``psfImg`` above ``threshold``
+    that acts as the PSF operator.
+
+    TODO: Optimize this algorithm to
+    """
+    height, width = imgShape
+    size = width * height
+
+    # Hide pixels in the psf below the threshold
+    psf = np.copy(psfImg)
+    psf[psf<threshold] = 0
+    logger.info("Total psf pixels: {0}".format(np.sum(psf>0)))
+
+    # Calculate the coordinates of the pixels in the psf image above the threshold
+    indices = np.where(psf>0)
+    indices = np.dstack(indices)[0]
+    cy, cx = np.unravel_index(np.argmax(psf), psf.shape)
+    coords = indices-np.array([cy,cx])
+
+    # Create the PSF Operator
+    offsets, slices, slicesInv = getOffsets(width, coords)
+    psfDiags = [psf[y,x] for y,x in indices]
+    psfOp = scipy.sparse.diags(psfDiags, offsets, shape=(size, size), dtype=np.float64)
+    psfOp = psfOp.tolil()
+
+    # Remove entries for pixels on the left or right edges
+    cxRange = np.unique([cx for cy,cx in coords])
+    for h in range(height):
+        for y,x in coords:
+            # Left edge
+            if x<0 and width*(h+y)+x>=0 and h+y<=height:
+                psfOp[width*h, width*(h+y)+x] = 0
+
+                # Pixels closer to the left edge
+                # than the radius of the psf
+                for x_ in cxRange[cxRange<0]:
+                    if (x<x_ and
+                        width*h-x_>=0 and
+                        width*(h+y)+x-x_>=0 and
+                        h+y<=height
+                    ):
+                        psfOp[width*h-x_, width*(h+y)+x-x_] = 0
+
+            # Right edge
+            if x>0 and width*(h+1)-1>=0 and width*(h+y+1)+x-1>=0 and h+y<=height and width*(h+1+y)+x-1<size:
+                psfOp[width*(h+1)-1, width*(h+y+1)+x-1] = 0
+
+                for x_ in cxRange[cxRange>0]:
+                    # Near right edge
+                    if (x>x_ and
+                        width*(h+1)-x_-1>=0 and
+                        width*(h+y+1)+x-x_-1>=0 and
+                        h+y<=height and
+                        width*(h+1+y)+x-x_-1<size
+                    ):
+                        psfOp[width*(h+1)-x_-1, width*(h+y+1)+x-x_-1] = 0
+
+    # Return the transpose, which correctly convolves the data with the PSF
+    return psfOp.T.tocoo()
+
+def getTranslationOp(deltaX, deltaY, shape, threshold=1e-8):
+    """ Operator to translate an image by deltaX, deltaY pixels
+    
+    deltaX and deltaY can both be real numbers, which uses a linear interpolation to
+    shift the peak by a fractional pixel amount.
+    """
+    Dx, Dy = int(deltaX), int(deltaY)
+    dx = np.abs(deltaX-Dx)
+    dy = np.abs(deltaY-Dy)
+
+    height, width = shape
+    size = width * height
+
+    # If dx or dy are less than the shift threshold, set them to zero
+    if dx < threshold:
+        Dx = int(np.ceil(deltaX))
+        dx = 0
+    if dy < threshold:
+        Dy = int(np.ceil(deltaY))
+        dy = 0
+
+    # Build the x and y translation matrices
+    signX = int(np.sign(deltaX))
+    if signX==0:
+        signX = 1
+    bx = scipy.sparse.diags([(1-dx), dx], [Dx, Dx+signX],
+                            shape=(width, width), dtype=np.float64)
+    signY = int(np.sign(deltaY))
+    if signY==0:
+        signY = 1
+    tx = scipy.sparse.block_diag([bx]*height)
+    ty = scipy.sparse.diags([(1-dy), dy], [Dy*width, (Dy+signY)*width], shape=(size, size), dtype=np.float64)
+    # Create the single translation operator (used for A and S likelihoods)
+    transOp = ty.dot(tx.T)
+
+    return tx, ty, transOp
