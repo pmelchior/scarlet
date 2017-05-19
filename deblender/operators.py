@@ -8,7 +8,7 @@ logger = logging.getLogger("deblender.operators")
 
 def getSymmetryOp(shape):
     """Create a linear operator to symmetrize an image
-    
+
     Given the ``shape`` of an image, create a linear operator that
     acts on the flattened image to return its symmetric version.
     """
@@ -246,7 +246,7 @@ def getPSFOp(psfImg, imgShape, threshold=1e-2):
 
 def getTranslationOp(deltaX, deltaY, shape, threshold=1e-8):
     """ Operator to translate an image by deltaX, deltaY pixels
-    
+
     deltaX and deltaY can both be real numbers, which uses a linear interpolation to
     shift the peak by a fractional pixel amount.
     """
@@ -280,3 +280,89 @@ def getTranslationOp(deltaX, deltaY, shape, threshold=1e-8):
     transOp = ty.dot(tx.T)
 
     return tx, ty, transOp
+
+# ring-shaped masks around the peak
+def getRingMask(im_shape, peak, outer, inner=0, flatten=False):
+    height,width = im_shape
+    x,y = np.meshgrid(np.arange(width), np.arange(height))
+    r = np.sqrt((x-peak[1])**2 + (y-peak[0])**2)
+    mask = (r < inner) | (r >= outer)
+    if flatten:
+        return mask.flatten()
+    return mask
+
+# odd-integer downsampling
+def downsample(S, oversampling, mask=None):
+    assert isinstance(oversampling, (int, long))
+    if oversampling <= 1:
+        return S
+    else:
+        height,width = S.shape
+        height /= oversampling
+        width /= oversampling
+        Sd = np.zeros((height, width), dtype=S.dtype)
+        if mask is None:
+            S_ = S
+        else:
+            S_ = S*(~mask)
+        # TODO: can we avoid the double loop?
+        for h in range(height):
+            for w in range(width):
+                Sd[h,w] = S_[h*oversampling:(h+1)*oversampling, w*oversampling:(w+1)*oversampling].sum() / oversampling**2
+        return Sd
+
+# construct spin-wave decomposition operator for given list of spin numbers m
+# radial behavior can be specified as appropriate
+def getSpinOp(ms, shape, thickness=4, peak=None, oversampling=21, radial_fct=lambda r:1./np.maximum(1,r)):
+    """ Spin decomposition operator.
+
+    The operator maps onto a basis function of R(r) exp(i m phi), where phi is
+    the polar angle wrt to the peak (or, if None, the center of the image).
+
+    The decomposition is performed in a set of concentric rings of fixed thickness.
+
+    ms is a list of integers that indicate the requested spin numbers.
+    thickness is the radial separation between the inner and outer ring radius.
+    peak is (an optional) offset of the object from the image center.
+    oversampling determine the higher-resolution grid for the in-pixel
+    integration; it must be odd.
+    radial_fct is the radial part of the spin basis function.
+
+    """
+    assert oversampling % 2 == 1
+    assert hasattr(ms, '__iter__')
+
+    height,width = shape
+    assert height % 2 == 0 and width % 2 == 0
+
+    if peak is None:
+        peak = [height/2, width/2]
+    x,y = np.meshgrid(np.arange(width*oversampling), np.arange(height*oversampling))
+    x = x * 1./oversampling - peak[1]
+    y = y * 1./oversampling - peak[0]
+    # proper treatment of over & downsampling: center pixel location
+    if oversampling > 1:
+        x -= 0.5 - 0.5/oversampling
+        y -= 0.5 - 0.5/oversampling
+    # convert to polar
+    r = np.sqrt(x**2 + y**2)
+    phi = np.arctan2(y,x)
+
+    # define series of radial ring-shaped masks (oversampled as well)
+    r_limit = (np.min([peak[0], height-peak[0], peak[1], width-peak[1]]) - 1)*oversampling
+    base = thickness*oversampling
+    lims = [(base*(i+1), base*i) for i in range(r_limit/base)]
+    mask_peak = ((peak[0]+0.5)*oversampling - 0.5, (peak[1]+0.5)*oversampling - 0.5)
+    masks = [getRingMask(r.shape, mask_peak, outer, inner) for outer, inner in lims]
+
+    Ss = []
+    for i in range(len(ms)):
+        m = ms[i]
+        spin = radial_fct(r) * np.exp(1j*m*phi)
+        for j in range(len(masks)):
+            mask = masks[j]
+            S = downsample(spin, oversampling, mask=mask).flatten()
+            Ss.append(S)
+
+    # TODO: make Ss sparse and split real and imaginary part
+    return np.array(Ss)
