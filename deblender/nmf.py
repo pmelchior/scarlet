@@ -12,10 +12,6 @@ from proxmin.algorithms import als, glmm
 from . import operators
 from .proximal import build_prox_monotonic
 
-#TODO: remove matplotlib dependence
-import matplotlib
-import matplotlib.pyplot as plt
-
 logger = logging.getLogger("deblender.nmf")
 
 def convolve_band(P, img):
@@ -230,11 +226,30 @@ def translate_psfs(shape, peaks, B, P, threshold=1e-8):
         Gamma.append(gamma)
     return Tx, Ty, Gamma
 
-def deblend(img, peaks=None, strict_constraints=None, constraints=None, weights=None, psf=None, max_iter=1000,
-            sky=None, l0_thresh=None, l1_thresh=None, gradient_thresh=0, e_rel=1e-3, psf_thresh=1e-2,
-            monotonicUseNearest=False, algorithm="GLMM", als_max_iter=50, min_iter=10, step_beta=1.,
-            step_g=None, traceback=False, convergence_func=None, translation_thresh=1e-8,
-            monotonic_thresh=0):
+def deblend(img,
+            peaks=None,
+            strict_constraints=None,
+            constraints=None,
+            weights=None,
+            psf=None,
+            max_iter=1000,
+            sky=None,
+            l0_thresh=None,
+            l1_thresh=None,
+            gradient_thresh=0,
+            e_rel=1e-3,
+            psf_thresh=1e-2,
+            monotonicUseNearest=False,
+            algorithm="GLMM",
+            als_max_iter=50,
+            min_iter=10,
+            step_beta=1.,
+            step_g=None,
+            traceback=False,
+            convergence_func=None,
+            translation_thresh=1e-8,
+            monotonic_thresh=0,
+            show=False):
 
     # vectorize image cubes
     B,N,M = img.shape
@@ -341,7 +356,11 @@ def deblend(img, peaks=None, strict_constraints=None, constraints=None, weights=
 
     # create the model and reshape to have shape B,N,M
     model = get_model(A, S, Tx, Ty, P_, (N,M))
-    plt.imshow(model[0])
+
+    if show:
+        import matplotlib.pyplot as plt
+        plt.imshow(model[0])
+
     S = S.reshape(K,N,M)
 
     return A, S, model, P_, Tx, Ty, errors
