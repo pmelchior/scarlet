@@ -1,2 +1,3 @@
-from .operators import *
-from .nmf import *
+from . import operators
+from . import nmf
+from . import proximal

@@ -10,6 +10,7 @@ from proxmin import proximal
 from proxmin.algorithms import als, glmm
 
 from . import operators
+from .proximal import build_prox_monotonic
 
 #TODO: remove matplotlib dependence
 import matplotlib
@@ -107,14 +108,6 @@ def delta_data(A, S, data, Gamma, D, W=1):
         for b in range(B):
             model[b] += A[b,pk]*Gamma[pk][b].dot(S[pk])
     diff = W*(model-data)
-    
-    #plt.imshow(model[0].reshape(70,103))
-    #plt.title("model")
-    #plt.show()
-    
-    #plt.imshow(diff[0].reshape(70,103))
-    #plt.title("Diff")
-    #plt.show()
 
     if D == 'S':
         result = np.zeros((K,N))
@@ -132,7 +125,7 @@ def delta_data(A, S, data, Gamma, D, W=1):
 
 def grad_likelihood_A(A, allX, xidx, data, Gamma=None, W=1, **kwargs):
     """A single gradient step in the likelihood of A
-    
+
     Used with proxmin.proximal.prox_likelihood
     """
     _, S = allX
@@ -140,7 +133,7 @@ def grad_likelihood_A(A, allX, xidx, data, Gamma=None, W=1, **kwargs):
 
 def grad_likelihood_S(S, allX, xidx, data, Gamma=None, W=1, **kwargs):
     """A single gradient step in the likelihood of S
-    
+
     Used with proxmin.proximal.prox_likelihood
     """
     A, _ = allX
@@ -203,7 +196,7 @@ def get_constraint_op(constraint, shape, useNearest=True):
     """Get appropriate constraint operator
     """
     N,M = shape
-    if constraint == " ":
+    if constraint == " " or constraint=="m":
         return scipy.sparse.identity(N*M)
     elif constraint == "M":
         return operators.getRadialMonotonicOp((N,M), useNearest=useNearest)
@@ -237,10 +230,11 @@ def translate_psfs(shape, peaks, B, P, threshold=1e-8):
         Gamma.append(gamma)
     return Tx, Ty, Gamma
 
-def deblend(img, peaks=None, constraints=None, weights=None, psf=None, max_iter=1000, sky=None,
-            l0_thresh=None, l1_thresh=None, gradient_thresh=0, e_rel=1e-3, psf_thresh=1e-2,
+def deblend(img, peaks=None, strict_constraints=None, constraints=None, weights=None, psf=None, max_iter=1000,
+            sky=None, l0_thresh=None, l1_thresh=None, gradient_thresh=0, e_rel=1e-3, psf_thresh=1e-2,
             monotonicUseNearest=False, algorithm="GLMM", als_max_iter=50, min_iter=10, step_beta=1.,
-            step_g=None, traceback=False, convergence_func=None, translation_thresh=1e-8):
+            step_g=None, traceback=False, convergence_func=None, translation_thresh=1e-8,
+            monotonic_thresh=0):
 
     # vectorize image cubes
     B,N,M = img.shape
@@ -281,6 +275,10 @@ def deblend(img, peaks=None, constraints=None, weights=None, psf=None, max_iter=
             _prox_S = partial(proximal.prox_hard, thresh=l0_thresh)
         else:
             _prox_S = partial(proximal.prox_soft_plus, thresh=l1_thresh)
+    if strict_constraints is not None:
+        for c in strict_constraints[::-1]:
+            if c=="M": # Monotonicity
+                _prox_S = build_prox_monotonic((N,M), prox_chain=_prox_S, thresh=monotonic_thresh)
     prox_S = partial(proximal.prox_likelihood, grad_likelihood=grad_likelihood_S,
                      data=data, prox_g=_prox_S, W=W, Gamma=Gamma, xidx=1)
 
@@ -291,6 +289,8 @@ def deblend(img, peaks=None, constraints=None, weights=None, psf=None, max_iter=
             "M": partial(proximal.prox_min, l=gradient_thresh), # positive gradients
             "S": proximal.prox_zero,   # zero deviation of mirrored pixels
         }
+        if "m" in constraints:
+            linear_constraints["m"] = build_prox_monotonic((N,M), prox_chain=prox_S)
         # Proximal Operator for each constraint
         all_prox_g = [
             _prox_A, # No A constraints
@@ -315,6 +315,7 @@ def deblend(img, peaks=None, constraints=None, weights=None, psf=None, max_iter=
         all_prox_g = [None, None]
         all_step_g = None
         all_constraints = None
+        all_constraint_norms = None
 
     logger.debug("prox_g: {0}".format(all_prox_g))
     logger.debug("all_step_g: {0}".format(all_step_g))
@@ -326,7 +327,7 @@ def deblend(img, peaks=None, constraints=None, weights=None, psf=None, max_iter=
                                        e_rel=e_rel, step_beta=step_beta, weights=weights,
                                        all_step_g=all_step_g, all_constraint_norms=all_constraint_norms,
                                        traceback=traceback,
-                                       convergence_func=convergence_func, min_iter=10,
+                                       convergence_func=convergence_func, min_iter=min_iter,
                                        dot_components=dot_components)
     else:
         [A, S], errors, history = als(allX=[A,S], all_prox_f=[prox_A, prox_S], all_prox_g=all_prox_g,
