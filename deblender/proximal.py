@@ -5,8 +5,9 @@ from functools import partial
 import numpy as np
 
 from . import operators
+from . import proximal_utils
 
-def prox_monotonic(X, step, refIdx, didx, thresh=0, prox_chain=None, **kwargs):
+def prox_monotonic(X, step, ref_idx, dist_idx, thresh=0, prox_chain=None, **kwargs):
     """Force an intensity profile to be monotonic
     """
     # It may be necessary to chain proximal operators together,
@@ -14,13 +15,7 @@ def prox_monotonic(X, step, refIdx, didx, thresh=0, prox_chain=None, **kwargs):
     if prox_chain is not None:
         X = prox_chain(X, step, **kwargs)
 
-    for pk in range(X.shape[0]):
-        x = X[pk]
-        # Start at the center and set each pixel to the minimum
-        # between itself and its reference pixel (which is closer to the peak)
-        for idx in didx:
-            x[idx] = np.min([x[idx], x[refIdx][idx]-thresh])
-        X[pk] = x
+    proximal_utils.prox_monotonic(X, step, ref_idx, dist_idx, thresh)
     return X
 
 def build_prox_monotonic(shape, prox_chain=None, thresh=0):
@@ -41,4 +36,4 @@ def build_prox_monotonic(shape, prox_chain=None, thresh=0):
     # Get the indices of the pixels sorted by distance from the peak
     didx = np.argsort(distance.flatten())
     #update the strict proximal operators
-    return partial(prox_monotonic, refIdx=refIdx, didx=didx, prox_chain=prox_chain, thresh=thresh)
+    return partial(prox_monotonic, ref_idx=refIdx.tolist(), dist_idx=didx.tolist(), prox_chain=prox_chain, thresh=thresh)

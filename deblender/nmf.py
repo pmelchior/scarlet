@@ -259,6 +259,7 @@ def deblend(img,
     else:
         data = (img-sky).reshape(B,N*M)
     if weights is None:
+        weights = 1
         W = weights
     else:
         W = weights.reshape(B,N*M)
