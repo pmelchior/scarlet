@@ -7,7 +7,7 @@ import scipy.sparse
 import scipy.sparse.linalg
 
 from proxmin import proximal
-from proxmin.algorithms import als, glmm
+from proxmin.algorithms import glmm
 
 from . import operators
 from .proximal import build_prox_monotonic
@@ -346,6 +346,8 @@ def deblend(img,
                                        convergence_func=convergence_func, min_iter=min_iter,
                                        dot_components=dot_components)
     else:
+        raise NotImplementedError("Currently on glmm is supported")
+        # TODO: Either implement ADMM and SDMM or remove the following code
         [A, S], errors, history = als(allX=[A,S], all_prox_f=[prox_A, prox_S], all_prox_g=all_prox_g,
                                       all_constraints=all_constraints, max_iter=max_iter,
                                       e_rel=e_rel, step_beta=step_beta, weights=weights,
