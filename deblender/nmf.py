@@ -6,8 +6,8 @@ import numpy as np
 import scipy.sparse
 import scipy.sparse.linalg
 
-from proxmin import proximal
-from proxmin.algorithms import glmm
+import proxmin
+from proxmin.nmf import Steps_AS
 
 from . import operators
 from .proximal import build_prox_monotonic
@@ -119,22 +119,22 @@ def delta_data(A, S, data, Gamma, D, W=1):
         raise ValueError("Expected either 'A' or 'S' for variable `D`")
     return result
 
-def grad_likelihood_A(A, allX, xidx, data, Gamma=None, W=1, **kwargs):
-    """A single gradient step in the likelihood of A
-
-    Used with proxmin.proximal.prox_likelihood
+def prox_likelihood_A(A, step, S=None, Y=None, Gamma=None, prox_g=None, W=1):
+    """A single gradient step in the likelihood of A, followed by prox_g.
     """
-    _, S = allX
-    return delta_data(A, S, data, D='A', Gamma=Gamma, W=W)
+    return prox_g(A - step*delta_data(A, S, Y, D='A', Gamma=Gamma, W=W), step)
 
-def grad_likelihood_S(S, allX, xidx, data, Gamma=None, W=1, **kwargs):
-    """A single gradient step in the likelihood of S
-
-    Used with proxmin.proximal.prox_likelihood
+def prox_likelihood_S(S, step, A=None, Y=None, Gamma=None, prox_g=None, W=1):
+    """A single gradient step in the likelihood of S, followed by prox_g.
     """
-    A, _ = allX
-    #logger.debug("grad_S:\n{0}".format(np.max(delta_data(A, S, data, D='S', Gamma=Gamma, W=W))))
-    return delta_data(A, S, data, D='S', Gamma=Gamma, W=W)
+    return prox_g(S - step*delta_data(A, S, Y, D='S', Gamma=Gamma, W=W), step)
+
+def prox_likelihood(X, step, Xs=None, j=None, Y=None, W=None, Gamma=None,
+                    prox_S=None, prox_A=None):
+    if j == 0:
+        return prox_likelihood_A(X, step, S=Xs[1], Y=Y, Gamma=Gamma, prox_g=prox_A, W=W)
+    else:
+        return prox_likelihood_S(X, step, A=Xs[0], Y=Y, Gamma=Gamma, prox_g=prox_S, W=W)
 
 def dot_components(C, X, axis=0, transpose=False):
     """Apply a linear constraint C to each peak in X
@@ -164,7 +164,8 @@ def init_A(B, K, peaks=None, img=None):
         for k in range(K):
             px,py = peaks[k]
             A[:,k] = img[:,int(py),int(px)]
-    A = proximal.prox_unity_plus(A, 0)
+    # ensure proper normalization
+    A = proxmin.operators.prox_unity_plus(A, 0)
     return A
 
 def init_S(N, M, K, peaks=None, img=None):
@@ -192,13 +193,15 @@ def get_constraint_op(constraint, shape, useNearest=True):
     """Get appropriate constraint operator
     """
     N,M = shape
-    if constraint == " " or constraint=="m":
+    if constraint == " ":
+        return None
+    elif constraint=="m":
         return scipy.sparse.identity(N*M)
     elif constraint == "M":
         return operators.getRadialMonotonicOp((N,M), useNearest=useNearest)
     elif constraint == "S":
         return operators.getSymmetryOp((N,M))
-    raise ValueError("'constraint' should be in [' ', 'M', 'S'] but received '{0}'".format(constraint))
+    raise ValueError("'constraint' should be in [' ', 'm', 'M', 'S'] but received '{0}'".format(constraint))
 
 def translate_psfs(shape, peaks, B, P, threshold=1e-8):
     # Initialize the translation operators
@@ -240,26 +243,20 @@ def deblend(img,
             e_rel=1e-3,
             psf_thresh=1e-2,
             monotonicUseNearest=False,
-            algorithm="GLMM",
-            als_max_iter=50,
-            min_iter=10,
-            step_beta=1.,
-            step_g=None,
             traceback=False,
-            convergence_func=None,
             translation_thresh=1e-8,
             monotonic_thresh=0,
-            show=False):
+            steps_g=None,
+            steps_g_update='steps_f'):
 
     # vectorize image cubes
     B,N,M = img.shape
     K = len(peaks)
     if sky is None:
-        data = img.reshape(B,N*M)
+        Y = img.reshape(B,N*M)
     else:
-        data = (img-sky).reshape(B,N*M)
+        Y = (img-sky).reshape(B,N*M)
     if weights is None:
-        weights = 1
         W = weights
     else:
         W = weights.reshape(B,N*M)
@@ -274,96 +271,83 @@ def deblend(img,
     S = init_S(N, M, K, img=img, peaks=peaks)
     Tx, Ty, Gamma = translate_psfs((N,M), peaks, B, P_, threshold=1e-8)
 
-    # Set the proximal operator as the likelhood for A,
-    # projected to non-negative numbers that sum to one
-    _prox_A = proximal.prox_unity_plus
-    prox_A = partial(proximal.prox_likelihood, grad_likelihood=grad_likelihood_A,
-                     data=data, prox_g=_prox_A, W=W, Gamma=Gamma, xidx=0)
-
-    # S: non-negativity or L0/L1 sparsity plus ...
+    # constraints on S: non-negativity or L0/L1 sparsity plus ...
+    from functools import partial
     if l0_thresh is None and l1_thresh is None:
-        _prox_S = proximal.prox_plus
+        prox_S = proxmin.operators.prox_plus
     else:
         # L0 has preference
         if l0_thresh is not None:
             if l1_thresh is not None:
-                logger.warn("weightsarning: l1_thresh ignored in favor of l0_thresh")
-            _prox_S = partial(proximal.prox_hard, thresh=l0_thresh)
+                logger.warn("warning: l1_thresh ignored in favor of l0_thresh")
+            prox_S = partial(proxmin.operators.prox_hard, thresh=l0_thresh)
         else:
-            _prox_S = partial(proximal.prox_soft_plus, thresh=l1_thresh)
+            prox_S = partial(proxmin.operators.prox_soft_plus, thresh=l1_thresh)
+
+    # TODO: The order of prox_S and the strict monotonicity is ambiguous,
+    # potentially incorrect. Need to review prox_chain implementation
+    # TODO: Review strict_constraints interface
     if strict_constraints is not None:
         for c in strict_constraints[::-1]:
             if c=="M": # Monotonicity
-                _prox_S = build_prox_monotonic((N,M), prox_chain=_prox_S, thresh=monotonic_thresh)
-    prox_S = partial(proximal.prox_likelihood, grad_likelihood=grad_likelihood_S,
-                     data=data, prox_g=_prox_S, W=W, Gamma=Gamma, xidx=1)
+                _prox_S = prox_S
+                prox_S = build_prox_monotonic((N,M), prox_chain=_prox_S, thresh=monotonic_thresh)
 
     # Load linear constraint operators
     if constraints is not None:
         linear_constraints = {
-            " ": proximal.prox_id,    # do nothing
-            "M": partial(proximal.prox_min, l=gradient_thresh), # positive gradients
-            "S": proximal.prox_zero,   # zero deviation of mirrored pixels
+            " ": proxmin.operators.prox_id,    # do nothing
+            "M": partial(proxmin.operators.prox_min, l=gradient_thresh), # positive gradients
+            "S": proxmin.operators.prox_zero,   # zero deviation of mirrored pixels
         }
+        # TODO: Review constraints interface
         if "m" in constraints:
             linear_constraints["m"] = build_prox_monotonic((N,M), prox_chain=prox_S)
+
         # Proximal Operator for each constraint
-        all_prox_g = [
-            _prox_A, # No A constraints
-            [linear_constraints[c] for c in constraints] # S constraints
+        proxs_g = [[proxmin.operators.prox_id], # no additional A constraints (yet)
+                   [linear_constraints[c] for c in constraints] # S constraints
         ]
         # Linear Operator for each constraint
-        all_constraints = [
-            None, # No A constraints
+        Ls = [
+            [None], # none need for A
             [get_constraint_op(c, (N,M), useNearest=monotonicUseNearest) for c in constraints]
         ]
 
-        if step_g is None:
-            # weightseight of the linear operator (to test for convergence)
-            all_step_g = None
-            all_constraint_norms = [1, np.array([scipy.sparse.linalg.norm(C) for C in all_constraints[1]])]
-            logger.debug("Constraint norms for S (intensity) matrix: {0}".format(all_constraint_norms[1]))
-        else:
-            all_step_g = step_g
-            all_constraint_norms = None
-            logger.debug("Constraint steps for S (intensity) matrix: {0}".format(all_step_g))
     else:
-        all_prox_g = [None, None]
-        all_step_g = None
-        all_constraints = None
-        all_constraint_norms = None
+        proxs_g = [proxmin.operators.prox_id] * 2
+        Ls = [None] * 2
 
-    logger.debug("prox_g: {0}".format(all_prox_g))
-    logger.debug("all_step_g: {0}".format(all_step_g))
-    logger.debug("all_constraints: {0}".format(all_constraints))
-    # run the NMF with those constraints
-    if algorithm is not None and algorithm.lower() == "glmm":
-        [A, S], errors, history = glmm(allX=[A,S], all_prox_f=[prox_A, prox_S], all_prox_g=all_prox_g,
-                                       all_constraints=all_constraints, max_iter=max_iter,
-                                       e_rel=e_rel, step_beta=step_beta, weights=weights,
-                                       all_step_g=all_step_g, all_constraint_norms=all_constraint_norms,
-                                       traceback=traceback,
-                                       convergence_func=convergence_func, min_iter=min_iter,
-                                       dot_components=dot_components)
+    logger.debug("proxs_g: {0}".format(proxs_g))
+    logger.debug("steps_g: {0}".format(steps_g))
+    logger.debug("steps_g_update: {0}".format(steps_g_update))
+    logger.debug("Ls: {0}".format(Ls))
+
+    # Constraint on A: projected to non-negative numbers that sum to one
+    prox_A = proxmin.operators.prox_unity_plus
+
+    # define objective function with strict_constraints
+    f = partial(prox_likelihood, Y=Y, W=W, Gamma=Gamma, prox_S=prox_S, prox_A=prox_A)
+
+    # create stepsize callback, needs max of W
+    if W is not None:
+        Wmax = W.max()
     else:
-        raise NotImplementedError("Currently on glmm is supported")
-        # TODO: Either implement ADMM and SDMM or remove the following code
-        [A, S], errors, history = als(allX=[A,S], all_prox_f=[prox_A, prox_S], all_prox_g=all_prox_g,
-                                      all_constraints=all_constraints, max_iter=max_iter,
-                                      e_rel=e_rel, step_beta=step_beta, weights=weights,
-                                      all_step_g=all_step_g, all_constraint_norms=all_constraint_norms,
-                                      traceback=traceback,
-                                      convergence_func=convergence_func,
-                                      als_max_iter=als_max_iter, algorithms=algorithm, min_iter=min_iter,
-                                      dot_components=dot_components)
+        W = Wmax = 1
+    steps_f = Steps_AS(Wmax=Wmax)
+
+    # run the NMF with those constraints
+    Xs = [A, S]
+    res = proxmin.algorithms.glmm(Xs, f, steps_f, proxs_g, steps_g=steps_g, Ls=Ls, steps_g_update=steps_g_update, max_iter=max_iter, e_rel=e_rel, traceback=traceback)
+
+    if not traceback:
+        A, S = res
+        tr = None
+    else:
+        [A, S], tr = res
 
     # create the model and reshape to have shape B,N,M
     model = get_model(A, S, Tx, Ty, P_, (N,M))
-
-    if show:
-        import matplotlib.pyplot as plt
-        plt.imshow(model[0])
-
     S = S.reshape(K,N,M)
 
-    return A, S, model, P_, Tx, Ty, errors
+    return A, S, model, P_, Tx, Ty, tr
