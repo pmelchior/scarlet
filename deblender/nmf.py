@@ -136,23 +136,6 @@ def prox_likelihood(X, step, Xs=None, j=None, Y=None, W=None, Gamma=None,
     else:
         return prox_likelihood_S(X, step, A=Xs[0], Y=Y, Gamma=Gamma, prox_g=prox_S, W=W)
 
-def dot_components(C, X, axis=0, transpose=False):
-    """Apply a linear constraint C to each peak in X
-    """
-    K = X.shape[axis]
-
-    if axis == 0:
-        if not transpose:
-            CX = [C.dot(X[k]) for k in range(K)]
-        else:
-            CX = [C.T.dot(X[k]) for k in range(K)]
-    if axis == 1:
-        if not transpose:
-            CX = [C.dot(X[:,k]) for k in range(K)]
-        else:
-            CX = [C.T.dot(X[:,k]) for k in range(K)]
-    return np.stack(CX, axis=axis)
-
 def init_A(B, K, peaks=None, img=None):
     # init A from SED of the peak pixels
     if peaks is None:
@@ -189,18 +172,24 @@ def adapt_PSF(psf, B, shape, threshold=1e-2):
         P_.append(operators.getPSFOp(psf[b], shape, threshold=threshold))
     return P_
 
-def get_constraint_op(constraint, shape, useNearest=True):
+def get_constraint_op(constraint, shape, K, useNearest=True):
     """Get appropriate constraint operator
     """
     N,M = shape
     if constraint == " ":
         return None
     elif constraint=="m":
-        return scipy.sparse.identity(N*M)
+        return None
     elif constraint == "M":
-        return operators.getRadialMonotonicOp((N,M), useNearest=useNearest)
+        # block diagonal matrix to run single dot operation on all components
+        L = operators.getRadialMonotonicOp((N,M), useNearest=useNearest)
+        LB = scipy.sparse.block_diag([L for k in range(K)])
+        return proxmin.utils.MatrixAdapter(LB, axis=1)
     elif constraint == "S":
-        return operators.getSymmetryOp((N,M))
+        L = operators.getSymmetryOp((N,M))
+        LB = scipy.sparse.block_diag([L for k in range(K)])
+        return proxmin.utils.MatrixAdapter(LB, axis=1)
+
     raise ValueError("'constraint' should be in [' ', 'm', 'M', 'S'] but received '{0}'".format(constraint))
 
 def translate_psfs(shape, peaks, B, P, threshold=1e-8):
@@ -297,7 +286,7 @@ def deblend(img,
     if constraints is not None:
         linear_constraints = {
             " ": proxmin.operators.prox_id,    # do nothing
-            "M": partial(proxmin.operators.prox_min, l=gradient_thresh), # positive gradients
+            "M": partial(proxmin.operators.prox_min, thresh=gradient_thresh), # positive gradients
             "S": proxmin.operators.prox_zero,   # zero deviation of mirrored pixels
         }
         # TODO: Review constraints interface
@@ -311,7 +300,7 @@ def deblend(img,
         # Linear Operator for each constraint
         Ls = [
             [None], # none need for A
-            [get_constraint_op(c, (N,M), useNearest=monotonicUseNearest) for c in constraints]
+            [get_constraint_op(c, (N,M), K, useNearest=monotonicUseNearest) for c in constraints]
         ]
 
     else:

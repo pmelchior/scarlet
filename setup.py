@@ -106,11 +106,9 @@ setup(
   author = 'Fred Moolekamp and Peter Melchior',
   author_email = 'fred.moolekamp@gmail.com',
   url = 'https://github.com/fred3m/deblender',
-  #download_url = 'https://github.com/fred3m/popper/tarball/0.1',
   keywords = ['astro', 'deblender', 'photometry', 'nmf'],
-  #classifiers = [],
   ext_modules=ext_modules,
-  install_requires=['proxmin', 'pybind11>=1.7', 'numpy', 'scipy'],
+  install_requires=['proxmin>=0.1', 'pybind11>=1.7', 'numpy', 'scipy'],
   cmdclass={'build_ext': BuildExt},
   zip_safe=False
 )
