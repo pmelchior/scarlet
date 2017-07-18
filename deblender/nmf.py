@@ -228,7 +228,6 @@ def deblend(img,
             sky=None,
             l0_thresh=None,
             l1_thresh=None,
-            gradient_thresh=0,
             e_rel=1e-3,
             psf_thresh=1e-2,
             monotonicUseNearest=False,
@@ -273,21 +272,12 @@ def deblend(img,
         else:
             prox_S = partial(proxmin.operators.prox_soft_plus, thresh=l1_thresh)
 
-    # TODO: The order of prox_S and the strict monotonicity is ambiguous,
-    # potentially incorrect. Need to review prox_chain implementation
-    # TODO: Review strict_constraints interface
-    if strict_constraints is not None:
-        for c in strict_constraints[::-1]:
-            if c=="M": # Monotonicity
-                _prox_S = prox_S
-                prox_S = build_prox_monotonic((N,M), prox_chain=_prox_S, thresh=monotonic_thresh)
-
     # Load linear constraint operators
     if constraints is not None:
         linear_constraints = {
             " ": proxmin.operators.prox_id,    # do nothing
-            "M": partial(proxmin.operators.prox_min, thresh=gradient_thresh), # positive gradients
-            "S": proxmin.operators.prox_zero,   # zero deviation of mirrored pixels
+            "M": proxmin.operators.prox_plus,  # positive gradients
+            "S": proxmin.operators.prox_zero,  # zero deviation of mirrored pixels
         }
         # TODO: Review constraints interface
         if "m" in constraints:
