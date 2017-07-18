@@ -220,7 +220,6 @@ def translate_psfs(shape, peaks, B, P, threshold=1e-8):
 
 def deblend(img,
             peaks=None,
-            strict_constraints=None,
             constraints=None,
             weights=None,
             psf=None,
@@ -233,7 +232,8 @@ def deblend(img,
             monotonicUseNearest=False,
             traceback=False,
             translation_thresh=1e-8,
-            monotonic_thresh=0,
+            prox_A=None,
+            prox_S=None,
             steps_g=None,
             steps_g_update='steps_f'):
 
@@ -260,26 +260,33 @@ def deblend(img,
     Tx, Ty, Gamma = translate_psfs((N,M), peaks, B, P_, threshold=1e-8)
 
     # constraints on S: non-negativity or L0/L1 sparsity plus ...
-    from functools import partial
-    if l0_thresh is None and l1_thresh is None:
-        prox_S = proxmin.operators.prox_plus
-    else:
-        # L0 has preference
-        if l0_thresh is not None:
-            if l1_thresh is not None:
-                logger.warn("warning: l1_thresh ignored in favor of l0_thresh")
-            prox_S = partial(proxmin.operators.prox_hard, thresh=l0_thresh)
+    if prox_S is None:
+        from functools import partial
+        if l0_thresh is None and l1_thresh is None:
+            prox_S = proxmin.operators.prox_plus
         else:
-            prox_S = partial(proxmin.operators.prox_soft_plus, thresh=l1_thresh)
+            # L0 has preference
+            if l0_thresh is not None:
+                if l1_thresh is not None:
+                    logger.warn("warning: l1_thresh ignored in favor of l0_thresh")
+                prox_S = partial(proxmin.operators.prox_hard, thresh=l0_thresh)
+            else:
+                prox_S = partial(proxmin.operators.prox_soft_plus, thresh=l1_thresh)
+
+    # Constraint on A: projected to non-negative numbers that sum to one
+    if prox_A is None:
+        prox_A = proxmin.operators.prox_unity_plus
 
     # Load linear constraint operators
     if constraints is not None:
+
+
+
         linear_constraints = {
             " ": proxmin.operators.prox_id,    # do nothing
             "M": proxmin.operators.prox_plus,  # positive gradients
             "S": proxmin.operators.prox_zero,  # zero deviation of mirrored pixels
         }
-        # TODO: Review constraints interface
         if "m" in constraints:
             linear_constraints["m"] = build_prox_monotonic((N,M), prox_chain=prox_S)
 
@@ -301,9 +308,6 @@ def deblend(img,
     logger.debug("steps_g: {0}".format(steps_g))
     logger.debug("steps_g_update: {0}".format(steps_g_update))
     logger.debug("Ls: {0}".format(Ls))
-
-    # Constraint on A: projected to non-negative numbers that sum to one
-    prox_A = proxmin.operators.prox_unity_plus
 
     # define objective function with strict_constraints
     f = partial(prox_likelihood, Y=Y, W=W, Gamma=Gamma, prox_S=prox_S, prox_A=prox_A)
