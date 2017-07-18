@@ -288,7 +288,7 @@ def deblend(img,
     if prox_A is None:
         prox_A = proxmin.operators.prox_unity_plus
 
-    # Load linear constraint operators
+    # Load linear operator constraints: the g functions
     if constraints is not None:
 
         # same constraints for every object?
