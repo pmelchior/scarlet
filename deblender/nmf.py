@@ -172,25 +172,36 @@ def adapt_PSF(psf, B, shape, threshold=1e-2):
         P_.append(operators.getPSFOp(psf[b], shape, threshold=threshold))
     return P_
 
-def get_constraint_op(constraint, shape, K, useNearest=True):
+def L_when_sought(L, Z, seeks):
+    K = len(seeks)
+    Ls = []
+    for i in range (K):
+        if seeks[i]:
+            Ls.append(L)
+        else:
+            Ls.append(Z)
+    return Ls
+
+def get_constraint_op(constraint, shape, seeks, useNearest=True):
     """Get appropriate constraint operator
     """
     N,M = shape
-    if constraint == " ":
+    if constraint is None:
         return None
     elif constraint=="m":
         return None
     elif constraint == "M":
         # block diagonal matrix to run single dot operation on all components
+        # with seek == True
         L = operators.getRadialMonotonicOp((N,M), useNearest=useNearest)
-        LB = scipy.sparse.block_diag([L for k in range(K)])
+        Z = operators.getIdentityOp((N,M))
+        LB = scipy.sparse.block_diag(L_when_sought(L, Z, seeks))
         return proxmin.utils.MatrixAdapter(LB, axis=1)
     elif constraint == "S":
         L = operators.getSymmetryOp((N,M))
-        LB = scipy.sparse.block_diag([L for k in range(K)])
+        Z = operators.getZeroOp((N,M))
+        LB = scipy.sparse.block_diag(L_when_sought(L, Z, seeks))
         return proxmin.utils.MatrixAdapter(LB, axis=1)
-
-    raise ValueError("'constraint' should be in [' ', 'm', 'M', 'S'] but received '{0}'".format(constraint))
 
 def translate_psfs(shape, peaks, B, P, threshold=1e-8):
     # Initialize the translation operators
@@ -280,25 +291,41 @@ def deblend(img,
     # Load linear constraint operators
     if constraints is not None:
 
+        # same constraints for every object?
+        seeks = {} # component k seeks constraint[c]
+        if isinstance(constraints, basestring):
+            for c in constraints:
+                seeks[c] = [True] * K
+        else:
+            assert hasattr(constraints, '__iter__') and len(constraints) == K
+            for i in range(K):
+                if constraints[i] is not None:
+                    for c in constraints[i]:
+                        if c not in seeks.keys():
+                            seeks[c] = [False] * K
+                        seeks[c][i] = True
 
+        all_types = "SMm"
+        for c in seeks.keys():
+            if c not in all_types:
+                    raise ValueError("Each constraint should be None or in ['m', 'M', 'S'] but received '{0}'".format(c))
 
         linear_constraints = {
-            " ": proxmin.operators.prox_id,    # do nothing
             "M": proxmin.operators.prox_plus,  # positive gradients
             "S": proxmin.operators.prox_zero,  # zero deviation of mirrored pixels
         }
-        if "m" in constraints:
+        # expensive to build, only do if requested
+        if "m" in seeks.keys():
             linear_constraints["m"] = build_prox_monotonic((N,M), prox_chain=prox_S)
 
         # Proximal Operator for each constraint
-        proxs_g = [[proxmin.operators.prox_id], # no additional A constraints (yet)
-                   [linear_constraints[c] for c in constraints] # S constraints
-        ]
+        proxs_g = [None, # no additional A constraints (yet)
+                   [linear_constraints[c] for c in seeks.keys()] # S constraints
+                   ]
         # Linear Operator for each constraint
-        Ls = [
-            [None], # none need for A
-            [get_constraint_op(c, (N,M), K, useNearest=monotonicUseNearest) for c in constraints]
-        ]
+        Ls = [[None], # none need for A
+              [get_constraint_op(c, (N,M), seeks[c], useNearest=monotonicUseNearest) for c in seeks.keys()]
+              ]
 
     else:
         proxs_g = [proxmin.operators.prox_id] * 2

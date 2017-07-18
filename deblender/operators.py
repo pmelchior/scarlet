@@ -6,6 +6,15 @@ import scipy.sparse
 
 logger = logging.getLogger("deblender.operators")
 
+def getZeroOp(shape):
+    size = shape[0]*shape[1]
+    # matrix with ones on diagonal shifted by k, here out of matrix: all zeros
+    return scipy.sparse.eye(size,k=size)
+
+def getIdentityOp(shape):
+    size = shape[0]*shape[1]
+    return scipy.sparse.identity(size)
+
 def getSymmetryOp(shape):
     """Create a linear operator to symmetrize an image
 
