@@ -316,7 +316,7 @@ def deblend(img,
         }
         # expensive to build, only do if requested
         if "m" in seeks.keys():
-            linear_constraints["m"] = build_prox_monotonic((N,M), prox_chain=prox_S)
+            linear_constraints["m"] = build_prox_monotonic((N,M), seeks["m"], prox_chain=prox_S)
 
         # Proximal Operator for each constraint
         proxs_g = [None, # no additional A constraints (yet)
