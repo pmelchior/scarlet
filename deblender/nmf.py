@@ -10,7 +10,7 @@ import proxmin
 from proxmin.nmf import Steps_AS
 
 from . import operators
-from .proximal import build_prox_monotonic
+from .proximal import build_prox_monotonic, prox_cone
 
 logger = logging.getLogger("deblender.nmf")
 
@@ -186,9 +186,7 @@ def get_constraint_op(constraint, shape, seeks, useNearest=True):
     """Get appropriate constraint operator
     """
     N,M = shape
-    if constraint is None:
-        return None
-    elif constraint=="m":
+    if constraint is None or constraint in ["m", "c"]:
         return None
     elif constraint == "M":
         # block diagonal matrix to run single dot operation on all components
@@ -306,7 +304,7 @@ def deblend(img,
                             seeks[c] = [False] * K
                         seeks[c][i] = True
 
-        all_types = "SMm"
+        all_types = "SMmc"
         for c in seeks.keys():
             if c not in all_types:
                     raise ValueError("Each constraint should be None or in ['m', 'M', 'S'] but received '{0}'".format(c))
@@ -314,6 +312,7 @@ def deblend(img,
         linear_constraints = {
             "M": proxmin.operators.prox_plus,  # positive gradients
             "S": proxmin.operators.prox_zero,  # zero deviation of mirrored pixels
+            "c": partial(prox_cone, G=operators.getRadialMonotonicOp((N,M), useNearest=monotonicUseNearest).toarray())
         }
         # expensive to build, only do if requested
         if "m" in seeks.keys():
