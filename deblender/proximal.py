@@ -18,9 +18,28 @@ def prox_monotonic(X, step, seeks, ref_idx, dist_idx, thresh=0, prox_chain=None,
         X = prox_chain(X, step, **kwargs)
     return X
 
-def prox_monotonic_exact(X, step, peaks=None):
-    """Exact proximal operator onto monotonic images"""
-    pass
+def prox_cone(X, step, G=None):
+    """Exact projection of components of X onto cone defined by Gx >= 0"""
+    k, n = X.shape
+    for i in range(k):
+        Y = X[i]
+
+        # Creating set of half-space defining vectors
+        Vs = []
+        for j in range(0, n):
+            add = G[j]
+            Vs.append(add)
+        Q = find_Q(Vs, n)
+
+        # Finding and using relevant dimensions until a point on the cone is found
+        for j in range(n):
+            index = find_relevant_dim(Y, Q, Vs)
+            if index != -1:
+                Y, Q, Vs = use_relevant_dim(Y, Q, Vs, index)
+            else:
+                break
+        X[i] = Y
+    return X
 
 def proj(A,B):
     """Returns the projection of A onto the hyper-plane defined by B"""
@@ -31,7 +50,8 @@ def proj_dist(A,B):
     return (A*B).sum()/(B**2).sum()**0.5
 
 def use_relevant_dim(Y, Q, Vs, index):
-    """Uses relevant dimension to reduce problem dimensionality"""
+    """Uses relevant dimension to reduce problem dimensionality (projects everything onto the 
+    new hyperplane"""
     projector = Vs[index]
     del Vs[index]
     Y = proj(Y, projector)
