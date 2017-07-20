@@ -18,6 +18,51 @@ def prox_monotonic(X, step, seeks, ref_idx, dist_idx, thresh=0, prox_chain=None,
         X = prox_chain(X, step, **kwargs)
     return X
 
+def prox_monotonic_exact(X, step, peaks=None):
+    """Exact proximal operator onto monotonic images"""
+    pass
+
+def proj(A,B):
+    """Returns the projection of A onto the hyper-plane defined by B"""
+    return A - (A*B).sum()*B/(B**2).sum()
+
+def proj_dist(A,B):
+    """Returns length of projection of A onto B"""
+    return (A*B).sum()/(B**2).sum()**0.5
+
+def use_relevant_dim(Y, Q, Vs, index):
+    """Uses relevant dimension to reduce problem dimensionality"""
+    projector = Vs[index]
+    del Vs[index]
+    Y = proj(Y, projector)
+    Q = proj(Y, projector)
+    for i in range(len(Vs)):
+        Vs[i] = proj(Vs[i], projector)
+    return Y, Q, Vs
+
+def find_relevant_dim(Y, Q, Vs):
+    """Finds a dimension relevant to the problem by 'raycasting' from Y to Q"""
+    max_t = 0
+    index = -1
+    for i in range(len(Vs)):
+        Y_p = proj_dist(Y, Vs[i])
+        Q_p = proj_dist(Q, Vs[i])
+        if Y_p < 0:
+            t = -Y_p/(Q_p - Y_p)
+        else:
+            t = -2
+        if t > max_t:
+            max_t = t
+            index = i
+    return index
+
+def find_Q(Vs, n):
+    """Finds a Q that is within the solution space that can act as an appropriate target
+    (could be rigorously constructed later)"""
+    res = np.zeros(n)
+    res[int((n-1)/2)] = n
+    return res
+
 def build_prox_monotonic(shape, seeks, prox_chain=None, thresh=0):
     """Build the prox_monotonic operator
     """
