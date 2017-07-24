@@ -12,6 +12,12 @@ from proxmin.nmf import Steps_AS
 from . import operators
 from .proximal import build_prox_monotonic
 
+# Set basestring in python 3
+try:
+    basestring
+except NameError:
+    basestring = str
+
 logger = logging.getLogger("deblender.nmf")
 
 def convolve_band(P, img):
