@@ -202,12 +202,21 @@ def get_constraint_op(constraint, shape, seeks, useNearest=True):
         L = operators.getRadialMonotonicOp((N,M), useNearest=useNearest)
         Z = operators.getIdentityOp((N,M))
         LB = scipy.sparse.block_diag(L_when_sought(L, Z, seeks))
-        return proxmin.utils.MatrixAdapter(LB, axis=1)
     elif constraint == "S":
         L = operators.getSymmetryOp((N,M))
         Z = operators.getZeroOp((N,M))
         LB = scipy.sparse.block_diag(L_when_sought(L, Z, seeks))
-        return proxmin.utils.MatrixAdapter(LB, axis=1)
+    elif constraint =="X":
+        cx = int(shape[1]/2)
+        L = proxmin.operators.get_gradient_x(shape, cx)
+        Z = operators.getIdentityOp((N,M))
+    elif constraint =="Y":
+        cy = int(shape[0]/2)
+        L = proxmin.operators.get_gradient_y(shape, cy)
+        Z = operators.getIdentityOp((N,M))
+    # Create the matrix adapter for the operator
+    LB = scipy.sparse.block_diag(L_when_sought(L, Z, seeks))
+    return proxmin.utils.MatrixAdapter(LB, axis=1)
 
 def translate_psfs(shape, peaks, B, P, threshold=1e-8):
     # Initialize the translation operators
@@ -279,7 +288,6 @@ def deblend(img,
 
     # constraints on S: non-negativity or L0/L1 sparsity plus ...
     if prox_S is None:
-        from functools import partial
         if l0_thresh is None and l1_thresh is None:
             prox_S = proxmin.operators.prox_plus
         else:
@@ -312,14 +320,17 @@ def deblend(img,
                             seeks[c] = [False] * K
                         seeks[c][i] = True
 
-        all_types = "SMm"
+        all_types = "SMmXY"
         for c in seeks.keys():
             if c not in all_types:
-                    raise ValueError("Each constraint should be None or in ['m', 'M', 'S'] but received '{0}'".format(c))
+                    err = "Each constraint should be None or in {0} but received '{1}'"
+                    raise ValueError(err.format([cn for cn in all_types], c))
 
         linear_constraints = {
             "M": proxmin.operators.prox_plus,  # positive gradients
             "S": proxmin.operators.prox_zero,  # zero deviation of mirrored pixels
+            "X": proxmin.operators.prox_plus, # positive X gradient
+            "Y": proxmin.operators.prox_plus, # positive Y gradient
         }
         # expensive to build, only do if requested
         if "m" in seeks.keys():
