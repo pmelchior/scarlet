@@ -7,18 +7,18 @@ import numpy as np
 from . import operators
 from . import proximal_utils
 
-def prox_monotonic(X, step, ref_idx, dist_idx, thresh=0, prox_chain=None, **kwargs):
+def prox_monotonic(X, step, seeks, ref_idx, dist_idx, thresh=0, prox_chain=None, **kwargs):
     """Force an intensity profile to be monotonic
     """
-    # It may be necessary to chain proximal operators together,
-    # so call proximal operators lower in the chain
+    proximal_utils.prox_monotonic(X, step, seeks, ref_idx, dist_idx, thresh)
+
+    # When we daisy-chain the operators, we need to primary ones
+    # (positivity, sparsity) last so that they are certainly fulfilled
     if prox_chain is not None:
         X = prox_chain(X, step, **kwargs)
-
-    proximal_utils.prox_monotonic(X, step, ref_idx, dist_idx, thresh)
     return X
 
-def build_prox_monotonic(shape, prox_chain=None, thresh=0):
+def build_prox_monotonic(shape, seeks, prox_chain=None, thresh=0):
     """Build the prox_monotonic operator
     """
     monotonicOp = operators.getRadialMonotonicOp(shape)
@@ -36,4 +36,4 @@ def build_prox_monotonic(shape, prox_chain=None, thresh=0):
     # Get the indices of the pixels sorted by distance from the peak
     didx = np.argsort(distance.flatten())
     #update the strict proximal operators
-    return partial(prox_monotonic, ref_idx=refIdx.tolist(), dist_idx=didx.tolist(), prox_chain=prox_chain, thresh=thresh)
+    return partial(prox_monotonic, seeks=seeks, ref_idx=refIdx.tolist(), dist_idx=didx.tolist(), prox_chain=prox_chain, thresh=thresh)
