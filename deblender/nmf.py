@@ -153,6 +153,9 @@ def init_A(B, K, peaks=None, img=None):
         for k in range(K):
             px,py = peaks[k]
             A[:,k] = img[:,int(py),int(px)]
+            # Radnomize A if there is no flux at the current peak
+            if np.sum(A[:,k])==0:
+                A[:,k] = np.random.rand(B)
     # ensure proper normalization
     A = proxmin.operators.prox_unity_plus(A, 0)
     return A
