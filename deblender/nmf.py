@@ -151,11 +151,16 @@ def init_A(B, K, peaks=None, img=None):
         assert len(peaks) == K
         A = np.zeros((B,K))
         for k in range(K):
-            px,py = peaks[k]
-            A[:,k] = img[:,int(py),int(px)]
-            # Radnomize A if there is no flux at the current peak
-            if np.sum(A[:,k])==0:
+            # Check for a garbage collector or source with no flux
+            if peaks[k] is None:
+                logger.warn("Using random A matrix for peak {0}".format(k))
                 A[:,k] = np.random.rand(B)
+            else:
+                px,py = peaks[k]
+                A[:,k] = img[:,int(py),int(px)]
+                if np.sum(A[:,k])==0:
+                    logger.warn("Peak {0} has no flux, using random A matrix".format(k))
+                    A[:,k] = np.random.rand(B)
     # ensure proper normalization
     A = proxmin.operators.prox_unity_plus(A, 0)
     return A
@@ -167,8 +172,13 @@ def init_S(N, M, K, peaks=None, img=None):
         S[:,cy*M+cx] = 1
     else:
         tiny = 1e-10
-        for pk, (px,py) in enumerate(peaks):
-            S[pk, cy*M+cx] = np.abs(img[:,int(py),int(px)].mean()) + tiny
+        for pk, peak in enumerate(peaks):
+            if peak is None:
+                logger.warn("Using random S matrix for peak {0}".format(pk))
+                S[pk,:] = np.random.rand(N)
+            else:
+                px, py = peak
+                S[pk, cy*M+cx] = np.abs(img[:,int(py),int(px)].mean()) + tiny
     return S
 
 def adapt_PSF(psf, B, shape, threshold=1e-2):
@@ -352,6 +362,8 @@ def deblend(img,
         proxs_g = [proxmin.operators.prox_id] * 2
         Ls = [None] * 2
 
+    logger.debug("prox_A: {0}".format(prox_A))
+    logger.debug("prox_S: {0}".format(prox_S))
     logger.debug("proxs_g: {0}".format(proxs_g))
     logger.debug("steps_g: {0}".format(steps_g))
     logger.debug("steps_g_update: {0}".format(steps_g_update))
