@@ -370,14 +370,15 @@ def deblend(img,
     logger.debug("steps_g_update: {0}".format(steps_g_update))
     logger.debug("Ls: {0}".format(Ls))
 
-    # define objective function with strict_constraints
-    f = partial(prox_likelihood, Y=Y, W=W, Gamma=Gamma, prox_S=prox_S, prox_A=prox_A)
-
     # create stepsize callback, needs max of W
     if W is not None:
         Wmax = W.max()
     else:
         W = Wmax = 1
+
+    # define objective function with strict_constraints
+    f = partial(prox_likelihood, Y=Y, W=W, Gamma=Gamma, prox_S=prox_S, prox_A=prox_A)
+
     steps_f = Steps_AS(Wmax=Wmax, slack=slack, update_order=update_order)
 
     # run the NMF with those constraints
