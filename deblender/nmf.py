@@ -273,6 +273,7 @@ def deblend(img,
             translation_thresh=1e-8,
             prox_A=None,
             prox_S=None,
+            slack = 0.9,
             update_order=None,
             steps_g=None,
             steps_g_update='steps_f'):
@@ -377,7 +378,7 @@ def deblend(img,
         Wmax = W.max()
     else:
         W = Wmax = 1
-    steps_f = Steps_AS(Wmax=Wmax)
+    steps_f = Steps_AS(Wmax=Wmax, slack=slack, update_order=update_order)
 
     # run the NMF with those constraints
     Xs = [A, S]
