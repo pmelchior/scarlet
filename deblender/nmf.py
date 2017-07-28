@@ -257,6 +257,48 @@ def translate_psfs(shape, peaks, B, P, threshold=1e-8):
         Gamma.append(gamma)
     return Tx, Ty, Gamma
 
+def oddify(shape, truncate=False):
+    """Get an odd number of rows and columns
+    """
+    if shape is None:
+        shape = img.shape
+    B,N,M = shape
+    if N % 2 == 0:
+        if truncate:
+            N -= 1
+        else:
+            N += 1
+    if M % 2 == 0:
+        if truncate:
+            M -= 1
+        else:
+            M += 1
+    return B, N, M
+
+def reshape_img(img, new_shape=None, truncate=False, fill=0):
+    """Ensure that the image has an odd number of rows and columns
+    """
+    if new_shape is None:
+        new_shape = oddify(img.shape, truncate)
+
+    if img.shape != new_shape:
+        B,N,M = img.shape
+        _B,_N,_M = new_shape
+        if B != _B:
+            raise ValueError("The old and new shape must have the same number of bands")
+        if truncate:
+            _img = img[:,:_N, :_M]
+        else:
+            if fill==0:
+                _img = np.zeros((B,_N,_M))
+            else:
+                _img = np.empty((B,_N,_M))
+                _img[:] = fill
+            _img[:,:N,:M] = img[:]
+    else:
+        _img = img
+    return _img
+
 def deblend(img,
             peaks=None,
             constraints=None,
@@ -275,19 +317,36 @@ def deblend(img,
             prox_S=None,
             update_order=None,
             steps_g=None,
-            steps_g_update='steps_f'):
+            steps_g_update='steps_f',
+            truncate=False):
 
     # vectorize image cubes
     B,N,M = img.shape
+    
+    # Ensure that the image has an odd number of rows and columns
+    _img = reshape_img(img, truncate=truncate)
+    if _img.shape != img.shape:
+        logger.warn("Reshaped image from {0} to {1}".format(img.shape, _img.shape))
+        if weights is not None:
+            _weights = reshape_img(weights, _img.shape, truncate=truncate)
+        if sky is not None:
+            _sky = reshape_img(sky, _img.shape, truncate=truncate)
+        B,N,M = _img.shape
+    else:
+        _img = img
+        _weights = weights
+        _sky = sky
+
     K = len(peaks)
     if sky is None:
-        Y = img.reshape(B,N*M)
+        Y = _img.reshape(B,N*M)
     else:
-        Y = (img-sky).reshape(B,N*M)
+        Y = (_img-_sky).reshape(B,N*M)
     if weights is None:
-        W = weights
+        W = Wmax = 1,
     else:
-        W = weights.reshape(B,N*M)
+        W = _weights.reshape(B,N*M)
+        Wmax = np.max(W)
     if psf is None:
         P_ = psf
     else:
@@ -295,8 +354,8 @@ def deblend(img,
     logger.debug("Shape: {0}".format((N,M)))
 
     # init matrices
-    A = init_A(B, K, img=img, peaks=peaks)
-    S = init_S(N, M, K, img=img, peaks=peaks)
+    A = init_A(B, K, img=_img, peaks=peaks)
+    S = init_S(N, M, K, img=_img, peaks=peaks)
     Tx, Ty, Gamma = translate_psfs((N,M), peaks, B, P_, threshold=1e-8)
 
     # constraints on S: non-negativity or L0/L1 sparsity plus ...
@@ -373,10 +432,6 @@ def deblend(img,
     f = partial(prox_likelihood, Y=Y, W=W, Gamma=Gamma, prox_S=prox_S, prox_A=prox_A)
 
     # create stepsize callback, needs max of W
-    if W is not None:
-        Wmax = W.max()
-    else:
-        W = Wmax = 1
     steps_f = Steps_AS(Wmax=Wmax)
 
     # run the NMF with those constraints
