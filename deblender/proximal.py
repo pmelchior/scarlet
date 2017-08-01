@@ -18,6 +18,26 @@ def prox_monotonic(X, step, seeks, ref_idx, dist_idx, thresh=0, prox_chain=None,
         X = prox_chain(X, step, **kwargs)
     return X
 
+def build_prox_monotonic(shape, seeks, prox_chain=None, thresh=0):
+    """Build the prox_monotonic operator
+    """
+    monotonicOp = operators.getRadialMonotonicOp(shape)
+    _, refIdx = np.where(monotonicOp.toarray()==1)
+    # Get the center pixels
+    px = (shape[1]-1) >> 1
+    py = (shape[0]-1) >> 1
+    # Calculate the distance between each pixel and the peak
+    x = np.arange(shape[1])
+    y = np.arange(shape[0])
+    X,Y = np.meshgrid(x,y)
+    X = X - px
+    Y = Y - py
+    distance = np.sqrt(X**2+Y**2)
+    # Get the indices of the pixels sorted by distance from the peak
+    didx = np.argsort(distance.flatten())
+    #update the strict proximal operators
+    return partial(prox_monotonic, seeks=seeks, ref_idx=refIdx.tolist(), dist_idx=didx.tolist(), prox_chain=prox_chain, thresh=thresh)
+
 def prox_cone(X, step, G=None):
     """Exact projection of components of X onto cone defined by Gx >= 0"""
     k, n = X.shape
@@ -50,7 +70,7 @@ def proj_dist(A,B):
     return (A*B).sum()/(B**2).sum()**0.5
 
 def use_relevant_dim(Y, Q, Vs, index):
-    """Uses relevant dimension to reduce problem dimensionality (projects everything onto the 
+    """Uses relevant dimension to reduce problem dimensionality (projects everything onto the
     new hyperplane"""
     projector = Vs[index]
     del Vs[index]
@@ -82,23 +102,3 @@ def find_Q(Vs, n):
     res = np.zeros(n)
     res[int((n-1)/2)] = n
     return res
-
-def build_prox_monotonic(shape, seeks, prox_chain=None, thresh=0):
-    """Build the prox_monotonic operator
-    """
-    monotonicOp = operators.getRadialMonotonicOp(shape)
-    _, refIdx = np.where(monotonicOp.toarray()==1)
-    # Get the center pixels
-    px = (shape[1]-1) >> 1
-    py = (shape[0]-1) >> 1
-    # Calculate the distance between each pixel and the peak
-    x = np.arange(shape[1])
-    y = np.arange(shape[0])
-    X,Y = np.meshgrid(x,y)
-    X = X - px
-    Y = Y - py
-    distance = np.sqrt(X**2+Y**2)
-    # Get the indices of the pixels sorted by distance from the peak
-    didx = np.argsort(distance.flatten())
-    #update the strict proximal operators
-    return partial(prox_monotonic, seeks=seeks, ref_idx=refIdx.tolist(), dist_idx=didx.tolist(), prox_chain=prox_chain, thresh=thresh)
