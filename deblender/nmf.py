@@ -10,7 +10,7 @@ import proxmin
 from proxmin.nmf import Steps_AS
 
 from . import operators
-from .proximal import build_prox_monotonic
+from .proximal import build_prox_monotonic, prox_cone
 
 # Set basestring in python 3
 try:
@@ -205,9 +205,7 @@ def get_constraint_op(constraint, shape, seeks, useNearest=True):
     """Get appropriate constraint operator
     """
     N,M = shape
-    if constraint is None:
-        return None
-    elif constraint=="m":
+    if constraint is None or constraint in ["m", "c"]:
         return None
     elif constraint == "M":
         # block diagonal matrix to run single dot operation on all components
@@ -323,7 +321,7 @@ def deblend(img,
 
     # vectorize image cubes
     B,N,M = img.shape
-    
+
     # Ensure that the image has an odd number of rows and columns
     _img = reshape_img(img, truncate=truncate)
     if _img.shape != img.shape:
@@ -393,7 +391,7 @@ def deblend(img,
                             seeks[c] = [False] * K
                         seeks[c][i] = True
 
-        all_types = "SMmXY"
+        all_types = "SMmcXY"
         for c in seeks.keys():
             if c not in all_types:
                     err = "Each constraint should be None or in {0} but received '{1}'"
@@ -401,7 +399,8 @@ def deblend(img,
 
         linear_constraints = {
             "M": proxmin.operators.prox_plus,  # positive gradients
-            "S": proxmin.operators.prox_zero,  # zero deviation of mirrored pixels
+            "S": proxmin.operators.prox_zero,  # zero deviation of mirrored pixels,
+            "c": partial(prox_cone, G=operators.getRadialMonotonicOp((N,M), useNearest=monotonicUseNearest).toarray()),
             "X": proxmin.operators.prox_plus, # positive X gradient
             "Y": proxmin.operators.prox_plus, # positive Y gradient
         }
@@ -432,7 +431,6 @@ def deblend(img,
     # define objective function with strict_constraints
     f = partial(prox_likelihood, Y=Y, W=W, Gamma=Gamma, prox_S=prox_S, prox_A=prox_A)
 
-    # create stepsize callback, needs max of W
     steps_f = Steps_AS(Wmax=Wmax, slack=slack, update_order=update_order)
 
     # run the NMF with those constraints
