@@ -400,7 +400,7 @@ def deblend(img,
         linear_constraints = {
             "M": proxmin.operators.prox_plus,  # positive gradients
             "S": proxmin.operators.prox_zero,  # zero deviation of mirrored pixels,
-            "c": partial(prox_cone, G=operators.getRadialMonotonicOp((N,M), useNearest=monotonicUseNearest).toarray())
+            "c": partial(prox_cone, G=operators.getRadialMonotonicOp((N,M), useNearest=monotonicUseNearest).toarray()),
             "X": proxmin.operators.prox_plus, # positive X gradient
             "Y": proxmin.operators.prox_plus, # positive Y gradient
         }
