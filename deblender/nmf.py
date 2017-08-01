@@ -12,6 +12,12 @@ from proxmin.nmf import Steps_AS
 from . import operators
 from .proximal import build_prox_monotonic, prox_cone
 
+# Set basestring in python 3
+try:
+    basestring
+except NameError:
+    basestring = str
+
 logger = logging.getLogger("deblender.nmf")
 
 def convolve_band(P, img):
@@ -145,8 +151,16 @@ def init_A(B, K, peaks=None, img=None):
         assert len(peaks) == K
         A = np.zeros((B,K))
         for k in range(K):
-            px,py = peaks[k]
-            A[:,k] = img[:,int(py),int(px)]
+            # Check for a garbage collector or source with no flux
+            if peaks[k] is None:
+                logger.warn("Using random A matrix for peak {0}".format(k))
+                A[:,k] = np.random.rand(B)
+            else:
+                px,py = peaks[k]
+                A[:,k] = img[:,int(py),int(px)]
+                if np.sum(A[:,k])==0:
+                    logger.warn("Peak {0} has no flux, using random A matrix".format(k))
+                    A[:,k] = np.random.rand(B)
     # ensure proper normalization
     A = proxmin.operators.prox_unity_plus(A, 0)
     return A
@@ -158,8 +172,13 @@ def init_S(N, M, K, peaks=None, img=None):
         S[:,cy*M+cx] = 1
     else:
         tiny = 1e-10
-        for pk, (px,py) in enumerate(peaks):
-            S[pk, cy*M+cx] = np.abs(img[:,int(py),int(px)].mean()) + tiny
+        for pk, peak in enumerate(peaks):
+            if peak is None:
+                logger.warn("Using random S matrix for peak {0}".format(pk))
+                S[pk,:] = np.random.rand(N)
+            else:
+                px, py = peak
+                S[pk, cy*M+cx] = np.abs(img[:,int(py),int(px)].mean()) + tiny
     return S
 
 def adapt_PSF(psf, B, shape, threshold=1e-2):
@@ -194,12 +213,21 @@ def get_constraint_op(constraint, shape, seeks, useNearest=True):
         L = operators.getRadialMonotonicOp((N,M), useNearest=useNearest)
         Z = operators.getIdentityOp((N,M))
         LB = scipy.sparse.block_diag(L_when_sought(L, Z, seeks))
-        return proxmin.utils.MatrixAdapter(LB, axis=1)
     elif constraint == "S":
         L = operators.getSymmetryOp((N,M))
         Z = operators.getZeroOp((N,M))
         LB = scipy.sparse.block_diag(L_when_sought(L, Z, seeks))
-        return proxmin.utils.MatrixAdapter(LB, axis=1)
+    elif constraint =="X":
+        cx = int(shape[1]/2)
+        L = proxmin.operators.get_gradient_x(shape, cx)
+        Z = operators.getIdentityOp((N,M))
+    elif constraint =="Y":
+        cy = int(shape[0]/2)
+        L = proxmin.operators.get_gradient_y(shape, cy)
+        Z = operators.getIdentityOp((N,M))
+    # Create the matrix adapter for the operator
+    LB = scipy.sparse.block_diag(L_when_sought(L, Z, seeks))
+    return proxmin.utils.MatrixAdapter(LB, axis=1)
 
 def translate_psfs(shape, peaks, B, P, threshold=1e-8):
     # Initialize the translation operators
@@ -227,6 +255,48 @@ def translate_psfs(shape, peaks, B, P, threshold=1e-8):
         Gamma.append(gamma)
     return Tx, Ty, Gamma
 
+def oddify(shape, truncate=False):
+    """Get an odd number of rows and columns
+    """
+    if shape is None:
+        shape = img.shape
+    B,N,M = shape
+    if N % 2 == 0:
+        if truncate:
+            N -= 1
+        else:
+            N += 1
+    if M % 2 == 0:
+        if truncate:
+            M -= 1
+        else:
+            M += 1
+    return B, N, M
+
+def reshape_img(img, new_shape=None, truncate=False, fill=0):
+    """Ensure that the image has an odd number of rows and columns
+    """
+    if new_shape is None:
+        new_shape = oddify(img.shape, truncate)
+
+    if img.shape != new_shape:
+        B,N,M = img.shape
+        _B,_N,_M = new_shape
+        if B != _B:
+            raise ValueError("The old and new shape must have the same number of bands")
+        if truncate:
+            _img = img[:,:_N, :_M]
+        else:
+            if fill==0:
+                _img = np.zeros((B,_N,_M))
+            else:
+                _img = np.empty((B,_N,_M))
+                _img[:] = fill
+            _img[:,:N,:M] = img[:]
+    else:
+        _img = img
+    return _img
+
 def deblend(img,
             peaks=None,
             constraints=None,
@@ -243,21 +313,39 @@ def deblend(img,
             translation_thresh=1e-8,
             prox_A=None,
             prox_S=None,
+            slack = 0.9,
             update_order=None,
             steps_g=None,
-            steps_g_update='steps_f'):
+            steps_g_update='steps_f',
+            truncate=False):
 
     # vectorize image cubes
     B,N,M = img.shape
+
+    # Ensure that the image has an odd number of rows and columns
+    _img = reshape_img(img, truncate=truncate)
+    if _img.shape != img.shape:
+        logger.warn("Reshaped image from {0} to {1}".format(img.shape, _img.shape))
+        if weights is not None:
+            _weights = reshape_img(weights, _img.shape, truncate=truncate)
+        if sky is not None:
+            _sky = reshape_img(sky, _img.shape, truncate=truncate)
+        B,N,M = _img.shape
+    else:
+        _img = img
+        _weights = weights
+        _sky = sky
+
     K = len(peaks)
     if sky is None:
-        Y = img.reshape(B,N*M)
+        Y = _img.reshape(B,N*M)
     else:
-        Y = (img-sky).reshape(B,N*M)
+        Y = (_img-_sky).reshape(B,N*M)
     if weights is None:
-        W = weights
+        W = Wmax = 1,
     else:
-        W = weights.reshape(B,N*M)
+        W = _weights.reshape(B,N*M)
+        Wmax = np.max(W)
     if psf is None:
         P_ = psf
     else:
@@ -265,13 +353,12 @@ def deblend(img,
     logger.debug("Shape: {0}".format((N,M)))
 
     # init matrices
-    A = init_A(B, K, img=img, peaks=peaks)
-    S = init_S(N, M, K, img=img, peaks=peaks)
+    A = init_A(B, K, img=_img, peaks=peaks)
+    S = init_S(N, M, K, img=_img, peaks=peaks)
     Tx, Ty, Gamma = translate_psfs((N,M), peaks, B, P_, threshold=1e-8)
 
     # constraints on S: non-negativity or L0/L1 sparsity plus ...
     if prox_S is None:
-        from functools import partial
         if l0_thresh is None and l1_thresh is None:
             prox_S = proxmin.operators.prox_plus
         else:
@@ -304,15 +391,18 @@ def deblend(img,
                             seeks[c] = [False] * K
                         seeks[c][i] = True
 
-        all_types = "SMmc"
+        all_types = "SMmcXY"
         for c in seeks.keys():
             if c not in all_types:
-                    raise ValueError("Each constraint should be None or in ['m', 'M', 'S'] but received '{0}'".format(c))
+                    err = "Each constraint should be None or in {0} but received '{1}'"
+                    raise ValueError(err.format([cn for cn in all_types], c))
 
         linear_constraints = {
             "M": proxmin.operators.prox_plus,  # positive gradients
-            "S": proxmin.operators.prox_zero,  # zero deviation of mirrored pixels
+            "S": proxmin.operators.prox_zero,  # zero deviation of mirrored pixels,
             "c": partial(prox_cone, G=operators.getRadialMonotonicOp((N,M), useNearest=monotonicUseNearest).toarray())
+            "X": proxmin.operators.prox_plus, # positive X gradient
+            "Y": proxmin.operators.prox_plus, # positive Y gradient
         }
         # expensive to build, only do if requested
         if "m" in seeks.keys():
@@ -331,6 +421,8 @@ def deblend(img,
         proxs_g = [proxmin.operators.prox_id] * 2
         Ls = [None] * 2
 
+    logger.debug("prox_A: {0}".format(prox_A))
+    logger.debug("prox_S: {0}".format(prox_S))
     logger.debug("proxs_g: {0}".format(proxs_g))
     logger.debug("steps_g: {0}".format(steps_g))
     logger.debug("steps_g_update: {0}".format(steps_g_update))
@@ -339,12 +431,7 @@ def deblend(img,
     # define objective function with strict_constraints
     f = partial(prox_likelihood, Y=Y, W=W, Gamma=Gamma, prox_S=prox_S, prox_A=prox_A)
 
-    # create stepsize callback, needs max of W
-    if W is not None:
-        Wmax = W.max()
-    else:
-        W = Wmax = 1
-    steps_f = Steps_AS(Wmax=Wmax)
+    steps_f = Steps_AS(Wmax=Wmax, slack=slack, update_order=update_order)
 
     # run the NMF with those constraints
     Xs = [A, S]
