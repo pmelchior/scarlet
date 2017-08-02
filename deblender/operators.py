@@ -185,7 +185,7 @@ def getRadialMonotonicOp(shape, useNearest=True, minGradient=1):
     # The identity with the peak pixel removed represents the reference pixels
     diagonal = np.ones(size)
     diagonal[px+py*shape[1]] = -1
-    monotonic = cosArr-scipy.sparse.diags(diagonal)
+    monotonic = cosArr-scipy.sparse.diags(diagonal, offsets=0)
 
     return monotonic.tocoo()
 
@@ -203,7 +203,7 @@ def getPSFOp(psfImg, imgShape, threshold=1e-2):
 
     # Hide pixels in the psf below the threshold
     psf = np.copy(psfImg)
-    psf[psf<threshold] = 0
+    psf[np.abs(psf)<threshold] = 0
     logger.info("Total psf pixels: {0}".format(np.sum(psf>0)))
 
     # Calculate the coordinates of the pixels in the psf image above the threshold
