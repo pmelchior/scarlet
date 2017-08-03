@@ -181,14 +181,14 @@ def init_S(N, M, K, peaks=None, img=None):
                 S[pk, cy*M+cx] = np.abs(img[:,int(py),int(px)].mean()) + tiny
     return S
 
-def adapt_PSF(psf, B, shape, threshold=1e-2):
+def adapt_PSF(psf, B, shape):
     # Simpler for likelihood gradients if psf = const across B
     if len(psf.shape)==2: # single matrix
-        return operators.getPSFOp(psf, shape, threshold=threshold)
+        return operators.getPSFOp(psf, shape)
 
     P_ = []
     for b in range(B):
-        P_.append(operators.getPSFOp(psf[b], shape, threshold=threshold))
+        P_.append(operators.getPSFOp(psf[b], shape))
     return P_
 
 def L_when_sought(L, Z, seeks):
@@ -307,7 +307,6 @@ def deblend(img,
             l0_thresh=None,
             l1_thresh=None,
             e_rel=1e-3,
-            psf_thresh=1e-2,
             monotonicUseNearest=False,
             traceback=False,
             translation_thresh=1e-8,
@@ -349,7 +348,7 @@ def deblend(img,
     if psf is None:
         P_ = psf
     else:
-        P_ = adapt_PSF(psf, B, (N,M), threshold=psf_thresh)
+        P_ = adapt_PSF(psf, B, (N,M))
     logger.debug("Shape: {0}".format((N,M)))
 
     # init matrices

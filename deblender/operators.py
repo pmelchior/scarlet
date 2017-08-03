@@ -189,25 +189,18 @@ def getRadialMonotonicOp(shape, useNearest=True, minGradient=1):
 
     return monotonic.tocoo()
 
-def getPSFOp(psfImg, imgShape, threshold=1e-2):
+def getPSFOp(psf, imgShape):
     """Create an operator to convolve intensities with the PSF
 
-    Given a psf image ``psfImg`` and the shape of the blended image ``imgShape``,
-    make a banded matrix out of all the pixels in ``psfImg`` above ``threshold``
-    that acts as the PSF operator.
-
-    TODO: Optimize this algorithm to
+    Given a psf image ``psf`` and the shape of the blended image ``imgShape``,
+    make a banded matrix out of all non-zero pixels in ``psfImg`` that acts as
+    the PSF operator.
     """
     height, width = imgShape
     size = width * height
 
-    # Hide pixels in the psf below the threshold
-    psf = np.copy(psfImg)
-    psf[np.abs(psf)<threshold] = 0
-    logger.info("Total psf pixels: {0}".format(np.sum(psf>0)))
-
     # Calculate the coordinates of the pixels in the psf image above the threshold
-    indices = np.where(psf>0)
+    indices = np.where(psf != 0)
     indices = np.dstack(indices)[0]
     cy, cx = np.unravel_index(np.argmax(psf), psf.shape)
     coords = indices-np.array([cy,cx])
