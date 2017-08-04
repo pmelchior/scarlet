@@ -202,7 +202,8 @@ def getPSFOp(psf, imgShape):
     # Calculate the coordinates of the pixels in the psf image above the threshold
     indices = np.where(psf != 0)
     indices = np.dstack(indices)[0]
-    cy, cx = np.unravel_index(np.argmax(psf), psf.shape)
+    # assume all PSF images have odd dimensions and are centered!
+    cy, cx = psf.shape[0]//2, psf.shape[1]//2
     coords = indices-np.array([cy,cx])
 
     # Create the PSF Operator
