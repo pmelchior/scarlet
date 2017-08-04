@@ -6,6 +6,179 @@ import scipy.sparse
 
 logger = logging.getLogger("deblender.operators")
 
+class Translations:
+    def __init__(self, peaks, shape, B=None, P=None, differential=0.1, max_shift=2, threshold=1e-8,
+                 fit_positions=True, wait=10):
+        """Initialize the class
+        
+        The class is initialized with its shape and the initial differential operators
+        """
+        cx, cy = int(shape[1]/2), int(shape[0]/2)
+        self.peaks = [[cx-px, cy-py] for px,py in peaks]
+        self.init_peaks = self.peaks.copy()
+        self.shape = shape
+        self.size = shape[0]*shape[1]
+        self.B = B
+        self.P = P
+        self.differential = differential
+        self.max_shift =  max_shift
+        self.threshold = threshold
+        self.fit_positions = fit_positions
+        self.wait = wait
+
+        # tx, ty have an entry for each integer shift of a peak
+        self.tx = {}
+        self.ty = {}
+        self.Tx = [None]*len(peaks)
+        self.Ty = [None]*len(peaks)
+        self.Gamma = None
+
+        # Create the initial translation matrices
+        for k, (px, py) in enumerate(self.peaks):
+            self.get_translation_ops(k, update=True)
+        # Update the initial Gamma matrices
+        self.translate_psfs()
+
+    def get_int_shift(self, dx, dy, threshold=None):
+        """Calculate the integer shifts, which sets the diagonal in the matrices
+        """
+        # Use the default threshold unless it's specified
+        if threshold is not None:
+            self.threshold = threshold
+        int_dx, int_dy = int(dx), int(dy)
+        
+        # If the fractional shifts are less than the threshold,
+        # round to the nearest integer shift
+        if np.abs(dx-int_dx) < self.threshold:
+            int_dx = int(np.round(dx))
+            dx = int_dx
+        if np.abs(dy-int_dy) < self.threshold:
+            int_dy = int(np.round(dy))
+            dy = int_dy
+        return int_dx, int_dy, dx, dy
+
+    def build_Tx(self, int_dx):
+        """Construct Tx and its components
+        """
+        height, width = self.shape
+        tx = scipy.sparse.diags([1],[int_dx], shape=(width, width), dtype=np.float64)
+        tx_plus = scipy.sparse.diags([-1,1],[int_dx, int_dx+1],
+                                     shape=(width, width), dtype=np.float64)
+        tx_minus = scipy.sparse.diags([1,-1],[int_dx, int_dx-1],
+                                      shape=(width, width), dtype=np.float64)
+        tx = scipy.sparse.block_diag([tx]*height)
+        tx_plus = scipy.sparse.block_diag([tx_plus]*height)
+        tx_minus = scipy.sparse.block_diag([tx_minus]*height)
+        self.tx[int_dx] = (tx, tx_plus, tx_minus)
+
+    def build_Ty(self, int_dy):
+        """Construct Ty and its components
+        """
+        width = self.shape[1]
+        ty = scipy.sparse.diags([1], [int_dy*width], shape=(self.size, self.size), dtype=np.float64)
+        ty_plus = scipy.sparse.diags([-1, 1], [int_dy*width, (int_dy+1)*width],
+                                     shape=(self.size, self.size), dtype=np.float64)
+        ty_minus = scipy.sparse.diags([1, -1], [int_dy*width, (int_dy-1)*width],
+                                      shape=(self.size, self.size), dtype=np.float64)
+        self.ty[int_dy] = (ty, ty_plus, ty_minus)
+
+    def get_translation_ops(self, k, ddx=0, ddy=0, update=False):
+        """Get the operators needed to shift peak k
+        """
+        dx, dy = self.peaks[k]
+        dx += ddx
+        dy += ddy
+        int_dx, int_dy, dx, dy = self.get_int_shift(dx, dy)
+        if update:
+            self.peaks[k] = dx, dy
+        # Build Tx and Ty (if necessary)
+        if int_dx not in self.tx.keys():
+            self.build_Tx(int_dx)
+        if int_dy not in self.ty.keys():
+            self.build_Ty(int_dy)
+        tx, tx_plus, tx_minus = self.tx[int_dx]
+        ty, ty_plus, ty_minus = self.ty[int_dy]
+        # Create Tx
+        if dx<0:
+            dtx = tx_minus
+        else:
+            dtx = tx_plus
+        Tx = tx + (dx-int_dx)*dtx
+        # Create Ty
+        if dy<0:
+            dty = ty_minus
+        else:
+            dty = ty_plus
+        Ty = ty + (dy-int_dy)*dty
+        # Optionally store the operators for the peak
+        if update:
+            self.Tx[k] = Tx
+            self.Ty[k] = Ty
+        return Tx, Ty
+
+    def translate_psfs(self):
+        """Translate the PSFs using Tx and Ty
+        """
+        Gamma = []
+        for k in range(len(self.peaks)):
+            if self.P is None:
+                gamma = [self.Ty[k].dot(self.Tx[k])]*self.B
+            else:
+                gamma = []
+                for b in range(B):
+                    g = self.Ty[pk].dot(self.P[b].dot(self.Tx[k]))
+                    gamma.append(g)
+            Gamma.append(gamma)
+        self.Gamma = Gamma
+
+    def update_positions(self, data, models, A, S, P=None, W=None):
+        """Update the x and y position of peak k
+        """
+        # Wait for the specified number of iterations
+        if self.wait>0:
+            self.wait -= 1
+            return self.Tx, self.Ty
+        from .nmf import get_peak_model
+
+        dxy = self.differential
+        dipoles = []
+        for k, (dx,dy) in enumerate(self.peaks):
+            model = models[k]
+            Tx, Ty = self.get_translation_ops(k, dxy, dxy)
+            # Get the difference image in x by adjusting only the x
+            # component by the differential amount dxy
+            diff_img = get_peak_model(A[:,k], S[k], Tx, self.Ty[k], P=P)
+            dipole = (model-diff_img)/dxy
+            dipoles.append(dipole)
+            # Do the same for the y difference image
+            diff_img = get_peak_model(A[:,k], S[k], self.Tx[k], Ty, P=P)
+            dipole = (model-diff_img)/dxy
+            dipoles.append(dipole)
+        model = np.sum(models, axis=0)
+        A = np.vstack([-dp.flatten() for dp in dipoles]).T
+        y = (data-model).flatten()
+        results = np.linalg.lstsq(A, y)[0]
+
+        for k, (px, py) in enumerate(self.peaks):
+            ddx = results[2*k]
+            ddy = results[2*k+1]
+            ipx, ipy = self.init_peaks[k]
+            # Check that the total shift doesn't exceed the maximum
+            if np.abs(px+ddx-ipx) > self.max_shift:
+                if px>ipx:
+                    ddx = px-ipx
+                else:
+                    ddx = ipx-px
+            if np.abs(py+ddy-ipy) > self.max_shift:
+                if py>ipy:
+                    ddy = py-ipy
+                else:
+                    ddy = ipy-py
+            # Update the peak positions and build the new Tx, Ty
+            self.get_translation_ops(k, ddx, ddy, update=True)
+        self.translate_psfs()
+        return self.Tx, self.Ty
+
 def getZeroOp(shape):
     size = shape[0]*shape[1]
     # matrix with ones on diagonal shifted by k, here out of matrix: all zeros
@@ -246,43 +419,6 @@ def getPSFOp(psf, imgShape):
 
     # Return the transpose, which correctly convolves the data with the PSF
     return psfOp.T.tocoo()
-
-def getTranslationOp(deltaX, deltaY, shape, threshold=1e-8):
-    """ Operator to translate an image by deltaX, deltaY pixels
-
-    deltaX and deltaY can both be real numbers, which uses a linear interpolation to
-    shift the peak by a fractional pixel amount.
-    """
-    Dx, Dy = int(deltaX), int(deltaY)
-    dx = np.abs(deltaX-Dx)
-    dy = np.abs(deltaY-Dy)
-
-    height, width = shape
-    size = width * height
-
-    # If dx or dy are less than the shift threshold, set them to zero
-    if dx < threshold:
-        Dx = int(np.ceil(deltaX))
-        dx = 0
-    if dy < threshold:
-        Dy = int(np.ceil(deltaY))
-        dy = 0
-
-    # Build the x and y translation matrices
-    signX = int(np.sign(deltaX))
-    if signX==0:
-        signX = 1
-    bx = scipy.sparse.diags([(1-dx), dx], [Dx, Dx+signX],
-                            shape=(width, width), dtype=np.float64)
-    signY = int(np.sign(deltaY))
-    if signY==0:
-        signY = 1
-    tx = scipy.sparse.block_diag([bx]*height)
-    ty = scipy.sparse.diags([(1-dy), dy], [Dy*width, (Dy+signY)*width], shape=(size, size), dtype=np.float64)
-    # Create the single translation operator (used for A and S likelihoods)
-    transOp = ty.dot(tx.T)
-
-    return tx, ty, transOp
 
 # ring-shaped masks around the peak
 def getRingMask(im_shape, peak, outer, inner=0, flatten=False):

@@ -135,9 +135,19 @@ def prox_likelihood_S(S, step, A=None, Y=None, Gamma=None, prox_g=None, W=1):
     """
     return prox_g(S - step*delta_data(A, S, Y, D='S', Gamma=Gamma, W=W), step)
 
-def prox_likelihood(X, step, Xs=None, j=None, Y=None, W=None, Gamma=None,
+def prox_likelihood(X, step, Xs=None, j=None, Y=None, W=None, Txy=None,
                     prox_S=None, prox_A=None):
-    if j == 0:
+    # Only update once per iteration
+    if j == 0 and Txy.fit_positions:
+        # Update the translation operators
+        A, S = Xs
+        models = np.zeros((A.shape[1], Txy.B, Y.shape[1]))
+        for k, (px,py) in enumerate(Txy.peaks):
+            models[k] = get_peak_model(A, S, Txy.Tx, Txy.Ty, Txy.P, k=k)
+        Txy.update_positions(Y, models, A, S, Txy.P, W)
+    Gamma = Txy.Gamma
+
+    if j==0:
         return prox_likelihood_A(X, step, S=Xs[1], Y=Y, Gamma=Gamma, prox_g=prox_A, W=W)
     else:
         return prox_likelihood_S(X, step, A=Xs[0], Y=Y, Gamma=Gamma, prox_g=prox_S, W=W)
@@ -229,32 +239,6 @@ def get_constraint_op(constraint, shape, seeks, useNearest=True):
     LB = scipy.sparse.block_diag(L_when_sought(L, Z, seeks))
     return proxmin.utils.MatrixAdapter(LB, axis=1)
 
-def translate_psfs(shape, peaks, B, P, threshold=1e-8):
-    # Initialize the translation operators
-    K = len(peaks)
-    Tx = []
-    Ty = []
-    cx, cy = int(shape[1]/2), int(shape[0]/2)
-    for pk, (px, py) in enumerate(peaks):
-        dx = cx - px
-        dy = cy - py
-        tx, ty, _ = operators.getTranslationOp(dx, dy, shape, threshold=threshold)
-        Tx.append(tx)
-        Ty.append(ty)
-
-    # TODO: This is only temporary until we fit for dx, dy
-    Gamma = []
-    for pk in range(K):
-        if P is None:
-            gamma = [Ty[pk].dot(Tx[pk])]*B
-        else:
-            gamma = []
-            for b in range(B):
-                g = Ty[pk].dot(P[b].dot(Tx[pk]))
-                gamma.append(g)
-        Gamma.append(gamma)
-    return Tx, Ty, Gamma
-
 def oddify(shape, truncate=False):
     """Get an odd number of rows and columns
     """
@@ -316,7 +300,12 @@ def deblend(img,
             update_order=None,
             steps_g=None,
             steps_g_update='steps_f',
-            truncate=False):
+            truncate=False,
+            fit_positions=True,
+            txy_diff=0.1,
+            max_shift=2,
+            txy_thresh=1e-8,
+            txy_wait=10):
 
     # vectorize image cubes
     B,N,M = img.shape
@@ -354,7 +343,8 @@ def deblend(img,
     # init matrices
     A = init_A(B, K, img=_img, peaks=peaks)
     S = init_S(N, M, K, img=_img, peaks=peaks)
-    Tx, Ty, Gamma = translate_psfs((N,M), peaks, B, P_, threshold=1e-8)
+    Txy = operators.Translations(peaks, (N,M), B, P_, txy_diff, max_shift,
+                                 txy_thresh, fit_positions, txy_wait)
 
     # constraints on S: non-negativity or L0/L1 sparsity plus ...
     if prox_S is None:
@@ -428,13 +418,15 @@ def deblend(img,
     logger.debug("Ls: {0}".format(Ls))
 
     # define objective function with strict_constraints
-    f = partial(prox_likelihood, Y=Y, W=W, Gamma=Gamma, prox_S=prox_S, prox_A=prox_A)
+    f = partial(prox_likelihood, Y=Y, W=W, Txy=Txy, prox_S=prox_S, prox_A=prox_A)
 
     steps_f = Steps_AS(Wmax=Wmax, slack=slack, update_order=update_order)
 
     # run the NMF with those constraints
     Xs = [A, S]
-    res = proxmin.algorithms.glmm(Xs, f, steps_f, proxs_g, steps_g=steps_g, Ls=Ls, update_order=update_order, steps_g_update=steps_g_update, max_iter=max_iter, e_rel=e_rel, traceback=traceback)
+    res = proxmin.algorithms.glmm(Xs, f, steps_f, proxs_g, steps_g=steps_g, Ls=Ls, update_order=update_order,
+                                  steps_g_update=steps_g_update, max_iter=max_iter, e_rel=e_rel,
+                                  traceback=traceback)
 
     if not traceback:
         A, S = res
@@ -443,6 +435,7 @@ def deblend(img,
         [A, S], tr = res
 
     # create the model and reshape to have shape B,N,M
+    Tx, Ty = Txy.Tx, Txy.Ty
     model = get_model(A, S, Tx, Ty, P_, (N,M))
     S = S.reshape(K,N,M)
 
