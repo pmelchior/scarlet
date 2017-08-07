@@ -305,7 +305,8 @@ def deblend(img,
             txy_diff=0.1,
             max_shift=2,
             txy_thresh=1e-8,
-            txy_wait=10):
+            txy_wait=10,
+            txy_skip=10):
 
     # vectorize image cubes
     B,N,M = img.shape
@@ -344,7 +345,7 @@ def deblend(img,
     A = init_A(B, K, img=_img, peaks=peaks)
     S = init_S(N, M, K, img=_img, peaks=peaks)
     Txy = operators.Translations(peaks, (N,M), B, P_, txy_diff, max_shift,
-                                 txy_thresh, fit_positions, txy_wait)
+                                 txy_thresh, fit_positions, txy_wait, txy_skip)
 
     # constraints on S: non-negativity or L0/L1 sparsity plus ...
     if prox_S is None:

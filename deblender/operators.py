@@ -8,7 +8,7 @@ logger = logging.getLogger("deblender.operators")
 
 class Translations:
     def __init__(self, peaks, shape, B=None, P=None, differential=0.1, max_shift=2, threshold=1e-8,
-                 fit_positions=True, wait=10):
+                 fit_positions=True, wait=0, skip=10):
         """Initialize the class
         
         The class is initialized with its shape and the initial differential operators
@@ -25,6 +25,8 @@ class Translations:
         self.threshold = threshold
         self.fit_positions = fit_positions
         self.wait = wait
+        self.iteration = 0
+        self.skip = skip
 
         # tx, ty have an entry for each integer shift of a peak
         self.tx = {}
@@ -135,8 +137,8 @@ class Translations:
         """Update the x and y position of peak k
         """
         # Wait for the specified number of iterations
-        if self.wait>0:
-            self.wait -= 1
+        self.iteration += 1
+        if self.iteration > self.wait and self.iteration % self.skip!=0:
             return self.Tx, self.Ty
         from .nmf import get_peak_model
 
