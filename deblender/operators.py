@@ -90,7 +90,7 @@ class Translations:
         dy += ddy
         int_dx, int_dy, dx, dy = self.get_int_shift(dx, dy)
         if update:
-            self.peaks[k] = dx, dy
+            self.peaks[k] = [dx, dy]
         # Build Tx and Ty (if necessary)
         if int_dx not in self.tx.keys():
             self.build_Tx(int_dx)
@@ -165,15 +165,14 @@ class Translations:
             ipx, ipy = self.init_peaks[k]
             # Check that the total shift doesn't exceed the maximum
             if np.abs(px+ddx-ipx) > self.max_shift:
-                if px>ipx:
-                    ddx = px-ipx
-                else:
-                    ddx = ipx-px
+                logger.warn("Attempted to shift peak {0} x position greater than max_shift".format(k))
+                self.peaks[k][0] = self.init_peaks[k][0]
+                ddx = 0
             if np.abs(py+ddy-ipy) > self.max_shift:
-                if py>ipy:
-                    ddy = py-ipy
-                else:
-                    ddy = ipy-py
+                logger.warn("Attempted to shift peak {0} y position greater than max_shift".format(k))
+                self.peaks[k][1] = self.init_peaks[k][1]
+                ddy = 0
+                logger.info("peak {0}: py:{1}, ipy:{2}, ddy:{3}".format(k,py, ipy, ddy))
             # Update the peak positions and build the new Tx, Ty
             self.get_translation_ops(k, ddx, ddy, update=True)
         self.translate_psfs()
