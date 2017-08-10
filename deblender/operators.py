@@ -6,16 +6,14 @@ import scipy.sparse
 
 logger = logging.getLogger("deblender.operators")
 
-class Translations:
+class BaseTranslation(object):
+    """Base Class to perform PSF convolution and translations
+    """
     def __init__(self, peaks, shape, B=None, P=None, differential=0.1, max_shift=2, threshold=1e-8,
-                 fit_positions=True, wait=0, skip=10):
-        """Initialize the class
-        
-        The class is initialized with its shape and the initial differential operators
-        """
+                 fit_positions=True, wait=0, skip=10, traceback=True):
         cx, cy = int(shape[1]/2), int(shape[0]/2)
-        self.peaks = [[cx-px, cy-py] for px,py in peaks]
-        self.init_peaks = self.peaks.copy()
+        self.peaks = np.array([[cx-px, cy-py] for px,py in peaks])
+        self.init_peaks = np.array(self.peaks.copy())
         self.shape = shape
         self.size = shape[0]*shape[1]
         self.B = B
@@ -24,40 +22,113 @@ class Translations:
         self.max_shift =  max_shift
         self.threshold = threshold
         self.fit_positions = fit_positions
-        self.wait = wait
+        self.drifters = [False]*len(peaks)
+
+        # Control the frequency of updates
         self.iteration = 0
+        self.wait = wait
         self.skip = skip
+
+        if traceback:
+            self.history = {"px":[self.init_peaks[:,0]], "py":[self.init_peaks[:,1]]}
+        else:
+            self.history = None
+        # This will need to be defined in any classes that inherit from BaseTranslation
+        self.Gamma = [None]*len(peaks)
+
+    def get_diff_images(self, data, models, A, S, W):
+        """Get differential images to fit translations
+        
+        `diff_images` should be a list with 2K elements, where the 2*ith element is the differential
+        image for each peak in x and the 2*i+1 element is the differential image for each peak in y.
+        
+        See `TxyTranslation.get_diff_images` for an example.
+        """
+        raise NotImplementedError("You must overwrite this method in the inheriting class")
+        diff_images = [None]*(2*A.shape[1])
+        return diff_images
+    
+    def translate_psfs(self, k, ddx=0, ddy=0, update=False):
+        """Translate a peak and convolve it with the PSF
+        
+        If `update` is `False`, the new position will not be saved.
+        See TxyTranslation.translate_psfs for an example.
+        """
+        raise NotImplementedError("You must overwrite this method in the inheriting class")
+
+    def reset_position(self, k, px, py, ddx, ddy):
+        """Reset a peak that exceeds max_shift
+        
+        This method may be overwritten in an inherited class for improved behavior.
+        """
+        self.peaks[k][0] = self.init_peaks[k][0]
+        self.peaks[k][1] = self.init_peaks[k][1]
+        ddx = 0
+        ddy = 0
+        return ddx, ddy
+
+    def update_positions(self, data, models, A, S, W=None):
+        """Update the positions of the peaks
+        """
+        # Wait for the specified number of iterations
+        self.iteration += 1
+        if self.iteration > self.wait and self.iteration % self.skip!=0:
+            return self.Gamma
+
+        # Load the differential images and fir for the best positions
+        model = np.sum(models, axis=0)
+        diff_images = self.get_diff_images(data, models, A, S, W)
+        if len(diff_images) != 2*len(self.peaks):
+            msg = "Expected {0} differential images but received {1}"
+            raise ValueError(msg.format(2*len(self.peaks), len(diff_images)))
+        M = np.vstack([-diff.flatten() for diff in diff_images]).T
+        y = (data-model).flatten()
+        results = np.linalg.lstsq(M, y)[0]
+
+        for k, (px, py) in enumerate(self.peaks):
+            ddx = results[2*k]
+            ddy = results[2*k+1]
+            ipx, ipy = self.init_peaks[k]
+            # Check that the total shift doesn't exceed the maximum
+            if np.abs(px+ddx-ipx) > self.max_shift or np.abs(py+ddy-ipy) > self.max_shift:
+                logger.debug("Attempted to shift peak {0} greater than max_shift".format(k))
+                self.drifters[k] = True
+                ddx, ddy = self.reset_position(k, px, py, ddx, ddy)
+            # Only update the peak positions and build the new Tx, Ty
+            # if the peaks changed position
+            if np.sqrt(ddx**2+ddy**2)>self.threshold:
+                self.translate_psfs(k, ddx, ddy, update=True)
+
+        if self.history is not None:
+            self.history["px"].append(self.peaks[:,0].copy())
+            self.history["py"].append(self.peaks[:,1].copy())
+        return self.Gamma
+
+    def get_history(self):
+        px_hist = np.array(self.history["px"])
+        py_hist = np.array(self.history["py"])
+        return px_hist, py_hist
+
+class TxyTranslation(BaseTranslation):
+    def __init__(self, *args, **kwargs):
+        """Initialize the class
+        
+        The class is initialized with its shape and the initial differential operators
+        """
+        # TODO: For now use a Python 2 friendly super __init__,
+        # but in the future switch to the pure Python 3
+        super(self.__class__, self).__init__(*args, **kwargs)
+        #super().__init__(*args, **kwargs)
 
         # tx, ty have an entry for each integer shift of a peak
         self.tx = {}
         self.ty = {}
-        self.Tx = [None]*len(peaks)
-        self.Ty = [None]*len(peaks)
-        self.Gamma = None
+        self.Tx = [None]*len(self.peaks)
+        self.Ty = [None]*len(self.peaks)
 
-        # Create the initial translation matrices
+        # Create the initial translations
         for k, (px, py) in enumerate(self.peaks):
-            self.get_translation_ops(k, update=True)
-        # Update the initial Gamma matrices
-        self.translate_psfs()
-
-    def get_int_shift(self, dx, dy, threshold=None):
-        """Calculate the integer shifts, which sets the diagonal in the matrices
-        """
-        # Use the default threshold unless it's specified
-        if threshold is not None:
-            self.threshold = threshold
-        int_dx, int_dy = int(dx), int(dy)
-        
-        # If the fractional shifts are less than the threshold,
-        # round to the nearest integer shift
-        if np.abs(dx-int_dx) < self.threshold:
-            int_dx = int(np.round(dx))
-            dx = int_dx
-        if np.abs(dy-int_dy) < self.threshold:
-            int_dy = int(np.round(dy))
-            dy = int_dy
-        return int_dx, int_dy, dx, dy
+            self.translate_psfs(k, update=True)
 
     def build_Tx(self, int_dx):
         """Construct Tx and its components
@@ -90,7 +161,7 @@ class Translations:
         dx, dy = self.peaks[k]
         dx += ddx
         dy += ddy
-        int_dx, int_dy, dx, dy = self.get_int_shift(dx, dy)
+        int_dx, int_dy = int(dx), int(dy)
         if update:
             self.peaks[k] = [dx, dy]
         # Build Tx and Ty (if necessary)
@@ -118,67 +189,53 @@ class Translations:
             self.Ty[k] = Ty
         return Tx, Ty
 
-    def translate_psfs(self):
+    def build_Gamma(self, k, Tx=None, Ty=None, update=True):
         """Translate the PSFs using Tx and Ty
         """
-        Gamma = []
-        for k in range(len(self.peaks)):
-            if self.P is None:
-                gamma = [self.Ty[k].dot(self.Tx[k])]*self.B
-            else:
-                gamma = []
-                for b in range(B):
-                    g = self.Ty[pk].dot(self.P[b].dot(self.Tx[k]))
-                    gamma.append(g)
-            Gamma.append(gamma)
-        self.Gamma = Gamma
+        if Tx is None:
+            Tx = self.Tx[k]
+        if Ty is None:
+            Ty = self.Ty[k]
+        if self.P is None:
+            Gamma_k = [Ty.dot(Tx)]*self.B
+        else:
+            Gamma_k = []
+            for b in range(B):
+                g = Ty.dot(self.P[b].dot(Tx))
+                Gamma_k.append(g)
+        if update:
+            self.Gamma[k] = Gamma_k
+        return Gamma_k
 
-    def update_positions(self, data, models, A, S, P=None, W=None):
-        """Update the x and y position of peak k
+    def translate_psfs(self, k, ddx=0, ddy=0, update=False):
+        """Build the operators to perform a translation
         """
-        # Wait for the specified number of iterations
-        self.iteration += 1
-        if self.iteration > self.wait and self.iteration % self.skip!=0:
-            return self.Tx, self.Ty
+        self.get_translation_ops(k, ddx, ddy, update)
+        self.build_Gamma(k, update=update)
+        return self.Gamma[k]
+
+    def get_diff_images(self, data, models, A, S, W):
+        """Get differential images to fit translations
+        """
         from .nmf import get_peak_model
 
         dxy = self.differential
-        dipoles = []
+        diff_images = []
         for k, (dx,dy) in enumerate(self.peaks):
             model = models[k]
-            Tx, Ty = self.get_translation_ops(k, dxy, dxy)
+            Tx, Ty = self.get_translation_ops(k, dxy, dxy, update=False)
             # Get the difference image in x by adjusting only the x
             # component by the differential amount dxy
-            diff_img = get_peak_model(A[:,k], S[k], Tx, self.Ty[k], P=P)
-            dipole = (model-diff_img)/dxy
-            dipoles.append(dipole)
+            Gk = self.build_Gamma(k, Tx=Tx, update=False)
+            diff_img = get_peak_model(A[:,k], S[k], Gk)
+            diff_img = (model-diff_img)/dxy
+            diff_images.append(diff_img)
             # Do the same for the y difference image
-            diff_img = get_peak_model(A[:,k], S[k], self.Tx[k], Ty, P=P)
-            dipole = (model-diff_img)/dxy
-            dipoles.append(dipole)
-        model = np.sum(models, axis=0)
-        A = np.vstack([-dp.flatten() for dp in dipoles]).T
-        y = (data-model).flatten()
-        results = np.linalg.lstsq(A, y)[0]
-
-        for k, (px, py) in enumerate(self.peaks):
-            ddx = results[2*k]
-            ddy = results[2*k+1]
-            ipx, ipy = self.init_peaks[k]
-            # Check that the total shift doesn't exceed the maximum
-            if np.abs(px+ddx-ipx) > self.max_shift:
-                logger.warn("Attempted to shift peak {0} x position greater than max_shift".format(k))
-                self.peaks[k][0] = self.init_peaks[k][0]
-                ddx = 0
-            if np.abs(py+ddy-ipy) > self.max_shift:
-                logger.warn("Attempted to shift peak {0} y position greater than max_shift".format(k))
-                self.peaks[k][1] = self.init_peaks[k][1]
-                ddy = 0
-                logger.info("peak {0}: py:{1}, ipy:{2}, ddy:{3}".format(k,py, ipy, ddy))
-            # Update the peak positions and build the new Tx, Ty
-            self.get_translation_ops(k, ddx, ddy, update=True)
-        self.translate_psfs()
-        return self.Tx, self.Ty
+            Gk = self.build_Gamma(k, Ty=Ty, update=False)
+            diff_img = get_peak_model(A[:,k], S[k], Gk)
+            diff_img = (model-diff_img)/dxy
+            diff_images.append(diff_img)
+        return diff_images
 
 def getZeroOp(shape):
     size = shape[0]*shape[1]
