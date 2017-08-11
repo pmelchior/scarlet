@@ -20,85 +20,92 @@ except NameError:
 
 logger = logging.getLogger("deblender.nmf")
 
-def convolve_band(P, img):
-    """Convolve a single band with the PSF
+class Deblend(object):
+    """Result of the deblender
     """
-    if isinstance(P, list) is False:
-        return P.dot(img.T).T
-    else:
-        convolved = np.empty(img.shape)
-        for b in range(img.shape[0]):
-            convolved[b] = P[b].dot(img[b])
-        return convolved
+    def __init__(self, img, A, S, T, W=None, traceback=None, **parameters):
+        """Create a deblender result
+        
+        `parameters` is used to store the parameters sent to the glmm algorithm, which makes it
+        possible to recreate any variable in a given step (if `traceback` is not `None`).
+        """
+        self.img = img
+        self.B, N, M = img.shape
+        self.shape = (N,M)
+        self.A = A
+        self.S = S
+        self.T = T
+        self.W = W
+        self.traceback = traceback
+        self.parameters = parameters
 
-def get_peak_model(A, S, Tx, Ty, P=None, shape=None, k=None):
+    def get_model(self, k=None, combine=False):
+        """Extract a model
+        """
+        if k is None:
+            return get_model(self.A, self.S, self.T.Gamma, self.shape, combine)
+        else:
+            return get_peak_model(self.A, self.S, self.T.Gamma, self.shape, k)
+
+    def get_history(self, variable="S", param=None, idx=None, it=None):
+        """Get the history of a parameter (or all parameters)
+
+        If `param` is `None`, the history of all parameters for A and S are returned.
+        Otherwise, only the history of a specific parameter is returned.
+        If `idx` is not None, only the 
+        """
+        if it is None:
+            it = slice(None,None)
+        if variable == "A":
+            j = 0
+        elif variable == "S":
+            j = 1
+        else:
+            raise ValueError("variable should either be 'A' or 'S'")
+        hist = {key:np.array(val)[it] for key,val in self.traceback.history[j].items()}
+
+        if param is not None:
+            hist = hist[param]
+            if idx is not None:
+                hist = hist[idx]
+            elif param=="X":
+                hist = hist[0]
+        return hist
+
+def get_peak_model(A, S, Gamma, shape=None, k=None):
     """Get the model for a single source
     """
     # Allow the user to send full A,S, ... matrices or matrices for a single source
     if k is not None:
         Ak = A[:, k]
         Sk = S[k]
-        if Tx is not None or Ty is not None:
-            Txk = Tx[k]
-            Tyk = Ty[k]
+        Gk = Gamma[k]
     else:
-        Ak, Sk, Txk, Tyk = A, S.copy(), Tx, Ty
+        Ak, Sk = A, S.copy()
+        Gk = Gamma
     # Check for a flattened or 2D array
     if len(Sk.shape)==2:
         Sk = Sk.flatten()
     B,N = Ak.shape[0], Sk.shape[0]
     model = np.zeros((B,N))
 
-    # NMF without translation
-    if Tx is None or Ty is None:
-        if Tx is not None or Ty is not None:
-            raise ValueError("Expected Tx and Ty to both be None or neither to be None")
-        for b in range(B):
-            if P is None:
-                model[b] = A[b]*Sk
-            else:
-                model[b] = Ak[b] * P[b].dot(Sk)
-    # NMF with translation
-    else:
-        if P is None:
-            Gamma = Tyk.dot(Txk)
-        for b in range(B):
-            if P is not None:
-                Gamma = Tyk.dot(P[b].dot(Txk))
-            model[b] = Ak[b] * Gamma.dot(Sk)
+    for b in range(B):
+        model[b] = Ak[b] * Gk[b].dot(Sk)
+
     # Reshape the image into a 2D array
     if shape is not None:
         model = model.reshape((B, shape[0], shape[1]))
     return model
 
-def get_model(A, S, Tx, Ty, P=None, shape=None):
+def get_model(A, S, Gamma, shape=None, combine=True):
     """Build the model for an entire blend
+    
+    If `combine` is `False`, then a separate model is built for each peak.
     """
-    B,K,N = A.shape[0], A.shape[1], S.shape[1]
-    if len(S.shape)==3:
-        N = S.shape[1]*S.shape[2]
-        S = S.reshape(K,N)
-    model = np.zeros((B,N))
-
-    if Tx is None or Ty is None:
-        if Tx is not None or Ty is not None:
-            raise ValueError("Expected Tx and Ty to both be None or neither to be None")
-        model = A.dot(S)
-        if P is not None:
-            model = convolve_band(P, model)
-        if shape is not None:
-            model = model.reshape(B, shape[0], shape[1])
-    else:
-        for pk in range(K):
-            for b in range(B):
-                if P is None:
-                    Gamma = Ty[pk].dot(Tx[pk])
-                else:
-                    Gamma = Ty[pk].dot(P[b].dot(Tx[pk]))
-                model[b] += A[b,pk]*Gamma.dot(S[pk])
-    if shape is not None:
-        model = model.reshape(B, shape[0], shape[1])
-    return model
+    models = np.array([get_peak_model(A, S, Gamma, shape, k) for k in range(S.shape[0])])
+    if combine:
+        models = np.sum(models, axis=0)
+    return models
 
 def delta_data(A, S, data, Gamma, D, W=1):
     """Gradient of model with respect to A or S
@@ -135,12 +142,19 @@ def prox_likelihood_S(S, step, A=None, Y=None, Gamma=None, prox_g=None, W=1):
     """
     return prox_g(S - step*delta_data(A, S, Y, D='S', Gamma=Gamma, W=W), step)
 
-def prox_likelihood(X, step, Xs=None, j=None, Y=None, W=None, Gamma=None,
+def prox_likelihood(X, step, Xs=None, j=None, Y=None, W=None, T=None,
                     prox_S=None, prox_A=None):
-    if j == 0:
-        return prox_likelihood_A(X, step, S=Xs[1], Y=Y, Gamma=Gamma, prox_g=prox_A, W=W)
+    # Only update once per iteration
+    if j == 0 and T.fit_positions:
+        # Update the translation operators
+        A, S = Xs
+        models = get_model(A, S, T.Gamma, combine=False)
+        T.update_positions(Y, models, A, S, W)
+
+    if j==0:
+        return prox_likelihood_A(X, step, S=Xs[1], Y=Y, Gamma=T.Gamma, prox_g=prox_A, W=W)
     else:
-        return prox_likelihood_S(X, step, A=Xs[0], Y=Y, Gamma=Gamma, prox_g=prox_S, W=W)
+        return prox_likelihood_S(X, step, A=Xs[0], Y=Y, Gamma=T.Gamma, prox_g=prox_S, W=W)
 
 def init_A(B, K, peaks=None, img=None):
     # init A from SED of the peak pixels
@@ -229,32 +243,6 @@ def get_constraint_op(constraint, shape, seeks, useNearest=True):
     LB = scipy.sparse.block_diag(L_when_sought(L, Z, seeks))
     return proxmin.utils.MatrixAdapter(LB, axis=1)
 
-def translate_psfs(shape, peaks, B, P, threshold=1e-8):
-    # Initialize the translation operators
-    K = len(peaks)
-    Tx = []
-    Ty = []
-    cx, cy = int(shape[1]/2), int(shape[0]/2)
-    for pk, (px, py) in enumerate(peaks):
-        dx = cx - px
-        dy = cy - py
-        tx, ty, _ = operators.getTranslationOp(dx, dy, shape, threshold=threshold)
-        Tx.append(tx)
-        Ty.append(ty)
-
-    # TODO: This is only temporary until we fit for dx, dy
-    Gamma = []
-    for pk in range(K):
-        if P is None:
-            gamma = [Ty[pk].dot(Tx[pk])]*B
-        else:
-            gamma = []
-            for b in range(B):
-                g = Ty[pk].dot(P[b].dot(Tx[pk]))
-                gamma.append(g)
-        Gamma.append(gamma)
-    return Tx, Ty, Gamma
-
 def oddify(shape, truncate=False):
     """Get an odd number of rows and columns
     """
@@ -316,7 +304,14 @@ def deblend(img,
             update_order=None,
             steps_g=None,
             steps_g_update='steps_f',
-            truncate=False):
+            truncate=False,
+            fit_positions=True,
+            txy_diff=0.1,
+            max_shift=2,
+            txy_thresh=1e-8,
+            txy_wait=10,
+            txy_skip=10,
+            Translation=operators.TxyTranslation):
 
     # vectorize image cubes
     B,N,M = img.shape
@@ -354,7 +349,8 @@ def deblend(img,
     # init matrices
     A = init_A(B, K, img=_img, peaks=peaks)
     S = init_S(N, M, K, img=_img, peaks=peaks)
-    Tx, Ty, Gamma = translate_psfs((N,M), peaks, B, P_, threshold=1e-8)
+    T = Translation(peaks, (N,M), B, P_, txy_diff, max_shift,
+                    txy_thresh, fit_positions, txy_wait, txy_skip)
 
     # constraints on S: non-negativity or L0/L1 sparsity plus ...
     if prox_S is None:
@@ -428,22 +424,24 @@ def deblend(img,
     logger.debug("Ls: {0}".format(Ls))
 
     # define objective function with strict_constraints
-    f = partial(prox_likelihood, Y=Y, W=W, Gamma=Gamma, prox_S=prox_S, prox_A=prox_A)
+    f = partial(prox_likelihood, Y=Y, W=W, T=T, prox_S=prox_S, prox_A=prox_A)
 
     steps_f = Steps_AS(Wmax=Wmax, slack=slack, update_order=update_order)
 
     # run the NMF with those constraints
     Xs = [A, S]
-    res = proxmin.algorithms.glmm(Xs, f, steps_f, proxs_g, steps_g=steps_g, Ls=Ls, update_order=update_order, steps_g_update=steps_g_update, max_iter=max_iter, e_rel=e_rel, traceback=traceback)
+    res = proxmin.algorithms.glmm(Xs, f, steps_f, proxs_g, steps_g=steps_g, Ls=Ls, update_order=update_order,
+                                  steps_g_update=steps_g_update, max_iter=max_iter, e_rel=e_rel,
+                                  traceback=traceback)
 
     if not traceback:
         A, S = res
-        tr = None
+        S = S.reshape(K,N,M)
+        result = Deblend(_img, A, S, T, W=W, traceback=None, f=f)
     else:
         [A, S], tr = res
-
-    # create the model and reshape to have shape B,N,M
-    model = get_model(A, S, Tx, Ty, P_, (N,M))
-    S = S.reshape(K,N,M)
-
-    return A, S, model, P_, Tx, Ty, tr
+        S = S.reshape(K,N,M)
+        result = Deblend(_img, A, S, T, W=W, traceback=tr,
+            f=f, steps_f=steps_f, proxs_g=proxs_g, steps_g=steps_g, Ls=Ls, update_order=update_order,
+            steps_g_update=steps_g_update, e_rel=e_rel)
+    return result
