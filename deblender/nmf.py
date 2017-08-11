@@ -25,7 +25,7 @@ class Deblend(object):
     """
     def __init__(self, img, A, S, T, W=None, traceback=None, **parameters):
         """Create a deblender result
-        
+
         `parameters` is used to store the parameters sent to the glmm algorithm, which makes it
         possible to recreate any variable in a given step (if `traceback` is not `None`).
         """
@@ -52,7 +52,7 @@ class Deblend(object):
 
         If `param` is `None`, the history of all parameters for A and S are returned.
         Otherwise, only the history of a specific parameter is returned.
-        If `idx` is not None, only the 
+        If `idx` is not None, only the
         """
         if it is None:
             it = slice(None,None)
@@ -99,7 +99,7 @@ def get_peak_model(A, S, Gamma, shape=None, k=None):
 
 def get_model(A, S, Gamma, shape=None, combine=True):
     """Build the model for an entire blend
-    
+
     If `combine` is `False`, then a separate model is built for each peak.
     """
     models = np.array([get_peak_model(A, S, Gamma, shape, k) for k in range(S.shape[0])])
@@ -219,7 +219,7 @@ def get_constraint_op(constraint, shape, seeks, useNearest=True):
     """Get appropriate constraint operator
     """
     N,M = shape
-    if constraint is None or constraint in ["m", "c"]:
+    if constraint is None or constraint == "c":
         return None
     elif constraint == "M":
         # block diagonal matrix to run single dot operation on all components
@@ -386,7 +386,7 @@ def deblend(img,
                             seeks[c] = [False] * K
                         seeks[c][i] = True
 
-        all_types = "SMmcXY"
+        all_types = "SMcXY"
         for c in seeks.keys():
             if c not in all_types:
                     err = "Each constraint should be None or in {0} but received '{1}'"
@@ -399,9 +399,6 @@ def deblend(img,
             "X": proxmin.operators.prox_plus, # positive X gradient
             "Y": proxmin.operators.prox_plus, # positive Y gradient
         }
-        # expensive to build, only do if requested
-        if "m" in seeks.keys():
-            linear_constraints["m"] = build_prox_monotonic((N,M), seeks["m"], prox_chain=prox_S)
 
         # Proximal Operator for each constraint
         proxs_g = [None, # no additional A constraints (yet)
