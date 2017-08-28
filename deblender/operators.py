@@ -38,19 +38,19 @@ class BaseTranslation(object):
 
     def get_diff_images(self, data, models, A, S, W):
         """Get differential images to fit translations
-        
+
         `diff_images` should be a list with 2K elements, where the 2*ith element is the differential
         image for each peak in x and the 2*i+1 element is the differential image for each peak in y.
-        
+
         See `TxyTranslation.get_diff_images` for an example.
         """
         raise NotImplementedError("You must overwrite this method in the inheriting class")
         diff_images = [None]*(2*A.shape[1])
         return diff_images
-    
+
     def translate_psfs(self, k, ddx=0, ddy=0, update=False):
         """Translate a peak and convolve it with the PSF
-        
+
         If `update` is `False`, the new position will not be saved.
         See TxyTranslation.translate_psfs for an example.
         """
@@ -58,7 +58,7 @@ class BaseTranslation(object):
 
     def reset_position(self, k, px, py, ddx, ddy):
         """Reset a peak that exceeds max_shift
-        
+
         This method may be overwritten in an inherited class for improved behavior.
         """
         self.peaks[k][0] = self.init_peaks[k][0]
@@ -112,7 +112,7 @@ class BaseTranslation(object):
 class TxyTranslation(BaseTranslation):
     def __init__(self, *args, **kwargs):
         """Initialize the class
-        
+
         The class is initialized with its shape and the initial differential operators
         """
         # TODO: For now use a Python 2 friendly super __init__,
@@ -200,7 +200,7 @@ class TxyTranslation(BaseTranslation):
             Gamma_k = [Ty.dot(Tx)]*self.B
         else:
             Gamma_k = []
-            for b in range(B):
+            for b in range(self.B):
                 g = Ty.dot(self.P[b].dot(Tx))
                 Gamma_k.append(g)
         if update:
