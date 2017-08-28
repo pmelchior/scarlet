@@ -295,6 +295,7 @@ def deblend(img,
             l0_thresh=None,
             l1_thresh=None,
             e_rel=1e-3,
+            e_abs=0,
             monotonicUseNearest=False,
             traceback=False,
             translation_thresh=1e-8,
@@ -427,9 +428,7 @@ def deblend(img,
 
     # run the NMF with those constraints
     Xs = [A, S]
-    res = proxmin.algorithms.glmm(Xs, f, steps_f, proxs_g, steps_g=steps_g, Ls=Ls, update_order=update_order,
-                                  steps_g_update=steps_g_update, max_iter=max_iter, e_rel=e_rel,
-                                  traceback=traceback)
+    res = proxmin.algorithms.bsdmm(Xs, f, steps_f, proxs_g, steps_g=steps_g, Ls=Ls, update_order=update_order, steps_g_update=steps_g_update, max_iter=max_iter, e_rel=e_rel, e_abs=e_abs, traceback=traceback)
 
     if not traceback:
         A, S = res
