@@ -312,7 +312,9 @@ def deblend(img,
             txy_thresh=1e-8,
             txy_wait=10,
             txy_skip=10,
-            Translation=operators.TxyTranslation):
+            Translation=operators.TxyTranslation,
+            A=None,
+            S=None):
 
     # vectorize image cubes
     B,N,M = img.shape
@@ -348,10 +350,12 @@ def deblend(img,
     logger.debug("Shape: {0}".format((N,M)))
 
     # init matrices
-    A = init_A(B, K, img=_img, peaks=peaks)
-    S = init_S(N, M, K, img=_img, peaks=peaks)
+    if A is None:
+        A = init_A(B, K, img=_img, peaks=peaks)
+    if S is None:
+        S = init_S(N, M, K, img=_img, peaks=peaks)
     T = Translation(peaks, (N,M), B, P_, txy_diff, max_shift,
-                    txy_thresh, fit_positions, txy_wait, txy_skip)
+                    txy_thresh, fit_positions, txy_wait, txy_skip, traceback)
 
     # constraints on S: non-negativity or L0/L1 sparsity plus ...
     if prox_S is None:
@@ -406,7 +410,7 @@ def deblend(img,
                    [linear_constraints[c] for c in seeks.keys()] # S constraints
                    ]
         # Linear Operator for each constraint
-        Ls = [[None], # none need for A
+        Ls = [[proxmin.utils.MatrixAdapter(None)], # none need for A
               [get_constraint_op(c, (N,M), seeks[c], useNearest=monotonicUseNearest) for c in seeks.keys()]
               ]
 
@@ -428,7 +432,9 @@ def deblend(img,
 
     # run the NMF with those constraints
     Xs = [A, S]
-    res = proxmin.algorithms.bsdmm(Xs, f, steps_f, proxs_g, steps_g=steps_g, Ls=Ls, update_order=update_order, steps_g_update=steps_g_update, max_iter=max_iter, e_rel=e_rel, e_abs=e_abs, traceback=traceback)
+    res = proxmin.algorithms.bsdmm(Xs, f, steps_f, proxs_g, steps_g=steps_g, Ls=Ls, update_order=update_order,
+                                  steps_g_update=steps_g_update, max_iter=max_iter, e_rel=e_rel, e_abs=e_abs,
+                                  traceback=traceback)
 
     if not traceback:
         A, S = res
