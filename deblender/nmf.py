@@ -355,26 +355,23 @@ def get_constraint_op(constraint, shape, seeks, useNearest=True):
     if constraint is None or constraint == "c":
         return None
     elif constraint == "M":
-        # block diagonal matrix to run single dot operation on all components
-        # with seek == True
         L = operators.getRadialMonotonicOp((N,M), useNearest=useNearest)
         Z = operators.getIdentityOp((N,M))
-        LB = scipy.sparse.block_diag(L_when_sought(L, Z, seeks))
     elif constraint == "S":
         L = operators.getSymmetryOp((N,M))
         Z = operators.getZeroOp((N,M))
-        LB = scipy.sparse.block_diag(L_when_sought(L, Z, seeks))
-    elif constraint =="X":
+    elif constraint == "X" or constraint == "x":
         cx = int(shape[1]/2)
         L = proxmin.operators.get_gradient_x(shape, cx)
         Z = operators.getIdentityOp((N,M))
-    elif constraint =="Y":
+    elif constraint == "Y" or constraint == "y":
         cy = int(shape[0]/2)
         L = proxmin.operators.get_gradient_y(shape, cy)
         Z = operators.getIdentityOp((N,M))
     # Create the matrix adapter for the operator
     LB = scipy.sparse.block_diag(L_when_sought(L, Z, seeks))
-    return proxmin.utils.MatrixAdapter(LB, axis=1)
+    adapter =  proxmin.utils.MatrixAdapter(LB, axis=1)
+    return adapter
 
 def oddify(shape, truncate=False):
     """Get an odd number of rows and columns
@@ -448,7 +445,9 @@ def deblend(img,
             txy_skip=10,
             Translation=operators.TxyTranslation,
             A=None,
-            S=None):
+            S=None,
+            smoothness=1
+            ):
 
     # vectorize image cubes
     B,N,M = img.shape
@@ -530,7 +529,7 @@ def deblend(img,
                             seeks[c] = [False] * K
                         seeks[c][i] = True
 
-        all_types = "SMcXY"
+        all_types = "SMcXYxy"
         for c in seeks.keys():
             if c not in all_types:
                     err = "Each constraint should be None or in {0} but received '{1}'"
@@ -542,6 +541,8 @@ def deblend(img,
             "c": partial(prox_cone, G=operators.getRadialMonotonicOp((N,M), useNearest=monotonicUseNearest).toarray()),
             "X": proxmin.operators.prox_plus, # positive X gradient
             "Y": proxmin.operators.prox_plus, # positive Y gradient
+            "x": partial(proxmin.operators.prox_soft, thresh=smoothness), # l1 norm on X gradient
+            "y": partial(proxmin.operators.prox_soft, thresh=smoothness), # l1 norm on Y gradient
         }
 
         # Proximal Operator for each constraint
