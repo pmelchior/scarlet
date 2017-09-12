@@ -11,9 +11,11 @@ class BaseTranslation(object):
     """
     def __init__(self, peaks, shape, B=None, P=None, differential=0.1, max_shift=2, threshold=1e-8,
                  fit_positions=True, wait=0, skip=10, traceback=True):
-        cx, cy = int(shape[1]/2), int(shape[0]/2)
-        self.peaks = np.array([[cx-px, cy-py] for px,py in peaks])
-        self.init_peaks = np.array(self.peaks.copy())
+        self.cx, self.cy = int(shape[1])>>1, int(shape[0])>>1
+        # peaks is a PeakCatalog, which has a list of peaks that may have multiple components
+        self.peaks = peaks
+        # init_peaks is an array with an entry for each peak, (not each component)
+        self.init_peaks = np.array([[self.cx-peak.x, self.cy-peak.y] for peak in peaks.peaks])
         self.shape = shape
         self.size = shape[0]*shape[1]
         self.B = B
@@ -22,7 +24,7 @@ class BaseTranslation(object):
         self.max_shift =  max_shift
         self.threshold = threshold
         self.fit_positions = fit_positions
-        self.drifters = [False]*len(peaks)
+        self.drifters = [False]*len(peaks.peaks)
 
         # Control the frequency of updates
         self.iteration = 0
@@ -33,8 +35,16 @@ class BaseTranslation(object):
             self.history = {"px":[self.init_peaks[:,0]], "py":[self.init_peaks[:,1]]}
         else:
             self.history = None
-        # This will need to be defined in any classes that inherit from BaseTranslation
-        self.Gamma = [None]*len(peaks)
+
+    @property
+    def Gamma(self):
+        return [component.Gamma for component in self.peaks]
+    @property
+    def Tx(self):
+        return [component.Tx for component in self.peaks]
+    @property
+    def Ty(self):
+        return [component.Ty for component in self.peaks]
 
     def get_diff_images(self, data, models, A, S, W):
         """Get differential images to fit translations
@@ -56,13 +66,13 @@ class BaseTranslation(object):
         """
         raise NotImplementedError("You must overwrite this method in the inheriting class")
 
-    def reset_position(self, k, px, py, ddx, ddy):
+    def reset_position(self, pk, px, py, ddx, ddy):
         """Reset a peak that exceeds max_shift
 
         This method may be overwritten in an inherited class for improved behavior.
         """
-        self.peaks[k][0] = self.init_peaks[k][0]
-        self.peaks[k][1] = self.init_peaks[k][1]
+        self.peaks.peaks[pk].x = self.cx - self.init_peaks[pk][0]
+        self.peaks.peaks[pk].y = self.cx - self.init_peaks[pk][1]
         ddx = 0
         ddy = 0
         return ddx, ddy
@@ -78,30 +88,31 @@ class BaseTranslation(object):
         # Load the differential images and fir for the best positions
         model = np.sum(models, axis=0)
         diff_images = self.get_diff_images(data, models, A, S, W)
-        if len(diff_images) != 2*len(self.peaks):
+        if len(diff_images) != 2*len(self.peaks.peaks):
             msg = "Expected {0} differential images but received {1}"
             raise ValueError(msg.format(2*len(self.peaks), len(diff_images)))
         M = np.vstack([-diff.flatten() for diff in diff_images]).T
         y = (data-model).flatten()
         results = np.linalg.lstsq(M, y)[0]
 
-        for k, (px, py) in enumerate(self.peaks):
-            ddx = results[2*k]
-            ddy = results[2*k+1]
-            ipx, ipy = self.init_peaks[k]
+        for pk, peak in enumerate(self.peaks.peaks):
+            px, py = self.cx-peak.x, self.cy-peak.y
+            ddx = results[2*pk]
+            ddy = results[2*pk+1]
+            ipx, ipy = self.init_peaks[pk]
             # Check that the total shift doesn't exceed the maximum
             if np.abs(px+ddx-ipx) > self.max_shift or np.abs(py+ddy-ipy) > self.max_shift:
-                logger.debug("Attempted to shift peak {0} greater than max_shift".format(k))
-                self.drifters[k] = True
-                ddx, ddy = self.reset_position(k, px, py, ddx, ddy)
+                logger.debug("Attempted to shift peak {0} greater than max_shift".format(pk))
+                self.drifters[pk] = True
+                ddx, ddy = self.reset_position(pk, px, py, ddx, ddy)
             # Only update the peak positions and build the new Tx, Ty
             # if the peaks changed position
             if np.sqrt(ddx**2+ddy**2)>self.threshold:
-                self.translate_psfs(k, ddx, ddy, update=True)
+                self.translate_psfs(pk, ddx, ddy, update=True)
 
         if self.history is not None:
-            self.history["px"].append(self.peaks[:,0].copy())
-            self.history["py"].append(self.peaks[:,1].copy())
+            self.history["px"].append([peak.x for peak in self.peaks.peaks])
+            self.history["py"].append([peak.y for peak in self.peaks.peaks])
         return self.Gamma
 
     def get_history(self):
@@ -120,17 +131,11 @@ class TxyTranslation(BaseTranslation):
         super(self.__class__, self).__init__(*args, **kwargs)
         #super().__init__(*args, **kwargs)
 
-        # tx, ty have an entry for each integer shift of a peak
-        self.tx = {}
-        self.ty = {}
-        self.Tx = [None]*len(self.peaks)
-        self.Ty = [None]*len(self.peaks)
-
         # Create the initial translations
-        for k, (px, py) in enumerate(self.peaks):
+        for k in range(len(self.peaks.peaks)):
             self.translate_psfs(k, update=True)
 
-    def build_Tx(self, int_dx):
+    def build_Tx(self, peak, int_dx):
         """Construct Tx and its components
         """
         height, width = self.shape
@@ -142,9 +147,9 @@ class TxyTranslation(BaseTranslation):
         tx = scipy.sparse.block_diag([tx]*height)
         tx_plus = scipy.sparse.block_diag([tx_plus]*height)
         tx_minus = scipy.sparse.block_diag([tx_minus]*height)
-        self.tx[int_dx] = (tx, tx_plus, tx_minus)
+        peak.int_tx[int_dx] = (tx, tx_plus, tx_minus)
 
-    def build_Ty(self, int_dy):
+    def build_Ty(self, peak, int_dy):
         """Construct Ty and its components
         """
         width = self.shape[1]
@@ -153,24 +158,27 @@ class TxyTranslation(BaseTranslation):
                                      shape=(self.size, self.size), dtype=np.float64)
         ty_minus = scipy.sparse.diags([1, -1], [int_dy*width, (int_dy-1)*width],
                                       shape=(self.size, self.size), dtype=np.float64)
-        self.ty[int_dy] = (ty, ty_plus, ty_minus)
+        peak.int_ty[int_dy] = (ty, ty_plus, ty_minus)
 
-    def get_translation_ops(self, k, ddx=0, ddy=0, update=False):
+    def get_translation_ops(self, pk, ddx=0, ddy=0, update=False):
         """Get the operators needed to shift peak k
         """
-        dx, dy = self.peaks[k]
+        peak = self.peaks.peaks[pk]
+        dx, dy = self.cx-peak.x, self.cy-peak.y
         dx += ddx
         dy += ddy
         int_dx, int_dy = int(dx), int(dy)
         if update:
-            self.peaks[k] = [dx, dy]
+            self.peaks.peaks[pk].x = self.cx - dx
+            self.peaks.peaks[pk].y = self.cy - dy
+
         # Build Tx and Ty (if necessary)
-        if int_dx not in self.tx.keys():
-            self.build_Tx(int_dx)
-        if int_dy not in self.ty.keys():
-            self.build_Ty(int_dy)
-        tx, tx_plus, tx_minus = self.tx[int_dx]
-        ty, ty_plus, ty_minus = self.ty[int_dy]
+        if int_dx not in peak.int_tx.keys():
+            self.build_Tx(peak, int_dx)
+        if int_dy not in peak.int_ty.keys():
+            self.build_Ty(peak, int_dy)
+        tx, tx_plus, tx_minus = peak.int_tx[int_dx]
+        ty, ty_plus, ty_minus = peak.int_ty[int_dy]
         # Create Tx
         if dx<0:
             dtx = tx_minus
@@ -185,17 +193,18 @@ class TxyTranslation(BaseTranslation):
         Ty = ty + (dy-int_dy)*dty
         # Optionally store the operators for the peak
         if update:
-            self.Tx[k] = Tx
-            self.Ty[k] = Ty
+            peak.Tx = Tx
+            peak.Ty = Ty
         return Tx, Ty
 
-    def build_Gamma(self, k, Tx=None, Ty=None, update=True):
+    def build_Gamma(self, pk, Tx=None, Ty=None, update=True):
         """Translate the PSFs using Tx and Ty
         """
+        peak = self.peaks.peaks[pk]
         if Tx is None:
-            Tx = self.Tx[k]
+            Tx = peak.Tx
         if Ty is None:
-            Ty = self.Ty[k]
+            Ty = peak.Ty
         if self.P is None:
             Gamma_k = [Ty.dot(Tx)]*self.B
         else:
@@ -204,15 +213,15 @@ class TxyTranslation(BaseTranslation):
                 g = Ty.dot(self.P[b].dot(Tx))
                 Gamma_k.append(g)
         if update:
-            self.Gamma[k] = Gamma_k
+            peak.Gamma = Gamma_k
         return Gamma_k
 
-    def translate_psfs(self, k, ddx=0, ddy=0, update=False):
+    def translate_psfs(self, pk, ddx=0, ddy=0, update=False):
         """Build the operators to perform a translation
         """
-        self.get_translation_ops(k, ddx, ddy, update)
-        self.build_Gamma(k, update=update)
-        return self.Gamma[k]
+        self.get_translation_ops(pk, ddx, ddy, update)
+        self.build_Gamma(pk, update=update)
+        return self.peaks.peaks[pk].Gamma
 
     def get_diff_images(self, data, models, A, S, W):
         """Get differential images to fit translations
@@ -221,18 +230,30 @@ class TxyTranslation(BaseTranslation):
 
         dxy = self.differential
         diff_images = []
-        for k, (dx,dy) in enumerate(self.peaks):
-            model = models[k]
-            Tx, Ty = self.get_translation_ops(k, dxy, dxy, update=False)
+        for pk, peak in enumerate(self.peaks.peaks):
+            dx = self.cx - peak.x
+            dx = self.cy - peak.y
+            # Combine all of the components of the current peak into a model
+            model = []
+            for k in peak.component_indices:
+                model.append(models[k])
+            model = np.sum(model, axis=0)
+            Tx, Ty = self.get_translation_ops(pk, dxy, dxy, update=False)
             # Get the difference image in x by adjusting only the x
             # component by the differential amount dxy
-            Gk = self.build_Gamma(k, Tx=Tx, update=False)
-            diff_img = get_peak_model(A[:,k], S[k], Gk)
+            Gk = self.build_Gamma(pk, Tx=Tx, update=False)
+            diff_img = []
+            for k in peak.component_indices:
+                diff_img.append(get_peak_model(A[:,k], S[k], Gk))
+            diff_img = np.sum(diff_img, axis=0)
             diff_img = (model-diff_img)/dxy
             diff_images.append(diff_img)
             # Do the same for the y difference image
-            Gk = self.build_Gamma(k, Ty=Ty, update=False)
-            diff_img = get_peak_model(A[:,k], S[k], Gk)
+            Gk = self.build_Gamma(pk, Ty=Ty, update=False)
+            diff_img = []
+            for k in peak.component_indices:
+                diff_img.append(get_peak_model(A[:,k], S[k], Gk))
+            diff_img = np.sum(diff_img, axis=0)
             diff_img = (model-diff_img)/dxy
             diff_images.append(diff_img)
         return diff_images
