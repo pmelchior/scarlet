@@ -105,3 +105,33 @@ def find_Q(Vs, n):
     res = np.zeros(n)
     res[int((n-1)/2)] = n
     return res
+
+def strict_monotonicity(images, peaks=None, components=None, l0_thresh=None, l1_thresh=None, constraints="m"):
+    """Use monotonicity as a strict proximal operator
+    """
+    import proxmin
+
+    if components is None:
+        component_count = len(peaks)
+    else:
+        component_count = np.sum([len(c) for c in components])
+    B, N, M = images.shape
+
+    if l0_thresh is None and l1_thresh is None:
+        prox_S = proxmin.operators.prox_plus
+    else:
+        # L0 has preference
+        if l0_thresh is not None:
+            if l1_thresh is not None:
+                logger.warn("weights warning: l1_thresh ignored in favor of l0_thresh")
+            prox_S = partial(proxmin.operators.prox_hard, thresh=l0_thresh)
+        else:
+            prox_S = partial(proxmin.operators.prox_soft_plus, thresh=l1_thresh)
+    if isinstance(constraints, str):
+        if constraints!="m":
+            raise ValueError("Monotonicity 'm' is the only allowed strict constraint")
+        seeks = [True]*component_count
+    else:
+        seeks = [constraints[k]=="m" for k in range(component_count)]
+    prox_S = build_prox_monotonic(shape=(N,M), seeks=seeks, prox_chain=prox_S)
+    return prox_S
