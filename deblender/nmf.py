@@ -315,14 +315,14 @@ def init_S(N, M, K, peaks=None, img=None):
                 logger.warn("Using random S matrix for peak {0}".format(k))
                 S[k,:] = np.random.rand(N)
             else:
-                px, py = peak.x, peak.y
-                flux = np.abs(img[:,int(py),int(px)].mean()) + tiny
+                px, py = int(peak.x), int(peak.y)
+                flux = np.abs(img[:,py,px].mean()) + tiny
                 # TODO: Improve the initialization of the bulge and disk in S
                 # Make the disk slightly larger
                 if peak.type == "disk":
                     for px in [-1,0,1]:
                         for py in [-1,0,1]:
-                            S[k, (cy+py)*M+(cx+px)] = flux - np.max(np.sqrt(px**2+py**2),.1)
+                            S[k, (cy+py)*M+(cx+px)] = flux - np.max([np.sqrt(px**2+py**2),.1])
                 else:
                     S[k, cy*M+cx] = flux
                 peaks[k].init_morphology = S[k, cy*M+cx]
