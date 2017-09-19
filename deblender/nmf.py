@@ -1,6 +1,7 @@
 from __future__ import print_function, division
 from functools import partial
 import logging
+from numbers import Number
 
 import numpy as np
 import scipy.sparse
@@ -19,6 +20,9 @@ except NameError:
     basestring = str
 
 logger = logging.getLogger("deblender.nmf")
+
+component_types = ["star", "bulge", "disk", # currently supported types
+                   "arm", "bar", "jet", "sfr", "tail"] # currently unsupported types
 
 class Deblend(object):
     """Result of the deblender
@@ -72,6 +76,118 @@ class Deblend(object):
                 hist = hist[0]
         return hist
 
+class PeakComponent:
+    """Stellar model or a single component of a larger object
+    """
+    def __init__(self, peak, peak_type, sed=None, morphology=None):
+        self.peak = peak
+        self.type = peak_type
+        self.init_sed = sed
+        self.init_morphology = morphology
+        self.sed = sed
+        self.morphology = morphology
+        # Set the indices to refer to this component from the PeakCatalog
+        self.cidx = self.peak.component_list.index(self.type)
+        pidx = self.peak.index
+        if self.peak.index != 0:
+            idx = self.peak.parent.indices[self.peak.index-1]
+        else:
+            idx = 0
+        self.index = idx+self.cidx
+
+    @property
+    def x(self):
+        """Always use the parent x value
+        """
+        return self.peak.x
+
+    @property
+    def y(self):
+        """Always use the parent y value
+        """
+        return self.peak.y
+
+    @property
+    def Gamma(self):
+        """Always use the parent Gamma operator
+        """
+        return self.peak.Gamma
+
+    @property
+    def Tx(self):
+        """Always use the parent Tx operator
+        """
+        return self.peak.Tx
+
+    @property
+    def Ty(self):
+        """Always use the parent Ty operator
+        """
+        return self.peak.Ty
+
+class Peak:
+    """Stellar or galaxy source with (potentially) multiple components
+    """
+    def __init__(self, parent, index, x, y, components=None, Tx=None, Ty=None, Gamma=None):
+        self.index = index
+        self.parent = parent
+        self.x = x
+        self.y = y
+        self.int_tx = {}
+        self.int_ty = {}
+        self.Tx = Tx
+        self.Ty = Ty
+        self.Gamma = Gamma
+
+        if components is not None:
+            self.component_list = components
+            self.components = {c: PeakComponent(self, c) for c in components}
+        else:
+            self.component_list = ["bulge"]
+            self.components = {"bulge": PeakComponent(self, "bulge")}
+        self.component_indices = np.array([comp.index for comp in self])
+
+    def __getitem__(self, idx):
+        """Select component of the peak
+        
+        `idx` can either a string (the name of the component)
+        or a number (the index of the component).
+        """
+        if isinstance(idx, Number):
+            idx = self.component_list[idx]
+        return self.components[idx]
+
+class PeakCatalog:
+    """A collection of stars and galaxies, each one with multiple components
+    """
+    def __init__(self, peaks, components=None):
+        if components is None:
+            components = [None]*len(peaks)
+            self.indices = np.arange(len(peaks))+1
+        else:
+            self.indices = np.cumsum([len(c) for c in components])
+        self.peaks = [Peak(self, n, pk[0], pk[1], components[n]) for n, pk in enumerate(peaks)]
+        self.component_list = [pk.component_list for pk in self.peaks]
+
+    def __getitem__(self, idx):
+        """Select the component, not peak, for the given index
+        """
+        _idx = np.searchsorted(self.indices, idx, side='right')
+        if _idx>0:
+            cidx = idx-self.indices[_idx-1]
+        else:
+            cidx = idx
+        peak = self.peaks[_idx]
+        return peak[cidx]
+
+    def __len__(self):
+        """Total number of components in the peak catalog
+        
+        This is different than the total number of peaks, since some peaks
+        might have multiple components.
+        """
+        return np.sum([len(p.component_list) for p in self.peaks])
+
 def get_peak_model(A, S, Gamma, shape=None, k=None):
     """Get the model for a single source
     """
@@ -113,21 +229,21 @@ def delta_data(A, S, data, Gamma, D, W=1):
     B,K,N = A.shape[0], A.shape[1], S.shape[1]
     # We need to calculate the model for each source individually and sum them
     model = np.zeros((B,N))
-    for pk in range(K):
+    for k in range(K):
         for b in range(B):
-            model[b] += A[b,pk]*Gamma[pk][b].dot(S[pk])
+            model[b] += A[b,k]*Gamma[k][b].dot(S[k])
     diff = W*(model-data)
 
     if D == 'S':
         result = np.zeros((K,N))
-        for pk in range(K):
+        for k in range(K):
             for b in range(B):
-                result[pk] += A[b,pk]*Gamma[pk][b].T.dot(diff[b])
+                result[k] += A[b,k]*Gamma[k][b].T.dot(diff[b])
     elif D == 'A':
         result = np.zeros((B,K))
-        for pk in range(K):
+        for k in range(K):
             for b in range(B):
-                result[b][pk] = diff[b].dot(Gamma[pk][b].dot(S[pk]))
+                result[b][k] = diff[b].dot(Gamma[k][b].dot(S[k]))
     else:
         raise ValueError("Expected either 'A' or 'S' for variable `D`")
     return result
@@ -156,11 +272,15 @@ def prox_likelihood(X, step, Xs=None, j=None, Y=None, W=None, T=None,
     else:
         return prox_likelihood_S(X, step, A=Xs[0], Y=Y, Gamma=T.Gamma, prox_g=prox_S, W=W)
 
-def init_A(B, K, peaks=None, img=None):
+def init_A(B, K=None, peaks=None, img=None):
     # init A from SED of the peak pixels
     if peaks is None:
+        if K is None:
+            raise ValueError("Either K or peaks must be specified")
         A = np.random.rand(B,K)
     else:
+        if K is None:
+            K = len(peaks)
         assert img is not None
         assert len(peaks) == K
         A = np.zeros((B,K))
@@ -170,11 +290,15 @@ def init_A(B, K, peaks=None, img=None):
                 logger.warn("Using random A matrix for peak {0}".format(k))
                 A[:,k] = np.random.rand(B)
             else:
-                px,py = peaks[k]
+                px,py = peaks[k].x, peaks[k].y
                 A[:,k] = img[:,int(py),int(px)]
+                if peaks[k].type == "disk":
+                    disk_shift = np.linspace(-1.5,1.5, B)
+                    A[:,k] += disk_shift
                 if np.sum(A[:,k])==0:
                     logger.warn("Peak {0} has no flux, using random A matrix".format(k))
                     A[:,k] = np.random.rand(B)
+                peaks[k].init_sed = A[:,k]
     # ensure proper normalization
     A = proxmin.operators.prox_unity_plus(A, 0)
     return A
@@ -186,13 +310,22 @@ def init_S(N, M, K, peaks=None, img=None):
         S[:,cy*M+cx] = 1
     else:
         tiny = 1e-10
-        for pk, peak in enumerate(peaks):
+        for k, peak in enumerate(peaks):
             if peak is None:
-                logger.warn("Using random S matrix for peak {0}".format(pk))
-                S[pk,:] = np.random.rand(N)
+                logger.warn("Using random S matrix for peak {0}".format(k))
+                S[k,:] = np.random.rand(N)
             else:
-                px, py = peak
-                S[pk, cy*M+cx] = np.abs(img[:,int(py),int(px)].mean()) + tiny
+                px, py = int(peak.x), int(peak.y)
+                flux = np.abs(img[:,py,px].mean()) + tiny
+                # TODO: Improve the initialization of the bulge and disk in S
+                # Make the disk slightly larger
+                if peak.type == "disk":
+                    for px in [-1,0,1]:
+                        for py in [-1,0,1]:
+                            S[k, (cy+py)*M+(cx+px)] = flux - np.max([np.sqrt(px**2+py**2),.1])
+                else:
+                    S[k, cy*M+cx] = flux
+                peaks[k].init_morphology = S[k, cy*M+cx]
     return S
 
 def adapt_PSF(psf, B, shape):
@@ -222,26 +355,23 @@ def get_constraint_op(constraint, shape, seeks, useNearest=True):
     if constraint is None or constraint == "c":
         return None
     elif constraint == "M":
-        # block diagonal matrix to run single dot operation on all components
-        # with seek == True
         L = operators.getRadialMonotonicOp((N,M), useNearest=useNearest)
         Z = operators.getIdentityOp((N,M))
-        LB = scipy.sparse.block_diag(L_when_sought(L, Z, seeks))
     elif constraint == "S":
         L = operators.getSymmetryOp((N,M))
         Z = operators.getZeroOp((N,M))
-        LB = scipy.sparse.block_diag(L_when_sought(L, Z, seeks))
-    elif constraint =="X":
+    elif constraint == "X" or constraint == "x":
         cx = int(shape[1]/2)
         L = proxmin.operators.get_gradient_x(shape, cx)
         Z = operators.getIdentityOp((N,M))
-    elif constraint =="Y":
+    elif constraint == "Y" or constraint == "y":
         cy = int(shape[0]/2)
         L = proxmin.operators.get_gradient_y(shape, cy)
         Z = operators.getIdentityOp((N,M))
     # Create the matrix adapter for the operator
     LB = scipy.sparse.block_diag(L_when_sought(L, Z, seeks))
-    return proxmin.utils.MatrixAdapter(LB, axis=1)
+    adapter =  proxmin.utils.MatrixAdapter(LB, axis=1)
+    return adapter
 
 def oddify(shape, truncate=False):
     """Get an odd number of rows and columns
@@ -287,6 +417,7 @@ def reshape_img(img, new_shape=None, truncate=False, fill=0):
 
 def deblend(img,
             peaks=None,
+            components=None,
             constraints=None,
             weights=None,
             psf=None,
@@ -314,7 +445,9 @@ def deblend(img,
             txy_skip=10,
             Translation=operators.TxyTranslation,
             A=None,
-            S=None):
+            S=None,
+            smoothness=1
+            ):
 
     # vectorize image cubes
     B,N,M = img.shape
@@ -333,7 +466,12 @@ def deblend(img,
         _weights = weights
         _sky = sky
 
-    K = len(peaks)
+    # Add peak coordinates for each component of a source
+    if not isinstance(peaks, PeakCatalog):
+        _peaks = PeakCatalog(peaks, components)
+    else:
+        _peaks = peaks
+    K = len(_peaks)
     if sky is None:
         Y = _img.reshape(B,N*M)
     else:
@@ -351,10 +489,10 @@ def deblend(img,
 
     # init matrices
     if A is None:
-        A = init_A(B, K, img=_img, peaks=peaks)
+        A = init_A(B, K, img=_img, peaks=_peaks)
     if S is None:
-        S = init_S(N, M, K, img=_img, peaks=peaks)
-    T = Translation(peaks, (N,M), B, P_, txy_diff, max_shift,
+        S = init_S(N, M, K, img=_img, peaks=_peaks)
+    T = Translation(_peaks, (N,M), B, P_, txy_diff, max_shift,
                     txy_thresh, fit_positions, txy_wait, txy_skip, traceback)
 
     # constraints on S: non-negativity or L0/L1 sparsity plus ...
@@ -391,7 +529,7 @@ def deblend(img,
                             seeks[c] = [False] * K
                         seeks[c][i] = True
 
-        all_types = "SMcXY"
+        all_types = "SMcXYxy"
         for c in seeks.keys():
             if c not in all_types:
                     err = "Each constraint should be None or in {0} but received '{1}'"
@@ -403,6 +541,8 @@ def deblend(img,
             "c": partial(prox_cone, G=operators.getRadialMonotonicOp((N,M), useNearest=monotonicUseNearest).toarray()),
             "X": proxmin.operators.prox_plus, # positive X gradient
             "Y": proxmin.operators.prox_plus, # positive Y gradient
+            "x": partial(proxmin.operators.prox_soft, thresh=smoothness), # l1 norm on X gradient
+            "y": partial(proxmin.operators.prox_soft, thresh=smoothness), # l1 norm on Y gradient
         }
 
         # Proximal Operator for each constraint
