@@ -22,11 +22,13 @@ def _prox_strict_monotonic(X, step, seeks, ref_idx, dist_idx, thresh=0, prox_cha
 def build_prox_monotonic(shape, seeks, prox_chain=None, thresh=0):
     """Build the prox_monotonic operator
     """
+    from scipy import sparse
     if not shape[0] % 2 or not shape[1] % 2:
         err = "Shape must have an odd width and height, received shape {0}".format(shape)
         raise ValueError(err)
     monotonicOp = operators.getRadialMonotonicOp(shape)
-    _, refIdx = np.where(monotonicOp.toarray()==1)
+    xIdx, refIdx = sparse.find(monotonicOp==1)[:2]
+    refIdx = refIdx[np.argsort(xIdx)]
     # Get the center pixels
     cx = (shape[1]-1) >> 1
     cy = (shape[0]-1) >> 1
