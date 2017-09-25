@@ -477,7 +477,7 @@ def deblend(img,
     else:
         Y = (_img-_sky).reshape(B,N*M)
     if weights is None:
-        W = Wmax = 1,
+        W = Wmax = 1
     else:
         W = _weights.reshape(B,N*M)
         Wmax = np.max(W)
