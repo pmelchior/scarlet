@@ -226,7 +226,7 @@ class TxyTranslation(BaseTranslation):
     def get_diff_images(self, data, models, A, S, W):
         """Get differential images to fit translations
         """
-        from .nmf import get_peak_model
+        from .deblender import get_peak_model
 
         dxy = self.differential
         diff_images = []

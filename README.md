@@ -1,4 +1,4 @@
-# NMF Deblender
+# Scarlet
 
 This package is deblends astronomical multi-band images of stars and galaxies by modeling each source with a SED and a non-parametric morphology (or multiple such components per source). The minimization is done using the block-SDMM algorithm described in [Moolekamp and Melchior 2017](https://arxiv.org/abs/1708.09066), and the development of this package is part of the [LSST Science Pipeline](https://pipelines.lsst.io).
 

@@ -35,8 +35,8 @@ class get_pybind_include(object):
 
 ext_modules = [
     Extension(
-        'deblender.proximal_utils',
-        ['deblender/proximal_utils.cc'],
+        'scarlet.proximal_utils',
+        ['scarlet/proximal_utils.cc'],
         include_dirs=[
             get_pybind_include(),
             get_pybind_include(user=True)
@@ -99,16 +99,16 @@ class BuildExt(build_ext):
         build_ext.build_extensions(self)
 
 setup(
-  name = 'deblender',
+  name = 'scarlet',
   packages = packages,
   version = __version__,
-  description = 'NMF Deblender',
+  description = 'Blind Source Separation using proximal matrix factorization',
   author = 'Fred Moolekamp and Peter Melchior',
   author_email = 'fred.moolekamp@gmail.com',
   url = 'https://github.com/fred3m/deblender',
   keywords = ['astro', 'deblender', 'photometry', 'nmf'],
   ext_modules=ext_modules,
-  install_requires=['proxmin>=0.2', 'pybind11>=1.7', 'numpy', 'scipy'],
+  install_requires=['proxmin>=0.3', 'pybind11>=1.7', 'numpy', 'scipy'],
   cmdclass={'build_ext': BuildExt},
   zip_safe=False
 )

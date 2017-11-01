@@ -149,7 +149,7 @@ class Peak:
 
     def __getitem__(self, idx):
         """Select component of the peak
-        
+
         `idx` can either a string (the name of the component)
         or a number (the index of the component).
         """
@@ -182,7 +182,7 @@ class PeakCatalog:
 
     def __len__(self):
         """Total number of components in the peak catalog
-        
+
         This is different than the total number of peaks, since some peaks
         might have multiple components.
         """
