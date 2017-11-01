@@ -24,6 +24,43 @@ logger = logging.getLogger("deblender.nmf")
 component_types = ["star", "bulge", "disk", # currently supported types
                    "arm", "bar", "jet", "sfr", "tail"] # currently unsupported types
 
+
+def get_peak_model(A, S, Gamma, shape=None, k=None):
+    """Get the model for a single source
+    """
+    # Allow the user to send full A,S, ... matrices or matrices for a single source
+    if k is not None:
+        Ak = A[:, k]
+        Sk = S[k]
+        Gk = Gamma[k]
+    else:
+        Ak, Sk = A, S.copy()
+        Gk = Gamma
+    # Check for a flattened or 2D array
+    if len(Sk.shape)==2:
+        Sk = Sk.flatten()
+    B,N = Ak.shape[0], Sk.shape[0]
+    model = np.zeros((B,N))
+
+    for b in range(B):
+        model[b] = Ak[b] * Gk[b].dot(Sk)
+
+    # Reshape the image into a 2D array
+    if shape is not None:
+        model = model.reshape((B, shape[0], shape[1]))
+    return model
+
+def get_model(A, S, Gamma, shape=None, combine=True):
+    """Build the model for an entire blend
+
+    If `combine` is `False`, then a separate model is built for each peak.
+    """
+    models = np.array([get_peak_model(A, S, Gamma, shape, k) for k in range(S.shape[0])])
+    if combine:
+        models = np.sum(models, axis=0)
+    return models
+
+
 class Deblend(object):
     """Result of the deblender
     """
@@ -42,6 +79,9 @@ class Deblend(object):
         self.W = W
         self.traceback = traceback
         self.parameters = parameters
+    @property
+    def K(self):
+        return self.S.shape[0]
 
     def get_model(self, k=None, combine=False):
         """Extract a model
@@ -187,41 +227,6 @@ class PeakCatalog:
         might have multiple components.
         """
         return np.sum([len(p.component_list) for p in self.peaks])
-
-def get_peak_model(A, S, Gamma, shape=None, k=None):
-    """Get the model for a single source
-    """
-    # Allow the user to send full A,S, ... matrices or matrices for a single source
-    if k is not None:
-        Ak = A[:, k]
-        Sk = S[k]
-        Gk = Gamma[k]
-    else:
-        Ak, Sk = A, S.copy()
-        Gk = Gamma
-    # Check for a flattened or 2D array
-    if len(Sk.shape)==2:
-        Sk = Sk.flatten()
-    B,N = Ak.shape[0], Sk.shape[0]
-    model = np.zeros((B,N))
-
-    for b in range(B):
-        model[b] = Ak[b] * Gk[b].dot(Sk)
-
-    # Reshape the image into a 2D array
-    if shape is not None:
-        model = model.reshape((B, shape[0], shape[1]))
-    return model
-
-def get_model(A, S, Gamma, shape=None, combine=True):
-    """Build the model for an entire blend
-
-    If `combine` is `False`, then a separate model is built for each peak.
-    """
-    models = np.array([get_peak_model(A, S, Gamma, shape, k) for k in range(S.shape[0])])
-    if combine:
-        models = np.sum(models, axis=0)
-    return models
 
 def delta_data(A, S, data, Gamma, D, W=1):
     """Gradient of model with respect to A or S
