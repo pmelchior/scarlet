@@ -35,8 +35,8 @@ class get_pybind_include(object):
 
 ext_modules = [
     Extension(
-        'scarlet.operators',
-        ['scarlet/operators.cc'],
+        'scarlet.operators_pybind11',
+        ['scarlet/operators_pybind11.cc'],
         include_dirs=[
             get_pybind_include(),
             get_pybind_include(user=True)

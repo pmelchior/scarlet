@@ -1,17 +1,16 @@
 from __future__ import print_function, division
-from functools import partial
-import logging
-from numbers import Number
-
 import numpy as np
-import scipy.sparse
-import scipy.sparse.linalg
+
+from . import transformations
+from . import operators
 
 import proxmin
 from proxmin.nmf import Steps_AS
 
-from . import operators
-from .proximal import build_prox_monotonic, prox_cone
+from functools import partial
+import logging
+from numbers import Number
+
 
 # Set basestring in python 3
 try:
@@ -61,27 +60,32 @@ def get_model(A, S, Gamma, shape=None, combine=True):
     return models
 
 
-class Deblend(object):
-    """Result of the deblender
+class Blend(object):
+    """The blended scene as interpreted by the deblender.
     """
-    def __init__(self, img, A, S, T, W=None, traceback=None, **parameters):
+    def __init__(self, A, S, T, traceback=None, **parameters):
         """Create a deblender result
 
         `parameters` is used to store the parameters sent to the glmm algorithm, which makes it
         possible to recreate any variable in a given step (if `traceback` is not `None`).
         """
-        self.img = img
-        self.B, N, M = img.shape
-        self.shape = (N,M)
         self.A = A
         self.S = S
         self.T = T
-        self.W = W
         self.traceback = traceback
         self.parameters = parameters
+
     @property
     def K(self):
         return self.S.shape[0]
+
+    @property
+    def B(self):
+        return self.A.shape[0]
+
+    @property
+    def shape(self):
+        return self.S.shape[1:]
 
     def get_model(self, k=None, combine=False):
         """Extract a model
@@ -116,7 +120,7 @@ class Deblend(object):
                 hist = hist[0]
         return hist
 
-class PeakComponent:
+class Component:
     """Stellar model or a single component of a larger object
     """
     def __init__(self, peak, peak_type, sed=None, morphology=None):
@@ -165,7 +169,7 @@ class PeakComponent:
         """
         return self.peak.Ty
 
-class Peak:
+class Object:
     """Stellar or galaxy source with (potentially) multiple components
     """
     def __init__(self, parent, index, x, y, components=None, Tx=None, Ty=None, Gamma=None):
@@ -181,10 +185,10 @@ class Peak:
 
         if components is not None:
             self.component_list = components
-            self.components = {c: PeakComponent(self, c) for c in components}
+            self.components = {c: Component(self, c) for c in components}
         else:
             self.component_list = ["bulge"]
-            self.components = {"bulge": PeakComponent(self, "bulge")}
+            self.components = {"bulge": Component(self, "bulge")}
         self.component_indices = np.array([comp.index for comp in self])
 
     def __getitem__(self, idx):
@@ -197,8 +201,8 @@ class Peak:
             idx = self.component_list[idx]
         return self.components[idx]
 
-class PeakCatalog:
-    """A collection of stars and galaxies, each one with multiple components
+class Catalog:
+    """A collection of objects (stars or galaxies), each one or more components.
     """
     def __init__(self, peaks, components=None):
         if components is None:
@@ -269,8 +273,8 @@ def prox_likelihood(X, step, Xs=None, j=None, Y=None, W=None, T=None,
     if j == 0 and T.fit_positions:
         # Update the translation operators
         A, S = Xs
-        models = get_model(A, S, T.Gamma, combine=False)
-        T.update_positions(Y, models, A, S, W)
+        model = get_model(A, S, T.Gamma, combine=False)
+        T.update_positions(Y, model, A, S, W)
 
     if j==0:
         return prox_likelihood_A(X, step, S=Xs[1], Y=Y, Gamma=T.Gamma, prox_g=prox_A, W=W)
@@ -336,11 +340,11 @@ def init_S(N, M, K, peaks=None, img=None):
 def adapt_PSF(psf, B, shape):
     # Simpler for likelihood gradients if psf = const across B
     if len(psf.shape)==2: # single matrix
-        return operators.getPSFOp(psf, shape)
+        return transformations.getPSFOp(psf, shape)
 
     P_ = []
     for b in range(B):
-        P_.append(operators.getPSFOp(psf[b], shape))
+        P_.append(transformations.getPSFOp(psf[b], shape))
     return P_
 
 def L_when_sought(L, Z, seeks):
@@ -360,20 +364,21 @@ def get_constraint_op(constraint, shape, seeks, useNearest=True):
     if constraint is None or constraint == "c":
         return None
     elif constraint == "M":
-        L = operators.getRadialMonotonicOp((N,M), useNearest=useNearest)
-        Z = operators.getIdentityOp((N,M))
+        L = transformations.getRadialMonotonicOp((N,M), useNearest=useNearest)
+        Z = transformations.getIdentityOp((N,M))
     elif constraint == "S":
-        L = operators.getSymmetryOp((N,M))
-        Z = operators.getZeroOp((N,M))
+        L = transformations.getSymmetryOp((N,M))
+        Z = transformations.getZeroOp((N,M))
     elif constraint == "X" or constraint == "x":
         cx = int(shape[1]/2)
-        L = proxmin.operators.get_gradient_x(shape, cx)
-        Z = operators.getIdentityOp((N,M))
+        L = proxmin.transformations.get_gradient_x(shape, cx)
+        Z = transformations.getIdentityOp((N,M))
     elif constraint == "Y" or constraint == "y":
         cy = int(shape[0]/2)
-        L = proxmin.operators.get_gradient_y(shape, cy)
-        Z = operators.getIdentityOp((N,M))
+        L = proxmin.transformations.get_gradient_y(shape, cy)
+        Z = transformations.getIdentityOp((N,M))
     # Create the matrix adapter for the operator
+    import scipy.sparse
     LB = scipy.sparse.block_diag(L_when_sought(L, Z, seeks))
     adapter =  proxmin.utils.MatrixAdapter(LB, axis=1)
     return adapter
@@ -543,7 +548,7 @@ def deblend(img,
         linear_constraints = {
             "M": proxmin.operators.prox_plus,  # positive gradients
             "S": proxmin.operators.prox_zero,  # zero deviation of mirrored pixels,
-            "c": partial(prox_cone, G=operators.getRadialMonotonicOp((N,M), useNearest=monotonicUseNearest).toarray()),
+            "c": partial(operators.prox_cone, G=transformations.getRadialMonotonicOp((N,M), useNearest=monotonicUseNearest).toarray()),
             "X": proxmin.operators.prox_plus, # positive X gradient
             "Y": proxmin.operators.prox_plus, # positive Y gradient
             "x": partial(proxmin.operators.prox_soft, thresh=smoothness), # l1 norm on X gradient
@@ -584,11 +589,11 @@ def deblend(img,
     if not traceback:
         A, S = res
         S = S.reshape(K,N,M)
-        result = Deblend(_img, A, S, T, W=W, traceback=None, f=f)
+        result = Blend(A, S, T, traceback=None, f=f)
     else:
         [A, S], tr = res
         S = S.reshape(K,N,M)
-        result = Deblend(_img, A, S, T, W=W, traceback=tr,
+        result = Blend(A, S, T, traceback=tr,
             f=f, steps_f=steps_f, proxs_g=proxs_g, steps_g=steps_g, Ls=Ls, update_order=update_order,
             steps_g_update=steps_g_update, e_rel=e_rel)
     return result
