@@ -1,6 +1,5 @@
 from . import operators
-from . import proximal
-from . import proximal_utils
+from . import transformations
 
 # convenience: get vanilla NMF and deblend wrapper directly within scarlet
 from proxmin import nmf as nmf
