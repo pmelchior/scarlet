@@ -1,586 +1,199 @@
 from __future__ import print_function, division
 import logging
+from functools import partial
 
 import numpy as np
-import scipy.sparse
+import proxmin
 
-logger = logging.getLogger("deblender.operators")
+from . import operators
+from . import proximal_utils
 
-class BaseTranslation(object):
-    """Base Class to perform PSF convolution and translations
+def _prox_strict_monotonic(X, step, seeks, ref_idx, dist_idx, thresh=0, prox_chain=None, **kwargs):
+    """Force an intensity profile to be monotonic
     """
-    def __init__(self, peaks, shape, B=None, P=None, differential=0.1, max_shift=2, threshold=1e-8,
-                 fit_positions=True, wait=0, skip=10, traceback=True):
-        self.cx, self.cy = int(shape[1])>>1, int(shape[0])>>1
-        # peaks is a PeakCatalog, which has a list of peaks that may have multiple components
-        self.peaks = peaks
-        # init_peaks is an array with an entry for each peak, (not each component)
-        self.init_peaks = np.array([[self.cx-peak.x, self.cy-peak.y] for peak in peaks.peaks])
-        self.shape = shape
-        self.size = shape[0]*shape[1]
-        self.B = B
-        self.P = P
-        self.differential = differential
-        self.max_shift =  max_shift
-        self.threshold = threshold
-        self.fit_positions = fit_positions
-        self.drifters = [False]*len(peaks.peaks)
+    proximal_utils.prox_monotonic(X, step, seeks, ref_idx, dist_idx, thresh)
 
-        # Control the frequency of updates
-        self.iteration = 0
-        self.wait = wait
-        self.skip = skip
+    # When we daisy-chain the operators, we need to primary ones
+    # (positivity, sparsity) last so that they are certainly fulfilled
+    if prox_chain is not None:
+        X = prox_chain(X, step, **kwargs)
+    return X
 
-        if traceback:
-            self.history = {"px":[self.init_peaks[:,0]], "py":[self.init_peaks[:,1]]}
-        else:
-            self.history = None
-
-    @property
-    def Gamma(self):
-        return [component.Gamma for component in self.peaks]
-    @property
-    def Tx(self):
-        return [component.Tx for component in self.peaks]
-    @property
-    def Ty(self):
-        return [component.Ty for component in self.peaks]
-
-    def get_diff_images(self, data, models, A, S, W):
-        """Get differential images to fit translations
-
-        `diff_images` should be a list with 2K elements, where the 2*ith element is the differential
-        image for each peak in x and the 2*i+1 element is the differential image for each peak in y.
-
-        See `TxyTranslation.get_diff_images` for an example.
-        """
-        raise NotImplementedError("You must overwrite this method in the inheriting class")
-        diff_images = [None]*(2*A.shape[1])
-        return diff_images
-
-    def translate_psfs(self, k, ddx=0, ddy=0, update=False):
-        """Translate a peak and convolve it with the PSF
-
-        If `update` is `False`, the new position will not be saved.
-        See TxyTranslation.translate_psfs for an example.
-        """
-        raise NotImplementedError("You must overwrite this method in the inheriting class")
-
-    def reset_position(self, pk, px, py, ddx, ddy):
-        """Reset a peak that exceeds max_shift
-
-        This method may be overwritten in an inherited class for improved behavior.
-        """
-        self.peaks.peaks[pk].x = self.cx - self.init_peaks[pk][0]
-        self.peaks.peaks[pk].y = self.cx - self.init_peaks[pk][1]
-        ddx = 0
-        ddy = 0
-        return ddx, ddy
-
-    def update_positions(self, data, models, A, S, W=None):
-        """Update the positions of the peaks
-        """
-        # Wait for the specified number of iterations
-        self.iteration += 1
-        if self.iteration > self.wait and self.iteration % self.skip!=0:
-            return self.Gamma
-
-        # Load the differential images and fir for the best positions
-        model = np.sum(models, axis=0)
-        diff_images = self.get_diff_images(data, models, A, S, W)
-        if len(diff_images) != 2*len(self.peaks.peaks):
-            msg = "Expected {0} differential images but received {1}"
-            raise ValueError(msg.format(2*len(self.peaks), len(diff_images)))
-        M = np.vstack([-diff.flatten() for diff in diff_images]).T
-        y = (data-model).flatten()
-        results = np.linalg.lstsq(M, y)[0]
-
-        for pk, peak in enumerate(self.peaks.peaks):
-            px, py = self.cx-peak.x, self.cy-peak.y
-            ddx = results[2*pk]
-            ddy = results[2*pk+1]
-            ipx, ipy = self.init_peaks[pk]
-            # Check that the total shift doesn't exceed the maximum
-            if np.abs(px+ddx-ipx) > self.max_shift or np.abs(py+ddy-ipy) > self.max_shift:
-                logger.debug("Attempted to shift peak {0} greater than max_shift".format(pk))
-                self.drifters[pk] = True
-                ddx, ddy = self.reset_position(pk, px, py, ddx, ddy)
-            # Only update the peak positions and build the new Tx, Ty
-            # if the peaks changed position
-            if np.sqrt(ddx**2+ddy**2)>self.threshold:
-                self.translate_psfs(pk, ddx, ddy, update=True)
-
-        if self.history is not None:
-            self.history["px"].append([peak.x for peak in self.peaks.peaks])
-            self.history["py"].append([peak.y for peak in self.peaks.peaks])
-        return self.Gamma
-
-    def get_history(self):
-        px_hist = np.array(self.history["px"])
-        py_hist = np.array(self.history["py"])
-        return px_hist, py_hist
-
-class TxyTranslation(BaseTranslation):
-    def __init__(self, *args, **kwargs):
-        """Initialize the class
-
-        The class is initialized with its shape and the initial differential operators
-        """
-        # TODO: For now use a Python 2 friendly super __init__,
-        # but in the future switch to the pure Python 3
-        super(self.__class__, self).__init__(*args, **kwargs)
-        #super().__init__(*args, **kwargs)
-
-        # Create the initial translations
-        for k in range(len(self.peaks.peaks)):
-            self.translate_psfs(k, update=True)
-
-    def build_Tx(self, peak, int_dx):
-        """Construct Tx and its components
-        """
-        height, width = self.shape
-        tx = scipy.sparse.diags([1],[int_dx], shape=(width, width), dtype=np.float64)
-        tx_plus = scipy.sparse.diags([-1,1],[int_dx, int_dx+1],
-                                     shape=(width, width), dtype=np.float64)
-        tx_minus = scipy.sparse.diags([1,-1],[int_dx, int_dx-1],
-                                      shape=(width, width), dtype=np.float64)
-        tx = scipy.sparse.block_diag([tx]*height)
-        tx_plus = scipy.sparse.block_diag([tx_plus]*height)
-        tx_minus = scipy.sparse.block_diag([tx_minus]*height)
-        peak.int_tx[int_dx] = (tx, tx_plus, tx_minus)
-
-    def build_Ty(self, peak, int_dy):
-        """Construct Ty and its components
-        """
-        width = self.shape[1]
-        ty = scipy.sparse.diags([1], [int_dy*width], shape=(self.size, self.size), dtype=np.float64)
-        ty_plus = scipy.sparse.diags([-1, 1], [int_dy*width, (int_dy+1)*width],
-                                     shape=(self.size, self.size), dtype=np.float64)
-        ty_minus = scipy.sparse.diags([1, -1], [int_dy*width, (int_dy-1)*width],
-                                      shape=(self.size, self.size), dtype=np.float64)
-        peak.int_ty[int_dy] = (ty, ty_plus, ty_minus)
-
-    def get_translation_ops(self, pk, ddx=0, ddy=0, update=False):
-        """Get the operators needed to shift peak k
-        """
-        peak = self.peaks.peaks[pk]
-        dx, dy = self.cx-peak.x, self.cy-peak.y
-        dx += ddx
-        dy += ddy
-        int_dx, int_dy = int(dx), int(dy)
-        if update:
-            self.peaks.peaks[pk].x = self.cx - dx
-            self.peaks.peaks[pk].y = self.cy - dy
-
-        # Build Tx and Ty (if necessary)
-        if int_dx not in peak.int_tx.keys():
-            self.build_Tx(peak, int_dx)
-        if int_dy not in peak.int_ty.keys():
-            self.build_Ty(peak, int_dy)
-        tx, tx_plus, tx_minus = peak.int_tx[int_dx]
-        ty, ty_plus, ty_minus = peak.int_ty[int_dy]
-        # Create Tx
-        if dx<0:
-            dtx = tx_minus
-        else:
-            dtx = tx_plus
-        Tx = tx + (dx-int_dx)*dtx
-        # Create Ty
-        if dy<0:
-            dty = ty_minus
-        else:
-            dty = ty_plus
-        Ty = ty + (dy-int_dy)*dty
-        # Optionally store the operators for the peak
-        if update:
-            peak.Tx = Tx
-            peak.Ty = Ty
-        return Tx, Ty
-
-    def build_Gamma(self, pk, Tx=None, Ty=None, update=True):
-        """Translate the PSFs using Tx and Ty
-        """
-        peak = self.peaks.peaks[pk]
-        if Tx is None:
-            Tx = peak.Tx
-        if Ty is None:
-            Ty = peak.Ty
-        if self.P is None:
-            Gamma_k = [Ty.dot(Tx)]*self.B
-        else:
-            Gamma_k = []
-            for b in range(self.B):
-                g = Ty.dot(self.P[b].dot(Tx))
-                Gamma_k.append(g)
-        if update:
-            peak.Gamma = Gamma_k
-        return Gamma_k
-
-    def translate_psfs(self, pk, ddx=0, ddy=0, update=False):
-        """Build the operators to perform a translation
-        """
-        self.get_translation_ops(pk, ddx, ddy, update)
-        self.build_Gamma(pk, update=update)
-        return self.peaks.peaks[pk].Gamma
-
-    def get_diff_images(self, data, models, A, S, W):
-        """Get differential images to fit translations
-        """
-        from .deblender import get_peak_model
-
-        dxy = self.differential
-        diff_images = []
-        for pk, peak in enumerate(self.peaks.peaks):
-            dx = self.cx - peak.x
-            dx = self.cy - peak.y
-            # Combine all of the components of the current peak into a model
-            model = []
-            for k in peak.component_indices:
-                model.append(models[k])
-            model = np.sum(model, axis=0)
-            Tx, Ty = self.get_translation_ops(pk, dxy, dxy, update=False)
-            # Get the difference image in x by adjusting only the x
-            # component by the differential amount dxy
-            Gk = self.build_Gamma(pk, Tx=Tx, update=False)
-            diff_img = []
-            for k in peak.component_indices:
-                diff_img.append(get_peak_model(A[:,k], S[k], Gk))
-            diff_img = np.sum(diff_img, axis=0)
-            diff_img = (model-diff_img)/dxy
-            diff_images.append(diff_img)
-            # Do the same for the y difference image
-            Gk = self.build_Gamma(pk, Ty=Ty, update=False)
-            diff_img = []
-            for k in peak.component_indices:
-                diff_img.append(get_peak_model(A[:,k], S[k], Gk))
-            diff_img = np.sum(diff_img, axis=0)
-            diff_img = (model-diff_img)/dxy
-            diff_images.append(diff_img)
-        return diff_images
-
-def getZeroOp(shape):
-    size = shape[0]*shape[1]
-    # matrix with ones on diagonal shifted by k, here out of matrix: all zeros
-    return scipy.sparse.eye(size,k=size)
-
-def getIdentityOp(shape):
-    size = shape[0]*shape[1]
-    return scipy.sparse.identity(size)
-
-def getSymmetryOp(shape):
-    """Create a linear operator to symmetrize an image
-
-    Given the ``shape`` of an image, create a linear operator that
-    acts on the flattened image to return its symmetric version.
+def build_prox_monotonic(shape, seeks, prox_chain=None, thresh=0):
+    """Build the prox_monotonic operator
     """
-    size = shape[0]*shape[1]
-    idx = np.arange(shape[0]*shape[1])
-    sidx = idx[::-1]
-    symmetryOp = scipy.sparse.identity(size)
-    symmetryOp -= scipy.sparse.coo_matrix((np.ones(size),(idx, sidx)), shape=(size,size))
-    return symmetryOp
-
-def getOffsets(width, coords=None):
-    """Get the offset and slices for a sparse band diagonal array
-
-    For an operator that interacts with its neighbors we want a band diagonal matrix,
-    where each row describes the 8 pixels that are neighbors for the reference pixel
-    (the diagonal). Regardless of the operator, these 8 bands are always the same,
-    so we make a utility function that returns the offsets (passed to scipy.sparse.diags).
-
-    See `diagonalizeArray` for more on the slices and format of the array used to create
-    NxN operators that act on a data vector.
-    """
-    # Use the neighboring pixels by default
-    if coords is None:
-        coords = [(-1,-1), (-1,0), (-1, 1), (0,-1), (0,1), (1, -1), (1,0), (1,1)]
-    offsets = [width*y+x for y,x in coords]
-    slices = [slice(None, s) if s<0 else slice(s, None) for s in offsets]
-    slicesInv = [slice(-s, None) if s<0 else slice(None, -s) for s in offsets]
-    return offsets, slices, slicesInv
-
-def diagonalizeArray(arr, shape=None, dtype=np.float64):
-    """Convert an array to a matrix that compares each pixel to its neighbors
-
-    Given an array with length N, create an 8xN array, where each row will be a
-    diagonal in a diagonalized array. Each column in this matrix is a row in the larger
-    NxN matrix used for an operator, except that this 2D array only contains the values
-    used to create the bands in the band diagonal matrix.
-
-    Because the off-diagonal bands have less than N elements, ``getOffsets`` is used to
-    create a mask that will set the elements of the array that are outside of the matrix to zero.
-
-    ``arr`` is the vector to diagonalize, for example the distance from each pixel to the peak,
-    or the angle of the vector to the peak.
-
-    ``shape`` is the shape of the original image.
-    """
-    if shape is None:
-        height, width = arr.shape
-        data = arr.flatten()
-    elif len(arr.shape)==1:
-        height, width = shape
-        data = np.copy(arr)
-    else:
-        raise ValueError("Expected either a 2D array or a 1D array and a shape")
-    size = width * height
-
-    # We hard code 8 rows, since each row corresponds to a neighbor
-    # of each pixel.
-    diagonals = np.zeros((8, size), dtype=dtype)
-    mask = np.ones((8, size), dtype=bool)
-    offsets, slices, slicesInv = getOffsets(width)
-    for n, s in enumerate(slices):
-        diagonals[n][slicesInv[n]] = data[s]
-        mask[n][slicesInv[n]] = 0
-
-    # Create a mask to hide false neighbors for pixels on the edge
-    # (for example, a pixel on the left edge should not be connected to the
-    # pixel to its immediate left in the flattened vector, since that pixel
-    # is actual the far right pixel on the row above it).
-    mask[0][np.arange(1,height)*width] = 1
-    mask[2][np.arange(height)*width-1] = 1
-    mask[3][np.arange(1,height)*width] = 1
-    mask[4][np.arange(1,height)*width-1] = 1
-    mask[5][np.arange(height)*width] = 1
-    mask[7][np.arange(1,height-1)*width-1] = 1
-
-    return diagonals, mask
-
-def diagonalsToSparse(diagonals, shape, dtype=np.float64):
-    """Convert a diagonalized array into a sparse diagonal matrix
-
-    ``diagonalizeArray`` creates an 8xN array representing the bands that describe the
-    interactions of a pixel with its neighbors. This function takes that 8xN array and converts
-    it into a sparse diagonal matrix.
-
-    See `diagonalizeArray` for the details of the 8xN array.
-    """
-    height, width = shape
-    offsets, slices, slicesInv = getOffsets(width)
-    diags = [diag[slicesInv[n]] for n, diag in enumerate(diagonals)]
-    diagonalArr = scipy.sparse.diags(diags, offsets, dtype=dtype)
-    return diagonalArr
-
-def getRadialMonotonicOp(shape, useNearest=True, minGradient=1):
-    """Create an operator to constrain radial monotonicity
-
-    This version of the radial monotonicity operator selects all of the pixels closer to the peak
-    for each pixel and weights their flux based on their alignment with a vector from the pixel
-    to the peak. In order to quickly create this using sparse matrices, its construction is a bit opaque.
-    """
-    # Center on the center pixel
-    px = int(shape[1]/2)
-    py = int(shape[0]/2)
+    from scipy import sparse
+    if not shape[0] % 2 or not shape[1] % 2:
+        err = "Shape must have an odd width and height, received shape {0}".format(shape)
+        raise ValueError(err)
+    monotonicOp = operators.getRadialMonotonicOp(shape)
+    xIdx, refIdx = sparse.find(monotonicOp==1)[:2]
+    refIdx = refIdx[np.argsort(xIdx)]
+    # Get the center pixels
+    cx = (shape[1]-1) >> 1
+    cy = (shape[0]-1) >> 1
     # Calculate the distance between each pixel and the peak
-    size = shape[0]*shape[1]
     x = np.arange(shape[1])
     y = np.arange(shape[0])
     X,Y = np.meshgrid(x,y)
-    X = X - px
-    Y = Y - py
+    X = X - cx
+    Y = Y - cy
     distance = np.sqrt(X**2+Y**2)
+    # Get the indices of the pixels sorted by distance from the peak
+    didx = np.argsort(distance.flatten())
+    #update the strict proximal operators
+    return partial(_prox_strict_monotonic, seeks=seeks, ref_idx=refIdx.tolist(), dist_idx=didx.tolist(), prox_chain=prox_chain, thresh=thresh)
 
-    # Find each pixels neighbors further from the peak and mark them as invalid
-    # (to be removed later)
-    distArr, mask = diagonalizeArray(distance, dtype=np.float64)
-    relativeDist = (distance.flatten()[:,None]-distArr.T).T
-    invalidPix = relativeDist<=0
+def prox_cone(X, step, G=None):
+    """Exact projection of components of X onto cone defined by Gx >= 0"""
+    k, n = X.shape
+    for i in range(k):
+        Y = X[i]
 
-    # Calculate the angle between each pixel and the x axis, relative to the peak position
-    # (also avoid dividing by zero and set the tan(infinity) pixel values to pi/2 manually)
-    inf = X==0
-    tX = X.copy()
-    tX[inf] = 1
-    angles = np.arctan2(-Y,-tX)
-    angles[inf&(Y!=0)] = 0.5*np.pi*np.sign(angles[inf&(Y!=0)])
+        # Creating set of half-space defining vectors
+        Vs = []
+        for j in range(0, n):
+            add = G[j]
+            Vs.append(add)
+        Q = find_Q(Vs, n)
 
-    # Calcualte the angle between each pixel and it's neighbors
-    xArr, m = diagonalizeArray(X)
-    yArr, m = diagonalizeArray(Y)
-    dx = (xArr.T-X.flatten()[:, None]).T
-    dy = (yArr.T-Y.flatten()[:, None]).T
-    # Avoid dividing by zero and set the tan(infinity) pixel values to pi/2 manually
-    inf = dx==0
-    dx[inf] = 1
-    relativeAngles = np.arctan2(dy,dx)
-    relativeAngles[inf&(dy!=0)] = 0.5*np.pi*np.sign(relativeAngles[inf&(dy!=0)])
+        # Finding and using relevant dimensions until a point on the cone is found
+        for j in range(n):
+            index = find_relevant_dim(Y, Q, Vs)
+            if index != -1:
+                Y, Q, Vs = use_relevant_dim(Y, Q, Vs, index)
+            else:
+                break
+        X[i] = Y
+    return X
 
-    # Find the difference between each pixels angle with the peak
-    # and the relative angles to its neighbors, and take the
-    # cos to find its neighbors weight
-    dAngles = (angles.flatten()[:, None]-relativeAngles.T).T
-    cosWeight = np.cos(dAngles)
-    # Mask edge pixels, array elements outside the operator (for offdiagonal bands with < N elements),
-    # and neighbors further from the peak than the reference pixel
-    cosWeight[invalidPix] = 0
-    cosWeight[mask] = 0
+def proj(A,B):
+    """Returns the projection of A onto the hyper-plane defined by B"""
+    return A - (A*B).sum()*B/(B**2).sum()
 
-    if useNearest:
-        # Only use a single pixel most in line with peak
-        cosNorm = np.zeros_like(cosWeight)
-        columnIndices =  np.arange(cosWeight.shape[1])
-        maxIndices = np.argmax(cosWeight, axis=0)
-        indices = maxIndices*cosNorm.shape[1]+columnIndices
-        indices = np.unravel_index(indices, cosNorm.shape)
-        cosNorm[indices] = minGradient
-        # Remove the reference for the peak pixel
-        cosNorm[:,px+py*shape[1]] = 0
-    else:
-        # Normalize the cos weights for each pixel
-        normalize = np.sum(cosWeight, axis=0)
-        normalize[normalize==0] = 1
-        cosNorm = (cosWeight.T/normalize[:,None]).T
-        cosNorm[mask] = 0
-    cosArr = diagonalsToSparse(cosNorm, shape)
+def proj_dist(A,B):
+    """Returns length of projection of A onto B"""
+    return (A*B).sum()/(B**2).sum()**0.5
 
-    # The identity with the peak pixel removed represents the reference pixels
-    diagonal = np.ones(size)
-    diagonal[px+py*shape[1]] = -1
-    monotonic = cosArr-scipy.sparse.diags(diagonal, offsets=0)
+def use_relevant_dim(Y, Q, Vs, index):
+    """Uses relevant dimension to reduce problem dimensionality (projects everything onto the
+    new hyperplane"""
+    projector = Vs[index]
+    del Vs[index]
+    Y = proj(Y, projector)
+    Q = proj(Y, projector)
+    for i in range(len(Vs)):
+        Vs[i] = proj(Vs[i], projector)
+    return Y, Q, Vs
 
-    return monotonic.tocoo()
-
-def getPSFOp(psf, imgShape):
-    """Create an operator to convolve intensities with the PSF
-
-    Given a psf image ``psf`` and the shape of the blended image ``imgShape``,
-    make a banded matrix out of all non-zero pixels in ``psfImg`` that acts as
-    the PSF operator.
-    """
-    height, width = imgShape
-    size = width * height
-
-    # Calculate the coordinates of the pixels in the psf image above the threshold
-    indices = np.where(psf != 0)
-    indices = np.dstack(indices)[0]
-    # assume all PSF images have odd dimensions and are centered!
-    cy, cx = psf.shape[0]//2, psf.shape[1]//2
-    coords = indices-np.array([cy,cx])
-
-    # Create the PSF Operator
-    offsets, slices, slicesInv = getOffsets(width, coords)
-    psfDiags = [psf[y,x] for y,x in indices]
-    psfOp = scipy.sparse.diags(psfDiags, offsets, shape=(size, size), dtype=np.float64)
-    psfOp = psfOp.tolil()
-
-    # Remove entries for pixels on the left or right edges
-    cxRange = np.unique([cx for cy,cx in coords])
-    for h in range(height):
-        for y,x in coords:
-            # Left edge
-            if x<0 and width*(h+y)+x>=0 and h+y<=height:
-                psfOp[width*h, width*(h+y)+x] = 0
-
-                # Pixels closer to the left edge
-                # than the radius of the psf
-                for x_ in cxRange[cxRange<0]:
-                    if (x<x_ and
-                        width*h-x_>=0 and
-                        width*(h+y)+x-x_>=0 and
-                        h+y<=height
-                    ):
-                        psfOp[width*h-x_, width*(h+y)+x-x_] = 0
-
-            # Right edge
-            if x>0 and width*(h+1)-1>=0 and width*(h+y+1)+x-1>=0 and h+y<=height and width*(h+1+y)+x-1<size:
-                psfOp[width*(h+1)-1, width*(h+y+1)+x-1] = 0
-
-                for x_ in cxRange[cxRange>0]:
-                    # Near right edge
-                    if (x>x_ and
-                        width*(h+1)-x_-1>=0 and
-                        width*(h+y+1)+x-x_-1>=0 and
-                        h+y<=height and
-                        width*(h+1+y)+x-x_-1<size
-                    ):
-                        psfOp[width*(h+1)-x_-1, width*(h+y+1)+x-x_-1] = 0
-
-    # Return the transpose, which correctly convolves the data with the PSF
-    return psfOp.T.tocoo()
-
-# ring-shaped masks around the peak
-def getRingMask(im_shape, peak, outer, inner=0, flatten=False):
-    height,width = im_shape
-    x,y = np.meshgrid(np.arange(width), np.arange(height))
-    r = np.sqrt((x-peak[1])**2 + (y-peak[0])**2)
-    mask = (r < inner) | (r >= outer)
-    if flatten:
-        return mask.flatten()
-    return mask
-
-# odd-integer downsampling
-def downsample(S, oversampling, mask=None):
-    assert isinstance(oversampling, (int, long))
-    if oversampling <= 1:
-        return S
-    else:
-        height,width = S.shape
-        height /= oversampling
-        width /= oversampling
-        Sd = np.zeros((height, width), dtype=S.dtype)
-        if mask is None:
-            S_ = S
+def find_relevant_dim(Y, Q, Vs):
+    """Finds a dimension relevant to the problem by 'raycasting' from Y to Q"""
+    max_t = 0
+    index = -1
+    for i in range(len(Vs)):
+        Y_p = proj_dist(Y, Vs[i])
+        Q_p = proj_dist(Q, Vs[i])
+        if Y_p < 0:
+            t = -Y_p/(Q_p - Y_p)
         else:
-            S_ = S*(~mask)
-        # TODO: can we avoid the double loop?
-        for h in range(height):
-            for w in range(width):
-                Sd[h,w] = S_[h*oversampling:(h+1)*oversampling, w*oversampling:(w+1)*oversampling].sum() / oversampling**2
-        return Sd
+            t = -2
+        if t > max_t:
+            max_t = t
+            index = i
+    return index
 
-# construct spin-wave decomposition operator for given list of spin numbers m
-# radial behavior can be specified as appropriate
-def getSpinOp(ms, shape, thickness=4, peak=None, oversampling=21, radial_fct=lambda r:1./np.maximum(1,r)):
-    """ Spin decomposition operator.
+def find_Q(Vs, n):
+    """Finds a Q that is within the solution space that can act as an appropriate target
+    (could be rigorously constructed later)"""
+    res = np.zeros(n)
+    res[int((n-1)/2)] = n
+    return res
 
-    The operator maps onto a basis function of R(r) exp(i m phi), where phi is
-    the polar angle wrt to the peak (or, if None, the center of the image).
-
-    The decomposition is performed in a set of concentric rings of fixed thickness.
-
-    ms is a list of integers that indicate the requested spin numbers.
-    thickness is the radial separation between the inner and outer ring radius.
-    peak is (an optional) offset of the object from the image center.
-    oversampling determine the higher-resolution grid for the in-pixel
-    integration; it must be odd.
-    radial_fct is the radial part of the spin basis function.
-
+def strict_monotonicity(images, peaks=None, components=None, l0_thresh=None, l1_thresh=None, constraints="m"):
+    """Use monotonicity as a strict proximal operator
     """
-    assert oversampling % 2 == 1
-    assert hasattr(ms, '__iter__')
+    import proxmin
 
-    height,width = shape
-    assert height % 2 == 0 and width % 2 == 0
+    if components is None:
+        component_count = len(peaks)
+    else:
+        component_count = np.sum([len(c) for c in components])
+    B, N, M = images.shape
 
-    if peak is None:
-        peak = [height/2, width/2]
-    x,y = np.meshgrid(np.arange(width*oversampling), np.arange(height*oversampling))
-    x = x * 1./oversampling - peak[1]
-    y = y * 1./oversampling - peak[0]
-    # proper treatment of over & downsampling: center pixel location
-    if oversampling > 1:
-        x -= 0.5 - 0.5/oversampling
-        y -= 0.5 - 0.5/oversampling
-    # convert to polar
-    r = np.sqrt(x**2 + y**2)
-    phi = np.arctan2(y,x)
+    if l0_thresh is None and l1_thresh is None:
+        prox_S = proxmin.operators.prox_plus
+    else:
+        # L0 has preference
+        if l0_thresh is not None:
+            if l1_thresh is not None:
+                logger.warn("weights warning: l1_thresh ignored in favor of l0_thresh")
+            prox_S = partial(proxmin.operators.prox_hard, thresh=l0_thresh)
+        else:
+            prox_S = partial(proxmin.operators.prox_soft_plus, thresh=l1_thresh)
+    if isinstance(constraints, str):
+        if constraints!="m":
+            raise ValueError("Monotonicity 'm' is the only allowed strict constraint")
+        seeks = [True]*component_count
+    else:
+        seeks = [constraints[k]=="m" for k in range(component_count)]
+    prox_S = build_prox_monotonic(shape=(N,M), seeks=seeks, prox_chain=prox_S)
+    return prox_S
 
-    # define series of radial ring-shaped masks (oversampled as well)
-    r_limit = (np.min([peak[0], height-peak[0], peak[1], width-peak[1]]) - 1)*oversampling
-    base = thickness*oversampling
-    lims = [(base*(i+1), base*i) for i in range(r_limit/base)]
-    mask_peak = ((peak[0]+0.5)*oversampling - 0.5, (peak[1]+0.5)*oversampling - 0.5)
-    masks = [getRingMask(r.shape, mask_peak, outer, inner) for outer, inner in lims]
+def project_disk_sed_mean(bulge_sed, disk_sed):
+    """Project the disk SED onto the space where it is bluer
+    
+    For the majority of observed galaxies, it appears that
+    the difference between the bulge and the disk SEDs is
+    roughly monotonic, making the disk bluer.
+    
+    This projection operator projects colors that are redder
+    than other colors onto the average SED difference for
+    that wavelength. This is a more accurate SED than
+    `project_disk_sed` but is more likely to create
+    discontinuities in the evaluation of A, and should
+    probably be avoided. It is being kept for now to record
+    its effect.
+    """
+    new_sed = disk_sed.copy()
+    diff = bulge_sed - disk_sed
+    slope = (diff[-1]-diff[0])/(len(bulge_sed)-1)
+    for s in range(1, len(diff)-1):
+        if diff[s]<diff[s-1]:
+            new_sed[s] = bulge_sed[s] - (slope*s + diff[0])
+            diff[s] = bulge_sed[s] - new_sed[s]
+    return new_sed
 
-    Ss = []
-    for i in range(len(ms)):
-        m = ms[i]
-        spin = radial_fct(r) * np.exp(1j*m*phi)
-        for j in range(len(masks)):
-            mask = masks[j]
-            S = downsample(spin, oversampling, mask=mask).flatten()
-            Ss.append(S)
+def project_disk_sed(bulge_sed, disk_sed):
+    """Project the disk SED onto the space where it is bluer
+    
+    For the majority of observed galaxies, it appears that
+    the difference between the bulge and the disk SEDs is
+    roughly monotonic, making the disk bluer.
+    
+    This projection operator projects colors that are redder onto
+    the same difference in color as the previous wavelength,
+    similar to the way monotonicity works for the morphological
+    `S` matrix of the model.
+    
+    While a single iteration of this model is unlikely to yield
+    results that are as good as those in `project_disk_sed_mean`,
+    after many iterations it is expected to converge to a better value.
+    """
+    new_sed = disk_sed.copy()
+    diff = bulge_sed - disk_sed
+    for s in range(1, len(diff)-1):
+        if diff[s]<diff[s-1]:
+            new_sed[s] = new_sed[s] + diff[s-1]
+            diff[s] = diff[s-1]
+    return new_sed
 
-    # TODO: make Ss sparse and split real and imaginary part
-    return np.array(Ss)
+def proximal_disk_sed(X, step, peaks, algorithm=project_disk_sed_mean):
+    """Ensure that each disk SED is bluer than the bulge SED
+    """
+    for peak in peaks.peaks:
+        if "disk" in peak.components and "bulge" in peak.components:
+            bulge_k = peak["bulge"].index
+            disk_k = peak["disk"].index
+            X[:,disk_k] = algorithm(X[:,bulge_k], X[:,disk_k])
+    X = proxmin.operators.prox_unity_plus(X, step, axis=0)
+    return X

@@ -35,8 +35,8 @@ class get_pybind_include(object):
 
 ext_modules = [
     Extension(
-        'scarlet.proximal_utils',
-        ['scarlet/proximal_utils.cc'],
+        'scarlet.operators',
+        ['scarlet/operators.cc'],
         include_dirs=[
             get_pybind_include(),
             get_pybind_include(user=True)

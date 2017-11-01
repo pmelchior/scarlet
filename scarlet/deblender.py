@@ -448,7 +448,7 @@ def deblend(img,
             txy_thresh=1e-8,
             txy_wait=10,
             txy_skip=10,
-            Translation=operators.TxyTranslation,
+            Translation=transformations.TxyTranslation,
             A=None,
             S=None,
             smoothness=1
@@ -560,8 +560,8 @@ def deblend(img,
               ]
 
     else:
-        proxs_g = [proxmin.operators.prox_id] * 2
-        Ls = [None] * 2
+        proxs_g = None
+        Ls = None
 
     logger.debug("prox_A: {0}".format(prox_A))
     logger.debug("prox_S: {0}".format(prox_S))
@@ -579,7 +579,7 @@ def deblend(img,
     Xs = [A, S]
     res = proxmin.algorithms.bsdmm(Xs, f, steps_f, proxs_g, steps_g=steps_g, Ls=Ls, update_order=update_order,
                                   steps_g_update=steps_g_update, max_iter=max_iter, e_rel=e_rel, e_abs=e_abs,
-                                  traceback=traceback)
+                                  accelerated=True, traceback=traceback)
 
     if not traceback:
         A, S = res
