@@ -27,9 +27,9 @@ void prox_monotonic(
   }
 }
 
-PYBIND11_PLUGIN(proximal_utils)
+PYBIND11_PLUGIN(operators_pybind11)
 {
-  py::module mod("proximal_utils", "Fast proximal operators");
+  py::module mod("operators_pybind11", "Fast proximal operators");
   mod.def("prox_monotonic", &prox_monotonic, "Monotonic Proximal Operator");
   return mod.ptr();
 }
