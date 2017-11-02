@@ -72,7 +72,7 @@ class BaseTranslation(object):
         This method may be overwritten in an inherited class for improved behavior.
         """
         self.cat.objects[pk].x = self.cx - self.init_peaks[pk][0]
-        self.cat.objects[pk].y = self.cx - self.init_peaks[pk][1]
+        self.cat.objects[pk].y = self.cy - self.init_peaks[pk][1]
         ddx = 0
         ddy = 0
         return ddx, ddy
