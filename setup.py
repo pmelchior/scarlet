@@ -106,7 +106,7 @@ setup(
   author = 'Fred Moolekamp and Peter Melchior',
   author_email = 'fred.moolekamp@gmail.com',
   url = 'https://github.com/fred3m/deblender',
-  keywords = ['astro', 'deblender', 'photometry', 'nmf'],
+  keywords = ['astro', 'deblending', 'photometry', 'nmf'],
   ext_modules=ext_modules,
   install_requires=['proxmin>=0.3', 'pybind11>=1.7', 'numpy', 'scipy'],
   cmdclass={'build_ext': BuildExt},

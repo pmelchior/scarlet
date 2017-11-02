@@ -210,8 +210,8 @@ class Catalog:
             self.indices = np.arange(len(peaks))+1
         else:
             self.indices = np.cumsum([len(c) for c in components])
-        self.peaks = [Peak(self, n, pk[0], pk[1], components[n]) for n, pk in enumerate(peaks)]
-        self.component_list = [pk.component_list for pk in self.peaks]
+        self.objects = [Object(self, n, pk[0], pk[1], components[n]) for n, pk in enumerate(peaks)]
+        self.component_list = [pk.component_list for pk in self.objects]
 
     def __getitem__(self, idx):
         """Select the component, not peak, for the given index
@@ -221,8 +221,8 @@ class Catalog:
             cidx = idx-self.indices[_idx-1]
         else:
             cidx = idx
-        peak = self.peaks[_idx]
-        return peak[cidx]
+        obj = self.objects[_idx]
+        return obj[cidx]
 
     def __len__(self):
         """Total number of components in the peak catalog
@@ -230,7 +230,7 @@ class Catalog:
         This is different than the total number of peaks, since some peaks
         might have multiple components.
         """
-        return np.sum([len(p.component_list) for p in self.peaks])
+        return np.sum([len(p.component_list) for p in self.objects])
 
 def delta_data(A, S, data, Gamma, D, W=1):
     """Gradient of model with respect to A or S
@@ -477,8 +477,8 @@ def deblend(img,
         _sky = sky
 
     # Add peak coordinates for each component of a source
-    if not isinstance(peaks, PeakCatalog):
-        _peaks = PeakCatalog(peaks, components)
+    if not isinstance(peaks, Catalog):
+        _peaks = Catalog(peaks, components)
     else:
         _peaks = peaks
     K = len(_peaks)
