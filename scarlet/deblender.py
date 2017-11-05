@@ -18,324 +18,244 @@ try:
 except NameError:
     basestring = str
 
-logger = logging.getLogger("deblender.nmf")
+logger = logging.getLogger("scarlet.deblender")
 
-component_types = ["star", "bulge", "disk", # currently supported types
-                   "arm", "bar", "jet", "sfr", "tail"] # currently unsupported types
-
-
-def get_peak_model(A, S, Gamma, shape=None, k=None):
-    """Get the model for a single source
-    """
-    # Allow the user to send full A,S, ... matrices or matrices for a single source
-    if k is not None:
-        Ak = A[:, k]
-        Sk = S[k]
-        Gk = Gamma[k]
-    else:
-        Ak, Sk = A, S.copy()
-        Gk = Gamma
-    # Check for a flattened or 2D array
-    if len(Sk.shape)==2:
-        Sk = Sk.flatten()
-    B,N = Ak.shape[0], Sk.shape[0]
-    model = np.zeros((B,N))
-
-    for b in range(B):
-        model[b] = Ak[b] * Gk[b].dot(Sk)
-
-    # Reshape the image into a 2D array
-    if shape is not None:
-        model = model.reshape((B, shape[0], shape[1]))
-    return model
-
-def get_model(A, S, Gamma, shape=None, combine=True):
-    """Build the model for an entire blend
-
-    If `combine` is `False`, then a separate model is built for each peak.
-    """
-    models = np.array([get_peak_model(A, S, Gamma, shape, k) for k in range(S.shape[0])])
-    if combine:
-        models = np.sum(models, axis=0)
-    return models
-
-
-class Blend(object):
+class Blender(object):
     """The blended scene as interpreted by the deblender.
     """
-    def __init__(self, A, S, T, traceback=None, **parameters):
-        """Create a deblender result
+    def __init__(self, sources):
+        assert len(sources)
+        self._insert_sources(sources)
 
-        `parameters` is used to store the parameters sent to the glmm algorithm, which makes it
-        possible to recreate any variable in a given step (if `traceback` is not `None`).
+        # container for gradients of S and A
+        B, Nx, Ny = self.sources[0].B, self.sources[0].Nx, self.sources[0].Ny
+        self.update = [np.empty((self.K,Nx*Ny)), np.empty((B,self.K))]
+
+        # list of all proxs_g and Ls
+        self.proxs_g = None
+        self.Ls = None
+        # TODO: activate this with per-source optimization
+        # self.proxs_g = [[source.proxs_g[0] for source in self.sources], # for A
+        #                 [source.proxs_g[1] for source in self.sources]] # for S
+        # self.Ls = [[source.Ls[0] for source in self.sources], # for A
+        #            [source.Ls[1] for source in self.sources]] # for S
+
+    def _insert_sources(self, sources):
+        self.sources = sources # do not copy!
+        self.M = len(self.sources)
+        self.K =  sum([source.K for source in self.sources])
+
+        # lookup of source/component tuple given component number k
+        self.source_of = []
+        for m in range(self.M):
+            for l in range(self.sources[m].K):
+                self.source_of.append((m,l))
+
+    def component_of(self, m, l):
+        # search for k that has this (m,l), inverse of source_of
+        for k in range(self.K):
+            if self.source_of[k] == (m,l):
+                return k
+        raise IndexError
+
+    def __len__(self):
+        """Number of distinct sources"""
+        return self.M
+
+    def prox_likelihood(X, step, Xs=None, j=None, Y=None, W=1, update_order=[0,1]):
+
+        if j > 0:
+            raise ValueError("Expected index j in [0,1]")
+
         """
-        self.A = A
-        self.S = S
-        self.T = T
-        self.traceback = traceback
-        self.parameters = parameters
+        # TODO: centroid updates
+        if j == 0 and T.fit_positions:
+            # Update the translation operators
+            A, S = Xs
+            model = get_model(A, S, T.Gamma, combine=False)
+            T.update_positions(Y, model, A, S, W)
+        """
+        # computing likelihood gradients for S and A: only once per iteration
+        B, Nx, Ny = self.sources[0].B, self.sources[0].Nx, self.sources[0].Ny
+        if j == update_order[0]:
+            model = get_model(combined=True)
+            self.diff = W*(model-Y).reshape(B, Ny*Nx)
+
+        # A update
+        if j == 0:
+            self.update[j][:,:] = 0
+            for k in range(K):
+                m,l = self.source_of(k)
+                if not self.sources[m].fix_sed[l]:
+                    # gradient of likelihood wrt A
+                    self.update[j][:,k] = 0
+                    for b in range(B):
+                        self.update[j][b,k] = self.diff[b].dot(Gamma[k][b].dot(S[k]))
+
+                    # apply per component prox projection and save in source
+                    self.sources[m].sed[l] = self.sources[m].prox_sed[l](self.sources[m].sed[l] - step*self.update[j][k], step)
+                    # copy into result matrix
+                    self.update[j][:,k] = self.sources[m].sed[l]
+
+        # S update
+        if j == 1:
+            for k in range(self.K):
+                m,l = self.source_of(k)
+                if not self.sources[m].fix_morph[l]:
+                    # gradient of likelihood wrt S
+                    self.update[j][k,:] = 0
+                    for b in range(B):
+                        self.update[j][k,:] += A[b,k]*Gamma[k][b].T.dot(self.diff[b])
+
+                    # apply per component prox projection and save in source
+                    self.sources[m].morph[l] = self.sources[m].prox_morph[l](self.sources[m].morph[l] - step*self.update[j][k].reshape(Ny,Nx), step)
+                    # copy into result matrix
+                    self.update[j][k,:] = self.sources[m].morph[l].flatten()
+
+        return self.update[j]
+
+    def get_model(self, m=None, combine=True):
+        """Build the current model
+        """
+        if m is None:
+            # needs to have source components combined
+            models = [source.get_model(combine=True) for source in self.sources]
+            if combine:
+                model = np.sum(models, axis=0)
+        else:
+            return self.source[m].get_model(combine=combine)
+
+class Source(object):
+    def __init__(self, x, y, img, psfs=None, constraints=None, sed=None, morph=None, fix_sed=False, fix_morph=False, fix_center=False, prox_sed=None, prox_morph=None):
+        self.x = x
+        self.y = y
+        from copy import deepcopy
+        self.constraints = deepcopy(constraints)
+
+        if sed is None:
+            self._init_sed(self.x, self.y, img)
+        else:
+            # to allow multi-component sources, need to have BxK array
+            if len(sed) != 2:
+                self.sed = sed.reshape((len(sed),1))
+            else:
+                self.sed = sed.copy()
+
+        if morph is None:
+            self._init_morph(self.x, self.y, img)
+        else:
+            # to allow multi-component sources, need to have K x Nx x Ny array
+            if len(morph) != 3:
+                self.morph = morph.reshape((1,) + morph.shape)
+            else:
+                self.morph = morph.copy()
+
+        if hasattr(fix_sed, '__inter__') and len(fix_sed) == self.K:
+            self.fix_sed = fix_sed
+        else:
+            self.fix_sed = [fix_sed] * self.K
+        if hasattr(fix_morph, '__inter__') and len(fix_morph) == self.K:
+            self.fix_morph = fix_morph
+        else:
+            self.fix_morph = [fix_morph] * self.K
+        self.fix_center = fix_center
+
+        if prox_sed is None:
+            self.prox_sed = [proxmin.operators.prox_unity_plus] * self.K
+        else:
+            if hasattr(prox_sed, '__inter__') and len(prox_sed) == self.K:
+                self.prox_sed = prox_sed
+            else:
+                self.prox_sed = [prox_sed] * self.K
+
+        if prox_morph is None:
+            if constraints is None or (constraints['l0'] <= 0 and constraints['l1'] <= 0):
+                self.prox_morph = [proxmin.operators.prox_plus] * self.K
+            else:
+                # L0 has preference
+                if constraints['l0'] > 0:
+                    if constraints['l1'] > 0:
+                        logger.warn("warning: l1 penalty ignored in favor of l0 penalty")
+                    self.prox_morph = [partial(proxmin.operators.prox_hard, thresh=constraints['l0'])] * self.K
+                else:
+                    self.prox_morph = [partial(proxmin.operators.prox_soft_plus, thresh=constraints['l1'])] * self.K
+        else:
+            if hasattr(prox_morph, '__inter__') and len(prox_morph) == self.K:
+                self.prox_morph = prox_morph
+            else:
+                self.prox_morph = [prox_morph] * self.K
+
+        # TODO: generate proxs_g and Ls from suitable entries in constraints
+        self.proxs_g = [None] * self.K
+        self.Ls = [None] * self.K
+        # if constraints is not None:
+        #     linear_constraints = {
+        #         "M": proxmin.operators.prox_plus,  # positive gradients
+        #         "S": proxmin.operators.prox_zero,  # zero deviation of mirrored pixels,
+        #         "c": partial(operators.prox_cone, G=transformations.getRadialMonotonicOp((N,M), useNearest=monotonicUseNearest).toarray()),
+        #         "X": proxmin.operators.prox_plus, # positive X gradient
+        #         "Y": proxmin.operators.prox_plus, # positive Y gradient
+        #         "x": partial(proxmin.operators.prox_soft, thresh=smoothness), # l1 norm on X gradient
+        #         "y": partial(proxmin.operators.prox_soft, thresh=smoothness), # l1 norm on Y gradient
+        #     }
+
+        # TODO: need to get per-source translation incl PSF
+        # T = Translation(_peaks, (N,M), B, P_, txy_diff, max_shift, txy_thresh, fit_positions, txy_wait, txy_skip, traceback)
+        # self.Tx = Tx
+        # self.Ty = Ty
+        # self.Gamma = Gamma
+
+    def __len__(self):
+        return self.sed.shape[1]
 
     @property
     def K(self):
-        return self.S.shape[0]
+        return self.__len__()
 
     @property
     def B(self):
-        return self.A.shape[0]
+        return self.sed.shape[0]
 
     @property
-    def shape(self):
-        return self.S.shape[1:]
-
-    def get_model(self, k=None, combine=False):
-        """Extract a model
-        """
-        if k is None:
-            return get_model(self.A, self.S, self.T.Gamma, self.shape, combine)
-        else:
-            return get_peak_model(self.A, self.S, self.T.Gamma, self.shape, k)
-
-    def get_history(self, variable="S", param=None, idx=None, it=None):
-        """Get the history of a parameter (or all parameters)
-
-        If `param` is `None`, the history of all parameters for A and S are returned.
-        Otherwise, only the history of a specific parameter is returned.
-        If `idx` is not None, only the
-        """
-        if it is None:
-            it = slice(None,None)
-        if variable == "A":
-            j = 0
-        elif variable == "S":
-            j = 1
-        else:
-            raise ValueError("variable should either be 'A' or 'S'")
-        hist = {key:np.array(val)[it] for key,val in self.traceback.history[j].items()}
-
-        if param is not None:
-            hist = hist[param]
-            if idx is not None:
-                hist = hist[idx]
-            elif param=="X":
-                hist = hist[0]
-        return hist
-
-class Component:
-    """Stellar model or a single component of a larger object
-    """
-    def __init__(self, peak, peak_type, sed=None, morphology=None):
-        self.peak = peak
-        self.type = peak_type
-        self.init_sed = sed
-        self.init_morphology = morphology
-        self.sed = sed
-        self.morphology = morphology
-        # Set the indices to refer to this component from the PeakCatalog
-        self.cidx = self.peak.component_list.index(self.type)
-        pidx = self.peak.index
-        if self.peak.index != 0:
-            idx = self.peak.parent.indices[self.peak.index-1]
-        else:
-            idx = 0
-        self.index = idx+self.cidx
+    def Nx(self):
+        return self.morph[0].shape[1]
 
     @property
-    def x(self):
-        """Always use the parent x value
-        """
-        return self.peak.x
+    def Ny(self):
+        return self.morph[0].shape[0]
 
-    @property
-    def y(self):
-        """Always use the parent y value
-        """
-        return self.peak.y
-
-    @property
-    def Gamma(self):
-        """Always use the parent Gamma operator
-        """
-        return self.peak.Gamma
-
-    @property
-    def Tx(self):
-        """Always use the parent Tx operator
-        """
-        return self.peak.Tx
-
-    @property
-    def Ty(self):
-        """Always use the parent Ty operator
-        """
-        return self.peak.Ty
-
-class Object:
-    """Stellar or galaxy source with (potentially) multiple components
-    """
-    def __init__(self, parent, index, x, y, components=None, Tx=None, Ty=None, Gamma=None):
-        self.index = index
-        self.parent = parent
-        self.x = x
-        self.y = y
-        self.int_tx = {}
-        self.int_ty = {}
-        self.Tx = Tx
-        self.Ty = Ty
-        self.Gamma = Gamma
-
-        if components is not None:
-            self.component_list = components
-            self.components = {c: Component(self, c) for c in components}
+    def _init_sed(self, x, y, img):
+        # init A from SED of the peak pixels
+        B, Ny, Nx = img.shape
+        if img is None:
+            logger.warn("Using random A matrix for source at ({0},{0})".format(self.x, self.y))
+            self.sed = np.random.rand((B,1))
         else:
-            self.component_list = ["bulge"]
-            self.components = {"bulge": Component(self, "bulge")}
-        self.component_indices = np.array([comp.index for comp in self])
+            self.sed = np.empty((B,1))
+            self.sed[:,0] = img[:,int(self.y),int(self.x)]
+        # ensure proper normalization
+        self.sed[:,0] = proxmin.operators.prox_unity_plus(self.sed[:,0], 0)
 
-    def __getitem__(self, idx):
-        """Select component of the peak
-
-        `idx` can either a string (the name of the component)
-        or a number (the index of the component).
-        """
-        if isinstance(idx, Number):
-            idx = self.component_list[idx]
-        return self.components[idx]
-
-class Catalog:
-    """A collection of objects (stars or galaxies), each one or more components.
-    """
-    def __init__(self, peaks, components=None):
-        if components is None:
-            components = [None]*len(peaks)
-            self.indices = np.arange(len(peaks))+1
-        else:
-            self.indices = np.cumsum([len(c) for c in components])
-        self.objects = [Object(self, n, pk[0], pk[1], components[n]) for n, pk in enumerate(peaks)]
-        self.component_list = [pk.component_list for pk in self.objects]
-
-    def __getitem__(self, idx):
-        """Select the component, not peak, for the given index
-        """
-        _idx = np.searchsorted(self.indices, idx, side='right')
-        if _idx>0:
-            cidx = idx-self.indices[_idx-1]
-        else:
-            cidx = idx
-        obj = self.objects[_idx]
-        return obj[cidx]
-
-    def __len__(self):
-        """Total number of components in the peak catalog
-
-        This is different than the total number of peaks, since some peaks
-        might have multiple components.
-        """
-        return np.sum([len(p.component_list) for p in self.objects])
-
-def delta_data(A, S, data, Gamma, D, W=1):
-    """Gradient of model with respect to A or S
-    """
-    B,K,N = A.shape[0], A.shape[1], S.shape[1]
-    # We need to calculate the model for each source individually and sum them
-    model = np.zeros((B,N))
-    for k in range(K):
-        for b in range(B):
-            model[b] += A[b,k]*Gamma[k][b].dot(S[k])
-    diff = W*(model-data)
-
-    if D == 'S':
-        result = np.zeros((K,N))
-        for k in range(K):
-            for b in range(B):
-                result[k] += A[b,k]*Gamma[k][b].T.dot(diff[b])
-    elif D == 'A':
-        result = np.zeros((B,K))
-        for k in range(K):
-            for b in range(B):
-                result[b][k] = diff[b].dot(Gamma[k][b].dot(S[k]))
-    else:
-        raise ValueError("Expected either 'A' or 'S' for variable `D`")
-    return result
-
-def prox_likelihood_A(A, step, S=None, Y=None, Gamma=None, prox_g=None, W=1):
-    """A single gradient step in the likelihood of A, followed by prox_g.
-    """
-    return prox_g(A - step*delta_data(A, S, Y, D='A', Gamma=Gamma, W=W), step)
-
-def prox_likelihood_S(S, step, A=None, Y=None, Gamma=None, prox_g=None, W=1):
-    """A single gradient step in the likelihood of S, followed by prox_g.
-    """
-    return prox_g(S - step*delta_data(A, S, Y, D='S', Gamma=Gamma, W=W), step)
-
-def prox_likelihood(X, step, Xs=None, j=None, Y=None, W=None, T=None,
-                    prox_S=None, prox_A=None):
-    # Only update once per iteration
-    if j == 0 and T.fit_positions:
-        # Update the translation operators
-        A, S = Xs
-        model = get_model(A, S, T.Gamma, combine=False)
-        T.update_positions(Y, model, A, S, W)
-
-    if j==0:
-        return prox_likelihood_A(X, step, S=Xs[1], Y=Y, Gamma=T.Gamma, prox_g=prox_A, W=W)
-    else:
-        return prox_likelihood_S(X, step, A=Xs[0], Y=Y, Gamma=T.Gamma, prox_g=prox_S, W=W)
-
-def init_A(B, K=None, peaks=None, img=None):
-    # init A from SED of the peak pixels
-    if peaks is None:
-        if K is None:
-            raise ValueError("Either K or peaks must be specified")
-        A = np.random.rand(B,K)
-    else:
-        if K is None:
-            K = len(peaks)
-        assert img is not None
-        assert len(peaks) == K
-        A = np.zeros((B,K))
-        for k in range(K):
-            # Check for a garbage collector or source with no flux
-            if peaks[k] is None:
-                logger.warn("Using random A matrix for peak {0}".format(k))
-                A[:,k] = np.random.rand(B)
-            else:
-                px,py = peaks[k].x, peaks[k].y
-                A[:,k] = img[:,int(py),int(px)]
-                if peaks[k].type == "disk":
-                    disk_shift = np.linspace(-1.5,1.5, B)
-                    A[:,k] += disk_shift
-                if np.sum(A[:,k])==0:
-                    logger.warn("Peak {0} has no flux, using random A matrix".format(k))
-                    A[:,k] = np.random.rand(B)
-                peaks[k].init_sed = A[:,k]
-    # ensure proper normalization
-    A = proxmin.operators.prox_unity_plus(A, 0)
-    return A
-
-def init_S(N, M, K, peaks=None, img=None):
-    cx, cy = int(M/2), int(N/2)
-    S = np.zeros((K, N*M))
-    if img is None or peaks is None:
-        S[:,cy*M+cx] = 1
-    else:
+    def _init_morph(self, x, y, img):
+        B, Ny, Nx = img.shape
+        cx, cy = int(Nx/2), int(Ny/2)
+        self.morph = np.zeros((1, Ny, Nx))
         tiny = 1e-10
-        for k, peak in enumerate(peaks):
-            if peak is None:
-                logger.warn("Using random S matrix for peak {0}".format(k))
-                S[k,:] = np.random.rand(N)
-            else:
-                px, py = int(peak.x), int(peak.y)
-                flux = np.abs(img[:,py,px].mean()) + tiny
-                # TODO: Improve the initialization of the bulge and disk in S
-                # Make the disk slightly larger
-                if peak.type == "disk":
-                    for px in [-1,0,1]:
-                        for py in [-1,0,1]:
-                            S[k, (cy+py)*M+(cx+px)] = flux - np.max([np.sqrt(px**2+py**2),.1])
-                else:
-                    S[k, cy*M+cx] = flux
-                peaks[k].init_morphology = S[k, cy*M+cx]
-    return S
+        flux = np.abs(img[:,cy,cx].mean()) + tiny
+        self.morph[0,cy,cx] = flux
+
+    def get_model(self, combine=True):
+        # model for all components of this source
+        model = np.empty((self.K,self.B,self.Ny*self.Nx))
+        for k in range(self.K):
+            for b in range(self.B):
+                model[k,b] += self.sed[b,k] * self.Gamma[b].dot(self.morph[k].flatten())
+        # reshape the image into a 2D array
+        model = model.reshape(self.K,self.B,self.Ny,self.Nx)
+        if combine:
+            model = model.sum(axis=0)
+        return model
+
 
 def adapt_PSF(psf, B, shape):
     # Simpler for likelihood gradients if psf = const across B
@@ -347,16 +267,6 @@ def adapt_PSF(psf, B, shape):
         P_.append(transformations.getPSFOp(psf[b], shape))
     return P_
 
-def L_when_sought(L, Z, seeks):
-    K = len(seeks)
-    Ls = []
-    for i in range (K):
-        if seeks[i]:
-            Ls.append(L)
-        else:
-            Ls.append(Z)
-    return Ls
-
 def get_constraint_op(constraint, shape, seeks, useNearest=True):
     """Get appropriate constraint operator
     """
@@ -365,22 +275,16 @@ def get_constraint_op(constraint, shape, seeks, useNearest=True):
         return None
     elif constraint == "M":
         L = transformations.getRadialMonotonicOp((N,M), useNearest=useNearest)
-        Z = transformations.getIdentityOp((N,M))
     elif constraint == "S":
         L = transformations.getSymmetryOp((N,M))
-        Z = transformations.getZeroOp((N,M))
     elif constraint == "X" or constraint == "x":
         cx = int(shape[1]/2)
         L = proxmin.transformations.get_gradient_x(shape, cx)
-        Z = transformations.getIdentityOp((N,M))
     elif constraint == "Y" or constraint == "y":
         cy = int(shape[0]/2)
         L = proxmin.transformations.get_gradient_y(shape, cy)
-        Z = transformations.getIdentityOp((N,M))
     # Create the matrix adapter for the operator
-    import scipy.sparse
-    LB = scipy.sparse.block_diag(L_when_sought(L, Z, seeks))
-    adapter =  proxmin.utils.MatrixAdapter(LB, axis=1)
+    adapter =  proxmin.utils.MatrixAdapter(L, axis=1)
     return adapter
 
 def oddify(shape, truncate=False):
@@ -426,41 +330,30 @@ def reshape_img(img, new_shape=None, truncate=False, fill=0):
     return _img
 
 def deblend(img,
-            peaks=None,
-            components=None,
-            constraints=None,
+            sources,
             weights=None,
             psf=None,
             max_iter=1000,
             sky=None,
-            l0_thresh=None,
-            l1_thresh=None,
             e_rel=1e-3,
             e_abs=0,
-            monotonicUseNearest=False,
+            #monotonicUseNearest=False,
             traceback=False,
-            translation_thresh=1e-8,
-            prox_A=None,
-            prox_S=None,
+            #translation_thresh=1e-8,
             slack = 0.9,
             update_order=None,
             steps_g=None,
             steps_g_update='steps_f',
             truncate=False,
-            fit_positions=True,
-            txy_diff=0.1,
-            max_shift=2,
-            txy_thresh=1e-8,
-            txy_wait=10,
-            txy_skip=10,
-            Translation=transformations.TxyTranslation,
-            A=None,
-            S=None,
-            smoothness=1
+            #txy_diff=0.1,
+            #max_shift=2,
+            #txy_thresh=1e-8,
+            #txy_wait=10,
+            #txy_skip=10,
             ):
 
     # vectorize image cubes
-    B,N,M = img.shape
+    B,Ny,Nx = img.shape
 
     # Ensure that the image has an odd number of rows and columns
     _img = reshape_img(img, truncate=truncate)
@@ -470,115 +363,50 @@ def deblend(img,
             _weights = reshape_img(weights, _img.shape, truncate=truncate)
         if sky is not None:
             _sky = reshape_img(sky, _img.shape, truncate=truncate)
-        B,N,M = _img.shape
+        B,Ny,Nx = _img.shape
     else:
         _img = img
         _weights = weights
         _sky = sky
 
-    # Add peak coordinates for each component of a source
-    if not isinstance(peaks, Catalog):
-        _peaks = Catalog(peaks, components)
-    else:
-        _peaks = peaks
-    K = len(_peaks)
     if sky is None:
-        Y = _img.reshape(B,N*M)
+        Y = _img.reshape(B,Ny*Nx)
     else:
-        Y = (_img-_sky).reshape(B,N*M)
+        Y = (_img-_sky).reshape(B,Ny*Nx)
     if weights is None:
         W = Wmax = 1
     else:
-        W = _weights.reshape(B,N*M)
+        W = _weights.reshape(B,Ny*Nx)
         Wmax = np.max(W)
+
     if psf is None:
         P_ = psf
     else:
-        P_ = adapt_PSF(psf, B, (N,M))
-    logger.debug("Shape: {0}".format((N,M)))
+        P_ = adapt_PSF(psf, B, (Ny, Nx))
+    logger.debug("Shape: {0}".format((Ny,Nx)))
 
-    # init matrices
-    if A is None:
-        A = init_A(B, K, img=_img, peaks=_peaks)
-    if S is None:
-        S = init_S(N, M, K, img=_img, peaks=_peaks)
+    """
     T = Translation(_peaks, (N,M), B, P_, txy_diff, max_shift,
                     txy_thresh, fit_positions, txy_wait, txy_skip, traceback)
+    """
 
-    # constraints on S: non-negativity or L0/L1 sparsity plus ...
-    if prox_S is None:
-        if l0_thresh is None and l1_thresh is None:
-            prox_S = proxmin.operators.prox_plus
-        else:
-            # L0 has preference
-            if l0_thresh is not None:
-                if l1_thresh is not None:
-                    logger.warn("warning: l1_thresh ignored in favor of l0_thresh")
-                prox_S = partial(proxmin.operators.prox_hard, thresh=l0_thresh)
-            else:
-                prox_S = partial(proxmin.operators.prox_soft_plus, thresh=l1_thresh)
+    # construct Blender from sources
+    blender = Blender(sources)
+    # assemble A and S matrix from source sed and morph (temporary!)
+    A = np.empty((B, blender.K))
+    S = np.empty((blender.K, Nx*Ny))
+    for k in range(blender.K):
+        m,l = blender.source_of[k]
+        A[:,k] = blender.sources[m].sed[:,l]
+        S[k,:] = blender.sources[m].morph[l].flatten()
 
-    # Constraint on A: projected to non-negative numbers that sum to one
-    if prox_A is None:
-        prox_A = proxmin.operators.prox_unity_plus
-
-    # Load linear operator constraints: the g functions
-    if constraints is not None:
-
-        # same constraints for every object?
-        seeks = {} # component k seeks constraint[c]
-        if isinstance(constraints, basestring):
-            for c in constraints:
-                seeks[c] = [True] * K
-        else:
-            assert hasattr(constraints, '__iter__') and len(constraints) == K
-            for i in range(K):
-                if constraints[i] is not None:
-                    for c in constraints[i]:
-                        if c not in seeks.keys():
-                            seeks[c] = [False] * K
-                        seeks[c][i] = True
-
-        all_types = "SMcXYxy"
-        for c in seeks.keys():
-            if c not in all_types:
-                    err = "Each constraint should be None or in {0} but received '{1}'"
-                    raise ValueError(err.format([cn for cn in all_types], c))
-
-        linear_constraints = {
-            "M": proxmin.operators.prox_plus,  # positive gradients
-            "S": proxmin.operators.prox_zero,  # zero deviation of mirrored pixels,
-            "c": partial(operators.prox_cone, G=transformations.getRadialMonotonicOp((N,M), useNearest=monotonicUseNearest).toarray()),
-            "X": proxmin.operators.prox_plus, # positive X gradient
-            "Y": proxmin.operators.prox_plus, # positive Y gradient
-            "x": partial(proxmin.operators.prox_soft, thresh=smoothness), # l1 norm on X gradient
-            "y": partial(proxmin.operators.prox_soft, thresh=smoothness), # l1 norm on Y gradient
-        }
-
-        # Proximal Operator for each constraint
-        proxs_g = [None, # no additional A constraints (yet)
-                   [linear_constraints[c] for c in seeks.keys()] # S constraints
-                   ]
-        # Linear Operator for each constraint
-        Ls = [[proxmin.utils.MatrixAdapter(None)], # none need for A
-              [get_constraint_op(c, (N,M), seeks[c], useNearest=monotonicUseNearest) for c in seeks.keys()]
-              ]
-
-    else:
-        proxs_g = None
-        Ls = None
-
-    logger.debug("prox_A: {0}".format(prox_A))
-    logger.debug("prox_S: {0}".format(prox_S))
-    logger.debug("proxs_g: {0}".format(proxs_g))
-    logger.debug("steps_g: {0}".format(steps_g))
-    logger.debug("steps_g_update: {0}".format(steps_g_update))
-    logger.debug("Ls: {0}".format(Ls))
-
-    # define objective function with strict_constraints
-    f = partial(prox_likelihood, Y=Y, W=W, T=T, prox_S=prox_S, prox_A=prox_A)
-
+    # define objective function
+    # FIXME: can't partial a class member function!!!
+    f = partial(blender.prox_likelihood, Y=Y, W=W, update_order=update_order)
+    return f
     steps_f = Steps_AS(Wmax=Wmax, slack=slack, update_order=update_order)
+    proxs_g = blender.proxs_g
+    Ls = blender.Ls
 
     # run the NMF with those constraints
     Xs = [A, S]
@@ -587,13 +415,8 @@ def deblend(img,
                                   accelerated=True, traceback=traceback)
 
     if not traceback:
-        A, S = res
-        S = S.reshape(K,N,M)
-        result = Blend(A, S, T, traceback=None, f=f)
+        # A, S = res
+        return blender
     else:
         [A, S], tr = res
-        S = S.reshape(K,N,M)
-        result = Blend(A, S, T, traceback=tr,
-            f=f, steps_f=steps_f, proxs_g=proxs_g, steps_g=steps_g, Ls=Ls, update_order=update_order,
-            steps_g_update=steps_g_update, e_rel=e_rel)
-    return result
+        return blender, tr
