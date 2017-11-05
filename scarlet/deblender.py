@@ -138,7 +138,7 @@ class Source(object):
     def _init_morph(self, x, y, img):
         B, Ny, Nx = img.shape
         cx, cy = int(Nx/2), int(Ny/2)
-        self.morph = np.zeros((1, Ny, Nx))
+        self.morph = np.zeros((1, Ny*Nx))
         tiny = 1e-10
         flux = np.abs(img[:,cy,cx].mean()) + tiny
         self.morph[0,cy*Nx+cx] = flux
