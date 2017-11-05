@@ -20,111 +20,6 @@ except NameError:
 
 logger = logging.getLogger("scarlet.deblender")
 
-class Blender(object):
-    """The blended scene as interpreted by the deblender.
-    """
-    def __init__(self, sources):
-        assert len(sources)
-        self._insert_sources(sources)
-
-        # container for gradients of S and A
-        B, Nx, Ny = self.sources[0].B, self.sources[0].Nx, self.sources[0].Ny
-        self.update = [np.empty((self.K,Nx*Ny)), np.empty((B,self.K))]
-
-        # list of all proxs_g and Ls
-        self.proxs_g = None
-        self.Ls = None
-        # TODO: activate this with per-source optimization
-        # self.proxs_g = [[source.proxs_g[0] for source in self.sources], # for A
-        #                 [source.proxs_g[1] for source in self.sources]] # for S
-        # self.Ls = [[source.Ls[0] for source in self.sources], # for A
-        #            [source.Ls[1] for source in self.sources]] # for S
-
-    def _insert_sources(self, sources):
-        self.sources = sources # do not copy!
-        self.M = len(self.sources)
-        self.K =  sum([source.K for source in self.sources])
-
-        # lookup of source/component tuple given component number k
-        self.source_of = []
-        for m in range(self.M):
-            for l in range(self.sources[m].K):
-                self.source_of.append((m,l))
-
-    def component_of(self, m, l):
-        # search for k that has this (m,l), inverse of source_of
-        for k in range(self.K):
-            if self.source_of[k] == (m,l):
-                return k
-        raise IndexError
-
-    def __len__(self):
-        """Number of distinct sources"""
-        return self.M
-
-    def prox_likelihood(X, step, Xs=None, j=None, Y=None, W=1, update_order=[0,1]):
-
-        if j > 0:
-            raise ValueError("Expected index j in [0,1]")
-
-        """
-        # TODO: centroid updates
-        if j == 0 and T.fit_positions:
-            # Update the translation operators
-            A, S = Xs
-            model = get_model(A, S, T.Gamma, combine=False)
-            T.update_positions(Y, model, A, S, W)
-        """
-        # computing likelihood gradients for S and A: only once per iteration
-        B, Nx, Ny = self.sources[0].B, self.sources[0].Nx, self.sources[0].Ny
-        if j == update_order[0]:
-            model = get_model(combined=True)
-            self.diff = W*(model-Y).reshape(B, Ny*Nx)
-
-        # A update
-        if j == 0:
-            self.update[j][:,:] = 0
-            for k in range(K):
-                m,l = self.source_of(k)
-                if not self.sources[m].fix_sed[l]:
-                    # gradient of likelihood wrt A
-                    self.update[j][:,k] = 0
-                    for b in range(B):
-                        self.update[j][b,k] = self.diff[b].dot(Gamma[k][b].dot(S[k]))
-
-                    # apply per component prox projection and save in source
-                    self.sources[m].sed[l] = self.sources[m].prox_sed[l](self.sources[m].sed[l] - step*self.update[j][k], step)
-                    # copy into result matrix
-                    self.update[j][:,k] = self.sources[m].sed[l]
-
-        # S update
-        if j == 1:
-            for k in range(self.K):
-                m,l = self.source_of(k)
-                if not self.sources[m].fix_morph[l]:
-                    # gradient of likelihood wrt S
-                    self.update[j][k,:] = 0
-                    for b in range(B):
-                        self.update[j][k,:] += A[b,k]*Gamma[k][b].T.dot(self.diff[b])
-
-                    # apply per component prox projection and save in source
-                    self.sources[m].morph[l] = self.sources[m].prox_morph[l](self.sources[m].morph[l] - step*self.update[j][k].reshape(Ny,Nx), step)
-                    # copy into result matrix
-                    self.update[j][k,:] = self.sources[m].morph[l].flatten()
-
-        return self.update[j]
-
-    def get_model(self, m=None, combine=True):
-        """Build the current model
-        """
-        if m is None:
-            # needs to have source components combined
-            models = [source.get_model(combine=True) for source in self.sources]
-            if combine:
-                model = np.sum(models, axis=0)
-        else:
-            return self.source[m].get_model(combine=combine)
-
 class Source(object):
     def __init__(self, x, y, img, psfs=None, constraints=None, sed=None, morph=None, fix_sed=False, fix_morph=False, fix_center=False, prox_sed=None, prox_morph=None):
         self.x = x
@@ -256,6 +151,111 @@ class Source(object):
             model = model.sum(axis=0)
         return model
 
+class Blender(object):
+    """The blended scene as interpreted by the deblender.
+    """
+    def __init__(self, sources):
+        assert len(sources)
+        self._insert_sources(sources)
+
+        # container for gradients of S and A
+        B, Nx, Ny = self.sources[0].B, self.sources[0].Nx, self.sources[0].Ny
+        self.update = [np.empty((self.K,Nx*Ny)), np.empty((B,self.K))]
+
+        # list of all proxs_g and Ls
+        self.proxs_g = None
+        self.Ls = None
+        # TODO: activate this with per-source optimization
+        # self.proxs_g = [[source.proxs_g[0] for source in self.sources], # for A
+        #                 [source.proxs_g[1] for source in self.sources]] # for S
+        # self.Ls = [[source.Ls[0] for source in self.sources], # for A
+        #            [source.Ls[1] for source in self.sources]] # for S
+
+    def _insert_sources(self, sources):
+        self.sources = sources # do not copy!
+        self.M = len(self.sources)
+        self.K =  sum([source.K for source in self.sources])
+
+        # lookup of source/component tuple given component number k
+        self.source_of = []
+        for m in range(self.M):
+            for l in range(self.sources[m].K):
+                self.source_of.append((m,l))
+
+    def component_of(self, m, l):
+        # search for k that has this (m,l), inverse of source_of
+        for k in range(self.K):
+            if self.source_of[k] == (m,l):
+                return k
+        raise IndexError
+
+    def __len__(self):
+        """Number of distinct sources"""
+        return self.M
+
+    def prox_likelihood(self, X, step, Xs=None, j=None, Y=None, W=1, update_order=[0,1]):
+
+        print (Y.shape, W.shape)
+        if j > 0:
+            raise ValueError("Expected index j in [0,1]")
+
+        """
+        # TODO: centroid updates
+        if j == 0 and T.fit_positions:
+            # Update the translation operators
+            A, S = Xs
+            model = get_model(A, S, T.Gamma, combine=False)
+            T.update_positions(Y, model, A, S, W)
+        """
+        # computing likelihood gradients for S and A: only once per iteration
+        B, Nx, Ny = self.sources[0].B, self.sources[0].Nx, self.sources[0].Ny
+        if j == update_order[0]:
+            model = self.get_model(combine=True)
+            self.diff = W*(model-Y).reshape(B, Ny*Nx)
+
+        # A update
+        if j == 0:
+            self.update[j][:,:] = 0
+            for k in range(K):
+                m,l = self.source_of(k)
+                if not self.sources[m].fix_sed[l]:
+                    # gradient of likelihood wrt A
+                    self.update[j][:,k] = 0
+                    for b in range(B):
+                        self.update[j][b,k] = self.diff[b].dot(self.sources[m].Gamma[k][b].dot(self.sources[m].morph[l][k]))
+
+                    # apply per component prox projection and save in source
+                    self.sources[m].sed[l] = self.sources[m].prox_sed[l](self.sources[m].sed[l] - step*self.update[j][k], step)
+                    # copy into result matrix
+                    self.update[j][:,k] = self.sources[m].sed[l]
+
+        # S update
+        if j == 1:
+            for k in range(self.K):
+                m,l = self.source_of(k)
+                if not self.sources[m].fix_morph[l]:
+                    # gradient of likelihood wrt S
+                    self.update[j][k,:] = 0
+                    for b in range(B):
+                        self.update[j][k,:] += self.sources[m].sed[l][b,k]*self.sources[m].Gamma[k][b].T.dot(self.diff[b])
+
+                    # apply per component prox projection and save in source
+                    self.sources[m].morph[l] = self.sources[m].prox_morph[l](self.sources[m].morph[l] - step*self.update[j][k].reshape(Ny,Nx), step)
+                    # copy into result matrix
+                    self.update[j][k,:] = self.sources[m].morph[l].flatten()
+
+        return self.update[j]
+
+    def get_model(self, m=None, combine=True):
+        """Build the current model
+        """
+        if m is None:
+            # needs to have source components combined
+            models = [source.get_model(combine=True) for source in self.sources]
+            if combine:
+                model = np.sum(models, axis=0)
+        else:
+            return self.source[m].get_model(combine=combine)
 
 def adapt_PSF(psf, B, shape):
     # Simpler for likelihood gradients if psf = const across B
@@ -401,9 +401,9 @@ def deblend(img,
         S[k,:] = blender.sources[m].morph[l].flatten()
 
     # define objective function
-    # FIXME: can't partial a class member function!!!
+    if update_order is None:
+        update_order = range(2)
     f = partial(blender.prox_likelihood, Y=Y, W=W, update_order=update_order)
-    return f
     steps_f = Steps_AS(Wmax=Wmax, slack=slack, update_order=update_order)
     proxs_g = blender.proxs_g
     Ls = blender.Ls
