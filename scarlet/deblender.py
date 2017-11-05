@@ -24,6 +24,11 @@ class Source(object):
     def __init__(self, x, y, img, psfs=None, constraints=None, sed=None, morph=None, fix_sed=False, fix_morph=False, fix_center=False, prox_sed=None, prox_morph=None):
         self.x = x
         self.y = y
+        self.B, self.Ny, self.Nx = img.shape
+
+        # TODO: use bounding box as argument, make cutout of img (odd pixel number)
+        # and initialize morph directly from cutout instead if point source
+
         from copy import deepcopy
         self.constraints = deepcopy(constraints)
 
@@ -31,7 +36,7 @@ class Source(object):
             self._init_sed(self.x, self.y, img)
         else:
             # to allow multi-component sources, need to have BxK array
-            if len(sed) != 2:
+            if len(sed.shape) != 2:
                 self.sed = sed.reshape((len(sed),1))
             else:
                 self.sed = sed.copy()
@@ -39,11 +44,18 @@ class Source(object):
         if morph is None:
             self._init_morph(self.x, self.y, img)
         else:
-            # to allow multi-component sources, need to have K x Nx x Ny array
-            if len(morph) != 3:
-                self.morph = morph.reshape((1,) + morph.shape)
+            # to allow multi-component sources, need to have K x Nx*Ny array
+            if len(morph.shape) == 3: # images for each component
+                self.morph = morph.reshape((morph.shape[0], -1))
+            elif len(morph.shape) == 2:
+                if morph.shape[0] == self.K: # vectors for each component
+                    self.morph = morph.copy()
+                else: # morph image for one component
+                    self.morph = morph.flatten().reshape((1, -1))
+            elif len(morph.shape) == 1: # vector for one component
+                self.morph = morph.reshape((1, -1))
             else:
-                self.morph = morph.copy()
+                raise NotImplementedError("Shape of morph not understood: %r" % morph.shape)
 
         if hasattr(fix_sed, '__inter__') and len(fix_sed) == self.K:
             self.fix_sed = fix_sed
@@ -108,16 +120,8 @@ class Source(object):
         return self.__len__()
 
     @property
-    def B(self):
-        return self.sed.shape[0]
-
-    @property
-    def Nx(self):
-        return self.morph[0].shape[1]
-
-    @property
-    def Ny(self):
-        return self.morph[0].shape[0]
+    def image(self):
+        return self.morph.reshape((-1,self.Nx,self.Ny)) # this *should* be a view
 
     def _init_sed(self, x, y, img):
         # init A from SED of the peak pixels
@@ -137,14 +141,14 @@ class Source(object):
         self.morph = np.zeros((1, Ny, Nx))
         tiny = 1e-10
         flux = np.abs(img[:,cy,cx].mean()) + tiny
-        self.morph[0,cy,cx] = flux
+        self.morph[0,cy*Nx+cx] = flux
 
     def get_model(self, combine=True):
         # model for all components of this source
         model = np.empty((self.K,self.B,self.Ny*self.Nx))
         for k in range(self.K):
             for b in range(self.B):
-                model[k,b] += self.sed[b,k] * self.Gamma[b].dot(self.morph[k].flatten())
+                model[k,b] += self.sed[b,k] * self.Gamma[b].dot(self.morph[k])
         # reshape the image into a 2D array
         model = model.reshape(self.K,self.B,self.Ny,self.Nx)
         if combine:
@@ -156,7 +160,7 @@ class Blender(object):
     """
     def __init__(self, sources):
         assert len(sources)
-        self._insert_sources(sources)
+        self._register_sources(sources)
 
         # container for gradients of S and A
         B, Nx, Ny = self.sources[0].B, self.sources[0].Nx, self.sources[0].Ny
@@ -171,7 +175,7 @@ class Blender(object):
         # self.Ls = [[source.Ls[0] for source in self.sources], # for A
         #            [source.Ls[1] for source in self.sources]] # for S
 
-    def _insert_sources(self, sources):
+    def _register_sources(self, sources):
         self.sources = sources # do not copy!
         self.M = len(self.sources)
         self.K =  sum([source.K for source in self.sources])
@@ -240,9 +244,9 @@ class Blender(object):
                         self.update[j][k,:] += self.sources[m].sed[l][b,k]*self.sources[m].Gamma[k][b].T.dot(self.diff[b])
 
                     # apply per component prox projection and save in source
-                    self.sources[m].morph[l] = self.sources[m].prox_morph[l](self.sources[m].morph[l] - step*self.update[j][k].reshape(Ny,Nx), step)
+                    self.sources[m].morph[l] = self.sources[m].prox_morph[l](self.sources[m].morph[l] - step*self.update[j][k], step)
                     # copy into result matrix
-                    self.update[j][k,:] = self.sources[m].morph[l].flatten()
+                    self.update[j][k,:] = self.sources[m].morph[l]
 
         return self.update[j]
 
