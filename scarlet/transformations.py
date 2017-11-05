@@ -4,7 +4,7 @@ import logging
 import numpy as np
 import scipy.sparse
 
-logger = logging.getLogger("deblender.operators")
+logger = logging.getLogger("scarlet.transformations")
 
 class BaseTranslation(object):
     """Base Class to perform PSF convolution and translations

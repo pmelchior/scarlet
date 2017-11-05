@@ -356,6 +356,7 @@ def deblend(img,
     B,Ny,Nx = img.shape
 
     # Ensure that the image has an odd number of rows and columns
+    # TODO: should not be necessary if sources are defined on odd-pixel boxes
     _img = reshape_img(img, truncate=truncate)
     if _img.shape != img.shape:
         logger.warn("Reshaped image from {0} to {1}".format(img.shape, _img.shape))
