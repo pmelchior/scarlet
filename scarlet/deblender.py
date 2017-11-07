@@ -21,7 +21,7 @@ except NameError:
 logger = logging.getLogger("scarlet.deblender")
 
 class Source(object):
-    def __init__(self, x, y, img, psfs=None, constraints=None, sed=None, morph=None, fix_sed=False, fix_morph=False, fix_center=False, prox_sed=None, prox_morph=None):
+    def __init__(self, x, y, img, psf=None, constraints=None, sed=None, morph=None, fix_sed=False, fix_morph=False, fix_center=False, prox_sed=None, prox_morph=None):
         # TODO: use bounding box as argument, make cutout of img (odd pixel number)
         # and initialize morph directly from cutout instead if point source
 
@@ -29,7 +29,7 @@ class Source(object):
         self.x = x
         self.y = y
         self.B, self.Ny, self.Nx = img.shape
-        self._translate_psfs(psfs)
+        self._translate_psfs(psf)
 
         from copy import deepcopy
         self.constraints = deepcopy(constraints)
@@ -125,42 +125,23 @@ class Source(object):
     def image(self):
         return self.morph.reshape((-1,self.Nx,self.Ny)) # this *should* be a view
 
-    def _translate_psfs(self, psfs=None, ddx=0, ddy=0):
-        """Build the operators to perform a translation
-        """
-        self.int_tx = {}
-        self.int_ty = {}
-        self.Tx, self.Ty = transformations.getTranslationOps((self.Ny, self.Nx), self, ddx, ddy)
-        self.Gamma = transformations.getGammaOp(self.Tx, self.Ty, self.B, psfs)
-
-    def _init_sed(self, x, y, img):
-        # init A from SED of the peak pixels
-        B, Ny, Nx = img.shape
-        self.sed = np.empty((1,B))
-        self.sed[0] = img[:,int(self.y),int(self.x)]
-        # ensure proper normalization
-        self.sed[0] = proxmin.operators.prox_unity_plus(self.sed[0], 0)
-
-    def _init_morph(self, x, y, img):
-        B, Ny, Nx = img.shape
-        cx, cy = int(Nx/2), int(Ny/2)
-        self.morph = np.zeros((1, Ny*Nx))
-        tiny = 1e-10
-        flux = np.abs(img[:,cy,cx].mean()) + tiny
-        self.morph[0,cy*Nx+cx] = flux
-
     def get_model(self, combine=True):
         # model for all components of this source
-        model = np.zeros((self.K,self.B,self.Ny*self.Nx))
-        for k in range(self.K):
-            for b in range(self.B):
-                model[k,b] += self.sed[k,b] * self.Gamma[b].dot(self.morph[k])
+        if hasattr(self.Gamma, 'shape'): # single matrix: one for all bands
+            model = np.empty((self.K,self.B,self.Ny*self.Nx))
+            for k in range(self.K):
+                model[k] = np.outer(self.sed[k], self.Gamma.dot(self.morph[k]))
+        else:
+            model = np.zeros((self.K,self.B,self.Ny*self.Nx))
+            for k in range(self.K):
+                for b in range(self.B):
+                    model[k,b] += self.sed[k,b] * self.Gamma[b].dot(self.morph[k])
+
         # reshape the image into a 2D array
         model = model.reshape(self.K,self.B,self.Ny,self.Nx)
         if combine:
             model = model.sum(axis=0)
         return model
-
 
     # def get_diff_images(self, data, models, A, S, W):
     #     """Get differential images to fit translations
@@ -197,6 +178,45 @@ class Source(object):
     #         diff_images.append(diff_img)
     #     return diff_images
 
+    def _translate_psfs(self, psf=None, ddx=0, ddy=0):
+        """Build the operators to perform a translation
+        """
+        self.int_tx = {}
+        self.int_ty = {}
+        self.Tx, self.Ty = transformations.getTranslationOps((self.Ny, self.Nx), self, ddx, ddy)
+        if psf is None:
+            P = None
+        else:
+            P = self._adapt_PSF(psf)
+        self.Gamma = transformations.getGammaOp(self.Tx, self.Ty, self.B, P)
+
+    def _adapt_PSF(self, psf):
+        shape = (self.Ny, self.Nx)
+        # Simpler for likelihood gradients if psf = const across B
+        if hasattr(psf, 'shape'): # single matrix
+            return transformations.getPSFOp(psf, shape)
+
+        P = []
+        for b in range(self.B):
+            P.append(transformations.getPSFOp(psf[b], shape))
+        return P
+
+    def _init_sed(self, x, y, img):
+        # init A from SED of the peak pixels
+        B, Ny, Nx = img.shape
+        self.sed = np.empty((1,B))
+        self.sed[0] = img[:,int(self.y),int(self.x)]
+        # ensure proper normalization
+        self.sed[0] = proxmin.operators.prox_unity_plus(self.sed[0], 0)
+
+    def _init_morph(self, x, y, img):
+        B, Ny, Nx = img.shape
+        cx, cy = int(Nx/2), int(Ny/2)
+        self.morph = np.zeros((1, Ny*Nx))
+        tiny = 1e-10
+        flux = np.abs(img[:,cy,cx].mean()) + tiny
+        self.morph[0,cy*Nx+cx] = flux
+
 
 class Blender(object):
     """The blended scene as interpreted by the deblender.
@@ -226,6 +246,7 @@ class Blender(object):
         self.sources = sources # do not copy!
         self.M = len(self.sources)
         self.K =  sum([source.K for source in self.sources])
+        self.psf_per_band = not hasattr(sources[0].Gamma, 'shape')
 
         # lookup of source/component tuple given component number k
         self._source_of = []
@@ -254,8 +275,6 @@ class Blender(object):
         if j == update_order[0]:
             model = self.get_model(combine=True)
             self.diff = (W*(model-Y)).reshape(B, Ny*Nx)
-            #print (model)
-
             """
             # TODO: centroid updates
             if T.fit_positions:
@@ -264,14 +283,15 @@ class Blender(object):
 
         # A update
         if j == 0:
-            self.A[:,:] = 0
             for k in range(self.K):
                 m,l = self.source_of(k)
                 if not self.sources[m].fix_sed[l]:
                     # gradient of likelihood wrt A
-                    self.A[:,k] = 0
-                    for b in range(B):
-                        self.A[b,k] = self.diff[b].dot(self.sources[m].Gamma[b].dot(self.sources[m].morph[l]))
+                    if not self.psf_per_band:
+                        self.A[:,k] = self.diff.dot(self.sources[m].Gamma.dot(self.sources[m].morph[l]))
+                    else:
+                        for b in range(B):
+                            self.A[b,k] = self.diff[b].dot(self.sources[m].Gamma[b].dot(self.sources[m].morph[l]))
 
                     # apply per component prox projection and save in source
                     self.sources[m].sed[l] =  self.sources[m].prox_sed[l](self.sources[m].sed[l] - step*self.A[:,k], step)
@@ -287,8 +307,12 @@ class Blender(object):
                 if not self.sources[m].fix_morph[l]:
                     # gradient of likelihood wrt S
                     self.S[k,:] = 0
-                    for b in range(B):
-                        self.S[k,:] += self.sources[m].sed[l,b]*self.sources[m].Gamma[b].T.dot(self.diff[b])
+                    if not self.psf_per_band:
+                        for b in range(B):
+                            self.S[k,:] += self.sources[m].sed[l,b]*self.sources[m].Gamma.T.dot(self.diff[b])
+                    else:
+                        for b in range(B):
+                            self.S[k,:] += self.sources[m].sed[l,b]*self.sources[m].Gamma[b].T.dot(self.diff[b])
 
                     # apply per component prox projection and save in source
                     self.sources[m].morph[l] = self.sources[m].prox_morph[l](self.sources[m].morph[l] - step*self.S[k], step)
@@ -312,16 +336,6 @@ class Blender(object):
         else:
             return self.source[m].get_model(combine=combine)
 
-def adapt_PSF(psf, B, shape):
-    # Simpler for likelihood gradients if psf = const across B
-    if len(psf.shape)==2: # single matrix
-        return transformations.getPSFOp(psf, shape)
-
-    P_ = []
-    for b in range(B):
-        P_.append(transformations.getPSFOp(psf[b], shape))
-    return P_
-
 def get_constraint_op(constraint, shape, seeks, useNearest=True):
     """Get appropriate constraint operator
     """
@@ -342,47 +356,6 @@ def get_constraint_op(constraint, shape, seeks, useNearest=True):
     adapter =  proxmin.utils.MatrixAdapter(L, axis=1)
     return adapter
 
-def oddify(shape, truncate=False):
-    """Get an odd number of rows and columns
-    """
-    if shape is None:
-        shape = img.shape
-    B,N,M = shape
-    if N % 2 == 0:
-        if truncate:
-            N -= 1
-        else:
-            N += 1
-    if M % 2 == 0:
-        if truncate:
-            M -= 1
-        else:
-            M += 1
-    return B, N, M
-
-def reshape_img(img, new_shape=None, truncate=False, fill=0):
-    """Ensure that the image has an odd number of rows and columns
-    """
-    if new_shape is None:
-        new_shape = oddify(img.shape, truncate)
-
-    if img.shape != new_shape:
-        B,N,M = img.shape
-        _B,_N,_M = new_shape
-        if B != _B:
-            raise ValueError("The old and new shape must have the same number of bands")
-        if truncate:
-            _img = img[:,:_N, :_M]
-        else:
-            if fill==0:
-                _img = np.zeros((B,_N,_M))
-            else:
-                _img = np.empty((B,_N,_M))
-                _img[:] = fill
-            _img[:,:N,:M] = img[:]
-    else:
-        _img = img
-    return _img
 
 def deblend(img,
             sources,
