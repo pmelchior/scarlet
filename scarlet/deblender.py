@@ -22,12 +22,14 @@ logger = logging.getLogger("scarlet.deblender")
 
 class Source(object):
     def __init__(self, x, y, img, psfs=None, constraints=None, sed=None, morph=None, fix_sed=False, fix_morph=False, fix_center=False, prox_sed=None, prox_morph=None):
+        # TODO: use bounding box as argument, make cutout of img (odd pixel number)
+        # and initialize morph directly from cutout instead if point source
+
+        # copy data structures
         self.x = x
         self.y = y
         self.B, self.Ny, self.Nx = img.shape
-
-        # TODO: use bounding box as argument, make cutout of img (odd pixel number)
-        # and initialize morph directly from cutout instead if point source
+        self._translate_psfs(psfs)
 
         from copy import deepcopy
         self.constraints = deepcopy(constraints)
@@ -123,6 +125,14 @@ class Source(object):
     def image(self):
         return self.morph.reshape((-1,self.Nx,self.Ny)) # this *should* be a view
 
+    def _translate_psfs(self, psfs=None, ddx=0, ddy=0):
+        """Build the operators to perform a translation
+        """
+        self.int_tx = {}
+        self.int_ty = {}
+        self.Tx, self.Ty = transformations.getTranslationOps((self.Ny, self.Nx), self, ddx, ddy)
+        self.Gamma = transformations.getGammaOp(self.Tx, self.Ty, self.B, psfs)
+
     def _init_sed(self, x, y, img):
         # init A from SED of the peak pixels
         B, Ny, Nx = img.shape
@@ -155,6 +165,43 @@ class Source(object):
             model = model.sum(axis=0)
         return model
 
+
+    # def get_diff_images(self, data, models, A, S, W):
+    #     """Get differential images to fit translations
+    #     """
+    #     from .deblender import get_peak_model
+    #
+    #     dxy = self.differential
+    #     diff_images = []
+    #     for pk, peak in enumerate(self.cat.objects):
+    #         dx = self.cx - peak.x
+    #         dx = self.cy - peak.y
+    #         # Combine all of the components of the current peak into a model
+    #         model = []
+    #         for k in peak.component_indices:
+    #             model.append(models[k])
+    #         model = np.sum(model, axis=0)
+    #         Tx, Ty = self.get_translation_ops(pk, dxy, dxy, update=False)
+    #         # Get the difference image in x by adjusting only the x
+    #         # component by the differential amount dxy
+    #         Gk = self.build_Gamma(pk, Tx=Tx, update=False)
+    #         diff_img = []
+    #         for k in peak.component_indices:
+    #             diff_img.append(get_peak_model(A[:,k], S[k], Gk))
+    #         diff_img = np.sum(diff_img, axis=0)
+    #         diff_img = (model-diff_img)/dxy
+    #         diff_images.append(diff_img)
+    #         # Do the same for the y difference image
+    #         Gk = self.build_Gamma(pk, Ty=Ty, update=False)
+    #         diff_img = []
+    #         for k in peak.component_indices:
+    #             diff_img.append(get_peak_model(A[:,k], S[k], Gk))
+    #         diff_img = np.sum(diff_img, axis=0)
+    #         diff_img = (model-diff_img)/dxy
+    #         diff_images.append(diff_img)
+    #     return diff_images
+
+
 class Blender(object):
     """The blended scene as interpreted by the deblender.
     """
@@ -164,7 +211,7 @@ class Blender(object):
 
         # container for gradients of S and A
         B, Nx, Ny = self.sources[0].B, self.sources[0].Nx, self.sources[0].Ny
-        self.update = [np.empty((self.K,Nx*Ny)), np.empty((B,self.K))]
+        self.update = [np.empty((B,self.K)), np.empty((self.K,Nx*Ny))]
 
         # list of all proxs_g and Ls
         self.proxs_g = None
@@ -181,15 +228,18 @@ class Blender(object):
         self.K =  sum([source.K for source in self.sources])
 
         # lookup of source/component tuple given component number k
-        self.source_of = []
+        self._source_of = []
         for m in range(self.M):
             for l in range(self.sources[m].K):
-                self.source_of.append((m,l))
+                self._source_of.append((m,l))
+
+    def source_of(self, k):
+        return self._source_of[k]
 
     def component_of(self, m, l):
         # search for k that has this (m,l), inverse of source_of
         for k in range(self.K):
-            if self.source_of[k] == (m,l):
+            if self._source_of[k] == (m,l):
                 return k
         raise IndexError
 
@@ -199,54 +249,56 @@ class Blender(object):
 
     def prox_likelihood(self, X, step, Xs=None, j=None, Y=None, W=1, update_order=[0,1]):
 
-        print (Y.shape, W.shape)
-        if j > 0:
-            raise ValueError("Expected index j in [0,1]")
-
-        """
-        # TODO: centroid updates
-        if j == 0 and T.fit_positions:
-            # Update the translation operators
-            A, S = Xs
-            model = get_model(A, S, T.Gamma, combine=False)
-            T.update_positions(Y, model, A, S, W)
-        """
         # computing likelihood gradients for S and A: only once per iteration
         B, Nx, Ny = self.sources[0].B, self.sources[0].Nx, self.sources[0].Ny
         if j == update_order[0]:
             model = self.get_model(combine=True)
-            self.diff = W*(model-Y).reshape(B, Ny*Nx)
+            self.diff = (W*(model-Y)).reshape(B, Ny*Nx)
+            #print (model)
+
+            """
+            # TODO: centroid updates
+            if T.fit_positions:
+                T.update_positions(Y, model, A, S, W)
+            """
 
         # A update
         if j == 0:
             self.update[j][:,:] = 0
-            for k in range(K):
+            for k in range(self.K):
                 m,l = self.source_of(k)
                 if not self.sources[m].fix_sed[l]:
                     # gradient of likelihood wrt A
                     self.update[j][:,k] = 0
                     for b in range(B):
-                        self.update[j][b,k] = self.diff[b].dot(self.sources[m].Gamma[k][b].dot(self.sources[m].morph[l][k]))
+                        self.update[j][b,k] = self.diff[b].dot(self.sources[m].Gamma[b].dot(self.sources[m].morph[l]))
 
                     # apply per component prox projection and save in source
-                    self.sources[m].sed[l] = self.sources[m].prox_sed[l](self.sources[m].sed[l] - step*self.update[j][k], step)
+                    self.sources[m].sed[:,l] =  self.sources[m].prox_sed[l](self.sources[m].sed[:,l] - step*self.update[j][:,k], step)
+
                     # copy into result matrix
-                    self.update[j][:,k] = self.sources[m].sed[l]
+                    self.update[j][:,k] = self.sources[m].sed[:,l]
 
         # S update
-        if j == 1:
+        elif j == 1:
             for k in range(self.K):
                 m,l = self.source_of(k)
                 if not self.sources[m].fix_morph[l]:
                     # gradient of likelihood wrt S
                     self.update[j][k,:] = 0
                     for b in range(B):
-                        self.update[j][k,:] += self.sources[m].sed[l][b,k]*self.sources[m].Gamma[k][b].T.dot(self.diff[b])
+                        self.update[j][k,:] += self.sources[m].sed[b,l]*self.sources[m].Gamma[b].T.dot(self.diff[b])
 
                     # apply per component prox projection and save in source
+                    #print(self.sources[m].morph[l], step*self.update[j][k], self.sources[m].prox_morph[l](self.sources[m].morph[l] - step*self.update[j][k], step))
                     self.sources[m].morph[l] = self.sources[m].prox_morph[l](self.sources[m].morph[l] - step*self.update[j][k], step)
                     # copy into result matrix
                     self.update[j][k,:] = self.sources[m].morph[l]
+
+        else:
+            raise ValueError("Expected index j in [0,1]")
+
+        print (j,step,np.abs(self.update[j]).max())
 
         return self.update[j]
 
@@ -255,9 +307,10 @@ class Blender(object):
         """
         if m is None:
             # needs to have source components combined
-            models = [source.get_model(combine=True) for source in self.sources]
+            model = [source.get_model(combine=True) for source in self.sources]
             if combine:
-                model = np.sum(models, axis=0)
+                model = np.sum(model, axis=0)
+            return model
         else:
             return self.source[m].get_model(combine=combine)
 
@@ -356,59 +409,41 @@ def deblend(img,
             #txy_skip=10,
             ):
 
-    # vectorize image cubes
-    B,Ny,Nx = img.shape
-
-    # Ensure that the image has an odd number of rows and columns
-    # TODO: should not be necessary if sources are defined on odd-pixel boxes
-    _img = reshape_img(img, truncate=truncate)
-    if _img.shape != img.shape:
-        logger.warn("Reshaped image from {0} to {1}".format(img.shape, _img.shape))
-        if weights is not None:
-            _weights = reshape_img(weights, _img.shape, truncate=truncate)
-        if sky is not None:
-            _sky = reshape_img(sky, _img.shape, truncate=truncate)
-        B,Ny,Nx = _img.shape
-    else:
-        _img = img
-        _weights = weights
-        _sky = sky
-
     if sky is None:
-        Y = _img.reshape(B,Ny*Nx)
+        Y = img
     else:
-        Y = (_img-_sky).reshape(B,Ny*Nx)
+        Y = img-sky
     if weights is None:
         W = Wmax = 1
     else:
-        W = _weights.reshape(B,Ny*Nx)
-        Wmax = np.max(W)
-
-    if psf is None:
-        P_ = psf
-    else:
-        P_ = adapt_PSF(psf, B, (Ny, Nx))
-    logger.debug("Shape: {0}".format((Ny,Nx)))
+        Wmax = np.max(weights)
 
     """
+    # TODO: move to Source
     T = Translation(_peaks, (N,M), B, P_, txy_diff, max_shift,
                     txy_thresh, fit_positions, txy_wait, txy_skip, traceback)
+    if psf is None:
+        P = psf
+    else:
+        P = adapt_PSF(psf, B, (Ny, Nx))
+    logger.debug("Shape: {0}".format((Ny,Nx)))
     """
 
     # construct Blender from sources
     blender = Blender(sources)
     # assemble A and S matrix from source sed and morph (temporary!)
+    B,Ny,Nx = img.shape
     A = np.empty((B, blender.K))
     S = np.empty((blender.K, Nx*Ny))
     for k in range(blender.K):
-        m,l = blender.source_of[k]
+        m,l = blender.source_of(k)
         A[:,k] = blender.sources[m].sed[:,l]
         S[k,:] = blender.sources[m].morph[l].flatten()
 
     # define objective function
     if update_order is None:
         update_order = range(2)
-    f = partial(blender.prox_likelihood, Y=Y, W=W, update_order=update_order)
+    f = partial(blender.prox_likelihood, Y=Y, W=weights, update_order=update_order)
     steps_f = Steps_AS(Wmax=Wmax, slack=slack, update_order=update_order)
     proxs_g = blender.proxs_g
     Ls = blender.Ls

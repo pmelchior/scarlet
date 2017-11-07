@@ -120,142 +120,75 @@ class BaseTranslation(object):
         py_hist = np.array(self.history["py"])
         return px_hist, py_hist
 
-class TxyTranslation(BaseTranslation):
-    def __init__(self, *args, **kwargs):
-        """Initialize the class
+def getTxOp(shape, int_dx):
+    """Construct Tx and its components
+    """
+    height, width = shape
+    tx = scipy.sparse.diags([1],[int_dx], shape=(width, width), dtype=np.float64)
+    tx_plus = scipy.sparse.diags([-1,1],[int_dx, int_dx+1],
+                                 shape=(width, width), dtype=np.float64)
+    tx_minus = scipy.sparse.diags([1,-1],[int_dx, int_dx-1],
+                                  shape=(width, width), dtype=np.float64)
+    tx = scipy.sparse.block_diag([tx]*height)
+    tx_plus = scipy.sparse.block_diag([tx_plus]*height)
+    tx_minus = scipy.sparse.block_diag([tx_minus]*height)
+    return tx, tx_plus, tx_minus
 
-        The class is initialized with its shape and the initial differential operators
-        """
-        # TODO: For now use a Python 2 friendly super __init__,
-        # but in the future switch to the pure Python 3
-        super(self.__class__, self).__init__(*args, **kwargs)
+def getTyOp(shape, int_dy):
+    """Construct Ty and its components
+    """
+    height, width = shape
+    size = height*width
+    ty = scipy.sparse.diags([1], [int_dy*width], shape=(size, size), dtype=np.float64)
+    ty_plus = scipy.sparse.diags([-1, 1], [int_dy*width, (int_dy+1)*width],
+                                 shape=(size, size), dtype=np.float64)
+    ty_minus = scipy.sparse.diags([1, -1], [int_dy*width, (int_dy-1)*width],
+                                  shape=(size, size), dtype=np.float64)
+    return ty, ty_plus, ty_minus
 
-        # Create the initial translations
-        for k in range(len(self.cat.objects)):
-            self.translate_psfs(k, update=True)
+def getTranslationOps(shape, source, ddx=0, ddy=0):
+    """Get the operators to translate source
+    """
+    cx, cy = int(shape[1])>>1, int(shape[0])>>1
+    dx, dy = cx-source.x, cy-source.y
+    dx += ddx
+    dy += ddy
+    int_dx, int_dy = int(dx), int(dy)
 
-    def build_Tx(self, peak, int_dx):
-        """Construct Tx and its components
-        """
-        height, width = self.shape
-        tx = scipy.sparse.diags([1],[int_dx], shape=(width, width), dtype=np.float64)
-        tx_plus = scipy.sparse.diags([-1,1],[int_dx, int_dx+1],
-                                     shape=(width, width), dtype=np.float64)
-        tx_minus = scipy.sparse.diags([1,-1],[int_dx, int_dx-1],
-                                      shape=(width, width), dtype=np.float64)
-        tx = scipy.sparse.block_diag([tx]*height)
-        tx_plus = scipy.sparse.block_diag([tx_plus]*height)
-        tx_minus = scipy.sparse.block_diag([tx_minus]*height)
-        peak.int_tx[int_dx] = (tx, tx_plus, tx_minus)
+    # Build Tx and Ty (if necessary)
+    if int_dx not in source.int_tx.keys():
+        source.int_tx[int_dx] = getTxOp(shape, int_dx)
+    if int_dy not in source.int_ty.keys():
+        source.int_ty[int_dy] = getTyOp(shape, int_dy)
+    tx, tx_plus, tx_minus = source.int_tx[int_dx]
+    ty, ty_plus, ty_minus = source.int_ty[int_dy]
 
-    def build_Ty(self, peak, int_dy):
-        """Construct Ty and its components
-        """
-        width = self.shape[1]
-        ty = scipy.sparse.diags([1], [int_dy*width], shape=(self.size, self.size), dtype=np.float64)
-        ty_plus = scipy.sparse.diags([-1, 1], [int_dy*width, (int_dy+1)*width],
-                                     shape=(self.size, self.size), dtype=np.float64)
-        ty_minus = scipy.sparse.diags([1, -1], [int_dy*width, (int_dy-1)*width],
-                                      shape=(self.size, self.size), dtype=np.float64)
-        peak.int_ty[int_dy] = (ty, ty_plus, ty_minus)
+    # Create Tx
+    if dx<0:
+        dtx = tx_minus
+    else:
+        dtx = tx_plus
+    Tx = tx + (dx-int_dx)*dtx
+    # Create Ty
+    if dy<0:
+        dty = ty_minus
+    else:
+        dty = ty_plus
+    Ty = ty + (dy-int_dy)*dty
+    return Tx, Ty
 
-    def get_translation_ops(self, pk, ddx=0, ddy=0, update=False):
-        """Get the operators needed to shift peak k
-        """
-        peak = self.cat.objects[pk]
-        dx, dy = self.cx-peak.x, self.cy-peak.y
-        dx += ddx
-        dy += ddy
-        int_dx, int_dy = int(dx), int(dy)
-        if update:
-            self.cat.objects[pk].x = self.cx - dx
-            self.cat.objects[pk].y = self.cy - dy
+def getGammaOp(Tx, Ty, B, P=None):
+    """Translate the PSFs using Tx and Ty
+    """
+    if P is None:
+        Gamma = [Ty.dot(Tx)]*B
+    else:
+        Gamma = []
+        for b in range(B):
+            g = Ty.dot(P[b].dot(Tx))
+            Gamma.append(g)
+    return Gamma
 
-        # Build Tx and Ty (if necessary)
-        if int_dx not in peak.int_tx.keys():
-            self.build_Tx(peak, int_dx)
-        if int_dy not in peak.int_ty.keys():
-            self.build_Ty(peak, int_dy)
-        tx, tx_plus, tx_minus = peak.int_tx[int_dx]
-        ty, ty_plus, ty_minus = peak.int_ty[int_dy]
-        # Create Tx
-        if dx<0:
-            dtx = tx_minus
-        else:
-            dtx = tx_plus
-        Tx = tx + (dx-int_dx)*dtx
-        # Create Ty
-        if dy<0:
-            dty = ty_minus
-        else:
-            dty = ty_plus
-        Ty = ty + (dy-int_dy)*dty
-        # Optionally store the operators for the peak
-        if update:
-            peak.Tx = Tx
-            peak.Ty = Ty
-        return Tx, Ty
-
-    def build_Gamma(self, pk, Tx=None, Ty=None, update=True):
-        """Translate the PSFs using Tx and Ty
-        """
-        peak = self.cat.objects[pk]
-        if Tx is None:
-            Tx = peak.Tx
-        if Ty is None:
-            Ty = peak.Ty
-        if self.P is None:
-            Gamma_k = [Ty.dot(Tx)]*self.B
-        else:
-            Gamma_k = []
-            for b in range(self.B):
-                g = Ty.dot(self.P[b].dot(Tx))
-                Gamma_k.append(g)
-        if update:
-            peak.Gamma = Gamma_k
-        return Gamma_k
-
-    def translate_psfs(self, pk, ddx=0, ddy=0, update=False):
-        """Build the operators to perform a translation
-        """
-        self.get_translation_ops(pk, ddx, ddy, update)
-        self.build_Gamma(pk, update=update)
-        return self.cat.objects[pk].Gamma
-
-    def get_diff_images(self, data, models, A, S, W):
-        """Get differential images to fit translations
-        """
-        from .deblender import get_peak_model
-
-        dxy = self.differential
-        diff_images = []
-        for pk, peak in enumerate(self.cat.objects):
-            dx = self.cx - peak.x
-            dx = self.cy - peak.y
-            # Combine all of the components of the current peak into a model
-            model = []
-            for k in peak.component_indices:
-                model.append(models[k])
-            model = np.sum(model, axis=0)
-            Tx, Ty = self.get_translation_ops(pk, dxy, dxy, update=False)
-            # Get the difference image in x by adjusting only the x
-            # component by the differential amount dxy
-            Gk = self.build_Gamma(pk, Tx=Tx, update=False)
-            diff_img = []
-            for k in peak.component_indices:
-                diff_img.append(get_peak_model(A[:,k], S[k], Gk))
-            diff_img = np.sum(diff_img, axis=0)
-            diff_img = (model-diff_img)/dxy
-            diff_images.append(diff_img)
-            # Do the same for the y difference image
-            Gk = self.build_Gamma(pk, Ty=Ty, update=False)
-            diff_img = []
-            for k in peak.component_indices:
-                diff_img.append(get_peak_model(A[:,k], S[k], Gk))
-            diff_img = np.sum(diff_img, axis=0)
-            diff_img = (model-diff_img)/dxy
-            diff_images.append(diff_img)
-        return diff_images
 
 def getZeroOp(shape):
     size = shape[0]*shape[1]
