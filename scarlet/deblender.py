@@ -155,7 +155,7 @@ class Source(object):
 
     def get_model(self, combine=True):
         # model for all components of this source
-        model = np.empty((self.K,self.B,self.Ny*self.Nx))
+        model = np.zeros((self.K,self.B,self.Ny*self.Nx))
         for k in range(self.K):
             for b in range(self.B):
                 model[k,b] += self.sed[b,k] * self.Gamma[b].dot(self.morph[k])
