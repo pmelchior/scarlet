@@ -37,9 +37,9 @@ class Source(object):
         if sed is None:
             self._init_sed(self.x, self.y, img)
         else:
-            # to allow multi-component sources, need to have BxK array
+            # to allow multi-component sources, need to have KxB array
             if len(sed.shape) != 2:
-                self.sed = sed.reshape((len(sed),1))
+                self.sed = sed.reshape((1,len(sed)))
             else:
                 self.sed = sed.copy()
 
@@ -115,7 +115,7 @@ class Source(object):
         # self.Gamma = Gamma
 
     def __len__(self):
-        return self.sed.shape[1]
+        return self.sed.shape[0]
 
     @property
     def K(self):
@@ -136,14 +136,10 @@ class Source(object):
     def _init_sed(self, x, y, img):
         # init A from SED of the peak pixels
         B, Ny, Nx = img.shape
-        if img is None:
-            logger.warn("Using random A matrix for source at ({0},{0})".format(self.x, self.y))
-            self.sed = np.random.rand((B,1))
-        else:
-            self.sed = np.empty((B,1))
-            self.sed[:,0] = img[:,int(self.y),int(self.x)]
+        self.sed = np.empty((1,B))
+        self.sed[0] = img[:,int(self.y),int(self.x)]
         # ensure proper normalization
-        self.sed[:,0] = proxmin.operators.prox_unity_plus(self.sed[:,0], 0)
+        self.sed[0] = proxmin.operators.prox_unity_plus(self.sed[0], 0)
 
     def _init_morph(self, x, y, img):
         B, Ny, Nx = img.shape
@@ -158,7 +154,7 @@ class Source(object):
         model = np.zeros((self.K,self.B,self.Ny*self.Nx))
         for k in range(self.K):
             for b in range(self.B):
-                model[k,b] += self.sed[b,k] * self.Gamma[b].dot(self.morph[k])
+                model[k,b] += self.sed[k,b] * self.Gamma[b].dot(self.morph[k])
         # reshape the image into a 2D array
         model = model.reshape(self.K,self.B,self.Ny,self.Nx)
         if combine:
@@ -209,9 +205,13 @@ class Blender(object):
         assert len(sources)
         self._register_sources(sources)
 
-        # container for gradients of S and A
+        # container for gradients of S and A. Note: A is B x K
         B, Nx, Ny = self.sources[0].B, self.sources[0].Nx, self.sources[0].Ny
-        self.update = [np.empty((B,self.K)), np.empty((self.K,Nx*Ny))]
+        self.A, self.S = np.empty((B,self.K)), np.empty((self.K,Nx*Ny))
+        for k in range(self.K):
+            m,l = self._source_of[k]
+            self.A[:,k] = self.sources[m].sed[l]
+            self.S[k,:] = self.sources[m].morph[l].flatten()
 
         # list of all proxs_g and Ls
         self.proxs_g = None
@@ -264,20 +264,21 @@ class Blender(object):
 
         # A update
         if j == 0:
-            self.update[j][:,:] = 0
+            self.A[:,:] = 0
             for k in range(self.K):
                 m,l = self.source_of(k)
                 if not self.sources[m].fix_sed[l]:
                     # gradient of likelihood wrt A
-                    self.update[j][:,k] = 0
+                    self.A[:,k] = 0
                     for b in range(B):
-                        self.update[j][b,k] = self.diff[b].dot(self.sources[m].Gamma[b].dot(self.sources[m].morph[l]))
+                        self.A[b,k] = self.diff[b].dot(self.sources[m].Gamma[b].dot(self.sources[m].morph[l]))
 
                     # apply per component prox projection and save in source
-                    self.sources[m].sed[:,l] =  self.sources[m].prox_sed[l](self.sources[m].sed[:,l] - step*self.update[j][:,k], step)
+                    self.sources[m].sed[l] =  self.sources[m].prox_sed[l](self.sources[m].sed[l] - step*self.A[:,k], step)
 
                     # copy into result matrix
-                    self.update[j][:,k] = self.sources[m].sed[:,l]
+                    self.A[:,k] = self.sources[m].sed[l]
+            return self.A
 
         # S update
         elif j == 1:
@@ -285,22 +286,19 @@ class Blender(object):
                 m,l = self.source_of(k)
                 if not self.sources[m].fix_morph[l]:
                     # gradient of likelihood wrt S
-                    self.update[j][k,:] = 0
+                    self.S[k,:] = 0
                     for b in range(B):
-                        self.update[j][k,:] += self.sources[m].sed[b,l]*self.sources[m].Gamma[b].T.dot(self.diff[b])
+                        self.S[k,:] += self.sources[m].sed[l,b]*self.sources[m].Gamma[b].T.dot(self.diff[b])
 
                     # apply per component prox projection and save in source
-                    #print(self.sources[m].morph[l], step*self.update[j][k], self.sources[m].prox_morph[l](self.sources[m].morph[l] - step*self.update[j][k], step))
-                    self.sources[m].morph[l] = self.sources[m].prox_morph[l](self.sources[m].morph[l] - step*self.update[j][k], step)
+                    self.sources[m].morph[l] = self.sources[m].prox_morph[l](self.sources[m].morph[l] - step*self.S[k], step)
                     # copy into result matrix
-                    self.update[j][k,:] = self.sources[m].morph[l]
+                    self.S[k,:] = self.sources[m].morph[l]
+            return self.S
 
         else:
             raise ValueError("Expected index j in [0,1]")
 
-        print (j,step,np.abs(self.update[j]).max())
-
-        return self.update[j]
 
     def get_model(self, m=None, combine=True):
         """Build the current model
@@ -429,18 +427,8 @@ def deblend(img,
     logger.debug("Shape: {0}".format((Ny,Nx)))
     """
 
-    # construct Blender from sources
+    # construct Blender from sources and define objective function
     blender = Blender(sources)
-    # assemble A and S matrix from source sed and morph (temporary!)
-    B,Ny,Nx = img.shape
-    A = np.empty((B, blender.K))
-    S = np.empty((blender.K, Nx*Ny))
-    for k in range(blender.K):
-        m,l = blender.source_of(k)
-        A[:,k] = blender.sources[m].sed[:,l]
-        S[k,:] = blender.sources[m].morph[l].flatten()
-
-    # define objective function
     if update_order is None:
         update_order = range(2)
     f = partial(blender.prox_likelihood, Y=Y, W=weights, update_order=update_order)
@@ -449,7 +437,7 @@ def deblend(img,
     Ls = blender.Ls
 
     # run the NMF with those constraints
-    Xs = [A, S]
+    Xs = [blender.A, blender.S]
     res = proxmin.algorithms.bsdmm(Xs, f, steps_f, proxs_g, steps_g=steps_g, Ls=Ls, update_order=update_order,
                                   steps_g_update=steps_g_update, max_iter=max_iter, e_rel=e_rel, e_abs=e_abs,
                                   accelerated=True, traceback=traceback)
