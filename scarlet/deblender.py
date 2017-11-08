@@ -12,12 +12,6 @@ import logging
 from numbers import Number
 
 
-# Set basestring in python 3
-try:
-    basestring
-except NameError:
-    basestring = str
-
 logger = logging.getLogger("scarlet.deblender")
 
 class Source(object):
@@ -25,94 +19,20 @@ class Source(object):
         # TODO: use bounding box as argument, make cutout of img (odd pixel number)
         # and initialize morph directly from cutout instead if point source
 
-        # copy data structures
+        # set up coordinates and images sizes
         self.x = x
         self.y = y
         self.B, self.Ny, self.Nx = img.shape
+        self.fix_center = fix_center
         self._translate_psfs(psf)
 
-        from copy import deepcopy
-        self.constraints = deepcopy(constraints)
+        # set up sed and morphology: initial values, proxs and update
+        self.constraints = constraints
+        self._set_sed(img, sed, prox_sed, fix_sed)
+        self._set_morph(img, morph, prox_morph, fix_morph)
 
-        if sed is None:
-            self._init_sed(self.x, self.y, img)
-        else:
-            # to allow multi-component sources, need to have KxB array
-            if len(sed.shape) != 2:
-                self.sed = sed.reshape((1,len(sed)))
-            else:
-                self.sed = sed.copy()
-
-        if morph is None:
-            self._init_morph(self.x, self.y, img)
-        else:
-            # to allow multi-component sources, need to have K x Nx*Ny array
-            if len(morph.shape) == 3: # images for each component
-                self.morph = morph.reshape((morph.shape[0], -1))
-            elif len(morph.shape) == 2:
-                if morph.shape[0] == self.K: # vectors for each component
-                    self.morph = morph.copy()
-                else: # morph image for one component
-                    self.morph = morph.flatten().reshape((1, -1))
-            elif len(morph.shape) == 1: # vector for one component
-                self.morph = morph.reshape((1, -1))
-            else:
-                raise NotImplementedError("Shape of morph not understood: %r" % morph.shape)
-
-        if hasattr(fix_sed, '__inter__') and len(fix_sed) == self.K:
-            self.fix_sed = fix_sed
-        else:
-            self.fix_sed = [fix_sed] * self.K
-        if hasattr(fix_morph, '__inter__') and len(fix_morph) == self.K:
-            self.fix_morph = fix_morph
-        else:
-            self.fix_morph = [fix_morph] * self.K
-        self.fix_center = fix_center
-
-        if prox_sed is None:
-            self.prox_sed = [proxmin.operators.prox_unity_plus] * self.K
-        else:
-            if hasattr(prox_sed, '__inter__') and len(prox_sed) == self.K:
-                self.prox_sed = prox_sed
-            else:
-                self.prox_sed = [prox_sed] * self.K
-
-        if prox_morph is None:
-            if constraints is None or (constraints['l0'] <= 0 and constraints['l1'] <= 0):
-                self.prox_morph = [proxmin.operators.prox_plus] * self.K
-            else:
-                # L0 has preference
-                if constraints['l0'] > 0:
-                    if constraints['l1'] > 0:
-                        logger.warn("warning: l1 penalty ignored in favor of l0 penalty")
-                    self.prox_morph = [partial(proxmin.operators.prox_hard, thresh=constraints['l0'])] * self.K
-                else:
-                    self.prox_morph = [partial(proxmin.operators.prox_soft_plus, thresh=constraints['l1'])] * self.K
-        else:
-            if hasattr(prox_morph, '__inter__') and len(prox_morph) == self.K:
-                self.prox_morph = prox_morph
-            else:
-                self.prox_morph = [prox_morph] * self.K
-
-        # TODO: generate proxs_g and Ls from suitable entries in constraints
-        self.proxs_g = [None] * self.K
-        self.Ls = [None] * self.K
-        # if constraints is not None:
-        #     linear_constraints = {
-        #         "M": proxmin.operators.prox_plus,  # positive gradients
-        #         "S": proxmin.operators.prox_zero,  # zero deviation of mirrored pixels,
-        #         "c": partial(operators.prox_cone, G=transformations.getRadialMonotonicOp((N,M), useNearest=monotonicUseNearest).toarray()),
-        #         "X": proxmin.operators.prox_plus, # positive X gradient
-        #         "Y": proxmin.operators.prox_plus, # positive Y gradient
-        #         "x": partial(proxmin.operators.prox_soft, thresh=smoothness), # l1 norm on X gradient
-        #         "y": partial(proxmin.operators.prox_soft, thresh=smoothness), # l1 norm on Y gradient
-        #     }
-
-        # TODO: need to get per-source translation incl PSF
-        # T = Translation(_peaks, (N,M), B, P_, txy_diff, max_shift, txy_thresh, fit_positions, txy_wait, txy_skip, traceback)
-        # self.Tx = Tx
-        # self.Ty = Ty
-        # self.Gamma = Gamma
+        # set up ADMM-style constraints: proxs and matrices
+        self._set_constraints()
 
     def __len__(self):
         return self.sed.shape[0]
@@ -178,6 +98,83 @@ class Source(object):
     #         diff_images.append(diff_img)
     #     return diff_images
 
+    def _set_sed(self, img, sed, prox_sed, fix_sed):
+        if sed is None:
+            self._init_sed(img)
+        else:
+            # to allow multi-component sources, need to have KxB array
+            if len(sed.shape) != 2:
+                self.sed = sed.reshape((1,len(sed)))
+            else:
+                self.sed = sed.copy()
+
+        if hasattr(fix_sed, '__iter__') and len(fix_sed) == self.K:
+            self.fix_sed = fix_sed
+        else:
+            self.fix_sed = [fix_sed] * self.K
+
+        if prox_sed is None:
+            self.prox_sed = [proxmin.operators.prox_unity_plus] * self.K
+        else:
+            if hasattr(prox_sed, '__iter__') and len(prox_sed) == self.K:
+                self.prox_sed = prox_sed
+            else:
+                self.prox_sed = [prox_sed] * self.K
+
+    def _init_sed(self, img):
+        # init A from SED of the peak pixels
+        self.sed = np.empty((1,self.B))
+        self.sed[0] = img[:,int(self.y),int(self.x)]
+        # ensure proper normalization
+        self.sed[0] = proxmin.operators.prox_unity_plus(self.sed[0], 0)
+
+    def _set_morph(self, img, morph, prox_morph, fix_morph):
+        if morph is None:
+            self._init_morph(img)
+        else:
+            # to allow multi-component sources, need to have K x Nx*Ny array
+            if len(morph.shape) == 3: # images for each component
+                self.morph = morph.reshape((morph.shape[0], -1))
+            elif len(morph.shape) == 2:
+                if morph.shape[0] == self.K: # vectors for each component
+                    self.morph = morph.copy()
+                else: # morph image for one component
+                    self.morph = morph.flatten().reshape((1, -1))
+            elif len(morph.shape) == 1: # vector for one component
+                self.morph = morph.reshape((1, -1))
+            else:
+                raise NotImplementedError("Shape of morph not understood: %r" % morph.shape)
+
+        if hasattr(fix_morph, '__iter__') and len(fix_morph) == self.K:
+            self.fix_morph = fix_morph
+        else:
+            self.fix_morph = [fix_morph] * self.K
+
+        if prox_morph is None:
+            if self.constraints is None or ("l0" not in self.constraints.keys() and "l1" not in self.constraints.keys()):
+                self.prox_morph = [proxmin.operators.prox_plus] * self.K
+            else:
+                # L0 has preference
+                if "l0" in self.constraints.keys():
+                    if "l1" in self.constraints.keys():
+                        logger.warn("warning: l1 penalty ignored in favor of l0 penalty")
+                    self.prox_morph = [partial(proxmin.operators.prox_hard, thresh=self.constraints['l0'])] * self.K
+                else:
+                    self.prox_morph = [partial(proxmin.operators.prox_soft_plus, thresh=self.constraints['l1'])] * self.K
+        else:
+            if hasattr(prox_morph, '__iter__') and len(prox_morph) == self.K:
+                self.prox_morph = prox_morph
+            else:
+                self.prox_morph = [prox_morph] * self.K
+
+    def _init_morph(self, img):
+        # TODO: init from the cutout values (ignoring blending)
+        cx, cy = int(self.Nx/2), int(self.Ny/2)
+        self.morph = np.zeros((1, self.Ny*self.Nx))
+        tiny = 1e-10
+        flux = np.abs(img[:,cy,cx].mean()) + tiny
+        self.morph[0,cy*self.Nx+cx] = flux
+
     def _translate_psfs(self, psf=None, ddx=0, ddy=0):
         """Build the operators to perform a translation
         """
@@ -201,24 +198,22 @@ class Source(object):
             P.append(transformations.getPSFOp(psf[b], shape))
         return P
 
-    def _init_sed(self, x, y, img):
-        # init A from SED of the peak pixels
-        B, Ny, Nx = img.shape
-        self.sed = np.empty((1,B))
-        self.sed[0] = img[:,int(self.y),int(self.x)]
-        # ensure proper normalization
-        self.sed[0] = proxmin.operators.prox_unity_plus(self.sed[0], 0)
+    def _set_constraints(self):
+        # TODO: generate proxs_g and Ls from suitable entries in constraints
+        self.proxs_g = [None] * self.K
+        self.Ls = [None] * self.K
+        # if constraints is not None:
+        #     linear_constraints = {
+        #         "M": proxmin.operators.prox_plus,  # positive gradients
+        #         "S": proxmin.operators.prox_zero,  # zero deviation of mirrored pixels,
+        #         "c": partial(operators.prox_cone, G=transformations.getRadialMonotonicOp((N,M), useNearest=monotonicUseNearest).toarray()),
+        #         "X": proxmin.operators.prox_plus, # positive X gradient
+        #         "Y": proxmin.operators.prox_plus, # positive Y gradient
+        #         "x": partial(proxmin.operators.prox_soft, thresh=smoothness), # l1 norm on X gradient
+        #         "y": partial(proxmin.operators.prox_soft, thresh=smoothness), # l1 norm on Y gradient
+        #     }
 
-    def _init_morph(self, x, y, img):
-        B, Ny, Nx = img.shape
-        cx, cy = int(Nx/2), int(Ny/2)
-        self.morph = np.zeros((1, Ny*Nx))
-        tiny = 1e-10
-        flux = np.abs(img[:,cy,cx].mean()) + tiny
-        self.morph[0,cy*Nx+cx] = flux
-
-
-class Blender(object):
+class Blend(object):
     """The blended scene as interpreted by the deblender.
     """
     def __init__(self, sources):
@@ -361,23 +356,15 @@ def deblend(img,
             sources,
             weights=None,
             psf=None,
-            max_iter=1000,
             sky=None,
+            max_iter=1000,
             e_rel=1e-3,
             e_abs=0,
-            #monotonicUseNearest=False,
-            traceback=False,
-            #translation_thresh=1e-8,
             slack = 0.9,
             update_order=None,
             steps_g=None,
             steps_g_update='steps_f',
-            truncate=False,
-            #txy_diff=0.1,
-            #max_shift=2,
-            #txy_thresh=1e-8,
-            #txy_wait=10,
-            #txy_skip=10,
+            traceback=False
             ):
 
     if sky is None:
@@ -389,35 +376,21 @@ def deblend(img,
     else:
         Wmax = np.max(weights)
 
-    """
-    # TODO: move to Source
-    T = Translation(_peaks, (N,M), B, P_, txy_diff, max_shift,
-                    txy_thresh, fit_positions, txy_wait, txy_skip, traceback)
-    if psf is None:
-        P = psf
-    else:
-        P = adapt_PSF(psf, B, (Ny, Nx))
-    logger.debug("Shape: {0}".format((Ny,Nx)))
-    """
-
     # construct Blender from sources and define objective function
-    blender = Blender(sources)
+    blend = Blend(sources)
     if update_order is None:
         update_order = range(2)
-    f = partial(blender.prox_likelihood, Y=Y, W=weights, update_order=update_order)
+    f = partial(blend.prox_likelihood, Y=Y, W=weights, update_order=update_order)
     steps_f = Steps_AS(Wmax=Wmax, slack=slack, update_order=update_order)
-    proxs_g = blender.proxs_g
-    Ls = blender.Ls
+    proxs_g = blend.proxs_g
+    Ls = blend.Ls
 
     # run the NMF with those constraints
-    Xs = [blender.A, blender.S]
-    res = proxmin.algorithms.bsdmm(Xs, f, steps_f, proxs_g, steps_g=steps_g, Ls=Ls, update_order=update_order,
-                                  steps_g_update=steps_g_update, max_iter=max_iter, e_rel=e_rel, e_abs=e_abs,
-                                  accelerated=True, traceback=traceback)
+    Xs = [blend.A, blend.S]
+    res = proxmin.algorithms.bsdmm(Xs, f, steps_f, proxs_g, steps_g=steps_g, Ls=Ls, update_order=update_order, steps_g_update=steps_g_update, max_iter=max_iter, e_rel=e_rel, e_abs=e_abs, accelerated=True, traceback=traceback)
 
     if not traceback:
-        # A, S = res
-        return blender
+        return blend
     else:
-        [A, S], tr = res
-        return blender, tr
+        _, tr = res
+        return blend, tr
