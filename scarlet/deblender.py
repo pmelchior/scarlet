@@ -1,17 +1,13 @@
 from __future__ import print_function, division
 import numpy as np
-
-from . import transformations
-from . import operators
+from functools import partial
 
 import proxmin
 from proxmin.nmf import Steps_AS
+from . import transformations
+from . import operators
 
-from functools import partial
 import logging
-from numbers import Number
-
-
 logger = logging.getLogger("scarlet.deblender")
 
 class Source(object):
@@ -199,19 +195,43 @@ class Source(object):
         return P
 
     def _set_constraints(self):
-        # TODO: generate proxs_g and Ls from suitable entries in constraints
-        self.proxs_g = [None] * self.K
-        self.Ls = [None] * self.K
-        # if constraints is not None:
-        #     linear_constraints = {
-        #         "M": proxmin.operators.prox_plus,  # positive gradients
-        #         "S": proxmin.operators.prox_zero,  # zero deviation of mirrored pixels,
-        #         "c": partial(operators.prox_cone, G=transformations.getRadialMonotonicOp((N,M), useNearest=monotonicUseNearest).toarray()),
-        #         "X": proxmin.operators.prox_plus, # positive X gradient
-        #         "Y": proxmin.operators.prox_plus, # positive Y gradient
-        #         "x": partial(proxmin.operators.prox_soft, thresh=smoothness), # l1 norm on X gradient
-        #         "y": partial(proxmin.operators.prox_soft, thresh=smoothness), # l1 norm on Y gradient
-        #     }
+        self.proxs_g = [None, []] # no constraints on A matrix
+        self.Ls = [None, []]
+        if self.constraints is None:
+            self.proxs_g[1] = None
+            self.Ls[1] = None
+            return
+
+        shape = (self.Ny, self.Nx)
+        for c in self.constraints.keys():
+            if c == "M":
+                # positive gradients
+                self.Ls[1].append(transformations.getRadialMonotonicOp(shape, useNearest=self.constraints[c]))
+                self.proxs_g[1].append(proxmin.operators.prox_plus)
+            elif c == "S":
+                # zero deviation of mirrored pixels
+                self.Ls[1].append(transformations.getSymmetryOp(shape))
+                self.proxs_g[1].append(proxmin.operators.prox_zero)
+            elif c == "c":
+                useNearest = self.constraints.get("M", False)
+                G = transformations.getRadialMonotonicOp(shape, useNearest=useNearest).toarray()
+                self.proxs_g[1].append(partial(operators.prox_cone, G=G))
+                self.Ls[1].append(None)
+            elif (c == "X" or c == "x"): # X gradient
+                cx = int(self.Nx)
+                self.Ls[1].append(proxmin.transformations.get_gradient_x(shape, cx))
+                if c == "X": # all positive
+                    self.proxs_g[1].append(proxmin.operators.prox_plus)
+                else: # l1 norm for TV_x
+                    self.proxs_g[1].append(partial(proxmin.operators.prox_soft, thresh=self.constraints[c]))
+            elif (c == "Y" or c == "y"): # Y gradient
+                cy = int(self.Ny)
+                self.Ls[1].append(proxmin.transformations.get_gradient_y(shape, cy))
+                if c == "Y": # all positive
+                    self.proxs_g[1].append(proxmin.operators.prox_plus)
+                else: # l1 norm for TV_x
+                    self.proxs_g[1].append(partial(proxmin.operators.prox_soft, thresh=self.constraints[c]))
+
 
 class Blend(object):
     """The blended scene as interpreted by the deblender.
@@ -229,9 +249,7 @@ class Blend(object):
             self.S[k,:] = self.sources[m].morph[l].flatten()
 
         # list of all proxs_g and Ls
-        self.proxs_g = None
-        self.Ls = None
-        # TODO: activate this with per-source optimization
+        self.proxs_g = self.Ls = None
         # self.proxs_g = [[source.proxs_g[0] for source in self.sources], # for A
         #                 [source.proxs_g[1] for source in self.sources]] # for S
         # self.Ls = [[source.Ls[0] for source in self.sources], # for A
@@ -330,27 +348,6 @@ class Blend(object):
             return model
         else:
             return self.source[m].get_model(combine=combine)
-
-def get_constraint_op(constraint, shape, seeks, useNearest=True):
-    """Get appropriate constraint operator
-    """
-    N,M = shape
-    if constraint is None or constraint == "c":
-        return None
-    elif constraint == "M":
-        L = transformations.getRadialMonotonicOp((N,M), useNearest=useNearest)
-    elif constraint == "S":
-        L = transformations.getSymmetryOp((N,M))
-    elif constraint == "X" or constraint == "x":
-        cx = int(shape[1]/2)
-        L = proxmin.transformations.get_gradient_x(shape, cx)
-    elif constraint == "Y" or constraint == "y":
-        cy = int(shape[0]/2)
-        L = proxmin.transformations.get_gradient_y(shape, cy)
-    # Create the matrix adapter for the operator
-    adapter =  proxmin.utils.MatrixAdapter(L, axis=1)
-    return adapter
-
 
 def deblend(img,
             sources,
