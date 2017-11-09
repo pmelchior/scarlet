@@ -240,14 +240,6 @@ class Blend(object):
         assert len(sources)
         self._register_sources(sources)
 
-        # container for gradients of S and A. Note: A is B x K
-        B, Nx, Ny = self.sources[0].B, self.sources[0].Nx, self.sources[0].Ny
-        self.A, self.S = np.empty((B,self.K)), np.empty((self.K,Nx*Ny))
-        for k in range(self.K):
-            m,l = self._source_of[k]
-            self.A[:,k] = self.sources[m].sed[l]
-            self.S[k,:] = self.sources[m].morph[l].flatten()
-
         # list of all proxs_g and Ls
         self.proxs_g = self.Ls = None
         # self.proxs_g = [[source.proxs_g[0] for source in self.sources], # for A
@@ -281,13 +273,37 @@ class Blend(object):
         """Number of distinct sources"""
         return self.M
 
-    def prox_likelihood(self, X, step, Xs=None, j=None, Y=None, W=1, update_order=[0,1]):
+    def setData(self, img, weights=None, update_order=None, slack=0.9):
+        if weights is None:
+            self.weights = Wmax = 1
+        else:
+            self.weights = weights
+            Wmax = np.max(self.weights)
+        if update_order is None:
+            update_order = range(2)
+        self.img = img
+        self.update_order = update_order
+        self._stepAS = Steps_AS(Wmax=Wmax, slack=slack, update_order=self.update_order)
+        self.step_AS = [None] * 2
+        B, Ny, Nx = img.shape
+        self.A, self.S = np.empty((B,self.K)), np.empty((self.K,Nx*Ny))
+        for k in range(self.K):
+            m,l = self._source_of[k]
+            self.A[:,k] = self.sources[m].sed[l]
+            self.S[k,:] = self.sources[m].morph[l].flatten()
+
+    def prox_f(self, X, step, Xs=None, j=None):
+
+        # which update to do now
+        AorS = j//self.K
+        k = j%self.K
+        B, Ny, Nx = self.img.shape
+        print (j,AorS,k,X.shape,step)
 
         # computing likelihood gradients for S and A: only once per iteration
-        B, Nx, Ny = self.sources[0].B, self.sources[0].Nx, self.sources[0].Ny
-        if j == update_order[0]:
+        if AorS == self.update_order[0] and k==0:
             model = self.get_model(combine=True)
-            self.diff = (W*(model-Y)).reshape(B, Ny*Nx)
+            self.diff = (self.weights*(model-self.img)).reshape(B, Ny*Nx)
             """
             # TODO: centroid updates
             if T.fit_positions:
@@ -295,47 +311,53 @@ class Blend(object):
             """
 
         # A update
-        if j == 0:
-            for k in range(self.K):
-                m,l = self.source_of(k)
-                if not self.sources[m].fix_sed[l]:
-                    # gradient of likelihood wrt A
-                    if not self.psf_per_band:
-                        self.A[:,k] = self.diff.dot(self.sources[m].Gamma.dot(self.sources[m].morph[l]))
-                    else:
-                        for b in range(B):
-                            self.A[b,k] = self.diff[b].dot(self.sources[m].Gamma[b].dot(self.sources[m].morph[l]))
+        if AorS == 0:
+            m,l = self.source_of(k)
+            if not self.sources[m].fix_sed[l]:
+                # gradient of likelihood wrt A
+                if not self.psf_per_band:
+                    self.A[:,k] = self.diff.dot(self.sources[m].Gamma.dot(self.sources[m].morph[l]))
+                else:
+                    for b in range(B):
+                        self.A[b,k] = self.diff[b].dot(self.sources[m].Gamma[b].dot(self.sources[m].morph[l]))
 
-                    # apply per component prox projection and save in source
-                    self.sources[m].sed[l] =  self.sources[m].prox_sed[l](self.sources[m].sed[l] - step*self.A[:,k], step)
-
-                    # copy into result matrix
-                    self.A[:,k] = self.sources[m].sed[l]
-            return self.A
+                # apply per component prox projection and save in source
+                self.sources[m].sed[l] =  self.sources[m].prox_sed[l](X - step*self.A[:,k], step)
+                # copy into result matrix
+                self.A[:,k] = self.sources[m].sed[l]
+            return self.A[:,k]
 
         # S update
-        elif j == 1:
-            for k in range(self.K):
-                m,l = self.source_of(k)
-                if not self.sources[m].fix_morph[l]:
-                    # gradient of likelihood wrt S
-                    self.S[k,:] = 0
-                    if not self.psf_per_band:
-                        for b in range(B):
-                            self.S[k,:] += self.sources[m].sed[l,b]*self.sources[m].Gamma.T.dot(self.diff[b])
-                    else:
-                        for b in range(B):
-                            self.S[k,:] += self.sources[m].sed[l,b]*self.sources[m].Gamma[b].T.dot(self.diff[b])
+        elif AorS == 1:
+            m,l = self.source_of(k)
+            if not self.sources[m].fix_morph[l]:
+                # gradient of likelihood wrt S
+                self.S[k,:] = 0
+                if not self.psf_per_band:
+                    for b in range(B):
+                        self.S[k,:] += self.sources[m].sed[l,b]*self.sources[m].Gamma.T.dot(self.diff[b])
+                else:
+                    for b in range(B):
+                        self.S[k,:] += self.sources[m].sed[l,b]*self.sources[m].Gamma[b].T.dot(self.diff[b])
 
-                    # apply per component prox projection and save in source
-                    self.sources[m].morph[l] = self.sources[m].prox_morph[l](self.sources[m].morph[l] - step*self.S[k], step)
-                    # copy into result matrix
-                    self.S[k,:] = self.sources[m].morph[l]
-            return self.S
-
+                # apply per component prox projection and save in source
+                self.sources[m].morph[l] = self.sources[m].prox_morph[l](X - step*self.S[k], step)
+                # copy into result matrix
+                self.S[k,:] = self.sources[m].morph[l]
+            return self.S[k,:]
         else:
-            raise ValueError("Expected index j in [0,1]")
+            raise ValueError("Expected index j in [0,%d]" % (2*self.K))
 
+    def steps_f(self, j, Xs):
+        # which update to do now
+        AorS = j//self.K
+        k = j%self.K
+
+        # computing likelihood gradients for S and A: only once per iteration
+        if AorS == self.update_order[0] and k==0:
+            self.step_AS[0] = self._stepAS(0, [self.A, self.S])
+            self.step_AS[1] = self._stepAS(1, [self.A, self.S])
+        return self.step_AS[AorS]
 
     def get_model(self, m=None, combine=True):
         """Build the current model
@@ -368,23 +390,25 @@ def deblend(img,
         Y = img
     else:
         Y = img-sky
-    if weights is None:
-        W = Wmax = 1
-    else:
-        Wmax = np.max(weights)
 
     # construct Blender from sources and define objective function
     blend = Blend(sources)
-    if update_order is None:
-        update_order = range(2)
-    f = partial(blend.prox_likelihood, Y=Y, W=weights, update_order=update_order)
-    steps_f = Steps_AS(Wmax=Wmax, slack=slack, update_order=update_order)
+    blend.setData(Y, weights=weights, update_order=update_order)
+    #f = partial(blend.prox_likelihood, Y=Y, W=weights, update_order=update_order)
+    prox_f = blend.prox_f
+    steps_f = blend.steps_f
     proxs_g = blend.proxs_g
     Ls = blend.Ls
 
     # run the NMF with those constraints
-    Xs = [blend.A, blend.S]
-    res = proxmin.algorithms.bsdmm(Xs, f, steps_f, proxs_g, steps_g=steps_g, Ls=Ls, update_order=update_order, steps_g_update=steps_g_update, max_iter=max_iter, e_rel=e_rel, e_abs=e_abs, accelerated=True, traceback=traceback)
+    XA = []
+    XS = []
+    for k in range(blend.K):
+        m,l = blend.source_of(k)
+        XA.append(blend.sources[m].sed[l])
+        XS.append(blend.sources[m].morph[l])
+    X = XA+XS
+    res = proxmin.algorithms.bsdmm(X, prox_f, steps_f, proxs_g, steps_g=steps_g, Ls=Ls, update_order=update_order, steps_g_update=steps_g_update, max_iter=max_iter, e_rel=e_rel, e_abs=e_abs, accelerated=True, traceback=traceback)
 
     if not traceback:
         return blend
