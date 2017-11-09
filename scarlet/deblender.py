@@ -240,12 +240,9 @@ class Blend(object):
         assert len(sources)
         self._register_sources(sources)
 
-        # list of all proxs_g and Ls
-        self.proxs_g = self.Ls = None
-        # self.proxs_g = [[source.proxs_g[0] for source in self.sources], # for A
-        #                 [source.proxs_g[1] for source in self.sources]] # for S
-        # self.Ls = [[source.Ls[0] for source in self.sources], # for A
-        #            [source.Ls[1] for source in self.sources]] # for S
+        # list of all proxs_g and Ls: first A, then S
+        self.proxs_g = [source.proxs_g[0] for source in self.sources] + [source.proxs_g[1] for source in self.sources]
+        self.Ls = [source.Ls[0] for source in self.sources] + [source.Ls[1] for source in self.sources]    # for S
 
     def _register_sources(self, sources):
         self.sources = sources # do not copy!
@@ -298,7 +295,6 @@ class Blend(object):
         AorS = j//self.K
         k = j%self.K
         B, Ny, Nx = self.img.shape
-        print (j,AorS,k,X.shape,step)
 
         # computing likelihood gradients for S and A: only once per iteration
         if AorS == self.update_order[0] and k==0:
