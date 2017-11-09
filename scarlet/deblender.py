@@ -257,6 +257,9 @@ class Blend(object):
         return self.M
 
     def setData(self, img, psfs=None, weights=None, update_order=None, slack=0.9):
+        self.it = 0
+        self.center_wait = 5
+        self.center_skip = 10
         if weights is None:
             self.weights = Wmax = 1
         else:
@@ -290,7 +293,9 @@ class Blend(object):
 
             # update positions
             if self.update_centers:
-                self._update_positions(models)
+                if self.it > self.center_wait and self.it % self.center_skip == 0:
+                    self._update_positions(models)
+            self.it += 1
 
         # A update
         if AorS == 0:
@@ -335,7 +340,7 @@ class Blend(object):
         for k in range(self.K):
             if self.sources[k].shift_center:
                 diff_x,diff_y = self.sources[k].get_shifted_model(model=models[k])
-                # simple least squares for the shifts given the model residuals
+                # least squares for the shifts given the model residuals
                 MT = np.vstack([diff_x.flatten(), diff_y.flatten()])
                 if not hasattr(self.weights,'shape'): # no/flat weights
                     ddx,ddy = np.dot(np.dot(np.linalg.inv(np.dot(MT, MT.T)), MT), y)
