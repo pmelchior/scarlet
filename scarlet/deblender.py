@@ -11,7 +11,7 @@ import logging
 logger = logging.getLogger("scarlet.deblender")
 
 class Source(object):
-    def __init__(self, x, y, img, psf=None, constraints=None, sed=None, morph=None, fix_sed=False, fix_morph=False, fix_center=False, prox_sed=None, prox_morph=None):
+    def __init__(self, x, y, img, psf=None, constraints=None, sed=None, morph=None, fix_sed=False, fix_morph=False, shift_center=0.2, prox_sed=None, prox_morph=None):
         # TODO: use bounding box as argument, make cutout of img (odd pixel number)
         # and initialize morph directly from cutout instead if point source
 
@@ -19,8 +19,13 @@ class Source(object):
         self.x = x
         self.y = y
         self.B, self.Ny, self.Nx = img.shape
-        self.fix_center = fix_center
-        self._translate_psfs(psf)
+
+        if psf is None:
+            self.P = None
+        else:
+            self.P = self._adapt_PSF(psf)
+        self.shift_center = shift_center
+        self._translate_psf()
 
         # set up sed and morphology: initial values, proxs and update
         self.constraints = constraints
@@ -41,17 +46,19 @@ class Source(object):
     def image(self):
         return self.morph.reshape((-1,self.Nx,self.Ny)) # this *should* be a view
 
-    def get_model(self, combine=True):
+    def get_model(self, combine=True, Gamma=None):
+        if Gamma is None:
+            Gamma = self.Gamma
         # model for all components of this source
-        if hasattr(self.Gamma, 'shape'): # single matrix: one for all bands
+        if hasattr(Gamma, 'shape'): # single matrix: one for all bands
             model = np.empty((self.K,self.B,self.Ny*self.Nx))
             for k in range(self.K):
-                model[k] = np.outer(self.sed[k], self.Gamma.dot(self.morph[k]))
+                model[k] = np.outer(self.sed[k], Gamma.dot(self.morph[k]))
         else:
             model = np.zeros((self.K,self.B,self.Ny*self.Nx))
             for k in range(self.K):
                 for b in range(self.B):
-                    model[k,b] += self.sed[k,b] * self.Gamma[b].dot(self.morph[k])
+                    model[k,b] += self.sed[k,b] * Gamma[b].dot(self.morph[k])
 
         # reshape the image into a 2D array
         model = model.reshape(self.K,self.B,self.Ny,self.Nx)
@@ -59,40 +66,13 @@ class Source(object):
             model = model.sum(axis=0)
         return model
 
-    # def get_diff_images(self, data, models, A, S, W):
-    #     """Get differential images to fit translations
-    #     """
-    #     from .deblender import get_peak_model
-    #
-    #     dxy = self.differential
-    #     diff_images = []
-    #     for pk, peak in enumerate(self.cat.objects):
-    #         dx = self.cx - peak.x
-    #         dx = self.cy - peak.y
-    #         # Combine all of the components of the current peak into a model
-    #         model = []
-    #         for k in peak.component_indices:
-    #             model.append(models[k])
-    #         model = np.sum(model, axis=0)
-    #         Tx, Ty = self.get_translation_ops(pk, dxy, dxy, update=False)
-    #         # Get the difference image in x by adjusting only the x
-    #         # component by the differential amount dxy
-    #         Gk = self.build_Gamma(pk, Tx=Tx, update=False)
-    #         diff_img = []
-    #         for k in peak.component_indices:
-    #             diff_img.append(get_peak_model(A[:,k], S[k], Gk))
-    #         diff_img = np.sum(diff_img, axis=0)
-    #         diff_img = (model-diff_img)/dxy
-    #         diff_images.append(diff_img)
-    #         # Do the same for the y difference image
-    #         Gk = self.build_Gamma(pk, Ty=Ty, update=False)
-    #         diff_img = []
-    #         for k in peak.component_indices:
-    #             diff_img.append(get_peak_model(A[:,k], S[k], Gk))
-    #         diff_img = np.sum(diff_img, axis=0)
-    #         diff_img = (model-diff_img)/dxy
-    #         diff_images.append(diff_img)
-    #     return diff_images
+    def get_shifted_model(self, model=None):
+        if model is None:
+            model = self.get_model(combine=True)
+        diff_img = [self.get_model(combine=True, Gamma=self.dGamma_x), self.get_model(combine=True, Gamma=self.dGamma_y)]
+        diff_img[0] = (model-diff_img[0])/self.shift_center
+        diff_img[1] = (model-diff_img[1])/self.shift_center
+        return diff_img
 
     def _set_sed(self, img, sed, prox_sed, fix_sed):
         if sed is None:
@@ -171,17 +151,21 @@ class Source(object):
         flux = np.abs(img[:,cy,cx].mean()) + tiny
         self.morph[0,cy*self.Nx+cx] = flux
 
-    def _translate_psfs(self, psf=None, ddx=0, ddy=0):
+    def _translate_psf(self):
         """Build the operators to perform a translation
         """
-        self.int_tx = {}
-        self.int_ty = {}
-        self.Tx, self.Ty = transformations.getTranslationOps((self.Ny, self.Nx), self, ddx, ddy)
-        if psf is None:
-            P = None
-        else:
-            P = self._adapt_PSF(psf)
-        self.Gamma = transformations.getGammaOp(self.Tx, self.Ty, self.B, P)
+        Tx, Ty = transformations.getTranslationOps((self.Ny, self.Nx), self.x, self.y)
+        self.Gamma = transformations.getGammaOp(Tx, Ty, self.B, self.P)
+
+        # for centroid shift: compute shifted Gammas
+        if self.shift_center:
+            # TODO: optimize dxy to be comparable to likely shift
+            # TODO: Alternative: Grid of shifted PSF to interpolate at any given ddx/ddy
+            dxy = self.shift_center
+            Tx_, Ty_ = transformations.getTranslationOps((self.Ny, self.Nx), self.x, self.y, dxy, dxy)
+            # get the shifted image in x/y by adjusting only the Tx/Ty
+            self.dGamma_x = transformations.getGammaOp(Tx_, Ty, self.B, self.P)
+            self.dGamma_y = transformations.getGammaOp(Tx, Ty_, self.B, self.P)
 
     def _adapt_PSF(self, psf):
         shape = (self.Ny, self.Nx)
@@ -252,7 +236,9 @@ class Blend(object):
 
         # lookup of source/component tuple given component number k
         self._source_of = []
+        self.update_centers = False
         for m in range(self.M):
+            self.update_centers |= bool(self.sources[m].shift_center)
             for l in range(self.sources[m].K):
                 self._source_of.append((m,l))
 
@@ -270,7 +256,7 @@ class Blend(object):
         """Number of distinct sources"""
         return self.M
 
-    def setData(self, img, weights=None, update_order=None, slack=0.9):
+    def setData(self, img, psfs=None, weights=None, update_order=None, slack=0.9):
         if weights is None:
             self.weights = Wmax = 1
         else:
@@ -298,13 +284,13 @@ class Blend(object):
 
         # computing likelihood gradients for S and A: only once per iteration
         if AorS == self.update_order[0] and k==0:
-            model = self.get_model(combine=True)
+            models =  [source.get_model(combine=True) for source in self.sources]
+            model = np.sum(models, axis=0)
             self.diff = (self.weights*(model-self.img)).reshape(B, Ny*Nx)
-            """
-            # TODO: centroid updates
-            if T.fit_positions:
-                T.update_positions(Y, model, A, S, W)
-            """
+
+            # update positions
+            if self.update_centers:
+                self._update_positions(models)
 
         # A update
         if AorS == 0:
@@ -344,6 +330,21 @@ class Blend(object):
         else:
             raise ValueError("Expected index j in [0,%d]" % (2*self.K))
 
+    def _update_positions(self, models):
+        y = self.diff.flatten()
+        for k in range(self.K):
+            if self.sources[k].shift_center:
+                diff_x,diff_y = self.sources[k].get_shifted_model(model=models[k])
+                # simple least squares for the shifts given the model residuals
+                MT = np.vstack([diff_x.flatten(), diff_y.flatten()])
+                if not hasattr(self.weights,'shape'): # no/flat weights
+                    ddx,ddy = np.dot(np.dot(np.linalg.inv(np.dot(MT, MT.T)), MT), y)
+                else:
+                    ddx,ddy = np.dot(np.dot(np.linalg.inv(np.dot(MT, MT.T*self.weights.flatten()[:,None])), MT), y)
+                self.sources[k].x -= ddx
+                self.sources[k].y -= ddy
+                self.sources[k]._translate_psf()
+
     def steps_f(self, j, Xs):
         # which update to do now
         AorS = j//self.K
@@ -367,14 +368,15 @@ class Blend(object):
         else:
             return self.source[m].get_model(combine=combine)
 
+
 def deblend(img,
             sources,
             weights=None,
             psf=None,
             sky=None,
-            max_iter=1000,
+            max_iter=200,
             e_rel=1e-3,
-            e_abs=0,
+            e_abs=1e-3,
             slack = 0.9,
             update_order=None,
             steps_g=None,

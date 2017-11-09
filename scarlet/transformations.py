@@ -6,120 +6,6 @@ import scipy.sparse
 
 logger = logging.getLogger("scarlet.transformations")
 
-class BaseTranslation(object):
-    """Base Class to perform PSF convolution and translations
-    """
-    def __init__(self, catalog, shape, B=None, P=None, differential=0.1, max_shift=2, threshold=1e-8,
-                 fit_positions=True, wait=0, skip=10, traceback=True):
-        self.cx, self.cy = int(shape[1])>>1, int(shape[0])>>1
-        # catalog: list of objects that may have multiple components
-        self.cat = catalog
-        # init_peaks is an array with an entry for each peak, (not each component)
-        self.init_peaks = np.array([[self.cx-obj.x, self.cy-obj.y] for obj in self.cat.objects])
-        self.shape = shape
-        self.size = shape[0]*shape[1]
-        self.B = B
-        self.P = P
-        self.differential = differential
-        self.max_shift =  max_shift
-        self.threshold = threshold
-        self.fit_positions = fit_positions
-        self.drifters = [False]*len(self.cat.objects)
-
-        # Control the frequency of updates
-        self.iteration = 0
-        self.wait = wait
-        self.skip = skip
-
-        if traceback:
-            self.history = {"px":[self.init_peaks[:,0]], "py":[self.init_peaks[:,1]]}
-        else:
-            self.history = None
-
-    @property
-    def Gamma(self):
-        return [component.Gamma for component in self.cat]
-    @property
-    def Tx(self):
-        return [component.Tx for component in self.cat]
-    @property
-    def Ty(self):
-        return [component.Ty for component in self.cat]
-
-    def get_diff_images(self, data, models, A, S, W):
-        """Get differential images to fit translations
-
-        `diff_images` should be a list with 2K elements, where the 2*ith element is the differential
-        image for each peak in x and the 2*i+1 element is the differential image for each peak in y.
-
-        See `TxyTranslation.get_diff_images` for an example.
-        """
-        raise NotImplementedError("You must overwrite this method in the inheriting class")
-        diff_images = [None]*(2*A.shape[1])
-        return diff_images
-
-    def translate_psfs(self, k, ddx=0, ddy=0, update=False):
-        """Translate a peak and convolve it with the PSF
-
-        If `update` is `False`, the new position will not be saved.
-        See TxyTranslation.translate_psfs for an example.
-        """
-        raise NotImplementedError("You must overwrite this method in the inheriting class")
-
-    def reset_position(self, pk, px, py, ddx, ddy):
-        """Reset a peak that exceeds max_shift
-
-        This method may be overwritten in an inherited class for improved behavior.
-        """
-        self.cat.objects[pk].x = self.cx - self.init_peaks[pk][0]
-        self.cat.objects[pk].y = self.cy - self.init_peaks[pk][1]
-        ddx = 0
-        ddy = 0
-        return ddx, ddy
-
-    def update_positions(self, data, models, A, S, W=None):
-        """Update the positions of the peaks
-        """
-        # Wait for the specified number of iterations
-        self.iteration += 1
-        if self.iteration > self.wait and self.iteration % self.skip!=0:
-            return self.Gamma
-
-        # Load the differential images and fir for the best positions
-        model = np.sum(models, axis=0)
-        diff_images = self.get_diff_images(data, models, A, S, W)
-        if len(diff_images) != 2*len(self.cat.objects):
-            msg = "Expected {0} differential images but received {1}"
-            raise ValueError(msg.format(2*len(self.cat), len(diff_images)))
-        M = np.vstack([-diff.flatten() for diff in diff_images]).T
-        y = (data-model).flatten()
-        results = np.linalg.lstsq(M, y)[0]
-
-        for pk, obj in enumerate(self.cat.objects):
-            px, py = self.cx-obj.x, self.cy-obj.y
-            ddx = results[2*pk]
-            ddy = results[2*pk+1]
-            ipx, ipy = self.init_peaks[pk]
-            # Check that the total shift doesn't exceed the maximum
-            if np.abs(px+ddx-ipx) > self.max_shift or np.abs(py+ddy-ipy) > self.max_shift:
-                logger.debug("Attempted to shift peak {0} greater than max_shift".format(pk))
-                self.drifters[pk] = True
-                ddx, ddy = self.reset_position(pk, px, py, ddx, ddy)
-            # Only update the peak positions and build the new Tx, Ty
-            # if the peaks changed position
-            if np.sqrt(ddx**2+ddy**2)>self.threshold:
-                self.translate_psfs(pk, ddx, ddy, update=True)
-
-        if self.history is not None:
-            self.history["px"].append([peak.x for peak in self.peaks.peaks])
-            self.history["py"].append([peak.y for peak in self.peaks.peaks])
-        return self.Gamma
-
-    def get_history(self):
-        px_hist = np.array(self.history["px"])
-        py_hist = np.array(self.history["py"])
-        return px_hist, py_hist
-
 def getTxOp(shape, int_dx):
     """Construct Tx and its components
     """
@@ -146,22 +32,17 @@ def getTyOp(shape, int_dy):
                                   shape=(size, size), dtype=np.float64)
     return ty, ty_plus, ty_minus
 
-def getTranslationOps(shape, source, ddx=0, ddy=0):
+def getTranslationOps(shape, x, y, ddx=0, ddy=0):
     """Get the operators to translate source
     """
     cx, cy = int(shape[1])>>1, int(shape[0])>>1
-    dx, dy = cx-source.x, cy-source.y
+    dx, dy = cx-x, cy-y
     dx += ddx
     dy += ddy
     int_dx, int_dy = int(dx), int(dy)
 
-    # Build Tx and Ty (if necessary)
-    if int_dx not in source.int_tx.keys():
-        source.int_tx[int_dx] = getTxOp(shape, int_dx)
-    if int_dy not in source.int_ty.keys():
-        source.int_ty[int_dy] = getTyOp(shape, int_dy)
-    tx, tx_plus, tx_minus = source.int_tx[int_dx]
-    ty, ty_plus, ty_minus = source.int_ty[int_dy]
+    tx, tx_plus, tx_minus = getTxOp(shape, int_dx)
+    ty, ty_plus, ty_minus = getTyOp(shape, int_dy)
 
     # Create Tx
     if dx<0:
