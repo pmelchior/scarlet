@@ -258,7 +258,8 @@ class Blend(object):
 
     def setData(self, img, psfs=None, weights=None, update_order=None, slack=0.9):
         self.it = 0
-        self.center_wait = 5
+        self.center_min_dist = 1e-3
+        self.center_wait = 10
         self.center_skip = 10
         if weights is None:
             self.weights = Wmax = 1
@@ -297,7 +298,7 @@ class Blend(object):
 
             # update positions
             if self.update_centers:
-                if self.it > self.center_wait and self.it % self.center_skip == 0:
+                if self.it >= self.center_wait and self.it % self.center_skip == 0:
                     self._update_positions(models)
             self.it += 1
 
@@ -347,10 +348,11 @@ class Blend(object):
                     ddx,ddy = np.dot(np.dot(np.linalg.inv(np.dot(MT, MT.T)), MT), y)
                 else:
                     ddx,ddy = np.dot(np.dot(np.linalg.inv(np.dot(MT, MT.T*self.weights.flatten()[:,None])), MT), y)
-                self.sources[k].x -= ddx
-                self.sources[k].y -= ddy
-                self.sources[k]._translate_psf()
-                logger.info("Source %d shifted by (%.3f/%.3f) to (%.2f/%.2f)" % (k, -ddx, -ddy, self.sources[k].x, self.sources[k].y))
+                if ddx**2 + ddy**2 > self.center_min_dist**2:
+                    self.sources[k].x -= ddx
+                    self.sources[k].y -= ddy
+                    self.sources[k]._translate_psf()
+                    logger.info("Source %d shifted by (%.3f/%.3f) to (%.3f/%.3f)" % (k, -ddx, -ddy, self.sources[k].x, self.sources[k].y))
 
     def steps_f(self, j, Xs):
         # which update to do now
