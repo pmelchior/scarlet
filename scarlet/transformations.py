@@ -1,10 +1,7 @@
 from __future__ import print_function, division
-import logging
 
 import numpy as np
 import scipy.sparse
-
-logger = logging.getLogger("scarlet.transformations")
 
 def getTxOp(shape, int_dx):
     """Construct Tx and its components

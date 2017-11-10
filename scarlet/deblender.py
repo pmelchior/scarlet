@@ -8,7 +8,7 @@ from . import transformations
 from . import operators
 
 import logging
-logger = logging.getLogger("scarlet.deblender")
+logger = logging.getLogger("scarlet")
 
 class Source(object):
     def __init__(self, x, y, img, psf=None, constraints=None, sed=None, morph=None, fix_sed=False, fix_morph=False, shift_center=0.2, prox_sed=None, prox_morph=None):
@@ -133,7 +133,7 @@ class Source(object):
                 # L0 has preference
                 if "l0" in self.constraints.keys():
                     if "l1" in self.constraints.keys():
-                        logger.warn("warning: l1 penalty ignored in favor of l0 penalty")
+                        logger.warn("l1 penalty ignored in favor of l0 penalty")
                     self.prox_morph = [partial(proxmin.operators.prox_hard, thresh=self.constraints['l0'])] * self.K
                 else:
                     self.prox_morph = [partial(proxmin.operators.prox_soft_plus, thresh=self.constraints['l1'])] * self.K
@@ -350,6 +350,7 @@ class Blend(object):
                 self.sources[k].x -= ddx
                 self.sources[k].y -= ddy
                 self.sources[k]._translate_psf()
+                logger.info("Source %d shifted by (%.3f/%.3f) to (%.2f/%.2f)" % (k, -ddx, -ddy, self.sources[k].x, self.sources[k].y))
 
     def steps_f(self, j, Xs):
         # which update to do now
