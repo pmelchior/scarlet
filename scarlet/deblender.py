@@ -273,9 +273,13 @@ class Blend(object):
         self.step_AS = [None] * 2
         B, Ny, Nx = img.shape
         self.A, self.S = np.empty((B,self.K)), np.empty((self.K,Nx*Ny))
+        self._set_AS()
+
+    def _set_AS(self):
         for k in range(self.K):
             m,l = self._source_of[k]
             self.A[:,k] = self.sources[m].sed[l]
+            # TODO: This will be more complicated with source boxes!
             self.S[k,:] = self.sources[m].morph[l].flatten()
 
     def prox_f(self, X, step, Xs=None, j=None):
@@ -303,35 +307,32 @@ class Blend(object):
             if not self.sources[m].fix_sed[l]:
                 # gradient of likelihood wrt A
                 if not self.psf_per_band:
-                    self.A[:,k] = self.diff.dot(self.sources[m].Gamma.dot(self.sources[m].morph[l]))
+                    X_ = self.diff.dot(self.sources[m].Gamma.dot(self.sources[m].morph[l]))
                 else:
+                    X_ = np.empty_like(X)
                     for b in range(B):
-                        self.A[b,k] = self.diff[b].dot(self.sources[m].Gamma[b].dot(self.sources[m].morph[l]))
+                        X_[b] = self.diff[b].dot(self.sources[m].Gamma[b].dot(self.sources[m].morph[l]))
 
                 # apply per component prox projection and save in source
-                self.sources[m].sed[l] =  self.sources[m].prox_sed[l](X - step*self.A[:,k], step)
-                # copy into result matrix
-                self.A[:,k] = self.sources[m].sed[l]
-            return self.A[:,k]
+                X_[:] = self.sources[m].sed[l] =  self.sources[m].prox_sed[l](X - step*X_, step)
+            return X_
 
         # S update
         elif AorS == 1:
             m,l = self.source_of(k)
             if not self.sources[m].fix_morph[l]:
                 # gradient of likelihood wrt S
-                self.S[k,:] = 0
+                X_ = np.zeros_like(X)
                 if not self.psf_per_band:
                     for b in range(B):
-                        self.S[k,:] += self.sources[m].sed[l,b]*self.sources[m].Gamma.T.dot(self.diff[b])
+                        X_ += self.sources[m].sed[l,b]*self.sources[m].Gamma.T.dot(self.diff[b])
                 else:
                     for b in range(B):
-                        self.S[k,:] += self.sources[m].sed[l,b]*self.sources[m].Gamma[b].T.dot(self.diff[b])
+                        X_ += self.sources[m].sed[l,b]*self.sources[m].Gamma[b].T.dot(self.diff[b])
 
                 # apply per component prox projection and save in source
-                self.sources[m].morph[l] = self.sources[m].prox_morph[l](X - step*self.S[k], step)
-                # copy into result matrix
-                self.S[k,:] = self.sources[m].morph[l]
-            return self.S[k,:]
+                X_[:] = self.sources[m].morph[l] = self.sources[m].prox_morph[l](X - step*X_, step)
+            return X_
         else:
             raise ValueError("Expected index j in [0,%d]" % (2*self.K))
 
@@ -357,6 +358,7 @@ class Blend(object):
 
         # computing likelihood gradients for S and A: only once per iteration
         if AorS == self.update_order[0] and k==0:
+            self._set_AS()
             self.step_AS[0] = self._stepAS(0, [self.A, self.S])
             self.step_AS[1] = self._stepAS(1, [self.A, self.S])
         return self.step_AS[AorS]
