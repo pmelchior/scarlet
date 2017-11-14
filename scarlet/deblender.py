@@ -309,32 +309,32 @@ class Blend(object):
             if not self.sources[m].fix_sed[l]:
                 # gradient of likelihood wrt A
                 if not self.psf_per_band:
-                    X_ = self.diff.dot(self.sources[m].Gamma.dot(self.sources[m].morph[l]))
+                    grad = self.diff.dot(self.sources[m].Gamma.dot(self.sources[m].morph[l]))
                 else:
-                    X_ = np.empty_like(X)
+                    grad = np.empty_like(X)
                     for b in range(B):
-                        X_[b] = self.diff[b].dot(self.sources[m].Gamma[b].dot(self.sources[m].morph[l]))
+                        grad_[b] = self.diff[b].dot(self.sources[m].Gamma[b].dot(self.sources[m].morph[l]))
 
                 # apply per component prox projection and save in source
-                X_[:] = self.sources[m].sed[l] =  self.sources[m].prox_sed[l](X - step*X_, step)
-            return X_
+                self.sources[m].sed[l] =  self.sources[m].prox_sed[l](X - step*grad, step)
+            return self.sources[m].sed[l]
 
         # S update
         elif AorS == 1:
             m,l = self.source_of(k)
             if not self.sources[m].fix_morph[l]:
                 # gradient of likelihood wrt S
-                X_ = np.zeros_like(X)
+                grad = np.zeros_like(X)
                 if not self.psf_per_band:
                     for b in range(B):
-                        X_ += self.sources[m].sed[l,b]*self.sources[m].Gamma.T.dot(self.diff[b])
+                        grad += self.sources[m].sed[l,b]*self.sources[m].Gamma.T.dot(self.diff[b])
                 else:
                     for b in range(B):
-                        X_ += self.sources[m].sed[l,b]*self.sources[m].Gamma[b].T.dot(self.diff[b])
+                        grad += self.sources[m].sed[l,b]*self.sources[m].Gamma[b].T.dot(self.diff[b])
 
                 # apply per component prox projection and save in source
-                X_[:] = self.sources[m].morph[l] = self.sources[m].prox_morph[l](X - step*X_, step)
-            return X_
+                self.sources[m].morph[l] = self.sources[m].prox_morph[l](X - step*grad, step)
+            return self.sources[m].morph[l]
         else:
             raise ValueError("Expected index j in [0,%d]" % (2*self.K))
 
