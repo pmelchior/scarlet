@@ -12,13 +12,14 @@ logger = logging.getLogger("scarlet")
 
 class Source(object):
     def __init__(self, x, y, img, psf=None, constraints=None, sed=None, morph=None, fix_sed=False, fix_morph=False, shift_center=0.2, prox_sed=None, prox_morph=None):
-        # TODO: use bounding box as argument, make cutout of img (odd pixel number)
-        # and initialize morph directly from cutout instead if point source
 
         # set up coordinates and images sizes
         self.x = x
         self.y = y
         self.B, self.Ny, self.Nx = img.shape
+        # TODO: use bounding box as argument, make cutout of img (odd pixel number)
+        self.bb_ll = (0,0)
+        self.bb_shape = (self.Ny, self.Nx)
 
         if psf is None:
             self.P = None
@@ -44,7 +45,7 @@ class Source(object):
 
     @property
     def image(self):
-        return self.morph.reshape((-1,self.Nx,self.Ny)) # this *should* be a view
+        return self.morph.reshape((self.K,self.Ny,self.Nx)) # this *should* be a view
 
     def get_model(self, combine=True, Gamma=None):
         if Gamma is None:
