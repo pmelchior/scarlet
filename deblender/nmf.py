@@ -27,7 +27,7 @@ component_types = ["star", "bulge", "disk", # currently supported types
 class Deblend(object):
     """Result of the deblender
     """
-    def __init__(self, img, A, S, T, W=None, traceback=None, **parameters):
+    def __init__(self, img, A, S, T, WA=None, WS=None, traceback=None, **parameters):
         """Create a deblender result
 
         `parameters` is used to store the parameters sent to the glmm algorithm, which makes it
@@ -39,7 +39,8 @@ class Deblend(object):
         self.A = A
         self.S = S
         self.T = T
-        self.W = W
+        self.WA = WA
+        self.WS = WS
         self.traceback = traceback
         self.parameters = parameters
 
@@ -258,19 +259,19 @@ def prox_likelihood_S(S, step, A=None, Y=None, Gamma=None, prox_g=None, W=1):
     """
     return prox_g(S - step*delta_data(A, S, Y, D='S', Gamma=Gamma, W=W), step)
 
-def prox_likelihood(X, step, Xs=None, j=None, Y=None, W=None, T=None,
+def prox_likelihood(X, step, Xs=None, j=None, Y=None, WA=None, WS=None, T=None,
                     prox_S=None, prox_A=None):
     # Only update once per iteration
     if j == 0 and T.fit_positions:
         # Update the translation operators
         A, S = Xs
         models = get_model(A, S, T.Gamma, combine=False)
-        T.update_positions(Y, models, A, S, W)
+        T.update_positions(Y, models, A, S)
 
     if j==0:
-        return prox_likelihood_A(X, step, S=Xs[1], Y=Y, Gamma=T.Gamma, prox_g=prox_A, W=W)
+        return prox_likelihood_A(X, step, S=Xs[1], Y=Y, Gamma=T.Gamma, prox_g=prox_A, W=WA)
     else:
-        return prox_likelihood_S(X, step, A=Xs[0], Y=Y, Gamma=T.Gamma, prox_g=prox_S, W=W)
+        return prox_likelihood_S(X, step, A=Xs[0], Y=Y, Gamma=T.Gamma, prox_g=prox_S, W=WS)
 
 def init_A(B, K=None, peaks=None, img=None):
     # init A from SED of the peak pixels
@@ -415,6 +416,16 @@ def reshape_img(img, new_shape=None, truncate=False, fill=0):
         _img = img
     return _img
 
+def normalizeMatrix(M, axis):
+    if axis == 1:
+        norm = np.sum(M, axis=axis)
+        norm = np.broadcast_to(norm, M.T.shape)
+        norm = norm.T
+    else:
+        norm = np.sum(M, axis=axis)
+        norm = np.broadcast_to(norm, M.shape)
+    return norm
+
 def deblend(img,
             peaks=None,
             components=None,
@@ -477,10 +488,13 @@ def deblend(img,
     else:
         Y = (_img-_sky).reshape(B,N*M)
     if weights is None:
-        W = Wmax = 1
+        WA = WS = WAmax = WSmax = 1
     else:
-        W = _weights.reshape(B,N*M)
-        Wmax = np.max(W)
+        _W = _weights.reshape(B,N*M)
+        WA = normalizeMatrix(_W, 1)
+        WS = normalizeMatrix(_W, 0)
+        WAmax = np.max(WA)
+        WSmax = np.max(WS)
     if psf is None:
         P_ = psf
     else:
@@ -566,9 +580,9 @@ def deblend(img,
     logger.debug("Ls: {0}".format(Ls))
 
     # define objective function with strict_constraints
-    f = partial(prox_likelihood, Y=Y, W=W, T=T, prox_S=prox_S, prox_A=prox_A)
+    f = partial(prox_likelihood, Y=Y, WA=WA, WS=WS, T=T, prox_S=prox_S, prox_A=prox_A)
 
-    steps_f = Steps_AS(Wmax=Wmax, slack=slack, update_order=update_order)
+    steps_f = Steps_AS(WAmax=WAmax, WSmax=WSmax, slack=slack, update_order=update_order)
 
     # run the NMF with those constraints
     Xs = [A, S]
@@ -579,11 +593,11 @@ def deblend(img,
     if not traceback:
         A, S = res
         S = S.reshape(K,N,M)
-        result = Deblend(_img, A, S, T, W=W, traceback=None, f=f)
+        result = Deblend(_img, A, S, T, WA=WA, WS=WS, traceback=None, f=f)
     else:
         [A, S], tr = res
         S = S.reshape(K,N,M)
-        result = Deblend(_img, A, S, T, W=W, traceback=tr,
+        result = Deblend(_img, A, S, T, WA=WA, WS=WS, traceback=tr,
             f=f, steps_f=steps_f, proxs_g=proxs_g, steps_g=steps_g, Ls=Ls, update_order=update_order,
             steps_g_update=steps_g_update, e_rel=e_rel)
     return result
