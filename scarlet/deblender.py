@@ -257,30 +257,64 @@ class Blend(object):
         """Number of distinct sources"""
         return self.M
 
-    def setData(self, img, psfs=None, weights=None, update_order=None, slack=0.9):
+    def set_data(self, img, psfs=None, weights=None, update_order=None, slack=0.9):
         self.it = 0
         self.center_min_dist = 1e-3
         self.center_wait = 10
         self.center_skip = 10
-        if weights is None:
-            self.weights = Wmax = 1
-        else:
-            self.weights = weights
-            Wmax = np.max(self.weights)
         if update_order is None:
             update_order = range(2)
-        self.img = img
+        self.img_shape = img.shape
+        B, Ny, Nx = self.img_shape
+        self._img = img.reshape(B,-1)
         self.update_order = update_order
-        self._stepAS = Steps_AS(Wmax=Wmax, slack=slack, update_order=self.update_order)
+        self._set_weights(weights)
+        WAmax = np.max(self._weights[1])
+        WSmax = np.max(self._weights[2])
+        self._stepAS = Steps_AS(WAmax=WAmax, WSmax=WSmax, slack=slack, update_order=self.update_order)
         self.step_AS = [None] * 2
-        B, Ny, Nx = img.shape
+
         self.A, self.S = np.empty((B,self.K)), np.empty((self.K,Nx*Ny))
         self._set_AS()
+
+    def _set_weights(self, weights):
+        if weights is None:
+            self._weights = [1,1,1]
+        else:
+            assert self.img_shape == weights.shape
+            B, Ny, Nx = self.img_shape
+            self._weights = [weights.reshape(B,-1), None, None] # [W, WA, WS]
+
+            # for S update: normalize the per-pixel variation
+            # i.e. in every pixel: utilize the bands with large weights
+            # CAVEAT: need to filter out pixels that are saturated in every band
+            norm_pixel = np.median(weights, axis=0)
+            mask = norm_pixel > 0
+            self._weights[2] = weights.copy()
+            self._weights[2][:,mask] /= norm_pixel[mask]
+            self._weights[2] = self._weights[2].reshape(B,-1)
+
+            # reverse is true for A update: for each band, use the pixels that
+            # have the largest weights
+            norm_band = np.median(weights, axis=(1,2))
+            # CAVEAT: some regions may have one band missing completely
+            mask = norm_band > 0
+            self._weights[1] = weights.copy()
+            self._weights[1][mask] /= norm_band[mask,None,None]
+            # CAVEAT: mask all pixels in which at least one band has W=0
+            # these are likely saturated and their colors have large weights
+            # but are incorrect due to missing bands
+            mask = ~np.all(weights>0, axis=0)
+            # and mask all bands for that pixel:
+            # when estimating A do not use (partially) saturated pixels
+            self._weights[1][:,mask] = 0
+            self._weights[1] = self._weights[1].reshape(B,-1)
 
     def _set_AS(self):
         for k in range(self.K):
             m,l = self._source_of[k]
             self.A[:,k] = self.sources[m].sed[l]
+            # TODO: move to _stepAS and remove self.A and self.S
             # TODO: This will be more complicated with source boxes!
             self.S[k,:] = self.sources[m].morph[l].flatten()
 
@@ -289,19 +323,23 @@ class Blend(object):
         # which update to do now
         AorS = j//self.K
         k = j%self.K
-        B, Ny, Nx = self.img.shape
+        B, Ny, Nx = self.img_shape
 
-        # computing likelihood gradients for S and A: only once per iteration
-        if AorS == self.update_order[0] and k==0:
-            models =  [source.get_model(combine=True) for source in self.sources]
-            model = np.sum(models, axis=0)
-            self.diff = (self.weights*(model-self.img)).reshape(B, Ny*Nx)
+        # computing likelihood gradients for S and A:
+        # build model only once per iteration
+        if k == 0:
+            if AorS == self.update_order[0]:
+                models =  [source.get_model(combine=True) for source in self.sources]
+                self._model = np.sum(models, axis=0).reshape(B,-1)
 
-            # update positions
-            if self.update_centers:
-                if self.it >= self.center_wait and self.it % self.center_skip == 0:
-                    self._update_positions(models)
-            self.it += 1
+                # update positions?
+                # CAVEAT: Need valid self._model for the next step
+                if self.update_centers:
+                    if self.it >= self.center_wait and self.it % self.center_skip == 0:
+                        self._update_positions(models)
+                self.it += 1
+            # compute weighted residuals
+            self._diff = self._weights[AorS + 1]*(self._model-self._img)
 
         # A update
         if AorS == 0:
@@ -309,11 +347,11 @@ class Blend(object):
             if not self.sources[m].fix_sed[l]:
                 # gradient of likelihood wrt A
                 if not self.psf_per_band:
-                    grad = self.diff.dot(self.sources[m].Gamma.dot(self.sources[m].morph[l]))
+                    grad = self._diff.dot(self.sources[m].Gamma.dot(self.sources[m].morph[l]))
                 else:
                     grad = np.empty_like(X)
                     for b in range(B):
-                        grad_[b] = self.diff[b].dot(self.sources[m].Gamma[b].dot(self.sources[m].morph[l]))
+                        grad_[b] = self._diff[b].dot(self.sources[m].Gamma[b].dot(self.sources[m].morph[l]))
 
                 # apply per component prox projection and save in source
                 self.sources[m].sed[l] =  self.sources[m].prox_sed[l](X - step*grad, step)
@@ -327,10 +365,10 @@ class Blend(object):
                 grad = np.zeros_like(X)
                 if not self.psf_per_band:
                     for b in range(B):
-                        grad += self.sources[m].sed[l,b]*self.sources[m].Gamma.T.dot(self.diff[b])
+                        grad += self.sources[m].sed[l,b]*self.sources[m].Gamma.T.dot(self._diff[b])
                 else:
                     for b in range(B):
-                        grad += self.sources[m].sed[l,b]*self.sources[m].Gamma[b].T.dot(self.diff[b])
+                        grad += self.sources[m].sed[l,b]*self.sources[m].Gamma[b].T.dot(self._diff[b])
 
                 # apply per component prox projection and save in source
                 self.sources[m].morph[l] = self.sources[m].prox_morph[l](X - step*grad, step)
@@ -339,16 +377,17 @@ class Blend(object):
             raise ValueError("Expected index j in [0,%d]" % (2*self.K))
 
     def _update_positions(self, models):
-        y = self.diff.flatten()
+        # residuals weighted with full/original weight matrix
+        y = (self._weights[0]*(self._model-self._img)).flatten()
         for k in range(self.K):
             if self.sources[k].shift_center:
                 diff_x,diff_y = self.sources[k].get_shifted_model(model=models[k])
                 # least squares for the shifts given the model residuals
                 MT = np.vstack([diff_x.flatten(), diff_y.flatten()])
-                if not hasattr(self.weights,'shape'): # no/flat weights
+                if not hasattr(self._weights[0],'shape'): # no/flat weights
                     ddx,ddy = np.dot(np.dot(np.linalg.inv(np.dot(MT, MT.T)), MT), y)
                 else:
-                    ddx,ddy = np.dot(np.dot(np.linalg.inv(np.dot(MT, MT.T*self.weights.flatten()[:,None])), MT), y)
+                    ddx,ddy = np.dot(np.dot(np.linalg.inv(np.dot(MT, MT.T*self._weights[0].flatten()[:,None])), MT), y)
                 if ddx**2 + ddy**2 > self.center_min_dist**2:
                     self.sources[k].x -= ddx
                     self.sources[k].y -= ddy
@@ -402,8 +441,7 @@ def deblend(img,
 
     # construct Blender from sources and define objective function
     blend = Blend(sources)
-    blend.setData(Y, weights=weights, update_order=update_order)
-    #f = partial(blend.prox_likelihood, Y=Y, W=weights, update_order=update_order)
+    blend.set_data(Y, weights=weights, update_order=update_order)
     prox_f = blend.prox_f
     steps_f = blend.steps_f
     proxs_g = blend.proxs_g

@@ -108,7 +108,7 @@ setup(
   url = 'https://github.com/fred3m/deblender',
   keywords = ['astro', 'deblending', 'photometry', 'nmf'],
   ext_modules=ext_modules,
-  install_requires=['proxmin>=0.3', 'pybind11>=1.7', 'numpy', 'scipy'],
+  install_requires=['proxmin>=0.4', 'pybind11>=1.7', 'numpy', 'scipy'],
   cmdclass={'build_ext': BuildExt},
   zip_safe=False
 )
