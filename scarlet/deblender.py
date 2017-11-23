@@ -274,9 +274,6 @@ class Blend(object):
         self._stepAS = Steps_AS(WAmax=WAmax, WSmax=WSmax, slack=slack, update_order=self.update_order)
         self.step_AS = [None] * 2
 
-        self.A, self.S = np.empty((B,self.K)), np.empty((self.K,Nx*Ny))
-        self._set_AS()
-
     def _set_weights(self, weights):
         if weights is None:
             self._weights = [1,1,1]
@@ -309,14 +306,6 @@ class Blend(object):
             # when estimating A do not use (partially) saturated pixels
             self._weights[1][:,mask] = 0
             self._weights[1] = self._weights[1].reshape(B,-1)
-
-    def _set_AS(self):
-        for k in range(self.K):
-            m,l = self._source_of[k]
-            self.A[:,k] = self.sources[m].sed[l]
-            # TODO: move to _stepAS and remove self.A and self.S
-            # TODO: This will be more complicated with source boxes!
-            self.S[k,:] = self.sources[m].morph[l].flatten()
 
     def prox_f(self, X, step, Xs=None, j=None):
 
@@ -400,10 +389,20 @@ class Blend(object):
         k = j%self.K
 
         # computing likelihood gradients for S and A: only once per iteration
+        # TODO: stepAS does change over several iterations, but we compute A,S
+        # each time
         if AorS == self.update_order[0] and k==0:
-            self._set_AS()
-            self.step_AS[0] = self._stepAS(0, [self.A, self.S])
-            self.step_AS[1] = self._stepAS(1, [self.A, self.S])
+            # build temporary A,S matrices
+            B, Ny, Nx = self.img_shape
+            A, S = np.empty((B,self.K)), np.empty((self.K,Nx*Ny))
+            for k_ in range(self.K):
+                m,l = self._source_of[k_]
+                A[:,k_] = self.sources[m].sed[l]
+                # TODO: This will be more complicated with source boxes!
+                S[k_,:] = self.sources[m].morph[l].flatten()
+
+            self.step_AS[0] = self._stepAS(0, [A, S])
+            self.step_AS[1] = self._stepAS(1, [A, S])
         return self.step_AS[AorS]
 
     def get_model(self, m=None, combine=True):
