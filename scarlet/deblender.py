@@ -11,15 +11,19 @@ import logging
 logger = logging.getLogger("scarlet")
 
 class Source(object):
-    def __init__(self, x, y, img, psf=None, constraints=None, sed=None, morph=None, fix_sed=False, fix_morph=False, shift_center=0.2, prox_sed=None, prox_morph=None):
+    def __init__(self, x, y, img, weights=None, psf=None, constraints=None, sed=None, morph=None, fix_sed=False, fix_morph=False, shift_center=0.2, prox_sed=None, prox_morph=None):
 
         # set up coordinates and images sizes
         self.x = x
         self.y = y
-        self.B, self.Ny, self.Nx = img.shape
-        # TODO: use bounding box as argument, make cutout of img (odd pixel number)
-        self.bb_ll = (0,0)
-        self.bb_shape = (self.Ny, self.Nx)
+        self.B, Ny, Nx = img.shape # NOTE: Ny,Nx property as that may change
+        # TODO: make cutout of img and weights (with odd pixel number!)
+        self.bb = (slice(0, self.B), slice(0, Ny), slice(0, Nx))
+
+        # need to store weights in bb to compute errors for sed and morphology
+        self.w = weights
+        if weights is not None:
+            self.w = weights[self.bb]
 
         if psf is None:
             self.P = None
@@ -44,25 +48,37 @@ class Source(object):
         return self.__len__()
 
     @property
+    def shape(self):
+        return tuple([s.stop-s.start for s in self.bb])
+
+    @property
+    def Nx(self):
+        return self.bb[2].stop - self.bb[2].start
+
+    @property
+    def Ny(self):
+        return self.bb[1].stop - self.bb[1].start
+
+    @property
     def image(self):
-        return self.morph.reshape((self.K,self.Ny,self.Nx)) # this *should* be a view
+        return self.morph.reshape(self.shape) # this *should* be a view
 
     def get_model(self, combine=True, Gamma=None):
         if Gamma is None:
             Gamma = self.Gamma
         # model for all components of this source
         if hasattr(Gamma, 'shape'): # single matrix: one for all bands
-            model = np.empty((self.K,self.B,self.Ny*self.Nx))
+            model = np.empty((self.K, self.B, self.Ny*self.Nx))
             for k in range(self.K):
                 model[k] = np.outer(self.sed[k], Gamma.dot(self.morph[k]))
         else:
-            model = np.zeros((self.K,self.B,self.Ny*self.Nx))
+            model = np.zeros((self.K, self.B, self.Ny*self.Nx))
             for k in range(self.K):
                 for b in range(self.B):
                     model[k,b] += self.sed[k,b] * Gamma[b].dot(self.morph[k])
 
         # reshape the image into a 2D array
-        model = model.reshape(self.K,self.B,self.Ny,self.Nx)
+        model = model.reshape(self.K, self.B, self.Ny, self.Nx)
         if combine:
             model = model.sum(axis=0)
         return model
@@ -100,7 +116,7 @@ class Source(object):
 
     def _init_sed(self, img):
         # init A from SED of the peak pixels
-        self.sed = np.empty((1,self.B))
+        self.sed = np.empty((1, self.B))
         self.sed[0] = img[:,int(self.y),int(self.x)]
         # ensure proper normalization
         self.sed[0] = proxmin.operators.prox_unity_plus(self.sed[0], 0)
@@ -146,11 +162,12 @@ class Source(object):
 
     def _init_morph(self, img):
         # TODO: init from the cutout values (ignoring blending)
-        cx, cy = int(self.Nx/2), int(self.Ny/2)
-        self.morph = np.zeros((1, self.Ny*self.Nx))
+        _, Ny, Nx = self.shape
+        cx, cy = int(Nx/2), int(Ny/2)
+        self.morph = np.zeros((1, Ny*Nx))
         tiny = 1e-10
         flux = np.abs(img[:,cy,cx].mean()) + tiny
-        self.morph[0,cy*self.Nx+cx] = flux
+        self.morph[0,cy*Nx+cx] = flux
 
     def _translate_psf(self):
         """Build the operators to perform a translation
@@ -169,14 +186,13 @@ class Source(object):
             self.dGamma_y = transformations.getGammaOp(Tx, Ty_, self.B, self.P)
 
     def _adapt_PSF(self, psf):
-        shape = (self.Ny, self.Nx)
         # Simpler for likelihood gradients if psf = const across B
         if hasattr(psf, 'shape'): # single matrix
-            return transformations.getPSFOp(psf, shape)
+            return transformations.getPSFOp(psf, self.shape[1:])
 
         P = []
         for b in range(self.B):
-            P.append(transformations.getPSFOp(psf[b], shape))
+            P.append(transformations.getPSFOp(psf[b], self.shape[1:]))
         return P
 
     def _set_constraints(self):
@@ -187,7 +203,7 @@ class Source(object):
             self.Ls[1] = None
             return
 
-        shape = (self.Ny, self.Nx)
+        shape = self.shape[1:]
         for c in self.constraints.keys():
             if c == "M":
                 # positive gradients
@@ -318,7 +334,7 @@ class Blend(object):
         # build model only once per iteration
         if k == 0:
             if AorS == self.update_order[0]:
-                models =  [source.get_model(combine=True) for source in self.sources]
+                models =  self.get_model(combine=False) # model each each source over image
                 self._model = np.sum(models, axis=0).reshape(B,-1)
 
                 # update positions?
@@ -406,16 +422,31 @@ class Blend(object):
         return self.step_AS[AorS]
 
     def get_model(self, m=None, combine=True):
-        """Build the current model
+        """Compute the current model for the entire image
         """
+        _model_img = np.zeros(self.img_shape)
         if m is None:
             # needs to have source components combined
             model = [source.get_model(combine=True) for source in self.sources]
             if combine:
-                model = np.sum(model, axis=0)
-            return model
+                for m in range(self.M):
+                    _model_img[self.sources[m].bb] += model[m]
+                model_img = _model_img
+            else:
+                model_img = [_model_img.copy() for m in range(self.M)]
+                for m in range(self.M):
+                    model_img[m][self.sources[m].bb] = model[m]
         else:
-            return self.source[m].get_model(combine=combine)
+            model = self.source[m].get_model(combine=combine)
+            if len(model.shape) == 4: # several components in model
+                model_img = [_model_img.copy() for k in range(model.shape[0])]
+                for k in range(model.shape[0]):
+                    model_img[k][self.sources[m].bb] = model[k]
+            else:
+                _model_img[self.sources[m].bb] = model
+                model_img = _model_img
+        return model_img
+
 
 
 def deblend(img,
