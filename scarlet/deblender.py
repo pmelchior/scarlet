@@ -16,7 +16,7 @@ class Source(object):
         # set up coordinates and images sizes
         self.x = x
         self.y = y
-        self.B, Ny, Nx = img.shape # NOTE: Ny,Nx property as that may change
+        self.B, Ny, Nx = img.shape # NOTE: Ny,Nx property as they may change
         # TODO: make cutout of img and weights (with odd pixel number!)
         self.bb = (slice(0, self.B), slice(0, Ny), slice(0, Nx))
 
@@ -30,6 +30,7 @@ class Source(object):
         if weights is not None:
             self.w = weights[self.bb].reshape(self.B, Ny*Nx)
             self.morph_std = np.median(self.get_morph_error())
+            self.sed_std = np.mean(self.get_sed_error())
 
         # set up psf and translations matrices
         if psf is None:
@@ -482,12 +483,7 @@ def deblend(img,
             psf=None,
             sky=None,
             max_iter=200,
-            e_rel=1e-3,
-            e_abs=1e-3,
-            slack = 0.9,
-            update_order=None,
-            steps_g=None,
-            steps_g_update='steps_f',
+            e_rel=1e-2,
             traceback=False
             ):
 
@@ -496,9 +492,15 @@ def deblend(img,
     else:
         Y = img-sky
 
+    # config parameters for bSDMM and Blend
+    slack = 0.9
+    steps_g = None
+    steps_g_update = 'steps_f'
+    update_order=None # S then A
+
     # construct Blender from sources and define objective function
     blend = Blend(sources)
-    blend.set_data(Y, weights=weights, update_order=update_order)
+    blend.set_data(Y, weights=weights, update_order=update_order, slack=slack)
     prox_f = blend.prox_f
     steps_f = blend.steps_f
     proxs_g = blend.proxs_g
@@ -507,11 +509,22 @@ def deblend(img,
     # run the NMF with those constraints
     XA = []
     XS = []
+    e_absA = []
+    e_absS = []
     for k in range(blend.K):
         m,l = blend.source_of(k)
         XA.append(blend.sources[m].sed[l])
         XS.append(blend.sources[m].morph[l])
-    X = XA+XS
+        e_absA.append(blend.sources[m].sed_std * e_rel)
+        e_absS.append(blend.sources[m].morph_std * e_rel)
+    X = XA + XS
+    # TODO: if e_abs is set here, it cannot be changed iteratively, which
+    # makes the error limits sensitive to the source Initialization.
+    # That's mostly OK for the morphology (which needs the SED the be OK),
+    # but sed errors *really* improve over time as the models grow out and
+    # cover more pixels
+    # Alternative: make e_abs a member of Blend
+    e_abs = e_absA + e_absS
     res = proxmin.algorithms.bsdmm(X, prox_f, steps_f, proxs_g, steps_g=steps_g, Ls=Ls, update_order=update_order, steps_g_update=steps_g_update, max_iter=max_iter, e_rel=e_rel, e_abs=e_abs, accelerated=True, traceback=traceback)
 
     if not traceback:
