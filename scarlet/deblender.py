@@ -23,7 +23,7 @@ class Source(object):
         # need to store weights in bb to compute errors for sed and morphology
         self.w = weights
         if weights is not None:
-            self.w = weights[self.bb]
+            self.w = weights[self.bb].reshape(self.B, Ny*Nx)
 
         if psf is None:
             self.P = None
@@ -61,7 +61,8 @@ class Source(object):
 
     @property
     def image(self):
-        return self.morph.reshape(self.shape) # this *should* be a view
+        morph_shape = (self.K,) + self.shape[1:]
+        return self.morph.reshape(morph_shape) # this *should* be a view
 
     def get_model(self, combine=True, Gamma=None):
         if Gamma is None:
@@ -90,6 +91,27 @@ class Source(object):
         diff_img[0] = (model-diff_img[0])/self.shift_center
         diff_img[1] = (model-diff_img[1])/self.shift_center
         return diff_img
+
+    def get_morph_error(self):
+        morph_shape = (self.K,) + self.shape[1:]
+        if self.w is None:
+            return np.zeros(morph_shape)
+
+        # compute direct error propagation assuming only this source SED(s)
+        # and the pixel covariances: Sigma_morph = diag((A^T Sigma^-1 A)^-1)
+        # CAVEAT: If done on the entire A matrix, degeneracies in the linear
+        # solution arise and substantially amplify the error estimate:
+        # A = self.sed.T
+        # return np.sqrt(np.diagonal(np.linalg.inv(np.dot(np.multiply(self.w.T[:,None,:], A.T), A)), axis1=1, axis2=2))
+        # Instead, estimate noise for each component separately:
+        # simple multiplication for diagonal pixel covariance matrix
+        return [np.dot(a.T, np.multiply(self.w, a[:,None]))**-0.5 for a in self.sed]
+
+    def get_sed_error(self):
+        if self.w is None:
+            return np.zeros(self.sed.shape)
+        # See explanation in get_morph_error
+        return [np.dot(s,np.multiply(self.w.T, s[None,:].T))**-0.5 for s in self.morph]
 
     def _set_sed(self, img, sed, prox_sed, fix_sed):
         if sed is None:
@@ -240,6 +262,9 @@ class Blend(object):
     def __init__(self, sources):
         assert len(sources)
         self._register_sources(sources)
+
+        # TODO: Blend then collects all e_rel and e_abs from each source
+        # ... and remove it from deblend()
 
         # list of all proxs_g and Ls: first A, then S
         self.proxs_g = [source.proxs_g[0] for source in self.sources] + [source.proxs_g[1] for source in self.sources]
