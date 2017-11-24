@@ -307,11 +307,12 @@ class Blend(object):
         self.center_wait = 10
         self.center_skip = 10
         if update_order is None:
-            update_order = range(2)
+            self.update_order = range(2)
+        else:
+            self.update_order = update_order
         self.img_shape = img.shape
         B, Ny, Nx = self.img_shape
         self._img = img.reshape(B,-1)
-        self.update_order = update_order
         self._set_weights(weights)
         WAmax = np.max(self._weights[1])
         WSmax = np.max(self._weights[2])
@@ -496,7 +497,7 @@ def deblend(img,
     slack = 0.9
     steps_g = None
     steps_g_update = 'steps_f'
-    update_order=None # S then A
+    update_order=[1,0] # S then A
 
     # construct Blender from sources and define objective function
     blend = Blend(sources)
@@ -518,6 +519,13 @@ def deblend(img,
         e_absA.append(blend.sources[m].sed_std * e_rel)
         e_absS.append(blend.sources[m].morph_std * e_rel)
     X = XA + XS
+
+    # update_order for bSDMM is over *all* components
+    if update_order[0] == 0:
+        update_order = range(2*blend.K)
+    else:
+        update_order = range(blend.K,2*blend.K) + range(blend.K)
+
     # TODO: if e_abs is set here, it cannot be changed iteratively, which
     # makes the error limits sensitive to the source Initialization.
     # That's mostly OK for the morphology (which needs the SED the be OK),
