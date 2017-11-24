@@ -20,11 +20,18 @@ class Source(object):
         # TODO: make cutout of img and weights (with odd pixel number!)
         self.bb = (slice(0, self.B), slice(0, Ny), slice(0, Nx))
 
+        # set sed and morph (either from argument or img)
+        self._set_sed(img, sed)
+        self._set_morph(img, morph)
+
         # need to store weights in bb to compute errors for sed and morphology
         self.w = weights
+        self.morph_std = 1
         if weights is not None:
             self.w = weights[self.bb].reshape(self.B, Ny*Nx)
+            self.morph_std = np.median(self.get_morph_error())
 
+        # set up psf and translations matrices
         if psf is None:
             self.P = None
         else:
@@ -32,12 +39,11 @@ class Source(object):
         self.shift_center = shift_center
         self._translate_psf()
 
-        # set up sed and morphology: initial values, proxs and update
+        # set constraints: first projection-style
         self.constraints = constraints
-        self._set_sed(img, sed, prox_sed, fix_sed)
-        self._set_morph(img, morph, prox_morph, fix_morph)
-
-        # set up ADMM-style constraints: proxs and matrices
+        self._set_sed_prox(prox_sed, fix_sed)
+        self._set_morph_prox(prox_morph, fix_morph)
+        # ... then ADMM-style constraints (proxs and L matrices)
         self._set_constraints()
 
     def __len__(self):
@@ -113,9 +119,13 @@ class Source(object):
         # See explanation in get_morph_error
         return [np.dot(s,np.multiply(self.w.T, s[None,:].T))**-0.5 for s in self.morph]
 
-    def _set_sed(self, img, sed, prox_sed, fix_sed):
+    def _set_sed(self, img, sed):
         if sed is None:
-            self._init_sed(img)
+            # init A from SED of the peak pixels
+            self.sed = np.empty((1, self.B))
+            self.sed[0] = img[:,int(self.y),int(self.x)]
+            # ensure proper normalization
+            self.sed[0] = proxmin.operators.prox_unity_plus(self.sed[0], 0)
         else:
             # to allow multi-component sources, need to have KxB array
             if len(sed.shape) != 2:
@@ -123,6 +133,7 @@ class Source(object):
             else:
                 self.sed = sed.copy()
 
+    def _set_sed_prox(self, prox_sed, fix_sed):
         if hasattr(fix_sed, '__iter__') and len(fix_sed) == self.K:
             self.fix_sed = fix_sed
         else:
@@ -136,16 +147,15 @@ class Source(object):
             else:
                 self.prox_sed = [prox_sed] * self.K
 
-    def _init_sed(self, img):
-        # init A from SED of the peak pixels
-        self.sed = np.empty((1, self.B))
-        self.sed[0] = img[:,int(self.y),int(self.x)]
-        # ensure proper normalization
-        self.sed[0] = proxmin.operators.prox_unity_plus(self.sed[0], 0)
-
-    def _set_morph(self, img, morph, prox_morph, fix_morph):
+    def _set_morph(self, img, morph):
         if morph is None:
-            self._init_morph(img)
+            # TODO: init from the cutout values (ignoring blending)
+            _, Ny, Nx = self.shape
+            cx, cy = int(Nx/2), int(Ny/2)
+            self.morph = np.zeros((1, Ny*Nx))
+            tiny = 1e-10
+            flux = np.abs(img[:,cy,cx].mean()) + tiny
+            self.morph[0,cy*Nx+cx] = flux
         else:
             # to allow multi-component sources, need to have K x Nx*Ny array
             if len(morph.shape) == 3: # images for each component
@@ -160,6 +170,7 @@ class Source(object):
             else:
                 raise NotImplementedError("Shape of morph not understood: %r" % morph.shape)
 
+    def _set_morph_prox(self, prox_morph, fix_morph):
         if hasattr(fix_morph, '__iter__') and len(fix_morph) == self.K:
             self.fix_morph = fix_morph
         else:
@@ -173,23 +184,14 @@ class Source(object):
                 if "l0" in self.constraints.keys():
                     if "l1" in self.constraints.keys():
                         logger.warn("l1 penalty ignored in favor of l0 penalty")
-                    self.prox_morph = [partial(proxmin.operators.prox_hard, thresh=self.constraints['l0'])] * self.K
+                    self.prox_morph = [partial(proxmin.operators.prox_hard, thresh=self.morph_std*self.constraints['l0'])] * self.K
                 else:
-                    self.prox_morph = [partial(proxmin.operators.prox_soft_plus, thresh=self.constraints['l1'])] * self.K
+                    self.prox_morph = [partial(proxmin.operators.prox_soft_plus, thresh=self.morph_std*self.constraints['l1'])] * self.K
         else:
             if hasattr(prox_morph, '__iter__') and len(prox_morph) == self.K:
                 self.prox_morph = prox_morph
             else:
                 self.prox_morph = [prox_morph] * self.K
-
-    def _init_morph(self, img):
-        # TODO: init from the cutout values (ignoring blending)
-        _, Ny, Nx = self.shape
-        cx, cy = int(Nx/2), int(Ny/2)
-        self.morph = np.zeros((1, Ny*Nx))
-        tiny = 1e-10
-        flux = np.abs(img[:,cy,cx].mean()) + tiny
-        self.morph[0,cy*Nx+cx] = flux
 
     def _translate_psf(self):
         """Build the operators to perform a translation
