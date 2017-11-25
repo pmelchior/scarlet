@@ -276,7 +276,7 @@ class Blend(object):
         """Number of distinct sources"""
         return self.M
 
-    def fit(self, img, weights=None, sky=None, init_sources=True, max_iter=200, e_rel=1e-2, traceback=False):
+    def fit(self, img, weights=None, sky=None, init_sources=True, max_iter=200, e_rel=1e-2):
 
         if sky is None:
             Y = img
@@ -310,11 +310,7 @@ class Blend(object):
         # run bSDMM on all SEDs and morphologies
         res = proxmin.algorithms.bsdmm(X, self._prox_f, self._steps_f, self._proxs_g, steps_g=steps_g, Ls=self._Ls, update_order=update_order, steps_g_update=steps_g_update, max_iter=max_iter, e_rel=self.e_rel, e_abs=self.e_abs, accelerated=True, traceback=traceback)
 
-        if traceback:
-            _, tr = res
-            return self, tr
-        else:
-            return self
+        return self
 
     def set_data(self, img, weights=None, init_sources=True, update_order=None, e_rel=1e-3, slack=0.9):
         self.it = 0
