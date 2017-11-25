@@ -11,18 +11,24 @@ import logging
 logger = logging.getLogger("scarlet")
 
 class Source(object):
-    def __init__(self, x, y, img, psf=None, constraints=None, sed=None, morph=None, fix_sed=False, fix_morph=False, shift_center=0.2, prox_sed=None, prox_morph=None):
+    def __init__(self, x, y, size, psf=None, constraints=None, sed=None, morph=None, fix_sed=False, fix_morph=False, shift_center=0.2, prox_sed=None, prox_morph=None):
 
         # set up coordinates and images sizes
-        self.x = x
-        self.y = y
-        self.B, Ny, Nx = img.shape # NOTE: Ny,Nx property as they may change
+        self.x, self.y = x,y
+        self.Nx, self.Ny = size, size
         # TODO: make cutout of img and weights (with odd pixel number!)
-        self.bb = (slice(0, self.B), slice(0, Ny), slice(0, Nx))
+        self.bb = (slice(None), slice(0, self.Ny), slice(0, self.Nx))
 
-        # set sed and morph (either from argument or img)
-        self._set_sed(img, sed)
-        self._set_morph(img, morph)
+        # copy sed/morph if present, otherwise expect call to init functions
+        self.sed = np.copy(sed) # works even if None
+        if sed is not None:
+            # to allow multi-component sources, need to have KxB array
+            self.sed = self.sed.reshape((self.K, -1))
+
+        self.morph = np.copy(morph)
+        if morph is not None:
+            # to allow multi-component sources, need to have K x Nx*Ny array
+            self.morph = self.morph.reshape((self.K, -1))
 
         # set up psf and translations matrices
         if psf is None:
@@ -40,27 +46,33 @@ class Source(object):
         self._set_constraints()
 
     def __len__(self):
-        return self.sed.shape[0]
+        # because SED/morph may not be properly set, need to return default 1
+        try:
+            return self.sed.shape[0]
+        except IndexError:
+            try:
+                return self.morph.shape[0]
+            except IndexError:
+                return 1
 
     @property
     def K(self):
         return self.__len__()
 
     @property
+    def B(self):
+        try:
+            return self.sed.shape[1]
+        except IndexError:
+            return 0
+
+    @property
     def shape(self):
-        return tuple([s.stop-s.start for s in self.bb])
-
-    @property
-    def Nx(self):
-        return self.bb[2].stop - self.bb[2].start
-
-    @property
-    def Ny(self):
-        return self.bb[1].stop - self.bb[1].start
+        return (self.B, self.Ny, self.Nx)
 
     @property
     def image(self):
-        morph_shape = (self.K,) + self.shape[1:]
+        morph_shape = (self.K, self.Ny, self.Nx)
         return self.morph.reshape(morph_shape) # this *should* be a view
 
     def get_model(self, combine=True, Gamma=None):
@@ -83,6 +95,22 @@ class Source(object):
             model = model.sum(axis=0)
         return model
 
+    def init_sed(self, img, k=None):
+        # init A from SED of the peak pixels
+        B = img.shape[0]
+        self.sed = np.empty((1, B))
+        self.sed[0] = img[:,int(self.y),int(self.x)]
+        # ensure proper normalization
+        self.sed[0] = proxmin.operators.prox_unity_plus(self.sed[0], 0)
+
+    def init_morph(self, img, k=None):
+        # TODO: init from the cutout values (ignoring blending)
+        cx, cy = int(self.Nx/2), int(self.Ny/2)
+        self.morph = np.zeros((1, self.Ny*self.Nx))
+        tiny = 1e-10
+        flux = np.abs(img[:,int(self.y),int(self.x)].mean()) + tiny
+        self.morph[0,cy*self.Nx+cx] = flux
+
     def get_shifted_model(self, model=None):
         if model is None:
             model = self.get_model(combine=True)
@@ -92,8 +120,7 @@ class Source(object):
         return diff_img
 
     def get_morph_error(self, weights):
-        B, Ny, Nx = self.shape
-        w = weights[self.bb].reshape(B, Ny*Nx)
+        w = weights[self.bb].reshape(self.B, self.Ny*self.Nx)
         # compute direct error propagation assuming only this source SED(s)
         # and the pixel covariances: Sigma_morph = diag((A^T Sigma^-1 A)^-1)
         # CAVEAT: If done on the entire A matrix, degeneracies in the linear
@@ -105,24 +132,9 @@ class Source(object):
         return [np.dot(a.T, np.multiply(w, a[:,None]))**-0.5 for a in self.sed]
 
     def get_sed_error(self, weights):
-        B, Ny, Nx = self.shape
-        w = weights[self.bb].reshape(B, Ny*Nx)
+        w = weights[self.bb].reshape(self.B, self.Ny*self.Nx)
         # See explanation in get_morph_error
         return [np.dot(s,np.multiply(w.T, s[None,:].T))**-0.5 for s in self.morph]
-
-    def _set_sed(self, img, sed):
-        if sed is None:
-            # init A from SED of the peak pixels
-            self.sed = np.empty((1, self.B))
-            self.sed[0] = img[:,int(self.y),int(self.x)]
-            # ensure proper normalization
-            self.sed[0] = proxmin.operators.prox_unity_plus(self.sed[0], 0)
-        else:
-            # to allow multi-component sources, need to have KxB array
-            if len(sed.shape) != 2:
-                self.sed = sed.reshape((1,len(sed)))
-            else:
-                self.sed = sed.copy()
 
     def _set_sed_prox(self, prox_sed, fix_sed):
         if hasattr(fix_sed, '__iter__') and len(fix_sed) == self.K:
@@ -138,35 +150,14 @@ class Source(object):
             else:
                 self.prox_sed = [prox_sed] * self.K
 
-    def _set_morph(self, img, morph):
-        if morph is None:
-            # TODO: init from the cutout values (ignoring blending)
-            _, Ny, Nx = self.shape
-            cx, cy = int(Nx/2), int(Ny/2)
-            self.morph = np.zeros((1, Ny*Nx))
-            tiny = 1e-10
-            flux = np.abs(img[:,cy,cx].mean()) + tiny
-            self.morph[0,cy*Nx+cx] = flux
-        else:
-            # to allow multi-component sources, need to have K x Nx*Ny array
-            if len(morph.shape) == 3: # images for each component
-                self.morph = morph.reshape((morph.shape[0], -1))
-            elif len(morph.shape) == 2:
-                if morph.shape[0] == self.K: # vectors for each component
-                    self.morph = morph.copy()
-                else: # morph image for one component
-                    self.morph = morph.flatten().reshape((1, -1))
-            elif len(morph.shape) == 1: # vector for one component
-                self.morph = morph.reshape((1, -1))
-            else:
-                raise NotImplementedError("Shape of morph not understood: %r" % morph.shape)
-
     def _set_morph_prox(self, prox_morph, fix_morph):
         if hasattr(fix_morph, '__iter__') and len(fix_morph) == self.K:
             self.fix_morph = fix_morph
         else:
             self.fix_morph = [fix_morph] * self.K
 
+        # TODO: resurrect!
+        """
         if prox_morph is None:
             if self.constraints is None or ("l0" not in self.constraints.keys() and "l1" not in self.constraints.keys()):
                 self.prox_morph = [proxmin.operators.prox_plus] * self.K
@@ -178,6 +169,9 @@ class Source(object):
                     self.prox_morph = [partial(proxmin.operators.prox_hard, thresh=self.constraints['l0'])] * self.K
                 else:
                     self.prox_morph = [partial(proxmin.operators.prox_soft_plus, thresh=self.constraints['l1'])] * self.K
+        """
+        if prox_morph is None:
+            self.prox_morph = [proxmin.operators.prox_plus] * self.K
         else:
             if hasattr(prox_morph, '__iter__') and len(prox_morph) == self.K:
                 self.prox_morph = prox_morph
@@ -188,7 +182,7 @@ class Source(object):
         """Build the operators to perform a translation
         """
         Tx, Ty = transformations.getTranslationOps((self.Ny, self.Nx), self.x, self.y)
-        self.Gamma = transformations.getGammaOp(Tx, Ty, self.B, self.P)
+        self.Gamma = transformations.getGammaOp(Tx, Ty, self.P)
 
         # for centroid shift: compute shifted Gammas
         if self.shift_center:
@@ -197,17 +191,17 @@ class Source(object):
             dxy = self.shift_center
             Tx_, Ty_ = transformations.getTranslationOps((self.Ny, self.Nx), self.x, self.y, dxy, dxy)
             # get the shifted image in x/y by adjusting only the Tx/Ty
-            self.dGamma_x = transformations.getGammaOp(Tx_, Ty, self.B, self.P)
-            self.dGamma_y = transformations.getGammaOp(Tx, Ty_, self.B, self.P)
+            self.dGamma_x = transformations.getGammaOp(Tx_, Ty, self.P)
+            self.dGamma_y = transformations.getGammaOp(Tx, Ty_, self.P)
 
     def _adapt_PSF(self, psf):
         # Simpler for likelihood gradients if psf = const across B
         if hasattr(psf, 'shape'): # single matrix
-            return transformations.getPSFOp(psf, self.shape[1:])
+            return transformations.getPSFOp(psf, (self.Ny, self.Nx))
 
         P = []
-        for b in range(self.B):
-            P.append(transformations.getPSFOp(psf[b], self.shape[1:]))
+        for b in range(len(psf)):
+            P.append(transformations.getPSFOp(psf[b], (self.Ny, self.Nx)))
         return P
 
     def _set_constraints(self):
@@ -218,7 +212,7 @@ class Source(object):
             self.Ls[1] = None
             return
 
-        shape = self.shape[1:]
+        shape = (self.Ny, self.Nx)
         for c in self.constraints.keys():
             if c == "M":
                 # positive gradients
@@ -291,23 +285,32 @@ class Blend(object):
         """Number of distinct sources"""
         return self.M
 
-    def set_data(self, img, psfs=None, weights=None, update_order=None, slack=0.9):
+    def set_data(self, img, weights=None, init_sources=True, update_order=None, slack=0.9):
         self.it = 0
         self.center_min_dist = 1e-3
         self.center_wait = 10
         self.center_skip = 10
-        if update_order is None:
-            self.update_order = range(2)
-        else:
-            self.update_order = update_order
+
         self.img_shape = img.shape
         B, Ny, Nx = self.img_shape
         self._img = img.reshape(B,-1)
         self._set_weights(weights)
         WAmax = np.max(self._weights[1])
         WSmax = np.max(self._weights[2])
+        if update_order is None:
+            self.update_order = range(2)
+        else:
+            self.update_order = update_order
         self._stepAS = Steps_AS(WAmax=WAmax, WSmax=WSmax, slack=slack, update_order=self.update_order)
         self.step_AS = [None] * 2
+
+        if init_sources:
+            for s in self.sources:
+                for k in range(s.K):
+                    if not s.fix_sed[k]:
+                        s.init_sed(img, k=k)
+                    if not s.fix_morph[k]:
+                        s.init_morph(img, k=k)
 
     def _set_weights(self, weights):
         if weights is None:
@@ -468,7 +471,7 @@ class Blend(object):
 
 
 
-def deblend(img, sources, weights=None, psf=None, sky=None, max_iter=200, e_rel=1e-2, traceback=False):
+def deblend(img, sources, sky=None, weights=None, init_sources=True, max_iter=200, e_rel=1e-2, traceback=False):
 
     if sky is None:
         Y = img
@@ -483,7 +486,7 @@ def deblend(img, sources, weights=None, psf=None, sky=None, max_iter=200, e_rel=
 
     # construct Blender from sources and define objective function
     blend = Blend(sources)
-    blend.set_data(Y, weights=weights, update_order=update_order, slack=slack)
+    blend.set_data(Y, weights=weights, init_sources=init_sources, update_order=update_order, slack=slack)
     prox_f = blend.prox_f
     steps_f = blend.steps_f
     proxs_g = blend.proxs_g

@@ -55,16 +55,14 @@ def getTranslationOps(shape, x, y, ddx=0, ddy=0):
     Ty = ty + (dy-int_dy)*dty
     return Tx, Ty
 
-def getGammaOp(Tx, Ty, B, P=None):
+def getGammaOp(Tx, Ty, P=None):
     """Translate the PSFs using Tx and Ty
     """
     if P is None:
         return Ty.dot(Tx)
     if hasattr(P, 'shape'): # single matrix: one for all bands
         return Ty.dot(P.dot(Tx))
-    if len(P) == B:
-        return [Ty.dot(P[b].dot(Tx)) for b in range(B)]
-    raise NotImplementedError("Shape of P not understood")
+    return [Ty.dot(P[b].dot(Tx)) for b in range(len(P))]
 
 def getZeroOp(shape):
     size = shape[0]*shape[1]
