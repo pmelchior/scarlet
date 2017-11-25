@@ -253,12 +253,10 @@ class Blend(object):
     """
     def __init__(self, sources):
         assert len(sources)
+        # store all source and make search structures
         self._register_sources(sources)
 
-        # TODO: Blend then collects all e_rel and e_abs from each source
-        # ... and remove it from deblend()
-
-        # list of all proxs_g and Ls: first A, then S
+        # collect all proxs_g and Ls: first A, then S
         self._proxs_g = [source.proxs_g[0] for source in self.sources] + [source.proxs_g[1] for source in self.sources]
         self._Ls = [source.Ls[0] for source in self.sources] + [source.Ls[1] for source in self.sources]
 
@@ -276,22 +274,25 @@ class Blend(object):
         """Number of distinct sources"""
         return self.M
 
-    def fit(self, img, weights=None, sky=None, init_sources=True, max_iter=200, e_rel=1e-2):
+    def fit(self, img, weights=None, sky=None, init_sources=True, update_order=None, max_iter=200, e_rel=1e-2):
 
         if sky is None:
             Y = img
         else:
             Y = img-sky
 
-        # config parameters for bSDMM and Blend
-        slack = 0.9
-        steps_g = None
-        steps_g_update = 'steps_f'
-        update_order=[1,0] # S then A
+        if update_order is None:
+            self.update_order = [1,0] # S then A
+        else:
+            self.update_order = update_order
 
-        # construct Blender from sources and define objective function
-        self.set_data(Y, weights=weights, init_sources=init_sources, update_order=update_order, e_rel=e_rel, slack=slack)
+        # set data/weights to define objective function gradients
+        self.set_data(Y, weights=weights, init_sources=init_sources, e_rel=e_rel)
 
+        # perform up to max_iter steps
+        return self.step(max_iter=max_iter)
+
+    def step(self, max_iter=1):
         # collect all SEDs and morphologies, plus associated errors
         XA = []
         XS = []
@@ -302,17 +303,21 @@ class Blend(object):
         X = XA + XS
 
         # update_order for bSDMM is over *all* components
-        if update_order[0] == 0:
-            update_order = range(2*self.K)
+        if self.update_order[0] == 0:
+            _update_order = range(2*self.K)
         else:
-            update_order = range(self.K,2*self.K) + range(self.K)
+            _update_order = range(self.K,2*self.K) + range(self.K)
 
         # run bSDMM on all SEDs and morphologies
-        res = proxmin.algorithms.bsdmm(X, self._prox_f, self._steps_f, self._proxs_g, steps_g=steps_g, Ls=self._Ls, update_order=update_order, steps_g_update=steps_g_update, max_iter=max_iter, e_rel=self.e_rel, e_abs=self.e_abs, accelerated=True, traceback=traceback)
+        steps_g = None
+        steps_g_update = 'steps_f'
+        traceback = False
+        accelerated = True
+        res = proxmin.algorithms.bsdmm(X, self._prox_f, self._steps_f, self._proxs_g, steps_g=steps_g, Ls=self._Ls, update_order=_update_order, steps_g_update=steps_g_update, max_iter=max_iter, e_rel=self.e_rel, e_abs=self.e_abs, accelerated=accelerated, traceback=traceback)
 
         return self
 
-    def set_data(self, img, weights=None, init_sources=True, update_order=None, e_rel=1e-3, slack=0.9):
+    def set_data(self, img, weights=None, init_sources=True, e_rel=1e-3, slack=0.9):
         self.it = 0
         self.center_min_dist = 1e-3
         self.center_wait = 10
@@ -324,10 +329,6 @@ class Blend(object):
         self._set_weights(weights)
         WAmax = np.max(self._weights[1])
         WSmax = np.max(self._weights[2])
-        if update_order is None:
-            self.update_order = range(2)
-        else:
-            self.update_order = update_order
         self._stepAS = Steps_AS(WAmax=WAmax, WSmax=WSmax, slack=slack, update_order=self.update_order)
         self.step_AS = [None] * 2
 
