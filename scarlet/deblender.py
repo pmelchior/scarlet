@@ -259,22 +259,8 @@ class Blend(object):
         # ... and remove it from deblend()
 
         # list of all proxs_g and Ls: first A, then S
-        self.proxs_g = [source.proxs_g[0] for source in self.sources] + [source.proxs_g[1] for source in self.sources]
-        self.Ls = [source.Ls[0] for source in self.sources] + [source.Ls[1] for source in self.sources]
-
-    def _register_sources(self, sources):
-        self.sources = sources # do not copy!
-        self.M = len(self.sources)
-        self.K =  sum([source.K for source in self.sources])
-        self.psf_per_band = not hasattr(sources[0].Gamma, 'shape')
-
-        # lookup of source/component tuple given component number k
-        self._source_of = []
-        self.update_centers = False
-        for m in range(self.M):
-            self.update_centers |= bool(self.sources[m].shift_center)
-            for l in range(self.sources[m].K):
-                self._source_of.append((m,l))
+        self._proxs_g = [source.proxs_g[0] for source in self.sources] + [source.proxs_g[1] for source in self.sources]
+        self._Ls = [source.Ls[0] for source in self.sources] + [source.Ls[1] for source in self.sources]
 
     def source_of(self, k):
         return self._source_of[k]
@@ -289,6 +275,46 @@ class Blend(object):
     def __len__(self):
         """Number of distinct sources"""
         return self.M
+
+    def fit(self, img, weights=None, sky=None, init_sources=True, max_iter=200, e_rel=1e-2, traceback=False):
+
+        if sky is None:
+            Y = img
+        else:
+            Y = img-sky
+
+        # config parameters for bSDMM and Blend
+        slack = 0.9
+        steps_g = None
+        steps_g_update = 'steps_f'
+        update_order=[1,0] # S then A
+
+        # construct Blender from sources and define objective function
+        self.set_data(Y, weights=weights, init_sources=init_sources, update_order=update_order, e_rel=e_rel, slack=slack)
+
+        # collect all SEDs and morphologies, plus associated errors
+        XA = []
+        XS = []
+        for k in range(self.K):
+            m,l = self.source_of(k)
+            XA.append(self.sources[m].sed[l])
+            XS.append(self.sources[m].morph[l])
+        X = XA + XS
+
+        # update_order for bSDMM is over *all* components
+        if update_order[0] == 0:
+            update_order = range(2*self.K)
+        else:
+            update_order = range(self.K,2*self.K) + range(self.K)
+
+        # run bSDMM on all SEDs and morphologies
+        res = proxmin.algorithms.bsdmm(X, self._prox_f, self._steps_f, self._proxs_g, steps_g=steps_g, Ls=self._Ls, update_order=update_order, steps_g_update=steps_g_update, max_iter=max_iter, e_rel=self.e_rel, e_abs=self.e_abs, accelerated=True, traceback=traceback)
+
+        if traceback:
+            _, tr = res
+            return self, tr
+        else:
+            return self
 
     def set_data(self, img, weights=None, init_sources=True, update_order=None, e_rel=1e-3, slack=0.9):
         self.it = 0
@@ -329,6 +355,46 @@ class Blend(object):
                 for l in range(self.sources[m].K):
                     self.e_abs[self.K + self.component_of(m,l)] = e_rel * morph_std[l]
 
+    def get_model(self, m=None, combine=True):
+        """Compute the current model for the entire image
+        """
+        _model_img = np.zeros(self.img_shape)
+        if m is None:
+            # needs to have source components combined
+            model = [source.get_model(combine=True) for source in self.sources]
+            if combine:
+                for m in range(self.M):
+                    _model_img[self.sources[m].bb] += model[m]
+                model_img = _model_img
+            else:
+                model_img = [_model_img.copy() for m in range(self.M)]
+                for m in range(self.M):
+                    model_img[m][self.sources[m].bb] = model[m]
+        else:
+            model = self.source[m].get_model(combine=combine)
+            if len(model.shape) == 4: # several components in model
+                model_img = [_model_img.copy() for k in range(model.shape[0])]
+                for k in range(model.shape[0]):
+                    model_img[k][self.sources[m].bb] = model[k]
+            else:
+                _model_img[self.sources[m].bb] = model
+                model_img = _model_img
+        return model_img
+
+    def _register_sources(self, sources):
+        self.sources = sources # do not copy!
+        self.M = len(self.sources)
+        self.K =  sum([source.K for source in self.sources])
+        self.psf_per_band = not hasattr(sources[0].Gamma, 'shape')
+
+        # lookup of source/component tuple given component number k
+        self._source_of = []
+        self.update_centers = False
+        for m in range(self.M):
+            self.update_centers |= bool(self.sources[m].shift_center)
+            for l in range(self.sources[m].K):
+                self._source_of.append((m,l))
+
     def _set_weights(self, weights):
         if weights is None:
             self._weights = [1,1,1]
@@ -361,7 +427,7 @@ class Blend(object):
             self._weights[1][:,mask] = 0
             self._weights[1] = self._weights[1].reshape(B,-1)
 
-    def prox_f(self, X, step, Xs=None, j=None):
+    def _prox_f(self, X, step, Xs=None, j=None):
 
         # which update to do now
         AorS = j//self.K
@@ -437,7 +503,7 @@ class Blend(object):
                     self.sources[k]._translate_psf()
                     logger.info("Source %d shifted by (%.3f/%.3f) to (%.3f/%.3f)" % (k, -ddx, -ddy, self.sources[k].x, self.sources[k].y))
 
-    def steps_f(self, j, Xs):
+    def _steps_f(self, j, Xs):
         # which update to do now
         AorS = j//self.K
         k = j%self.K
@@ -458,85 +524,3 @@ class Blend(object):
             self.step_AS[0] = self._stepAS(0, [A, S])
             self.step_AS[1] = self._stepAS(1, [A, S])
         return self.step_AS[AorS]
-
-    def get_model(self, m=None, combine=True):
-        """Compute the current model for the entire image
-        """
-        _model_img = np.zeros(self.img_shape)
-        if m is None:
-            # needs to have source components combined
-            model = [source.get_model(combine=True) for source in self.sources]
-            if combine:
-                for m in range(self.M):
-                    _model_img[self.sources[m].bb] += model[m]
-                model_img = _model_img
-            else:
-                model_img = [_model_img.copy() for m in range(self.M)]
-                for m in range(self.M):
-                    model_img[m][self.sources[m].bb] = model[m]
-        else:
-            model = self.source[m].get_model(combine=combine)
-            if len(model.shape) == 4: # several components in model
-                model_img = [_model_img.copy() for k in range(model.shape[0])]
-                for k in range(model.shape[0]):
-                    model_img[k][self.sources[m].bb] = model[k]
-            else:
-                _model_img[self.sources[m].bb] = model
-                model_img = _model_img
-        return model_img
-
-
-
-def deblend(img, sources, weights=None, sky=None, init_sources=True, max_iter=200, e_rel=1e-2, traceback=False):
-
-    if sky is None:
-        Y = img
-    else:
-        Y = img-sky
-
-    # config parameters for bSDMM and Blend
-    slack = 0.9
-    steps_g = None
-    steps_g_update = 'steps_f'
-    update_order=[1,0] # S then A
-
-    # construct Blender from sources and define objective function
-    blend = Blend(sources)
-    blend.set_data(Y, weights=weights, init_sources=init_sources, update_order=update_order, e_rel=e_rel, slack=slack)
-    prox_f = blend.prox_f
-    steps_f = blend.steps_f
-    proxs_g = blend.proxs_g
-    Ls = blend.Ls
-    e_abs = blend.e_abs
-    e_rel = blend.e_rel
-
-    # collect all SEDs and morphologies, plus associated errors
-    XA = []
-    XS = []
-    for k in range(blend.K):
-        m,l = blend.source_of(k)
-        XA.append(blend.sources[m].sed[l])
-        XS.append(blend.sources[m].morph[l])
-    X = XA + XS
-
-    # update_order for bSDMM is over *all* components
-    if update_order[0] == 0:
-        update_order = range(2*blend.K)
-    else:
-        update_order = range(blend.K,2*blend.K) + range(blend.K)
-
-    # TODO: if e_abs is set here, it cannot be changed iteratively, which
-    # makes the error limits sensitive to the source Initialization.
-    # That's mostly OK for the morphology (which needs the SED the be OK),
-    # but sed errors *really* improve over time as the models grow out and
-    # cover more pixels
-    # Alternative: make e_abs a member of Blend
-
-    # run bSDMM on all SEDs and morphologies
-    res = proxmin.algorithms.bsdmm(X, prox_f, steps_f, proxs_g, steps_g=steps_g, Ls=Ls, update_order=update_order, steps_g_update=steps_g_update, max_iter=max_iter, e_rel=e_rel, e_abs=e_abs, accelerated=True, traceback=traceback)
-
-    if not traceback:
-        return blend
-    else:
-        _, tr = res
-        return blend, tr
