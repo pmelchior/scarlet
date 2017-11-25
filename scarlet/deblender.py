@@ -143,11 +143,17 @@ class Source(object):
                 if "l1" in self.constraints.keys():
                     # L0 has preference
                     logger.info("l1 penalty ignored in favor of l0 penalty")
+                morph_std *= self.constraints['l0']
                 for k in range(self.K):
-                    self.prox_morph[k] = partial(proxmin.operators.prox_hard, thresh=morph_std[k] * self.constraints['l0'])
+                    self.prox_morph[k] = partial(proxmin.operators.prox_hard, thresh=morph_std[k])
             elif "l1" in self.constraints.keys():
+                # TODO: Is l1 penalty relative to noise meaningful?
+                morph_std *= self.constraints['l1']
                 for k in range(self.K):
-                    self.prox_morph[k] = partial(proxmin.operators.prox_soft_plus, thresh=morph_std[k] * self.constraints['l1'])
+                    self.prox_morph[k] = partial(proxmin.operators.prox_soft_plus, thresh=morph_std[k])
+            return morph_std
+        else:
+            return np.zeros(self.K)
 
     def _set_sed_prox(self, prox_sed, fix_sed):
         if hasattr(fix_sed, '__iter__') and len(fix_sed) == self.K:
@@ -254,7 +260,7 @@ class Blend(object):
 
         # list of all proxs_g and Ls: first A, then S
         self.proxs_g = [source.proxs_g[0] for source in self.sources] + [source.proxs_g[1] for source in self.sources]
-        self.Ls = [source.Ls[0] for source in self.sources] + [source.Ls[1] for source in self.sources]    # for S
+        self.Ls = [source.Ls[0] for source in self.sources] + [source.Ls[1] for source in self.sources]
 
     def _register_sources(self, sources):
         self.sources = sources # do not copy!
@@ -284,7 +290,7 @@ class Blend(object):
         """Number of distinct sources"""
         return self.M
 
-    def set_data(self, img, weights=None, init_sources=True, update_order=None, slack=0.9):
+    def set_data(self, img, weights=None, init_sources=True, update_order=None, e_rel=1e-3, slack=0.9):
         self.it = 0
         self.center_min_dist = 1e-3
         self.center_wait = 10
@@ -303,20 +309,30 @@ class Blend(object):
         self._stepAS = Steps_AS(WAmax=WAmax, WSmax=WSmax, slack=slack, update_order=self.update_order)
         self.step_AS = [None] * 2
 
+        # error limits
+        self.e_rel = [e_rel] * 2*self.K
+        self.e_abs = [e_rel / B] * self.K + [0.] * self.K
         if init_sources:
-            for s in self.sources:
+            for m in range(self.M):
+                s = self.sources[m]
                 for k in range(s.K):
                     if not s.fix_sed[k]:
                         s.init_sed(img, k=k)
                     if not s.fix_morph[k]:
                         s.init_morph(img, k=k)
-                s.set_morph_sparsity(weights)
+
+        # set sparsity cutoff for morph based on the error level
+        # TODO: Computation only correct if psf=None!
+        if weights is not None:
+            for m in range(self.M):
+                morph_std = self.sources[m].set_morph_sparsity(weights)
+                for l in range(self.sources[m].K):
+                    self.e_abs[self.K + self.component_of(m,l)] = e_rel * morph_std[l]
 
     def _set_weights(self, weights):
         if weights is None:
             self._weights = [1,1,1]
         else:
-            assert self.img_shape == weights.shape
             B, Ny, Nx = self.img_shape
             self._weights = [weights.reshape(B,-1), None, None] # [W, WA, WS]
 
@@ -471,7 +487,7 @@ class Blend(object):
 
 
 
-def deblend(img, sources, sky=None, weights=None, init_sources=True, max_iter=200, e_rel=1e-2, traceback=False):
+def deblend(img, sources, weights=None, sky=None, init_sources=True, max_iter=200, e_rel=1e-2, traceback=False):
 
     if sky is None:
         Y = img
@@ -486,23 +502,21 @@ def deblend(img, sources, sky=None, weights=None, init_sources=True, max_iter=20
 
     # construct Blender from sources and define objective function
     blend = Blend(sources)
-    blend.set_data(Y, weights=weights, init_sources=init_sources, update_order=update_order, slack=slack)
+    blend.set_data(Y, weights=weights, init_sources=init_sources, update_order=update_order, e_rel=e_rel, slack=slack)
     prox_f = blend.prox_f
     steps_f = blend.steps_f
     proxs_g = blend.proxs_g
     Ls = blend.Ls
+    e_abs = blend.e_abs
+    e_rel = blend.e_rel
 
     # collect all SEDs and morphologies, plus associated errors
     XA = []
     XS = []
-#    e_absA = []
-#    e_absS = []
     for k in range(blend.K):
         m,l = blend.source_of(k)
         XA.append(blend.sources[m].sed[l])
         XS.append(blend.sources[m].morph[l])
-#        e_absA.append(blend.sources[m].sed_std * e_rel)
-#        e_absS.append(blend.sources[m].morph_std * e_rel)
     X = XA + XS
 
     # update_order for bSDMM is over *all* components
@@ -517,8 +531,6 @@ def deblend(img, sources, sky=None, weights=None, init_sources=True, max_iter=20
     # but sed errors *really* improve over time as the models grow out and
     # cover more pixels
     # Alternative: make e_abs a member of Blend
-    #e_abs = e_absA + e_absS
-    e_abs = 1e-3
 
     # run bSDMM on all SEDs and morphologies
     res = proxmin.algorithms.bsdmm(X, prox_f, steps_f, proxs_g, steps_g=steps_g, Ls=Ls, update_order=update_order, steps_g_update=steps_g_update, max_iter=max_iter, e_rel=e_rel, e_abs=e_abs, accelerated=True, traceback=traceback)
