@@ -11,7 +11,7 @@ import logging
 logger = logging.getLogger("scarlet")
 
 class Source(object):
-    def __init__(self, x, y, img, weights=None, psf=None, constraints=None, sed=None, morph=None, fix_sed=False, fix_morph=False, shift_center=0.2, prox_sed=None, prox_morph=None):
+    def __init__(self, x, y, img, psf=None, constraints=None, sed=None, morph=None, fix_sed=False, fix_morph=False, shift_center=0.2, prox_sed=None, prox_morph=None):
 
         # set up coordinates and images sizes
         self.x = x
@@ -23,14 +23,6 @@ class Source(object):
         # set sed and morph (either from argument or img)
         self._set_sed(img, sed)
         self._set_morph(img, morph)
-
-        # need to store weights in bb to compute errors for sed and morphology
-        self.w = weights
-        self.morph_std = 1
-        if weights is not None:
-            self.w = weights[self.bb].reshape(self.B, Ny*Nx)
-            self.morph_std = np.median(self.get_morph_error())
-            self.sed_std = np.mean(self.get_sed_error())
 
         # set up psf and translations matrices
         if psf is None:
@@ -99,11 +91,9 @@ class Source(object):
         diff_img[1] = (model-diff_img[1])/self.shift_center
         return diff_img
 
-    def get_morph_error(self):
-        morph_shape = (self.K,) + self.shape[1:]
-        if self.w is None:
-            return np.zeros(morph_shape)
-
+    def get_morph_error(self, weights):
+        B, Ny, Nx = self.shape
+        w = weights[self.bb].reshape(B, Ny*Nx)
         # compute direct error propagation assuming only this source SED(s)
         # and the pixel covariances: Sigma_morph = diag((A^T Sigma^-1 A)^-1)
         # CAVEAT: If done on the entire A matrix, degeneracies in the linear
@@ -112,13 +102,13 @@ class Source(object):
         # return np.sqrt(np.diagonal(np.linalg.inv(np.dot(np.multiply(self.w.T[:,None,:], A.T), A)), axis1=1, axis2=2))
         # Instead, estimate noise for each component separately:
         # simple multiplication for diagonal pixel covariance matrix
-        return [np.dot(a.T, np.multiply(self.w, a[:,None]))**-0.5 for a in self.sed]
+        return [np.dot(a.T, np.multiply(w, a[:,None]))**-0.5 for a in self.sed]
 
-    def get_sed_error(self):
-        if self.w is None:
-            return np.zeros(self.sed.shape)
+    def get_sed_error(self, weights):
+        B, Ny, Nx = self.shape
+        w = weights[self.bb].reshape(B, Ny*Nx)
         # See explanation in get_morph_error
-        return [np.dot(s,np.multiply(self.w.T, s[None,:].T))**-0.5 for s in self.morph]
+        return [np.dot(s,np.multiply(w.T, s[None,:].T))**-0.5 for s in self.morph]
 
     def _set_sed(self, img, sed):
         if sed is None:
@@ -185,9 +175,9 @@ class Source(object):
                 if "l0" in self.constraints.keys():
                     if "l1" in self.constraints.keys():
                         logger.warn("l1 penalty ignored in favor of l0 penalty")
-                    self.prox_morph = [partial(proxmin.operators.prox_hard, thresh=self.morph_std*self.constraints['l0'])] * self.K
+                    self.prox_morph = [partial(proxmin.operators.prox_hard, thresh=self.constraints['l0'])] * self.K
                 else:
-                    self.prox_morph = [partial(proxmin.operators.prox_soft_plus, thresh=self.morph_std*self.constraints['l1'])] * self.K
+                    self.prox_morph = [partial(proxmin.operators.prox_soft_plus, thresh=self.constraints['l1'])] * self.K
         else:
             if hasattr(prox_morph, '__iter__') and len(prox_morph) == self.K:
                 self.prox_morph = prox_morph
@@ -385,7 +375,7 @@ class Blend(object):
                 else:
                     grad = np.empty_like(X)
                     for b in range(B):
-                        grad_[b] = self._diff[b].dot(self.sources[m].Gamma[b].dot(self.sources[m].morph[l]))
+                        grad[b] = self._diff[b].dot(self.sources[m].Gamma[b].dot(self.sources[m].morph[l]))
 
                 # apply per component prox projection and save in source
                 self.sources[m].sed[l] =  self.sources[m].prox_sed[l](X - step*grad, step)
@@ -478,15 +468,7 @@ class Blend(object):
 
 
 
-def deblend(img,
-            sources,
-            weights=None,
-            psf=None,
-            sky=None,
-            max_iter=200,
-            e_rel=1e-2,
-            traceback=False
-            ):
+def deblend(img, sources, weights=None, psf=None, sky=None, max_iter=200, e_rel=1e-2, traceback=False):
 
     if sky is None:
         Y = img
@@ -507,17 +489,17 @@ def deblend(img,
     proxs_g = blend.proxs_g
     Ls = blend.Ls
 
-    # run the NMF with those constraints
+    # collect all SEDs and morphologies, plus associated errors
     XA = []
     XS = []
-    e_absA = []
-    e_absS = []
+#    e_absA = []
+#    e_absS = []
     for k in range(blend.K):
         m,l = blend.source_of(k)
         XA.append(blend.sources[m].sed[l])
         XS.append(blend.sources[m].morph[l])
-        e_absA.append(blend.sources[m].sed_std * e_rel)
-        e_absS.append(blend.sources[m].morph_std * e_rel)
+#        e_absA.append(blend.sources[m].sed_std * e_rel)
+#        e_absS.append(blend.sources[m].morph_std * e_rel)
     X = XA + XS
 
     # update_order for bSDMM is over *all* components
@@ -532,7 +514,10 @@ def deblend(img,
     # but sed errors *really* improve over time as the models grow out and
     # cover more pixels
     # Alternative: make e_abs a member of Blend
-    e_abs = e_absA + e_absS
+    #e_abs = e_absA + e_absS
+    e_abs = 1e-3
+
+    # run bSDMM on all SEDs and morphologies
     res = proxmin.algorithms.bsdmm(X, prox_f, steps_f, proxs_g, steps_g=steps_g, Ls=Ls, update_order=update_order, steps_g_update=steps_g_update, max_iter=max_iter, e_rel=e_rel, e_abs=e_abs, accelerated=True, traceback=traceback)
 
     if not traceback:
