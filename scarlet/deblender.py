@@ -136,6 +136,19 @@ class Source(object):
         # See explanation in get_morph_error
         return [np.dot(s,np.multiply(w.T, s[None,:].T))**-0.5 for s in self.morph]
 
+    def set_morph_sparsity(self, weights):
+        if self.constraints is not None and ("l0" in self.constraints.keys() or "l1" in self.constraints.keys()):
+            morph_std = np.median(self.get_morph_error(weights), axis=1)
+            if "l0" in self.constraints.keys():
+                if "l1" in self.constraints.keys():
+                    # L0 has preference
+                    logger.info("l1 penalty ignored in favor of l0 penalty")
+                for k in range(self.K):
+                    self.prox_morph[k] = partial(proxmin.operators.prox_hard, thresh=morph_std[k] * self.constraints['l0'])
+            elif "l1" in self.constraints.keys():
+                for k in range(self.K):
+                    self.prox_morph[k] = partial(proxmin.operators.prox_soft_plus, thresh=morph_std[k] * self.constraints['l1'])
+
     def _set_sed_prox(self, prox_sed, fix_sed):
         if hasattr(fix_sed, '__iter__') and len(fix_sed) == self.K:
             self.fix_sed = fix_sed
@@ -156,20 +169,6 @@ class Source(object):
         else:
             self.fix_morph = [fix_morph] * self.K
 
-        # TODO: resurrect!
-        """
-        if prox_morph is None:
-            if self.constraints is None or ("l0" not in self.constraints.keys() and "l1" not in self.constraints.keys()):
-                self.prox_morph = [proxmin.operators.prox_plus] * self.K
-            else:
-                # L0 has preference
-                if "l0" in self.constraints.keys():
-                    if "l1" in self.constraints.keys():
-                        logger.warn("l1 penalty ignored in favor of l0 penalty")
-                    self.prox_morph = [partial(proxmin.operators.prox_hard, thresh=self.constraints['l0'])] * self.K
-                else:
-                    self.prox_morph = [partial(proxmin.operators.prox_soft_plus, thresh=self.constraints['l1'])] * self.K
-        """
         if prox_morph is None:
             self.prox_morph = [proxmin.operators.prox_plus] * self.K
         else:
@@ -311,6 +310,7 @@ class Blend(object):
                         s.init_sed(img, k=k)
                     if not s.fix_morph[k]:
                         s.init_morph(img, k=k)
+                s.set_morph_sparsity(weights)
 
     def _set_weights(self, weights):
         if weights is None:
