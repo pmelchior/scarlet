@@ -416,15 +416,21 @@ def reshape_img(img, new_shape=None, truncate=False, fill=0):
         _img = img
     return _img
 
-def normalizeMatrix(M, axis):
+def normalizeWeights(W, axis):
+    """Normalize a weight map along a given axis
+    """
+    norm = np.median(W, axis=axis)
+    mask = norm > 0
+    _W = W.copy()
     if axis == 1:
-        norm = np.sum(M, axis=axis)
-        norm = np.broadcast_to(norm, M.T.shape)
-        norm = norm.T
+        _W[mask] /= norm[mask, None]
+        mask = ~np.all(W>0, axis=0)
+        _W[:,mask] = 0
+    elif axis == 0:
+        _W[:, mask] /= norm[mask]
     else:
-        norm = np.sum(M, axis=axis)
-        norm = np.broadcast_to(norm, M.shape)
-    return norm
+        raise ValueError("Expected axis to be 1 or 0, received {0}".format(axis))
+    return _W
 
 def deblend(img,
             peaks=None,
@@ -491,8 +497,9 @@ def deblend(img,
         WA = WS = WAmax = WSmax = 1
     else:
         _W = _weights.reshape(B,N*M)
-        WA = normalizeMatrix(_W, 1)
-        WS = normalizeMatrix(_W, 0)
+        WA = normalizeWeights(_W, axis=1)
+        #WS = _W/np.median(_W)
+        WS = normalizeWeights(_W, axis=0)
         WAmax = np.max(WA)
         WSmax = np.max(WS)
     if psf is None:
