@@ -95,7 +95,7 @@ class Source(object):
             model = model.sum(axis=0)
         return model
 
-    def init_sed(self, img, weigths=None):
+    def init_sed(self, img, weights=None):
         # init A from SED of the peak pixels
         B = img.shape[0]
         self.sed = np.empty((1, B))
@@ -139,18 +139,18 @@ class Source(object):
     def set_morph_sparsity(self, weights):
         if self.constraints is not None and ("l0" in self.constraints.keys() or "l1" in self.constraints.keys()):
             morph_std = np.median(self.get_morph_error(weights), axis=1)
+            # Note: don't use hard/soft thresholds with _plus (non-negative) because
+            # that is either happening with prox_plus before in the
+            # AlternatingProjections or is not indended
             if "l0" in self.constraints.keys():
-                if "l1" in self.constraints.keys():
-                    # L0 has preference
-                    logger.info("l1 penalty ignored in favor of l0 penalty")
                 morph_std *= self.constraints['l0']
                 for k in range(self.K):
-                    self.prox_morph[k] = partial(proxmin.operators.prox_hard_plus, thresh=morph_std[k])
+                    self.prox_morph[k].operators[0] = partial(proxmin.operators.prox_hard, thresh=morph_std[k])
             elif "l1" in self.constraints.keys():
                 # TODO: Is l1 penalty relative to noise meaningful?
                 morph_std *= self.constraints['l1']
                 for k in range(self.K):
-                    self.prox_morph[k] = partial(proxmin.operators.prox_soft_plus, thresh=morph_std[k])
+                    self.prox_morph[k].operators[0] = partial(proxmin.operators.prox_soft, thresh=morph_std[k])
             return morph_std
         else:
             return np.zeros(self.K)
@@ -170,6 +170,7 @@ class Source(object):
                 self.prox_sed = [prox_sed] * self.K
 
     def _set_morph_prox(self, prox_morph, fix_morph):
+
         if hasattr(fix_morph, '__iter__') and len(fix_morph) == self.K:
             self.fix_morph = fix_morph
         else:
@@ -182,6 +183,23 @@ class Source(object):
                 self.prox_morph = prox_morph
             else:
                 self.prox_morph = [prox_morph] * self.K
+
+        # need to an AlternatingProjections scheme to implement l0 or l1
+        # in addition to whatever is in prox_morph
+        # since we don't know the weights yet, init those with thresh=0
+        # Note: don't use hard/soft thresholds with _plus (non-negative) because
+        # that is either happening with prox_plus before or is not indended
+        if self.constraints is not None and ("l0" in self.constraints.keys() or "l1" in self.constraints.keys()):
+            if "l0" in self.constraints.keys():
+                if "l1" in self.constraints.keys():
+                    # L0 has preference
+                    logger.info("l1 penalty ignored in favor of l0 penalty")
+                sparse = [partial(proxmin.operators.prox_hard, thresh=0) for k in range(self.K)]
+            elif "l1" in self.constraints.keys():
+                sparse = [partial(proxmin.operators.prox_soft, thresh=0) for k in range(self.K)]
+
+            for k in range(self.K):
+                self.prox_morph[k] = proxmin.operators.AlternatingProjections([sparse[k], self.prox_morph[k]], repeat=1)
 
     def _translate_psf(self):
         """Build the operators to perform a translation
