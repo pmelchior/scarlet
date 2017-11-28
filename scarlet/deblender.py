@@ -145,7 +145,7 @@ class Source(object):
                     logger.info("l1 penalty ignored in favor of l0 penalty")
                 morph_std *= self.constraints['l0']
                 for k in range(self.K):
-                    self.prox_morph[k] = partial(proxmin.operators.prox_hard, thresh=morph_std[k])
+                    self.prox_morph[k] = partial(proxmin.operators.prox_hard_plus, thresh=morph_std[k])
             elif "l1" in self.constraints.keys():
                 # TODO: Is l1 penalty relative to noise meaningful?
                 morph_std *= self.constraints['l1']
@@ -274,20 +274,10 @@ class Blend(object):
         """Number of distinct sources"""
         return self.M
 
-    def fit(self, img, weights=None, sky=None, init_sources=True, update_order=None, max_iter=200, e_rel=1e-2):
-
-        if sky is None:
-            Y = img
-        else:
-            Y = img-sky
-
-        if update_order is None:
-            self.update_order = [1,0] # S then A
-        else:
-            self.update_order = update_order
+    def fit(self, img, weights=None, sky=None, init_sources=True, update_order=None, e_rel=1e-2, max_iter=200):
 
         # set data/weights to define objective function gradients
-        self.set_data(Y, weights=weights, init_sources=init_sources, e_rel=e_rel)
+        self.set_data(img, weights=weights, sky=sky, init_sources=init_sources, update_order=update_order, e_rel=e_rel)
 
         # perform up to max_iter steps
         return self.step(max_iter=max_iter)
@@ -317,15 +307,25 @@ class Blend(object):
 
         return self
 
-    def set_data(self, img, weights=None, init_sources=True, e_rel=1e-3, slack=0.9):
+    def set_data(self, img, weights=None, sky=None, init_sources=True, update_order=None, e_rel=1e-2, slack=0.9):
         self.it = 0
         self.center_min_dist = 1e-3
         self.center_wait = 10
         self.center_skip = 10
 
-        self.img_shape = img.shape
+        if sky is None:
+            Y = img
+        else:
+            Y = img-sky
+
+        if update_order is None:
+            self.update_order = [1,0] # S then A
+        else:
+            self.update_order = update_order
+
+        self.img_shape = Y.shape
         B, Ny, Nx = self.img_shape
-        self._img = img.reshape(B,-1)
+        self._img = Y.reshape(B,-1)
         self._set_weights(weights)
         WAmax = np.max(self._weights[1])
         WSmax = np.max(self._weights[2])
@@ -435,7 +435,8 @@ class Blend(object):
         # build model only once per iteration
         if k == 0:
             if AorS == self.update_order[0]:
-                models =  self.get_model(combine=False) # model each each source over image
+                models = self.get_model(combine=False) # model each each source over image
+                # TODO: This will not work with source boxes
                 self._model = np.sum(models, axis=0).reshape(B,-1)
 
                 # update positions?
