@@ -5,19 +5,14 @@ from functools import partial
 import numpy as np
 import proxmin
 
-def _prox_strict_monotonic(X, step, seeks, ref_idx, dist_idx, thresh=0, prox_chain=None, **kwargs):
+def _prox_strict_monotonic(X, step, ref_idx, dist_idx, thresh=0):
     """Force an intensity profile to be monotonic
     """
     from . import operators_pybind11
-    operators_pybind11.prox_monotonic(X, step, seeks, ref_idx, dist_idx, thresh)
-
-    # When we daisy-chain the operators, we need to primary ones
-    # (positivity, sparsity) last so that they are certainly fulfilled
-    if prox_chain is not None:
-        X = prox_chain(X, step, **kwargs)
+    operators_pybind11.prox_monotonic(X, step, ref_idx, dist_idx, thresh)
     return X
 
-def prox_strict_monotonic(shape, seeks, prox_chain=None, thresh=0):
+def prox_strict_monotonic(shape, thresh=0):
     """Build the prox_monotonic operator
     """
     from scipy import sparse
@@ -41,8 +36,7 @@ def prox_strict_monotonic(shape, seeks, prox_chain=None, thresh=0):
     distance = np.sqrt(X**2+Y**2)
     # Get the indices of the pixels sorted by distance from the peak
     didx = np.argsort(distance.flatten())
-    #update the strict proximal operators
-    return partial(_prox_strict_monotonic, seeks=seeks, ref_idx=refIdx.tolist(), dist_idx=didx.tolist(), prox_chain=prox_chain, thresh=thresh)
+    return partial(_prox_strict_monotonic, ref_idx=refIdx.tolist(), dist_idx=didx.tolist(), thresh=thresh)
 
 def prox_cone(X, step, G=None):
     """Exact projection of components of X onto cone defined by Gx >= 0"""

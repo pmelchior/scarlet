@@ -145,12 +145,14 @@ class Source(object):
             if "l0" in self.constraints.keys():
                 morph_std *= self.constraints['l0']
                 for k in range(self.K):
-                    self.prox_morph[k].operators[0] = partial(proxmin.operators.prox_hard, thresh=morph_std[k])
+                    pos = self.prox_morph[k].find(proxmin.operators.prox_hard)
+                    self.prox_morph[k].operators[pos] = partial(proxmin.operators.prox_hard, thresh=morph_std[k])
             elif "l1" in self.constraints.keys():
                 # TODO: Is l1 penalty relative to noise meaningful?
                 morph_std *= self.constraints['l1']
                 for k in range(self.K):
-                    self.prox_morph[k].operators[0] = partial(proxmin.operators.prox_soft, thresh=morph_std[k])
+                    pos = self.prox_morph[k].find(proxmin.operators.prox_soft)
+                    self.prox_morph[k].operators[pos] = partial(proxmin.operators.prox_soft, thresh=morph_std[k])
             return morph_std
         else:
             return np.zeros(self.K)
@@ -176,30 +178,39 @@ class Source(object):
         else:
             self.fix_morph = [fix_morph] * self.K
 
-        if prox_morph is None:
-            self.prox_morph = [proxmin.operators.prox_plus] * self.K
-        else:
+        # prox_morph overwrites everything!
+        if prox_morph is not None:
+            logger.info("prox_morph set from init argument")
+
             if hasattr(prox_morph, '__iter__') and len(prox_morph) == self.K:
                 self.prox_morph = prox_morph
             else:
                 self.prox_morph = [prox_morph] * self.K
+        else:
+            self.prox_morph = [[proxmin.operators.prox_plus],] * self.K
+            if self.constraints is not None:
 
-        # need to an AlternatingProjections scheme to implement l0 or l1
-        # in addition to whatever is in prox_morph
-        # since we don't know the weights yet, init those with thresh=0
-        # Note: don't use hard/soft thresholds with _plus (non-negative) because
-        # that is either happening with prox_plus before or is not indended
-        if self.constraints is not None and ("l0" in self.constraints.keys() or "l1" in self.constraints.keys()):
-            if "l0" in self.constraints.keys():
-                if "l1" in self.constraints.keys():
-                    # L0 has preference
-                    logger.info("l1 penalty ignored in favor of l0 penalty")
-                sparse = [partial(proxmin.operators.prox_hard, thresh=0) for k in range(self.K)]
-            elif "l1" in self.constraints.keys():
-                sparse = [partial(proxmin.operators.prox_soft, thresh=0) for k in range(self.K)]
+                # Note: don't use hard/soft thresholds with _plus (non-negative) because
+                # that is either happening with prox_plus before or is not indended
+                if "l0" in self.constraints.keys():
+                    if "l1" in self.constraints.keys():
+                        # L0 has preference
+                        logger.info("l1 penalty ignored in favor of l0 penalty")
+                    for k in range(self.K):
+                        self.prox_morph[k].append(partial(proxmin.operators.prox_hard, thresh=0))
+                elif "l1" in self.constraints.keys():
+                    for k in range(self.K):
+                        self.prox_morph[k].append(partial(proxmin.operators.prox_soft, thresh=0))
+
+                if "m" in self.constraints.keys():
+                    shape = (self.Ny, self.Nx)
+                    thresh = 0
+                    for k in range(self.K):
+                        self.prox_morph[k].append(operators.prox_strict_monotonic(shape, thresh=thresh))
 
             for k in range(self.K):
-                self.prox_morph[k] = proxmin.operators.AlternatingProjections([sparse[k], self.prox_morph[k]], repeat=1)
+                if len(self.prox_morph[k]) > 1:
+                    self.prox_morph[k] = proxmin.operators.AlternatingProjections(self.prox_morph[k], repeat=1)
 
     def _translate_psf(self):
         """Build the operators to perform a translation
