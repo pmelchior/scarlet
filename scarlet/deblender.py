@@ -95,7 +95,7 @@ class Source(object):
             model = model.sum(axis=0)
         return model
 
-    def init_sed(self, img, k=None):
+    def init_sed(self, img, weigths=None):
         # init A from SED of the peak pixels
         B = img.shape[0]
         self.sed = np.empty((1, B))
@@ -103,7 +103,7 @@ class Source(object):
         # ensure proper normalization
         self.sed[0] = proxmin.operators.prox_unity_plus(self.sed[0], 0)
 
-    def init_morph(self, img, k=None):
+    def init_morph(self, img, weights=None):
         # TODO: init from the cutout values (ignoring blending)
         cx, cy = int(self.Nx/2), int(self.Ny/2)
         self.morph = np.zeros((1, self.Ny*self.Nx))
@@ -338,11 +338,8 @@ class Blend(object):
         if init_sources:
             for m in range(self.M):
                 s = self.sources[m]
-                for k in range(s.K):
-                    if not s.fix_sed[k]:
-                        s.init_sed(img, k=k)
-                    if not s.fix_morph[k]:
-                        s.init_morph(img, k=k)
+                s.init_sed(img, weights=weights)
+                s.init_morph(img, weights=weights)
 
         # set sparsity cutoff for morph based on the error level
         # TODO: Computation only correct if psf=None!
