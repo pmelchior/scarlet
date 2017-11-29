@@ -93,10 +93,10 @@ class Source(object):
         from math import floor
         return (int(floor(self.y)), int(floor(self.x)))
 
-    def _get_slice_for(self, im_shape):
+    def get_slice_for(self, im_shape):
         # slice so that self.image[k][slice] corresponds to image[self.bb]
         slice_y, slice_x = self.bb[1:]
-        NY, NX = im_shape
+        NY, NX = im_shape[1:]
 
         left = max(0, -slice_x.start)
         bottom = max(0, -slice_y.start)
@@ -124,21 +124,21 @@ class Source(object):
             model = model.sum(axis=0)
         return model
 
-    def init_sed(self, img, weights=None):
-        # init A from SED of the peak pixels
+    def init_source(self, img, weights=None):
+        # init with SED of the peak pixels
+        # TODO: what should we do if peak is saturated?
         B = img.shape[0]
         self.sed = np.empty((1, B))
-        self.sed[0] = img[:,int(self.y),int(self.x)]
+        y_, x_ = self.center_int
+        self.sed[0] = img[:,y_,x_]
         # ensure proper normalization
         self.sed[0] = proxmin.operators.prox_unity_plus(self.sed[0], 0)
 
-    def init_morph(self, img, weights=None):
-        # TODO: init from the cutout values (ignoring blending)
-        cx, cy = int(self.Nx/2), int(self.Ny/2)
+        # init singple pixel with total flux of center
         self.morph = np.zeros((1, self.Ny*self.Nx))
         tiny = 1e-10
-        flux = np.abs(img[:,int(self.y),int(self.x)].mean()) + tiny
-        self.morph[0,cy*self.Nx+cx] = flux
+        cx, cy = self.Nx // 2, self.Ny // 2
+        self.morph[0, cy*self.Nx+cx] = img[:,y_,x_].sum(axis=0) + tiny
 
     def get_shifted_model(self, model=None):
         if model is None:
@@ -149,7 +149,9 @@ class Source(object):
         return diff_img
 
     def get_morph_error(self, weights):
-        w = weights[self.bb].reshape(self.B, self.Ny*self.Nx)
+        w = np.zeros(self.shape)
+        w[self.get_slice_for(weights.shape)] = weights[self.bb]
+        w = w.reshape(self.B, self.Ny*self.Nx)
         # compute direct error propagation assuming only this source SED(s)
         # and the pixel covariances: Sigma_morph = diag((A^T Sigma^-1 A)^-1)
         # CAVEAT: If done on the entire A matrix, degeneracies in the linear
@@ -161,7 +163,9 @@ class Source(object):
         return [np.dot(a.T, np.multiply(w, a[:,None]))**-0.5 for a in self.sed]
 
     def get_sed_error(self, weights):
-        w = weights[self.bb].reshape(self.B, self.Ny*self.Nx)
+        w = np.zeros(self.shape)
+        w[self.get_slice_for(weights.shape)] = weights[self.bb]
+        w = w.reshape(self.B, self.Ny*self.Nx)
         # See explanation in get_morph_error
         return [np.dot(s,np.multiply(w.T, s[None,:].T))**-0.5 for s in self.morph]
 
@@ -397,9 +401,7 @@ class Blend(object):
         self.e_abs = [e_rel / B] * self.K + [0.] * self.K
         if init_sources:
             for m in range(self.M):
-                s = self.sources[m]
-                s.init_sed(img, weights=weights)
-                s.init_morph(img, weights=weights)
+                self.sources[m].init_source(Y, weights=weights)
 
         # set sparsity cutoff for morph based on the error level
         # TODO: Computation only correct if psf=None!
@@ -418,20 +420,21 @@ class Blend(object):
             model = [source.get_model(combine=True) for source in self.sources]
             if combine:
                 for m in range(self.M):
-                    _model_img[self.sources[m].bb] += model[m]
+                    _model_img[self.sources[m].bb] += model[m][self.sources[m].get_slice_for(self.img_shape)]
                 model_img = _model_img
             else:
                 model_img = [_model_img.copy() for m in range(self.M)]
                 for m in range(self.M):
-                    model_img[m][self.sources[m].bb] = model[m]
+                    model_img[m][self.sources[m].bb] = model[m][self.sources[m].get_slice_for(self.img_shape)]
         else:
             model = self.source[m].get_model(combine=combine)
+            model_slice = self.sources[m].get_slice_for(self.img_shape)
             if len(model.shape) == 4: # several components in model
                 model_img = [_model_img.copy() for k in range(model.shape[0])]
                 for k in range(model.shape[0]):
-                    model_img[k][self.sources[m].bb] = model[k]
+                    model_img[k][self.sources[m].bb] = model[k][model_slice]
             else:
-                _model_img[self.sources[m].bb] = model
+                _model_img[self.sources[m].bb] = model[model_slice]
                 model_img = _model_img
         return model_img
 
