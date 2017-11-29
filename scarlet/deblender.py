@@ -399,9 +399,7 @@ class Blend(object):
 
     def set_data(self, img, weights=None, sky=None, init_sources=True, update_order=None, e_rel=1e-2, slack=0.9):
         self.it = 0
-        self.center_min_dist = 1e-3
-        self.center_wait = 10
-        self.center_skip = 10
+        self._model_it = -1
 
         if sky is None:
             self._ = img
@@ -436,21 +434,27 @@ class Blend(object):
         for m in range(self.M):
             self.sources[m].init_source(self._img.reshape(self._img.shape), weights=self._weights[0])
 
-    def get_model(self, m=None, combine=True):
+    def get_model(self, m=None, combine=True, combine_source_components=True):
         """Compute the current model for the entire image
         """
         _model_img = np.zeros(self._img.shape)
         if m is None:
-            # needs to have source components combined
-            model = [source.get_model(combine=True) for source in self.sources]
+            model = [source.get_model(combine=combine_source_components) for source in self.sources]
             if combine:
                 for m in range(self.M):
-                    _model_img[self.sources[m].bb] += model[m][self.sources[m].get_slice_for(self._img.shape)]
+                    _model_img[self.sources[m].bb] += model[m][self.sources[m].get_slice_for(self._img.shape)].sum(axis=0)
                 model_img = _model_img
             else:
-                model_img = [_model_img.copy() for m in range(self.M)]
+                model_img = []
                 for m in range(self.M):
-                    model_img[m][self.sources[m].bb] = model[m][self.sources[m].get_slice_for(self._img.shape)]
+                    model_slice = self.sources[m].get_slice_for(self._img.shape)
+                    if len(model[m].shape) == 4: # several components in model
+                        for k in range(model[m].shape[0]):
+                            model_img.append(_model_img.copy())
+                            model_img[-1][self.sources[m].bb] = model[m][k][model_slice]
+                    else:
+                        model_img.append(_model_img.copy())
+                        model_img[-1][self.sources[m].bb] = model[m][model_slice]
         else:
             model = self.source[m].get_model(combine=combine)
             model_slice = self.sources[m].get_slice_for(self._img.shape)
@@ -461,7 +465,7 @@ class Blend(object):
             else:
                 _model_img[self.sources[m].bb] = model[model_slice]
                 model_img = _model_img
-        return model_img
+        return np.array(model_img)
 
     def _register_sources(self, sources):
         self.sources = sources # do not copy!
@@ -506,6 +510,15 @@ class Blend(object):
             # when estimating A do not use (partially) saturated pixels
             self._weights[1][:,mask] = 0
 
+    def _compute_model(self):
+        # make sure model at current iteration is computed when needed
+        # irrespective of function that needs it
+        if self._model_it < self.it:
+            self._models = self.get_model(combine=False, combine_source_components=False) # model each each component over image
+            self._model = np.sum(self._models, axis=0)
+            self._model_it = self.it
+
+
     def _prox_f(self, X, step, Xs=None, j=None):
 
         # which update to do now
@@ -516,8 +529,7 @@ class Blend(object):
         # build model only once per iteration
         if k == 0:
             if AorS == self.update_order[0]:
-                self._models = self.get_model(combine=False) # model each each source over image
-                self._model = np.sum(self._models, axis=0)
+                self._compute_model()
 
                 # update positions?
                 if self.update_centers:
@@ -567,6 +579,10 @@ class Blend(object):
             raise ValueError("Expected index j in [0,%d]" % (2*self.K))
 
     def _update_positions(self):
+        self.center_min_dist = 1e-3
+        self.center_wait = 10
+        self.center_skip = 10
+
         # residuals weighted with full/original weight matrix
         y = (self._weights[0]*(self._model-self._img)).flatten()
         for k in range(self.K):
@@ -585,27 +601,29 @@ class Blend(object):
                     logger.info("Source %d shifted by (%.3f/%.3f) to (%.3f/%.3f)" % (k, -ddx, -ddy, self.sources[k].x, self.sources[k].y))
 
     def _steps_f(self, j, Xs):
-        # TODO: perform computation of the models at this stage first
-        # use it as S and return the step size
 
         # which update to do now
         AorS = j//self.K
         k = j%self.K
 
         # computing likelihood gradients for S and A: only once per iteration
-        # TODO: stepAS does change over several iterations, but we compute A,S
-        # each time
         if AorS == self.update_order[0] and k==0:
+            self._compute_model()
+
             # build temporary A,S matrices
             B, Ny, Nx = self._img.shape
-            A, S = np.empty((B,self.K)), np.empty((self.K,Nx*Ny))
+            A = np.empty((self.B,self.K))
             for k_ in range(self.K):
                 m,l = self._source_of[k_]
                 A[:,k_] = self.sources[m].sed[l]
-                # TODO: This will be more complicated with source boxes!
-                # TODO: replace this with the current models
-                S[k_,:] = self.sources[m].morph[l].flatten()
-
+            if not self.psf_per_band:
+                # model[b] is simple SED[b] * S, need to divide by SED
+                b = 0
+                S = self._models[:,b,:,:].reshape((self.K, Ny*Nx)) / A.T[:,b][:,None]
+            else:
+                # TODO: replace this with the current models, for each band
+                # i.e. one S per band -> step_size per band
+                raise NotImplementedError
             self.step_AS[0] = self._stepAS(0, [A, S])
             self.step_AS[1] = self._stepAS(1, [A, S])
         return self.step_AS[AorS]
