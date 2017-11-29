@@ -17,7 +17,7 @@ void prox_monotonic(
   // Start at the center of the image and set each pixel to the minimum
   // between itself and its reference pixel (which is closer to the peak)
   for(auto &didx: dist_idx){
-    x(didx) = std::min(x(didx), x(ref_idx[didx])-thresh);
+    x(didx) = std::min(x(didx), x(ref_idx[didx])*(1-thresh));
   }
 }
 

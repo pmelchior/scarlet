@@ -147,7 +147,7 @@ class Source(object):
                 prox_mono = self.prox_morph[0].operators[pos]
             else:
                 shape = (self.Ny, self.Nx)
-                thresh = 0
+                thresh = 1./min(shape)
                 prox_mono = operators.prox_strict_monotonic(shape, thresh=thresh)
             self.morph[0] = prox_mono(self.morph[0], 0)
         else: # simply central pixel
