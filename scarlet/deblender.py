@@ -11,13 +11,18 @@ import logging
 logger = logging.getLogger("scarlet")
 
 class Source(object):
-    def __init__(self, x, y, size, psf=None, constraints=None, sed=None, morph=None, fix_sed=False, fix_morph=False, shift_center=0.2, prox_sed=None, prox_morph=None):
+    def __init__(self, xy, size, psf=None, constraints=None, sed=None, morph=None, fix_sed=False, fix_morph=False, shift_center=0.2, prox_sed=None, prox_morph=None):
 
         # set up coordinates and images sizes
-        self.x, self.y = x,y
-        self.Nx, self.Ny = size, size
-        # TODO: make cutout of img and weights (with odd pixel number!)
-        self.bb = (slice(None), slice(0, self.Ny), slice(0, self.Nx))
+        self.x, self.y = xy
+
+        if np.isscalar(size):
+            size = [size] * 2
+
+        # make cutout of in units of the original image frame (that defines xy)
+        # ensure odd pixel number
+        y_, x_ = self.center_int
+        self.bb = (slice(None), slice(y_ - size[1]//2, y_ + size[1]//2 + 1), slice(x_ - size[0]//2, x_ + size[0]//2 + 1))
 
         # copy sed/morph if present, otherwise expect call to init functions
         self.sed = np.copy(sed) # works even if None
@@ -67,6 +72,14 @@ class Source(object):
             return 0
 
     @property
+    def Nx(self):
+        return self.bb[2].stop - self.bb[2].start
+
+    @property
+    def Ny(self):
+        return self.bb[1].stop - self.bb[1].start
+
+    @property
     def shape(self):
         return (self.B, self.Ny, self.Nx)
 
@@ -74,6 +87,22 @@ class Source(object):
     def image(self):
         morph_shape = (self.K, self.Ny, self.Nx)
         return self.morph.reshape(morph_shape) # this *should* be a view
+
+    @property
+    def center_int(self):
+        from math import floor
+        return (int(floor(self.y)), int(floor(self.x)))
+
+    def _get_slice_for(self, im_shape):
+        # slice so that self.image[k][slice] corresponds to image[self.bb]
+        slice_y, slice_x = self.bb[1:]
+        NY, NX = im_shape
+
+        left = max(0, -slice_x.start)
+        bottom = max(0, -slice_y.start)
+        right = self.Nx - max(0, slice_x.stop - NX)
+        top = self.Ny - max(0, slice_y.stop - NY)
+        return (slice(None), slice(bottom, top), slice(left, right))
 
     def get_model(self, combine=True, Gamma=None):
         if Gamma is None:
@@ -211,32 +240,8 @@ class Source(object):
             for k in range(self.K):
                 if len(self.prox_morph[k]) > 1:
                     self.prox_morph[k] = proxmin.operators.AlternatingProjections(self.prox_morph[k], repeat=1)
-
-    def _translate_psf(self):
-        """Build the operators to perform a translation
-        """
-        Tx, Ty = transformations.getTranslationOps((self.Ny, self.Nx), self.x, self.y)
-        self.Gamma = transformations.getGammaOp(Tx, Ty, self.P)
-
-        # for centroid shift: compute shifted Gammas
-        if self.shift_center:
-            # TODO: optimize dxy to be comparable to likely shift
-            # TODO: Alternative: Grid of shifted PSF to interpolate at any given ddx/ddy
-            dxy = self.shift_center
-            Tx_, Ty_ = transformations.getTranslationOps((self.Ny, self.Nx), self.x, self.y, dxy, dxy)
-            # get the shifted image in x/y by adjusting only the Tx/Ty
-            self.dGamma_x = transformations.getGammaOp(Tx_, Ty, self.P)
-            self.dGamma_y = transformations.getGammaOp(Tx, Ty_, self.P)
-
-    def _adapt_PSF(self, psf):
-        # Simpler for likelihood gradients if psf = const across B
-        if hasattr(psf, 'shape'): # single matrix
-            return transformations.getPSFOp(psf, (self.Ny, self.Nx))
-
-        P = []
-        for b in range(len(psf)):
-            P.append(transformations.getPSFOp(psf[b], (self.Ny, self.Nx)))
-        return P
+                else:
+                    self.prox_morph[k] = self.prox_morph[k][0]
 
     def _set_constraints(self):
         self.proxs_g = [None, []] # no constraints on A matrix
@@ -275,6 +280,32 @@ class Source(object):
                     self.proxs_g[1].append(proxmin.operators.prox_plus)
                 else: # l1 norm for TV_x
                     self.proxs_g[1].append(partial(proxmin.operators.prox_soft, thresh=self.constraints[c]))
+
+    def _translate_psf(self):
+        """Build the operators to perform a translation
+        """
+        Tx, Ty = transformations.getTranslationOps((self.Ny, self.Nx), self.x, self.y)
+        self.Gamma = transformations.getGammaOp(Tx, Ty, self.P)
+
+        # for centroid shift: compute shifted Gammas
+        if self.shift_center:
+            # TODO: optimize dxy to be comparable to likely shift
+            # TODO: Alternative: Grid of shifted PSF to interpolate at any given ddx/ddy
+            dxy = self.shift_center
+            Tx_, Ty_ = transformations.getTranslationOps((self.Ny, self.Nx), self.x, self.y, dxy, dxy)
+            # get the shifted image in x/y by adjusting only the Tx/Ty
+            self.dGamma_x = transformations.getGammaOp(Tx_, Ty, self.P)
+            self.dGamma_y = transformations.getGammaOp(Tx, Ty_, self.P)
+
+    def _adapt_PSF(self, psf):
+        # Simpler for likelihood gradients if psf = const across B
+        if hasattr(psf, 'shape'): # single matrix
+            return transformations.getPSFOp(psf, (self.Ny, self.Nx))
+
+        P = []
+        for b in range(len(psf)):
+            P.append(transformations.getPSFOp(psf[b], (self.Ny, self.Nx)))
+        return P
 
 
 class Blend(object):
