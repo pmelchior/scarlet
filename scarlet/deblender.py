@@ -11,10 +11,10 @@ import logging
 logger = logging.getLogger("scarlet")
 
 class Source(object):
-    def __init__(self, xy, size, psf=None, constraints=None, sed=None, morph=None, fix_sed=False, fix_morph=False, shift_center=0.2, prox_sed=None, prox_morph=None):
+    def __init__(self, center, size, psf=None, constraints=None, sed=None, morph=None, fix_sed=False, fix_morph=False, shift_center=0.2, prox_sed=None, prox_morph=None):
 
         # set up coordinates and images sizes
-        self.x, self.y = xy
+        self.y, self.x = center
 
         if np.isscalar(size):
             size = [size] * 2
@@ -304,7 +304,10 @@ class Source(object):
     def _translate_psf(self):
         """Build the operators to perform a translation
         """
-        Tx, Ty = transformations.getTranslationOps((self.Ny, self.Nx), self.x, self.y)
+        y_, x_ = self.center_int
+        dx = self.x - x_
+        dy = self.y - y_
+        Tx, Ty = transformations.getTranslationOps((self.Ny, self.Nx), dx, dy)
         self.Gamma = transformations.getGammaOp(Tx, Ty, self.P)
 
         # for centroid shift: compute shifted Gammas
@@ -312,7 +315,7 @@ class Source(object):
             # TODO: optimize dxy to be comparable to likely shift
             # TODO: Alternative: Grid of shifted PSF to interpolate at any given ddx/ddy
             dxy = self.shift_center
-            Tx_, Ty_ = transformations.getTranslationOps((self.Ny, self.Nx), self.x, self.y, dxy, dxy)
+            Tx_, Ty_ = transformations.getTranslationOps((self.Ny, self.Nx), dx, dy, dxy, dxy)
             # get the shifted image in x/y by adjusting only the Tx/Ty
             self.dGamma_x = transformations.getGammaOp(Tx_, Ty, self.P)
             self.dGamma_y = transformations.getGammaOp(Tx, Ty_, self.P)
@@ -412,20 +415,22 @@ class Blend(object):
         self._stepAS = Steps_AS(WAmax=WAmax, WSmax=WSmax, slack=slack, update_order=self.update_order)
         self.step_AS = [None] * 2
 
-        # error limits
-        self.e_rel = [e_rel] * 2*self.K
-        self.e_abs = [e_rel / B] * self.K + [0.] * self.K
         if init_sources:
-            for m in range(self.M):
-                self.sources[m].init_source(Y, weights=weights)
+            self.init_sources()
 
         # set sparsity cutoff for morph based on the error level
         # TODO: Computation only correct if psf=None!
+        self.e_rel = [e_rel] * 2*self.K
+        self.e_abs = [e_rel / B] * self.K + [0.] * self.K
         if weights is not None:
             for m in range(self.M):
                 morph_std = self.sources[m].set_morph_sparsity(weights)
                 for l in range(self.sources[m].K):
                     self.e_abs[self.K + self.component_of(m,l)] = e_rel * morph_std[l]
+
+    def init_sources(self):
+        for m in range(self.M):
+            self.sources[m].init_source(self._img.reshape(self.img_shape), weights=self._weights[0])
 
     def get_model(self, m=None, combine=True):
         """Compute the current model for the entire image

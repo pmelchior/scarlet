@@ -29,11 +29,9 @@ def getTyOp(shape, int_dy):
                                   shape=(size, size), dtype=np.float64)
     return ty, ty_plus, ty_minus
 
-def getTranslationOps(shape, x, y, ddx=0, ddy=0):
+def getTranslationOps(shape, dx, dy, ddx=0, ddy=0):
     """Get the operators to translate source
     """
-    cx, cy = int(shape[1])>>1, int(shape[0])>>1
-    dx, dy = cx-x, cy-y
     dx += ddx
     dy += ddy
     int_dx, int_dy = int(dx), int(dy)
