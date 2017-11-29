@@ -357,6 +357,13 @@ class Blend(object):
         """Number of distinct sources"""
         return self.M
 
+    @property
+    def B(self):
+        try:
+            return self._img.shape[0]
+        except AttributeError:
+            return 0
+
     def fit(self, img, weights=None, sky=None, init_sources=True, update_order=None, e_rel=1e-2, max_iter=200):
 
         # set data/weights to define objective function gradients
@@ -397,18 +404,15 @@ class Blend(object):
         self.center_skip = 10
 
         if sky is None:
-            Y = img
+            self._ = img
         else:
-            Y = img-sky
+            self._img = img-sky
 
         if update_order is None:
             self.update_order = [1,0] # S then A
         else:
             self.update_order = update_order
 
-        self.img_shape = Y.shape
-        B, Ny, Nx = self.img_shape
-        self._img = Y.reshape(B,-1)
         self._set_weights(weights)
         WAmax = np.max(self._weights[1])
         WSmax = np.max(self._weights[2])
@@ -421,7 +425,7 @@ class Blend(object):
         # set sparsity cutoff for morph based on the error level
         # TODO: Computation only correct if psf=None!
         self.e_rel = [e_rel] * 2*self.K
-        self.e_abs = [e_rel / B] * self.K + [0.] * self.K
+        self.e_abs = [e_rel / self.B] * self.K + [0.] * self.K
         if weights is not None:
             for m in range(self.M):
                 morph_std = self.sources[m].set_morph_sparsity(weights)
@@ -430,26 +434,26 @@ class Blend(object):
 
     def init_sources(self):
         for m in range(self.M):
-            self.sources[m].init_source(self._img.reshape(self.img_shape), weights=self._weights[0])
+            self.sources[m].init_source(self._img.reshape(self._img.shape), weights=self._weights[0])
 
     def get_model(self, m=None, combine=True):
         """Compute the current model for the entire image
         """
-        _model_img = np.zeros(self.img_shape)
+        _model_img = np.zeros(self._img.shape)
         if m is None:
             # needs to have source components combined
             model = [source.get_model(combine=True) for source in self.sources]
             if combine:
                 for m in range(self.M):
-                    _model_img[self.sources[m].bb] += model[m][self.sources[m].get_slice_for(self.img_shape)]
+                    _model_img[self.sources[m].bb] += model[m][self.sources[m].get_slice_for(self._img.shape)]
                 model_img = _model_img
             else:
                 model_img = [_model_img.copy() for m in range(self.M)]
                 for m in range(self.M):
-                    model_img[m][self.sources[m].bb] = model[m][self.sources[m].get_slice_for(self.img_shape)]
+                    model_img[m][self.sources[m].bb] = model[m][self.sources[m].get_slice_for(self._img.shape)]
         else:
             model = self.source[m].get_model(combine=combine)
-            model_slice = self.sources[m].get_slice_for(self.img_shape)
+            model_slice = self.sources[m].get_slice_for(self._img.shape)
             if len(model.shape) == 4: # several components in model
                 model_img = [_model_img.copy() for k in range(model.shape[0])]
                 for k in range(model.shape[0]):
@@ -477,8 +481,7 @@ class Blend(object):
         if weights is None:
             self._weights = [1,1,1]
         else:
-            B, Ny, Nx = self.img_shape
-            self._weights = [weights.reshape(B,-1), None, None] # [W, WA, WS]
+            self._weights = [weights, None, None] # [W, WA, WS]
 
             # for S update: normalize the per-pixel variation
             # i.e. in every pixel: utilize the bands with large weights
@@ -487,7 +490,6 @@ class Blend(object):
             mask = norm_pixel > 0
             self._weights[2] = weights.copy()
             self._weights[2][:,mask] /= norm_pixel[mask]
-            self._weights[2] = self._weights[2].reshape(B,-1)
 
             # reverse is true for A update: for each band, use the pixels that
             # have the largest weights
@@ -503,29 +505,26 @@ class Blend(object):
             # and mask all bands for that pixel:
             # when estimating A do not use (partially) saturated pixels
             self._weights[1][:,mask] = 0
-            self._weights[1] = self._weights[1].reshape(B,-1)
 
     def _prox_f(self, X, step, Xs=None, j=None):
 
         # which update to do now
         AorS = j//self.K
         k = j%self.K
-        B, Ny, Nx = self.img_shape
 
         # computing likelihood gradients for S and A:
         # build model only once per iteration
         if k == 0:
             if AorS == self.update_order[0]:
-                models = self.get_model(combine=False) # model each each source over image
-                # TODO: This will not work with source boxes
-                self._model = np.sum(models, axis=0).reshape(B,-1)
+                self._models = self.get_model(combine=False) # model each each source over image
+                self._model = np.sum(self._models, axis=0)
 
                 # update positions?
-                # CAVEAT: Need valid self._model for the next step
                 if self.update_centers:
                     if self.it >= self.center_wait and self.it % self.center_skip == 0:
-                        self._update_positions(models)
+                        self._update_positions()
                 self.it += 1
+
             # compute weighted residuals
             self._diff = self._weights[AorS + 1]*(self._model-self._img)
 
@@ -533,13 +532,10 @@ class Blend(object):
         if AorS == 0:
             m,l = self.source_of(k)
             if not self.sources[m].fix_sed[l]:
-                # gradient of likelihood wrt A
-                if not self.psf_per_band:
-                    grad = self._diff.dot(self.sources[m].Gamma.dot(self.sources[m].morph[l]))
-                else:
-                    grad = np.empty_like(X)
-                    for b in range(B):
-                        grad[b] = self._diff[b].dot(self.sources[m].Gamma[b].dot(self.sources[m].morph[l]))
+                # gradient of likelihood wrt A: nominally np.dot(diff, S^T)
+                # but with PSF convolution, S_ij -> sum_q Gamma_bqi S_qj
+                # however, that's exactly the operation done for models[k]
+                grad = np.einsum('...ij,...ij', self._diff, self._models[k])
 
                 # apply per component prox projection and save in source
                 self.sources[m].sed[l] =  self.sources[m].prox_sed[l](X - step*grad, step)
@@ -549,14 +545,20 @@ class Blend(object):
         elif AorS == 1:
             m,l = self.source_of(k)
             if not self.sources[m].fix_morph[l]:
-                # gradient of likelihood wrt S
+                # gradient of likelihood wrt S: nominally np.dot(A^T,diff)
+                # but again: with convolution, it's more complicated
+
+                # first create diff image in frame of source k
+                diff_k = np.zeros(self.sources[k].shape)
+                diff_k[self.sources[k].get_slice_for(self._img.shape)] = self._diff[self.sources[k].bb]
+
                 grad = np.zeros_like(X)
                 if not self.psf_per_band:
-                    for b in range(B):
-                        grad += self.sources[m].sed[l,b]*self.sources[m].Gamma.T.dot(self._diff[b])
+                    for b in range(self.B):
+                        grad += self.sources[m].sed[l,b]*self.sources[m].Gamma.T.dot(diff_k[b].flatten())
                 else:
-                    for b in range(B):
-                        grad += self.sources[m].sed[l,b]*self.sources[m].Gamma[b].T.dot(self._diff[b])
+                    for b in range(self.B):
+                        grad += self.sources[m].sed[l,b]*self.sources[m].Gamma[b].T.dot(diff_k[b].flatten())
 
                 # apply per component prox projection and save in source
                 self.sources[m].morph[l] = self.sources[m].prox_morph[l](X - step*grad, step)
@@ -564,12 +566,12 @@ class Blend(object):
         else:
             raise ValueError("Expected index j in [0,%d]" % (2*self.K))
 
-    def _update_positions(self, models):
+    def _update_positions(self):
         # residuals weighted with full/original weight matrix
         y = (self._weights[0]*(self._model-self._img)).flatten()
         for k in range(self.K):
             if self.sources[k].shift_center:
-                diff_x,diff_y = self.sources[k].get_shifted_model(model=models[k])
+                diff_x,diff_y = self.sources[k].get_shifted_model(model=self._models[k])
                 # least squares for the shifts given the model residuals
                 MT = np.vstack([diff_x.flatten(), diff_y.flatten()])
                 if not hasattr(self._weights[0],'shape'): # no/flat weights
@@ -583,6 +585,9 @@ class Blend(object):
                     logger.info("Source %d shifted by (%.3f/%.3f) to (%.3f/%.3f)" % (k, -ddx, -ddy, self.sources[k].x, self.sources[k].y))
 
     def _steps_f(self, j, Xs):
+        # TODO: perform computation of the models at this stage first
+        # use it as S and return the step size
+
         # which update to do now
         AorS = j//self.K
         k = j%self.K
@@ -592,12 +597,13 @@ class Blend(object):
         # each time
         if AorS == self.update_order[0] and k==0:
             # build temporary A,S matrices
-            B, Ny, Nx = self.img_shape
+            B, Ny, Nx = self._img.shape
             A, S = np.empty((B,self.K)), np.empty((self.K,Nx*Ny))
             for k_ in range(self.K):
                 m,l = self._source_of[k_]
                 A[:,k_] = self.sources[m].sed[l]
                 # TODO: This will be more complicated with source boxes!
+                # TODO: replace this with the current models
                 S[k_,:] = self.sources[m].morph[l].flatten()
 
             self.step_AS[0] = self._stepAS(0, [A, S])
