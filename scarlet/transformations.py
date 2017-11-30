@@ -3,64 +3,47 @@ from __future__ import print_function, division
 import numpy as np
 import scipy.sparse
 
-def getTxOp(shape, int_dx):
-    """Construct Tx and its components
-    """
-    height, width = shape
-    tx = scipy.sparse.diags([1],[int_dx], shape=(width, width), dtype=np.float64)
-    tx_plus = scipy.sparse.diags([-1,1],[int_dx, int_dx+1],
-                                 shape=(width, width), dtype=np.float64)
-    tx_minus = scipy.sparse.diags([1,-1],[int_dx, int_dx-1],
-                                  shape=(width, width), dtype=np.float64)
-    tx = scipy.sparse.block_diag([tx]*height)
-    tx_plus = scipy.sparse.block_diag([tx_plus]*height)
-    tx_minus = scipy.sparse.block_diag([tx_minus]*height)
-    return tx, tx_plus, tx_minus
+class GammaOp():
+    def __init__(self, shape, P=None):
 
-def getTyOp(shape, int_dy):
-    """Construct Ty and its components
-    """
-    height, width = shape
-    size = height*width
-    ty = scipy.sparse.diags([1], [int_dy*width], shape=(size, size), dtype=np.float64)
-    ty_plus = scipy.sparse.diags([-1, 1], [int_dy*width, (int_dy+1)*width],
-                                 shape=(size, size), dtype=np.float64)
-    ty_minus = scipy.sparse.diags([1, -1], [int_dy*width, (int_dy-1)*width],
-                                  shape=(size, size), dtype=np.float64)
-    return ty, ty_plus, ty_minus
+        height, width = shape
+        tx = scipy.sparse.diags([1.], shape=(width, width))
+        tx_minus = scipy.sparse.diags([-1.,1.], offsets=[0,1], shape=(width, width))
+        tx_plus = scipy.sparse.diags([1.,-1.],offsets=[0,-1], shape=(width, width))
+        self.tx = scipy.sparse.block_diag([tx]*height)
+        self.tx_plus = scipy.sparse.block_diag([tx_plus]*height)
+        self.tx_minus = scipy.sparse.block_diag([tx_minus]*height)
 
-def getTranslationOps(shape, dx, dy):
-    print ("translation: %.2f/%.2f" % (dx,dy))
-    """Get the operators to translate source
-    """
-    from math import floor
-    int_dx, int_dy = int(floor(dx)), int(floor(dy))
+        size = height*width
+        self.ty = scipy.sparse.diags([1], shape=(size, size), dtype=np.float64)
+        self.ty_minus = scipy.sparse.diags([-1., 1.], offsets=[0, width], shape=(size, size))
+        self.ty_plus = scipy.sparse.diags([1., -1.], offsets=[0, -width], shape=(size, size))
 
-    tx, tx_plus, tx_minus = getTxOp(shape, int_dx)
-    ty, ty_plus, ty_minus = getTyOp(shape, int_dy)
+        self.P = P
 
-    # Create Tx
-    if dx<0:
-        dtx = tx_minus
-    else:
-        dtx = tx_plus
-    Tx = tx + (dx-int_dx)*dtx
-    # Create Ty
-    if dy<0:
-        dty = ty_minus
-    else:
-        dty = ty_plus
-    Ty = ty + (dy-int_dy)*dty
-    return Tx, Ty
+    def __call__(self, dy, dx):
+        """Get the operators to translate source
+        """
+        # Create Tx
+        if dx<0:
+            dtx = self.tx_minus
+        else:
+            dtx = self.tx_plus
+        # linear interpolation between centers and offset by one pixel
+        Tx = self.tx - dx*dtx
+        # Create Ty
+        if dy<0:
+            dty = self.ty_minus
+        else:
+            dty = self.ty_plus
+        Ty = self.ty - dy*dty
+        # return Tx, Ty
 
-def getGammaOp(Tx, Ty, P=None):
-    """Translate the PSFs using Tx and Ty
-    """
-    if P is None:
-        return Ty.dot(Tx)
-    if hasattr(P, 'shape'): # single matrix: one for all bands
-        return Ty.dot(P.dot(Tx))
-    return [Ty.dot(P[b].dot(Tx)) for b in range(len(P))]
+        if self.P is None:
+            return Ty.dot(Tx)
+        if hasattr(P, 'shape'): # single matrix: one for all bands
+            return Ty.dot(self.P.dot(Tx))
+        return [Ty.dot(self.Pb.dot(Tx)) for Pb in P]
 
 def getZeroOp(shape):
     size = shape[0]*shape[1]
