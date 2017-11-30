@@ -14,7 +14,9 @@ class Source(object):
     def __init__(self, center, size, psf=None, constraints=None, sed=None, morph=None, fix_sed=False, fix_morph=False, shift_center=0.2, prox_sed=None, prox_morph=None):
 
         if np.isscalar(size):
-            size = [size] * 2
+            size = (size,) * 2
+        else:
+            size = size
         self.shift_center = shift_center
 
         # copy sed/morph if present
@@ -69,11 +71,11 @@ class Source(object):
 
     @property
     def Nx(self):
-        return self.bb[2].stop - self.bb[2].start
+        return self.right-self.left
 
     @property
     def Ny(self):
-        return self.bb[1].stop - self.bb[1].start
+        return self.top - self.bottom
 
     @property
     def shape(self):
@@ -91,13 +93,12 @@ class Source(object):
 
     def get_slice_for(self, im_shape):
         # slice so that self.image[k][slice] corresponds to image[self.bb]
-        slice_y, slice_x = self.bb[1:]
         NY, NX = im_shape[1:]
 
-        left = max(0, -slice_x.start)
-        bottom = max(0, -slice_y.start)
-        right = self.Nx - max(0, slice_x.stop - NX)
-        top = self.Ny - max(0, slice_y.stop - NY)
+        left = max(0, -self.left)
+        bottom = max(0, -self.bottom)
+        right = self.Nx - max(0, self.right - NX)
+        top = self.Ny - max(0, self.top - NY)
         return (slice(None), slice(bottom, top), slice(left, right))
 
     def get_model(self, combine=True, Gamma=None):
@@ -129,7 +130,12 @@ class Source(object):
         # make cutout of in units of the original image frame (that defines xy)
         # ensure odd pixel number
         y_, x_ = self.center_int
-        self.bb = (slice(None), slice(y_ - size[1]//2, y_ + size[1]//2 + 1), slice(x_ - size[0]//2, x_ + size[0]//2 + 1))
+        self.left, self.right = x_ - size[0]//2, x_ + size[0]//2 + 1
+        self.bottom, self.top = y_ - size[1]//2, y_ + size[1]//2 + 1
+
+        # since slice wrap around if start or stop are negative, need to sanitize
+        # start values (stop always postive)
+        self.bb = (slice(None), slice(max(0, self.bottom), self.top), slice(max(0, self.left), self.right))
 
         dx = self.x - x_
         dy = self.y - y_
