@@ -156,14 +156,6 @@ class Source(object):
             cx, cy = self.Nx // 2, self.Ny // 2
             self.morph[0, cy*self.Nx+cx] = img[:,y_,x_].sum(axis=0) + tiny
 
-    def get_shifted_model(self, model=None):
-        if model is None:
-            model = self.get_model(combine=True)
-        diff_img = [self.get_model(combine=True, Gamma=self.dGamma_x), self.get_model(combine=True, Gamma=self.dGamma_y)]
-        diff_img[0] = (model-diff_img[0])/self.shift_center
-        diff_img[1] = (model-diff_img[1])/self.shift_center
-        return diff_img
-
     def get_morph_error(self, weights):
         w = np.zeros(self.shape)
         w[self.get_slice_for(weights.shape)] = weights[self.bb]
@@ -342,6 +334,11 @@ class Blend(object):
         # collect all proxs_g and Ls: first A, then S
         self._proxs_g = [source.proxs_g[0] for source in self.sources] + [source.proxs_g[1] for source in self.sources]
         self._Ls = [source.Ls[0] for source in self.sources] + [source.Ls[1] for source in self.sources]
+
+        # center update parameters
+        self.center_min_dist = 1e-3
+        self.center_wait = 10
+        self.center_skip = 10
 
     def source_of(self, k):
         return self._source_of[k]
@@ -581,27 +578,42 @@ class Blend(object):
         else:
             raise ValueError("Expected index j in [0,%d]" % (2*self.K))
 
-    def _update_positions(self):
-        self.center_min_dist = 1e-3
-        self.center_wait = 10
-        self.center_skip = 10
+    def _get_shift_differential(self, m):
+        source = self.sources[m]
+        slice_m = source.get_slice_for(self._img.shape)
+        k = self.component_of(m, 0)
+        model_m = self._models[k][self.sources[m].bb]
+        # in self._models, per-source components aren't combined,
+        # need to combine here
+        for k in range(1,source.K):
+            model_m += self._models[k][self.sources[m].bb]
+        diff_img = [source.get_model(combine=True, Gamma=source.dGamma_x), source.get_model(combine=True, Gamma=source.dGamma_y)]
+        diff_img[0] = (model_m-diff_img[0][slice_m])/source.shift_center
+        diff_img[1] = (model_m-diff_img[1][slice_m])/source.shift_center
+        return diff_img
 
+    def _update_positions(self):
         # residuals weighted with full/original weight matrix
-        y = (self._weights[0]*(self._model-self._img)).flatten()
-        for k in range(self.K):
-            if self.sources[k].shift_center:
-                diff_x,diff_y = self.sources[k].get_shifted_model(model=self._models[k])
+        y = self._weights[0]*(self._model-self._img)
+        for m in range(self.M):
+            if self.sources[m].shift_center:
+                source = self.sources[m]
+                bb_m = source.bb
+                diff_x,diff_y = self._get_shift_differential(m)
+                diff_x[:,:,-1] = 0
+                diff_y[:,-1,:] = 0
                 # least squares for the shifts given the model residuals
                 MT = np.vstack([diff_x.flatten(), diff_y.flatten()])
                 if not hasattr(self._weights[0],'shape'): # no/flat weights
-                    ddx,ddy = np.dot(np.dot(np.linalg.inv(np.dot(MT, MT.T)), MT), y)
+                    ddx,ddy = np.dot(np.dot(np.linalg.inv(np.dot(MT, MT.T)), MT), y[bb_m].flatten())
                 else:
-                    ddx,ddy = np.dot(np.dot(np.linalg.inv(np.dot(MT, MT.T*self._weights[0].flatten()[:,None])), MT), y)
+                    w = self._weights[0][bb_m].flatten()[:,None]
+                    ddx,ddy = np.dot(np.dot(np.linalg.inv(np.dot(MT, MT.T*w)), MT), y[bb_m].flatten())
                 if ddx**2 + ddy**2 > self.center_min_dist**2:
-                    self.sources[k].x -= ddx
-                    self.sources[k].y -= ddy
-                    self.sources[k]._translate_psf()
-                    logger.info("Source %d shifted by (%.3f/%.3f) to (%.3f/%.3f)" % (k, -ddx, -ddy, self.sources[k].x, self.sources[k].y))
+                    source.x -= ddx
+                    source.y -= ddy
+                    source._translate_psf()
+                    logger.info("Source %d shifted by (%.3f/%.3f) to (%.3f/%.3f)" % (m, -ddx, -ddy, source.x, source.y))
 
     def _steps_f(self, j, Xs):
 
