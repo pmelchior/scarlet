@@ -442,7 +442,9 @@ class Blend(object):
             model = [source.get_model(combine=combine_source_components) for source in self.sources]
             if combine:
                 for m in range(self.M):
-                    _model_img[self.sources[m].bb] += model[m][self.sources[m].get_slice_for(self._img.shape)].sum(axis=0)
+                    if len(model[m].shape) == 4: # several components in model
+                        model[m] = model[m].sum(axis=0)
+                    _model_img[self.sources[m].bb] += model[m][self.sources[m].get_slice_for(self._img.shape)]
                 model_img = _model_img
             else:
                 model_img = []
@@ -456,7 +458,7 @@ class Blend(object):
                         model_img.append(_model_img.copy())
                         model_img[-1][self.sources[m].bb] = model[m][model_slice]
         else:
-            model = self.source[m].get_model(combine=combine)
+            model = self.sources[m].get_model(combine=combine)
             model_slice = self.sources[m].get_slice_for(self._img.shape)
             if len(model.shape) == 4: # several components in model
                 model_img = [_model_img.copy() for k in range(model.shape[0])]
@@ -547,7 +549,8 @@ class Blend(object):
                 # gradient of likelihood wrt A: nominally np.dot(diff, S^T)
                 # but with PSF convolution, S_ij -> sum_q Gamma_bqi S_qj
                 # however, that's exactly the operation done for models[k]
-                grad = np.einsum('...ij,...ij', self._diff, self._models[k])
+                # caveat: the model is SED * convolved model -> need to divide
+                grad = np.einsum('...ij,...ij', self._diff, self._models[k] / self.sources[m].sed[l].T[:,None,None])
 
                 # apply per component prox projection and save in source
                 self.sources[m].sed[l] =  self.sources[m].prox_sed[l](X - step*grad, step)
