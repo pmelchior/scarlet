@@ -13,18 +13,11 @@ logger = logging.getLogger("scarlet")
 class Source(object):
     def __init__(self, center, size, psf=None, constraints=None, sed=None, morph=None, fix_sed=False, fix_morph=False, shift_center=0.2, prox_sed=None, prox_morph=None):
 
-        # set up coordinates and images sizes
-        self.y, self.x = center
-
         if np.isscalar(size):
             size = [size] * 2
+        self.shift_center = shift_center
 
-        # make cutout of in units of the original image frame (that defines xy)
-        # ensure odd pixel number
-        y_, x_ = self.center_int
-        self.bb = (slice(None), slice(y_ - size[1]//2, y_ + size[1]//2 + 1), slice(x_ - size[0]//2, x_ + size[0]//2 + 1))
-
-        # copy sed/morph if present, otherwise expect call to init functions
+        # copy sed/morph if present
         self.sed = np.copy(sed) # works even if None
         if sed is not None:
             # to allow multi-component sources, need to have KxB array
@@ -37,11 +30,14 @@ class Source(object):
 
         # set up psf and translations matrices
         if psf is None:
-            self.P = None
+            P = None
         else:
-            self.P = self._adapt_PSF(psf)
-        self.shift_center = shift_center
-        self._translate_psf()
+            P = self._adapt_PSF(psf)
+        self._gammaOp = transformations.GammaOp(size, P=P)
+
+        # set center coordinates and translation operators
+        # needs to have psf set up first for optional PSF convolution
+        self.set_center(center, size=size)
 
         # set constraints: first projection-style
         self.constraints = constraints
@@ -124,6 +120,25 @@ class Source(object):
             model = model.sum(axis=0)
         return model
 
+    def set_center(self, center, size=None):
+        self.y, self.x = center
+
+        if size is None:
+            size = (self.Ny, self.Nx)
+
+        # make cutout of in units of the original image frame (that defines xy)
+        # ensure odd pixel number
+        y_, x_ = self.center_int
+        self.bb = (slice(None), slice(y_ - size[1]//2, y_ + size[1]//2 + 1), slice(x_ - size[0]//2, x_ + size[0]//2 + 1))
+
+        # compute translation & psf operators
+        dx = self.x - x_
+        dy = self.y - y_
+        self.Gamma = self._gammaOp(dy,dx)
+
+    def resize(self):
+        raise NotImplementedError()
+
     def init_source(self, img, weights=None):
         # init with SED of the peak pixels
         # TODO: what should we do if peak is saturated?
@@ -135,7 +150,7 @@ class Source(object):
         self.sed[0] = proxmin.operators.prox_unity_plus(self.sed[0], 0)
 
         # init with monotonized image in bb
-        if self.P is None:
+        if self._gammaOp.P is None:
             self.morph = np.zeros((1, self.Ny, self.Nx))
             morph_slice = self.get_slice_for(img.shape)
             # TODO: account for per-band variations
@@ -292,25 +307,6 @@ class Source(object):
                     self.proxs_g[1].append(proxmin.operators.prox_plus)
                 else: # l1 norm for TV_x
                     self.proxs_g[1].append(partial(proxmin.operators.prox_soft, thresh=self.constraints[c]))
-
-    def _translate_psf(self):
-        """Build the operators to perform a translation
-        """
-        y_, x_ = self.center_int
-        dx = self.x - x_
-        dy = self.y - y_
-        Tx, Ty = transformations.getTranslationOps((self.Ny, self.Nx), dx, dy)
-        self.Gamma = transformations.getGammaOp(Tx, Ty, self.P)
-
-        # for centroid shift: compute shifted Gammas
-        if self.shift_center:
-            # TODO: optimize dxy to be comparable to likely shift
-            # TODO: Alternative: Grid of shifted PSF to interpolate at any given ddx/ddy
-            dxy = self.shift_center
-            Tx_, Ty_ = transformations.getTranslationOps((self.Ny, self.Nx), dx, dy, dxy, dxy)
-            # get the shifted image in x/y by adjusting only the Tx/Ty
-            self.dGamma_x = transformations.getGammaOp(Tx_, Ty, self.P)
-            self.dGamma_y = transformations.getGammaOp(Tx, Ty_, self.P)
 
     def _adapt_PSF(self, psf):
         # Simpler for likelihood gradients if psf = const across B
@@ -517,7 +513,6 @@ class Blend(object):
             self._model = np.sum(self._models, axis=0)
             self._model_it = self.it
 
-
     def _prox_f(self, X, step, Xs=None, j=None):
 
         # which update to do now
@@ -579,6 +574,7 @@ class Blend(object):
             raise ValueError("Expected index j in [0,%d]" % (2*self.K))
 
     def _get_shift_differential(self, m):
+        # compute (model - dxy*shifted_model)/dxy for first-order derivative
         source = self.sources[m]
         slice_m = source.get_slice_for(self._img.shape)
         k = self.component_of(m, 0)
@@ -587,7 +583,15 @@ class Blend(object):
         # need to combine here
         for k in range(1,source.K):
             model_m += self._models[k][self.sources[m].bb]
-        diff_img = [source.get_model(combine=True, Gamma=source.dGamma_x), source.get_model(combine=True, Gamma=source.dGamma_y)]
+
+        # get Gamma matrices of source m with additional shift
+        offset = source.shift_center
+        y_, x_ = source.center_int
+        dx = source.x - x_
+        dy = source.y - y_
+        dGamma_x = source._gammaOp(dy, dx+offset)
+        dGamma_y = source._gammaOp(dy + offset, dx)
+        diff_img = [source.get_model(combine=True, Gamma=dGamma_x), source.get_model(combine=True, Gamma=dGamma_y)]
         diff_img[0] = (model_m-diff_img[0][slice_m])/source.shift_center
         diff_img[1] = (model_m-diff_img[1][slice_m])/source.shift_center
         return diff_img
@@ -610,10 +614,9 @@ class Blend(object):
                     w = self._weights[0][bb_m].flatten()[:,None]
                     ddx,ddy = np.dot(np.dot(np.linalg.inv(np.dot(MT, MT.T*w)), MT), y[bb_m].flatten())
                 if ddx**2 + ddy**2 > self.center_min_dist**2:
-                    source.x -= ddx
-                    source.y -= ddy
-                    source._translate_psf()
-                    logger.info("Source %d shifted by (%.3f/%.3f) to (%.3f/%.3f)" % (m, -ddx, -ddy, source.x, source.y))
+                    center = (source.y + ddy, source.x + ddx)
+                    source.set_center(center)
+                    logger.info("Source %d shifted by (%.3f/%.3f) to (%.3f/%.3f)" % (m, ddx, ddy, source.x, source.y))
 
     def _steps_f(self, j, Xs):
 
