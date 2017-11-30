@@ -29,12 +29,12 @@ def getTyOp(shape, int_dy):
                                   shape=(size, size), dtype=np.float64)
     return ty, ty_plus, ty_minus
 
-def getTranslationOps(shape, dx, dy, ddx=0, ddy=0):
+def getTranslationOps(shape, dx, dy):
+    print ("translation: %.2f/%.2f" % (dx,dy))
     """Get the operators to translate source
     """
-    dx += ddx
-    dy += ddy
-    int_dx, int_dy = int(dx), int(dy)
+    from math import floor
+    int_dx, int_dy = int(floor(dx)), int(floor(dy))
 
     tx, tx_plus, tx_minus = getTxOp(shape, int_dx)
     ty, ty_plus, ty_minus = getTyOp(shape, int_dy)

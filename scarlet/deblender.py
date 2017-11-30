@@ -13,18 +13,7 @@ logger = logging.getLogger("scarlet")
 class Source(object):
     def __init__(self, center, size, psf=None, constraints=None, sed=None, morph=None, fix_sed=False, fix_morph=False, shift_center=0.2, prox_sed=None, prox_morph=None):
 
-        # set up coordinates and images sizes
-        self.y, self.x = center
-
-        if np.isscalar(size):
-            size = [size] * 2
-
-        # make cutout of in units of the original image frame (that defines xy)
-        # ensure odd pixel number
-        y_, x_ = self.center_int
-        self.bb = (slice(None), slice(y_ - size[1]//2, y_ + size[1]//2 + 1), slice(x_ - size[0]//2, x_ + size[0]//2 + 1))
-
-        # copy sed/morph if present, otherwise expect call to init functions
+        # copy sed/morph if present
         self.sed = np.copy(sed) # works even if None
         if sed is not None:
             # to allow multi-component sources, need to have KxB array
@@ -41,7 +30,11 @@ class Source(object):
         else:
             self.P = self._adapt_PSF(psf)
         self.shift_center = shift_center
-        self._translate_psf()
+
+        # set center coordinates and translation operators
+        if np.isscalar(size):
+            size = [size] * 2
+        self.set_center(center, size=size)
 
         # set constraints: first projection-style
         self.constraints = constraints
@@ -123,6 +116,23 @@ class Source(object):
         if combine:
             model = model.sum(axis=0)
         return model
+
+    def set_center(self, center, size=None):
+        self.y, self.x = center
+
+        if size is None:
+            size = (self.Ny, self.Nx)
+
+        # make cutout of in units of the original image frame (that defines xy)
+        # ensure odd pixel number
+        y_, x_ = self.center_int
+        self.bb = (slice(None), slice(y_ - size[1]//2, y_ + size[1]//2 + 1), slice(x_ - size[0]//2, x_ + size[0]//2 + 1))
+
+        # compute translation&psf operators
+        self._translate_psf()
+
+    def resize(self):
+        raise NotImplementedError()
 
     def init_source(self, img, weights=None):
         # init with SED of the peak pixels
@@ -297,8 +307,8 @@ class Source(object):
         """Build the operators to perform a translation
         """
         y_, x_ = self.center_int
-        dx = self.x - x_
-        dy = self.y - y_
+        dx = x_ - self.x
+        dy = y_ - self.y
         Tx, Ty = transformations.getTranslationOps((self.Ny, self.Nx), dx, dy)
         self.Gamma = transformations.getGammaOp(Tx, Ty, self.P)
 
@@ -307,7 +317,7 @@ class Source(object):
             # TODO: optimize dxy to be comparable to likely shift
             # TODO: Alternative: Grid of shifted PSF to interpolate at any given ddx/ddy
             dxy = self.shift_center
-            Tx_, Ty_ = transformations.getTranslationOps((self.Ny, self.Nx), dx, dy, dxy, dxy)
+            Tx_, Ty_ = transformations.getTranslationOps((self.Ny, self.Nx), dx+dxy, dy+dxy)
             # get the shifted image in x/y by adjusting only the Tx/Ty
             self.dGamma_x = transformations.getGammaOp(Tx_, Ty, self.P)
             self.dGamma_y = transformations.getGammaOp(Tx, Ty_, self.P)
@@ -517,7 +527,6 @@ class Blend(object):
             self._model = np.sum(self._models, axis=0)
             self._model_it = self.it
 
-
     def _prox_f(self, X, step, Xs=None, j=None):
 
         # which update to do now
@@ -610,10 +619,9 @@ class Blend(object):
                     w = self._weights[0][bb_m].flatten()[:,None]
                     ddx,ddy = np.dot(np.dot(np.linalg.inv(np.dot(MT, MT.T*w)), MT), y[bb_m].flatten())
                 if ddx**2 + ddy**2 > self.center_min_dist**2:
-                    source.x -= ddx
-                    source.y -= ddy
-                    source._translate_psf()
-                    logger.info("Source %d shifted by (%.3f/%.3f) to (%.3f/%.3f)" % (m, -ddx, -ddy, source.x, source.y))
+                    center = (source.y + ddy, source.x + ddx)
+                    source.set_center(center)
+                    logger.info("Source %d shifted by (%.3f/%.3f) to (%.3f/%.3f)" % (m, ddx, ddy, source.x, source.y))
 
     def _steps_f(self, j, Xs):
 
