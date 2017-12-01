@@ -15,7 +15,7 @@ class Source(object):
 
         # size needs to be odd
         size = int(size)
-        if size%2 == 1:
+        if size%2 == 0:
             size += 1
         size = (size,) * 2
 
@@ -191,18 +191,26 @@ class Source(object):
         # return np.sqrt(np.diagonal(np.linalg.inv(np.dot(np.multiply(self.w.T[:,None,:], A.T), A)), axis1=1, axis2=2))
         # Instead, estimate noise for each component separately:
         # simple multiplication for diagonal pixel covariance matrix
-        return [np.dot(a.T, np.multiply(w, a[:,None]))**-0.5 for a in self.sed]
+        return [self._invert_with_zeros(np.sqrt(np.dot(a.T, np.multiply(w, a[:,None])))) for a in self.sed]
 
     def get_sed_error(self, weights):
         w = np.zeros(self.shape)
         w[self.get_slice_for(weights.shape)] = weights[self.bb]
         w = w.reshape(self.B, -1)
         # See explanation in get_morph_error
-        return [np.dot(s,np.multiply(w.T, s[None,:].T))**-0.5 for s in self.morph]
+        return [self._invert_with_zeros(np.sqrt(np.dot(s,np.multiply(w.T, s[None,:].T)))) for s in self.morph]
+
+    def _invert_with_zeros(self, x):
+        mask = (x == 0)
+        x[~mask] = 1./x[~mask]
+        x[mask] = -1
+        return x
 
     def set_morph_sparsity(self, weights):
         if self.constraints is not None and ("l0" in self.constraints.keys() or "l1" in self.constraints.keys()):
-            morph_std = np.median(self.get_morph_error(weights), axis=1)
+            morph_error = self.get_morph_error(weights)
+            # filter out -1s for pixels outside of weight images
+            morph_std = np.array([np.median(mek[mek != -1]) for mek in morph_error])
             # Note: don't use hard/soft thresholds with _plus (non-negative) because
             # that is either happening with prox_plus before in the
             # AlternatingProjections or is not indended
