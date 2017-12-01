@@ -18,10 +18,11 @@ class Blend(object):
         self.M = len(self.sources)
         self.B = self.sources[0].B
 
-        # center update parameters
+        # source refinement parameters
+        self.refine_wait = 10
+        self.refine_skip = 10
         self.center_min_dist = 1e-3
-        self.center_wait = 10
-        self.center_skip = 10
+        self.edge_flux_thresh = 1.
 
     def source_of(self, k):
         return self._source_of[k]
@@ -124,6 +125,10 @@ class Blend(object):
             source = self.sources[m]
             model = source.get_model(combine=combine_source_components)
             model_slice = source.get_slice_for(self._img.shape)
+
+            # keep record of flux at edge of the source model
+            self._set_edge_flux(m, model)
+
             if combine_source_components:
                 model_img = np.zeros(self._img.shape)
                 model_img[source.bb] = model[model_slice]
@@ -147,17 +152,26 @@ class Blend(object):
 
         # lookup of source/component tuple given component number k
         self._source_of = []
-        self.update_centers = False
         for m in range(len(sources)):
-            self.update_centers |= bool(self.sources[m].shift_center)
             for l in range(self.sources[m].K):
                 self._source_of.append((m,l))
 
     def _set_weights(self, weights):
         if weights is None:
             self._weights = [1,1,1]
+            self._noise_eff = [[0,] * self.B] * self.M
         else:
             self._weights = [weights, None, None] # [W, WA, WS]
+
+            # store local noise level for each source in each bands
+            from .utils import invert_with_zeros
+            self._noise_eff = []
+            for m in range(self.M):
+                w = weights[self.sources[m].bb].reshape(self.B ,-1)
+                std = invert_with_zeros(w)
+                mask = (std == -1)
+                m = np.ma.array(std, mask=mask)
+                self._noise_eff.append(np.sqrt(np.median(m, axis=1).data))
 
             # for S update: normalize the per-pixel variation
             # i.e. in every pixel: utilize the bands with large weights
@@ -200,14 +214,13 @@ class Blend(object):
         # build model only once per iteration
         if k == 0:
             if AorS == self.update_order[0]:
-                # TODO: check source size
-                # self.resize_sources()
-                self._compute_model()
 
-                # update positions?
-                if self.update_centers:
-                    if self.it >= self.center_wait and self.it % self.center_skip == 0:
-                        self._update_positions()
+                # refine sources
+                if self.it >= self.refine_wait and self.it % self.refine_skip == 0:
+                    #self.resize_sources()
+                    self.recenter_sources()
+
+                self._compute_model()
                 self.it += 1
 
             # compute weighted residuals
@@ -235,10 +248,15 @@ class Blend(object):
                 # but again: with convolution, it's more complicated
 
                 # first create diff image in frame of source k
-                diff_k = np.zeros(self.sources[k].shape)
-                diff_k[self.sources[k].get_slice_for(self._img.shape)] = self._diff[self.sources[k].bb]
+                slice_m = self.sources[m].get_slice_for(self._img.shape)
+                diff_k = np.zeros(self.sources[m].shape)
+                diff_k[slice_m] = self._diff[self.sources[m].bb]
 
+                # now a gradient vector and a mask of pixel with updates
                 grad = np.zeros_like(X)
+                #mask = np.zeros(self.sources[m].shape[1:], dtype='bool')
+                #mask[slice_m[1:]] = True
+                #mask = mask.flatten()
                 if not self.psf_per_band:
                     for b in range(self.B):
                         grad += self.sources[m].sed[l,b]*self.sources[m].Gamma.T.dot(diff_k[b].flatten())
@@ -279,7 +297,7 @@ class Blend(object):
             self.step_AS[1] = self._stepAS(1, [A, S])
         return self.step_AS[AorS]
 
-    def _update_positions(self):
+    def recenter_sources(self):
         # residuals weighted with full/original weight matrix
         y = self._weights[0]*(self._model-self._img)
         for m in range(self.M):
@@ -299,7 +317,7 @@ class Blend(object):
                 if ddx**2 + ddy**2 > self.center_min_dist**2:
                     center = source.center + (ddy, ddx)
                     source.set_center(center)
-                    logger.info("Source %d shifted by (%.3f/%.3f) to (%.3f/%.3f)" % (m, ddy, ddx, source.center[0], source.center[1]))
+                    logger.info("shifting source %d by (%.3f/%.3f) to (%.3f/%.3f)" % (m, ddy, ddx, source.center[0], source.center[1]))
 
     def _get_shift_differential(self, m):
         # compute (model - dxy*shifted_model)/dxy for first-order derivative
@@ -314,7 +332,6 @@ class Blend(object):
 
         # get Gamma matrices of source m with additional shift
         offset = source.shift_center
-        y_, x_ = source.center_int
         dx = source.center - source.center_int
         pos_x = dx + (0, offset)
         pos_y = dx + (offset, 0)
@@ -325,22 +342,30 @@ class Blend(object):
         diff_img[1] = (model_m-diff_img[1][slice_m])/source.shift_center
         return diff_img
 
-    """
-    def _compute_flux_at_edge(self):
-        # compute model flux along the edges
-        self.flux_at_edge[0] = model[:,:,-1,:].sum()
-        self.flux_at_edge[1] = model[:,:,:,-1].sum()
-        self.flux_at_edge[2] = model[:,:,0,:].sum()
-        self.flux_at_edge[3] = model[:,:,:0].sum()
+    def _set_edge_flux(self, m, model):
+        try:
+            self._edge_flux
+        except AttributeError:
+            self._edge_flux = np.zeros((self.M, 4, self.B))
+
+        # top, right, bottom, left
+        self._edge_flux[m,0,:] = np.abs(model[0,:,-1,:]).max(axis=1)
+        self._edge_flux[m,1,:] = np.abs(model[0,:,:,-1]).max(axis=1)
+        self._edge_flux[m,2,:] = np.abs(model[0,:,0,:]).max(axis=1)
+        self._edge_flux[m,3,:] = np.abs(model[0,:,:,0]).max(axis=1)
 
     def resize_sources(self):
         for m in range(self.M):
-            # TODO: what's the threshold here:
-            # I'd say avg flux along edge in band b < avg noise level along edge in b
-            at_edge = (self.sources[m].flux_at_edge > model.sum()*flux_thresh) # top, right, bottom, left
-            if at_edge.any():
-                # TODO: without symmetry constraints, the four edges of the box
-                # should be allowed to resize independently
-                increase = 10
-                self.resize((self.Ny + increase*(at_edge[0] | at_edge[2]), self.Nx + increase*(at_edge[1] | at_edge[3])))
-    """
+            size = [self.sources[m].Ny, self.sources[m].Nx]
+            increase = [max(0.25*s, 10) for s in size]
+
+            # check if max flux along edge in band b < avg noise level along edge in b
+            at_edge = (self._edge_flux[m] > self._noise_eff[m]*self.edge_flux_thresh)
+            # TODO: without symmetry constraints, the four edges of the box
+            # should be allowed to resize independently
+            if at_edge[0].any() or at_edge[2].any():
+                size[0] += increase[0]
+            if at_edge[1].any() or at_edge[3].any():
+                size[1] += increase[1]
+            logger.info("resizing source %d to (%d/%d)" % (m, size[0], size[1]))
+            self.sources[m].resize(size)

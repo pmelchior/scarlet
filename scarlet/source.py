@@ -203,20 +203,16 @@ class Source(object):
         # return np.sqrt(np.diagonal(np.linalg.inv(np.dot(np.multiply(self.w.T[:,None,:], A.T), A)), axis1=1, axis2=2))
         # Instead, estimate noise for each component separately:
         # simple multiplication for diagonal pixel covariance matrix
-        return [self._invert_with_zeros(np.sqrt(np.dot(a.T, np.multiply(w, a[:,None])))) for a in self.sed]
+        from .utils import invert_with_zeros
+        return [invert_with_zeros(np.sqrt(np.dot(a.T, np.multiply(w, a[:,None])))) for a in self.sed]
 
     def get_sed_error(self, weights):
         w = np.zeros(self.shape)
         w[self.get_slice_for(weights.shape)] = weights[self.bb]
         w = w.reshape(self.B, -1)
         # See explanation in get_morph_error
-        return [self._invert_with_zeros(np.sqrt(np.dot(s,np.multiply(w.T, s[None,:].T)))) for s in self.morph]
-
-    def _invert_with_zeros(self, x):
-        mask = (x == 0)
-        x[~mask] = 1./x[~mask]
-        x[mask] = -1
-        return x
+        from .utils import invert_with_zeros
+        return [invert_with_zeros(np.sqrt(np.dot(s,np.multiply(w.T, s[None,:].T)))) for s in self.morph]
 
     def set_morph_sparsity(self, weights):
         if "l0" in self.constraints.keys():
