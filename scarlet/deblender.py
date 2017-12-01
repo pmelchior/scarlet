@@ -12,7 +12,7 @@ logger = logging.getLogger("scarlet")
 
 class Source(object):
     def __init__(self, center, size, psf=None, constraints=None, sed=None, morph=None, fix_sed=False, fix_morph=False, shift_center=0.2, prox_sed=None, prox_morph=None):
-
+        # TODO: size even will cause trouble with Gamma
         if np.isscalar(size):
             size = (size,) * 2
         else:
@@ -117,6 +117,7 @@ class Source(object):
 
         # reshape the image into a 2D array
         model = model.reshape(self.K, self.B, self.Ny, self.Nx)
+
         if combine:
             model = model.sum(axis=0)
         return model
@@ -141,8 +142,9 @@ class Source(object):
         dy = self.y - y_
         self.Gamma = self._gammaOp(dy,dx)
 
-    def resize(self):
-        raise NotImplementedError()
+    def resize(self, size):
+        print ("resize to " + str(size))
+        #raise NotImplementedError()
 
     def init_source(self, img, weights=None):
         # init with SED of the peak pixels
@@ -179,7 +181,7 @@ class Source(object):
     def get_morph_error(self, weights):
         w = np.zeros(self.shape)
         w[self.get_slice_for(weights.shape)] = weights[self.bb]
-        w = w.reshape(self.B, self.Ny*self.Nx)
+        w = w.reshape(self.B, -1)
         # compute direct error propagation assuming only this source SED(s)
         # and the pixel covariances: Sigma_morph = diag((A^T Sigma^-1 A)^-1)
         # CAVEAT: If done on the entire A matrix, degeneracies in the linear
@@ -193,7 +195,7 @@ class Source(object):
     def get_sed_error(self, weights):
         w = np.zeros(self.shape)
         w[self.get_slice_for(weights.shape)] = weights[self.bb]
-        w = w.reshape(self.B, self.Ny*self.Nx)
+        w = w.reshape(self.B, -1)
         # See explanation in get_morph_error
         return [np.dot(s,np.multiply(w.T, s[None,:].T))**-0.5 for s in self.morph]
 
@@ -435,37 +437,25 @@ class Blend(object):
     def get_model(self, m=None, combine=True, combine_source_components=True):
         """Compute the current model for the entire image
         """
-        _model_img = np.zeros(self._img.shape)
-        if m is None:
-            model = [source.get_model(combine=combine_source_components) for source in self.sources]
-            if combine:
-                for m in range(self.M):
-                    if len(model[m].shape) == 4: # several components in model
-                        model[m] = model[m].sum(axis=0)
-                    _model_img[self.sources[m].bb] += model[m][self.sources[m].get_slice_for(self._img.shape)]
-                model_img = _model_img
+        if m is not None:
+            source = self.sources[m]
+            model = source.get_model(combine=combine_source_components)
+            model_slice = source.get_slice_for(self._img.shape)
+            if combine_source_components:
+                model_img = np.zeros(self._img.shape)
+                model_img[source.bb] = model[model_slice]
             else:
-                model_img = []
-                for m in range(self.M):
-                    model_slice = self.sources[m].get_slice_for(self._img.shape)
-                    if len(model[m].shape) == 4: # several components in model
-                        for k in range(model[m].shape[0]):
-                            model_img.append(_model_img.copy())
-                            model_img[-1][self.sources[m].bb] = model[m][k][model_slice]
-                    else:
-                        model_img.append(_model_img.copy())
-                        model_img[-1][self.sources[m].bb] = model[m][model_slice]
+                model_img = np.zeros((source.K,) + (self._img.shape))
+                for k in range(source.K):
+                    model_img[k][source.bb] = model[k][model_slice]
+            return model_img
+
+        # for all sources
+        if combine:
+            return np.sum([self.get_model(m=m, combine_source_components=True) for m in range(self.M)], axis=0)
         else:
-            model = self.sources[m].get_model(combine=combine)
-            model_slice = self.sources[m].get_slice_for(self._img.shape)
-            if len(model.shape) == 4: # several components in model
-                model_img = [_model_img.copy() for k in range(model.shape[0])]
-                for k in range(model.shape[0]):
-                    model_img[k][self.sources[m].bb] = model[k][model_slice]
-            else:
-                _model_img[self.sources[m].bb] = model[model_slice]
-                model_img = _model_img
-        return np.array(model_img)
+            models = [self.get_model(m=m, combine_source_components=combine_source_components) for m in range(self.M)]
+            return np.vstack(models)
 
     def _register_sources(self, sources):
         self.sources = sources # do not copy!
@@ -528,6 +518,8 @@ class Blend(object):
         # build model only once per iteration
         if k == 0:
             if AorS == self.update_order[0]:
+                # TODO: check source size
+                # self.resize_sources()
                 self._compute_model()
 
                 # update positions?
@@ -578,53 +570,7 @@ class Blend(object):
         else:
             raise ValueError("Expected index j in [0,%d]" % (2*self.K))
 
-    def _get_shift_differential(self, m):
-        # compute (model - dxy*shifted_model)/dxy for first-order derivative
-        source = self.sources[m]
-        slice_m = source.get_slice_for(self._img.shape)
-        k = self.component_of(m, 0)
-        model_m = self._models[k][self.sources[m].bb]
-        # in self._models, per-source components aren't combined,
-        # need to combine here
-        for k in range(1,source.K):
-            model_m += self._models[k][self.sources[m].bb]
-
-        # get Gamma matrices of source m with additional shift
-        offset = source.shift_center
-        y_, x_ = source.center_int
-        dx = source.x - x_
-        dy = source.y - y_
-        dGamma_x = source._gammaOp(dy, dx+offset)
-        dGamma_y = source._gammaOp(dy + offset, dx)
-        diff_img = [source.get_model(combine=True, Gamma=dGamma_x), source.get_model(combine=True, Gamma=dGamma_y)]
-        diff_img[0] = (model_m-diff_img[0][slice_m])/source.shift_center
-        diff_img[1] = (model_m-diff_img[1][slice_m])/source.shift_center
-        return diff_img
-
-    def _update_positions(self):
-        # residuals weighted with full/original weight matrix
-        y = self._weights[0]*(self._model-self._img)
-        for m in range(self.M):
-            if self.sources[m].shift_center:
-                source = self.sources[m]
-                bb_m = source.bb
-                diff_x,diff_y = self._get_shift_differential(m)
-                diff_x[:,:,-1] = 0
-                diff_y[:,-1,:] = 0
-                # least squares for the shifts given the model residuals
-                MT = np.vstack([diff_x.flatten(), diff_y.flatten()])
-                if not hasattr(self._weights[0],'shape'): # no/flat weights
-                    ddx,ddy = np.dot(np.dot(np.linalg.inv(np.dot(MT, MT.T)), MT), y[bb_m].flatten())
-                else:
-                    w = self._weights[0][bb_m].flatten()[:,None]
-                    ddx,ddy = np.dot(np.dot(np.linalg.inv(np.dot(MT, MT.T*w)), MT), y[bb_m].flatten())
-                if ddx**2 + ddy**2 > self.center_min_dist**2:
-                    center = (source.y + ddy, source.x + ddx)
-                    source.set_center(center)
-                    logger.info("Source %d shifted by (%.3f/%.3f) to (%.3f/%.3f)" % (m, ddx, ddy, source.x, source.y))
-
     def _steps_f(self, j, Xs):
-
         # which update to do now
         AorS = j//self.K
         k = j%self.K
@@ -650,3 +596,68 @@ class Blend(object):
             self.step_AS[0] = self._stepAS(0, [A, S])
             self.step_AS[1] = self._stepAS(1, [A, S])
         return self.step_AS[AorS]
+
+    def _update_positions(self):
+        # residuals weighted with full/original weight matrix
+        y = self._weights[0]*(self._model-self._img)
+        for m in range(self.M):
+            if self.sources[m].shift_center:
+                source = self.sources[m]
+                bb_m = source.bb
+                diff_x,diff_y = self._get_shift_differential(m)
+                diff_x[:,:,-1] = 0
+                diff_y[:,-1,:] = 0
+                # least squares for the shifts given the model residuals
+                MT = np.vstack([diff_x.flatten(), diff_y.flatten()])
+                if not hasattr(self._weights[0],'shape'): # no/flat weights
+                    ddx,ddy = np.dot(np.dot(np.linalg.inv(np.dot(MT, MT.T)), MT), y[bb_m].flatten())
+                else:
+                    w = self._weights[0][bb_m].flatten()[:,None]
+                    ddx,ddy = np.dot(np.dot(np.linalg.inv(np.dot(MT, MT.T*w)), MT), y[bb_m].flatten())
+                if ddx**2 + ddy**2 > self.center_min_dist**2:
+                    center = (source.y + ddy, source.x + ddx)
+                    source.set_center(center)
+                    logger.info("Source %d shifted by (%.3f/%.3f) to (%.3f/%.3f)" % (m, ddx, ddy, source.x, source.y))
+
+    def _get_shift_differential(self, m):
+        # compute (model - dxy*shifted_model)/dxy for first-order derivative
+        source = self.sources[m]
+        slice_m = source.get_slice_for(self._img.shape)
+        k = self.component_of(m, 0)
+        model_m = self._models[k][self.sources[m].bb]
+        # in self._models, per-source components aren't combined,
+        # need to combine here
+        for k in range(1,source.K):
+            model_m += self._models[k][self.sources[m].bb]
+
+        # get Gamma matrices of source m with additional shift
+        offset = source.shift_center
+        y_, x_ = source.center_int
+        dx = source.x - x_
+        dy = source.y - y_
+        dGamma_x = source._gammaOp(dy, dx+offset)
+        dGamma_y = source._gammaOp(dy + offset, dx)
+        diff_img = [source.get_model(combine=True, Gamma=dGamma_x), source.get_model(combine=True, Gamma=dGamma_y)]
+        diff_img[0] = (model_m-diff_img[0][slice_m])/source.shift_center
+        diff_img[1] = (model_m-diff_img[1][slice_m])/source.shift_center
+        return diff_img
+
+    """
+    def _compute_flux_at_edge(self):
+        # compute model flux along the edges
+        self.flux_at_edge[0] = model[:,:,-1,:].sum()
+        self.flux_at_edge[1] = model[:,:,:,-1].sum()
+        self.flux_at_edge[2] = model[:,:,0,:].sum()
+        self.flux_at_edge[3] = model[:,:,:0].sum()
+
+    def resize_sources(self):
+        for m in range(self.M):
+            # TODO: what's the threshold here:
+            # I'd say avg flux along edge in band b < avg noise level along edge in b
+            at_edge = (self.sources[m].flux_at_edge > model.sum()*flux_thresh) # top, right, bottom, left
+            if at_edge.any():
+                # TODO: without symmetry constraints, the four edges of the box
+                # should be allowed to resize independently
+                increase = 10
+                self.resize((self.Ny + increase*(at_edge[0] | at_edge[2]), self.Nx + increase*(at_edge[1] | at_edge[3])))
+    """
