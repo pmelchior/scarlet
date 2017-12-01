@@ -21,9 +21,10 @@ class GammaOp():
 
         self.P = P
 
-    def __call__(self, dy, dx):
+    def __call__(self, pos):
         """Get the operators to translate source
         """
+        dy, dx = pos
         # Create Tx
         if dx<0:
             dtx = self.tx_minus

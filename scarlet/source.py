@@ -10,24 +10,17 @@ import logging
 logger = logging.getLogger("scarlet")
 
 class Source(object):
-    def __init__(self, center, size, psf=None, constraints=None, sed=None, morph=None, fix_sed=False, fix_morph=False, shift_center=0.2, prox_sed=None, prox_morph=None):
+    def __init__(self, center, size, K=1, B=1, psf=None, constraints=None, fix_sed=False, fix_morph=False, shift_center=0.2, prox_sed=None, prox_morph=None):
 
-        # size needs to be odd
-        size = int(size)
-        if size%2 == 0:
-            size += 1
-        size = (size,) * 2
+        # set size of the source frame
+        self._set_frame(center, size)
+        size = (self.Ny, self.Nx)
 
-        # copy sed/morph if present
-        self.sed = np.copy(sed) # works even if None
-        if sed is not None:
-            # to allow multi-component sources, need to have KxB array
-            self.sed = self.sed.reshape((self.K, -1))
-
-        self.morph = np.copy(morph)
-        if morph is not None:
-            # to allow multi-component sources, need to have K x Nx*Ny array
-            self.morph = self.morph.reshape((self.K, -1))
+        # create containers
+        self.K = K
+        self.B = B
+        self.sed = np.zeros((self.K, self.B))
+        self.morph = np.zeros((self.K, self.Ny*self.Nx))
 
         # set up psf and translations matrices
         if psf is None:
@@ -38,7 +31,7 @@ class Source(object):
 
         # set center coordinates and translation operators
         # needs to have GammaOp set up first
-        self.set_center(center, size=size)
+        self.set_center(center)
         self.shift_center = shift_center
 
         # set constraints: first projection-style
@@ -47,27 +40,6 @@ class Source(object):
         self._set_morph_prox(prox_morph, fix_morph)
         # ... then ADMM-style constraints (proxs and L matrices)
         self._set_constraints()
-
-    def __len__(self):
-        # because SED/morph may not be properly set, need to return default 1
-        try:
-            return self.sed.shape[0]
-        except IndexError:
-            try:
-                return self.morph.shape[0]
-            except IndexError:
-                return 1
-
-    @property
-    def K(self):
-        return self.__len__()
-
-    @property
-    def B(self):
-        try:
-            return self.sed.shape[1]
-        except IndexError:
-            return 0
 
     @property
     def Nx(self):
@@ -88,8 +60,7 @@ class Source(object):
 
     @property
     def center_int(self):
-        from math import floor
-        return (int(floor(self.y)), int(floor(self.x)))
+        return np.array(self.center, dtype='int')
 
     def get_slice_for(self, im_shape):
         # slice so that self.image[k][slice] corresponds to image[self.bb]
@@ -122,29 +93,57 @@ class Source(object):
             model = model.sum(axis=0)
         return model
 
-    def set_center(self, center, size=None):
-        self.y, self.x = center
+    def _set_frame(self, center, size):
+        assert len(center) == 2
+        self.center = np.array(center)
 
-        if size is None:
-            size = (self.Ny, self.Nx)
+        if hasattr(size, '__iter__'):
+            size = size[:2]
+        else:
+            size = (size,) * 2
 
         # make cutout of in units of the original image frame (that defines xy)
         # ensure odd pixel number
         y_, x_ = self.center_int
-        self.left, self.right = x_ - size[0]//2, x_ + size[0]//2 + 1
-        self.bottom, self.top = y_ - size[1]//2, y_ + size[1]//2 + 1
+        self.left, self.right = x_ - int(size[0]//2), x_ + int(size[0]//2) + 1
+        self.bottom, self.top = y_ - int(size[1]//2), y_ + int(size[1]//2) + 1
 
         # since slice wrap around if start or stop are negative, need to sanitize
         # start values (stop always postive)
         self.bb = (slice(None), slice(max(0, self.bottom), self.top), slice(max(0, self.left), self.right))
 
-        dx = self.x - x_
-        dy = self.y - y_
-        self.Gamma = self._gammaOp(dy,dx)
+    def set_center(self, center):
+        size = (self.Ny, self.Nx)
+        self._set_frame(center, size)
+
+        # update translation operator
+        dx = self.center - self.center_int
+        self.Gamma = self._gammaOp(dx)
 
     def resize(self, size):
-        print ("resize to " + str(size))
-        #raise NotImplementedError()
+        # store old edge coordinates
+        top, right, bottom, left = self.top, self.right, self.bottom, self.left
+        self._set_frame(self.center, size)
+
+        # change morph
+        _morph = self.morph.reshape((self.K, top-bottom, right-left)).copy()
+        self.morph = np.zeros((self.K, self.Ny, self.Nx))
+
+        # check if new size is larger or smaller
+        #if top-bottom <= self.Ny and right-left <= self.Nx:
+        new_slice = (slice(None), slice(max(0, bottom - self.bottom), top - self.top), slice(max(0, left - self.left), right- self.right))
+        old_slice = (slice(None), slice(max(0, self.bottom - bottom), self.top - top), slice(max(0, self.left - left), self.right - right))
+        self.morph[new_slice] = _morph[old_slice]
+        self.morph = self.morph.reshape((self.K, self.Ny*self.Nx))
+
+        # update GammaOp and center (including subpixel shifts)
+        size = (self.Ny, self.Nx)
+        self._gammaOp = transformations.GammaOp(size, P=self.P)
+        self.set_center(self.center, size=size)
+
+        # set constraints
+        # TODO: need to update prox_morph
+        self._set_constraints()
 
     def init_source(self, img, weights=None):
         # init with SED of the peak pixels

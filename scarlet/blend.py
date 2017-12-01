@@ -297,9 +297,9 @@ class Blend(object):
                     w = self._weights[0][bb_m].flatten()[:,None]
                     ddx,ddy = np.dot(np.dot(np.linalg.inv(np.dot(MT, MT.T*w)), MT), y[bb_m].flatten())
                 if ddx**2 + ddy**2 > self.center_min_dist**2:
-                    center = (source.y + ddy, source.x + ddx)
+                    center = source.center + (ddy, ddx)
                     source.set_center(center)
-                    logger.info("Source %d shifted by (%.3f/%.3f) to (%.3f/%.3f)" % (m, ddx, ddy, source.x, source.y))
+                    logger.info("Source %d shifted by (%.3f/%.3f) to (%.3f/%.3f)" % (m, ddy, ddx, source.center[0], source.center[1]))
 
     def _get_shift_differential(self, m):
         # compute (model - dxy*shifted_model)/dxy for first-order derivative
@@ -315,10 +315,11 @@ class Blend(object):
         # get Gamma matrices of source m with additional shift
         offset = source.shift_center
         y_, x_ = source.center_int
-        dx = source.x - x_
-        dy = source.y - y_
-        dGamma_x = source._gammaOp(dy, dx+offset)
-        dGamma_y = source._gammaOp(dy + offset, dx)
+        dx = source.center - source.center_int
+        pos_x = dx + (0, offset)
+        pos_y = dx + (offset, 0)
+        dGamma_x = source._gammaOp(pos_x)
+        dGamma_y = source._gammaOp(pos_y)
         diff_img = [source.get_model(combine=True, Gamma=dGamma_x), source.get_model(combine=True, Gamma=dGamma_y)]
         diff_img[0] = (model_m-diff_img[0][slice_m])/source.shift_center
         diff_img[1] = (model_m-diff_img[1][slice_m])/source.shift_center
