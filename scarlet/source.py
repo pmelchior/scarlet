@@ -10,7 +10,7 @@ import logging
 logger = logging.getLogger("scarlet")
 
 class Source(object):
-    def __init__(self, center, size, K=1, B=1, psf=None, constraints=None, fix_sed=False, fix_morph=False, shift_center=0.2, prox_sed=None, prox_morph=None):
+    def __init__(self, center, size, K=1, B=1, psf=None, constraints=None, fix_sed=False, fix_morph=False, shift_center=0.2):
 
         # set size of the source frame
         self._set_frame(center, size)
@@ -34,12 +34,18 @@ class Source(object):
         self.set_center(center)
         self.shift_center = shift_center
 
-        # set constraints: first projection-style
-        self.constraints = constraints
-        self._set_sed_prox(prox_sed, fix_sed)
-        self._set_morph_prox(prox_morph, fix_morph)
-        # ... then ADMM-style constraints (proxs and L matrices)
-        self._set_constraints()
+        # updates for sed or morph?
+        if hasattr(fix_sed, '__iter__') and len(fix_sed) == self.K:
+            self.fix_sed = fix_sed
+        else:
+            self.fix_sed = [fix_sed] * self.K
+        if hasattr(fix_morph, '__iter__') and len(fix_morph) == self.K:
+            self.fix_morph = fix_morph
+        else:
+            self.fix_morph = [fix_morph] * self.K
+
+        # set sed and morph constraints
+        self.set_constraints(constraints)
 
     @property
     def Nx(self):
@@ -151,8 +157,7 @@ class Source(object):
             self.set_center(self.center)
 
             # set constraints
-            # TODO: need to update prox_morph
-            self._set_constraints()
+            self.set_constraints(self.constraints)
 
     def init_source(self, img, weights=None):
         # init with SED of the peak pixels
@@ -214,86 +219,26 @@ class Source(object):
         return x
 
     def set_morph_sparsity(self, weights):
-        if self.constraints is not None and ("l0" in self.constraints.keys() or "l1" in self.constraints.keys()):
+        if "l0" in self.constraints.keys():
             morph_error = self.get_morph_error(weights)
             # filter out -1s for pixels outside of weight images
             morph_std = np.array([np.median(mek[mek != -1]) for mek in morph_error])
             # Note: don't use hard/soft thresholds with _plus (non-negative) because
             # that is either happening with prox_plus before in the
             # AlternatingProjections or is not indended
-            if "l0" in self.constraints.keys():
-                morph_std *= self.constraints['l0']
-                for k in range(self.K):
-                    pos = self.prox_morph[k].find(proxmin.operators.prox_hard)
-                    self.prox_morph[k].operators[pos] = partial(proxmin.operators.prox_hard, thresh=morph_std[k])
-            elif "l1" in self.constraints.keys():
-                # TODO: Is l1 penalty relative to noise meaningful?
-                morph_std *= self.constraints['l1']
-                for k in range(self.K):
-                    pos = self.prox_morph[k].find(proxmin.operators.prox_soft)
-                    self.prox_morph[k].operators[pos] = partial(proxmin.operators.prox_soft, thresh=morph_std[k])
+            morph_std *= self.constraints['l0']
+            for k in range(self.K):
+                pos = self.prox_morph[k].find(proxmin.operators.prox_hard)
+                self.prox_morph[k].operators[pos] = partial(proxmin.operators.prox_hard, thresh=morph_std[k])
             return morph_std
         else:
             return np.zeros(self.K)
 
-    def _set_sed_prox(self, prox_sed, fix_sed):
-        if hasattr(fix_sed, '__iter__') and len(fix_sed) == self.K:
-            self.fix_sed = fix_sed
-        else:
-            self.fix_sed = [fix_sed] * self.K
+    def set_constraints(self, constraints):
+        self.constraints = constraints # save for later
+        if self.constraints is None:
+            self.constraints = {}
 
-        if prox_sed is None:
-            self.prox_sed = [proxmin.operators.prox_unity_plus] * self.K
-        else:
-            if hasattr(prox_sed, '__iter__') and len(prox_sed) == self.K:
-                self.prox_sed = prox_sed
-            else:
-                self.prox_sed = [prox_sed] * self.K
-
-    def _set_morph_prox(self, prox_morph, fix_morph):
-
-        if hasattr(fix_morph, '__iter__') and len(fix_morph) == self.K:
-            self.fix_morph = fix_morph
-        else:
-            self.fix_morph = [fix_morph] * self.K
-
-        # prox_morph overwrites everything!
-        if prox_morph is not None:
-            logger.info("prox_morph set from init argument")
-
-            if hasattr(prox_morph, '__iter__') and len(prox_morph) == self.K:
-                self.prox_morph = prox_morph
-            else:
-                self.prox_morph = [prox_morph] * self.K
-        else:
-            self.prox_morph = [[proxmin.operators.prox_plus],] * self.K
-            if self.constraints is not None:
-
-                # Note: don't use hard/soft thresholds with _plus (non-negative) because
-                # that is either happening with prox_plus before or is not indended
-                if "l0" in self.constraints.keys():
-                    if "l1" in self.constraints.keys():
-                        # L0 has preference
-                        logger.info("l1 penalty ignored in favor of l0 penalty")
-                    for k in range(self.K):
-                        self.prox_morph[k].append(partial(proxmin.operators.prox_hard, thresh=0))
-                elif "l1" in self.constraints.keys():
-                    for k in range(self.K):
-                        self.prox_morph[k].append(partial(proxmin.operators.prox_soft, thresh=0))
-
-                if "m" in self.constraints.keys():
-                    shape = (self.Ny, self.Nx)
-                    thresh = 0
-                    for k in range(self.K):
-                        self.prox_morph[k].append(operators.prox_strict_monotonic(shape, thresh=thresh))
-
-            for k in range(self.K):
-                if len(self.prox_morph[k]) > 1:
-                    self.prox_morph[k] = proxmin.operators.AlternatingProjections(self.prox_morph[k], repeat=1)
-                else:
-                    self.prox_morph[k] = self.prox_morph[k][0]
-
-    def _set_constraints(self):
         self.proxs_g = [None, []] # no constraints on A matrix
         self.Ls = [None, []]
         if self.constraints is None:
@@ -301,8 +246,30 @@ class Source(object):
             self.Ls[1] = None
             return
 
+        self.prox_sed = [proxmin.operators.prox_unity_plus] * self.K
+        self.prox_morph = [[proxmin.operators.prox_plus],] * self.K
+
         shape = (self.Ny, self.Nx)
         for c in self.constraints.keys():
+
+            # Note: don't use hard/soft thresholds with _plus (non-negative) because
+            # that is either happening with prox_plus before or is not indended
+            # Note: l0 thresh is not set yet, needs set_morph_sparsity()
+            if c == "l0":
+                if "l1" in self.constraints.keys():
+                    # L0 has preference
+                    logger.info("l1 penalty ignored in favor of l0 penalty")
+                for k in range(self.K):
+                    self.prox_morph[k].append(partial(proxmin.operators.prox_hard, thresh=0))
+            elif c == "l1":
+                thresh = self.constraints["l1"]
+                for k in range(self.K):
+                    self.prox_morph[k].append(partial(proxmin.operators.prox_soft, thresh=thresh))
+            if c == "m":
+                thresh = self.constraints["m"]
+                for k in range(self.K):
+                    self.prox_morph[k].append(operators.prox_strict_monotonic(shape, thresh=thresh))
+
             if c == "M":
                 # positive gradients
                 self.Ls[1].append(transformations.getRadialMonotonicOp(shape, useNearest=self.constraints[c]))
@@ -330,6 +297,12 @@ class Source(object):
                     self.proxs_g[1].append(proxmin.operators.prox_plus)
                 else: # l1 norm for TV_x
                     self.proxs_g[1].append(partial(proxmin.operators.prox_soft, thresh=self.constraints[c]))
+
+        for k in range(self.K):
+            if len(self.prox_morph[k]) > 1:
+                self.prox_morph[k] = proxmin.operators.AlternatingProjections(self.prox_morph[k], repeat=1)
+            else:
+                self.prox_morph[k] = self.prox_morph[k][0]
 
     def _adapt_PSF(self, psf):
         # Simpler for likelihood gradients if psf = const across B
