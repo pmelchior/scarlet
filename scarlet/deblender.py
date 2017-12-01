@@ -441,7 +441,7 @@ class Blend(object):
 
     def init_sources(self):
         for m in range(self.M):
-            self.sources[m].init_source(self._img.reshape(self._img.shape), weights=self._weights[0])
+            self.sources[m].init_source(self._img, weights=self._weights[0])
 
     def get_model(self, m=None, combine=True, combine_source_components=True):
         """Compute the current model for the entire image
