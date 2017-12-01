@@ -24,10 +24,10 @@ class Source(object):
 
         # set up psf and translations matrices
         if psf is None:
-            P = None
+            self.P = None
         else:
             self.P = self._adapt_PSF(psf)
-        self._gammaOp = transformations.GammaOp(size, P=P)
+        self._gammaOp = transformations.GammaOp(size, P=self.P)
 
         # set center coordinates and translation operators
         # needs to have GammaOp set up first
@@ -105,8 +105,8 @@ class Source(object):
         # make cutout of in units of the original image frame (that defines xy)
         # ensure odd pixel number
         y_, x_ = self.center_int
-        self.left, self.right = x_ - int(size[0]//2), x_ + int(size[0]//2) + 1
-        self.bottom, self.top = y_ - int(size[1]//2), y_ + int(size[1]//2) + 1
+        self.bottom, self.top = y_ - int(size[0]//2), y_ + int(size[0]//2) + 1
+        self.left, self.right = x_ - int(size[1]//2), x_ + int(size[1]//2) + 1
 
         # since slice wrap around if start or stop are negative, need to sanitize
         # start values (stop always postive)
@@ -125,25 +125,34 @@ class Source(object):
         top, right, bottom, left = self.top, self.right, self.bottom, self.left
         self._set_frame(self.center, size)
 
-        # change morph
-        _morph = self.morph.reshape((self.K, top-bottom, right-left)).copy()
-        self.morph = np.zeros((self.K, self.Ny, self.Nx))
-
         # check if new size is larger or smaller
-        #if top-bottom <= self.Ny and right-left <= self.Nx:
-        new_slice = (slice(None), slice(max(0, bottom - self.bottom), top - self.top), slice(max(0, left - self.left), right- self.right))
-        old_slice = (slice(None), slice(max(0, self.bottom - bottom), self.top - top), slice(max(0, self.left - left), self.right - right))
-        self.morph[new_slice] = _morph[old_slice]
-        self.morph = self.morph.reshape((self.K, self.Ny*self.Nx))
+        new_slice_y = slice(max(0, bottom - self.bottom), min(self.top - self.bottom, self.top - self.bottom - (self.top - top)))
+        old_slice_y = slice(max(0, self.bottom - bottom), min(top - bottom, top - bottom - (top - self.top)))
+        if top-bottom == self.Ny:
+            new_slice_y = old_slice_y = slice(None)
+        new_slice_x = slice(max(0, left - self.left), min(self.right - self.left, self.right - self.left - (self.right - right)))
+        old_slice_x = slice(max(0, self.left - left), min(right - left, right - left - (right - self.right)))
+        if right-left == self.Nx:
+            new_slice_x = old_slice_x = slice(None)
+        new_slice = (slice(None), new_slice_y, new_slice_x)
+        old_slice = (slice(None), old_slice_y, old_slice_x)
 
-        # update GammaOp and center (including subpixel shifts)
-        size = (self.Ny, self.Nx)
-        self._gammaOp = transformations.GammaOp(size, P=self.P)
-        self.set_center(self.center, size=size)
+        if new_slice != old_slice:
+            # change morph
+            _morph = self.morph.copy().reshape((self.K, top-bottom, right-left))
+            self.morph = np.zeros((self.K, self.Ny, self.Nx))
 
-        # set constraints
-        # TODO: need to update prox_morph
-        self._set_constraints()
+            self.morph[new_slice] = _morph[old_slice]
+            self.morph = self.morph.reshape((self.K, self.Ny*self.Nx))
+
+            # update GammaOp and center (including subpixel shifts)
+            size = (self.Ny, self.Nx)
+            self._gammaOp = transformations.GammaOp(size, P=self.P)
+            self.set_center(self.center)
+
+            # set constraints
+            # TODO: need to update prox_morph
+            self._set_constraints()
 
     def init_source(self, img, weights=None):
         # init with SED of the peak pixels
