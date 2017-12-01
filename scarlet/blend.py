@@ -15,10 +15,8 @@ class Blend(object):
         assert len(sources)
         # store all source and make search structures
         self._register_sources(sources)
-
-        # collect all proxs_g and Ls: first A, then S
-        self._proxs_g = [source.proxs_g[0] for source in self.sources] + [source.proxs_g[1] for source in self.sources]
-        self._Ls = [source.Ls[0] for source in self.sources] + [source.Ls[1] for source in self.sources]
+        self.M = len(self.sources)
+        self.B = self.sources[0].B
 
         # center update parameters
         self.center_min_dist = 1e-3
@@ -39,12 +37,15 @@ class Blend(object):
         """Number of distinct sources"""
         return self.M
 
+    # _prox_g need to be properties so that they can react to runtime changes
+    # in the sources
     @property
-    def B(self):
-        try:
-            return self._img.shape[0]
-        except AttributeError:
-            return 0
+    def _proxs_g(self):
+        return [source.proxs_g[0] for source in self.sources] + [source.proxs_g[1] for source in self.sources]
+
+    @property
+    def _Ls(self):
+        return [source.Ls[0] for source in self.sources] + [source.Ls[1] for source in self.sources]
 
     def fit(self, img, weights=None, sky=None, init_sources=True, update_order=None, e_rel=1e-2, max_iter=200):
 
@@ -141,14 +142,13 @@ class Blend(object):
 
     def _register_sources(self, sources):
         self.sources = sources # do not copy!
-        self.M = len(self.sources)
         self.K =  sum([source.K for source in self.sources])
         self.psf_per_band = not hasattr(sources[0].Gamma, 'shape')
 
         # lookup of source/component tuple given component number k
         self._source_of = []
         self.update_centers = False
-        for m in range(self.M):
+        for m in range(len(sources)):
             self.update_centers |= bool(self.sources[m].shift_center)
             for l in range(self.sources[m].K):
                 self._source_of.append((m,l))
