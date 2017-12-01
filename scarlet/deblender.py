@@ -12,12 +12,12 @@ logger = logging.getLogger("scarlet")
 
 class Source(object):
     def __init__(self, center, size, psf=None, constraints=None, sed=None, morph=None, fix_sed=False, fix_morph=False, shift_center=0.2, prox_sed=None, prox_morph=None):
-        # TODO: size even will cause trouble with Gamma
-        if np.isscalar(size):
-            size = (size,) * 2
-        else:
-            size = size
-        self.shift_center = shift_center
+
+        # size needs to be odd
+        size = int(size)
+        if size%2 == 1:
+            size += 1
+        size = (size,) * 2
 
         # copy sed/morph if present
         self.sed = np.copy(sed) # works even if None
@@ -40,6 +40,7 @@ class Source(object):
         # set center coordinates and translation operators
         # needs to have GammaOp set up first
         self.set_center(center, size=size)
+        self.shift_center = shift_center
 
         # set constraints: first projection-style
         self.constraints = constraints
