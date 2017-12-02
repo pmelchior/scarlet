@@ -8,6 +8,10 @@ from proxmin.nmf import Steps_AS
 import logging
 logger = logging.getLogger("scarlet")
 
+# declare special exception for resizing events
+class ScarletResizeException(Exception):
+    pass
+
 class Blend(object):
     """The blended scene as interpreted by the deblender.
     """
@@ -77,8 +81,10 @@ class Blend(object):
         steps_g_update = 'steps_f'
         traceback = False
         accelerated = True
-        res = proxmin.algorithms.bsdmm(X, self._prox_f, self._steps_f, self._proxs_g, steps_g=steps_g, Ls=self._Ls, update_order=_update_order, steps_g_update=steps_g_update, max_iter=max_iter, e_rel=self.e_rel, e_abs=self.e_abs, accelerated=accelerated, traceback=traceback)
-
+        try:
+            res = proxmin.algorithms.bsdmm(X, self._prox_f, self._steps_f, self._proxs_g, steps_g=steps_g, Ls=self._Ls, update_order=_update_order, steps_g_update=steps_g_update, max_iter=max_iter, e_rel=self.e_rel, e_abs=self.e_abs, accelerated=accelerated, traceback=traceback)
+        except ScarletResizeException:
+            self.step(max_iter=max_iter-self.it)
         return self
 
     def set_data(self, img, weights=None, sky=None, init_sources=True, update_order=None, e_rel=1e-2, slack=0.9):
@@ -126,13 +132,13 @@ class Blend(object):
             model = source.get_model(combine=combine_source_components)
             model_slice = source.get_slice_for(self._img.shape)
 
-            # keep record of flux at edge of the source model
-            self._set_edge_flux(m, model)
-
             if combine_source_components:
                 model_img = np.zeros(self._img.shape)
                 model_img[source.bb] = model[model_slice]
             else:
+                # keep record of flux at edge of the source model
+                self._set_edge_flux(m, model)
+
                 model_img = np.zeros((source.K,) + (self._img.shape))
                 for k in range(source.K):
                     model_img[k][source.bb] = model[k][model_slice]
@@ -214,14 +220,16 @@ class Blend(object):
         # build model only once per iteration
         if k == 0:
             if AorS == self.update_order[0]:
+                self.it += 1
 
                 # refine sources
                 if self.it >= self.refine_wait and self.it % self.refine_skip == 0:
-                    #self.resize_sources()
+                    resized = self.resize_sources()
                     self.recenter_sources()
+                    if resized:
+                        raise ScarletResizeException()
 
                 self._compute_model()
-                self.it += 1
 
             # compute weighted residuals
             self._diff = self._weights[AorS + 1]*(self._model-self._img)
@@ -254,9 +262,6 @@ class Blend(object):
 
                 # now a gradient vector and a mask of pixel with updates
                 grad = np.zeros_like(X)
-                #mask = np.zeros(self.sources[m].shape[1:], dtype='bool')
-                #mask[slice_m[1:]] = True
-                #mask = mask.flatten()
                 if not self.psf_per_band:
                     for b in range(self.B):
                         grad += self.sources[m].sed[l,b]*self.sources[m].Gamma.T.dot(diff_k[b].flatten())
@@ -349,12 +354,13 @@ class Blend(object):
             self._edge_flux = np.zeros((self.M, 4, self.B))
 
         # top, right, bottom, left
-        self._edge_flux[m,0,:] = np.abs(model[0,:,-1,:]).max(axis=1)
-        self._edge_flux[m,1,:] = np.abs(model[0,:,:,-1]).max(axis=1)
-        self._edge_flux[m,2,:] = np.abs(model[0,:,0,:]).max(axis=1)
-        self._edge_flux[m,3,:] = np.abs(model[0,:,:,0]).max(axis=1)
+        self._edge_flux[m,0,:] = np.abs(model[:,:,-1,:]).sum(axis=0).max(axis=1)
+        self._edge_flux[m,1,:] = np.abs(model[:,:,:,-1]).sum(axis=0).max(axis=1)
+        self._edge_flux[m,2,:] = np.abs(model[:,:,0,:]).sum(axis=0).max(axis=1)
+        self._edge_flux[m,3,:] = np.abs(model[:,:,:,0]).sum(axis=0).max(axis=1)
 
     def resize_sources(self):
+        resized = False
         for m in range(self.M):
             size = [self.sources[m].Ny, self.sources[m].Nx]
             increase = [max(0.25*s, 10) for s in size]
@@ -367,5 +373,8 @@ class Blend(object):
                 size[0] += increase[0]
             if at_edge[1].any() or at_edge[3].any():
                 size[1] += increase[1]
-            logger.info("resizing source %d to (%d/%d)" % (m, size[0], size[1]))
-            self.sources[m].resize(size)
+            if at_edge.any():
+                logger.info("resizing source %d to (%d/%d)" % (m, size[0], size[1]))
+                self.sources[m].resize(size)
+                resized = True
+        return resized
