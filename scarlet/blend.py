@@ -114,11 +114,7 @@ class Blend(object):
         # TODO: Computation only correct if psf=None!
         self.e_rel = [e_rel] * 2*self.K
         self.e_abs = [e_rel / self.B] * self.K + [0.] * self.K
-        if weights is not None:
-            for m in range(self.M):
-                morph_std = self.sources[m].set_morph_sparsity(weights)
-                for l in range(self.sources[m].K):
-                    self.e_abs[self.K + self.component_of(m,l)] = e_rel * morph_std[l]
+        self.update_source_sparsity()
 
     def init_sources(self):
         for m in range(self.M):
@@ -226,6 +222,7 @@ class Blend(object):
                 if self.it >= self.refine_wait and self.it % self.refine_skip == 0:
                     resized = self.resize_sources()
                     self.recenter_sources()
+                    self.update_source_sparsity()
                     if resized:
                         raise ScarletResizeException()
 
@@ -378,3 +375,11 @@ class Blend(object):
                 self.sources[m].resize(size)
                 resized = True
         return resized
+
+    def update_source_sparsity(self):
+        if self._weights[0] is not None:
+            for m in range(self.M):
+                morph_std = self.sources[m].set_morph_sparsity(self._weights[0])
+                for l in range(self.sources[m].K):
+                    k = self.K + self.component_of(m,l)
+                    self.e_abs[k] = self.e_rel[k] * morph_std[l]
