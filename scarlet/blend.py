@@ -58,9 +58,10 @@ class Blend(object):
         self.set_data(img, weights=weights, sky=sky, init_sources=init_sources, update_order=update_order, e_rel=e_rel)
 
         # perform up to max_iter steps
-        return self.step(max_iter=max_iter)
+        self._max_iter = max_iter
+        return self.step(max_iter)
 
-    def step(self, max_iter=1):
+    def step(self, steps=1):
         # collect all SEDs and morphologies, plus associated errors
         XA = []
         XS = []
@@ -82,9 +83,9 @@ class Blend(object):
         traceback = False
         accelerated = True
         try:
-            res = proxmin.algorithms.bsdmm(X, self._prox_f, self._steps_f, self._proxs_g, steps_g=steps_g, Ls=self._Ls, update_order=_update_order, steps_g_update=steps_g_update, max_iter=max_iter-self.it, e_rel=self.e_rel, e_abs=self.e_abs, accelerated=accelerated, traceback=traceback)
+            res = proxmin.algorithms.bsdmm(X, self._prox_f, self._steps_f, self._proxs_g, steps_g=steps_g, Ls=self._Ls, update_order=_update_order, steps_g_update=steps_g_update, max_iter=steps, e_rel=self.e_rel, e_abs=self.e_abs, accelerated=accelerated, traceback=traceback)
         except ScarletResizeException:
-            self.step(max_iter=max_iter)
+            self.step(self._max_iter - self.it)
         return self
 
     def set_data(self, img, weights=None, sky=None, init_sources=True, update_order=None, e_rel=1e-2, slack=0.9):
