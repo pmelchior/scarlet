@@ -82,9 +82,9 @@ class Blend(object):
         traceback = False
         accelerated = True
         try:
-            res = proxmin.algorithms.bsdmm(X, self._prox_f, self._steps_f, self._proxs_g, steps_g=steps_g, Ls=self._Ls, update_order=_update_order, steps_g_update=steps_g_update, max_iter=max_iter, e_rel=self.e_rel, e_abs=self.e_abs, accelerated=accelerated, traceback=traceback)
+            res = proxmin.algorithms.bsdmm(X, self._prox_f, self._steps_f, self._proxs_g, steps_g=steps_g, Ls=self._Ls, update_order=_update_order, steps_g_update=steps_g_update, max_iter=max_iter-self.it, e_rel=self.e_rel, e_abs=self.e_abs, accelerated=accelerated, traceback=traceback)
         except ScarletResizeException:
-            self.step(max_iter=max_iter-self.it)
+            self.step(max_iter=max_iter)
         return self
 
     def set_data(self, img, weights=None, sky=None, init_sources=True, update_order=None, e_rel=1e-2, slack=0.9):
