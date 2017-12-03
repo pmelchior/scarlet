@@ -4,7 +4,7 @@ import numpy as np
 import scipy.sparse
 
 class GammaOp():
-    def __init__(self, shape, P=None):
+    def __init__(self, shape, psf=None):
 
         height, width = shape
         tx = scipy.sparse.diags([1.], shape=(width, width))
@@ -19,7 +19,7 @@ class GammaOp():
         self.ty_minus = scipy.sparse.diags([-1., 1.], offsets=[0, width], shape=(size, size))
         self.ty_plus = scipy.sparse.diags([1., -1.], offsets=[0, -width], shape=(size, size))
 
-        self.P = P
+        self.P = self._adapt_PSF(shape, psf)
 
     def __call__(self, pos):
         """Get the operators to translate source
@@ -42,9 +42,23 @@ class GammaOp():
 
         if self.P is None:
             return Ty.dot(Tx)
-        if hasattr(P, 'shape'): # single matrix: one for all bands
+        if hasattr(self.P, 'shape'): # single matrix: one for all bands
             return Ty.dot(self.P.dot(Tx))
-        return [Ty.dot(self.Pb.dot(Tx)) for Pb in P]
+        return [Ty.dot(Pb.dot(Tx)) for Pb in self.P]
+
+    def _adapt_PSF(self, shape, psf):
+        if psf is None:
+            return None
+
+        # Simpler for likelihood gradients if psf = const across B
+        if hasattr(psf, 'shape'): # single matrix
+            return getPSFOp(psf, shape)
+
+        P = []
+        for b in range(len(psf)):
+            P.append(getPSFOp(psf[b], shape))
+        return P
+
 
 def getZeroOp(shape):
     size = shape[0]*shape[1]

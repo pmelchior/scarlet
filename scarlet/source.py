@@ -24,11 +24,8 @@ class Source(object):
         self.morph = np.zeros((self.K, self.Ny*self.Nx))
 
         # set up psf and translations matrices
-        if psf is None:
-            self.P = None
-        else:
-            self.P = self._adapt_PSF(psf)
-        self._gammaOp = transformations.GammaOp(size, P=self.P)
+        self.psf = psf
+        self._gammaOp = transformations.GammaOp(size, psf=self.psf)
 
         # set center coordinates and translation operators
         # needs to have GammaOp set up first
@@ -154,7 +151,7 @@ class Source(object):
 
             # update GammaOp and center (including subpixel shifts)
             size = (self.Ny, self.Nx)
-            self._gammaOp = transformations.GammaOp(size, P=self.P)
+            self._gammaOp = transformations.GammaOp(size, psf=self.psf)
             self.set_center(self.center)
 
             # set constraints
@@ -284,13 +281,3 @@ class Source(object):
                 self.prox_morph[k] = proxmin.operators.AlternatingProjections(self.prox_morph[k], repeat=1)
             else:
                 self.prox_morph[k] = self.prox_morph[k][0]
-
-    def _adapt_PSF(self, psf):
-        # Simpler for likelihood gradients if psf = const across B
-        if hasattr(psf, 'shape'): # single matrix
-            return transformations.getPSFOp(psf, (self.Ny, self.Nx))
-
-        P = []
-        for b in range(len(psf)):
-            P.append(transformations.getPSFOp(psf[b], (self.Ny, self.Nx)))
-        return P
