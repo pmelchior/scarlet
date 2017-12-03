@@ -363,21 +363,22 @@ class Blend(object):
     def resize_sources(self):
         resized = False
         for m in range(self.M):
-            size = [self.sources[m].Ny, self.sources[m].Nx]
-            increase = [max(0.25*s, 10) for s in size]
+            if not self.sources[m].fix_frame:
+                size = [self.sources[m].Ny, self.sources[m].Nx]
+                increase = [max(0.25*s, 10) for s in size]
 
-            # check if max flux along edge in band b < avg noise level along edge in b
-            at_edge = (self._edge_flux[m] > self._noise_eff[m]*self.edge_flux_thresh)
-            # TODO: without symmetry constraints, the four edges of the box
-            # should be allowed to resize independently
-            if at_edge[0].any() or at_edge[2].any():
-                size[0] += increase[0]
-            if at_edge[1].any() or at_edge[3].any():
-                size[1] += increase[1]
-            if at_edge.any():
-                logger.info("resizing source %d to (%d/%d)" % (m, size[0], size[1]))
-                self.sources[m].resize(size)
-                resized = True
+                # check if max flux along edge in band b < avg noise level along edge in b
+                at_edge = (self._edge_flux[m] > self._noise_eff[m]*self.edge_flux_thresh)
+                # TODO: without symmetry constraints, the four edges of the box
+                # should be allowed to resize independently
+                if at_edge[0].any() or at_edge[2].any():
+                    size[0] += increase[0]
+                if at_edge[1].any() or at_edge[3].any():
+                    size[1] += increase[1]
+                if at_edge.any():
+                    logger.info("resizing source %d to (%d/%d)" % (m, size[0], size[1]))
+                    self.sources[m].resize(size)
+                    resized = True
         return resized
 
     def update_source_sparsity(self):

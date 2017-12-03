@@ -10,11 +10,12 @@ import logging
 logger = logging.getLogger("scarlet")
 
 class Source(object):
-    def __init__(self, center, size, K=1, B=1, psf=None, constraints=None, fix_sed=False, fix_morph=False, shift_center=0.2):
+    def __init__(self, center, size, K=1, B=1, psf=None, constraints=None, fix_sed=False, fix_morph=False, fix_frame=False, shift_center=0.2):
 
         # set size of the source frame
         self._set_frame(center, size)
         size = (self.Ny, self.Nx)
+        self.fix_frame = fix_frame
 
         # create containers
         self.K = K
