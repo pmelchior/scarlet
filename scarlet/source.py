@@ -170,27 +170,11 @@ class Source(object):
         # ensure proper normalization
         self.sed[0] = proxmin.operators.prox_unity_plus(self.sed[0], 0)
 
-        # init with monotonized image in bb
-        if self._gammaOp.P is None:
-            self.morph = np.zeros((1, self.Ny, self.Nx))
-            morph_slice = self.get_slice_for(img.shape)
-            # TODO: account for per-band variations
-            self.morph[0][morph_slice[1:]] = img[self.bb].sum(axis=0)
-            self.morph = self.morph[0].reshape((1, self.Ny*self.Nx))
-            # use predefined strict_monotonicity op if present
-            if self.constraints is not None and "m" in self.constraints.keys():
-                pos = self.prox_morph[0].find(operators.prox_strict_monotonic)
-                prox_mono = self.prox_morph[0].operators[pos]
-            else:
-                shape = (self.Ny, self.Nx)
-                thresh = 1./min(shape)
-                prox_mono = operators.prox_strict_monotonic(shape, thresh=thresh)
-            self.morph[0] = prox_mono(self.morph[0], 0)
-        else: # simply central pixel
-            self.morph = np.zeros((1, self.Ny*self.Nx))
-            tiny = 1e-10
-            cx, cy = self.Nx // 2, self.Ny // 2
-            self.morph[0, cy*self.Nx+cx] = img[:,y_,x_].sum(axis=0) + tiny
+        # same for morph: just one pixel with an estimate of the total flux
+        self.morph = np.zeros((1, self.Ny*self.Nx))
+        tiny = 1e-10
+        cx, cy = self.Nx // 2, self.Ny // 2
+        self.morph[0, cy*self.Nx+cx] = img[:,y_,x_].sum(axis=0) + tiny
 
     def get_morph_error(self, weights):
         w = np.zeros(self.shape)
