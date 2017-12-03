@@ -15,7 +15,7 @@ class ScarletResizeException(Exception):
 class Blend(object):
     """The blended scene as interpreted by the deblender.
     """
-    def __init__(self, sources):
+    def __init__(self, sources, img, weights=None, sky=None, init_sources=True):
         assert len(sources)
         # store all source and make search structures
         self._register_sources(sources)
@@ -27,6 +27,14 @@ class Blend(object):
         self.refine_skip = 10
         self.center_min_dist = 1e-3
         self.edge_flux_thresh = 1.
+        self.update_order = [1,0]
+        self.slack = 0.9
+
+        # set up data structures
+        self.set_data(img, weights=weights, sky=sky)
+
+        if init_sources:
+            self.init_sources()
 
     def source_of(self, k):
         return self._source_of[k]
@@ -52,17 +60,20 @@ class Blend(object):
     def _Ls(self):
         return [source.Ls[0] for source in self.sources] + [source.Ls[1] for source in self.sources]
 
-    def fit(self, img, weights=None, sky=None, init_sources=True, update_order=None, e_rel=1e-2, max_iter=200):
+    def fit(self, steps=1, e_rel=1e-2):
 
-        # set data/weights to define objective function gradients
-        self.set_data(img, weights=weights, sky=sky, init_sources=init_sources, update_order=update_order, e_rel=e_rel)
+        # set sparsity cutoff for morph based on the error level
+        # TODO: Computation only correct if psf=None!
+        self.e_rel = [e_rel] * 2*self.K
+        self.e_abs = [e_rel / self.B] * self.K + [0.] * self.K
+        self.update_source_sparsity()
 
         # perform up to max_iter steps
-        self._max_iter = max_iter
-        return self.step(steps=max_iter, max_iter=max_iter)
+        self.it = 0
+        self._model_it = -1
+        return self._step(steps=steps, max_iter=steps)
 
-    def step(self, steps=1, max_iter=None):
-        print ("step: it=%d, steps=%d" % (self.it, steps))
+    def _step(self, steps=1, max_iter=None):
         # collect all SEDs and morphologies, plus associated errors
         XA = []
         XS = []
@@ -88,37 +99,21 @@ class Blend(object):
         except ScarletResizeException:
             if max_iter is not None:
                 steps = max_iter - self.it
-            self.step(steps=steps, max_iter=max_iter)
+            self._step(steps=steps, max_iter=max_iter)
         return self
 
-    def set_data(self, img, weights=None, sky=None, init_sources=True, update_order=None, e_rel=1e-2, slack=0.9):
-        self.it = 0
-        self._model_it = -1
+    def set_data(self, img, weights=None, sky=None):
 
         if sky is None:
             self._ = img
         else:
             self._img = img-sky
 
-        if update_order is None:
-            self.update_order = [1,0] # S then A
-        else:
-            self.update_order = update_order
-
         self._set_weights(weights)
         WAmax = np.max(self._weights[1])
         WSmax = np.max(self._weights[2])
-        self._stepAS = Steps_AS(WAmax=WAmax, WSmax=WSmax, slack=slack, update_order=self.update_order)
+        self._stepAS = Steps_AS(WAmax=WAmax, WSmax=WSmax, slack=self.slack, update_order=self.update_order)
         self.step_AS = [None] * 2
-
-        if init_sources:
-            self.init_sources()
-
-        # set sparsity cutoff for morph based on the error level
-        # TODO: Computation only correct if psf=None!
-        self.e_rel = [e_rel] * 2*self.K
-        self.e_abs = [e_rel / self.B] * self.K + [0.] * self.K
-        self.update_source_sparsity()
 
     def init_sources(self):
         for m in range(self.M):
