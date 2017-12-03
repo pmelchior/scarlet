@@ -60,7 +60,7 @@ class Blend(object):
     def _Ls(self):
         return [source.Ls[0] for source in self.sources] + [source.Ls[1] for source in self.sources]
 
-    def fit(self, steps=1, e_rel=1e-2):
+    def fit(self, e_rel=1e-2, max_iter=200):
 
         # set sparsity cutoff for morph based on the error level
         # TODO: Computation only correct if psf=None!
@@ -71,9 +71,12 @@ class Blend(object):
         # perform up to max_iter steps
         self.it = 0
         self._model_it = -1
-        return self._step(steps=steps, max_iter=steps)
+        return self._step(steps=max_iter)
 
     def _step(self, steps=1, max_iter=None):
+        if max_iter is None:
+            max_iter = steps
+
         # collect all SEDs and morphologies, plus associated errors
         XA = []
         XS = []
@@ -97,8 +100,7 @@ class Blend(object):
         try:
             res = proxmin.algorithms.bsdmm(X, self._prox_f, self._steps_f, self._proxs_g, steps_g=steps_g, Ls=self._Ls, update_order=_update_order, steps_g_update=steps_g_update, max_iter=steps, e_rel=self.e_rel, e_abs=self.e_abs, accelerated=accelerated, traceback=traceback)
         except ScarletResizeException:
-            if max_iter is not None:
-                steps = max_iter - self.it
+            steps = max_iter - self.it
             self._step(steps=steps, max_iter=max_iter)
         return self
 
