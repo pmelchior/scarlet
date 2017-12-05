@@ -3,7 +3,6 @@ import numpy as np
 from functools import partial
 
 import proxmin
-from proxmin.nmf import Steps_AS
 
 import logging
 logger = logging.getLogger("scarlet")
@@ -28,7 +27,6 @@ class Blend(object):
         self.center_min_dist = 1e-3
         self.edge_flux_thresh = 1.
         self.update_order = [1,0]
-        self.slack = 0.9
 
         # set up data structures
         self.set_data(img, weights=weights, sky=sky)
@@ -111,10 +109,6 @@ class Blend(object):
             self._img = img-sky
 
         self._set_weights(weights)
-        WAmax = np.max(self._weights[1])
-        WSmax = np.max(self._weights[2])
-        self._stepAS = Steps_AS(WAmax=WAmax, WSmax=WSmax, slack=self.slack, update_order=self.update_order)
-        self.step_AS = [None] * 2
 
     def init_sources(self):
         for m in range(self.M):
@@ -184,6 +178,7 @@ class Blend(object):
             mask = norm_pixel > 0
             self._weights[2] = weights.copy()
             self._weights[2][:,mask] /= norm_pixel[mask]
+            self._WS_max = self._weights[2].max()
 
             # reverse is true for A update: for each band, use the pixels that
             # have the largest weights
@@ -199,6 +194,7 @@ class Blend(object):
             # and mask all bands for that pixel:
             # when estimating A do not use (partially) saturated pixels
             self._weights[1][:,mask] = 0
+            self._WA_max = self._weights[1].max()
 
     def _compute_model(self):
         # make sure model at current iteration is computed when needed
@@ -279,6 +275,11 @@ class Blend(object):
         AorS = j//self.K
         k = j%self.K
 
+        try:
+            self._step_AS
+        except AttributeError:
+            self._step_AS = [None] * 2
+
         # computing likelihood gradients for S and A: only once per iteration
         if AorS == self.update_order[0] and k==0:
             self._compute_model()
@@ -294,11 +295,12 @@ class Blend(object):
                 # model[b] is simple SED[b] * S, so sum up
                 # and divide by sum(SED) in case that isn't unity
                 S = self._models[:,:,:,:].sum(axis=1).reshape((self.K, Ny*Nx)) / A.T.sum(axis=1)[:,None]
+
+                self._step_AS[0] = proxmin.utils.get_spectral_norm(S.T) * self._WA_max # ||S*S.T||
+                self._step_AS[1] = proxmin.utils.get_spectral_norm(A) * self._WS_max # ||A.T*A||
             else:
                 raise NotImplementedError()
-            self.step_AS[0] = self._stepAS(0, [A, S])
-            self.step_AS[1] = self._stepAS(1, [A, S])
-        return self.step_AS[AorS]
+        return self._step_AS[AorS]
 
     def recenter_sources(self):
         # residuals weighted with full/original weight matrix
@@ -327,7 +329,7 @@ class Blend(object):
         source = self.sources[m]
         slice_m = source.get_slice_for(self._img.shape)
         k = self.component_of(m, 0)
-        model_m = self._models[k][self.sources[m].bb]
+        model_m = self._models[k][self.sources[m].bb].copy()
         # in self._models, per-source components aren't combined,
         # need to combine here
         for k in range(1,source.K):
