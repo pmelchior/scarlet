@@ -285,6 +285,8 @@ class Blend(object):
         except AttributeError:
             self._step_AS = [None] * 2
 
+        # TODO: implement caching of step sizes
+
         # computing likelihood gradients for S and A: only once per iteration
         if AorS == self.update_order[0] and k==0:
             self._compute_model()
@@ -296,11 +298,32 @@ class Blend(object):
                 # model[b] is S in band b and they are all the same
                 b = 0
                 S = self._models[:,b,:,:].reshape((self.K, Ny*Nx))
-
                 self._step_AS[0] = 1./(proxmin.utils.get_spectral_norm(S.T) * self._WA_max) # ||S*S.T||
                 self._step_AS[1] = 1./(proxmin.utils.get_spectral_norm(self._A) * self._WS_max) # ||A.T*A||
             else:
-                raise NotImplementedError()
+                # Lischitz constant of A: ||Sigma_a||_s with
+                # Sigma_a = ((PS)^T Sigma_pixel^-1 PS)^-1
+                # in the frame where A is a vector of length K*B
+                import scipy.sparse
+                try:
+                    self._Gamma_full
+                except AttributeError:
+                    from .transformations import GammaOp
+                    self._Gamma_full = [ GammaOp(self._img.shape[1:], B=self.B, psf=self.sources[m].psf)((0,0)) for m in range(self.M) ]
+                    self.Sigma_pix_a = scipy.sparse.diags(self._weights[1].flatten(), 0)
+                    self.Sigma_pix_s = scipy.sparse.diags(self._weights[2].flatten(), 0)
+
+                PS = scipy.sparse.block_diag([self._models[:,b,:,:].reshape((self.K, Ny*Nx)).T for b in range(self.B)])
+                Sigma_a = PS.T.dot(self.Sigma_pix_a.dot(PS))
+                self._step_AS[0] = 1. / np.real(scipy.sparse.linalg.eigs(Sigma_a, k=1, return_eigenvectors=False)[0])
+
+                # similar calculation for S: ||Sigma_s||_s with
+                # Sigma_s = ((PA)^T Sigma_pixel^-1 PA)^-1
+                # in the frame where S is a vector of length N*K
+                PA = scipy.sparse.bmat([[self._A[b,k] * self._Gamma_full[self.source_of(k)[0]][b] for k in range(self.K)] for b in range(self.B)])
+                Sigma_s = PA.T.dot(self.Sigma_pix_s.dot(PA))
+                self._step_AS[1] = 1. / np.real(scipy.sparse.linalg.eigs(Sigma_s, k=1, return_eigenvectors=False)[0])
+            print (self._step_AS)
         return self._step_AS[AorS]
 
     def recenter_sources(self):
