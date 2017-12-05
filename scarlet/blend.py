@@ -296,8 +296,8 @@ class Blend(object):
                 # and divide by sum(SED) in case that isn't unity
                 S = self._models[:,:,:,:].sum(axis=1).reshape((self.K, Ny*Nx)) / A.T.sum(axis=1)[:,None]
 
-                self._step_AS[0] = proxmin.utils.get_spectral_norm(S.T) * self._WA_max # ||S*S.T||
-                self._step_AS[1] = proxmin.utils.get_spectral_norm(A) * self._WS_max # ||A.T*A||
+                self._step_AS[0] = 1./(proxmin.utils.get_spectral_norm(S.T) * self._WA_max) # ||S*S.T||
+                self._step_AS[1] = 1./(proxmin.utils.get_spectral_norm(A) * self._WS_max) # ||A.T*A||
             else:
                 raise NotImplementedError()
         return self._step_AS[AorS]
