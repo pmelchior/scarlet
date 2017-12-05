@@ -308,8 +308,9 @@ class Blend(object):
                 try:
                     self._Gamma_full
                 except AttributeError:
+                    # need to PSF operator on the whole frame with shift to source positions
                     from .transformations import GammaOp
-                    self._Gamma_full = [ GammaOp(self._img.shape[1:], B=self.B, psf=self.sources[m].psf)((0,0)) for m in range(self.M) ]
+                    self._Gamma_full = [ GammaOp(self._img.shape[1:], B=self.B, psf=self.sources[m].psf, offset_int=self.sources[m].center_int)((0,0)) for m in range(self.M) ]
                     self.Sigma_pix_a = scipy.sparse.diags(self._weights[1].flatten(), 0)
                     self.Sigma_pix_s = scipy.sparse.diags(self._weights[2].flatten(), 0)
 
@@ -323,7 +324,6 @@ class Blend(object):
                 PA = scipy.sparse.bmat([[self._A[b,k] * self._Gamma_full[self.source_of(k)[0]][b] for k in range(self.K)] for b in range(self.B)])
                 Sigma_s = PA.T.dot(self.Sigma_pix_s.dot(PA))
                 self._step_AS[1] = 1. / np.real(scipy.sparse.linalg.eigs(Sigma_s, k=1, return_eigenvectors=False)[0])
-            print (self._step_AS)
         return self._step_AS[AorS]
 
     def recenter_sources(self):
