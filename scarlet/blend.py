@@ -63,7 +63,6 @@ class Blend(object):
     def fit(self, e_rel=1e-2, max_iter=200):
 
         # set sparsity cutoff for morph based on the error level
-        # TODO: Computation only correct if psf=None!
         self.e_rel = [e_rel] * 2*self.K
         self.e_abs = [e_rel / self.B] * self.K + [0.] * self.K
         self.update_source_sparsity()

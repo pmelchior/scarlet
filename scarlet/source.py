@@ -185,6 +185,7 @@ class Source(object):
         # return np.sqrt(np.diagonal(np.linalg.inv(np.dot(np.multiply(self.w.T[:,None,:], A.T), A)), axis1=1, axis2=2))
         # Instead, estimate noise for each component separately:
         # simple multiplication for diagonal pixel covariance matrix
+        # TODO: Computation only correct if psf=None!
         from .utils import invert_with_zeros
         return [invert_with_zeros(np.sqrt(np.dot(a.T, np.multiply(w, a[:,None])))) for a in self.sed]
 
@@ -250,32 +251,40 @@ class Source(object):
 
             if c == "M":
                 # positive gradients
-                self.Ls[1].append(transformations.getRadialMonotonicOp(shape, useNearest=self.constraints[c]))
-                self.proxs_g[1].append(proxmin.operators.prox_plus)
+                M = transformations.getRadialMonotonicOp(shape, useNearest=self.constraints[c])
+                for k in range(self.K):
+                    self.Ls[1].append(M)
+                    self.proxs_g[1].append(proxmin.operators.prox_plus)
             elif c == "S":
                 # zero deviation of mirrored pixels
-                self.Ls[1].append(transformations.getSymmetryOp(shape))
-                self.proxs_g[1].append(proxmin.operators.prox_zero)
-            elif c == "c":
+                S = transformations.getSymmetryOp(shape)
+                for k in range(self.K):
+                    self.Ls[1].append(S)
+                    self.proxs_g[1].append(proxmin.operators.prox_zero)
+            elif c == "C":
+                # cone method for monotonicity: exact but VERY slow
                 useNearest = self.constraints.get("M", False)
                 G = transformations.getRadialMonotonicOp(shape, useNearest=useNearest).toarray()
-                self.proxs_g[1].append(partial(operators.prox_cone, G=G))
-                self.Ls[1].append(None)
-            elif (c == "X" or c == "x"): # X gradient
+                for k in range(self.K):
+                    self.Ls[1].append(None)
+                    self.proxs_g[1].append(partial(operators.prox_cone, G=G))
+            elif c == "X":
+                # l1 norm on gradient in X for TV_x
                 cx = int(self.Nx)
-                self.Ls[1].append(proxmin.transformations.get_gradient_x(shape, cx))
-                if c == "X": # all positive
-                    self.proxs_g[1].append(proxmin.operators.prox_plus)
-                else: # l1 norm for TV_x
+                Gx = proxmin.transformations.get_gradient_x(shape, cx)
+                for k in range(self.K):
+                    self.Ls[1].append(Gx)
                     self.proxs_g[1].append(partial(proxmin.operators.prox_soft, thresh=self.constraints[c]))
-            elif (c == "Y" or c == "y"): # Y gradient
+            elif c == "Y":
+                # l1 norm on gradient in Y for TV_y
                 cy = int(self.Ny)
-                self.Ls[1].append(proxmin.transformations.get_gradient_y(shape, cy))
-                if c == "Y": # all positive
-                    self.proxs_g[1].append(proxmin.operators.prox_plus)
-                else: # l1 norm for TV_x
+                Gy = proxmin.transformations.get_gradient_y(shape, cy)
+                for k in range(self.K):
+                    self.Ls[1].append(Gy)
                     self.proxs_g[1].append(partial(proxmin.operators.prox_soft, thresh=self.constraints[c]))
 
+        # with several projection operators in prox_morph:
+        # use AlternatingProjections to link them together
         for k in range(self.K):
             if len(self.prox_morph[k]) > 1:
                 self.prox_morph[k] = proxmin.operators.AlternatingProjections(self.prox_morph[k], repeat=1)
