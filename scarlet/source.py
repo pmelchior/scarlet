@@ -25,7 +25,7 @@ class Source(object):
 
         # set up psf and translations matrices
         self.psf = psf
-        self._gammaOp = transformations.GammaOp(size, psf=self.psf)
+        self._gammaOp = transformations.GammaOp(size, B=self.B, psf=self.psf)
 
         # set center coordinates and translation operators
         # needs to have GammaOp set up first
@@ -80,7 +80,7 @@ class Source(object):
         if Gamma is None:
             Gamma = self.Gamma
         # model for all components of this source
-        if hasattr(Gamma, 'shape'): # single matrix: one for all bands
+        if self.psf is None:
             model = np.empty((self.K, self.B, self.Ny*self.Nx))
             for k in range(self.K):
                 model[k] = np.outer(self.sed[k], Gamma.dot(self.morph[k]))
@@ -151,7 +151,7 @@ class Source(object):
 
             # update GammaOp and center (including subpixel shifts)
             size = (self.Ny, self.Nx)
-            self._gammaOp = transformations.GammaOp(size, psf=self.psf)
+            self._gammaOp = transformations.GammaOp(size, B=self.B, psf=self.psf)
             self.set_center(self.center)
 
             # set constraints
@@ -181,21 +181,26 @@ class Source(object):
         # and the pixel covariances: Sigma_morph = diag((A^T Sigma^-1 A)^-1)
         # CAVEAT: If done on the entire A matrix, degeneracies in the linear
         # solution arise and substantially amplify the error estimate:
-        # A = self.sed.T
-        # return np.sqrt(np.diagonal(np.linalg.inv(np.dot(np.multiply(self.w.T[:,None,:], A.T), A)), axis1=1, axis2=2))
         # Instead, estimate noise for each component separately:
         # simple multiplication for diagonal pixel covariance matrix
-        # TODO: Computation only correct if psf=None!
-        from .utils import invert_with_zeros
-        return [invert_with_zeros(np.sqrt(np.dot(a.T, np.multiply(w, a[:,None])))) for a in self.sed]
+        if self.psf is None:
+            from .utils import invert_with_zeros
+            return [invert_with_zeros(np.sqrt(np.dot(a.T, np.multiply(w, a[:,None])))) for a in self.sed]
+        else:
+            raise NotImplementedError()
+            # see Blend.steps_f for details for the complete covariance matrix
+
 
     def get_sed_error(self, weights):
         w = np.zeros(self.shape)
         w[self.get_slice_for(weights.shape)] = weights[self.bb]
         w = w.reshape(self.B, -1)
         # See explanation in get_morph_error
-        from .utils import invert_with_zeros
-        return [invert_with_zeros(np.sqrt(np.dot(s,np.multiply(w.T, s[None,:].T)))) for s in self.morph]
+        if self.psf is None:
+            from .utils import invert_with_zeros
+            return [invert_with_zeros(np.sqrt(np.dot(s,np.multiply(w.T, s[None,:].T)))) for s in self.morph]
+        else:
+            raise NotImplementedError()
 
     def set_morph_sparsity(self, weights):
         if "l0" in self.constraints.keys():

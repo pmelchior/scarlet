@@ -150,7 +150,9 @@ class Blend(object):
     def _register_sources(self, sources):
         self.sources = sources # do not copy!
         self.K =  sum([source.K for source in self.sources])
-        self.psf_per_band = not hasattr(sources[0].Gamma, 'shape')
+        have_psf = [source.psf is not None for source in self.sources]
+        self.has_psf = any(have_psf)
+        assert any(have_psf) == all(have_psf)
 
         # lookup of source/component tuple given component number k
         self._source_of = []
@@ -259,7 +261,7 @@ class Blend(object):
 
                 # now a gradient vector and a mask of pixel with updates
                 grad = np.zeros_like(X)
-                if not self.psf_per_band:
+                if not self.has_psf:
                     for b in range(self.B):
                         grad += self.sources[m].sed[l,b]*self.sources[m].Gamma.T.dot(diff_k[b].flatten())
                 else:
@@ -283,18 +285,17 @@ class Blend(object):
 
             # build temporary A,S matrices
             B, Ny, Nx = self._img.shape
-            A = np.empty((self.B,self.K))
-            for k_ in range(self.K):
-                m,l = self._source_of[k_]
-                A[:,k_] = self.sources[m].sed[l]
-            if not self.psf_per_band:
-                # model[b] is simple SED[b] * S, need to divide by SED
-                b = 0
-                S = self._models[:,b,:,:].reshape((self.K, Ny*Nx)) / A.T[:,b][:,None]
+
+            if not self.has_psf:
+                A = np.empty((self.B,self.K))
+                for k_ in range(self.K):
+                    m,l = self._source_of[k_]
+                    A[:,k_] = self.sources[m].sed[l]
+                # model[b] is simple SED[b] * S, so sum up
+                # and divide by sum(SED) in case that isn't unity
+                S = self._models[:,:,:,:].sum(axis=1).reshape((self.K, Ny*Nx)) / A.T.sum(axis=1)[:,None]
             else:
-                # TODO: replace this with the current models, for each band
-                # i.e. one S per band -> step_size per band
-                raise NotImplementedError
+                raise NotImplementedError()
             self.step_AS[0] = self._stepAS(0, [A, S])
             self.step_AS[1] = self._stepAS(1, [A, S])
         return self.step_AS[AorS]

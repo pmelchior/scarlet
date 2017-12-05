@@ -4,9 +4,10 @@ import numpy as np
 import scipy.sparse
 
 class GammaOp():
-    def __init__(self, shape, psf=None):
+    def __init__(self, shape, B=1, psf=None):
 
         height, width = shape
+        self.B = B
         tx = scipy.sparse.diags([1.], shape=(width, width))
         tx_minus = scipy.sparse.diags([-1.,1.], offsets=[0,1], shape=(width, width))
         tx_plus = scipy.sparse.diags([1.,-1.],offsets=[0,-1], shape=(width, width))
@@ -42,15 +43,16 @@ class GammaOp():
 
         if self.P is None:
             return Ty.dot(Tx)
-        if hasattr(self.P, 'shape'): # single matrix: one for all bands
-            return Ty.dot(self.P.dot(Tx))
+        if hasattr(self.P, 'shape'):
+            _gamma = Ty.dot(self.P.dot(Tx))
+             # simplifies things later on: PSF always comes with B Gamma operators
+            return [_gamma] * self.B
         return [Ty.dot(Pb.dot(Tx)) for Pb in self.P]
 
     def _adapt_PSF(self, shape, psf):
         if psf is None:
             return None
 
-        # Simpler for likelihood gradients if psf = const across B
         if hasattr(psf, 'shape'): # single matrix
             return getPSFOp(psf, shape)
 
