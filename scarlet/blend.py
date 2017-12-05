@@ -114,12 +114,12 @@ class Blend(object):
         for m in range(self.M):
             self.sources[m].init_source(self._img, weights=self._weights[0])
 
-    def get_model(self, m=None, combine=True, combine_source_components=True):
+    def get_model(self, m=None, combine=True, combine_source_components=True, use_sed=True):
         """Compute the current model for the entire image
         """
         if m is not None:
             source = self.sources[m]
-            model = source.get_model(combine=combine_source_components)
+            model = source.get_model(combine=combine_source_components, use_sed=use_sed)
             model_slice = source.get_slice_for(self._img.shape)
 
             if combine_source_components:
@@ -136,9 +136,9 @@ class Blend(object):
 
         # for all sources
         if combine:
-            return np.sum([self.get_model(m=m, combine_source_components=True) for m in range(self.M)], axis=0)
+            return np.sum([self.get_model(m=m, combine_source_components=True, use_sed=use_sed) for m in range(self.M)], axis=0)
         else:
-            models = [self.get_model(m=m, combine_source_components=combine_source_components) for m in range(self.M)]
+            models = [self.get_model(m=m, combine_source_components=combine_source_components, use_sed=use_sed) for m in range(self.M)]
             return np.vstack(models)
 
     def _register_sources(self, sources):
@@ -200,8 +200,14 @@ class Blend(object):
         # make sure model at current iteration is computed when needed
         # irrespective of function that needs it
         if self._model_it < self.it:
-            self._models = self.get_model(combine=False, combine_source_components=False) # model each each component over image
-            self._model = np.sum(self._models, axis=0)
+            # model each each component over image
+            # do not use SED, so that it can be reused later
+            self._models = self.get_model(combine=False, combine_source_components=False, use_sed=False)
+            self._A = np.empty((self.B,self.K))
+            for k_ in range(self.K):
+                m,l = self._source_of[k_]
+                self._A[:,k_] = self.sources[m].sed[l]
+            self._model = np.sum(self._A.T[:,:,None,None] * self._models, axis=0)
             self._model_it = self.it
 
     def _prox_f(self, X, step, Xs=None, j=None):
@@ -236,8 +242,7 @@ class Blend(object):
                 # gradient of likelihood wrt A: nominally np.dot(diff, S^T)
                 # but with PSF convolution, S_ij -> sum_q Gamma_bqi S_qj
                 # however, that's exactly the operation done for models[k]
-                # caveat: the model is SED * convolved model -> need to divide
-                grad = np.einsum('...ij,...ij', self._diff, self._models[k] / self.sources[m].sed[l].T[:,None,None])
+                grad = np.einsum('...ij,...ij', self._diff, self._models[k])
 
                 # apply per component prox projection and save in source
                 self.sources[m].sed[l] =  self.sources[m].prox_sed[l](X - step*grad, step)
@@ -288,16 +293,12 @@ class Blend(object):
             B, Ny, Nx = self._img.shape
 
             if not self.has_psf:
-                A = np.empty((self.B,self.K))
-                for k_ in range(self.K):
-                    m,l = self._source_of[k_]
-                    A[:,k_] = self.sources[m].sed[l]
-                # model[b] is simple SED[b] * S, so sum up
-                # and divide by sum(SED) in case that isn't unity
-                S = self._models[:,:,:,:].sum(axis=1).reshape((self.K, Ny*Nx)) / A.T.sum(axis=1)[:,None]
+                # model[b] is S in band b and they are all the same
+                b = 0
+                S = self._models[:,b,:,:].reshape((self.K, Ny*Nx))
 
                 self._step_AS[0] = 1./(proxmin.utils.get_spectral_norm(S.T) * self._WA_max) # ||S*S.T||
-                self._step_AS[1] = 1./(proxmin.utils.get_spectral_norm(A) * self._WS_max) # ||A.T*A||
+                self._step_AS[1] = 1./(proxmin.utils.get_spectral_norm(self._A) * self._WS_max) # ||A.T*A||
             else:
                 raise NotImplementedError()
         return self._step_AS[AorS]

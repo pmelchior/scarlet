@@ -76,19 +76,23 @@ class Source(object):
         top = self.Ny - max(0, self.top - NY)
         return (slice(None), slice(bottom, top), slice(left, right))
 
-    def get_model(self, combine=True, Gamma=None):
+    def get_model(self, combine=True, Gamma=None, use_sed=True):
         if Gamma is None:
             Gamma = self.Gamma
+        if use_sed:
+            sed = self.sed
+        else:
+            sed = np.ones_like(self.sed)
         # model for all components of this source
         if self.psf is None:
             model = np.empty((self.K, self.B, self.Ny*self.Nx))
             for k in range(self.K):
-                model[k] = np.outer(self.sed[k], Gamma.dot(self.morph[k]))
+                model[k] = np.outer(sed[k], Gamma.dot(self.morph[k]))
         else:
             model = np.zeros((self.K, self.B, self.Ny*self.Nx))
             for k in range(self.K):
                 for b in range(self.B):
-                    model[k,b] += self.sed[k,b] * Gamma[b].dot(self.morph[k])
+                    model[k,b] += sed[k,b] * Gamma[b].dot(self.morph[k])
 
         # reshape the image into a 2D array
         model = model.reshape(self.K, self.B, self.Ny, self.Nx)
