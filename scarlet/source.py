@@ -191,20 +191,26 @@ class Source(object):
             from .utils import invert_with_zeros
             return [invert_with_zeros(np.sqrt(np.dot(a.T, np.multiply(w, a[:,None])))) for a in self.sed]
         else:
-            raise NotImplementedError()
             # see Blend.steps_f for details for the complete covariance matrix
-
+            import scipy.sparse
+            Sigma_pix = scipy.sparse.diags(w.flatten(), 0)
+            PA = [scipy.sparse.bmat([[self.sed[k,b] * self.Gamma[b]] for b in range(self.B)])  for k in range(self.K)]
+            return [np.sqrt(np.diag(np.linalg.inv(PAk.T.dot(Sigma_pix.dot(PAk)).toarray()))) for PAk in PA]
 
     def get_sed_error(self, weights):
         w = np.zeros(self.shape)
         w[self.get_slice_for(weights.shape)] = weights[self.bb]
         w = w.reshape(self.B, -1)
-        # See explanation in get_morph_error
+        # See explanation in get_morph_error and Blend.steps_f
         if self.psf is None:
             from .utils import invert_with_zeros
             return [invert_with_zeros(np.sqrt(np.dot(s,np.multiply(w.T, s[None,:].T)))) for s in self.morph]
         else:
-            raise NotImplementedError()
+            import scipy.sparse
+            Sigma_pix = scipy.sparse.diags(w.flatten(), 0)
+            model = self.get_model(combine=False, use_sed=False)
+            PS = [scipy.sparse.block_diag([model[k,b,:,:].reshape((1,-1)).T for b in range(self.B)]) for k in range(self.K)]
+            return [np.sqrt(np.diag(np.linalg.inv(PSk.T.dot(Sigma_pix.dot(PSk)).toarray()))) for PSk in PS]
 
     def set_morph_sparsity(self, weights):
         if "l0" in self.constraints.keys():

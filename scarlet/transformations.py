@@ -6,23 +6,23 @@ import scipy.sparse
 class GammaOp():
     def __init__(self, shape, B=1, psf=None, offset_int=None):
         if offset_int is None:
-            int_y = int_x = 0
+            self.offset_int = (0,0)
         else:
-            int_y, int_x = offset_int
+            self.offset_int = offset_int
 
         height, width = shape
         self.B = B
-        tx = scipy.sparse.diags([1.], offsets=[int_x], shape=(width, width))
-        tx_minus = scipy.sparse.diags([-1.,1.], offsets=[int_x,int_x+1], shape=(width, width))
-        tx_plus = scipy.sparse.diags([1.,-1.],offsets=[int_x,int_x-1], shape=(width, width))
+        tx = scipy.sparse.diags([1.], offsets=[self.offset_int[1]], shape=(width, width))
+        tx_minus = scipy.sparse.diags([-1.,1.], offsets=[self.offset_int[1],self.offset_int[1]+1], shape=(width, width))
+        tx_plus = scipy.sparse.diags([1.,-1.],offsets=[self.offset_int[1],self.offset_int[1]-1], shape=(width, width))
         self.tx = scipy.sparse.block_diag([tx]*height)
         self.tx_plus = scipy.sparse.block_diag([tx_plus]*height)
         self.tx_minus = scipy.sparse.block_diag([tx_minus]*height)
 
         size = height*width
-        self.ty = scipy.sparse.diags([1], offsets=[int_y*width], shape=(size, size), dtype=np.float64)
-        self.ty_minus = scipy.sparse.diags([-1., 1.], offsets=[int_y*width, (int_y+1)*width], shape=(size, size))
-        self.ty_plus = scipy.sparse.diags([1., -1.], offsets=[int_y*width, (int_y-1)*width], shape=(size, size))
+        self.ty = scipy.sparse.diags([1], offsets=[self.offset_int[0]*width], shape=(size, size), dtype=np.float64)
+        self.ty_minus = scipy.sparse.diags([-1., 1.], offsets=[self.offset_int[0]*width, (self.offset_int[0]+1)*width], shape=(size, size))
+        self.ty_plus = scipy.sparse.diags([1., -1.], offsets=[self.offset_int[0]*width, (self.offset_int[0]-1)*width], shape=(size, size))
 
         self.P = self._adapt_PSF(shape, psf)
 
