@@ -181,6 +181,12 @@ class Source(object):
         w = np.zeros(self.shape)
         w[self.get_slice_for(weights.shape)] = weights[self.bb]
         w = w.reshape(self.B, -1)
+        # prevent zeros from messing up:
+        # set them at a very small value, and zero them out at the end
+        mask = (w.sum(axis=0) == 0).flatten()
+        if mask.sum():
+            w[:,mask] = 1e-3 * w[:,~mask].min(axis=1)[:,None]
+
         # compute direct error propagation assuming only this source SED(s)
         # and the pixel covariances: Sigma_morph = diag((A^T Sigma^-1 A)^-1)
         # CAVEAT: If done on the entire A matrix, degeneracies in the linear
@@ -188,23 +194,29 @@ class Source(object):
         # Instead, estimate noise for each component separately:
         # simple multiplication for diagonal pixel covariance matrix
         if self.psf is None:
-            from .utils import invert_with_zeros
-            return [invert_with_zeros(np.sqrt(np.dot(a.T, np.multiply(w, a[:,None])))) for a in self.sed]
+            me = [1./np.sqrt(np.dot(a.T, np.multiply(w, a[:,None]))) for a in self.sed]
         else:
             # see Blend.steps_f for details for the complete covariance matrix
             import scipy.sparse
             Sigma_pix = scipy.sparse.diags(w.flatten(), 0)
             PA = [scipy.sparse.bmat([[self.sed[k,b] * self.Gamma[b]] for b in range(self.B)])  for k in range(self.K)]
-            return [np.sqrt(np.diag(np.linalg.inv(PAk.T.dot(Sigma_pix.dot(PAk)).toarray()))) for PAk in PA]
+            Sigma_s = [PAk.T.dot(Sigma_pix.dot(PAk)) for PAk in PA]
+            me = [np.sqrt(np.diag(np.linalg.inv(Sigma_sk.toarray()))) for Sigma_sk in Sigma_s]
+
+        if mask.sum():
+            for mek in me:
+                mek[mask] = 0
+        return me
 
     def get_sed_error(self, weights):
         w = np.zeros(self.shape)
         w[self.get_slice_for(weights.shape)] = weights[self.bb]
         w = w.reshape(self.B, -1)
+        # NOTE: zeros weights would only be a problem if an entire band is missing
+
         # See explanation in get_morph_error and Blend.steps_f
         if self.psf is None:
-            from .utils import invert_with_zeros
-            return [invert_with_zeros(np.sqrt(np.dot(s,np.multiply(w.T, s[None,:].T)))) for s in self.morph]
+            return [1./np.sqrt(np.dot(s,np.multiply(w.T, s[None,:].T))) for s in self.morph]
         else:
             import scipy.sparse
             Sigma_pix = scipy.sparse.diags(w.flatten(), 0)
@@ -216,7 +228,7 @@ class Source(object):
         if "l0" in self.constraints.keys():
             morph_error = self.get_morph_error(weights)
             # filter out -1s for pixels outside of weight images
-            morph_std = np.array([np.median(mek[mek != -1]) for mek in morph_error])
+            morph_std = np.array([np.median(mek[mek > 0]) for mek in morph_error])
             # Note: don't use hard/soft thresholds with _plus (non-negative) because
             # that is either happening with prox_plus before in the
             # AlternatingProjections or is not indended
