@@ -22,12 +22,11 @@ class Blend(object):
         self.B = self.sources[0].B
 
         # source refinement parameters
-        self.refine_wait = 10
         self.refine_skip = 10
         self.center_min_dist = 1e-3
         self.edge_flux_thresh = 1.
         self.update_order = [1,0]
-        self.slack = 0.9
+        self.slack = 0.95
 
         # set up data structures
         self.set_data(img, weights=weights, sky=sky)
@@ -228,7 +227,7 @@ class Blend(object):
                 self.it += 1
 
                 # refine sources
-                if self.it >= self.refine_wait and self.it % self.refine_skip == 0:
+                if self.it > 0 and self.it % self.refine_skip == 0:
                     resized = self.resize_sources()
                     self.recenter_sources()
                     if resized:
@@ -393,10 +392,10 @@ class Blend(object):
             self._edge_flux = np.zeros((self.M, 4, self.B))
 
         # top, right, bottom, left
-        self._edge_flux[m,0,:] = np.abs(model[:,:,-1,:]).sum(axis=0).max(axis=1)
-        self._edge_flux[m,1,:] = np.abs(model[:,:,:,-1]).sum(axis=0).max(axis=1)
-        self._edge_flux[m,2,:] = np.abs(model[:,:,0,:]).sum(axis=0).max(axis=1)
-        self._edge_flux[m,3,:] = np.abs(model[:,:,:,0]).sum(axis=0).max(axis=1)
+        self._edge_flux[m,0,:] = np.abs(model[:,:,-1,:]).sum(axis=0).mean(axis=1)
+        self._edge_flux[m,1,:] = np.abs(model[:,:,:,-1]).sum(axis=0).mean(axis=1)
+        self._edge_flux[m,2,:] = np.abs(model[:,:,0,:]).sum(axis=0).mean(axis=1)
+        self._edge_flux[m,3,:] = np.abs(model[:,:,:,0]).sum(axis=0).mean(axis=1)
 
     def resize_sources(self):
         resized = False
