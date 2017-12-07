@@ -64,7 +64,7 @@ class Source(object):
 
     @property
     def center_int(self):
-        return np.array(self.center, dtype='int')
+        return np.round(self.center).astype('int')
 
     def get_slice_for(self, im_shape):
         # slice so that self.image[k][slice] corresponds to image[self.bb]
@@ -203,6 +203,11 @@ class Source(object):
             Sigma_s = [PAk.T.dot(Sigma_pix.dot(PAk)) for PAk in PA]
             me = [np.sqrt(np.diag(np.linalg.inv(Sigma_sk.toarray()))) for Sigma_sk in Sigma_s]
 
+            # TODO: the matrix inversion is instable if the PSF gets wide
+            # sparse svd for stable inversion?
+            # import scipy.sparse.linalg
+            # USVt = [scipy.sparse.linalg.svds(Sigma_sk) for Sigma_sk in Sigma_s]
+            # me = [np.sqrt(np.diag(np.dot(vt.T, np.dot(np.diag(1./s), u.T)))) for u,s,vt in USVt]
         if mask.sum():
             for mek in me:
                 mek[mask] = 0

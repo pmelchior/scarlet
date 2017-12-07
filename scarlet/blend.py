@@ -410,4 +410,6 @@ class Blend(object):
                 morph_std = self.sources[m].set_morph_sparsity(self._weights[0])
                 for l in range(self.sources[m].K):
                     k = self.K + self.component_of(m,l)
-                    self.e_abs[k] = self.e_rel[k] * morph_std[l]
+                    if morph_std[l] > 0:
+                        self.e_abs[k] = self.e_rel[k] * morph_std[l]
+                        logger.info("setting l0 sparsity threshholds of source %d to %r" % (m, morph_std))
