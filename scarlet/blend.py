@@ -26,7 +26,7 @@ class Blend(object):
         self.center_min_dist = 1e-3
         self.edge_flux_thresh = 1.
         self.update_order = [1,0]
-        self.slack = 0.95
+        self.slack = 0.2
 
         # set up data structures
         self.set_data(img, weights=weights, sky=sky)
