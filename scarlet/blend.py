@@ -27,6 +27,7 @@ class Blend(object):
         self.center_min_dist = 1e-3
         self.edge_flux_thresh = 1.
         self.update_order = [1,0]
+        self.slack = 0.9
 
         # set up data structures
         self.set_data(img, weights=weights, sky=sky)
@@ -280,62 +281,66 @@ class Blend(object):
         else:
             raise ValueError("Expected index j in [0,%d]" % (2*self.K))
 
+    def _one_over_lipschitz(self, AorS):
+        B, Ny, Nx = self._img.shape
+        import scipy.sparse
+        if self.has_psf:
+            try:
+                self._Gamma_full
+            except AttributeError:
+                # need to PSF operator on the whole frame with shift to source positions
+                from .transformations import GammaOp
+                self._Gamma_full = [ GammaOp(self._img.shape[1:], B=self.B, psf=self.sources[m].psf, offset_int=self.sources[m].center_int)((0,0)) for m in range(self.M) ]
+
+        if AorS == 0: # A
+            # model[b] is S in band b, but need to go to frame in which
+            # A and S are serialized. Then Lischitz constant of A:
+            # LA = ||Sigma_a||_s with
+            # Sigma_a = ((PS)^T Sigma_pixel^-1 PS)^-1
+            # in the frame where A is a vector of length K*B
+            # NOTE: convolution implicitly treated in the models
+            PS = scipy.sparse.block_diag([self._models[:,b,:,:].reshape((self.K, Ny*Nx)).T for b in range(self.B)])
+            # Lipschitz constant for grad_A = || S Sigma_1 S.T||_s
+            SSigma_1S = PS.T.dot(self._Sigma_1[0].dot(PS))
+            LA = np.real(scipy.sparse.linalg.eigs(SSigma_1S, k=1, return_eigenvectors=False)[0])
+            return 1./LA
+
+        if AorS == 1: # S
+            if not self.has_psf:
+                # Lipschitz constant for grad_S = || A.T Sigma_1 A||_s
+                # need to go to frame in which A and S are serialized
+                PA = scipy.sparse.bmat([[scipy.sparse.identity(Ny*Nx) * self._A[b,k] for k in range(self.K)] for b in range(self.B)])
+            else:
+                # similar calculation for S: ||Sigma_s||_s with
+                # Sigma_s = ((PA)^T Sigma_pixel^-1 PA)^-1
+                # in the frame where S is a vector of length N*K
+                PA = scipy.sparse.bmat([[self._A[b,k] * self._Gamma_full[self.source_of(k)[0]][b] for k in range(self.K)] for b in range(self.B)])
+            ASigma_1A = PA.T.dot(self._Sigma_1[1].dot(PA))
+            LS = np.real(scipy.sparse.linalg.eigs(ASigma_1A, k=1, return_eigenvectors=False)[0])
+            return 1./LS
+        raise NotImplementedError("AorS < 2!")
+
     def _steps_f(self, j, Xs):
         # which update to do now
         AorS = j//self.K
         k = j%self.K
 
-
-        # TODO: implement caching of step sizes
-
         # computing likelihood gradients for S and A: only once per iteration
         # equal to spectral norm of covariance matrix of A or S
         if AorS == self.update_order[0] and k==0:
-            B, Ny, Nx = self._img.shape
-
             try:
-                self._step_AS
+                self._cbAS
             except AttributeError:
-                self._step_AS = [None] * 2
-                self._compute_model()
+                # Caches for 1/Lipschitz for A and S
+                self._cbAS = [proxmin.utils.ApproximateCache(self._one_over_lipschitz, slack=self.slack),
+                              proxmin.utils.ApproximateCache(self._one_over_lipschitz, slack=self.slack)]
 
-            import scipy.sparse
-            if not self.has_psf:
-                # model[b] is S in band b and they are all the same
-                # need to go to frame in which A and S are serialized
-                S = scipy.sparse.block_diag([self._models[:,0,:,:].reshape((self.K, Ny*Nx)).T for b in range(self.B)])
-                # Lipschitz constant for grad_A = || S Sigma_1 S.T||_s
-                SSigma_1S = S.T.dot(self._Sigma_1[0].dot(S))
-                LA = np.real(scipy.sparse.linalg.eigs(SSigma_1S, k=1, return_eigenvectors=False)[0])
-                self._step_AS[0] = 1./LA
-                # Lipschitz constant for grad_S = || A.T Sigma_1 A||_s
-                A = scipy.sparse.bmat([[scipy.sparse.identity(Ny*Nx) * self._A[b,k] for k in range(self.K)] for b in range(self.B)])
-                ASigma_1A = A.T.dot(self._Sigma_1[1].dot(A))
-                LS = np.real(scipy.sparse.linalg.eigs(ASigma_1A, k=1, return_eigenvectors=False)[0])
-                self._step_AS[1] = 1./LS
-            else:
-                try:
-                    self._Gamma_full
-                except AttributeError:
-                    # need to PSF operator on the whole frame with shift to source positions
-                    from .transformations import GammaOp
-                    self._Gamma_full = [ GammaOp(self._img.shape[1:], B=self.B, psf=self.sources[m].psf, offset_int=self.sources[m].center_int)((0,0)) for m in range(self.M) ]
+            self._compute_model()
 
-                # Lischitz constant of A: ||Sigma_a||_s with
-                # Sigma_a = ((PS)^T Sigma_pixel^-1 PS)^-1
-                # in the frame where A is a vector of length K*B
-                # But PS is simple the monochromatic convolved model
-                PS = scipy.sparse.block_diag([self._models[:,b,:,:].reshape((self.K, Ny*Nx)).T for b in range(self.B)])
-                Sigma_a = PS.T.dot(self._Sigma_1[0].dot(PS))
-                self._step_AS[0] = 1. / np.real(scipy.sparse.linalg.eigs(Sigma_a, k=1, return_eigenvectors=False)[0])
+            # save to be reused for every component of A or S
+            self._stepAS = [self._cbAS[block](block) for block in [0,1]]
 
-                # similar calculation for S: ||Sigma_s||_s with
-                # Sigma_s = ((PA)^T Sigma_pixel^-1 PA)^-1
-                # in the frame where S is a vector of length N*K
-                PA = scipy.sparse.bmat([[self._A[b,k] * self._Gamma_full[self.source_of(k)[0]][b] for k in range(self.K)] for b in range(self.B)])
-                Sigma_s = PA.T.dot(self._Sigma_1[1].dot(PA))
-                self._step_AS[1] = 1. / np.real(scipy.sparse.linalg.eigs(Sigma_s, k=1, return_eigenvectors=False)[0])
-        return self._step_AS[AorS]
+        return self._stepAS[AorS]
 
     def recenter_sources(self):
         # residuals weighted with full/original weight matrix
