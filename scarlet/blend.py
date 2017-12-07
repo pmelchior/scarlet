@@ -62,9 +62,9 @@ class Blend(object):
     def fit(self, e_rel=1e-2, max_iter=200):
 
         # set sparsity cutoff for morph based on the error level
+        B, Ny, Nx = self._img.shape
         self.e_rel = [e_rel] * 2*self.K
-        self.e_abs = [e_rel / self.B] * self.K + [0.] * self.K
-        self.update_source_sparsity()
+        self.e_abs = [e_rel / B] * self.K + [e_rel / Nx / Ny] * self.K
 
         # perform up to max_iter steps
         self.it = 0
@@ -159,7 +159,7 @@ class Blend(object):
         import scipy.sparse
         if weights is None:
             self._weights = 1
-            B, Ny, Ny = self._img.shape
+            B, Ny, Nx = self._img.shape
             self._Sigma_1 = [scipy.sparse.identity(Ny*Nx)] * 2
             self._noise_eff = [[0,] * self.B] * self.M
         else:
@@ -231,7 +231,6 @@ class Blend(object):
                 if self.it >= self.refine_wait and self.it % self.refine_skip == 0:
                     resized = self.resize_sources()
                     self.recenter_sources()
-                    self.update_source_sparsity()
                     if resized:
                         raise ScarletResizeException()
 
@@ -419,13 +418,3 @@ class Blend(object):
                     self.sources[m].resize(size)
                     resized = True
         return resized
-
-    def update_source_sparsity(self):
-        if self._weights[0] is not None:
-            for m in range(self.M):
-                morph_std = self.sources[m].set_morph_sparsity(self._weights[0])
-                for l in range(self.sources[m].K):
-                    k = self.K + self.component_of(m,l)
-                    if morph_std[l] > 0:
-                        self.e_abs[k] = self.e_rel[k] * morph_std[l]
-                        logger.info("setting l0 sparsity threshholds of source %d to %r" % (m, morph_std))

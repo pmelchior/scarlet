@@ -204,10 +204,7 @@ class Source(object):
             me = [np.sqrt(np.diag(np.linalg.inv(Sigma_sk.toarray()))) for Sigma_sk in Sigma_s]
 
             # TODO: the matrix inversion is instable if the PSF gets wide
-            # sparse svd for stable inversion?
-            # import scipy.sparse.linalg
-            # USVt = [scipy.sparse.linalg.svds(Sigma_sk) for Sigma_sk in Sigma_s]
-            # me = [np.sqrt(np.diag(np.dot(vt.T, np.dot(np.diag(1./s), u.T)))) for u,s,vt in USVt]
+            # possible options: Tikhonov regularization or similar
         if mask.sum():
             for mek in me:
                 mek[mask] = 0
@@ -228,22 +225,6 @@ class Source(object):
             model = self.get_model(combine=False, use_sed=False)
             PS = [scipy.sparse.block_diag([model[k,b,:,:].reshape((1,-1)).T for b in range(self.B)]) for k in range(self.K)]
             return [np.sqrt(np.diag(np.linalg.inv(PSk.T.dot(Sigma_pix.dot(PSk)).toarray()))) for PSk in PS]
-
-    def set_morph_sparsity(self, weights):
-        if "l0" in self.constraints.keys():
-            morph_error = self.get_morph_error(weights)
-            # filter out -1s for pixels outside of weight images
-            morph_std = np.array([np.median(mek[mek > 0]) for mek in morph_error])
-            # Note: don't use hard/soft thresholds with _plus (non-negative) because
-            # that is either happening with prox_plus before in the
-            # AlternatingProjections or is not indended
-            morph_std *= self.constraints['l0']
-            for k in range(self.K):
-                pos = self.prox_morph[k].find(proxmin.operators.prox_hard)
-                self.prox_morph[k].operators[pos] = partial(proxmin.operators.prox_hard, thresh=morph_std[k])
-            return morph_std
-        else:
-            return np.zeros(self.K)
 
     def set_constraints(self, constraints):
         self.constraints = constraints # save for later
@@ -267,11 +248,12 @@ class Source(object):
             # that is either happening with prox_plus before or is not indended
             # Note: l0 thresh is not set yet, needs set_morph_sparsity()
             if c == "l0":
+                thresh = self.constraints["l0"]
                 if "l1" in self.constraints.keys():
                     # L0 has preference
                     logger.info("l1 penalty ignored in favor of l0 penalty")
                 for k in range(self.K):
-                    self.prox_morph[k].append(partial(proxmin.operators.prox_hard, thresh=0))
+                    self.prox_morph[k].append(partial(proxmin.operators.prox_hard, thresh=thresh))
             elif c == "l1":
                 thresh = self.constraints["l1"]
                 for k in range(self.K):
