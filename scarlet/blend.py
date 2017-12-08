@@ -219,13 +219,13 @@ class Blend(object):
     def _prox_f(self, X, step, Xs=None, j=None):
 
         # which update to do now
-        AorS = j//self.K
+        block = j//self.K
         k = j%self.K
 
         # computing likelihood gradients for S and A:
         # build model only once per iteration
         if k == 0:
-            if AorS == self.update_order[0]:
+            if block == self.update_order[0]:
                 self.it += 1
 
                 # refine sources
@@ -240,10 +240,10 @@ class Blend(object):
 
             # compute weighted residuals
             B, Ny, Nx = self._img.shape
-            self._diff = self._Sigma_1[AorS].dot((self._model-self._img).flatten()).reshape(B, Ny, Nx)
+            self._diff = self._Sigma_1[block].dot((self._model-self._img).flatten()).reshape(B, Ny, Nx)
 
         # A update
-        if AorS == 0:
+        if block == 0:
             m,l = self.source_of(k)
             if not self.sources[m].fix_sed[l]:
                 # gradient of likelihood wrt A: nominally np.dot(diff, S^T)
@@ -256,7 +256,7 @@ class Blend(object):
             return self.sources[m].sed[l]
 
         # S update
-        elif AorS == 1:
+        elif block == 1:
             m,l = self.source_of(k)
             if not self.sources[m].fix_morph[l]:
                 # gradient of likelihood wrt S: nominally np.dot(A^T,diff)
@@ -282,9 +282,10 @@ class Blend(object):
         else:
             raise ValueError("Expected index j in [0,%d]" % (2*self.K))
 
-    def _one_over_lipschitz(self, AorS):
-        B, Ny, Nx = self._img.shape
+    def _one_over_lipschitz(self, block):
         import scipy.sparse
+        import scipy.sparse.linalg
+
         if self.has_psf:
             try:
                 self._Gamma_full
@@ -293,7 +294,8 @@ class Blend(object):
                 from .transformations import GammaOp
                 self._Gamma_full = [ GammaOp(self._img.shape[1:], B=self.B, psf=self.sources[m].psf, offset_int=self.sources[m].center_int)((0,0)) for m in range(self.M) ]
 
-        if AorS == 0: # A
+        B, Ny, Nx = self._img.shape
+        if block == 0: # A
             # model[b] is S in band b, but need to go to frame in which
             # A and S are serialized. Then Lischitz constant of A:
             # LA = ||Sigma_a||_s with
@@ -306,7 +308,7 @@ class Blend(object):
             LA = np.real(scipy.sparse.linalg.eigs(SSigma_1S, k=1, return_eigenvectors=False)[0])
             return 1./LA
 
-        if AorS == 1: # S
+        if block == 1: # S
             if not self.has_psf:
                 # Lipschitz constant for grad_S = || A.T Sigma_1 A||_s
                 # need to go to frame in which A and S are serialized
@@ -319,16 +321,16 @@ class Blend(object):
             ASigma_1A = PA.T.dot(self._Sigma_1[1].dot(PA))
             LS = np.real(scipy.sparse.linalg.eigs(ASigma_1A, k=1, return_eigenvectors=False)[0])
             return 1./LS
-        raise NotImplementedError("AorS < 2!")
+        raise NotImplementedError("block < 2!")
 
     def _steps_f(self, j, Xs):
         # which update to do now
-        AorS = j//self.K
+        block = j//self.K
         k = j%self.K
 
         # computing likelihood gradients for S and A: only once per iteration
         # equal to spectral norm of covariance matrix of A or S
-        if AorS == self.update_order[0] and k==0:
+        if block == self.update_order[0] and k==0:
             try:
                 self._cbAS
             except AttributeError:
@@ -341,7 +343,7 @@ class Blend(object):
             # save to be reused for every component of A or S
             self._stepAS = [self._cbAS[block](block) for block in [0,1]]
 
-        return self._stepAS[AorS]
+        return self._stepAS[block]
 
     def recenter_sources(self):
         # residuals weighted with full/original weight matrix
