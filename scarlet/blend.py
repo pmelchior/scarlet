@@ -35,12 +35,6 @@ class Blend(object):
         if init_sources:
             self.init_sources()
 
-        # define error limits
-        self._e_rel = [self.e_rel] * 2 * self.K
-        # absolute errors: e_rel * mean signal, will be updated later
-        self._e_abs = [self.e_rel / self.B] * self.K
-        self._e_abs += self._absolute_morph_error()
-
     def source_of(self, k):
         return self._source_of[k]
 
@@ -65,7 +59,7 @@ class Blend(object):
     def _Ls(self):
         return [source.Ls[0] for source in self.sources] + [source.Ls[1] for source in self.sources]
 
-    def fit(self, steps=200, max_iter=None):
+    def fit(self, steps=200, e_rel=None, max_iter=None):
         try:
             self.it
         except AttributeError:
@@ -75,6 +69,11 @@ class Blend(object):
         # only needed if the restart exception has been thrown
         if max_iter is None:
             max_iter = steps
+
+        # define error limits
+        if e_rel is not None:
+            self.e_rel = e_rel
+        self._set_error_limits()
 
         # collect all SEDs and morphologies, plus associated errors
         XA = []
@@ -104,7 +103,6 @@ class Blend(object):
         return self
 
     def set_data(self, img, weights=None, sky=None, bg_rms=None):
-
         if sky is None:
             self._ = img
         else:
@@ -419,6 +417,12 @@ class Blend(object):
     def _absolute_morph_error(self):
         m = 0 # needed otherwise python 2 complains about "local variable 'm' referenced before assignment"
         return [self.e_rel * self.sources[m].morph[l].mean() for l in range(self.sources[m].K) for m in range(self.M)]
+
+    def _set_error_limits(self):
+        self._e_rel = [self.e_rel] * 2 * self.K
+        # absolute errors: e_rel * mean signal, will be updated later
+        self._e_abs = [self.e_rel / self.B] * self.K
+        self._e_abs += self._absolute_morph_error()
 
     def adjust_absolute_error(self):
         self._e_abs[self.K:] = self._absolute_morph_error()
