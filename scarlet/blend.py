@@ -14,7 +14,7 @@ class ScarletRestartException(Exception):
 class Blend(object):
     """The blended scene as interpreted by the deblender.
     """
-    def __init__(self, sources, img, weights=None, sky=None, init_sources=True):
+    def __init__(self, sources, img, weights=None, sky=None, bg_rms=None, init_sources=True):
         assert len(sources)
         # store all source and make search structures
         self._register_sources(sources)
@@ -30,7 +30,7 @@ class Blend(object):
         self.e_rel = 1e-2
 
         # set up data structures
-        self.set_data(img, weights=weights, sky=sky)
+        self.set_data(img, weights=weights, sky=sky, bg_rms=bg_rms)
 
         if init_sources:
             self.init_sources()
@@ -103,18 +103,22 @@ class Blend(object):
             self.fit(steps=steps, max_iter=max_iter)
         return self
 
-    def set_data(self, img, weights=None, sky=None):
+    def set_data(self, img, weights=None, sky=None, bg_rms=None):
 
         if sky is None:
             self._ = img
         else:
             self._img = img-sky
-
+        if bg_rms is None:
+            self._bg_rms = np.zeros(self.B)
+        else:
+            assert len(bg_rms) == self.B
+            self._bg_rms = np.array(bg_rms)
         self._set_weights(weights)
 
     def init_sources(self):
         for m in range(self.M):
-            self.sources[m].init_source(self._img, weights=self._weights[0])
+            self.sources[m].init_source(self._img, weights=self._weights)
 
     def get_model(self, m=None, combine=True, combine_source_components=True, use_sed=True):
         """Compute the current model for the entire image
@@ -161,21 +165,10 @@ class Blend(object):
         if weights is None:
             self._weights = 1
             B, Ny, Nx = self._img.shape
-            self._Sigma_1 = [scipy.sparse.identity(Ny*Nx)] * 2
-            self._noise_eff = [[0,] * self.B] * self.M
+            self._Sigma_1 = [scipy.sparse.identity(B*Ny*Nx)] * 2
         else:
             self._weights = weights
             self._Sigma_1 = [None] * 2
-
-            # store local noise level for each source in each bands
-            from .utils import invert_with_zeros
-            self._noise_eff = []
-            for m in range(self.M):
-                w = weights[self.sources[m].bb].reshape(self.B ,-1)
-                std = invert_with_zeros(w)
-                mask = (std == -1)
-                m = np.ma.array(std, mask=mask)
-                self._noise_eff.append(np.sqrt(np.median(m, axis=1).data))
 
             # for S update: normalize the per-pixel variation
             # i.e. in every pixel: utilize the bands with large weights
@@ -410,7 +403,7 @@ class Blend(object):
                 increase = [max(0.25*s, 10) for s in size]
 
                 # check if max flux along edge in band b < avg noise level along edge in b
-                at_edge = (self._edge_flux[m] > self._noise_eff[m]*self.edge_flux_thresh)
+                at_edge = (self._edge_flux[m] > self._bg_rms*self.edge_flux_thresh)
                 # TODO: without symmetry constraints, the four edges of the box
                 # should be allowed to resize independently
                 if at_edge[0].any() or at_edge[2].any():
