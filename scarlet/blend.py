@@ -8,7 +8,7 @@ import logging
 logger = logging.getLogger("scarlet")
 
 # declare special exception for resizing events
-class ScarletResizeException(Exception):
+class ScarletRestartException(Exception):
     pass
 
 class Blend(object):
@@ -27,12 +27,19 @@ class Blend(object):
         self.edge_flux_thresh = 1.
         self.update_order = [1,0]
         self.slack = 0.2
+        self.e_rel = 1e-2
 
         # set up data structures
         self.set_data(img, weights=weights, sky=sky)
 
         if init_sources:
             self.init_sources()
+
+        # define error limits
+        self._e_rel = [self.e_rel] * 2 * self.K
+        # absolute errors: e_rel * mean signal, will be updated later
+        self._e_abs = [self.e_rel / self.B] * self.K
+        self._e_abs += self._absolute_morph_error()
 
     def source_of(self, k):
         return self._source_of[k]
@@ -58,19 +65,14 @@ class Blend(object):
     def _Ls(self):
         return [source.Ls[0] for source in self.sources] + [source.Ls[1] for source in self.sources]
 
-    def fit(self, e_rel=1e-2, max_iter=200):
+    def fit(self, steps=200, max_iter=None):
+        try:
+            self.it
+        except AttributeError:
+            self.it = 0
+            self._model_it = -1
 
-        # set sparsity cutoff for morph based on the error level
-        B, Ny, Nx = self._img.shape
-        self.e_rel = [e_rel] * 2*self.K
-        self.e_abs = [e_rel / B] * self.K + [e_rel / Nx / Ny] * self.K
-
-        # perform up to max_iter steps
-        self.it = 0
-        self._model_it = -1
-        return self._step(steps=max_iter)
-
-    def _step(self, steps=1, max_iter=None):
+        # only needed if the restart exception has been thrown
         if max_iter is None:
             max_iter = steps
 
@@ -95,10 +97,10 @@ class Blend(object):
         traceback = False
         accelerated = True
         try:
-            res = proxmin.algorithms.bsdmm(X, self._prox_f, self._steps_f, self._proxs_g, steps_g=steps_g, Ls=self._Ls, update_order=_update_order, steps_g_update=steps_g_update, max_iter=steps, e_rel=self.e_rel, e_abs=self.e_abs, accelerated=accelerated, traceback=traceback)
-        except ScarletResizeException:
+            res = proxmin.algorithms.bsdmm(X, self._prox_f, self._steps_f, self._proxs_g, steps_g=steps_g, Ls=self._Ls, update_order=_update_order, steps_g_update=steps_g_update, max_iter=steps, e_rel=self._e_rel, e_abs=self._e_abs, accelerated=accelerated, traceback=traceback)
+        except ScarletRestartException:
             steps = max_iter - self.it
-            self._step(steps=steps, max_iter=max_iter)
+            self.fit(steps=steps, max_iter=max_iter)
         return self
 
     def set_data(self, img, weights=None, sky=None):
@@ -230,8 +232,9 @@ class Blend(object):
                 if self.it > 0 and self.it % self.refine_skip == 0:
                     resized = self.resize_sources()
                     self.recenter_sources()
+                    self.adjust_absolute_error()
                     if resized:
-                        raise ScarletResizeException()
+                        raise ScarletRestartException()
 
                 self._compute_model()
 
@@ -417,3 +420,10 @@ class Blend(object):
                     self.sources[m].resize(size)
                     resized = True
         return resized
+
+    def _absolute_morph_error(self):
+        m = 0 # needed otherwise python 2 complains about "local variable 'm' referenced before assignment"
+        return [self.e_rel * self.sources[m].morph[l].mean() for l in range(self.sources[m].K) for m in range(self.M)]
+
+    def adjust_absolute_error(self):
+        self._e_abs[self.K:] = self._absolute_morph_error()
