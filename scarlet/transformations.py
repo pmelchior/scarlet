@@ -4,65 +4,75 @@ import numpy as np
 import scipy.sparse
 
 class GammaOp():
-    def __init__(self, shape, B=1, psf=None, offset_int=None):
+    def __init__(self, shape, psf=None, offset_int=None):
         if offset_int is None:
-            self.offset_int = (0,0)
-        else:
-            self.offset_int = offset_int
+            offset_int = (0,0)
+        self.psf = psf
+        self._cache = {}
 
-        height, width = shape
-        self.B = B
-        tx = scipy.sparse.diags([1.], offsets=[self.offset_int[1]], shape=(width, width))
-        tx_minus = scipy.sparse.diags([-1.,1.], offsets=[self.offset_int[1],self.offset_int[1]+1], shape=(width, width))
-        tx_plus = scipy.sparse.diags([1.,-1.],offsets=[self.offset_int[1],self.offset_int[1]-1], shape=(width, width))
-        self.tx = scipy.sparse.block_diag([tx]*height)
-        self.tx_plus = scipy.sparse.block_diag([tx_plus]*height)
-        self.tx_minus = scipy.sparse.block_diag([tx_minus]*height)
+    def _make_matrices(self, shape, offset_int):
+        self.B, height, width = shape
+        tx = scipy.sparse.diags([1.], offsets=[offset_int[1]], shape=(width, width))
+        tx_minus = scipy.sparse.diags([-1.,1.], offsets=[offset_int[1],offset_int[1]+1], shape=(width, width))
+        tx_plus = scipy.sparse.diags([1.,-1.],offsets=[offset_int[1],offset_int[1]-1], shape=(width, width))
+        tx = scipy.sparse.block_diag([tx]*height)
+        tx_plus = scipy.sparse.block_diag([tx_plus]*height)
+        tx_minus = scipy.sparse.block_diag([tx_minus]*height)
 
         size = height*width
-        self.ty = scipy.sparse.diags([1], offsets=[self.offset_int[0]*width], shape=(size, size), dtype=np.float64)
-        self.ty_minus = scipy.sparse.diags([-1., 1.], offsets=[self.offset_int[0]*width, (self.offset_int[0]+1)*width], shape=(size, size))
-        self.ty_plus = scipy.sparse.diags([1., -1.], offsets=[self.offset_int[0]*width, (self.offset_int[0]-1)*width], shape=(size, size))
+        ty = scipy.sparse.diags([1], offsets=[offset_int[0]*width], shape=(size, size), dtype=np.float64)
+        ty_minus = scipy.sparse.diags([-1., 1.], offsets=[offset_int[0]*width, (offset_int[0]+1)*width], shape=(size, size))
+        ty_plus = scipy.sparse.diags([1., -1.], offsets=[offset_int[0]*width, (offset_int[0]-1)*width], shape=(size, size))
 
-        self.P = self._adapt_PSF(shape, psf)
+        P = self._adapt_PSF(shape[1:])
+        return tx,tx_plus,tx_minus,ty,ty_plus,ty_minus,P
 
-    def __call__(self, pos):
+    def __call__(self, pos, shape, offset_int=None):
         """Get the operators to translate source
         """
         dy, dx = pos
+        if offset_int is None:
+            offset_int = (0,0)
+        key = tuple(shape[1:]) + tuple(offset_int)
+
+        try:
+            tx,tx_plus,tx_minus,ty,ty_plus,ty_minus,P = self._cache[key]
+        except KeyError:
+            self._cache[key] = tx,tx_plus,tx_minus,ty,ty_plus,ty_minus,P = self._make_matrices(shape, offset_int)
+
         # Create Tx
         if dx<0:
-            dtx = self.tx_minus
+            dtx = tx_minus
         else:
-            dtx = self.tx_plus
+            dtx = tx_plus
         # linear interpolation between centers and offset by one pixel
-        Tx = self.tx - dx*dtx
+        Tx = tx - dx*dtx
         # Create Ty
         if dy<0:
-            dty = self.ty_minus
+            dty = ty_minus
         else:
-            dty = self.ty_plus
-        Ty = self.ty - dy*dty
+            dty = ty_plus
+        Ty = ty - dy*dty
         # return Tx, Ty
 
-        if self.P is None:
+        if P is None:
             return Ty.dot(Tx)
-        if hasattr(self.P, 'shape'):
-            _gamma = Ty.dot(self.P.dot(Tx))
+        if hasattr(P, 'shape'):
+            _gamma = Ty.dot(P.dot(Tx))
             # simplifies things later on: PSF always comes with B Gamma operators
             return [_gamma] * self.B
-        return [Ty.dot(Pb.dot(Tx)) for Pb in self.P]
+        return [Ty.dot(Pb.dot(Tx)) for Pb in P]
 
-    def _adapt_PSF(self, shape, psf):
-        if psf is None:
+    def _adapt_PSF(self, shape):
+        if self.psf is None:
             return None
 
-        if hasattr(psf, 'shape'): # single matrix
-            return getPSFOp(psf, shape)
+        if hasattr(self.psf, 'shape'): # single matrix
+            return getPSFOp(self.psf, shape)
 
         P = []
-        for b in range(len(psf)):
-            P.append(getPSFOp(psf[b], shape))
+        for b in range(len(self.psf)):
+            P.append(getPSFOp(self.psf[b], shape))
         return P
 
 

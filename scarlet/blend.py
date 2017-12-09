@@ -114,6 +114,11 @@ class Blend(object):
             self._bg_rms = np.array(bg_rms)
         self._set_weights(weights)
 
+        if self.use_psf:
+            from .transformations import GammaOp
+            pos = (0,0)
+            self._Gamma_full = [ source._gammaOp(pos, self._img.shape, offset_int=source.center_int) for source in self.sources]
+
     def init_sources(self):
         for m in range(self.M):
             self.sources[m].init_source(self._img, weights=self._weights)
@@ -277,14 +282,6 @@ class Blend(object):
         import scipy.sparse
         import scipy.sparse.linalg
 
-        if self.use_psf:
-            try:
-                self._Gamma_full
-            except AttributeError:
-                # need to PSF operator on the whole frame with shift to source positions
-                from .transformations import GammaOp
-                self._Gamma_full = [ GammaOp(self._img.shape[1:], B=self.B, psf=self.sources[m].psf, offset_int=self.sources[m].center_int)((0,0)) for m in range(self.M) ]
-
         B, Ny, Nx = self._img.shape
         if block == 0: # A
             # model[b] is S in band b, but need to go to frame in which
@@ -374,8 +371,8 @@ class Blend(object):
         dx = source.center - source.center_int
         pos_x = dx + (0, offset)
         pos_y = dx + (offset, 0)
-        dGamma_x = source._gammaOp(pos_x)
-        dGamma_y = source._gammaOp(pos_y)
+        dGamma_x = source._gammaOp(pos_x, source.shape)
+        dGamma_y = source._gammaOp(pos_y, source.shape)
         diff_img = [source.get_model(combine=True, Gamma=dGamma_x), source.get_model(combine=True, Gamma=dGamma_y)]
         diff_img[0] = (model_m-diff_img[0][slice_m])/source.shift_center
         diff_img[1] = (model_m-diff_img[1][slice_m])/source.shift_center

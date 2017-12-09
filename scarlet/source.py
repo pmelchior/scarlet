@@ -24,8 +24,10 @@ class Source(object):
         self.morph = np.zeros((self.K, self.Ny*self.Nx))
 
         # set up psf and translations matrices
-        self.psf = psf
-        self._gammaOp = transformations.GammaOp(size, B=self.B, psf=self.psf)
+        if isinstance(psf, transformations.GammaOp):
+            self._gammaOp = psf
+        else:
+            self._gammaOp = transformations.GammaOp(self.shape, psf=psf)
 
         # set center coordinates and translation operators
         # needs to have GammaOp set up first
@@ -68,7 +70,7 @@ class Source(object):
 
     @property
     def has_psf(self):
-        return self.psf is not None
+        return self._gammaOp.psf is not None
 
     def get_slice_for(self, im_shape):
         # slice so that self.image[k][slice] corresponds to image[self.bb]
@@ -88,7 +90,7 @@ class Source(object):
         else:
             sed = np.ones_like(self.sed)
         # model for all components of this source
-        if self.psf is None:
+        if not self.has_psf:
             model = np.empty((self.K, self.B, self.Ny*self.Nx))
             for k in range(self.K):
                 model[k] = np.outer(sed[k], Gamma.dot(self.morph[k]))
@@ -130,7 +132,7 @@ class Source(object):
 
         # update translation operator
         dx = self.center - self.center_int
-        self.Gamma = self._gammaOp(dx)
+        self.Gamma = self._gammaOp(dx, self.shape)
 
     def resize(self, size):
         # store old edge coordinates
@@ -158,8 +160,6 @@ class Source(object):
             self.morph = self.morph.reshape((self.K, self.Ny*self.Nx))
 
             # update GammaOp and center (including subpixel shifts)
-            size = (self.Ny, self.Nx)
-            self._gammaOp = transformations.GammaOp(size, B=self.B, psf=self.psf)
             self.set_center(self.center)
 
             # set constraints
@@ -197,7 +197,7 @@ class Source(object):
         # solution arise and substantially amplify the error estimate:
         # Instead, estimate noise for each component separately:
         # simple multiplication for diagonal pixel covariance matrix
-        if self.psf is None:
+        if not self.has_psf:
             me = [1./np.sqrt(np.dot(a.T, np.multiply(w, a[:,None]))) for a in self.sed]
         else:
             # see Blend.steps_f for details for the complete covariance matrix
@@ -221,7 +221,7 @@ class Source(object):
         # NOTE: zeros weights would only be a problem if an entire band is missing
 
         # See explanation in get_morph_error and Blend.steps_f
-        if self.psf is None:
+        if not self.has_psf:
             return [1./np.sqrt(np.dot(s,np.multiply(w.T, s[None,:].T))) for s in self.morph]
         else:
             import scipy.sparse
