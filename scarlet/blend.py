@@ -148,8 +148,8 @@ class Blend(object):
     def _register_sources(self, sources):
         self.sources = sources # do not copy!
         self.K =  sum([source.K for source in self.sources])
-        have_psf = [source.psf is not None for source in self.sources]
-        self.has_psf = any(have_psf)
+        have_psf = [source.has_psf for source in self.sources]
+        self.use_psf = any(have_psf)
         assert any(have_psf) == all(have_psf)
 
         # lookup of source/component tuple given component number k
@@ -260,7 +260,7 @@ class Blend(object):
 
                 # now a gradient vector and a mask of pixel with updates
                 grad = np.zeros_like(X)
-                if not self.has_psf:
+                if not self.use_psf:
                     for b in range(self.B):
                         grad += self.sources[m].sed[l,b]*self.sources[m].Gamma.T.dot(diff_k[b].flatten())
                 else:
@@ -277,7 +277,7 @@ class Blend(object):
         import scipy.sparse
         import scipy.sparse.linalg
 
-        if self.has_psf:
+        if self.use_psf:
             try:
                 self._Gamma_full
             except AttributeError:
@@ -300,7 +300,7 @@ class Blend(object):
             return 1./LA
 
         if block == 1: # S
-            if not self.has_psf:
+            if not self.use_psf:
                 # Lipschitz constant for grad_S = || A.T Sigma_1 A||_s
                 # need to go to frame in which A and S are serialized
                 PA = scipy.sparse.bmat([[scipy.sparse.identity(Ny*Nx) * self._A[b,k] for k in range(self.K)] for b in range(self.B)])

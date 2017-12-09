@@ -49,7 +49,7 @@ class GammaOp():
             return Ty.dot(Tx)
         if hasattr(self.P, 'shape'):
             _gamma = Ty.dot(self.P.dot(Tx))
-             # simplifies things later on: PSF always comes with B Gamma operators
+            # simplifies things later on: PSF always comes with B Gamma operators
             return [_gamma] * self.B
         return [Ty.dot(Pb.dot(Tx)) for Pb in self.P]
 

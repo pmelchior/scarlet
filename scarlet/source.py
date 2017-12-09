@@ -66,6 +66,10 @@ class Source(object):
     def center_int(self):
         return np.round(self.center).astype('int')
 
+    @property
+    def has_psf(self):
+        return self.psf is not None
+
     def get_slice_for(self, im_shape):
         # slice so that self.image[k][slice] corresponds to image[self.bb]
         NY, NX = im_shape[1:]
