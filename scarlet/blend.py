@@ -248,11 +248,7 @@ class Blend(object):
                 self._compute_model()
 
             # compute weighted residuals
-            if self.exact_lipschitz:
-                B, Ny, Nx = self._img.shape
-                self._diff = self._Sigma_1[block].dot((self._model-self._img).flatten()).reshape(B, Ny, Nx)
-            else:
-                self._diff = self._weights[block]*(self._model-self._img)
+            self._diff = self._weights[block]*(self._model-self._img)
 
         # A update
         if block == 0:
@@ -357,11 +353,7 @@ class Blend(object):
 
     def recenter_sources(self):
         # residuals weighted with full/original weight matrix
-        if self.exact_lipschitz:
-            B, Ny, Nx = self._img.shape
-            y = self._Sigma_1[1].dot((self._model-self._img).flatten()).reshape(B, Ny, Nx)
-        else:
-            y = self._weights[1]*(self._model-self._img)
+        y = self._weights[1]*(self._model-self._img)
 
         for m in range(self.M):
             if self.sources[m].shift_center:
