@@ -10,16 +10,18 @@ import logging
 logger = logging.getLogger("scarlet")
 
 class Source(object):
-    def __init__(self, center, size, K=1, B=1, psf=None, constraints=None, fix_sed=False, fix_morph=False, fix_frame=False, shift_center=0.2):
+    def __init__(self, center, shape, K=1, psf=None, constraints=None, fix_sed=False, fix_morph=False, fix_frame=False, shift_center=0.2):
 
         # set size of the source frame
+        assert len(shape) == 3
+        self.B = shape[0]
+        size = shape[1:]
         self._set_frame(center, size)
         size = (self.Ny, self.Nx)
         self.fix_frame = fix_frame
 
         # create containers
         self.K = K
-        self.B = B
         self.sed = np.zeros((self.K, self.B))
         self.morph = np.zeros((self.K, self.Ny*self.Nx))
 
@@ -110,12 +112,10 @@ class Source(object):
     def _set_frame(self, center, size):
         assert len(center) == 2
         self.center = np.array(center)
-
         if hasattr(size, '__iter__'):
             size = size[:2]
         else:
             size = (size,) * 2
-
         # make cutout of in units of the original image frame (that defines xy)
         # ensure odd pixel number
         y_, x_ = self.center_int
