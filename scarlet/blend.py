@@ -65,6 +65,9 @@ class Blend(object):
         except AttributeError:
             self.it = 0
             self._model_it = -1
+            # Caches for 1/Lipschitz for A and S
+            self._cbAS = [proxmin.utils.ApproximateCache(self._one_over_lipschitz, slack=self.slack),
+                          proxmin.utils.ApproximateCache(self._one_over_lipschitz, slack=self.slack)]
 
         # only needed if the restart exception has been thrown
         if max_iter is None:
@@ -319,16 +322,8 @@ class Blend(object):
         # computing likelihood gradients for S and A: only once per iteration
         # equal to spectral norm of covariance matrix of A or S
         if block == self.update_order[0] and k==0:
-            try:
-                self._cbAS
-            except AttributeError:
-                # Caches for 1/Lipschitz for A and S
-                self._cbAS = [proxmin.utils.ApproximateCache(self._one_over_lipschitz, slack=self.slack),
-                              proxmin.utils.ApproximateCache(self._one_over_lipschitz, slack=self.slack)]
-
             self._compute_model()
-
-            # save to be reused for every component of A or S
+            # compute step sizes and save to reuse for every component of A or S
             self._stepAS = [self._cbAS[block](block) for block in [0,1]]
 
         return self._stepAS[block]
