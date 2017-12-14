@@ -5,6 +5,8 @@ from functools import partial
 import numpy as np
 import proxmin
 
+logger = logging.getLogger("scarlet.operators")
+
 def _prox_strict_monotonic(X, step, ref_idx, dist_idx, thresh=0):
     """Force an intensity profile to be monotonic
     """
@@ -120,7 +122,6 @@ def strict_monotonicity(images, peaks=None, components=None, l0_thresh=None, l1_
         # L0 has preference
         if l0_thresh is not None:
             if l1_thresh is not None:
-                logger = logging.getLogger("scarlet")
                 logger.warn("l1_thresh ignored in favor of l0_thresh")
             prox_S = partial(proxmin.operators.prox_hard, thresh=l0_thresh)
         else:

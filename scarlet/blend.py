@@ -5,7 +5,7 @@ from functools import partial
 import proxmin
 
 import logging
-logger = logging.getLogger("scarlet")
+logger = logging.getLogger("scarlet.blend")
 
 # declare special exception for resizing events
 class ScarletRestartException(Exception):
@@ -15,6 +15,34 @@ class Blend(object):
     """The blended scene as interpreted by the deblender.
     """
     def __init__(self, sources, img, weights=None, sky=None, bg_rms=None, init_sources=True):
+        """Constructor
+
+        Parameters
+        ----------
+        sources: list of `~scarlet.Source` objects
+            Individual sources in the blend.
+            The scarlet deblender requires the user to detect sources
+            and configure their constraints before initializing a blend
+        img: array-like
+            (Bands, Height, Width) image array containing the data.
+        weights: `~numpy.array`, default=`None`
+            Array (Bands, Height, Width) of weights to use for each pixel in each band.
+            .. warning::
+                
+                The weights should be flat in each band
+                (except for zero weighted masked out pixels).
+                Our analysis has shown that when the weights are widely varying
+                over an image in a single band, SED colors (and hence morphologies)
+                are poorly modeled.
+        sky: array-like, default=`None`
+            Array (Bands, Height, Width) of the estimated sky level in each image, in each band.
+            This is subtracted from `img`, so if `img` has already happend then this
+            should be `None`.
+        bg_rms: array-like, default=`None`
+            Array of length `Bands` that contains the RMS in the image for each band
+        init_sources: bool
+            Whether or not the sources need to be initialized.
+        """
         assert len(sources)
         # store all source and make search structures
         self._register_sources(sources)
@@ -36,30 +64,85 @@ class Blend(object):
             self.init_sources()
 
     def source_of(self, k):
+        """Get the indices of source k
+
+        Each of `m` `~scarlet.source.Source`s in the model can have multiple
+        components, but the main algorithm recognizes each component as a single
+        source, for `k=Sum_m(m_l)` total sources.
+        This method returns the tuple of indices `(m,l)` for source `k`.
+        """
         return self._source_of[k]
 
     def component_of(self, m, l):
-        # search for k that has this (m,l), inverse of source_of
+        """Search for k index of source m, component l
+
+        This is the inverse of source_of, and returns `k` for the given
+        pair `(m,l)`.
+        """
         for k in range(self.K):
             if self._source_of[k] == (m,l):
                 return k
         raise IndexError
 
     def __len__(self):
-        """Number of distinct sources"""
+        """Number of `~scarlet.source.Source`s (not including components)
+        """
         return self.M
 
-    # _prox_g need to be properties so that they can react to runtime changes
-    # in the sources
     @property
     def _proxs_g(self):
+        """Proximal operator for each source in the dual update
+
+        Each source can have it's own value for prox g, and because the size and shape of
+        a source can change at runtime, _proxs_g is property called by the bSDMM algorithm.
+        These functions are created in `~scarlet.source.Source.set_constraints`.
+
+        This is the proximal operator that is applied to the `A` or `S` update
+        of the dual variable.
+        See Algorithm 3, line 12 in Moolekamp and Melchior 2017
+        (https://arxiv.org/pdf/1708.09066.pdf) for more.
+        """
         return [source.proxs_g[0] for source in self.sources] + [source.proxs_g[1] for source in self.sources]
 
     @property
     def _Ls(self):
+        """Linear operator for each source in the dual update
+
+        See section 2.3 in Moolekamp and Melchior 2017
+        (https://arxiv.org/pdf/1708.09066.pdf) for more.
+        """
         return [source.Ls[0] for source in self.sources] + [source.Ls[1] for source in self.sources]
 
-    def fit(self, steps=200, e_rel=None, max_iter=None):
+    def fit(self, steps=200, e_rel=None, max_iter=None, traceback=False):
+        """Fit the model for each source to the data
+
+        Parameters
+        ----------
+        steps: int
+            Maximum number of iterations, even if the algorithm doesn't converge.
+            See `max_iter` description for details.
+        e_rel: float, default=`None`
+            Relative error for convergence. Of `e_rel` is `None` then
+            relative error isn't used as a convergence check
+        max_iter: int, default=`None`
+            Maximum number of iterations, including restarts.
+            The difference between `max_iter` and `steps` is that the
+            deblender might throw a `ScarletRestartException`, which
+            restarts the deblender. In this case the total number of
+            iterations will still not exceed `max_iter`.
+            If `max_iter` is `None` then `max_iter=`steps`.
+        traceback: bool, default=False
+            Whether or not to store the history of a traceback.
+            .. warning::
+        
+               This can be very costly in terms of memory. It is highly recommended to leave
+               this off unless you really know what you're doing!
+        
+        Returns
+        -------
+        self: `~scarlet.blends.Blend`
+            This object, which contains the results of the deblender.
+        """
         try:
             self.it
         except AttributeError:
@@ -96,16 +179,22 @@ class Blend(object):
         # run bSDMM on all SEDs and morphologies
         steps_g = None
         steps_g_update = 'steps_f'
-        traceback = False
         accelerated = True
         try:
-            res = proxmin.algorithms.bsdmm(X, self._prox_f, self._steps_f, self._proxs_g, steps_g=steps_g, Ls=self._Ls, update_order=_update_order, steps_g_update=steps_g_update, max_iter=steps, e_rel=self._e_rel, e_abs=self._e_abs, accelerated=accelerated, traceback=traceback)
+            res = proxmin.algorithms.bsdmm(X, self._prox_f, self._steps_f, self._proxs_g, steps_g=steps_g,
+                Ls=self._Ls, update_order=_update_order, steps_g_update=steps_g_update, max_iter=steps,
+                e_rel=self._e_rel, e_abs=self._e_abs, accelerated=accelerated, traceback=traceback)
         except ScarletRestartException:
             steps = max_iter - self.it
             self.fit(steps=steps, max_iter=max_iter)
         return self
 
     def set_data(self, img, weights=None, sky=None, bg_rms=None):
+        """Initialize the data
+        
+        Subtract the sky from the image, initialize the weights and background,
+        and create the full Gamma matrix
+        """
         if sky is None:
             self._ = img
         else:
@@ -120,9 +209,12 @@ class Blend(object):
         if self.use_psf:
             from .transformations import GammaOp
             pos = (0,0)
-            self._Gamma_full = [ source._gammaOp(pos, self._img.shape, offset_int=source.center_int) for source in self.sources]
+            self._Gamma_full = [ source._gammaOp(pos, self._img.shape, offset_int=source.center_int)
+                                    for source in self.sources]
 
     def init_sources(self):
+        """Initialize the model for each source
+        """
         for m in range(self.M):
             self.sources[m].init_source(self._img, weights=self._weights)
 
@@ -148,12 +240,16 @@ class Blend(object):
 
         # for all sources
         if combine:
-            return np.sum([self.get_model(m=m, combine_source_components=True, use_sed=use_sed) for m in range(self.M)], axis=0)
+            return np.sum([self.get_model(m=m, combine_source_components=True, use_sed=use_sed)
+                                for m in range(self.M)], axis=0)
         else:
-            models = [self.get_model(m=m, combine_source_components=combine_source_components, use_sed=use_sed) for m in range(self.M)]
+            models = [self.get_model(m=m, combine_source_components=combine_source_components,
+                                     use_sed=use_sed) for m in range(self.M)]
             return np.vstack(models)
 
     def _register_sources(self, sources):
+        """Unpack the components to register them as individual sources
+        """
         self.sources = sources # do not copy!
         self.K =  sum([source.K for source in self.sources])
         have_psf = [source.has_psf for source in self.sources]
@@ -167,6 +263,17 @@ class Blend(object):
                 self._source_of.append((m,l))
 
     def _set_weights(self, weights):
+        """Set the weights and correlation matrix `_Sigma_1`
+
+        Parameters
+        ----------
+        weights: array-like
+            Array (Band, Height, Width) of weights for each image, in each band
+
+        Returns
+        -------
+        None, but sets `self._Sigma_1` and `self._weights`.
+        """
         import scipy.sparse
         if weights is None:
             self._weights = 1
@@ -202,6 +309,14 @@ class Blend(object):
             self._Sigma_1[0] = scipy.sparse.diags(_weights.flatten())
 
     def _compute_model(self):
+        """Build the entire model
+
+        Calculate the full model once per iteration.
+        This creates `self._models`, the morphological model of each source
+        projected onto the full image, and `self._model`, which convolves
+        those models with the SED for each source and adds them into a
+        single model.
+        """
         # make sure model at current iteration is computed when needed
         # irrespective of function that needs it
         if self._model_it < self.it:
@@ -216,6 +331,34 @@ class Blend(object):
             self._model_it = self.it
 
     def _prox_f(self, X, step, Xs=None, j=None):
+        """Proximal operator for the X update
+
+        To save processing time, the model is calculated when the first source
+        is updated and all subsequent prox_f calculations (in the same iteration)
+        use the same cached model.
+
+        This is the proximal operator that is applied to the `A` or `S` update.
+        See Algorithm 3, line 10 in Moolekamp and Melchior 2017
+        (https://arxiv.org/pdf/1708.09066.pdf) for more.
+
+        Parameters
+        ----------
+        X: array-like
+            Either `A` (sed) or `S` (morphology) matrix of the model
+        step: float
+            Step size calculated using `self._steps_f`.
+        Xs: array-like
+            List of all matrices (in this case [A,S]) that are modeled
+            using the bSDMM algorithm.
+        j: int
+            Index of the current matrix in `Xs`.
+            So `j=0` for `A` and `j=1` for `S`.
+
+        Returns
+        -------
+        result: `~numpy.array`
+            Array of `X` after `_prox_f` has been applied
+        """
 
         # which update to do now
         block = j//self.K
@@ -282,6 +425,8 @@ class Blend(object):
             raise ValueError("Expected index j in [0,%d]" % (2*self.K))
 
     def _one_over_lipschitz(self, block):
+        """Calculate 1/Lipschitz constant for A and S
+        """
         import scipy.sparse
         import scipy.sparse.linalg
 
@@ -293,7 +438,8 @@ class Blend(object):
             # Sigma_a = ((PS)^T Sigma_pixel^-1 PS)^-1
             # in the frame where A is a vector of length K*B
             # NOTE: convolution implicitly treated in the models
-            PS = scipy.sparse.block_diag([self._models[:,b,:,:].reshape((self.K, Ny*Nx)).T for b in range(self.B)])
+            PS = scipy.sparse.block_diag([self._models[:,b,:,:].reshape((self.K, Ny*Nx)).T
+                                            for b in range(self.B)])
             # Lipschitz constant for grad_A = || S Sigma_1 S.T||_s
             SSigma_1S = PS.T.dot(self._Sigma_1[0].dot(PS))
             LA = np.real(scipy.sparse.linalg.eigs(SSigma_1S, k=1, return_eigenvectors=False)[0])
@@ -303,18 +449,41 @@ class Blend(object):
             if not self.use_psf:
                 # Lipschitz constant for grad_S = || A.T Sigma_1 A||_s
                 # need to go to frame in which A and S are serialized
-                PA = scipy.sparse.bmat([[scipy.sparse.identity(Ny*Nx) * self._A[b,k] for k in range(self.K)] for b in range(self.B)])
+                PA = scipy.sparse.bmat([[scipy.sparse.identity(Ny*Nx) * self._A[b,k]
+                                        for k in range(self.K)]
+                                        for b in range(self.B)])
             else:
                 # similar calculation for S: ||Sigma_s||_s with
                 # Sigma_s = ((PA)^T Sigma_pixel^-1 PA)^-1
                 # in the frame where S is a vector of length N*K
-                PA = scipy.sparse.bmat([[self._A[b,k] * self._Gamma_full[self.source_of(k)[0]][b] for k in range(self.K)] for b in range(self.B)])
+                PA = scipy.sparse.bmat([[self._A[b,k] * self._Gamma_full[self.source_of(k)[0]][b]
+                                        for k in range(self.K)] for b in range(self.B)])
             ASigma_1A = PA.T.dot(self._Sigma_1[1].dot(PA))
             LS = np.real(scipy.sparse.linalg.eigs(ASigma_1A, k=1, return_eigenvectors=False)[0])
             return 1./LS
-        raise NotImplementedError("block < 2!")
+        raise NotImplementedError("block {0} not < 2!".format(block))
 
     def _steps_f(self, j, Xs):
+        """Calculate the current step-size for prox f
+
+        This method used the cached 1/Lipschitz value when possible and
+        uses it to calculate the step sizes for both A and S only once per
+        iteration.
+
+        Parameters
+        ----------
+        Xs: array-like
+            List of all matrices (in this case [A,S]) that are modeled
+            using the bSDMM algorithm.
+        j: int
+            Index of the current matrix in `Xs`.
+            So `j=0` for `A` and `j=1` for `S`.
+
+        Returns
+        -------
+        step: float
+            Step size for the current block (either A or S).
+        """
         # which update to do now
         block = j//self.K
         k = j%self.K
@@ -324,11 +493,14 @@ class Blend(object):
         if block == self.update_order[0] and k==0:
             self._compute_model()
             # compute step sizes and save to reuse for every component of A or S
+            # _cbAS is the cached values 1/Lipschitz for A and S
             self._stepAS = [self._cbAS[block](block) for block in [0,1]]
 
         return self._stepAS[block]
 
     def recenter_sources(self):
+        """Shift center position of sources to better match the data
+        """
         # residuals weighted with full/original weight matrix
         y = self._weights*(self._model-self._img)
         for m in range(self.M):
@@ -348,9 +520,22 @@ class Blend(object):
                 if ddx**2 + ddy**2 > self.center_min_dist**2:
                     center = source.center + (ddy, ddx)
                     source.set_center(center)
-                    logger.info("shifting source %d by (%.3f/%.3f) to (%.3f/%.3f)" % (m, ddy, ddx, source.center[0], source.center[1]))
+                    msg = "shifting source {0} by ({1}/2}) to (3}/4})"
+                    logger.info(msg.format(m, ddy, ddx, source.center[0], source.center[1]))
 
     def _get_shift_differential(self, m):
+        """Calculate the difference image used ot fit positions
+
+        Parameters
+        ----------
+        m: int
+            Index of the source in `Blend.sources`
+
+        Returns
+        -------
+        diff_img: `~numpy.array`
+            Difference image in each band used to fit the position
+        """
         # compute (model - dxy*shifted_model)/dxy for first-order derivative
         source = self.sources[m]
         slice_m = source.get_slice_for(self._img.shape)
@@ -368,12 +553,26 @@ class Blend(object):
         pos_y = dx + (offset, 0)
         dGamma_x = source._gammaOp(pos_x, source.shape)
         dGamma_y = source._gammaOp(pos_y, source.shape)
-        diff_img = [source.get_model(combine=True, Gamma=dGamma_x), source.get_model(combine=True, Gamma=dGamma_y)]
+        diff_img = [source.get_model(combine=True, Gamma=dGamma_x),
+                    source.get_model(combine=True, Gamma=dGamma_y)]
         diff_img[0] = (model_m-diff_img[0][slice_m])/source.shift_center
         diff_img[1] = (model_m-diff_img[1][slice_m])/source.shift_center
         return diff_img
 
     def _set_edge_flux(self, m, model):
+        """Keep track of the flux at the edge of the model
+
+        Parameters
+        ----------
+        m: int
+            Index of the source
+        model: `~numpy.array`
+            (Band,Height,Width) array of the model.
+
+        Returns
+        -------
+        None, but sets `self._edge_flux`
+        """
         try:
             self._edge_flux
         except AttributeError:
@@ -386,6 +585,11 @@ class Blend(object):
         self._edge_flux[m,3,:] = np.abs(model[:,:,:,0]).sum(axis=0).mean(axis=1)
 
     def resize_sources(self):
+        """Resize frames for sources (if necessary)
+
+        If there is flux at the edges of the frame for a given source,
+        increase it's frame size.
+        """
         resized = False
         for m in range(self.M):
             if not self.sources[m].fix_frame:
@@ -407,14 +611,21 @@ class Blend(object):
         return resized
 
     def _absolute_morph_error(self):
+        """Get the absolute morphology error
+        """
         m = 0 # needed otherwise python 2 complains about "local variable 'm' referenced before assignment"
-        return [self.e_rel * self.sources[m].morph[l].mean() for l in range(self.sources[m].K) for m in range(self.M)]
+        return [self.e_rel * self.sources[m].morph[l].mean()
+                for l in range(self.sources[m].K) for m in range(self.M)]
 
     def _set_error_limits(self):
+        """Set the error limits for each source
+        """
         self._e_rel = [self.e_rel] * 2 * self.K
         # absolute errors: e_rel * mean signal, will be updated later
         self._e_abs = [self.e_rel / self.B] * self.K
         self._e_abs += self._absolute_morph_error()
 
     def adjust_absolute_error(self):
+        """Adjust the absolute error for each source
+        """
         self._e_abs[self.K:] = self._absolute_morph_error()

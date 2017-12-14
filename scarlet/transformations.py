@@ -4,13 +4,59 @@ import numpy as np
 import scipy.sparse
 
 class GammaOp():
+    """Combination of Linear (x,y) Transformation and PSF Convolution
+
+    Since the translation operators and PSF convolution operators both act
+    on the deconvolved, centered S matrix, we can instead think of the translation
+    operators translating the PSF convolution kernel, making a single transformation
+    Gamma = Ty.P.Tx, where Tx,Ty are the translation operators and P is the PSF
+    convolution operator.
+    """
     def __init__(self, shape, psf=None, offset_int=None):
+        """Constructor
+
+        Parameters
+        ----------
+        shape: tuple
+            Shape of the Source frame
+        psf: array-like, default=`None`
+            PSF image in either a single band (used for all images)
+            or an array/list of images with a PSF image for each band.
+        offset_int: int, default=`None`
+            The translation matrices only care about fractional offsets.
+            Integer offsets are handled in a different way, but are no longer necessary
+            because we are now creating frames around sources.
+            TODO: remove this option
+        """
         if offset_int is None:
             offset_int = (0,0)
         self.psf = psf
         self._cache = {}
 
     def _make_matrices(self, shape, offset_int):
+        """Build Tx, Ty, P, Gamma
+
+        To save processing time we separate the diagonal component
+        (which is just an identity matrix) and the off-diagonal
+        component (which is just a band diagonal matrix that is all zeros).
+
+        Parameters
+        ----------
+        shape: tuple
+            Shape of the `~scarlet.Source` frame
+        offset_int: int, default=`None`
+            Integer offset of the translation. See `__init__`.
+
+        Returns
+        -------
+        result: tuple
+            tx, tx_plus, tx_minus, ty, ty_plus, ty_minus, P
+        tx, ty: `~scipy.sparse` array
+            Sparse arrays that contain the diagonal components of the Tx, Ty matrices
+        tx_plus, ty_plus: `~scipy.sparse` array
+            Sparse arrays that contain the off diagonal components of the Tx, Ty matrices.
+        
+        """
         self.B, height, width = shape
         tx = scipy.sparse.diags([1.], offsets=[offset_int[1]], shape=(width, width))
         tx_minus = scipy.sparse.diags([-1.,1.], offsets=[offset_int[1],offset_int[1]+1], shape=(width, width))
@@ -21,14 +67,30 @@ class GammaOp():
 
         size = height*width
         ty = scipy.sparse.diags([1], offsets=[offset_int[0]*width], shape=(size, size), dtype=np.float64)
-        ty_minus = scipy.sparse.diags([-1., 1.], offsets=[offset_int[0]*width, (offset_int[0]+1)*width], shape=(size, size))
-        ty_plus = scipy.sparse.diags([1., -1.], offsets=[offset_int[0]*width, (offset_int[0]-1)*width], shape=(size, size))
+        ty_minus = scipy.sparse.diags([-1., 1.], offsets=[offset_int[0]*width, (offset_int[0]+1)*width],
+                                      shape=(size, size))
+        ty_plus = scipy.sparse.diags([1., -1.], offsets=[offset_int[0]*width, (offset_int[0]-1)*width],
+                                     shape=(size, size))
 
         P = self._adapt_PSF(shape[1:])
         return tx,tx_plus,tx_minus,ty,ty_plus,ty_minus,P
 
     def __call__(self, pos, shape, offset_int=None):
         """Get the operators to translate source
+
+        Parameters
+        ----------
+        pos: array-like
+            (dy,dx) Fractional position in the x and y directions to shift the source.
+        shape: tuple
+            Shape of the `~scarlet.Source` frame
+        offset_int: int, default=`None`
+            Integer offset of the translation. See `__init__`.
+
+        Returns
+        -------
+        Gamma: list of `~scipy.sparse` arrays
+            Sparse Gamma array for each band, where Gamma=Ty.P.Tx.
         """
         dy, dx = pos
         if offset_int is None:
@@ -38,7 +100,8 @@ class GammaOp():
         try:
             tx,tx_plus,tx_minus,ty,ty_plus,ty_minus,P = self._cache[key]
         except KeyError:
-            self._cache[key] = tx,tx_plus,tx_minus,ty,ty_plus,ty_minus,P = self._make_matrices(shape, offset_int)
+            self._cache[key] = self._make_matrices(shape, offset_int)
+            tx, tx_plus, tx_minus, ty, ty_plus, ty_minus, P = self._cache[key]
 
         # Create Tx
         if dx<0:
@@ -64,6 +127,22 @@ class GammaOp():
         return [Ty.dot(Pb.dot(Tx)) for Pb in P]
 
     def _adapt_PSF(self, shape):
+        """Create multiband PSF operator (if necessary)
+
+        `~scipy.sparse` only works for 2D matrices. Since we have a 
+        3rd dimension, the band, we need an adapter to keep track of the
+        PSF operator in different bands.
+
+        Parameters
+        ----------
+        shape: tuple
+            Shape of the `~scarlet.Source` frame.
+
+        Returns
+        -------
+        P: `~scipy.sparse` array or list of `~scipy.sparse` arrays
+            PSF convolution operator.
+        """
         if self.psf is None:
             return None
 
@@ -344,7 +423,8 @@ def downsample(S, oversampling, mask=None):
         # TODO: can we avoid the double loop?
         for h in range(height):
             for w in range(width):
-                Sd[h,w] = S_[h*oversampling:(h+1)*oversampling, w*oversampling:(w+1)*oversampling].sum() / oversampling**2
+                Sd[h,w] = S_[h*oversampling:(h+1)*oversampling,
+                             w*oversampling:(w+1)*oversampling].sum() / oversampling**2
         return Sd
 
 # construct spin-wave decomposition operator for given list of spin numbers m

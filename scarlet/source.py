@@ -7,10 +7,41 @@ from . import transformations
 from . import operators
 
 import logging
-logger = logging.getLogger("scarlet")
+logger = logging.getLogger("scarlet.source")
 
 class Source(object):
-    def __init__(self, center, shape, K=1, psf=None, constraints=None, fix_sed=False, fix_morph=False, fix_frame=False, shift_center=0.2):
+    """A single source in a blend
+    """
+    def __init__(self, center, shape, K=1, psf=None, constraints=None, fix_sed=False, fix_morph=False,
+                 fix_frame=False, shift_center=0.2):
+        """Constructor
+
+        Parameters
+        ----------
+        center: array-like
+            (y,x) coordinates of the source in the larger image
+        shape: tuple
+            Shape of the frame that contains the source. This can be (and usually is)
+            smaller than the size of the full blend
+        K: int, default='1'
+            Number of components with the same center position
+        psf: array-like or `~scarlet.transformations.GammaOp`, default=`None`
+            2D image of the psf in a single band (Height, Width),
+            or 2D image of the psf in each band (Bands, Height, Width),
+            or `~scarlet.transformations.GammaOp` created from a psf array.
+        constraints: dict, default=`None`
+            Each key in `constraints` contains any parameters
+            (such as a treshold for "l0") needed by the proximal operator.
+        fix_sed: bool, default=`False`
+            Whether or not the SED is fixed, or can be updated
+        fix_morph: bool, default=`False`
+            Whether or not the morphology is fixed, or can be updated
+        fix_frame: bool, default=`False`
+            Whether or not the frame dimensions are fixed, or can be updated
+        shift_center: float, default=0.2
+            Amount to shift the differential image in x and y to fit
+            changes in position.
+        """
 
         # set size of the source frame
         assert len(shape) == 3
@@ -51,31 +82,53 @@ class Source(object):
 
     @property
     def Nx(self):
+        """Width of the frame
+        """
         return self.right-self.left
 
     @property
     def Ny(self):
+        """Height of the frame
+        """
         return self.top - self.bottom
 
     @property
     def shape(self):
+        """Shape of the source image (Band, Height, Width)
+        """
         return (self.B, self.Ny, self.Nx)
 
     @property
     def image(self):
+        """Reshaped morphology into an array of 2D images for each component
+        """
         morph_shape = (self.K, self.Ny, self.Nx)
         return self.morph.reshape(morph_shape) # this *should* be a view
 
     @property
     def center_int(self):
+        """Rounded (not truncated) integer position of the center
+        """
         return np.round(self.center).astype('int')
 
     @property
     def has_psf(self):
+        """Whether the source has a psf
+        """
         return self._gammaOp.psf is not None
 
     def get_slice_for(self, im_shape):
-        # slice so that self.image[k][slice] corresponds to image[self.bb]
+        """Return the slice of the source frame in the full multiband iamge
+        
+        In other words, return the slice so that
+        self.image[k][slice] corresponds to image[self.bb],
+        where image has shape (Band, Height, Width).
+
+        Parameters
+        ----------
+        im_shape: tuple
+            Shape of the full image 
+        """
         NY, NX = im_shape[1:]
 
         left = max(0, -self.left)
@@ -85,6 +138,23 @@ class Source(object):
         return (slice(None), slice(bottom, top), slice(left, right))
 
     def get_model(self, combine=True, Gamma=None, use_sed=True):
+        """Get the model of all components for the current source
+
+        Parameters
+        ----------
+        combine: bool, default=`True`
+            Whether or not to combine all of the components into a single model
+        Gamma: `~scarlet.transformations.GammaOp`, default=`None`
+            Gamma transformation to convolve with PSF and perform linear transform.
+            If `Gamma` is `None` then `self.Gamma` is used.
+        use_sed: bool, default=`True`
+            Whether to use the SED to create a multi-color model or model of just the morphology
+
+        Returns
+        -------
+        model: `~numpy.array`
+            (Bands, Height, Width) image of the model
+        """
         if Gamma is None:
             Gamma = self.Gamma
         if use_sed:
@@ -110,6 +180,28 @@ class Source(object):
         return model
 
     def _set_frame(self, center, size):
+        """Create a frame and bounding box
+
+        To save memory and computation time, each source is contained in a small
+        subset of the entire blended image. This method takes the coordinates of
+        the source and the size of the frame and creates a bonding box (`self.bb`).
+
+        Parameters
+        ----------
+        center: array-like
+            (y,x) coordinates of the center of the source in the full image
+        size: float or array-like
+            Either a (height,width) shape or a single size to create a
+            square (size,size) frame.
+
+        Returns
+        -------
+        None.
+        But it defines `self.bottom`, `self.top`, `self.left`, `self.right` as
+        the edges of the frame, `self.bb` as the slices (bounding box) containing the frame,
+        and `self.center` as the center of the frame.
+        
+        """
         assert len(center) == 2
         self.center = np.array(center)
         if hasattr(size, '__iter__'):
@@ -127,6 +219,8 @@ class Source(object):
         self.bb = (slice(None), slice(max(0, self.bottom), self.top), slice(max(0, self.left), self.right))
 
     def set_center(self, center):
+        """Given a (y,x) `center`, update the frame and `Gamma`
+        """
         size = (self.Ny, self.Nx)
         self._set_frame(center, size)
 
@@ -135,16 +229,29 @@ class Source(object):
         self.Gamma = self._gammaOp(dx, self.shape)
 
     def resize(self, size):
+        """Resize the frame
+
+        Set the new frame size and update relevant parameters like the morphology,
+        Gamma matrices, and constraint operators.
+
+        Parameters
+        ----------
+        size: float or array-like
+            Either a (height,width) shape or a single size to create a
+            square (size,size) frame.
+        """
         # store old edge coordinates
         top, right, bottom, left = self.top, self.right, self.bottom, self.left
         self._set_frame(self.center, size)
 
         # check if new size is larger or smaller
-        new_slice_y = slice(max(0, bottom - self.bottom), min(self.top - self.bottom, self.top - self.bottom - (self.top - top)))
+        new_slice_y = slice(max(0, bottom - self.bottom),
+                            min(self.top - self.bottom, self.top - self.bottom - (self.top - top)))
         old_slice_y = slice(max(0, self.bottom - bottom), min(top - bottom, top - bottom - (top - self.top)))
         if top-bottom == self.Ny:
             new_slice_y = old_slice_y = slice(None)
-        new_slice_x = slice(max(0, left - self.left), min(self.right - self.left, self.right - self.left - (self.right - right)))
+        new_slice_x = slice(max(0, left - self.left),
+                            min(self.right - self.left, self.right - self.left - (self.right - right)))
         old_slice_x = slice(max(0, self.left - left), min(right - left, right - left - (right - self.right)))
         if right-left == self.Nx:
             new_slice_x = old_slice_x = slice(None)
@@ -166,6 +273,25 @@ class Source(object):
             self.set_constraints(self.constraints)
 
     def init_source(self, img, weights=None):
+        """Initialize the source
+
+        Parameters
+        ----------
+        img: `~numpy.array`
+            (Bands, Height, Width) data array that contains a 2D image for each band
+        weights: ??
+            Currently not implemented in initialization
+
+        Currently this initializes the sed to the sed at the center of the frame and the
+        morphology to a single pixel turned on at the center.
+        It is likely that this will be updated to use a better initial morphology to speed
+        up convergence.
+
+        Returns
+        -------
+        None.
+        But `self.sed` and `self.morph` are set.
+        """
         # init with SED of the peak pixels
         # TODO: what should we do if peak is saturated?
         B = img.shape[0]
@@ -182,6 +308,18 @@ class Source(object):
         self.morph[0, cy*self.Nx+cx] = img[:,y_,x_].sum(axis=0) + tiny
 
     def get_morph_error(self, weights):
+        """Get error in the morphology
+
+        Parameters
+        ----------
+        weights: `~numpy.array`
+            Weights of the images in each band (Bands, Height, Width).
+
+        Returns
+        -------
+        me: `~numpy.array`
+            Error in morphology for each pixel
+        """
         w = np.zeros(self.shape)
         w[self.get_slice_for(weights.shape)] = weights[self.bb]
         w = w.reshape(self.B, -1)
@@ -203,7 +341,8 @@ class Source(object):
             # see Blend.steps_f for details for the complete covariance matrix
             import scipy.sparse
             Sigma_pix = scipy.sparse.diags(w.flatten(), 0)
-            PA = [scipy.sparse.bmat([[self.sed[k,b] * self.Gamma[b]] for b in range(self.B)])  for k in range(self.K)]
+            PA = [scipy.sparse.bmat([[self.sed[k,b] * self.Gamma[b]] for b in range(self.B)])
+                    for k in range(self.K)]
             Sigma_s = [PAk.T.dot(Sigma_pix.dot(PAk)) for PAk in PA]
             me = [np.sqrt(np.diag(np.linalg.inv(Sigma_sk.toarray()))) for Sigma_sk in Sigma_s]
 
@@ -215,6 +354,18 @@ class Source(object):
         return me
 
     def get_sed_error(self, weights):
+        """Get error in the SED's
+
+        Parameters
+        ----------
+        weights: `~numpy.array`
+            Weights of the images in each band (Bands, Height, Width).
+
+        Returns
+        -------
+        error: `~numpy.array`
+            Estimated error in the SED.
+        """
         w = np.zeros(self.shape)
         w[self.get_slice_for(weights.shape)] = weights[self.bb]
         w = w.reshape(self.B, -1)
@@ -227,10 +378,30 @@ class Source(object):
             import scipy.sparse
             Sigma_pix = scipy.sparse.diags(w.flatten(), 0)
             model = self.get_model(combine=False, use_sed=False)
-            PS = [scipy.sparse.block_diag([model[k,b,:,:].reshape((1,-1)).T for b in range(self.B)]) for k in range(self.K)]
+            PS = [scipy.sparse.block_diag([model[k,b,:,:].reshape((1,-1)).T for b in range(self.B)])
+                        for k in range(self.K)]
             return [np.sqrt(np.diag(np.linalg.inv(PSk.T.dot(Sigma_pix.dot(PSk)).toarray()))) for PSk in PS]
 
     def set_constraints(self, constraints):
+        """Set the constraints for each component in the source
+        
+        Currently this uses the same constraints for all components and is
+        likely to be modified in the future.
+
+        Parameters
+        ----------
+        constraints: dict
+            Each key in `constraints` contains any parameters
+            (such as a treshold for "l0") needed by the proximal operator.
+
+        Returns
+        -------
+        None.
+        But `self.constraints`, `self.progs_g` (ADMM-like proximal operators),
+        `self.Ls` (linear matrices for each proxs_g),
+        `self.prox_sed` (prox_f proximal operator for the SED's),
+        and `self.prox_morph` (prox_f for morphologies) are set.
+        """
         self.constraints = constraints # save for later
         if self.constraints is None:
             self.constraints = {}
