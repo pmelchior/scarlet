@@ -53,8 +53,11 @@ class Blend(object):
         self.refine_skip = 10
         self.center_min_dist = 1e-3
         self.edge_flux_thresh = 1.
+
+        # fit parameters
         self.update_order = [1,0]
         self.slack = 0.2
+        self.exact_lipschitz = False
         self.e_rel = 1e-2
 
         # set up data structures
@@ -152,6 +155,23 @@ class Blend(object):
             self._cbAS = [proxmin.utils.ApproximateCache(self._one_over_lipschitz, slack=self.slack),
                           proxmin.utils.ApproximateCache(self._one_over_lipschitz, slack=self.slack)]
 
+        if self.exact_lipschitz:
+            # use full weight matrixes
+            try:
+                self._Sigma_1
+            except AttributeError:
+                B, Ny, Nx = self._img.shape
+                import scipy.sparse
+                if self._weights[0] is 1:
+                    self._Sigma_1 = [scipy.sparse.identity(B*Ny*Nx)] * 2
+                else:
+                    self._Sigma_1 = [scipy.sparse.diags(w.flatten()) for w in self._weights]
+            # use full-frame Gamma matrices
+            if self.use_psf:
+                from .transformations import GammaOp
+                pos = (0,0)
+                self._Gamma_full = [ source._gammaOp(pos, self._img.shape, offset_int=source.center_int) for source in self.sources]
+
         # only needed if the restart exception has been thrown
         if max_iter is None:
             max_iter = steps
@@ -206,12 +226,15 @@ class Blend(object):
             self._bg_rms = np.array(bg_rms)
         self._set_weights(weights)
 
+<<<<<<< HEAD
         if self.use_psf:
             from .transformations import GammaOp
             pos = (0,0)
             self._Gamma_full = [ source._gammaOp(pos, self._img.shape, offset_int=source.center_int)
                                     for source in self.sources]
 
+=======
+>>>>>>> 873366f1cc5486e5d55a1041e6f5cd8b2c39b5c0
     def init_sources(self):
         """Initialize the model for each source
         """
@@ -276,37 +299,32 @@ class Blend(object):
         """
         import scipy.sparse
         if weights is None:
-            self._weights = 1
-            B, Ny, Nx = self._img.shape
-            self._Sigma_1 = [scipy.sparse.identity(B*Ny*Nx)] * 2
+            self._weights = [1,1]
         else:
-            self._weights = weights
-            self._Sigma_1 = [None] * 2
+            self._weights = [None] * 2
 
             # for S update: normalize the per-pixel variation
             # i.e. in every pixel: utilize the bands with large weights
             # CAVEAT: need to filter out pixels that are saturated in every band
             norm_pixel = np.median(weights, axis=0)
             mask = norm_pixel > 0
-            _weights = weights.copy()
-            _weights[:, mask] /= norm_pixel[mask]
-            self._Sigma_1[1] = scipy.sparse.diags(_weights.flatten())
+            self._weights[1] = weights.copy()
+            self._weights[1][:, mask] /= norm_pixel[mask]
 
             # reverse is true for A update: for each band, use the pixels that
             # have the largest weights
             norm_band = np.median(weights, axis=(1,2))
             # CAVEAT: some regions may have one band missing completely
             mask = norm_band > 0
-            _weights[:] = weights
-            _weights[mask] /= norm_band[mask,None,None]
+            self._weights[0] = weights.copy()
+            self._weights[0][mask] /= norm_band[mask,None,None]
             # CAVEAT: mask all pixels in which at least one band has W=0
             # these are likely saturated and their colors have large weights
             # but are incorrect due to missing bands
             mask = ~np.all(weights>0, axis=0)
             # and mask all bands for that pixel:
             # when estimating A do not use (partially) saturated pixels
-            _weights[:,mask] = 0
-            self._Sigma_1[0] = scipy.sparse.diags(_weights.flatten())
+            self._weights[0][:,mask] = 0
 
     def _compute_model(self):
         """Build the entire model
@@ -381,8 +399,7 @@ class Blend(object):
                 self._compute_model()
 
             # compute weighted residuals
-            B, Ny, Nx = self._img.shape
-            self._diff = self._Sigma_1[block].dot((self._model-self._img).flatten()).reshape(B, Ny, Nx)
+            self._diff = self._weights[block]*(self._model-self._img)
 
         # A update
         if block == 0:
@@ -432,34 +449,44 @@ class Blend(object):
 
         B, Ny, Nx = self._img.shape
         if block == 0: # A
-            # model[b] is S in band b, but need to go to frame in which
-            # A and S are serialized. Then Lischitz constant of A:
-            # LA = ||Sigma_a||_s with
-            # Sigma_a = ((PS)^T Sigma_pixel^-1 PS)^-1
-            # in the frame where A is a vector of length K*B
-            # NOTE: convolution implicitly treated in the models
-            PS = scipy.sparse.block_diag([self._models[:,b,:,:].reshape((self.K, Ny*Nx)).T
-                                            for b in range(self.B)])
-            # Lipschitz constant for grad_A = || S Sigma_1 S.T||_s
-            SSigma_1S = PS.T.dot(self._Sigma_1[0].dot(PS))
-            LA = np.real(scipy.sparse.linalg.eigs(SSigma_1S, k=1, return_eigenvectors=False)[0])
+            if self.exact_lipschitz:
+                # model[b] is S in band b, but need to go to frame in which
+                # A and S are serialized. Then Lischitz constant of A:
+                # LA = ||Sigma_a||_s with
+                # Sigma_a = ((PS)^T Sigma_pixel^-1 PS)^-1
+                # in the frame where A is a vector of length K*B
+                # NOTE: convolution implicitly treated in the models
+                PS = scipy.sparse.block_diag([self._models[:,b,:,:].reshape((self.K, Ny*Nx)).T for b in range(self.B)])
+                # Lipschitz constant for grad_A = || S Sigma_1 S.T||_s
+                SSigma_1S = PS.T.dot(self._Sigma_1[0].dot(PS))
+                LA = np.real(scipy.sparse.linalg.eigs(SSigma_1S, k=1, return_eigenvectors=False)[0])
+            else:
+                # Lipschitz constant for grad_A = || S S.T||_s
+                # and the PSF is implicit
+                # NOTE: if PSFs are very different between bands, this will fail
+                # because we average over the bands
+                PS = self._models.mean(axis=0).reshape((self.K, Ny*Nx))
+                SSigma_1S = PS.dot(PS.T)
+                LA = np.real(np.linalg.eigvals(SSigma_1S).max())
             return 1./LA
 
         if block == 1: # S
-            if not self.use_psf:
-                # Lipschitz constant for grad_S = || A.T Sigma_1 A||_s
-                # need to go to frame in which A and S are serialized
-                PA = scipy.sparse.bmat([[scipy.sparse.identity(Ny*Nx) * self._A[b,k]
-                                        for k in range(self.K)]
-                                        for b in range(self.B)])
+            if self.exact_lipschitz:
+                if not self.use_psf:
+                    # Lipschitz constant for grad_S = || A.T Sigma_1 A||_s
+                    # need to go to frame in which A and S are serialized
+                    PA = scipy.sparse.bmat([[scipy.sparse.identity(Ny*Nx) * self._A[b,k] for k in range(self.K)] for b in range(self.B)])
+                else:
+                    # similar calculation for S: ||Sigma_s||_s with
+                    # Sigma_s = ((PA)^T Sigma_pixel^-1 PA)^-1
+                    # in the frame where S is a vector of length N*K
+                    PA = scipy.sparse.bmat([[self._A[b,k] * self._Gamma_full[self.source_of(k)[0]][b] for k in range(self.K)] for b in range(self.B)])
+                ASigma_1A = PA.T.dot(self._Sigma_1[1].dot(PA))
+                LS = np.real(scipy.sparse.linalg.eigs(ASigma_1A, k=1, return_eigenvectors=False)[0])
             else:
-                # similar calculation for S: ||Sigma_s||_s with
-                # Sigma_s = ((PA)^T Sigma_pixel^-1 PA)^-1
-                # in the frame where S is a vector of length N*K
-                PA = scipy.sparse.bmat([[self._A[b,k] * self._Gamma_full[self.source_of(k)[0]][b]
-                                        for k in range(self.K)] for b in range(self.B)])
-            ASigma_1A = PA.T.dot(self._Sigma_1[1].dot(PA))
-            LS = np.real(scipy.sparse.linalg.eigs(ASigma_1A, k=1, return_eigenvectors=False)[0])
+                # Lipschitz constant for grad_S = || A.T Sigma_1 A||_s
+                ASigma_1A = self._A.T.dot(self._A)
+                LS = np.real(np.linalg.eigvals(ASigma_1A).max())
             return 1./LS
         raise NotImplementedError("block {0} not < 2!".format(block))
 
@@ -502,7 +529,8 @@ class Blend(object):
         """Shift center position of sources to better match the data
         """
         # residuals weighted with full/original weight matrix
-        y = self._weights*(self._model-self._img)
+        y = self._weights[1]*(self._model-self._img)
+
         for m in range(self.M):
             if self.sources[m].shift_center:
                 source = self.sources[m]
