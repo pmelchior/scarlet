@@ -634,7 +634,6 @@ class Blend(object):
                 at_edge = (self._edge_flux[m] > self._bg_rms*self.edge_flux_thresh)
                 # TODO: without symmetry constraints, the four edges of the box
                 # should be allowed to resize independently
-                resized = False
                 if at_edge[0].any() or at_edge[2].any() and size[0] < self.sources[m].max_height:
                     size[0] += increase[0]
                     size[0] = min(size[0], self.sources[m].max_height)
