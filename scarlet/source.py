@@ -423,7 +423,7 @@ class Source(object):
             return
 
         self.prox_sed = [proxmin.operators.prox_unity_plus] * self.K
-        self.prox_morph = [[proxmin.operators.prox_plus],] * self.K
+        self.prox_morph = [[],] * self.K
 
         # superset of all constraint keys (in case they are different)
         keys = set(self.constraints[0].keys())
@@ -433,6 +433,11 @@ class Source(object):
         # because of the constraint matrices being costly to construct:
         # iterate over keys, not over components
         for c in keys:
+
+            if c =="+":
+                for k in range(self.K):
+                    if c in self.constraints[k].keys():
+                        self.prox_morph[k].append(proxmin.operators.prox_plus)
 
             # Note: don't use hard/soft thresholds with _plus (non-negative) because
             # that is either happening with prox_plus before or is not indended
@@ -515,7 +520,10 @@ class Source(object):
         # with several projection operators in prox_morph:
         # use AlternatingProjections to link them together
         for k in range(self.K):
-            if len(self.prox_morph[k]) > 1:
-                self.prox_morph[k] = proxmin.operators.AlternatingProjections(self.prox_morph[k], repeat=1)
-            else:
+            # dummy operator: identity
+            if len(self.prox_morph[k]) == 0:
+                self.prox_morph[k] = proxmin.operators.prox_id
+            elif len(self.prox_morph[k]) == 1:
                 self.prox_morph[k] = self.prox_morph[k][0]
+            else:
+                self.prox_morph[k] = proxmin.operators.AlternatingProjections(self.prox_morph[k], repeat=1)
