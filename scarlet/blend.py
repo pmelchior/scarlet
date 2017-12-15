@@ -166,7 +166,8 @@ class Blend(object):
             if self.use_psf:
                 from .transformations import GammaOp
                 pos = (0,0)
-                self._Gamma_full = [ source._gammaOp(pos, self._img.shape, offset_int=source.center_int) for source in self.sources]
+                self._Gamma_full = [ source._gammaOp(pos, self._img.shape, offset_int=source.center_int)
+                                    for source in self.sources]
 
         # only needed if the restart exception has been thrown
         if max_iter is None:
@@ -441,7 +442,8 @@ class Blend(object):
                 # Sigma_a = ((PS)^T Sigma_pixel^-1 PS)^-1
                 # in the frame where A is a vector of length K*B
                 # NOTE: convolution implicitly treated in the models
-                PS = scipy.sparse.block_diag([self._models[:,b,:,:].reshape((self.K, Ny*Nx)).T for b in range(self.B)])
+                PS = scipy.sparse.block_diag([self._models[:,b,:,:].reshape((self.K, Ny*Nx)).T
+                                                for b in range(self.B)])
                 # Lipschitz constant for grad_A = || S Sigma_1 S.T||_s
                 SSigma_1S = PS.T.dot(self._Sigma_1[0].dot(PS))
                 LA = np.real(scipy.sparse.linalg.eigs(SSigma_1S, k=1, return_eigenvectors=False)[0])
@@ -460,12 +462,14 @@ class Blend(object):
                 if not self.use_psf:
                     # Lipschitz constant for grad_S = || A.T Sigma_1 A||_s
                     # need to go to frame in which A and S are serialized
-                    PA = scipy.sparse.bmat([[scipy.sparse.identity(Ny*Nx) * self._A[b,k] for k in range(self.K)] for b in range(self.B)])
+                    PA = scipy.sparse.bmat([[scipy.sparse.identity(Ny*Nx) * self._A[b,k]
+                                                for k in range(self.K)] for b in range(self.B)])
                 else:
                     # similar calculation for S: ||Sigma_s||_s with
                     # Sigma_s = ((PA)^T Sigma_pixel^-1 PA)^-1
                     # in the frame where S is a vector of length N*K
-                    PA = scipy.sparse.bmat([[self._A[b,k] * self._Gamma_full[self.source_of(k)[0]][b] for k in range(self.K)] for b in range(self.B)])
+                    PA = scipy.sparse.bmat([[self._A[b,k] * self._Gamma_full[self.source_of(k)[0]][b]
+                                            for k in range(self.K)] for b in range(self.B)])
                 ASigma_1A = PA.T.dot(self._Sigma_1[1].dot(PA))
                 LS = np.real(scipy.sparse.linalg.eigs(ASigma_1A, k=1, return_eigenvectors=False)[0])
             else:
