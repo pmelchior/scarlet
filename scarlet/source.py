@@ -21,23 +21,27 @@ class Source(object):
         center: array-like
             (y,x) coordinates of the source in the larger image
         shape: tuple
-            Shape of the frame that contains the source. This can be (and usually is)
-            smaller than the size of the full blend
+            Shape (B, Ny, Nx) of the frame that contains the source.
+            This can be (and usually is) smaller than the size of the full blend
         K: int, default='1'
             Number of components with the same center position
         psf: array-like or `~scarlet.transformations.GammaOp`, default=`None`
             2D image of the psf in a single band (Height, Width),
             or 2D image of the psf in each band (Bands, Height, Width),
             or `~scarlet.transformations.GammaOp` created from a psf array.
-        constraints: dict, default=`None`
+        constraints: dict or list of dicts, default=`None`
             Each key in `constraints` contains any parameters
             (such as a treshold for "l0") needed by the proximal operator.
-        fix_sed: bool, default=`False`
+            If K>1, a list of dicts can be given, one for each component.
+        fix_sed: bool or list of bools, default=`False`
             Whether or not the SED is fixed, or can be updated
-        fix_morph: bool, default=`False`
+            If K>1, a list of bools can be given, one for each component.
+        fix_morph: bool or list of bools, default=`False`
             Whether or not the morphology is fixed, or can be updated
-        fix_frame: bool, default=`False`
+            If K>1, a list of bools can be given, one for each component.
+        fix_frame: bool or list of bools, default=`False`
             Whether or not the frame dimensions are fixed, or can be updated
+            If K>1, a list of bools can be given, one for each component.
         shift_center: float, default=0.2
             Amount to shift the differential image in x and y to fit
             changes in position.
@@ -119,7 +123,7 @@ class Source(object):
 
     def get_slice_for(self, im_shape):
         """Return the slice of the source frame in the full multiband iamge
-        
+
         In other words, return the slice so that
         self.image[k][slice] corresponds to image[self.bb],
         where image has shape (Band, Height, Width).
@@ -127,7 +131,7 @@ class Source(object):
         Parameters
         ----------
         im_shape: tuple
-            Shape of the full image 
+            Shape of the full image
         """
         NY, NX = im_shape[1:]
 
@@ -200,7 +204,7 @@ class Source(object):
         But it defines `self.bottom`, `self.top`, `self.left`, `self.right` as
         the edges of the frame, `self.bb` as the slices (bounding box) containing the frame,
         and `self.center` as the center of the frame.
-        
+
         """
         assert len(center) == 2
         self.center = np.array(center)
@@ -384,15 +388,16 @@ class Source(object):
 
     def set_constraints(self, constraints):
         """Set the constraints for each component in the source
-        
+
         Currently this uses the same constraints for all components and is
         likely to be modified in the future.
 
         Parameters
         ----------
-        constraints: dict
+        constraints: dict, or list of dicts
             Each key in `constraints` contains any parameters
             (such as a treshold for "l0") needed by the proximal operator.
+            If a list of dicts is given, each elements refers to one component.
 
         Returns
         -------
@@ -402,9 +407,13 @@ class Source(object):
         `self.prox_sed` (prox_f proximal operator for the SED's),
         and `self.prox_morph` (prox_f for morphologies) are set.
         """
-        self.constraints = constraints # save for later
-        if self.constraints is None:
+        if constraints is None:
             self.constraints = {}
+        else:
+            self.constraints = constraints
+        # one set of constraints for each component
+        if not isinstance(self.constraints, list):
+            self.constraints = [self.constraints,] * self.K
 
         self.proxs_g = [None, []] # no constraints on A matrix
         self.Ls = [None, []]
@@ -416,61 +425,92 @@ class Source(object):
         self.prox_sed = [proxmin.operators.prox_unity_plus] * self.K
         self.prox_morph = [[proxmin.operators.prox_plus],] * self.K
 
+        # superset of all constraint keys (in case they are different)
+        keys = set(self.constraints[0].keys())
+        for k in range(1, self.K):
+            keys |= set(self.constraints[k].keys())
         shape = (self.Ny, self.Nx)
-        for c in self.constraints.keys():
+        # because of the constraint matrices being costly to construct:
+        # iterate over keys, not over components
+        for c in keys:
 
             # Note: don't use hard/soft thresholds with _plus (non-negative) because
             # that is either happening with prox_plus before or is not indended
-            # Note: l0 thresh is not set yet, needs set_morph_sparsity()
             if c == "l0":
-                thresh = self.constraints["l0"]
-                if "l1" in self.constraints.keys():
-                    # L0 has preference
-                    logger.info("l1 penalty ignored in favor of l0 penalty")
                 for k in range(self.K):
-                    self.prox_morph[k].append(partial(proxmin.operators.prox_hard, thresh=thresh))
-            elif c == "l1":
-                thresh = self.constraints["l1"]
-                for k in range(self.K):
-                    self.prox_morph[k].append(partial(proxmin.operators.prox_soft, thresh=thresh))
-            if c == "m":
-                thresh = self.constraints["m"]
-                for k in range(self.K):
-                    self.prox_morph[k].append(operators.prox_strict_monotonic(shape, thresh=thresh))
+                    if c in self.constraints[k].keys():
+                        thresh = self.constraints[k][c]
+                        self.prox_morph[k].append(partial(proxmin.operators.prox_hard, thresh=thresh))
 
-            if c == "M":
-                # positive gradients
-                M = transformations.getRadialMonotonicOp(shape, useNearest=self.constraints[c])
+            elif c == "l1":
                 for k in range(self.K):
-                    self.Ls[1].append(M)
-                    self.proxs_g[1].append(proxmin.operators.prox_plus)
+                    if c in self.constraints[k].keys():
+                        thresh = self.constraints[k][c]
+                        self.prox_morph[k].append(partial(proxmin.operators.prox_soft, thresh=thresh))
+
+            elif c == "m":
+                for k in range(self.K):
+                    if c in self.constraints[k].keys():
+                        thresh = self.constraints[k][c]
+                        self.prox_morph[k].append(operators.prox_strict_monotonic(shape, thresh=thresh))
+
+            elif c == "M":
+                # positive gradients
+                # NOTE: we're using useNearest from component k=0 only!
+                M = transformations.getRadialMonotonicOp(shape, useNearest=self.constraints[0][c])
+                for k in range(self.K):
+                    if c in self.constraints[k].keys():
+                        self.Ls[1].append(M)
+                        self.proxs_g[1].append(proxmin.operators.prox_plus)
+                    else:
+                        self.Ls[1].append(None)
+                        self.proxs_g[1].append(None)
+
             elif c == "S":
                 # zero deviation of mirrored pixels
                 S = transformations.getSymmetryOp(shape)
                 for k in range(self.K):
-                    self.Ls[1].append(S)
-                    self.proxs_g[1].append(proxmin.operators.prox_zero)
+                    if c in self.constraints[k].keys():
+                        self.Ls[1].append(S)
+                        self.proxs_g[1].append(proxmin.operators.prox_zero)
+                    else:
+                        self.Ls[1].append(None)
+                        self.proxs_g[1].append(None)
+
             elif c == "C":
                 # cone method for monotonicity: exact but VERY slow
                 useNearest = self.constraints.get("M", False)
                 G = transformations.getRadialMonotonicOp(shape, useNearest=useNearest).toarray()
                 for k in range(self.K):
+                    if c in self.constraints[k].keys():
+                        self.proxs_g[1].append(partial(operators.prox_cone, G=G))
+                    else:
+                        self.proxs_g[1].append(None)
                     self.Ls[1].append(None)
-                    self.proxs_g[1].append(partial(operators.prox_cone, G=G))
             elif c == "X":
                 # l1 norm on gradient in X for TV_x
                 cx = int(self.Nx)
                 Gx = proxmin.transformations.get_gradient_x(shape, cx)
                 for k in range(self.K):
-                    self.Ls[1].append(Gx)
-                    self.proxs_g[1].append(partial(proxmin.operators.prox_soft, thresh=self.constraints[c]))
+                    if c in self.constraints[k].keys():
+                        self.Ls[1].append(Gx)
+                        thresh = self.constraints[k][c]
+                        self.proxs_g[1].append(partial(proxmin.operators.prox_soft, thresh=thresh))
+                    else:
+                        self.Ls[1].append(None)
+                        self.proxs_g[1].append(None)
             elif c == "Y":
                 # l1 norm on gradient in Y for TV_y
                 cy = int(self.Ny)
                 Gy = proxmin.transformations.get_gradient_y(shape, cy)
                 for k in range(self.K):
-                    self.Ls[1].append(Gy)
-                    self.proxs_g[1].append(partial(proxmin.operators.prox_soft, thresh=self.constraints[c]))
+                    if c in self.constraints[k].keys():
+                        self.Ls[1].append(Gy)
+                        thresh = self.constraints[k][c]
+                        self.proxs_g[1].append(partial(proxmin.operators.prox_soft, thresh=thresh))
+                    else:
+                        self.Ls[1].append(None)
+                        self.proxs_g[1].append(None)
 
         # with several projection operators in prox_morph:
         # use AlternatingProjections to link them together

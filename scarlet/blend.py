@@ -28,7 +28,7 @@ class Blend(object):
         weights: `~numpy.array`, default=`None`
             Array (Bands, Height, Width) of weights to use for each pixel in each band.
             .. warning::
-                
+
                 The weights should be flat in each band
                 (except for zero weighted masked out pixels).
                 Our analysis has shown that when the weights are widely varying
@@ -137,10 +137,10 @@ class Blend(object):
         traceback: bool, default=False
             Whether or not to store the history of a traceback.
             .. warning::
-        
+
                This can be very costly in terms of memory. It is highly recommended to leave
                this off unless you really know what you're doing!
-        
+
         Returns
         -------
         self: `~scarlet.blends.Blend`
@@ -211,7 +211,7 @@ class Blend(object):
 
     def set_data(self, img, weights=None, sky=None, bg_rms=None):
         """Initialize the data
-        
+
         Subtract the sky from the image, initialize the weights and background,
         and create the full Gamma matrix
         """
@@ -226,15 +226,6 @@ class Blend(object):
             self._bg_rms = np.array(bg_rms)
         self._set_weights(weights)
 
-<<<<<<< HEAD
-        if self.use_psf:
-            from .transformations import GammaOp
-            pos = (0,0)
-            self._Gamma_full = [ source._gammaOp(pos, self._img.shape, offset_int=source.center_int)
-                                    for source in self.sources]
-
-=======
->>>>>>> 873366f1cc5486e5d55a1041e6f5cd8b2c39b5c0
     def init_sources(self):
         """Initialize the model for each source
         """
@@ -548,7 +539,7 @@ class Blend(object):
                 if ddx**2 + ddy**2 > self.center_min_dist**2:
                     center = source.center + (ddy, ddx)
                     source.set_center(center)
-                    msg = "shifting source {0} by ({1}/2}) to (3}/4})"
+                    msg = "shifting source {0} by ({1:.3f}/{2:.3f}) to ({3:.3f}/{4:.3f})"
                     logger.info(msg.format(m, ddy, ddx, source.center[0], source.center[1]))
 
     def _get_shift_differential(self, m):
