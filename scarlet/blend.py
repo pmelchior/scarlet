@@ -216,7 +216,7 @@ class Blend(object):
         and create the full Gamma matrix
         """
         if sky is None:
-            self._ = img
+            self._img = img
         else:
             self._img = img-sky
         if bg_rms is None:
