@@ -14,7 +14,9 @@ class ScarletRestartException(Exception):
 class Blend(object):
     """The blended scene as interpreted by the deblender.
     """
-    def __init__(self, sources, img, weights=None, sky=None, bg_rms=None, init_sources=True):
+    def __init__(self, sources, img, weights=None, sky=None, bg_rms=None, init_sources=True,
+                 refine_skip=10, center_min_dist=1e-3, edge_flux_thresh=1.,
+                 exact_lipschitz=False, e_rel=1e-2):
         """Constructor
 
         Parameters
@@ -42,6 +44,17 @@ class Blend(object):
             Array of length `Bands` that contains the sky background RMS in the image for each band
         init_sources: bool
             Whether the sources should be initialized
+        refine_skip: int, default=10
+            How many iterations to skip before refining box sizes/positions
+        center_min_dist: float, default=1e-3
+            Minimum change is position required to trigger repositioning a source
+        edge_flux_thresh: float, 1.0
+            Boxes are resized when flux at an edge is > `edge_flux_thresh` * `bg_rms`.
+        exact_lipschitz: bool, default=False
+            Calculate exact Lipschitz constant in every step or only calculate the Lipschitz
+            constant with significant changes in A,S.
+        e_rel: float, default=1e-2
+            Relative error for convergence
         """
         assert len(sources)
         # store all source and make search structures
@@ -50,15 +63,15 @@ class Blend(object):
         self.B = self.sources[0].B
 
         # source refinement parameters
-        self.refine_skip = 10
-        self.center_min_dist = 1e-3
-        self.edge_flux_thresh = 1.
+        self.refine_skip = refine_skip
+        self.center_min_dist = center_min_dist
+        self.edge_flux_thresh = edge_flux_thresh
 
         # fit parameters
         self.update_order = [1,0]
         self.slack = 0.2
-        self.exact_lipschitz = False
-        self.e_rel = 1e-2
+        self.exact_lipschitz = exact_lipschitz
+        self.e_rel = e_rel
 
         # set up data structures
         self.set_data(img, weights=weights, sky=sky, bg_rms=bg_rms)
