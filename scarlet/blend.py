@@ -533,7 +533,7 @@ class Blend(object):
                     center = source.center + (ddy, ddx)
                     source.set_center(center)
                     msg = "shifting source {0} by ({1:.3f}/{2:.3f}) to ({3:.3f}/{4:.3f})"
-                    logger.info(msg.format(m, ddy, ddx, source.center[0], source.center[1]))
+                    logger.debug(msg.format(m, ddy, ddx, source.center[0], source.center[1]))
 
     def _get_shift_differential(self, m):
         """Calculate the difference image used ot fit positions
