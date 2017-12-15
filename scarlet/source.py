@@ -111,7 +111,7 @@ class Source(object):
 
     @property
     def center_int(self):
-        """Rounded (not truncated) integer position of the center
+        """Rounded (not truncated) integer pixel position of the center
         """
         return np.round(self.center).astype('int')
 
@@ -122,7 +122,7 @@ class Source(object):
         return self._gammaOp.psf is not None
 
     def get_slice_for(self, im_shape):
-        """Return the slice of the source frame in the full multiband iamge
+        """Return the slice of the source frame in the full multiband image
 
         In other words, return the slice so that
         self.image[k][slice] corresponds to image[self.bb],
@@ -283,13 +283,13 @@ class Source(object):
         ----------
         img: `~numpy.array`
             (Bands, Height, Width) data array that contains a 2D image for each band
-        weights: ??
-            Currently not implemented in initialization
+        weights: `~numpy.array`
+            (Bands, Height, Width) data array that contains a 2D weight image for each band
+            Currently not implemented in initialization.
 
-        Currently this initializes the sed to the sed at the center of the frame and the
-        morphology to a single pixel turned on at the center.
-        It is likely that this will be updated to use a better initial morphology to speed
-        up convergence.
+        This default implementation initializes takes the sed from the pixel in
+        the center of the frame and sets morphology to only comprise that pixel,
+        which works well for point sources and poorly resolved galaxies.
 
         Returns
         -------
@@ -313,6 +313,12 @@ class Source(object):
 
     def get_morph_error(self, weights):
         """Get error in the morphology
+
+        This error estimate uses linear error propagation and assumes that the
+        source was isolated (it ignores blending).
+
+        CAVEAT: If the source has a PSF, the inversion of the covariance matrix
+        is likely instable.
 
         Parameters
         ----------
@@ -360,6 +366,9 @@ class Source(object):
     def get_sed_error(self, weights):
         """Get error in the SED's
 
+        This error estimate uses linear error propagation and assumes that the
+        source was isolated (it ignores blending).
+
         Parameters
         ----------
         weights: `~numpy.array`
@@ -388,9 +397,6 @@ class Source(object):
 
     def set_constraints(self, constraints):
         """Set the constraints for each component in the source
-
-        Currently this uses the same constraints for all components and is
-        likely to be modified in the future.
 
         Parameters
         ----------

@@ -39,9 +39,9 @@ class Blend(object):
             This is subtracted from `img`, so if `img` has already happend then this
             should be `None`.
         bg_rms: array-like, default=`None`
-            Array of length `Bands` that contains the RMS in the image for each band
+            Array of length `Bands` that contains the sky background RMS in the image for each band
         init_sources: bool
-            Whether or not the sources need to be initialized.
+            Whether the sources should be initialized
         """
         assert len(sources)
         # store all source and make search structures
@@ -67,7 +67,7 @@ class Blend(object):
             self.init_sources()
 
     def source_of(self, k):
-        """Get the indices of source k
+        """Get the indices of model component k.
 
         Each of `m` `~scarlet.source.Source`s in the model can have multiple
         components, but the main algorithm recognizes each component as a single
@@ -77,7 +77,7 @@ class Blend(object):
         return self._source_of[k]
 
     def component_of(self, m, l):
-        """Search for k index of source m, component l
+        """Search for k index of source m, component l.
 
         This is the inverse of source_of, and returns `k` for the given
         pair `(m,l)`.
@@ -96,7 +96,7 @@ class Blend(object):
     def _proxs_g(self):
         """Proximal operator for each source in the dual update
 
-        Each source can have it's own value for prox g, and because the size and shape of
+        Each source can have its own value for prox g, and because the size and shape of
         a source can change at runtime, _proxs_g is property called by the bSDMM algorithm.
         These functions are created in `~scarlet.source.Source.set_constraints`.
 
@@ -112,21 +112,20 @@ class Blend(object):
         """Linear operator for each source in the dual update
 
         See section 2.3 in Moolekamp and Melchior 2017
-        (https://arxiv.org/pdf/1708.09066.pdf) for more.
+        (https://arxiv.org/pdf/1708.09066.pdf) for details.
         """
         return [source.Ls[0] for source in self.sources] + [source.Ls[1] for source in self.sources]
 
-    def fit(self, steps=200, e_rel=None, max_iter=None, traceback=False):
+    def fit(self, steps=200, e_rel=None, max_iter=None):
         """Fit the model for each source to the data
 
         Parameters
         ----------
         steps: int
-            Maximum number of iterations, even if the algorithm doesn't converge.
-            See `max_iter` description for details.
+            Maximum number of iterations if the algorithm doesn't converge.
         e_rel: float, default=`None`
-            Relative error for convergence. Of `e_rel` is `None` then
-            relative error isn't used as a convergence check
+            Relative error for convergence. If `e_rel` is `None`, the default
+            `~scarlet.blend.Blend.e_rel` is used for convergence checks
         max_iter: int, default=`None`
             Maximum number of iterations, including restarts.
             The difference between `max_iter` and `steps` is that the
@@ -134,17 +133,14 @@ class Blend(object):
             restarts the deblender. In this case the total number of
             iterations will still not exceed `max_iter`.
             If `max_iter` is `None` then `max_iter=`steps`.
-        traceback: bool, default=False
-            Whether or not to store the history of a traceback.
-            .. warning::
-
-               This can be very costly in terms of memory. It is highly recommended to leave
-               this off unless you really know what you're doing!
 
         Returns
         -------
-        self: `~scarlet.blends.Blend`
+        self: `~scarlet.blend.Blend`
             This object, which contains the results of the deblender.
+            For investigating the model components, use the source list specified
+            at construction time or `~scarlet.blend.Blend.sources`, which is
+            the internal reference to that list.
         """
         try:
             self.it
@@ -210,10 +206,9 @@ class Blend(object):
         return self
 
     def set_data(self, img, weights=None, sky=None, bg_rms=None):
-        """Initialize the data
+        """Initialize the data.
 
-        Subtract the sky from the image, initialize the weights and background,
-        and create the full Gamma matrix
+        Subtract the sky from the image, initialize the weights and background rms.
         """
         if sky is None:
             self._ = img
@@ -227,13 +222,13 @@ class Blend(object):
         self._set_weights(weights)
 
     def init_sources(self):
-        """Initialize the model for each source
+        """Initialize the model for each source.
         """
         for m in range(self.M):
             self.sources[m].init_source(self._img, weights=self._weights)
 
     def get_model(self, m=None, combine=True, combine_source_components=True, use_sed=True):
-        """Compute the current model for the entire image
+        """Compute the current model for the entire image.
         """
         if m is not None:
             source = self.sources[m]
@@ -262,7 +257,7 @@ class Blend(object):
             return np.vstack(models)
 
     def _register_sources(self, sources):
-        """Unpack the components to register them as individual sources
+        """Unpack the components to register them as individual sources.
         """
         self.sources = sources # do not copy!
         self.K =  sum([source.K for source in self.sources])
@@ -277,7 +272,7 @@ class Blend(object):
                 self._source_of.append((m,l))
 
     def _set_weights(self, weights):
-        """Set the weights and correlation matrix `_Sigma_1`
+        """Set the weights and pixel covariance matrix `_Sigma_1`.
 
         Parameters
         ----------
@@ -318,11 +313,11 @@ class Blend(object):
             self._weights[0][:,mask] = 0
 
     def _compute_model(self):
-        """Build the entire model
+        """Build the entire model.
 
         Calculate the full model once per iteration.
         This creates `self._models`, the morphological model of each source
-        projected onto the full image, and `self._model`, which convolves
+        projected onto the full image, and `self._model`, which weighs
         those models with the SED for each source and adds them into a
         single model.
         """
@@ -340,28 +335,26 @@ class Blend(object):
             self._model_it = self.it
 
     def _prox_f(self, X, step, Xs=None, j=None):
-        """Proximal operator for the X update
+        """Proximal operator for the X update.
 
         To save processing time, the model is calculated when the first source
         is updated and all subsequent prox_f calculations (in the same iteration)
         use the same cached model.
 
         This is the proximal operator that is applied to the `A` or `S` update.
-        See Algorithm 3, line 10 in Moolekamp and Melchior 2017
-        (https://arxiv.org/pdf/1708.09066.pdf) for more.
+        See Algorithm 2, in Melchior & Moolekamp (in prep).
 
         Parameters
         ----------
         X: array-like
-            Either `A` (sed) or `S` (morphology) matrix of the model
+            Either `A` (sed) or `S` (morphology) of a single component of the model
         step: float
-            Step size calculated using `self._steps_f`.
+            Step size calculated using `self._steps_f`
         Xs: array-like
-            List of all matrices (in this case [A,S]) that are modeled
-            using the bSDMM algorithm.
+            List of all SEDs and morphologies of the model
+            SEDs for all components, then morphologies for all components
         j: int
-            Index of the current matrix in `Xs`.
-            So `j=0` for `A` and `j=1` for `S`.
+            Index of the current model component in `Xs`
 
         Returns
         -------
@@ -491,11 +484,10 @@ class Blend(object):
         Parameters
         ----------
         Xs: array-like
-            List of all matrices (in this case [A,S]) that are modeled
-            using the bSDMM algorithm.
+            List of all SEDs and morphologies of the model
+            SEDs for all components, then morphologies for all components
         j: int
-            Index of the current matrix in `Xs`.
-            So `j=0` for `A` and `j=1` for `S`.
+            Index of the current model component in `Xs`
 
         Returns
         -------
@@ -517,7 +509,7 @@ class Blend(object):
         return self._stepAS[block]
 
     def recenter_sources(self):
-        """Shift center position of sources to better match the data
+        """Shift center position of sources to minimize residuals in all bands
         """
         # residuals weighted with full/original weight matrix
         y = self._weights[1]*(self._model-self._img)
@@ -548,7 +540,7 @@ class Blend(object):
         Parameters
         ----------
         m: int
-            Index of the source in `Blend.sources`
+            Index of the source in `~scarlet.blend.Blend.sources`
 
         Returns
         -------
@@ -579,7 +571,7 @@ class Blend(object):
         return diff_img
 
     def _set_edge_flux(self, m, model):
-        """Keep track of the flux at the edge of the model
+        """Keep track of the flux at the edge of the model.
 
         Parameters
         ----------
@@ -604,10 +596,15 @@ class Blend(object):
         self._edge_flux[m,3,:] = np.abs(model[:,:,:,0]).sum(axis=0).mean(axis=1)
 
     def resize_sources(self):
-        """Resize frames for sources (if necessary)
+        """Resize frames for sources (if necessary).
 
-        If there is flux at the edges of the frame for a given source,
-        increase it's frame size.
+        If for any source, the mean flux at the edges of the frame exceeds
+        `~scarlet.edge_flux_thresh` times the sky background in any band,
+        increase the frame size of that source.
+
+        The increase is set at `max(10, 0.25*size)` for the size of the source
+        frame in either direction.
+
         """
         resized = False
         for m in range(self.M):
