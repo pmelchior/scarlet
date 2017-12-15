@@ -196,6 +196,7 @@ class Blend(object):
         steps_g = None
         steps_g_update = 'steps_f'
         accelerated = True
+        traceback = False
         try:
             res = proxmin.algorithms.bsdmm(X, self._prox_f, self._steps_f, self._proxs_g, steps_g=steps_g,
                 Ls=self._Ls, update_order=_update_order, steps_g_update=steps_g_update, max_iter=steps,
@@ -449,7 +450,7 @@ class Blend(object):
                 # and the PSF is implicit
                 # NOTE: if PSFs are very different between bands, this will fail
                 # because we average over the bands
-                PS = self._models.mean(axis=0).reshape((self.K, Ny*Nx))
+                PS = self._models.mean(axis=1).reshape((self.K, Ny*Nx))
                 SSigma_1S = PS.dot(PS.T)
                 LA = np.real(np.linalg.eigvals(SSigma_1S).max())
             return 1./LA
