@@ -188,9 +188,9 @@ class Blend(object):
 
         # update_order for bSDMM is over *all* components
         if self.update_order[0] == 0:
-            _update_order = range(2*self.K)
+            _update_order = list(range(2*self.K))
         else:
-            _update_order = range(self.K,2*self.K) + range(self.K)
+            _update_order = list(range(self.K,2*self.K)) + list(range(self.K))
 
         # run bSDMM on all SEDs and morphologies
         steps_g = None
@@ -211,7 +211,7 @@ class Blend(object):
         Subtract the sky from the image, initialize the weights and background rms.
         """
         if sky is None:
-            self._ = img
+            self._img = img
         else:
             self._img = img-sky
         if bg_rms is None:
