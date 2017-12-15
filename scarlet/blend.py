@@ -634,14 +634,18 @@ class Blend(object):
                 at_edge = (self._edge_flux[m] > self._bg_rms*self.edge_flux_thresh)
                 # TODO: without symmetry constraints, the four edges of the box
                 # should be allowed to resize independently
-                if at_edge[0].any() or at_edge[2].any():
+                resized = False
+                if at_edge[0].any() or at_edge[2].any() and size[0] < self.sources[m].max_height:
                     size[0] += increase[0]
-                if at_edge[1].any() or at_edge[3].any():
+                    size[0] = min(size[0], self.sources[m].max_height)
+                    resized = True
+                if at_edge[1].any() or at_edge[3].any() and size[1] < self.sources[m].max_width:
                     size[1] += increase[1]
-                if at_edge.any():
+                    size[1] = min(size[1], self.sources[m].max_width)
+                    resized = True
+                if resized:
                     logger.info("resizing source %d to (%d/%d)" % (m, size[0], size[1]))
                     self.sources[m].resize(size)
-                    resized = True
         return resized
 
     def _absolute_morph_error(self):

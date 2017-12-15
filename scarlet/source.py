@@ -217,6 +217,8 @@ class Source(object):
         y_, x_ = self.center_int
         self.bottom, self.top = y_ - int(size[0]//2), y_ + int(size[0]//2) + 1
         self.left, self.right = x_ - int(size[1]//2), x_ + int(size[1]//2) + 1
+        self.max_width = 2 * max(self.right-x_, x_-self.left) + 1
+        self.max_height = 2 * max(self.top-y_, y_-self.bottom) + 1
 
         # since slice wrap around if start or stop are negative, need to sanitize
         # start values (stop always postive)
