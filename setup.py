@@ -10,7 +10,7 @@ import setuptools
 import subprocess
 
 # Use the firt 7 digits of the git hash to set the version
-__version__ = '0.0.'+subprocess.check_output(['git', 'rev-parse', 'HEAD'])[:7].decode("utf-8")
+__version__ = '0.1.'+subprocess.check_output(['git', 'rev-parse', 'HEAD'])[:7].decode("utf-8")
 
 packages = []
 for root, dirs, files in os.walk('.'):
@@ -35,8 +35,8 @@ class get_pybind_include(object):
 
 ext_modules = [
     Extension(
-        'deblender.proximal_utils',
-        ['deblender/proximal_utils.cc'],
+        'scarlet.operators_pybind11',
+        ['scarlet/operators_pybind11.cc'],
         include_dirs=[
             get_pybind_include(),
             get_pybind_include(user=True)
@@ -99,16 +99,16 @@ class BuildExt(build_ext):
         build_ext.build_extensions(self)
 
 setup(
-  name = 'deblender',
+  name = 'scarlet',
   packages = packages,
   version = __version__,
-  description = 'NMF Deblender',
+  description = 'Blind Source Separation using proximal matrix factorization',
   author = 'Fred Moolekamp and Peter Melchior',
   author_email = 'fred.moolekamp@gmail.com',
   url = 'https://github.com/fred3m/deblender',
-  keywords = ['astro', 'deblender', 'photometry', 'nmf'],
+  keywords = ['astro', 'deblending', 'photometry', 'nmf'],
   ext_modules=ext_modules,
-  install_requires=['proxmin>=0.2', 'pybind11>=1.7', 'numpy', 'scipy'],
+  install_requires=['proxmin>=0.4.3', 'pybind11>=1.7', 'numpy', 'scipy'],
   cmdclass={'build_ext': BuildExt},
   zip_safe=False
 )

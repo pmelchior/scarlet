@@ -5,28 +5,25 @@ from functools import partial
 import numpy as np
 import proxmin
 
-from . import operators
-from . import proximal_utils
+logger = logging.getLogger("scarlet.operators")
 
-def _prox_strict_monotonic(X, step, seeks, ref_idx, dist_idx, thresh=0, prox_chain=None, **kwargs):
+def _prox_strict_monotonic(X, step, ref_idx, dist_idx, thresh=0):
     """Force an intensity profile to be monotonic
     """
-    proximal_utils.prox_monotonic(X, step, seeks, ref_idx, dist_idx, thresh)
-
-    # When we daisy-chain the operators, we need to primary ones
-    # (positivity, sparsity) last so that they are certainly fulfilled
-    if prox_chain is not None:
-        X = prox_chain(X, step, **kwargs)
+    from . import operators_pybind11
+    operators_pybind11.prox_monotonic(X, step, ref_idx, dist_idx, thresh)
     return X
 
-def build_prox_monotonic(shape, seeks, prox_chain=None, thresh=0):
+def prox_strict_monotonic(shape, thresh=0):
     """Build the prox_monotonic operator
     """
     from scipy import sparse
+    from . import transformations
+
     if not shape[0] % 2 or not shape[1] % 2:
         err = "Shape must have an odd width and height, received shape {0}".format(shape)
         raise ValueError(err)
-    monotonicOp = operators.getRadialMonotonicOp(shape)
+    monotonicOp = transformations.getRadialMonotonicOp(shape)
     xIdx, refIdx = sparse.find(monotonicOp==1)[:2]
     refIdx = refIdx[np.argsort(xIdx)]
     # Get the center pixels
@@ -41,8 +38,7 @@ def build_prox_monotonic(shape, seeks, prox_chain=None, thresh=0):
     distance = np.sqrt(X**2+Y**2)
     # Get the indices of the pixels sorted by distance from the peak
     didx = np.argsort(distance.flatten())
-    #update the strict proximal operators
-    return partial(_prox_strict_monotonic, seeks=seeks, ref_idx=refIdx.tolist(), dist_idx=didx.tolist(), prox_chain=prox_chain, thresh=thresh)
+    return partial(_prox_strict_monotonic, ref_idx=refIdx.tolist(), dist_idx=didx.tolist(), thresh=thresh)
 
 def prox_cone(X, step, G=None):
     """Exact projection of components of X onto cone defined by Gx >= 0"""
@@ -126,7 +122,7 @@ def strict_monotonicity(images, peaks=None, components=None, l0_thresh=None, l1_
         # L0 has preference
         if l0_thresh is not None:
             if l1_thresh is not None:
-                logger.warn("weights warning: l1_thresh ignored in favor of l0_thresh")
+                logger.warn("l1_thresh ignored in favor of l0_thresh")
             prox_S = partial(proxmin.operators.prox_hard, thresh=l0_thresh)
         else:
             prox_S = partial(proxmin.operators.prox_soft_plus, thresh=l1_thresh)
@@ -141,11 +137,11 @@ def strict_monotonicity(images, peaks=None, components=None, l0_thresh=None, l1_
 
 def project_disk_sed_mean(bulge_sed, disk_sed):
     """Project the disk SED onto the space where it is bluer
-    
+
     For the majority of observed galaxies, it appears that
     the difference between the bulge and the disk SEDs is
     roughly monotonic, making the disk bluer.
-    
+
     This projection operator projects colors that are redder
     than other colors onto the average SED difference for
     that wavelength. This is a more accurate SED than
@@ -165,16 +161,16 @@ def project_disk_sed_mean(bulge_sed, disk_sed):
 
 def project_disk_sed(bulge_sed, disk_sed):
     """Project the disk SED onto the space where it is bluer
-    
+
     For the majority of observed galaxies, it appears that
     the difference between the bulge and the disk SEDs is
     roughly monotonic, making the disk bluer.
-    
+
     This projection operator projects colors that are redder onto
     the same difference in color as the previous wavelength,
     similar to the way monotonicity works for the morphological
     `S` matrix of the model.
-    
+
     While a single iteration of this model is unlikely to yield
     results that are as good as those in `project_disk_sed_mean`,
     after many iterations it is expected to converge to a better value.
