@@ -634,16 +634,23 @@ class Blend(object):
                 at_edge = (self._edge_flux[m] > self._bg_rms*self.edge_flux_thresh)
                 # TODO: without symmetry constraints, the four edges of the box
                 # should be allowed to resize independently
-                if at_edge[0].any() or at_edge[2].any() and size[0] < self.sources[m].max_height:
+                max_height = 2*max(self._img.shape[1]-self.sources[m].center_int[0],
+                                 self.sources[m].center_int[0])+1
+                max_width = 2*max(self._img.shape[1]-self.sources[m].center_int[1],
+                                self.sources[m].center_int[1])+1
+                _size = [size[0], size[1]]
+                if at_edge[0].any() or at_edge[2].any() and size[0] < max_height:
                     size[0] += increase[0]
-                    size[0] = min(size[0], self.sources[m].max_height)
+                    size[0] = min(size[0], max_height)
                     resized = True
-                if at_edge[1].any() or at_edge[3].any() and size[1] < self.sources[m].max_width:
+                if at_edge[1].any() or at_edge[3].any() and size[1] < max_width:
                     size[1] += increase[1]
-                    size[1] = min(size[1], self.sources[m].max_width)
+                    size[1] = min(size[1], max_width)
                     resized = True
                 if resized:
-                    logger.info("resizing source %d to (%d/%d)" % (m, size[0], size[1]))
+                    logger.info("resizing source {0} from ({1},{2}) to ({3},{4}) at it {5}" .format(
+                        m, _size[0], _size[1], size[0], size[1], self.it))
+                    logger.info("max height: {0}, width:{1}".format(max_height, max_width))
                     self.sources[m].resize(size)
         return resized
 
