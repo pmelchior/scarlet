@@ -19,7 +19,6 @@ try:
         SYMMETRIC = 2 # Use a symmetric template
         MONOTONIC = 4 # Use a monotonic template
         MONOSYM = 6 # Use a monotonic and symmetric template
-    print("used enum")
 # Until then use a python 2 version
 except ImportError:
     class InitMethod:
@@ -330,17 +329,21 @@ class Source(object):
         self.sed[0] = proxmin.operators.prox_unity_plus(self.sed[0], 0)
 
         cx, cy = self.Nx // 2, self.Ny // 2
+        self.morph = np.zeros((1, self.Ny*self.Nx))
         if InitMethod.PEAK in init_method:
             # Turn on a single pixel at the peak
-            self.morph = np.zeros((1, self.Ny*self.Nx))
             tiny = 1e-10
             self.morph[0, cy*self.Nx+cx] = img[:,_y,_x].sum(axis=0) + tiny
         else:
-            morph = np.zeros((self.Ny,self.Nx,))
+            Ny = 2*min(img.shape[1]-_y, _y)-1
+            Nx = 2*min(img.shape[2]-_x, _x)-1
+            cx, cy = Nx // 2, Ny // 2
+            morph = np.zeros((Ny,Nx))
             # use the band with maximum flux for the source
             band = np.argmax(self.sed[0])
             morph[:] = img[band,_y-cy:_y+cy+1,_x-cx:_x+cx+1]
             morph = morph.reshape((morph.size,))
+            morph[morph<0] = 0
             # For now, use a python 2 compatible version of an Enum
             #if InitMethod.SYMMETRIC in init_method:
             if InitMethod.SYMMETRIC & init_method:
@@ -350,8 +353,19 @@ class Source(object):
             #if InitMethod.MONOTONIC in init_method:
             if InitMethod.MONOTONIC & init_method:
                 # Make the model monotonic
-                prox_monotonic = operators.prox_strict_monotonic((self.Ny, self.Nx), thresh=0.1)
+                prox_monotonic = operators.prox_strict_monotonic((Ny, Nx), thresh=0)
                 morph = prox_monotonic(morph.reshape(morph.size,), 0)
+            # Trim the source to set the new size
+            morph = morph.reshape(Ny,Nx)
+            ypix, xpix = np.where(morph>0)
+            Ny = np.max(ypix)-np.min(ypix)
+            Nx = np.max(xpix)-np.min(xpix)
+            Ny += 1 - Ny % 2
+            Nx += 1 - Nx % 2
+            _cx = Nx//2
+            _cy = Ny//2
+            morph = morph[cy-_cy:cy+_cy+1, cx-_cx:cx+_cx+1]
+            self.resize([Ny, Nx])
             self.morph = morph.reshape((1, morph.size))
 
     def get_morph_error(self, weights):
