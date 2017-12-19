@@ -10,11 +10,25 @@ from . import operators
 import logging
 logger = logging.getLogger("scarlet.source")
 
-class InitMethod(IntFlag):
-    PEAK = 1 # Use the value at the peak
-    SYMMETRIC = 2 # Use a symmetric template
-    MONOTONIC = 4 # Use a monotonic template
-    MONOSYM = 6 # Use a monotonic and symmetric template
+# When we drop python2 support we can use the following code
+try:
+    from enum import IntFlag
+
+    class InitMethod(IntFlag):
+        PEAK = 1 # Use the value at the peak
+        SYMMETRIC = 2 # Use a symmetric template
+        MONOTONIC = 4 # Use a monotonic template
+        MONOSYM = 6 # Use a monotonic and symmetric template
+    print("used enum")
+# Until then use a python 2 version
+except ImportError:
+    class InitMethod:
+        """Mock Enum
+        """
+        PEAK = 1 # Use the value at the peak
+        SYMMETRIC = 2 # Use a symmetric template
+        MONOTONIC = 4 # Use a monotonic template
+        MONOSYM = 6 # Use a monotonic and symmetric template
 
 class Source(object):
     """A single source in a blend
@@ -320,18 +334,21 @@ class Source(object):
             # Turn on a single pixel at the peak
             self.morph = np.zeros((1, self.Ny*self.Nx))
             tiny = 1e-10
-            self.morph[0, cy*self.Nx+cx] = img[:,y_,x_].sum(axis=0) + tiny
+            self.morph[0, cy*self.Nx+cx] = img[:,_y,_x].sum(axis=0) + tiny
         else:
             morph = np.zeros((self.Ny,self.Nx,))
             # use the band with maximum flux for the source
             band = np.argmax(self.sed[0])
             morph[:] = img[band,_y-cy:_y+cy+1,_x-cx:_x+cx+1]
             morph = morph.reshape((morph.size,))
-            if InitMethod.SYMMETRIC in init_method:
+            # For now, use a python 2 compatible version of an Enum
+            #if InitMethod.SYMMETRIC in init_method:
+            if InitMethod.SYMMETRIC & init_method:
                 # Make the model symmetric
                 symmetric = morph[::-1]
                 morph = np.min([morph, symmetric], axis=0)
-            if InitMethod.MONOTONIC in init_method:
+            #if InitMethod.MONOTONIC in init_method:
+            if InitMethod.MONOTONIC & init_method:
                 # Make the model monotonic
                 prox_monotonic = operators.prox_strict_monotonic((self.Ny, self.Nx), thresh=0.1)
                 morph = prox_monotonic(morph.reshape(morph.size,), 0)
