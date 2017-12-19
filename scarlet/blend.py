@@ -641,7 +641,7 @@ class Blend(object):
                 # should be allowed to resize independently
                 max_height = 2*max(self._img.shape[1]-self.sources[m].center_int[0],
                                  self.sources[m].center_int[0])+1
-                max_width = 2*max(self._img.shape[1]-self.sources[m].center_int[1],
+                max_width = 2*max(self._img.shape[2]-self.sources[m].center_int[1],
                                 self.sources[m].center_int[1])+1
                 _size = [size[0], size[1]]
                 resized_source = False
