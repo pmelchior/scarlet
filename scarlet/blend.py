@@ -4,6 +4,8 @@ from functools import partial
 
 import proxmin
 
+from .source import InitMethod
+
 import logging
 logger = logging.getLogger("scarlet.blend")
 
@@ -14,7 +16,8 @@ class ScarletRestartException(Exception):
 class Blend(object):
     """The blended scene as interpreted by the deblender.
     """
-    def __init__(self, sources, img, weights=None, sky=None, bg_rms=None, init_sources=True,
+    def __init__(self, sources, img, weights=None, sky=None, bg_rms=None,
+                 init_method=InitMethod.MONOSYM,
                  refine_skip=10, center_min_dist=1e-3, edge_flux_thresh=1.,
                  exact_lipschitz=False, e_rel=1e-2):
         """Constructor
@@ -42,8 +45,9 @@ class Blend(object):
             should be `None`.
         bg_rms: array-like, default=`None`
             Array of length `Bands` that contains the sky background RMS in the image for each band
-        init_sources: bool
-            Whether the sources should be initialized
+        init_method: InitMethods or None, default=`InitMethods.MONOSYM`
+            Method to use for initialization. If `init_method` is `None` then
+            the sources are not initialized.
         refine_skip: int, default=10
             How many iterations to skip before refining box sizes/positions
         center_min_dist: float, default=1e-3
@@ -76,8 +80,9 @@ class Blend(object):
         # set up data structures
         self.set_data(img, weights=weights, sky=sky, bg_rms=bg_rms)
 
-        if init_sources:
-            self.init_sources()
+        if init_method is not None:
+            assert isinstance(init_method, InitMethod)
+            self.init_sources(init_method)
 
     def source_of(self, k):
         """Get the indices of model component k.
@@ -236,11 +241,11 @@ class Blend(object):
             self._bg_rms = np.array(bg_rms)
         self._set_weights(weights)
 
-    def init_sources(self):
+    def init_sources(self, init_method):
         """Initialize the model for each source.
         """
         for m in range(self.M):
-            self.sources[m].init_source(self._img, weights=self._weights)
+            self.sources[m].init_source(self._img, weights=self._weights, init_method=init_method)
 
     def get_model(self, m=None, combine=True, combine_source_components=True, use_sed=True):
         """Compute the current model for the entire image.
