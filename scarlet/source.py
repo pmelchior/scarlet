@@ -1,6 +1,7 @@
 from __future__ import print_function, division
 import numpy as np
 from functools import partial
+from enum import IntFlag
 
 import proxmin
 from . import transformations
@@ -8,6 +9,26 @@ from . import operators
 
 import logging
 logger = logging.getLogger("scarlet.source")
+
+# When we drop python2 support we can use the following code
+try:
+    from enum import IntFlag
+
+    class InitMethod(IntFlag):
+        PEAK = 1 # Use the value at the peak
+        SYMMETRIC = 2 # Use a symmetric template
+        MONOTONIC = 4 # Use a monotonic template
+        MONOSYM = 6 # Use a monotonic and symmetric template
+    print("used enum")
+# Until then use a python 2 version
+except ImportError:
+    class InitMethod:
+        """Mock Enum
+        """
+        PEAK = 1 # Use the value at the peak
+        SYMMETRIC = 2 # Use a symmetric template
+        MONOTONIC = 4 # Use a monotonic template
+        MONOSYM = 6 # Use a monotonic and symmetric template
 
 class Source(object):
     """A single source in a blend
@@ -276,7 +297,7 @@ class Source(object):
             # set constraints
             self.set_constraints(self.constraints)
 
-    def init_source(self, img, weights=None):
+    def init_source(self, img, weights=None, init_method=InitMethod.MONOSYM):
         """Initialize the source
 
         Parameters
@@ -286,6 +307,9 @@ class Source(object):
         weights: `~numpy.array`
             (Bands, Height, Width) data array that contains a 2D weight image for each band
             Currently not implemented in initialization.
+        init_method: InitMethods or None, default=`InitMethods.MONOSYM`
+            Method to use for initialization. If `init_method` is `None` then
+            the sources are not initialized.
 
         This default implementation initializes takes the sed from the pixel in
         the center of the frame and sets morphology to only comprise that pixel,
@@ -300,16 +324,35 @@ class Source(object):
         # TODO: what should we do if peak is saturated?
         B = img.shape[0]
         self.sed = np.empty((1, B))
-        y_, x_ = self.center_int
-        self.sed[0] = img[:,y_,x_]
+        _y, _x = self.center_int
+        self.sed[0] = img[:,_y,_x]
         # ensure proper normalization
         self.sed[0] = proxmin.operators.prox_unity_plus(self.sed[0], 0)
 
-        # same for morph: just one pixel with an estimate of the total flux
-        self.morph = np.zeros((1, self.Ny*self.Nx))
-        tiny = 1e-10
         cx, cy = self.Nx // 2, self.Ny // 2
-        self.morph[0, cy*self.Nx+cx] = img[:,y_,x_].sum(axis=0) + tiny
+        if InitMethod.PEAK in init_method:
+            # Turn on a single pixel at the peak
+            self.morph = np.zeros((1, self.Ny*self.Nx))
+            tiny = 1e-10
+            self.morph[0, cy*self.Nx+cx] = img[:,_y,_x].sum(axis=0) + tiny
+        else:
+            morph = np.zeros((self.Ny,self.Nx,))
+            # use the band with maximum flux for the source
+            band = np.argmax(self.sed[0])
+            morph[:] = img[band,_y-cy:_y+cy+1,_x-cx:_x+cx+1]
+            morph = morph.reshape((morph.size,))
+            # For now, use a python 2 compatible version of an Enum
+            #if InitMethod.SYMMETRIC in init_method:
+            if InitMethod.SYMMETRIC & init_method:
+                # Make the model symmetric
+                symmetric = morph[::-1]
+                morph = np.min([morph, symmetric], axis=0)
+            #if InitMethod.MONOTONIC in init_method:
+            if InitMethod.MONOTONIC & init_method:
+                # Make the model monotonic
+                prox_monotonic = operators.prox_strict_monotonic((self.Ny, self.Nx), thresh=0.1)
+                morph = prox_monotonic(morph.reshape(morph.size,), 0)
+            self.morph = morph.reshape((1, morph.size))
 
     def get_morph_error(self, weights):
         """Get error in the morphology
