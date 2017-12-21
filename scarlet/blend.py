@@ -558,6 +558,11 @@ class Blend(object):
                 source = self.sources[m]
                 bb_m = source.bb
                 diff_x,diff_y = self._get_shift_differential(m)
+                if np.sum(diff_x)==0 or np.sum(diff_y)==0:
+                    # The source might not have any flux,
+                    # so don't try to fit it's position
+                    logger.info("No flux in {0}, skipping recentering in it {1}".format(m, self.it))
+                    continue
                 diff_x[:,:,-1] = 0
                 diff_y[:,-1,:] = 0
                 # least squares for the shifts given the model residuals
@@ -570,8 +575,8 @@ class Blend(object):
                 if ddx**2 + ddy**2 > self.center_min_dist**2:
                     center = source.center + (ddy, ddx)
                     source.set_center(center)
-                    msg = "shifting source {0} by ({1:.3f}/{2:.3f}) to ({3:.3f}/{4:.3f})"
-                    logger.debug(msg.format(m, ddy, ddx, source.center[0], source.center[1]))
+                    msg = "shifting source {0} by ({1:.3f}/{2:.3f}) to ({3:.3f}/{4:.3f}) in it {5}"
+                    logger.debug(msg.format(m, ddy, ddx, source.center[0], source.center[1], self.it))
 
     def _get_shift_differential(self, m):
         """Calculate the difference image used ot fit positions
@@ -593,7 +598,8 @@ class Blend(object):
         model_m = self._models[k][self.sources[m].bb].copy()
         # in self._models, per-source components aren't combined,
         # need to combine here
-        for k in range(1,source.K):
+        for l in range(1,source.K):
+            k = self.component_of(m,l)
             model_m += self._models[k][self.sources[m].bb]
 
         # get Gamma matrices of source m with additional shift
@@ -601,6 +607,19 @@ class Blend(object):
         dx = source.center - source.center_int
         pos_x = dx + (0, offset)
         pos_y = dx + (offset, 0)
+        # If the source shifted off of the image,
+        # recenter and re-initialize it
+        center_x = source.center + pos_x
+        center_y = source.center + pos_y
+        width = self._img.shape[2]
+        height = self._img.shape[1]
+        if (np.any(center_x<1) or center_x[1]>width-1 or np.any(center_y<1) or center_y[0]>height-1):
+            logger.warning("Source {0} shifted too far, recentering and reinitializing".format(m))
+            source.set_center(source._init_center)
+            source.init_source(self._img)
+            raise ScarletRestartException
+        #TODO: Implement bounding check on the source
+
         dGamma_x = source._gammaOp(pos_x, source.shape)
         dGamma_y = source._gammaOp(pos_y, source.shape)
         diff_img = [source.get_model(combine=True, Gamma=dGamma_x),

@@ -245,6 +245,8 @@ class Source(object):
     def set_center(self, center):
         """Given a (y,x) `center`, update the frame and `Gamma`
         """
+        if not hasattr(self, '_init_center'):
+            self._init_center = np.array([center[0], center[1]])
         size = (self.Ny, self.Nx)
         self._set_frame(center, size)
 
@@ -329,7 +331,6 @@ class Source(object):
             self.sed[k] = _sed
             # ensure proper normalization
             self.sed[k] = proxmin.operators.prox_unity_plus(self.sed[k], 0)
-            # Initialize multiple components with slightly different SED's
             if self.K>1:
                 epsilon = 1e-1
                 self.sed[k] += np.random.rand(self.sed.shape[1])*epsilon
@@ -337,14 +338,15 @@ class Source(object):
                 self.sed[k] = proxmin.operators.prox_unity_plus(self.sed[k], 0)
 
         cx, cy = self.Nx // 2, self.Ny // 2
-        self.morph = np.zeros((self.K, self.Ny, self.Nx))
         if InitMethod.PEAK in init_method:
+            self.morph = np.zeros((self.K, self.Ny, self.Nx))
             # Turn on a single pixel at the peak
             for k in range(self.K):
                 # Make each component's radius one pixel larger
                 self.morph[k, cy-k:cy+k+1,cx-k:cx+k+1] = img[:,_y-k:_y+k+1,_x-k:_x+k+1].sum(axis=0) + epsilon
             self.morph = self.morph.reshape(self.K, self.Ny*self.Nx)
         else:
+            self.morph = np.zeros((self.K, self.Ny * self.Nx))
             Ny = 2*min(img.shape[1]-_y, _y)-1
             Nx = 2*min(img.shape[2]-_x, _x)-1
             cx, cy = Nx // 2, Ny // 2
