@@ -177,7 +177,7 @@ class Blend(object):
             the internal reference to that list.
         """
         try:
-            self.it
+            self.it += 1
         except AttributeError:
             self.it = 0
             self._model_it = -1
@@ -739,7 +739,5 @@ class Blend(object):
             result = src.remove_degenerate_components(sed_diff)
             removed = removed or result
         if removed:
-            logger.info("Sources before removal: {0}".format(self.K))
             self._register_sources(self.sources)
-            logger.info("Sources after removal: {0}".format(self.K))
         return removed
