@@ -322,18 +322,28 @@ class Source(object):
         # init with SED of the peak pixels
         # TODO: what should we do if peak is saturated?
         B = img.shape[0]
-        self.sed = np.empty((1, B))
+        self.sed = np.empty((self.K, B))
         _y, _x = self.center_int
-        self.sed[0] = img[:,_y,_x]
-        # ensure proper normalization
-        self.sed[0] = proxmin.operators.prox_unity_plus(self.sed[0], 0)
+        _sed = img[:,_y,_x]
+        for k in range(self.K):
+            self.sed[k] = _sed
+            # ensure proper normalization
+            self.sed[k] = proxmin.operators.prox_unity_plus(self.sed[k], 0)
+            # Initialize multiple components with slightly different SED's
+            if self.K>1:
+                epsilon = 1e-1
+                self.sed[k] += np.random.rand(self.sed.shape[1])*epsilon
+                # Normalize again
+                self.sed[k] = proxmin.operators.prox_unity_plus(self.sed[k], 0)
 
         cx, cy = self.Nx // 2, self.Ny // 2
-        self.morph = np.zeros((1, self.Ny*self.Nx))
+        self.morph = np.zeros((self.K, self.Ny, self.Nx))
         if InitMethod.PEAK in init_method:
             # Turn on a single pixel at the peak
-            tiny = 1e-10
-            self.morph[0, cy*self.Nx+cx] = img[:,_y,_x].sum(axis=0) + tiny
+            for k in range(self.K):
+                # Make each component's radius one pixel larger
+                self.morph[k, cy-k:cy+k+1,cx-k:cx+k+1] = img[:,_y-k:_y+k+1,_x-k:_x+k+1].sum(axis=0) + epsilon
+            self.morph = self.morph.reshape(self.K, self.Ny*self.Nx)
         else:
             Ny = 2*min(img.shape[1]-_y, _y)-1
             Nx = 2*min(img.shape[2]-_x, _x)-1
@@ -366,7 +376,19 @@ class Source(object):
             _cy = Ny//2
             morph = morph[cy-_cy:cy+_cy+1, cx-_cx:cx+_cx+1]
             self.resize([Ny, Nx])
-            self.morph = morph.reshape((1, morph.size))
+            for k in range(self.K):
+                _morph = np.zeros_like(morph)
+                if 4*k>Nx:
+                    xrad = Nx//2-1
+                else:
+                    xrad = 2*k
+                if 4*k>Ny:
+                    yrad = Ny//2-1
+                else:
+                    yrad = 2*k
+                _morph[yrad:-yrad, xrad:-xrad] = morph[yrad:-yrad, xrad:-xrad]
+                _morph = _morph.reshape((1,_morph.size))
+                self.morph[k] = _morph+np.random.rand(_morph.shape[0], _morph.shape[1])*np.max(_morph)/10
 
     def get_morph_error(self, weights):
         """Get error in the morphology
@@ -478,11 +500,16 @@ class Source(object):
         if not isinstance(self.constraints, list):
             self.constraints = [self.constraints,] * self.K
 
-        self.proxs_g = [None, []] # no constraints on A matrix
-        self.Ls = [None, []]
+        self.proxs_g_A = [None] * self.K
+        self.proxs_g_S = [[],] * self.K
+        self.LA = [None] * self.K
+        self.LS = [[],] * self.K
+
         if self.constraints is None:
-            self.proxs_g[1] = None
-            self.Ls[1] = None
+            self.proxs_g_A = [None] * self.K
+            self.proxs_g_S = [None] * self.K
+            self.LA = [None] * self.K
+            self.LS = [None] * self.K
             return
 
         self.prox_sed = [proxmin.operators.prox_unity_plus] * self.K
@@ -528,22 +555,22 @@ class Source(object):
                 M = transformations.getRadialMonotonicOp(shape, useNearest=self.constraints[0][c])
                 for k in range(self.K):
                     if c in self.constraints[k].keys():
-                        self.Ls[1].append(M)
-                        self.proxs_g[1].append(proxmin.operators.prox_plus)
+                        self.LS[k].append(M)
+                        self.proxs_g_S[k].append(proxmin.operators.prox_plus)
                     else:
-                        self.Ls[1].append(None)
-                        self.proxs_g[1].append(None)
+                        self.LS[k].append(None)
+                        self.proxs_g_S[k].append(None)
 
             elif c == "S":
                 # zero deviation of mirrored pixels
                 S = transformations.getSymmetryOp(shape)
                 for k in range(self.K):
                     if c in self.constraints[k].keys():
-                        self.Ls[1].append(S)
-                        self.proxs_g[1].append(proxmin.operators.prox_zero)
+                        self.LS[k].append(S)
+                        self.proxs_g_S[k].append(proxmin.operators.prox_zero)
                     else:
-                        self.Ls[1].append(None)
-                        self.proxs_g[1].append(None)
+                        self.LS[k].append(None)
+                        self.proxs_g_S[k].append(None)
 
             elif c == "C":
                 # cone method for monotonicity: exact but VERY slow
@@ -551,34 +578,34 @@ class Source(object):
                 G = transformations.getRadialMonotonicOp(shape, useNearest=useNearest).toarray()
                 for k in range(self.K):
                     if c in self.constraints[k].keys():
-                        self.proxs_g[1].append(partial(operators.prox_cone, G=G))
+                        self.proxs_g_S[k].append(partial(operators.prox_cone, G=G))
                     else:
-                        self.proxs_g[1].append(None)
-                    self.Ls[1].append(None)
+                        self.proxs_g_[k].append(None)
+                    self.LS[k].append(None)
             elif c == "X":
                 # l1 norm on gradient in X for TV_x
                 cx = int(self.Nx)
                 Gx = proxmin.transformations.get_gradient_x(shape, cx)
                 for k in range(self.K):
                     if c in self.constraints[k].keys():
-                        self.Ls[1].append(Gx)
+                        self.LS[k].append(Gx)
                         thresh = self.constraints[k][c]
-                        self.proxs_g[1].append(partial(proxmin.operators.prox_soft, thresh=thresh))
+                        self.proxs_g_S[k].append(partial(proxmin.operators.prox_soft, thresh=thresh))
                     else:
-                        self.Ls[1].append(None)
-                        self.proxs_g[1].append(None)
+                        self.LS[k].append(None)
+                        self.proxs_g_S[k].append(None)
             elif c == "Y":
                 # l1 norm on gradient in Y for TV_y
                 cy = int(self.Ny)
                 Gy = proxmin.transformations.get_gradient_y(shape, cy)
                 for k in range(self.K):
                     if c in self.constraints[k].keys():
-                        self.Ls[1].append(Gy)
+                        self.LS[k].append(Gy)
                         thresh = self.constraints[k][c]
-                        self.proxs_g[1].append(partial(proxmin.operators.prox_soft, thresh=thresh))
+                        self.proxs_g_S[k].append(partial(proxmin.operators.prox_soft, thresh=thresh))
                     else:
-                        self.Ls[1].append(None)
-                        self.proxs_g[1].append(None)
+                        self.LS[k].append(None)
+                        self.proxs_g_S[k].append(None)
 
         # with several projection operators in prox_morph:
         # use AlternatingProjections to link them together
@@ -590,3 +617,71 @@ class Source(object):
                 self.prox_morph[k] = self.prox_morph[k][0]
             else:
                 self.prox_morph[k] = proxmin.operators.AlternatingProjections(self.prox_morph[k], repeat=1)
+
+    def remove_component(self, idx, ref_idx=None):
+        """Remove a component from the Source
+
+        Parameters
+        ----------
+        idx: int
+            Index of the component in the source to remove
+        ref_idx: int, defaul=`None`
+            Index of the primary component that `idx` is degenerate with.
+            If `ref_idx` is not `None`, the morphology of component `int` is
+            added to the morphology of component `ref_idx`.
+
+        Returns
+        -------
+        None
+        """
+        # Add the flux from the degenerate component to the primary component
+        if ref_idx is not None:
+            self.morph[ref_idx] += self.morph[idx]
+        # Delete the degenerate morphology and SED
+        self.morph = np.delete(self.morph, (idx), axis=0)
+        self.sed = np.delete(self.sed, (idx), axis=0)
+        # Clear out all of the parameters for the degenerate component
+        self.K -= 1
+        del self.constraints[idx]
+        del self.prox_morph[idx]
+        del self.proxs_g_A[idx]
+        del self.proxs_g_S[idx]
+        del self.LA[idx]
+        del self.LS[idx]
+        del self.fix_sed[idx]
+        del self.fix_morph[idx]
+
+    def remove_degenerates(self, idx=0):
+        """Remove all degenerate components
+
+        Parameters
+        ----------
+        idx: int, default=0
+            Initial component to begin degenerate search.
+            Because the algorithm removes components from the source
+            list in place, it is easier to make remove_degenerates a
+            recursive function and that is called again after
+            degenerate components have been removed.
+            To save processing time, we being with the next component
+            (`idx`) from the component that just had it's degenerates removed.
+
+        Returns
+        -------
+        result: bool
+            Whether or not any degenerate components were removed
+        """
+        for l in range(idx, self.K-1):
+            degenerates = []
+            for ll in range(l+1,self.K):
+                diff = np.sum((self.sed[l]-self.sed[ll])**2)
+                if diff<1e-5:
+                    degenerates.append(ll)
+            # Remove any degenerates for the current source, then restart
+            if len(degenerates) > 0:
+                for degenerate_idx in degenerates:
+                    self.remove_component(degenerate_idx, l)
+                logger.warn("Removed degenerate components {0} from source at {1}".format(
+                    degenerates, self.center))
+                self.remove_degenerates(l+1)
+                return True
+        return False

@@ -123,7 +123,15 @@ class Blend(object):
         See Algorithm 3, line 12 in Moolekamp and Melchior 2017
         (https://arxiv.org/pdf/1708.09066.pdf) for more.
         """
-        return [source.proxs_g[0] for source in self.sources] + [source.proxs_g[1] for source in self.sources]
+        proxs_g_A = [None] * self.K
+        proxs_g_S = [None] * self.K
+        for k in range(self.K):
+            m,l = self.source_of(k)
+            if self.sources[m].proxs_g_A is not None:
+                proxs_g_A[k] = self.sources[m].proxs_g_A[l]
+            if self.sources[m].proxs_g_S is not None:
+                proxs_g_S[k] = self.sources[m].proxs_g_S[l]
+        return proxs_g_A + proxs_g_S
 
     @property
     def _Ls(self):
@@ -132,7 +140,15 @@ class Blend(object):
         See section 2.3 in Moolekamp and Melchior 2017
         (https://arxiv.org/pdf/1708.09066.pdf) for details.
         """
-        return [source.Ls[0] for source in self.sources] + [source.Ls[1] for source in self.sources]
+        LA = [None] * self.K
+        LS = [None] * self.K
+        for k in range(self.K):
+            m,l = self.source_of(k)
+            if self.sources[m].LA is not None:
+                LA[k] = self.sources[m].LA[l]
+            if self.sources[m].LS is not None:
+                LS[k] = self.sources[m].LS[l]
+        return LA + LS
 
     def fit(self, steps=200, e_rel=None, max_iter=None):
         """Fit the model for each source to the data
