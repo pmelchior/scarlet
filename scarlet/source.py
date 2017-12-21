@@ -653,11 +653,14 @@ class Source(object):
         del self.fix_sed[idx]
         del self.fix_morph[idx]
 
-    def remove_degenerates(self, idx=0):
+    def remove_degenerate_components(self, sed_diff=1e-5, idx=0):
         """Remove all degenerate components
 
         Parameters
         ----------
+        sed_diff: float, default=1e-5
+            Maximum difference between component SED's to consider
+            them degenerate.
         idx: int, default=0
             Initial component to begin degenerate search.
             Because the algorithm removes components from the source
@@ -676,7 +679,7 @@ class Source(object):
             degenerates = []
             for ll in range(l+1,self.K):
                 diff = np.sum((self.sed[l]-self.sed[ll])**2)
-                if diff<1e-5:
+                if diff<sed_diff:
                     degenerates.append(ll)
             # Remove any degenerates for the current source, then restart
             if len(degenerates) > 0:
@@ -684,6 +687,6 @@ class Source(object):
                     self.remove_component(degenerate_idx, l)
                 logger.warn("Removed degenerate components {0} from source at {1}".format(
                     degenerates, self.center))
-                self.remove_degenerates(l+1)
+                self.remove_degenerate_components(sed_diff, l+1)
                 return True
         return False

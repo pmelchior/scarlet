@@ -698,9 +698,8 @@ class Blend(object):
     def _absolute_morph_error(self):
         """Get the absolute morphology error
         """
-        m = 0 # needed otherwise python 2 complains about "local variable 'm' referenced before assignment"
         return [self.e_rel * self.sources[m].morph[l].mean()
-                for l in range(self.sources[m].K) for m in range(self.M)]
+                for m in range(self.M) for l in range(self.sources[m].K)]
 
     def _set_error_limits(self):
         """Set the error limits for each source
@@ -714,3 +713,33 @@ class Blend(object):
         """Adjust the absolute error for each source
         """
         self._e_abs[self.K:] = self._absolute_morph_error()
+
+    def remove_degenerate_components(self, sed_diff=1e-5):
+        """Remove degenerate components of individual sources
+
+        This method does _not_ check for degenerate sources but components
+        in a single source whose SED's are similar enough to consider them
+        a single component.
+        This is useful to run after 10-20 iterations to remove second
+        components for stars and faint galaxies.
+
+        Parameters
+        ----------
+        sed_diff: float, default=1e-5
+            Maximum difference between component SED's to consider
+            them degenerate.
+
+        Returns
+        -------
+        removed: bool
+            Whether or not any components were removed
+        """
+        removed = False
+        for m, src in enumerate(self.sources):
+            result = src.remove_degenerate_components(sed_diff)
+            removed = removed or result
+        if removed:
+            logger.info("Sources before removal: {0}".format(self.K))
+            self._register_sources(self.sources)
+            logger.info("Sources after removal: {0}".format(self.K))
+        return removed
