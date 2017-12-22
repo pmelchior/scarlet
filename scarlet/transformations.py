@@ -259,7 +259,7 @@ def diagonalsToSparse(diagonals, shape, dtype=np.float64):
     diagonalArr = scipy.sparse.diags(diags, offsets, dtype=dtype)
     return diagonalArr
 
-def getRadialMonotonicOp(shape, useNearest=True, minGradient=1):
+def getRadialMonotonicOp(shape, useNearest=True, minGradient=1, subtract=True):
     """Create an operator to constrain radial monotonicity
 
     This version of the radial monotonicity operator selects all of the pixels closer to the peak
@@ -334,7 +334,10 @@ def getRadialMonotonicOp(shape, useNearest=True, minGradient=1):
     # The identity with the peak pixel removed represents the reference pixels
     diagonal = np.ones(size)
     diagonal[px+py*shape[1]] = -1
-    monotonic = cosArr-scipy.sparse.diags(diagonal, offsets=0)
+    if subtract:
+        monotonic = cosArr-scipy.sparse.diags(diagonal, offsets=0)
+    else:
+        monotonic = cosArr
 
     return monotonic.tocoo()
 

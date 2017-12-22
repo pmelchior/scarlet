@@ -548,8 +548,10 @@ class Source(object):
             elif c == "m":
                 for k in range(self.K):
                     if c in self.constraints[k].keys():
-                        thresh = self.constraints[k][c]
-                        self.prox_morph[k].append(operators.prox_strict_monotonic(shape, thresh=thresh))
+                        kwargs = {}
+                        if self.constraints[k][c] is not None:
+                            kwargs.update(self.constraints[k][c])
+                        self.prox_morph[k].append(operators.prox_strict_monotonic(shape, **kwargs))
 
             elif c == "M":
                 # positive gradients

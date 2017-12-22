@@ -14,7 +14,7 @@ def _prox_strict_monotonic(X, step, ref_idx, dist_idx, thresh=0):
     operators_pybind11.prox_monotonic(X, step, ref_idx, dist_idx, thresh)
     return X
 
-def prox_strict_monotonic(shape, thresh=0):
+def prox_strict_monotonic(shape, thresh=0, use_nearest=True):
     """Build the prox_monotonic operator
     """
     from scipy import sparse
@@ -23,7 +23,7 @@ def prox_strict_monotonic(shape, thresh=0):
     if not shape[0] % 2 or not shape[1] % 2:
         err = "Shape must have an odd width and height, received shape {0}".format(shape)
         raise ValueError(err)
-    monotonicOp = transformations.getRadialMonotonicOp(shape)
+    monotonicOp = transformations.getRadialMonotonicOp(shape, useNearest=use_nearest, subtract=use_nearest)
     xIdx, refIdx = sparse.find(monotonicOp==1)[:2]
     refIdx = refIdx[np.argsort(xIdx)]
     # Get the center pixels
@@ -38,7 +38,17 @@ def prox_strict_monotonic(shape, thresh=0):
     distance = np.sqrt(X**2+Y**2)
     # Get the indices of the pixels sorted by distance from the peak
     didx = np.argsort(distance.flatten())
-    return partial(_prox_strict_monotonic, ref_idx=refIdx.tolist(), dist_idx=didx.tolist(), thresh=thresh)
+    if use_nearest:
+        result = partial(_prox_strict_monotonic, ref_idx=refIdx.tolist(),
+                         dist_idx=didx.tolist(), thresh=thresh)
+    else:
+        def _prox_weighted_monotonic(X, step, M):
+            for n in didx[1:]:
+                weight = M.getrow(n)
+                X[n] = np.min([X[n], weight*X])
+            return X
+        result = partial(_prox_weighted_monotonic, M=monotonicOp)
+    return result
 
 def prox_cone(X, step, G=None):
     """Exact projection of components of X onto cone defined by Gx >= 0"""
