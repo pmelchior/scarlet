@@ -14,18 +14,28 @@ def _prox_strict_monotonic(X, step, ref_idx, dist_idx, thresh=0):
     operators_pybind11.prox_monotonic(X, step, ref_idx, dist_idx, thresh)
     return X
 
-def prox_strict_monotonic(shape, thresh=0, use_nearest=True):
-    """Build the prox_monotonic operator
-    """
-    from scipy import sparse
-    from . import transformations
+def sort_by_radius(shape):
+    """Sort indices distance from the center
 
-    if not shape[0] % 2 or not shape[1] % 2:
-        err = "Shape must have an odd width and height, received shape {0}".format(shape)
-        raise ValueError(err)
-    monotonicOp = transformations.getRadialMonotonicOp(shape, useNearest=use_nearest, subtract=use_nearest)
-    xIdx, refIdx = sparse.find(monotonicOp==1)[:2]
-    refIdx = refIdx[np.argsort(xIdx)]
+    Given a shape, calculate the distance of each
+    pixel from the center and return the indices
+    of each pixel, sorted by radial distance from
+    the center.
+
+    Parameters
+    ----------
+    shape: tuple
+        Shape (y,x) of the source frame.
+
+    Returns
+    -------
+    didx: `~numpy.array`
+        Indices of elements in an image with shape `shape`,
+        sorted by distance from the center.
+    ref_idx: `~numpy.array`
+        Indices of the element in the image closest to the
+        center for each pixel in didx.
+    """
     # Get the center pixels
     cx = (shape[1]-1) >> 1
     cy = (shape[0]-1) >> 1
@@ -38,16 +48,41 @@ def prox_strict_monotonic(shape, thresh=0, use_nearest=True):
     distance = np.sqrt(X**2+Y**2)
     # Get the indices of the pixels sorted by distance from the peak
     didx = np.argsort(distance.flatten())
+    return didx
+
+def prox_strict_monotonic(shape, use_nearest=False, thresh=0):
+    """Build the prox_monotonic operator
+    """
+    from . import transformations
+
+    height, width = shape
+    if not height % 2 or not width % 2:
+        err = "Shape must have an odd width and height, received shape {0}".format(shape)
+        raise ValueError(err)
+    didx = sort_by_radius(shape)
+
     if use_nearest:
-        result = partial(_prox_strict_monotonic, ref_idx=refIdx.tolist(),
+        from scipy import sparse
+        monotonicOp = transformations.getRadialMonotonicOp(shape, useNearest=True)
+        x_idx, ref_idx = sparse.find(monotonicOp==1)[:2]
+        ref_idx = ref_idx[np.argsort(x_idx)]
+        result = partial(_prox_strict_monotonic, ref_idx=ref_idx.tolist(),
                          dist_idx=didx.tolist(), thresh=thresh)
     else:
-        def _prox_weighted_monotonic(X, step, M):
-            for n in didx[1:]:
-                weight = M.getrow(n)
-                X[n] = np.min([X[n], weight*X])
+        coords = [(-1,-1), (-1,0), (-1, 1), (0,-1), (0,1), (1, -1), (1,0), (1,1)]
+        offsets = np.array([width*y+x for y,x in coords])
+        weights = transformations.getRadialMonotonicWeights(shape, useNearest=False)
+        def prox_monotonic(X, step, weights, offsets, didx):
+            for idx in didx[1:]:
+                ref_flux = 0
+                for w in range(len(weights[:,idx])):
+                    weight = weights[:,idx][w]
+                    if weight>0:
+                        nidx = offsets[w] + idx
+                        ref_flux += X[nidx] * weight
+                X[idx] = np.min([X[idx], ref_flux])
             return X
-        result = partial(_prox_weighted_monotonic, M=monotonicOp)
+        result = partial(prox_monotonic, weights=weights, didx=didx, offsets=offsets)
     return result
 
 def prox_cone(X, step, G=None):

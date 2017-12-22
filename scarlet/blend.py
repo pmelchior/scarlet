@@ -261,7 +261,8 @@ class Blend(object):
         """Initialize the model for each source.
         """
         for m in range(self.M):
-            self.sources[m].init_source(self._img, weights=self._weights, init_method=init_method)
+            self.sources[m].init_source(self._img, bg_rms=self._bg_rms,
+                                        weights=self._weights, init_method=init_method)
 
     def get_model(self, m=None, combine=True, combine_source_components=True, use_sed=True):
         """Compute the current model for the entire image.

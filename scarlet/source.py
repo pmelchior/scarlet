@@ -298,7 +298,7 @@ class Source(object):
             # set constraints
             self.set_constraints(self.constraints)
 
-    def init_source(self, img, weights=None, init_method=InitMethod.MONOSYM):
+    def init_source(self, img, bg_rms, weights=None, init_method=InitMethod.MONOSYM):
         """Initialize the source
 
         Parameters
@@ -332,7 +332,7 @@ class Source(object):
             # ensure proper normalization
             self.sed[k] = proxmin.operators.prox_unity_plus(self.sed[k], 0)
             if self.K>1:
-                epsilon = 1e-1
+                epsilon = 1e-2
                 self.sed[k] += np.random.rand(self.sed.shape[1])*epsilon
                 # Normalize again
                 self.sed[k] = proxmin.operators.prox_unity_plus(self.sed[k], 0)
@@ -365,11 +365,11 @@ class Source(object):
             #if InitMethod.MONOTONIC in init_method:
             if InitMethod.MONOTONIC & init_method:
                 # Make the model monotonic
-                prox_monotonic = operators.prox_strict_monotonic((Ny, Nx), thresh=0)
+                prox_monotonic = operators.prox_strict_monotonic((Ny, Nx), thresh=0, use_nearest=True)
                 morph = prox_monotonic(morph.reshape(morph.size,), 0)
             # Trim the source to set the new size
             morph = morph.reshape(Ny,Nx)
-            ypix, xpix = np.where(morph>0)
+            ypix, xpix = np.where(morph>bg_rms[band]/2)
             Ny = np.max(ypix)-np.min(ypix)
             Nx = np.max(xpix)-np.min(xpix)
             Ny += 1 - Ny % 2
@@ -388,9 +388,9 @@ class Source(object):
                     yrad = Ny//2-1
                 else:
                     yrad = 2*k
-                _morph[yrad:-yrad, xrad:-xrad] = morph[yrad:-yrad, xrad:-xrad]
+                _morph[yrad:Ny-yrad, xrad:Nx-xrad] = morph[yrad:Ny-yrad, xrad:Nx-xrad]
                 _morph = _morph.reshape((1,_morph.size))
-                self.morph[k] = _morph+np.random.rand(_morph.shape[0], _morph.shape[1])*np.max(_morph)/10
+                self.morph[k] = _morph+np.random.rand(_morph.shape[0], _morph.shape[1])*np.max(_morph)/100
 
     def get_morph_error(self, weights):
         """Get error in the morphology
