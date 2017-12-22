@@ -617,7 +617,7 @@ class Blend(object):
         if (np.any(center_x<1) or center_x[1]>width-1 or np.any(center_y<1) or center_y[0]>height-1):
             logger.warning("Source {0} shifted too far, recentering and reinitializing".format(m))
             source.set_center(source._init_center)
-            source.init_source(self._img)
+            source.init_source(self._img, self._bg_rms)
             raise ScarletRestartException
         #TODO: Implement bounding check on the source
 

@@ -14,6 +14,11 @@ def _prox_strict_monotonic(X, step, ref_idx, dist_idx, thresh=0):
     operators_pybind11.prox_monotonic(X, step, ref_idx, dist_idx, thresh)
     return X
 
+def _prox_weighted_monotonic(X, step, weights, didx, offsets):
+    from . import operators_pybind11
+    operators_pybind11.prox_weighted_monotonic(X, step, weights, offsets, didx)
+    return X
+
 def sort_by_radius(shape):
     """Sort indices distance from the center
 
@@ -72,17 +77,18 @@ def prox_strict_monotonic(shape, use_nearest=False, thresh=0):
         coords = [(-1,-1), (-1,0), (-1, 1), (0,-1), (0,1), (1, -1), (1,0), (1,1)]
         offsets = np.array([width*y+x for y,x in coords])
         weights = transformations.getRadialMonotonicWeights(shape, useNearest=False)
-        def prox_monotonic(X, step, weights, offsets, didx):
+        def _prox_monotonic(X, step, weights, offsets, didx):
             for idx in didx[1:]:
                 ref_flux = 0
                 for w in range(len(weights[:,idx])):
-                    weight = weights[:,idx][w]
+                    weight = weights[w,idx]
                     if weight>0:
                         nidx = offsets[w] + idx
                         ref_flux += X[nidx] * weight
                 X[idx] = np.min([X[idx], ref_flux])
             return X
-        result = partial(prox_monotonic, weights=weights, didx=didx, offsets=offsets)
+        #result = partial(_prox_monotonic, weights=weights, didx=didx, offsets=offsets)
+        result = partial(_prox_weighted_monotonic, weights=weights, didx=didx[1:], offsets=offsets)
     return result
 
 def prox_cone(X, step, G=None):

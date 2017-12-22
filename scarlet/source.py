@@ -365,11 +365,13 @@ class Source(object):
             #if InitMethod.MONOTONIC in init_method:
             if InitMethod.MONOTONIC & init_method:
                 # Make the model monotonic
-                prox_monotonic = operators.prox_strict_monotonic((Ny, Nx), thresh=0, use_nearest=True)
+                prox_monotonic = operators.prox_strict_monotonic((Ny, Nx), thresh=0, use_nearest=False)
                 morph = prox_monotonic(morph.reshape(morph.size,), 0)
             # Trim the source to set the new size
             morph = morph.reshape(Ny,Nx)
             ypix, xpix = np.where(morph>bg_rms[band]/2)
+            if len(ypix)==0:
+                ypix, xpix = np.where(morph>0)
             Ny = np.max(ypix)-np.min(ypix)
             Nx = np.max(xpix)-np.min(xpix)
             Ny += 1 - Ny % 2
