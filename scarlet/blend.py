@@ -81,7 +81,6 @@ class Blend(object):
         self.set_data(img, weights=weights, sky=sky, bg_rms=bg_rms)
 
         if init_method is not None:
-            assert isinstance(init_method, InitMethod)
             self.init_sources(init_method)
 
     def source_of(self, k):

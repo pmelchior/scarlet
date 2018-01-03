@@ -1,7 +1,6 @@
 from __future__ import print_function, division
 import numpy as np
 from functools import partial
-from enum import IntFlag
 
 import proxmin
 from . import transformations
@@ -21,7 +20,7 @@ try:
         MONOSYM = 6 # Use a monotonic and symmetric template
 # Until then use a python 2 version
 except ImportError:
-    class InitMethod:
+    class InitMethod(object):
         """Mock Enum
         """
         PEAK = 1 # Use the value at the peak
@@ -338,7 +337,8 @@ class Source(object):
                 self.sed[k] = proxmin.operators.prox_unity_plus(self.sed[k], 0)
 
         cx, cy = self.Nx // 2, self.Ny // 2
-        if InitMethod.PEAK in init_method:
+        # For now, use a python 2 compatible version of an Enum
+        if InitMethod.PEAK & init_method:
             self.morph = np.zeros((self.K, self.Ny, self.Nx))
             # Turn on a single pixel at the peak
             for k in range(self.K):
