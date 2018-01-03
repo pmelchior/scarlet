@@ -599,12 +599,12 @@ class Blend(object):
         source = self.sources[m]
         slice_m = source.get_slice_for(self._img.shape)
         k = self.component_of(m, 0)
-        model_m = self._models[k][self.sources[m].bb].copy()
+        model_m = self._models[k][self.sources[m].bb].copy() * source.sed[0][:,None,None]
         # in self._models, per-source components aren't combined,
         # need to combine here
         for l in range(1,source.K):
             k = self.component_of(m,l)
-            model_m += self._models[k][self.sources[m].bb]
+            model_m += self._models[k][self.sources[m].bb] * source.sed[l][:,None,None]
 
         # get Gamma matrices of source m with additional shift
         offset = source.shift_center
