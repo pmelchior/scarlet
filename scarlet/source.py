@@ -353,7 +353,7 @@ class Source(object):
             morph = np.zeros((Ny,Nx))
             # use the band with maximum flux for the source
             band = np.argmax(self.sed[0])
-            morph[:] = img[band,_y-cy:_y+cy+1,_x-cx:_x+cx+1]
+            morph[:] = img[band,_y-cy:_y+cy+1,_x-cx:_x+cx+1]/self.sed[0,band]
             morph = morph.reshape((morph.size,))
             morph[morph<0] = 0
             # For now, use a python 2 compatible version of an Enum
