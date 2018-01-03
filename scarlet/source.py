@@ -326,12 +326,12 @@ class Source(object):
         self.sed = np.empty((self.K, B))
         _y, _x = self.center_int
         _sed = img[:,_y,_x]
+        epsilon = 1e-2
         for k in range(self.K):
             self.sed[k] = _sed
             # ensure proper normalization
             self.sed[k] = proxmin.operators.prox_unity_plus(self.sed[k], 0)
             if self.K>1:
-                epsilon = 1e-2
                 self.sed[k] += np.random.rand(self.sed.shape[1])*epsilon
                 # Normalize again
                 self.sed[k] = proxmin.operators.prox_unity_plus(self.sed[k], 0)
