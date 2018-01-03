@@ -263,7 +263,7 @@ class Blend(object):
             self.sources[m].init_source(self._img, bg_rms=self._bg_rms,
                                         weights=self._weights, init_method=init_method)
 
-    def get_model(self, m=None, combine=True, combine_source_components=True, use_sed=True):
+    def get_model(self, m=None, combine=True, combine_source_components=True, use_sed=True, flat=True):
         """Compute the current model for the entire image.
         """
         if m is not None:
@@ -290,7 +290,11 @@ class Blend(object):
         else:
             models = [self.get_model(m=m, combine_source_components=combine_source_components,
                                      use_sed=use_sed) for m in range(self.M)]
-            return np.vstack(models)
+            if flat:
+                models = np.vstack(models)
+            else:
+                models = np.array(models)
+            return models
 
     def _register_sources(self, sources):
         """Unpack the components to register them as individual sources.
