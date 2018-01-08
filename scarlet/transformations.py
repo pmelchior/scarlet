@@ -55,7 +55,7 @@ class GammaOp():
             Sparse arrays that contain the diagonal components of the Tx, Ty matrices
         tx_plus, ty_plus: `~scipy.sparse` array
             Sparse arrays that contain the off diagonal components of the Tx, Ty matrices.
-        
+
         """
         self.B, height, width = shape
         tx = scipy.sparse.diags([1.], offsets=[offset_int[1]], shape=(width, width))
@@ -129,7 +129,7 @@ class GammaOp():
     def _adapt_PSF(self, shape):
         """Create multiband PSF operator (if necessary)
 
-        `~scipy.sparse` only works for 2D matrices. Since we have a 
+        `~scipy.sparse` only works for 2D matrices. Since we have a
         3rd dimension, the band, we need an adapter to keep track of the
         PSF operator in different bands.
 
