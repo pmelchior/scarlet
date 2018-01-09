@@ -4,8 +4,6 @@ from functools import partial
 
 import proxmin
 
-from .source import InitMethod
-
 import logging
 logger = logging.getLogger("scarlet.blend")
 
@@ -17,7 +15,6 @@ class Blend(object):
     """The blended scene as interpreted by the deblender.
     """
     def __init__(self, sources, img, weights=None, sky=None, bg_rms=None,
-                 init_method=InitMethod.MONOSYM,
                  refine_skip=10, center_min_dist=1e-3, edge_flux_thresh=1.,
                  exact_lipschitz=False, e_rel=1e-2):
         """Constructor
@@ -45,9 +42,6 @@ class Blend(object):
             should be `None`.
         bg_rms: array-like, default=`None`
             Array of length `Bands` that contains the sky background RMS in the image for each band
-        init_method: InitMethods or None, default=`InitMethods.MONOSYM`
-            Method to use for initialization. If `init_method` is `None` then
-            the sources are not initialized.
         refine_skip: int, default=10
             How many iterations to skip before refining box sizes/positions
         center_min_dist: float, default=1e-3
@@ -79,9 +73,7 @@ class Blend(object):
 
         # set up data structures
         self.set_data(img, weights=weights, sky=sky, bg_rms=bg_rms)
-
-        if init_method is not None:
-            self.init_sources(init_method)
+        self.init_sources()
 
     def source_of(self, k):
         """Get the indices of model component k.
@@ -256,12 +248,11 @@ class Blend(object):
             self._bg_rms = np.array(bg_rms)
         self._set_weights(weights)
 
-    def init_sources(self, init_method):
+    def init_sources(self):
         """Initialize the model for each source.
         """
         for m in range(self.M):
-            self.sources[m].init_source(self._img, bg_rms=self._bg_rms,
-                                        weights=self._weights, init_method=init_method)
+            self.sources[m].init_source(self, self._img)
 
     def get_model(self, m=None, combine=True, combine_source_components=True, use_sed=True, flat=True):
         """Compute the current model for the entire image.
@@ -620,7 +611,7 @@ class Blend(object):
         if (np.any(center_x<1) or center_x[1]>width-1 or np.any(center_y<1) or center_y[0]>height-1):
             logger.warning("Source {0} shifted too far, recentering and reinitializing".format(m))
             source.set_center(source._init_center)
-            source.init_source(self._img, self._bg_rms)
+            source.init_source(self, self._img)
             raise ScarletRestartException
         #TODO: Implement bounding check on the source
 
@@ -672,7 +663,7 @@ class Blend(object):
         for m in range(self.M):
             if not self.sources[m].fix_frame:
                 size = [self.sources[m].Ny, self.sources[m].Nx]
-                increase = [max(int(0.25*s), 10) for s in size]
+                increase = [max(0.25*s, 10) for s in size]
 
                 # check if max flux along edge in band b < avg noise level along edge in b
                 at_edge = (self._edge_flux[m] > self._bg_rms*self.edge_flux_thresh)
