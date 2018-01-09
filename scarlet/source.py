@@ -113,13 +113,14 @@ def init_templates(source, blend, img, symmetric=True, monotonic=True):
     None.
     But `source.sed` and `source.morph` are set.
     """
+    assert source.K==1
     B = img.shape[0]
     source.sed[0] = get_peak_sed(img, source.center_int)
     _y, _x = source.center_int
     Ny = 2*min(img.shape[1]-_y, _y)-1
     Nx = 2*min(img.shape[2]-_x, _x)-1
 
-    # The source is on the edge, so extend the image with its reflection
+    # If the source is on the edge, extend the image with its reflection
     # to model the hidden portion in x and/or y
     if Ny<=1:
         _Ny = img.shape[1]
@@ -169,6 +170,121 @@ def init_templates(source, blend, img, symmetric=True, monotonic=True):
     morph = morph[cy-_cy:cy+_cy+1, cx-_cx:cx+_cx+1]
     source.resize([Ny, Nx])
     source.morph[0] = morph.reshape((1,morph.size))
+
+def init_bulge_disk(source, blend, img, symmetric=True, monotonic=True, color_offset=0.02,
+                    disk_ratio=0.5):
+    """Initialize a Bulge-Disk Model
+
+    Parameters
+    ----------
+    source: `~scarlet.source.Source`
+        `Source` to initialize.
+    blend: `~scarlet.blend.Blend`
+        `Blend` that contains the source.
+        This may be necessary for some initialization functions to access parameters
+        inside the `Blend` class.
+    img: `~numpy.array`
+        (Bands, Height, Width) data array that contains a 2D image for each band
+    symmetric: bool, default=`True`
+        Whether or not to make the components symmetric
+    monotonic: bool, default=`True`
+        Whether to make the components monotonically decreasing from the center
+    color_offset: float, default=`0.1`
+        The disk is made bluer by subtracting a line from the initial SED,
+        where the bluest SED is increased by `disk_offset` and the reddest
+        SED in decreased by `disk_offset`.
+    disk_ratio: float, default=`0.5`
+        Ratio of the bulge size over the disk size, so a `disk_ratio` of 0.5 (default)
+        means the disk is twice the size of the bulge.
+
+    This implementation initializes the sed from the pixel in
+    the center of the frame and sets morphology to a template that might be
+    symmetric and/or monotonic, depending on the parameters passed to the method.
+
+    Returns
+    -------
+    None.
+    But `source.sed` and `source.morph` are set.
+    """
+    assert source.K==2
+    B = img.shape[0]
+    _y, _x = source.center_int
+    Ny = 2*min(img.shape[1]-_y, _y)-1
+    Nx = 2*min(img.shape[2]-_x, _x)-1
+
+    # Initialize the bulge SED
+    source.sed[0] = get_peak_sed(img, source.center_int)
+    # Make the disk bluer
+    disk_sed = np.linspace(-color_offset, color_offset, len(source.sed[0]))
+    disk_sed = source.sed[0]-disk_sed
+    source.sed[1] = proxmin.operators.prox_unity_plus(disk_sed, 0)
+
+    # If the source is on the edge, extend the image with its reflection
+    # to model the hidden portion in x and/or y
+    if Ny<=1:
+        _Ny = img.shape[1]
+        Ny = 2*img.shape[1]-1
+        _img = np.zeros((img.shape[0], Ny, img.shape[2]))
+        _img[:,:_Ny-1] = np.fliplr(img[:,1:])
+        _img[:,_Ny-1:] = img[:]
+        _y = _Ny - 1
+    else:
+        _img = img.copy()
+    if Nx<=1:
+        _Nx = img.shape[2]
+        Nx = 2*img.shape[2]-1
+        __img = _img.copy()
+        _img = np.zeros((_img.shape[0], _img.shape[1], Nx))
+        _img[:,:,:_Nx-1] = np.fliplr(__img[:,:,1:])
+        _img[:,:,_Nx-1:] = __img
+        _x = _Nx - 1
+    cx, cy = Nx // 2, Ny // 2
+
+    morph = np.zeros((Ny,Nx))
+    # use the band with maximum flux for the source
+    band = np.argmax(_img[:,_y,_x])
+    morph[:] = _img[band,_y-cy:_y+cy+1,_x-cx:_x+cx+1]/source.sed[0,band]
+    morph = morph.reshape((morph.size,))
+    morph[morph<0] = 0
+    # Apply the appropriate constraints
+    if symmetric:
+        # Make the model symmetric
+        symmetric = morph[::-1]
+        morph = np.min([morph, symmetric], axis=0)
+    if monotonic:
+        # Make the model monotonic
+        prox_monotonic = operators.prox_strict_monotonic((Ny, Nx), thresh=0, use_nearest=False)
+        morph = prox_monotonic(morph.reshape(morph.size,), 0)
+    # Trim the source to set the new size
+    morph = morph.reshape(Ny,Nx)
+    ypix, xpix = np.where(morph>blend._bg_rms[band]/2)
+    if len(ypix)==0:
+        ypix, xpix = np.where(morph>0)
+    Ny = np.max(ypix)-np.min(ypix)
+    Nx = np.max(xpix)-np.min(xpix)
+    Ny += 1 - Ny % 2
+    Nx += 1 - Nx % 2
+    _cx = Nx//2
+    _cy = Ny//2
+    morph = morph[cy-_cy:cy+_cy+1, cx-_cx:cx+_cx+1]
+    source.resize([Ny, Nx])
+    # Make the bulge size smaller
+    # TODO: improve this algorithm
+    x = np.arange(Nx)
+    y = np.arange(Ny)
+    X,Y = np.meshgrid(x,y)
+    X = X - _cx
+    Y = Y - _cy
+    distance = np.sqrt(X**2+Y**2)
+    _morph = np.zeros_like(morph)
+    cut = distance<min(Ny*disk_ratio/2,Nx*disk_ratio/2)
+    _morph[cut] = morph[cut]*2/3
+    source.morph[0] = _morph.reshape((1,_morph.size))
+    _morph = morph-_morph
+    if monotonic:
+        prox_monotonic = operators.prox_strict_monotonic((Ny, Nx), thresh=0, use_nearest=False)
+        _morph = prox_monotonic(_morph.reshape(_morph.size,), 0)
+    source.morph[1] = _morph.reshape((1,_morph.size))
 
 class Source(object):
     """A single source in a blend
