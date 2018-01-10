@@ -9,30 +9,288 @@ from . import operators
 import logging
 logger = logging.getLogger("scarlet.source")
 
-# When we drop python2 support we can use the following code
-try:
-    from enum import IntFlag
+def get_peak_sed(img, center=None, epsilon=0):
+    """Get the SED at position `center` in `img`
+    
+    Parameters
+    ----------
+    img: `~numpy.array`
+        (Bands, Height, Width) data array that contains a 2D image for each band
+    center: array-like
+        (y,x) coordinates of the source in the larger image
+    epsilon: float
+        Random offset to add to the sed (may be useful with multiple components)
 
-    class InitMethod(IntFlag):
-        PEAK = 1 # Use the value at the peak
-        SYMMETRIC = 2 # Use a symmetric template
-        MONOTONIC = 4 # Use a monotonic template
-        MONOSYM = 6 # Use a monotonic and symmetric template
-# Until then use a python 2 version
-except ImportError:
-    class InitMethod(object):
-        """Mock Enum
-        """
-        PEAK = 1 # Use the value at the peak
-        SYMMETRIC = 2 # Use a symmetric template
-        MONOTONIC = 4 # Use a monotonic template
-        MONOSYM = 6 # Use a monotonic and symmetric template
+    Returns
+    -------
+    SED: `~numpy.array`
+        SED for a single source
+    """
+    _y, _x = center
+    sed = np.zeros((img.shape[0],))
+    sed[:] = img[:,_y,_x]
+    # ensure proper normalization
+    sed = proxmin.operators.prox_unity_plus(sed, 0)
+    if epsilon>0:
+        sed += np.random.rand(len(sed))*epsilon
+        # Normalize again
+        sed = proxmin.operators.prox_unity_plus(sed, 0)
+    return sed
+
+def get_integrated_sed(img):
+    """Calculated the SED by summing the flux in the image in each band
+    """
+    pass
+
+def init_peak(source, blend, img, epsilon=0):
+    """Initialize the source using only the peak pixel
+
+    Parameters
+    ----------
+    source: `~scarlet.source.Source`
+        `Source` to initialize.
+    blend: `~scarlet.blend.Blend`
+        `Blend` that contains the source.
+        This may be necessary for some initialization functions to access parameters
+        inside the `Blend` class.
+    img: `~numpy.array`
+        (Bands, Height, Width) data array that contains a 2D image for each band
+    epsilon: float
+        Random offset to add to the sed (may be useful with multiple components)
+
+    This implementation initializes the sed from the pixel in
+    the center of the frame and sets morphology to only comprise that pixel,
+    which works well for point sources and poorly resolved galaxies.
+
+    Returns
+    -------
+    None.
+    But `source.sed` and `source.morph` are set.
+    """
+    # init with SED of the peak pixels
+    # TODO: what should we do if peak is saturated?
+    B = img.shape[0]
+    cx, cy = source.Nx // 2, source.Ny // 2
+    _y, _x = source.center_int
+    for k in range(source.K):
+        source.sed[k] = get_peak_sed(img, source.center_int, epsilon)
+    # For now, use a python 2 compatible version of an Enum
+    source.morph = np.zeros((source.K, source.Ny, source.Nx))
+    # Turn on a single pixel at the peak
+    for k in range(source.K):
+        # Make each component's radius one pixel larger
+        ymin = max(0, cy-k)
+        ymax = min(source.Ny, cy+k+1)
+        xmin = max(0, cx-k)
+        xmax = min(source.Nx, cx+k+1)
+        _ymin = max(0, _y-k)
+        _ymax = min(source.Ny, _y+k+1)
+        _xmin = max(0,_x-k)
+        _xmax = min(source.Nx, _x+k+1)
+        source.morph[k, ymin:ymax, xmin:xmax] = img[:,_ymin:_ymax,_xmin:_xmax].sum(axis=0)
+    source.morph = source.morph.reshape(source.K, source.Ny*source.Nx)
+
+def init_templates(source, blend, img, symmetric=True, monotonic=True):
+    """Initialize a single component template
+
+    Parameters
+    ----------
+    source: `~scarlet.source.Source`
+        `Source` to initialize.
+    blend: `~scarlet.blend.Blend`
+        `Blend` that contains the source.
+        This may be necessary for some initialization functions to access parameters
+        inside the `Blend` class.
+    img: `~numpy.array`
+        (Bands, Height, Width) data array that contains a 2D image for each band
+
+    This implementation initializes the sed from the pixel in
+    the center of the frame and sets morphology to a template that might be
+    symmetric and/or monotonic, depending on the parameters passed to the method.
+
+    Returns
+    -------
+    None.
+    But `source.sed` and `source.morph` are set.
+    """
+    assert source.K==1
+    B = img.shape[0]
+    source.sed[0] = get_peak_sed(img, source.center_int)
+    _y, _x = source.center_int
+    Ny = 2*min(img.shape[1]-_y, _y)-1
+    Nx = 2*min(img.shape[2]-_x, _x)-1
+
+    # If the source is on the edge, extend the image with its reflection
+    # to model the hidden portion in x and/or y
+    if Ny<=1:
+        _Ny = img.shape[1]
+        Ny = 2*img.shape[1]-1
+        _img = np.zeros((img.shape[0], Ny, img.shape[2]))
+        _img[:,:_Ny-1] = np.fliplr(img[:,1:])
+        _img[:,_Ny-1:] = img[:]
+        _y = _Ny - 1
+    else:
+        _img = img.copy()
+    if Nx<=1:
+        _Nx = img.shape[2]
+        Nx = 2*img.shape[2]-1
+        __img = _img.copy()
+        _img = np.zeros((_img.shape[0], _img.shape[1], Nx))
+        _img[:,:,:_Nx-1] = np.fliplr(__img[:,:,1:])
+        _img[:,:,_Nx-1:] = __img
+        _x = _Nx - 1
+    cx, cy = Nx // 2, Ny // 2
+
+    morph = np.zeros((Ny,Nx))
+    # use the band with maximum flux for the source
+    band = np.argmax(_img[:,_y,_x])
+    morph[:] = _img[band,_y-cy:_y+cy+1,_x-cx:_x+cx+1]/source.sed[0,band]
+    morph = morph.reshape((morph.size,))
+    morph[morph<0] = 0
+    # Apply the appropriate constraints
+    if symmetric:
+        # Make the model symmetric
+        symmetric = morph[::-1]
+        morph = np.min([morph, symmetric], axis=0)
+    if monotonic:
+        # Make the model monotonic
+        prox_monotonic = operators.prox_strict_monotonic((Ny, Nx), thresh=0, use_nearest=False)
+        morph = prox_monotonic(morph.reshape(morph.size,), 0)
+    # Trim the source to set the new size
+    morph = morph.reshape(Ny,Nx)
+    ypix, xpix = np.where(morph>blend._bg_rms[band]/2)
+    if len(ypix)==0:
+        ypix, xpix = np.where(morph>0)
+    Ny = np.max(ypix)-np.min(ypix)
+    Nx = np.max(xpix)-np.min(xpix)
+    Ny += 1 - Ny % 2
+    Nx += 1 - Nx % 2
+    _cx = Nx//2
+    _cy = Ny//2
+    morph = morph[cy-_cy:cy+_cy+1, cx-_cx:cx+_cx+1]
+    source.resize([Ny, Nx])
+    source.morph[0] = morph.reshape((1,morph.size))
+
+def init_bulge_disk(source, blend, img, symmetric=True, monotonic=True, color_offset=0.02,
+                    disk_ratio=0.5):
+    """Initialize a Bulge-Disk Model
+
+    Parameters
+    ----------
+    source: `~scarlet.source.Source`
+        `Source` to initialize.
+    blend: `~scarlet.blend.Blend`
+        `Blend` that contains the source.
+        This may be necessary for some initialization functions to access parameters
+        inside the `Blend` class.
+    img: `~numpy.array`
+        (Bands, Height, Width) data array that contains a 2D image for each band
+    symmetric: bool, default=`True`
+        Whether or not to make the components symmetric
+    monotonic: bool, default=`True`
+        Whether to make the components monotonically decreasing from the center
+    color_offset: float, default=`0.1`
+        The disk is made bluer by subtracting a line from the initial SED,
+        where the bluest SED is increased by `disk_offset` and the reddest
+        SED in decreased by `disk_offset`.
+    disk_ratio: float, default=`0.5`
+        Ratio of the bulge size over the disk size, so a `disk_ratio` of 0.5 (default)
+        means the disk is twice the size of the bulge.
+
+    This implementation initializes the sed from the pixel in
+    the center of the frame and sets morphology to a template that might be
+    symmetric and/or monotonic, depending on the parameters passed to the method.
+
+    Returns
+    -------
+    None.
+    But `source.sed` and `source.morph` are set.
+    """
+    assert source.K==2
+    B = img.shape[0]
+    _y, _x = source.center_int
+    Ny = 2*min(img.shape[1]-_y, _y)-1
+    Nx = 2*min(img.shape[2]-_x, _x)-1
+
+    # Initialize the bulge SED
+    source.sed[0] = get_peak_sed(img, source.center_int)
+    # Make the disk bluer
+    disk_sed = np.linspace(-color_offset, color_offset, len(source.sed[0]))
+    disk_sed = source.sed[0]-disk_sed
+    source.sed[1] = proxmin.operators.prox_unity_plus(disk_sed, 0)
+
+    # If the source is on the edge, extend the image with its reflection
+    # to model the hidden portion in x and/or y
+    if Ny<=1:
+        _Ny = img.shape[1]
+        Ny = 2*img.shape[1]-1
+        _img = np.zeros((img.shape[0], Ny, img.shape[2]))
+        _img[:,:_Ny-1] = np.fliplr(img[:,1:])
+        _img[:,_Ny-1:] = img[:]
+        _y = _Ny - 1
+    else:
+        _img = img.copy()
+    if Nx<=1:
+        _Nx = img.shape[2]
+        Nx = 2*img.shape[2]-1
+        __img = _img.copy()
+        _img = np.zeros((_img.shape[0], _img.shape[1], Nx))
+        _img[:,:,:_Nx-1] = np.fliplr(__img[:,:,1:])
+        _img[:,:,_Nx-1:] = __img
+        _x = _Nx - 1
+    cx, cy = Nx // 2, Ny // 2
+
+    morph = np.zeros((Ny,Nx))
+    # use the band with maximum flux for the source
+    band = np.argmax(_img[:,_y,_x])
+    morph[:] = _img[band,_y-cy:_y+cy+1,_x-cx:_x+cx+1]/source.sed[0,band]
+    morph = morph.reshape((morph.size,))
+    morph[morph<0] = 0
+    # Apply the appropriate constraints
+    if symmetric:
+        # Make the model symmetric
+        symmetric = morph[::-1]
+        morph = np.min([morph, symmetric], axis=0)
+    if monotonic:
+        # Make the model monotonic
+        prox_monotonic = operators.prox_strict_monotonic((Ny, Nx), thresh=0, use_nearest=False)
+        morph = prox_monotonic(morph.reshape(morph.size,), 0)
+    # Trim the source to set the new size
+    morph = morph.reshape(Ny,Nx)
+    ypix, xpix = np.where(morph>blend._bg_rms[band]/2)
+    if len(ypix)==0:
+        ypix, xpix = np.where(morph>0)
+    Ny = np.max(ypix)-np.min(ypix)
+    Nx = np.max(xpix)-np.min(xpix)
+    Ny += 1 - Ny % 2
+    Nx += 1 - Nx % 2
+    _cx = Nx//2
+    _cy = Ny//2
+    morph = morph[cy-_cy:cy+_cy+1, cx-_cx:cx+_cx+1]
+    source.resize([Ny, Nx])
+    # Make the bulge size smaller
+    # TODO: improve this algorithm
+    x = np.arange(Nx)
+    y = np.arange(Ny)
+    X,Y = np.meshgrid(x,y)
+    X = X - _cx
+    Y = Y - _cy
+    distance = np.sqrt(X**2+Y**2)
+    _morph = np.zeros_like(morph)
+    cut = distance<min(Ny*disk_ratio/2,Nx*disk_ratio/2)
+    _morph[cut] = morph[cut]*2/3
+    source.morph[0] = _morph.reshape((1,_morph.size))
+    _morph = morph-_morph
+    if monotonic:
+        prox_monotonic = operators.prox_strict_monotonic((Ny, Nx), thresh=0, use_nearest=False)
+        _morph = prox_monotonic(_morph.reshape(_morph.size,), 0)
+    source.morph[1] = _morph.reshape((1,_morph.size))
 
 class Source(object):
     """A single source in a blend
     """
     def __init__(self, center, shape, K=1, psf=None, constraints=None, fix_sed=False, fix_morph=False,
-                 fix_frame=False, shift_center=0.2):
+                 fix_frame=False, shift_center=0.2, init_func=init_templates):
         """Constructor
 
         Parameters
@@ -64,6 +322,8 @@ class Source(object):
         shift_center: float, default=0.2
             Amount to shift the differential image in x and y to fit
             changes in position.
+        init_func: func, default=`init_templates`
+            Function to initialize all components of the source.
         """
 
         # set size of the source frame
@@ -102,6 +362,7 @@ class Source(object):
 
         # set sed and morph constraints
         self.set_constraints(constraints)
+        self.init_func = init_func
 
     @property
     def Nx(self):
@@ -297,102 +558,25 @@ class Source(object):
             # set constraints
             self.set_constraints(self.constraints)
 
-    def init_source(self, img, bg_rms, weights=None, init_method=InitMethod.MONOSYM):
+    def init_source(self, blend, img):
         """Initialize the source
-
         Parameters
         ----------
+        blend: `~scarlet.blend.Blend`
+            `Blend` that contains the source.
+            This may be necessary for some initialization functions to access parameters
+            inside the `Blend` class.
         img: `~numpy.array`
             (Bands, Height, Width) data array that contains a 2D image for each band
-        weights: `~numpy.array`
-            (Bands, Height, Width) data array that contains a 2D weight image for each band
-            Currently not implemented in initialization.
-        init_method: InitMethods or None, default=`InitMethods.MONOSYM`
-            Method to use for initialization. If `init_method` is `None` then
-            the sources are not initialized.
 
-        This default implementation initializes takes the sed from the pixel in
-        the center of the frame and sets morphology to only comprise that pixel,
-        which works well for point sources and poorly resolved galaxies.
+        Call `init_func` with the current blend parameters
 
         Returns
         -------
         None.
         But `self.sed` and `self.morph` are set.
         """
-        # init with SED of the peak pixels
-        # TODO: what should we do if peak is saturated?
-        B = img.shape[0]
-        self.sed = np.empty((self.K, B))
-        _y, _x = self.center_int
-        _sed = img[:,_y,_x]
-        epsilon = 1e-2
-        for k in range(self.K):
-            self.sed[k] = _sed
-            # ensure proper normalization
-            self.sed[k] = proxmin.operators.prox_unity_plus(self.sed[k], 0)
-            if self.K>1:
-                self.sed[k] += np.random.rand(self.sed.shape[1])*epsilon
-                # Normalize again
-                self.sed[k] = proxmin.operators.prox_unity_plus(self.sed[k], 0)
-
-        cx, cy = self.Nx // 2, self.Ny // 2
-        # For now, use a python 2 compatible version of an Enum
-        if InitMethod.PEAK & init_method:
-            self.morph = np.zeros((self.K, self.Ny, self.Nx))
-            # Turn on a single pixel at the peak
-            for k in range(self.K):
-                # Make each component's radius one pixel larger
-                self.morph[k, cy-k:cy+k+1,cx-k:cx+k+1] = img[:,_y-k:_y+k+1,_x-k:_x+k+1].sum(axis=0) + epsilon
-            self.morph = self.morph.reshape(self.K, self.Ny*self.Nx)
-        else:
-            self.morph = np.zeros((self.K, self.Ny * self.Nx))
-            Ny = 2*min(img.shape[1]-_y, _y)-1
-            Nx = 2*min(img.shape[2]-_x, _x)-1
-            cx, cy = Nx // 2, Ny // 2
-            morph = np.zeros((Ny,Nx))
-            # use the band with maximum flux for the source
-            band = np.argmax(self.sed[0])
-            morph[:] = img[band,_y-cy:_y+cy+1,_x-cx:_x+cx+1]/self.sed[0,band]
-            morph = morph.reshape((morph.size,))
-            morph[morph<0] = 0
-            # For now, use a python 2 compatible version of an Enum
-            #if InitMethod.SYMMETRIC in init_method:
-            if InitMethod.SYMMETRIC & init_method:
-                # Make the model symmetric
-                symmetric = morph[::-1]
-                morph = np.min([morph, symmetric], axis=0)
-            #if InitMethod.MONOTONIC in init_method:
-            if InitMethod.MONOTONIC & init_method:
-                # Make the model monotonic
-                prox_monotonic = operators.prox_strict_monotonic((Ny, Nx), thresh=0, use_nearest=False)
-                morph = prox_monotonic(morph.reshape(morph.size,), 0)
-            # Trim the source to set the new size
-            morph = morph.reshape(Ny,Nx)
-            ypix, xpix = np.where(morph>bg_rms[band]/2)
-            if len(ypix)==0:
-                ypix, xpix = np.where(morph>0)
-            Ny = np.max(ypix)-np.min(ypix)
-            Nx = np.max(xpix)-np.min(xpix)
-            Ny += 1 - Ny % 2
-            Nx += 1 - Nx % 2
-            _cx = Nx//2
-            _cy = Ny//2
-            morph = morph[cy-_cy:cy+_cy+1, cx-_cx:cx+_cx+1]
-            self.resize([Ny, Nx])
-            for k in range(self.K):
-                _morph = np.zeros_like(morph)
-                if 4*k>Nx:
-                    xrad = Nx//2-1
-                else:
-                    xrad = 2*k
-                if 4*k>Ny:
-                    yrad = Ny//2-1
-                else:
-                    yrad = 2*k
-                _morph[yrad:Ny-yrad, xrad:Nx-xrad] = morph[yrad:Ny-yrad, xrad:Nx-xrad]
-                _morph = _morph.reshape((1,_morph.size))
-                self.morph[k] = _morph+np.random.rand(_morph.shape[0], _morph.shape[1])*np.max(_morph)/100
+        self.init_func(self, blend, img)
 
     def get_morph_error(self, weights):
         """Get error in the morphology
