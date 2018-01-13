@@ -19,10 +19,10 @@ img = np.empty((B,Ny,Nx))
 
 # detect objects in img with sep (https://github.com/kbarbary/sep)
 def makeCatalog(img):
-    detect = img.mean(axis=0)
-    bkg = sep.Background(data['img'].mean(axis=0))
+    detect = img.mean(axis=0) # simple average for detection
+    bkg = sep.Background(detect)
     catalog = sep.extract(detect, 1.5, err=bkg.globalrms)
-    bg_rms = np.array([sep.Background(img).globalrms for img in data['img']])
+    bg_rms = np.array([sep.Background(band).globalrms for band in img])
     return catalog, bg_rms
 catalog, bg_rms = makeCatalog(img)
 
