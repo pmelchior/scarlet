@@ -121,10 +121,10 @@ class GammaOp():
         if P is None:
             return Ty.dot(Tx)
         if hasattr(P, 'shape'):
-            _gamma = Ty.dot(P.dot(Tx))
+            _gamma = P.dot(Ty.dot(Tx))
             # simplifies things later on: PSF always comes with B Gamma operators
             return [_gamma] * self.B
-        return [Ty.dot(Pb.dot(Tx)) for Pb in P]
+        return [Pb.dot(Ty.dot(Tx)) for Pb in P]
 
     def _adapt_PSF(self, shape):
         """Create multiband PSF operator (if necessary)

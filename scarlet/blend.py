@@ -575,15 +575,16 @@ class Blend(object):
                 MT.append(_img_y.flatten())
         if len(MT)==0:
             # No sources needing updates
-            logger.debug("No sources needed updating")
+            logger.debug("No sources centers updated")
             return
+
         MT = np.array(MT)
         # Simultaneously fit the positions
         if not hasattr(self._weights,'shape'): # no/flat weights
             result = np.dot(np.dot(np.linalg.inv(np.dot(MT, MT.T)), MT), y.flatten())
         else:
             w = self._weights.flatten()[:,None]
-            result = np.dot(np.dot(np.linalg.inv(np.dot(MT, MT.T*w)), MT), y.flatten()) 
+            result = np.dot(np.dot(np.linalg.inv(np.dot(MT, MT.T*w)), MT), y.flatten())
         # Apply the corrections to all of the sources
         for m in range(self.M):
             if m not in updated:
