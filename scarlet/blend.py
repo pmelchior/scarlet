@@ -548,6 +548,9 @@ class Blend(object):
         # residuals weighted with full/original weight matrix
         y = self._weights[1]*(self._model-self._img)
 
+        # Create the differential images for all sources
+        MT = []
+        updated = []
         for m in range(self.M):
             if self.sources[m].shift_center:
                 source = self.sources[m]
@@ -560,18 +563,39 @@ class Blend(object):
                     continue
                 diff_x[:,:,-1] = 0
                 diff_y[:,-1,:] = 0
-                # least squares for the shifts given the model residuals
-                MT = np.vstack([diff_x.flatten(), diff_y.flatten()])
-                if not hasattr(self._weights,'shape'): # no/flat weights
-                    ddx,ddy = np.dot(np.dot(np.linalg.inv(np.dot(MT, MT.T)), MT), y[bb_m].flatten())
-                else:
-                    w = self._weights[bb_m].flatten()[:,None]
-                    ddx,ddy = np.dot(np.dot(np.linalg.inv(np.dot(MT, MT.T*w)), MT), y[bb_m].flatten())
-                if ddx**2 + ddy**2 > self.center_min_dist**2:
-                    center = source.center + (ddy, ddx)
-                    source.set_center(center)
-                    msg = "shifting source {0} by ({1:.3f}/{2:.3f}) to ({3:.3f}/{4:.3f}) in it {5}"
-                    logger.debug(msg.format(m, ddy, ddx, source.center[0], source.center[1], self.it))
+
+                # Project the difference image onto the full difference model
+                # (which contains the difference images for all sources)
+                _img_x = np.zeros(y.shape)
+                _img_x[source.bb] = diff_x
+                _img_y = np.zeros(y.shape)
+                _img_y[source.bb] = diff_y
+                updated.append(m)
+                MT.append(_img_x.flatten())
+                MT.append(_img_y.flatten())
+        if len(MT)==0:
+            # No sources needing updates
+            logger.debug("No sources needed updating")
+            return
+        MT = np.array(MT)
+        # Simultaneously fit the positions
+        if not hasattr(self._weights,'shape'): # no/flat weights
+            result = np.dot(np.dot(np.linalg.inv(np.dot(MT, MT.T)), MT), y.flatten())
+        else:
+            w = self._weights.flatten()[:,None]
+            result = np.dot(np.dot(np.linalg.inv(np.dot(MT, MT.T*w)), MT), y.flatten()) 
+        # Apply the corrections to all of the sources
+        for m in range(self.M):
+            if m not in updated:
+                continue
+            _m = updated.index(m)
+            ddx, ddy = result[2*_m:2*_m+2]
+            if ddx**2 + ddy**2 > self.center_min_dist**2:
+                source = self.sources[m]
+                center = source.center + (ddy, ddx)
+                source.set_center(center)
+                msg = "shifting source {0} by ({1:.3f}/{2:.3f}) to ({3:.3f}/{4:.3f}) in it {5}"
+                logger.debug(msg.format(m, ddy, ddx, source.center[0], source.center[1], self.it))
 
     def _get_shift_differential(self, m):
         """Calculate the difference image used ot fit positions
