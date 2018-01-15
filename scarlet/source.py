@@ -11,7 +11,7 @@ logger = logging.getLogger("scarlet.source")
 
 def get_peak_sed(img, center=None, epsilon=0):
     """Get the SED at position `center` in `img`
-    
+
     Parameters
     ----------
     img: `~numpy.array`
@@ -74,7 +74,6 @@ def init_peak(source, blend, img, epsilon=0):
     _y, _x = source.center_int
     for k in range(source.K):
         source.sed[k] = get_peak_sed(img, source.center_int, epsilon)
-    # For now, use a python 2 compatible version of an Enum
     source.morph = np.zeros((source.K, source.Ny, source.Nx))
     # Turn on a single pixel at the peak
     for k in range(source.K):

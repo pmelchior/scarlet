@@ -683,7 +683,7 @@ class Blend(object):
         for m in range(self.M):
             if not self.sources[m].fix_frame:
                 size = [self.sources[m].Ny, self.sources[m].Nx]
-                increase = [max(0.25*s, 10) for s in size]
+                increase = [int(max(0.25*s, 10)) for s in size]
 
                 # check if max flux along edge in band b < avg noise level along edge in b
                 at_edge = (self._edge_flux[m] > self._bg_rms*self.edge_flux_thresh)
