@@ -633,11 +633,6 @@ class Blend(object):
         center_y = source.center + pos_y
         width = self._img.shape[2]
         height = self._img.shape[1]
-        if (np.any(center_x<1) or center_x[1]>width-1 or np.any(center_y<1) or center_y[0]>height-1):
-            logger.warning("Source {0} shifted too far, recentering and reinitializing".format(m))
-            source.set_center(source._init_center)
-            source.init_source(self, self._img)
-            raise ScarletRestartException
         #TODO: Implement bounding check on the source
 
         dGamma_x = source._gammaOp(pos_x, source.shape)
