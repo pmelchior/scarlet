@@ -9,6 +9,9 @@ from . import operators
 import logging
 logger = logging.getLogger("scarlet.source")
 
+class SourceInitError(Exception):
+    pass
+
 def get_peak_sed(img, center=None, epsilon=0):
     """Get the SED at position `center` in `img`
     
@@ -29,6 +32,12 @@ def get_peak_sed(img, center=None, epsilon=0):
     _y, _x = center
     sed = np.zeros((img.shape[0],))
     sed[:] = img[:,_y,_x]
+    if np.all(sed<=0):
+        # If the flux in all bands is  <=0,
+        # the new sed will be filled with NaN values,
+        # which will cause the code to crash later
+        msg = "Zero or negative flux at the peak for source at y={0}, x={1}"
+        raise SourceInitError(msg.format(_y, _x))
     # ensure proper normalization
     sed = proxmin.operators.prox_unity_plus(sed, 0)
     if epsilon>0:
@@ -90,7 +99,7 @@ def init_peak(source, blend, img, epsilon=0):
         source.morph[k, ymin:ymax, xmin:xmax] = img[:,_ymin:_ymax,_xmin:_xmax].sum(axis=0)
     source.morph = source.morph.reshape(source.K, source.Ny*source.Nx)
 
-def init_templates(source, blend, img, symmetric=True, monotonic=True):
+def init_templates(source, blend, img, symmetric=True, monotonic=True, thresh=0.5):
     """Initialize a single component template
 
     Parameters
@@ -103,6 +112,12 @@ def init_templates(source, blend, img, symmetric=True, monotonic=True):
         inside the `Blend` class.
     img: `~numpy.array`
         (Bands, Height, Width) data array that contains a 2D image for each band
+    symmetric: `bool`, default=`True`
+        Whether or not to make the template symmetric
+    monotonic: `bool`, default=`True`
+        Whether or not to make the template monotonically decreasing from the peak
+    thresh: `float`, default=0.5
+        Default fraction of the background RMS to use as the low flux cutoff
 
     This implementation initializes the sed from the pixel in
     the center of the frame and sets morphology to a template that might be
@@ -158,7 +173,15 @@ def init_templates(source, blend, img, symmetric=True, monotonic=True):
         morph = prox_monotonic(morph.reshape(morph.size,), 0)
     # Trim the source to set the new size
     morph = morph.reshape(Ny,Nx)
-    ypix, xpix = np.where(morph>blend._bg_rms[band]/2)
+    cutoff = blend._bg_rms[band]*thresh
+    cuts = morph>cutoff
+    # Make sure that the source has at least one source
+    # above the cutoff value
+    if np.sum(cuts)==0:
+        msg = "Source centered at y={0}, x={1} has no flux above the cutoff ({2})"
+        raise SourceInitError(msg.format(_y, _x, cutoff))
+
+    ypix, xpix = np.where(cuts)
     if len(ypix)==0:
         ypix, xpix = np.where(morph>0)
     Ny = np.max(ypix)-np.min(ypix)
@@ -171,8 +194,8 @@ def init_templates(source, blend, img, symmetric=True, monotonic=True):
     source.resize([Ny, Nx])
     source.morph[0] = morph.reshape((1,morph.size))
 
-def init_bulge_disk(source, blend, img, symmetric=True, monotonic=True, color_offset=0.02,
-                    disk_ratio=0.5):
+def init_bulge_disk(source, blend, img, symmetric=True, monotonic=True, thresh=0.5,
+                    color_offset=0.02, disk_ratio=0.5):
     """Initialize a Bulge-Disk Model
 
     Parameters
@@ -189,6 +212,8 @@ def init_bulge_disk(source, blend, img, symmetric=True, monotonic=True, color_of
         Whether or not to make the components symmetric
     monotonic: bool, default=`True`
         Whether to make the components monotonically decreasing from the center
+    thresh: `float`, default=0.5
+        Default fraction of the background RMS to use as the low flux cutoff
     color_offset: float, default=`0.1`
         The disk is made bluer by subtracting a line from the initial SED,
         where the bluest SED is increased by `disk_offset` and the reddest
@@ -257,9 +282,16 @@ def init_bulge_disk(source, blend, img, symmetric=True, monotonic=True, color_of
         morph = prox_monotonic(morph.reshape(morph.size,), 0)
     # Trim the source to set the new size
     morph = morph.reshape(Ny,Nx)
-    ypix, xpix = np.where(morph>blend._bg_rms[band]/2)
-    if len(ypix)==0:
-        ypix, xpix = np.where(morph>0)
+    
+    cutoff = blend._bg_rms[band]*thresh
+    cuts = morph>cutoff
+    # Make sure that the source has at least one source
+    # above the cutoff value
+    if np.sum(cuts)==0:
+        msg = "Source centered at y={0}, x={1} has no flux above the cutoff ({2})"
+        raise SourceInitError(msg.format(_y, _x, cutoff))
+
+    ypix, xpix = np.where(cuts)
     Ny = np.max(ypix)-np.min(ypix)
     Nx = np.max(xpix)-np.min(xpix)
     Ny += 1 - Ny % 2
