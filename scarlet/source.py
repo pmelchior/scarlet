@@ -93,9 +93,9 @@ def init_peak(source, blend, img, epsilon=0):
         xmin = max(0, cx-k)
         xmax = min(source.Nx, cx+k+1)
         _ymin = max(0, _y-k)
-        _ymax = min(source.Ny, _y+k+1)
+        _ymax = min(_y+source.Ny, _y+k+1)
         _xmin = max(0,_x-k)
-        _xmax = min(source.Nx, _x+k+1)
+        _xmax = min(_x+source.Nx, _x+k+1)
         source.morph[k, ymin:ymax, xmin:xmax] = img[:,_ymin:_ymax,_xmin:_xmax].sum(axis=0)
     source.morph = source.morph.reshape(source.K, source.Ny*source.Nx)
 
