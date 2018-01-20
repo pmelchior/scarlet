@@ -35,6 +35,7 @@ constraints = {"S": None, "m": {'use_nearest': False}, "+": None}
 # initial size of the box around each object
 # will be adjusted as needed
 shape = (B, 15, 15)
+# WARNING: coordinates are expected to use numpy/C ordering: (y,x)
 sources = [scarlet.Source((obj['y'],obj['x']), shape, constraints=constraints) for obj in catalog]
 blend = scarlet.Blend(sources, img, bg_rms=bg_rms)
 
