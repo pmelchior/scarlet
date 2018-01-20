@@ -87,7 +87,6 @@ def prox_strict_monotonic(shape, use_nearest=False, thresh=0):
                         ref_flux += X[nidx] * weight
                 X[idx] = np.min([X[idx], ref_flux])
             return X
-        #result = partial(_prox_monotonic, weights=weights, didx=didx, offsets=offsets)
         result = partial(_prox_weighted_monotonic, weights=weights, didx=didx[1:], offsets=offsets)
     return result
 
@@ -112,6 +111,13 @@ def prox_cone(X, step, G=None):
             else:
                 break
         X[i] = Y
+    return X
+
+def prox_center_on(X, step, tiny=1e-10):
+    # make sure that the center pixel as at least some amount of flux
+    # otherwise centering will go off rails
+    center_pix = X.size // 2 # only works for odd pixel numbers in x and y
+    X[center_pix] = max(X[center_pix], tiny)
     return X
 
 def proj(A,B):

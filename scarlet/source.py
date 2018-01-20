@@ -714,6 +714,9 @@ class Source(object):
             if c =="+":
                 for k in range(self.K):
                     if c in self.constraints[k].keys():
+                        # with positivity for positive source, the center
+                        # needs to have some flux.
+                        self.prox_morph[k].append(operators.prox_center_on)
                         self.prox_morph[k].append(proxmin.operators.prox_plus)
 
             # Note: don't use hard/soft thresholds with _plus (non-negative) because
