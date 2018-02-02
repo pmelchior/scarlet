@@ -12,335 +12,175 @@ logger = logging.getLogger("scarlet.source")
 class SourceInitError(Exception):
     pass
 
-def get_peak_sed(img, center=None, epsilon=0):
-    """Get the SED at position `center` in `img`
+def get_pixel_sed(img, position):
+    """Get the SED at `position` in `img`
 
     Parameters
     ----------
     img: `~numpy.array`
         (Bands, Height, Width) data array that contains a 2D image for each band
-    center: array-like
+    position: array-like
         (y,x) coordinates of the source in the larger image
-    epsilon: float
-        Random offset to add to the sed (may be useful with multiple components)
 
     Returns
     -------
     SED: `~numpy.array`
         SED for a single source
     """
-    _y, _x = center
+    _y, _x = position
     sed = np.zeros((img.shape[0],))
     sed[:] = img[:,_y,_x]
     if np.all(sed<=0):
         # If the flux in all bands is  <=0,
         # the new sed will be filled with NaN values,
         # which will cause the code to crash later
-        msg = "Zero or negative flux at the peak for source at y={0}, x={1}"
+        msg = "Zero or negative flux at y={0}, x={1}"
         raise SourceInitError(msg.format(_y, _x))
-    # ensure proper normalization
-    sed = proxmin.operators.prox_unity_plus(sed, 0)
-    if epsilon>0:
-        sed += np.random.rand(len(sed))*epsilon
-        # Normalize again
-        sed = proxmin.operators.prox_unity_plus(sed, 0)
-    return sed
 
-def get_integrated_sed(img):
+    # ensure proper normalization
+    return proxmin.operators.prox_unity_plus(sed, 0)
+
+def get_integrated_sed(img, weight):
     """Calculated the SED by summing the flux in the image in each band
     """
-    pass
+    B, Ny, Nx = img.shape
+    sed = (img * weight).reshape(B, -1).sum(axis=1)
+    if np.all(sed<=0):
+        # If the flux in all bands is  <=0,
+        # the new sed will be filled with NaN values,
+        # which will cause the code to crash later
+        msg = "Zero or negative flux under weight function"
+        raise SourceInitError(msg)
 
-def init_peak(source, blend, img, epsilon=0):
+    # ensure proper normalization
+    return proxmin.operators.prox_unity_plus(sed, 0)
+
+
+def init_peak(source, img, shape, tiny=1e-10):
     """Initialize the source using only the peak pixel
 
     Parameters
     ----------
     source: `~scarlet.source.Source`
         `Source` to initialize.
-    blend: `~scarlet.blend.Blend`
-        `Blend` that contains the source.
-        This may be necessary for some initialization functions to access parameters
-        inside the `Blend` class.
     img: `~numpy.array`
         (Bands, Height, Width) data array that contains a 2D image for each band
-    epsilon: float
-        Random offset to add to the sed (may be useful with multiple components)
 
     This implementation initializes the sed from the pixel in
     the center of the frame and sets morphology to only comprise that pixel,
     which works well for point sources and poorly resolved galaxies.
 
-    Returns
-    -------
-    None.
-    But `source.sed` and `source.morph` are set.
     """
-    # init with SED of the peak pixels
-    # TODO: what should we do if peak is saturated?
-    B = img.shape[0]
-    cx, cy = source.Nx // 2, source.Ny // 2
+    # determine initial SED from peak position
+    B, Ny, Nx = img.shape
     _y, _x = source.center_int
-    for k in range(source.K):
-        source.sed[k] = get_peak_sed(img, source.center_int, epsilon)
-    source.morph = np.zeros((source.K, source.Ny, source.Nx))
+    try:
+        sed = get_pixel_sed(img, source.center_int)
+    except SourceInitError:
+        # flat weights as fall-back
+        sed = np.ones(B) / B
+    morph = np.zeros(shape[0] * shape[1])
     # Turn on a single pixel at the peak
-    for k in range(source.K):
-        # Make each component's radius one pixel larger
-        ymin = max(0, cy-k)
-        ymax = min(source.Ny, cy+k+1)
-        xmin = max(0, cx-k)
-        xmax = min(source.Nx, cx+k+1)
-        _ymin = max(0, _y-k)
-        _ymax = min(_y+source.Ny, _y+k+1)
-        _xmin = max(0,_x-k)
-        _xmax = min(_x+source.Nx, _x+k+1)
-        source.morph[k, ymin:ymax, xmin:xmax] = img[:,_ymin:_ymax,_xmin:_xmax].sum(axis=0)
-    source.morph = source.morph.reshape(source.K, source.Ny*source.Nx)
+    center_pix = morph.size // 2
+    morph[center_pix] = max(img[:,_y,_x].sum(axis=0), tiny)
+    return sed.reshape((1,B)), morph.reshape((1, shape[0], shape[1]))
 
-def init_templates(source, blend, img, symmetric=True, monotonic=True, thresh=0.5):
-    """Initialize a single component template
+def init_above_noise(source, img, bg_rms, thresh=1., symmetric=True, monotonic=True):
 
-    Parameters
-    ----------
-    source: `~scarlet.source.Source`
-        `Source` to initialize.
-    blend: `~scarlet.blend.Blend`
-        `Blend` that contains the source.
-        This may be necessary for some initialization functions to access parameters
-        inside the `Blend` class.
-    img: `~numpy.array`
-        (Bands, Height, Width) data array that contains a 2D image for each band
-    symmetric: `bool`, default=`True`
-        Whether or not to make the template symmetric
-    monotonic: `bool`, default=`True`
-        Whether or not to make the template monotonically decreasing from the peak
-    thresh: `float`, default=0.5
-        Default fraction of the background RMS to use as the low flux cutoff
+    # every source as large as the entire image, but shifted to its centroid
+    B, Ny, Nx = img.shape
+    source._set_frame(source.center, (Ny,Nx))
 
-    This implementation initializes the sed from the pixel in
-    the center of the frame and sets morphology to a template that might be
-    symmetric and/or monotonic, depending on the parameters passed to the method.
+    # determine initial SED from peak position
+    try:
+        sed = get_pixel_sed(img, source.center_int)
+    except SourceInitError:
+        # flat weights as fall-back
+        sed = np.ones(B) / B
 
-    Returns
-    -------
-    None.
-    But `source.sed` and `source.morph` are set.
-    """
-    assert source.K==1
-    B = img.shape[0]
-    source.sed[0] = get_peak_sed(img, source.center_int)
-    _y, _x = source.center_int
-    Ny = 2*min(img.shape[1]-_y, _y)-1
-    Nx = 2*min(img.shape[2]-_x, _x)-1
+    # build optimal detection coadd
+    weights = np.array([sed[b]/bg_rms[b]**2 for b in range(B)])
+    jacobian = np.array([sed[b]**2/bg_rms[b]**2 for b in range(B)]).sum()
+    detect = np.einsum('i,i...', weights, img) / jacobian
 
-    # If the source is on the edge, extend the image with its reflection
-    # to model the hidden portion in x and/or y
-    if Ny<=1:
-        _Ny = img.shape[1]
-        Ny = 2*img.shape[1]-1
-        _img = np.zeros((img.shape[0], Ny, img.shape[2]))
-        _img[:,:_Ny-1] = np.fliplr(img[:,1:])
-        _img[:,_Ny-1:] = img[:]
-        _y = _Ny - 1
-    else:
-        _img = img.copy()
-    if Nx<=1:
-        _Nx = img.shape[2]
-        Nx = 2*img.shape[2]-1
-        __img = _img.copy()
-        _img = np.zeros((_img.shape[0], _img.shape[1], Nx))
-        _img[:,:,:_Nx-1] = np.fliplr(__img[:,:,1:])
-        _img[:,:,_Nx-1:] = __img
-        _x = _Nx - 1
-    cx, cy = Nx // 2, Ny // 2
+    # copy morph from detect cutout, make non-negative
+    source_slice = source.get_slice_for(img.shape)
+    morph = np.zeros((source.Ny, source.Nx))
+    morph[source_slice[1:]] = detect[source.bb[1:]]
 
-    morph = np.zeros((Ny,Nx))
-    # use the band with maximum flux for the source
-    band = np.argmax(_img[:,_y,_x])
-    morph[:] = _img[band,_y-cy:_y+cy+1,_x-cx:_x+cx+1]/source.sed[0,band]
-    morph = morph.reshape((morph.size,))
-    morph[morph<0] = 0
-    # Apply the appropriate constraints
+    # check if source_slice is covering the whole of morph:
+    # if not, extend morph by coping last row/column from img
+    if source_slice[1].stop - source_slice[1].start < source.Ny:
+        morph[0:source_slice[1].start,:] = morph[source_slice[1].start,:]
+        morph[source_slice[1].stop:,:] = morph[source_slice[1].stop-1,:]
+    if source_slice[2].stop - source_slice[2].start < source.Nx:
+        morph[:,0:source_slice[2].start] = morph[:,source_slice[2].start][:,None]
+        morph[:,source_slice[2].stop:] = morph[:,source_slice[2].stop-1][:,None]
+
+    # symmetric, monotonic
     if symmetric:
-        # Make the model symmetric
-        symmetric = morph[::-1]
-        morph = np.min([morph, symmetric], axis=0)
+        symm = np.fliplr(np.flipud(morph))#(morph.flatten()[::-1]).reshape(Ny,Nx)
+        morph = np.min([morph, symm], axis=0)
     if monotonic:
-        # Make the model monotonic
-        prox_monotonic = operators.prox_strict_monotonic((Ny, Nx), thresh=0, use_nearest=False)
-        morph = prox_monotonic(morph.reshape(morph.size,), 0)
-    # Trim the source to set the new size
-    morph = morph.reshape(Ny,Nx)
-    cutoff = blend._bg_rms[band]*thresh
-    cuts = morph>cutoff
-    # Make sure that the source has at least one source
-    # above the cutoff value
-    if np.sum(cuts)==0:
-        msg = "Source centered at y={0}, x={1} has no flux above the cutoff ({2})"
-        raise SourceInitError(msg.format(_y, _x, cutoff))
+        # use finite thresh to remove flat bridges
+        prox_monotonic = operators.prox_strict_monotonic((source.Ny, source.Nx), thresh=0.1, use_nearest=False)
+        morph = prox_monotonic(morph.flatten(), 0).reshape(Ny,Nx)
 
-    ypix, xpix = np.where(cuts)
-    if len(ypix)==0:
-        ypix, xpix = np.where(morph>0)
-    Ny = np.max(ypix)-np.min(ypix)
-    Nx = np.max(xpix)-np.min(xpix)
-    Ny += 1 - Ny % 2
-    Nx += 1 - Nx % 2
-    _cx = Nx//2
-    _cy = Ny//2
-    morph = morph[cy-_cy:cy+_cy+1, cx-_cx:cx+_cx+1]
-    source.resize([Ny, Nx])
-    source.morph[0] = morph.reshape((1,morph.size))
+    # trim morph to pixels above threshold
+    # thresh is multiple above the rms of detect (weighted variance across bands)
+    _thresh = thresh * np.sqrt((weights**2 * bg_rms**2).sum()) / jacobian
+    mask = morph > _thresh
+    if mask.sum() == 0:
+        msg = "No flux above threshold={2} for source at y={0}, x={1}"
+        _y, _x = source.center_int
+        raise SourceInitError(msg.format(_y, _x, _thresh))
+    morph[~mask] = 0
 
-def init_bulge_disk(source, blend, img, symmetric=True, monotonic=True, thresh=0.5,
-                    color_offset=0.02, disk_ratio=0.5):
-    """Initialize a Bulge-Disk Model
+    ypix, xpix = np.where(mask)
+    _Ny = np.max(ypix)-np.min(ypix)
+    _Nx = np.max(xpix)-np.min(xpix)
+    # make sure source has off pixel numbers
+    _Ny += 1 - _Ny % 2
+    _Nx += 1 - _Nx % 2
 
-    Parameters
-    ----------
-    source: `~scarlet.source.Source`
-        `Source` to initialize.
-    blend: `~scarlet.blend.Blend`
-        `Blend` that contains the source.
-        This may be necessary for some initialization functions to access parameters
-        inside the `Blend` class.
-    img: `~numpy.array`
-        (Bands, Height, Width) data array that contains a 2D image for each band
-    symmetric: bool, default=`True`
-        Whether or not to make the components symmetric
-    monotonic: bool, default=`True`
-        Whether to make the components monotonically decreasing from the center
-    thresh: `float`, default=0.5
-        Default fraction of the background RMS to use as the low flux cutoff
-    color_offset: float, default=`0.1`
-        The disk is made bluer by subtracting a line from the initial SED,
-        where the bluest SED is increased by `disk_offset` and the reddest
-        SED in decreased by `disk_offset`.
-    disk_ratio: float, default=`0.5`
-        Ratio of the bulge size over the disk size, so a `disk_ratio` of 0.5 (default)
-        means the disk is twice the size of the bulge.
+    # get the model of the source
+    source._set_frame(source.center, (_Ny, _Nx))
+    #source.morph = np.zeros((source.K, _Ny * _Nx))
+    Dy, Dx = Ny - _Ny, Nx - _Nx
+    inner = (slice(Dy//2, -Dy//2), slice(Dx//2, -Dx//2))
+    #source.morph[0] = morph[inner].flatten()
+    #source.set_center(source.center)
+    morph = morph[inner]
 
-    This implementation initializes the sed from the pixel in
-    the center of the frame and sets morphology to a template that might be
-    symmetric and/or monotonic, depending on the parameters passed to the method.
+    # updated SED with mean sed under weight function morph
+    #model = source.get_model(use_sed=False)
+    source_slice = source.get_slice_for(img.shape)
+    # use mean sed from image, weighted with the morphology of each component
+    try:
+        sed = get_integrated_sed(img[source.bb], morph[source_slice[1:]])
+    except SourceInitError:
+        pass # keep the peak sed
+    return sed.reshape((1,B)), morph.reshape((1, morph.shape[0], morph.shape[1]))
 
-    Returns
-    -------
-    None.
-    But `source.sed` and `source.morph` are set.
-    """
-    assert source.K==2
-    B = img.shape[0]
-    _y, _x = source.center_int
-    Ny = 2*min(img.shape[1]-_y, _y)-1
-    Nx = 2*min(img.shape[2]-_x, _x)-1
 
-    # Initialize the bulge SED
-    source.sed[0] = get_peak_sed(img, source.center_int)
-    # Make the disk bluer
-    disk_sed = np.linspace(-color_offset, color_offset, len(source.sed[0]))
-    disk_sed = source.sed[0]-disk_sed
-    source.sed[1] = proxmin.operators.prox_unity_plus(disk_sed, 0)
+from abc import ABCMeta, abstractmethod
+class Source:
+    __metaclass__ = ABCMeta
 
-    # If the source is on the edge, extend the image with its reflection
-    # to model the hidden portion in x and/or y
-    if Ny<=1:
-        _Ny = img.shape[1]
-        Ny = 2*img.shape[1]-1
-        _img = np.zeros((img.shape[0], Ny, img.shape[2]))
-        _img[:,:_Ny-1] = np.fliplr(img[:,1:])
-        _img[:,_Ny-1:] = img[:]
-        _y = _Ny - 1
-    else:
-        _img = img.copy()
-    if Nx<=1:
-        _Nx = img.shape[2]
-        Nx = 2*img.shape[2]-1
-        __img = _img.copy()
-        _img = np.zeros((_img.shape[0], _img.shape[1], Nx))
-        _img[:,:,:_Nx-1] = np.fliplr(__img[:,:,1:])
-        _img[:,:,_Nx-1:] = __img
-        _x = _Nx - 1
-    cx, cy = Nx // 2, Ny // 2
-
-    morph = np.zeros((Ny,Nx))
-    # use the band with maximum flux for the source
-    band = np.argmax(_img[:,_y,_x])
-    morph[:] = _img[band,_y-cy:_y+cy+1,_x-cx:_x+cx+1]/source.sed[0,band]
-    morph = morph.reshape((morph.size,))
-    morph[morph<0] = 0
-    # Apply the appropriate constraints
-    if symmetric:
-        # Make the model symmetric
-        symmetric = morph[::-1]
-        morph = np.min([morph, symmetric], axis=0)
-    if monotonic:
-        # Make the model monotonic
-        prox_monotonic = operators.prox_strict_monotonic((Ny, Nx), thresh=0, use_nearest=False)
-        morph = prox_monotonic(morph.reshape(morph.size,), 0)
-    # Trim the source to set the new size
-    morph = morph.reshape(Ny,Nx)
-    
-    cutoff = blend._bg_rms[band]*thresh
-    cuts = morph>cutoff
-    # Make sure that the source has at least one source
-    # above the cutoff value
-    if np.sum(cuts)==0:
-        msg = "Source centered at y={0}, x={1} has no flux above the cutoff ({2})"
-        raise SourceInitError(msg.format(_y, _x, cutoff))
-
-    ypix, xpix = np.where(cuts)
-    Ny = np.max(ypix)-np.min(ypix)
-    Nx = np.max(xpix)-np.min(xpix)
-    Ny += 1 - Ny % 2
-    Nx += 1 - Nx % 2
-    _cx = Nx//2
-    _cy = Ny//2
-    morph = morph[cy-_cy:cy+_cy+1, cx-_cx:cx+_cx+1]
-    source.resize([Ny, Nx])
-    # Make the bulge size smaller
-    # TODO: improve this algorithm
-    x = np.arange(Nx)
-    y = np.arange(Ny)
-    X,Y = np.meshgrid(x,y)
-    X = X - _cx
-    Y = Y - _cy
-    distance = np.sqrt(X**2+Y**2)
-    _morph = np.zeros_like(morph)
-    cut = distance<min(Ny*disk_ratio/2,Nx*disk_ratio/2)
-    _morph[cut] = morph[cut]*2/3
-    source.morph[0] = _morph.reshape((1,_morph.size))
-    _morph = morph-_morph
-    if monotonic:
-        prox_monotonic = operators.prox_strict_monotonic((Ny, Nx), thresh=0, use_nearest=False)
-        _morph = prox_monotonic(_morph.reshape(_morph.size,), 0)
-    source.morph[1] = _morph.reshape((1,_morph.size))
-
-class Source(object):
     """A single source in a blend
     """
-    def __init__(self, center, shape, K=1, psf=None, constraints=None, fix_sed=False, fix_morph=False,
-                 fix_frame=False, shift_center=0.2, init_func=init_templates):
+    def __init__(self, sed, morph_image, prox_sed, prox_morph, center=None, psf=None, fix_sed=False, fix_morph=False,
+                 fix_frame=False, shift_center=0.2):
         """Constructor
 
         Parameters
         ----------
         center: array-like
             (y,x) coordinates of the source in the larger image
-        shape: tuple
-            Shape (B, Ny, Nx) of the frame that contains the source.
-            This can be (and usually is) smaller than the size of the full blend
-        K: int, default='1'
-            Number of components with the same center position
         psf: array-like or `~scarlet.transformations.GammaOp`, default=`None`
             2D image of the psf in a single band (Height, Width),
             or 2D image of the psf in each band (Bands, Height, Width),
             or `~scarlet.transformations.GammaOp` created from a psf array.
-        constraints: dict or list of dicts, default=`None`
-            Each key in `constraints` contains any parameters
-            (such as a treshold for "l0") needed by the proximal operator.
-            If K>1, a list of dicts can be given, one for each component.
         fix_sed: bool or list of bools, default=`False`
             Whether or not the SED is fixed, or can be updated
             If K>1, a list of bools can be given, one for each component.
@@ -353,22 +193,20 @@ class Source(object):
         shift_center: float, default=0.2
             Amount to shift the differential image in x and y to fit
             changes in position.
-        init_func: func, default=`init_templates`
-            Function to initialize all components of the source.
         """
-
         # set size of the source frame
-        assert len(shape) == 3
-        self.B = shape[0]
-        size = shape[1:]
-        self._set_frame(center, size)
+        assert len(sed.shape) == 2
+        self.K, self.B = sed.shape
+        self.sed = sed.copy()
+        assert len(morph_image.shape) == 3
+        assert morph_image.shape[0] == sed.shape[0]
+        self.morph = morph_image.copy().reshape(self.K, -1)
+
+        if center is None:
+            center = (morph_image.shape[1] // 2, morph_image.shape[2] // 2)
+        self._set_frame(center, morph_image.shape[1:])
         size = (self.Ny, self.Nx)
         self.fix_frame = fix_frame
-
-        # create containers
-        self.K = K
-        self.sed = np.zeros((self.K, self.B))
-        self.morph = np.zeros((self.K, self.Ny*self.Nx))
 
         # set up psf and translations matrices
         if isinstance(psf, transformations.GammaOp):
@@ -391,9 +229,14 @@ class Source(object):
         else:
             self.fix_morph = [fix_morph] * self.K
 
-        # set sed and morph constraints
-        self.set_constraints(constraints)
-        self.init_func = init_func
+        if hasattr(prox_sed, '__iter__') and len(prox_sed) == self.K:
+            self.prox_sed = prox_sed
+        else:
+            self.prox_sed = [prox_sed] * self.K
+        if hasattr(prox_morph, '__iter__') and len(prox_morph) == self.K:
+            self.prox_morph = prox_morph
+        else:
+            self.prox_morph = [prox_morph] * self.K
 
     @property
     def Nx(self):
@@ -431,6 +274,11 @@ class Source(object):
         """Whether the source has a psf
         """
         return self._gammaOp.psf is not None
+
+    @abstractmethod
+    def set_constraints(self, *args, **kwargs):
+        while False:
+            yield None
 
     def get_slice_for(self, im_shape):
         """Return the slice of the source frame in the full multiband image
@@ -586,28 +434,8 @@ class Source(object):
             # update GammaOp and center (including subpixel shifts)
             self.set_center(self.center)
 
-            # set constraints
-            self.set_constraints(self.constraints)
-
-    def init_source(self, blend, img):
-        """Initialize the source
-        Parameters
-        ----------
-        blend: `~scarlet.blend.Blend`
-            `Blend` that contains the source.
-            This may be necessary for some initialization functions to access parameters
-            inside the `Blend` class.
-        img: `~numpy.array`
-            (Bands, Height, Width) data array that contains a 2D image for each band
-
-        Call `init_func` with the current blend parameters
-
-        Returns
-        -------
-        None.
-        But `self.sed` and `self.morph` are set.
-        """
-        self.init_func(self, blend, img)
+            # set constraints: this is a method of the derived classes!
+            self.set_constraints()
 
     def get_morph_error(self, weights):
         """Get error in the morphology
@@ -692,223 +520,3 @@ class Source(object):
             PS = [scipy.sparse.block_diag([model[k,b,:,:].reshape((1,-1)).T for b in range(self.B)])
                         for k in range(self.K)]
             return [np.sqrt(np.diag(np.linalg.inv(PSk.T.dot(Sigma_pix.dot(PSk)).toarray()))) for PSk in PS]
-
-    def set_constraints(self, constraints):
-        """Set the constraints for each component in the source
-
-        Parameters
-        ----------
-        constraints: dict, or list of dicts
-            Each key in `constraints` contains any parameters
-            (such as a treshold for "l0") needed by the proximal operator.
-            If a list of dicts is given, each elements refers to one component.
-
-        Returns
-        -------
-        None.
-        But `self.constraints`, `self.progs_g` (ADMM-like proximal operators),
-        `self.Ls` (linear matrices for each proxs_g),
-        `self.prox_sed` (prox_f proximal operator for the SED's),
-        and `self.prox_morph` (prox_f for morphologies) are set.
-        """
-        if constraints is None:
-            self.constraints = {}
-        else:
-            self.constraints = constraints
-        # one set of constraints for each component
-        if not isinstance(self.constraints, list):
-            self.constraints = [self.constraints,] * self.K
-
-        self.proxs_g_A = [None] * self.K
-        self.proxs_g_S = [[],] * self.K
-        self.LA = [None] * self.K
-        self.LS = [[],] * self.K
-
-        if self.constraints is None:
-            self.proxs_g_A = [None] * self.K
-            self.proxs_g_S = [None] * self.K
-            self.LA = [None] * self.K
-            self.LS = [None] * self.K
-            return
-
-        self.prox_sed = [proxmin.operators.prox_unity_plus] * self.K
-        self.prox_morph = [[],] * self.K
-
-        # superset of all constraint keys (in case they are different)
-        keys = set(self.constraints[0].keys())
-        for k in range(1, self.K):
-            keys |= set(self.constraints[k].keys())
-        shape = (self.Ny, self.Nx)
-        # because of the constraint matrices being costly to construct:
-        # iterate over keys, not over components
-        for c in keys:
-
-            if c =="+":
-                for k in range(self.K):
-                    if c in self.constraints[k].keys():
-                        # with positivity for positive source, the center
-                        # needs to have some flux.
-                        self.prox_morph[k].append(operators.prox_center_on)
-                        self.prox_morph[k].append(proxmin.operators.prox_plus)
-
-            # Note: don't use hard/soft thresholds with _plus (non-negative) because
-            # that is either happening with prox_plus before or is not indended
-            if c == "l0":
-                for k in range(self.K):
-                    if c in self.constraints[k].keys():
-                        thresh = self.constraints[k][c]
-                        self.prox_morph[k].append(partial(proxmin.operators.prox_hard, thresh=thresh))
-
-            elif c == "l1":
-                for k in range(self.K):
-                    if c in self.constraints[k].keys():
-                        thresh = self.constraints[k][c]
-                        self.prox_morph[k].append(partial(proxmin.operators.prox_soft, thresh=thresh))
-
-            elif c == "m":
-                for k in range(self.K):
-                    if c in self.constraints[k].keys():
-                        kwargs = {}
-                        if self.constraints[k][c] is not None:
-                            kwargs.update(self.constraints[k][c])
-                        self.prox_morph[k].append(operators.prox_strict_monotonic(shape, **kwargs))
-
-            elif c == "M":
-                # positive gradients
-                # NOTE: we're using useNearest from component k=0 only!
-                M = transformations.getRadialMonotonicOp(shape, useNearest=self.constraints[0][c])
-                for k in range(self.K):
-                    if c in self.constraints[k].keys():
-                        self.LS[k].append(M)
-                        self.proxs_g_S[k].append(proxmin.operators.prox_plus)
-                    else:
-                        self.LS[k].append(None)
-                        self.proxs_g_S[k].append(None)
-
-            elif c == "S":
-                # zero deviation of mirrored pixels
-                S = transformations.getSymmetryOp(shape)
-                for k in range(self.K):
-                    if c in self.constraints[k].keys():
-                        self.LS[k].append(S)
-                        self.proxs_g_S[k].append(proxmin.operators.prox_zero)
-                    else:
-                        self.LS[k].append(None)
-                        self.proxs_g_S[k].append(None)
-
-            elif c == "C":
-                # cone method for monotonicity: exact but VERY slow
-                useNearest = self.constraints.get("M", False)
-                G = transformations.getRadialMonotonicOp(shape, useNearest=useNearest).toarray()
-                for k in range(self.K):
-                    if c in self.constraints[k].keys():
-                        self.proxs_g_S[k].append(partial(operators.prox_cone, G=G))
-                    else:
-                        self.proxs_g_[k].append(None)
-                    self.LS[k].append(None)
-            elif c == "X":
-                # l1 norm on gradient in X for TV_x
-                cx = int(self.Nx)
-                Gx = proxmin.transformations.get_gradient_x(shape, cx)
-                for k in range(self.K):
-                    if c in self.constraints[k].keys():
-                        self.LS[k].append(Gx)
-                        thresh = self.constraints[k][c]
-                        self.proxs_g_S[k].append(partial(proxmin.operators.prox_soft, thresh=thresh))
-                    else:
-                        self.LS[k].append(None)
-                        self.proxs_g_S[k].append(None)
-            elif c == "Y":
-                # l1 norm on gradient in Y for TV_y
-                cy = int(self.Ny)
-                Gy = proxmin.transformations.get_gradient_y(shape, cy)
-                for k in range(self.K):
-                    if c in self.constraints[k].keys():
-                        self.LS[k].append(Gy)
-                        thresh = self.constraints[k][c]
-                        self.proxs_g_S[k].append(partial(proxmin.operators.prox_soft, thresh=thresh))
-                    else:
-                        self.LS[k].append(None)
-                        self.proxs_g_S[k].append(None)
-
-        # with several projection operators in prox_morph:
-        # use AlternatingProjections to link them together
-        for k in range(self.K):
-            # dummy operator: identity
-            if len(self.prox_morph[k]) == 0:
-                self.prox_morph[k] = proxmin.operators.prox_id
-            elif len(self.prox_morph[k]) == 1:
-                self.prox_morph[k] = self.prox_morph[k][0]
-            else:
-                self.prox_morph[k] = proxmin.operators.AlternatingProjections(self.prox_morph[k], repeat=1)
-
-    def remove_component(self, idx, ref_idx=None):
-        """Remove a component from the Source
-
-        Parameters
-        ----------
-        idx: int
-            Index of the component in the source to remove
-        ref_idx: int, defaul=`None`
-            Index of the primary component that `idx` is degenerate with.
-            If `ref_idx` is not `None`, the morphology of component `int` is
-            added to the morphology of component `ref_idx`.
-
-        Returns
-        -------
-        None
-        """
-        # Add the flux from the degenerate component to the primary component
-        if ref_idx is not None:
-            self.morph[ref_idx] += self.morph[idx]
-        # Delete the degenerate morphology and SED
-        self.morph = np.delete(self.morph, (idx), axis=0)
-        self.sed = np.delete(self.sed, (idx), axis=0)
-        # Clear out all of the parameters for the degenerate component
-        self.K -= 1
-        del self.constraints[idx]
-        del self.prox_morph[idx]
-        del self.proxs_g_A[idx]
-        del self.proxs_g_S[idx]
-        del self.LA[idx]
-        del self.LS[idx]
-        del self.fix_sed[idx]
-        del self.fix_morph[idx]
-
-    def remove_degenerate_components(self, sed_diff=1e-5, idx=0):
-        """Remove all degenerate components
-
-        Parameters
-        ----------
-        sed_diff: float, default=1e-5
-            Maximum difference between component SED's to consider
-            them degenerate.
-        idx: int, default=0
-            Initial component to begin degenerate search.
-            Because the algorithm removes components from the source
-            list in place, it is easier to make remove_degenerates a
-            recursive function and that is called again after
-            degenerate components have been removed.
-            To save processing time, we being with the next component
-            (`idx`) from the component that just had it's degenerates removed.
-
-        Returns
-        -------
-        result: bool
-            Whether or not any degenerate components were removed
-        """
-        for l in range(idx, self.K-1):
-            degenerates = []
-            for ll in range(l+1,self.K):
-                diff = np.sum((self.sed[l]-self.sed[ll])**2)
-                if diff<sed_diff:
-                    degenerates.append(ll)
-            # Remove any degenerates for the current source, then restart
-            if len(degenerates) > 0:
-                for degenerate_idx in degenerates:
-                    self.remove_component(degenerate_idx, l)
-                logger.warn("Removed degenerate components {0} from source at {1}".format(
-                    degenerates, self.center))
-                self.remove_degenerate_components(sed_diff, l+1)
-                return True
-        return False

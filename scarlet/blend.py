@@ -73,7 +73,6 @@ class Blend(object):
 
         # set up data structures
         self.set_data(img, weights=weights, sky=sky, bg_rms=bg_rms)
-        self.init_sources()
 
     def source_of(self, k):
         """Get the indices of model component k.
@@ -118,10 +117,16 @@ class Blend(object):
         proxs_g_S = [None] * self.K
         for k in range(self.K):
             m,l = self.source_of(k)
-            if self.sources[m].proxs_g_A is not None:
-                proxs_g_A[k] = self.sources[m].proxs_g_A[l]
-            if self.sources[m].proxs_g_S is not None:
-                proxs_g_S[k] = self.sources[m].proxs_g_S[l]
+            try:
+                if self.sources[m].proxs_g_A is not None:
+                    proxs_g_A[k] = self.sources[m].proxs_g_A[l]
+            except AttributeError:
+                pass
+            try:
+                if self.sources[m].proxs_g_S is not None:
+                    proxs_g_S[k] = self.sources[m].proxs_g_S[l]
+            except AttributeError:
+                pass
         return proxs_g_A + proxs_g_S
 
     @property
@@ -135,10 +140,16 @@ class Blend(object):
         LS = [None] * self.K
         for k in range(self.K):
             m,l = self.source_of(k)
-            if self.sources[m].LA is not None:
-                LA[k] = self.sources[m].LA[l]
-            if self.sources[m].LS is not None:
-                LS[k] = self.sources[m].LS[l]
+            try:
+                if self.sources[m].LA is not None:
+                    LA[k] = self.sources[m].LA[l]
+            except AttributeError:
+                pass
+            try:
+                if self.sources[m].LS is not None:
+                    LS[k] = self.sources[m].LS[l]
+            except AttributeError:
+                pass
         return LA + LS
 
     def fit(self, steps=200, e_rel=None, max_iter=None):
@@ -247,12 +258,6 @@ class Blend(object):
             assert len(bg_rms) == self.B
             self._bg_rms = np.array(bg_rms)
         self._set_weights(weights)
-
-    def init_sources(self):
-        """Initialize the model for each source.
-        """
-        for m in range(self.M):
-            self.sources[m].init_source(self, self._img)
 
     def get_model(self, m=None, combine=True, combine_source_components=True, use_sed=True, flat=True):
         """Compute the current model for the entire image.
