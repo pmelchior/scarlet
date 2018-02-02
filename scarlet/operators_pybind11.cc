@@ -27,7 +27,8 @@ void prox_weighted_monotonic(
     double const &step,
     py::array_t<double> &weights,
     std::vector<int> const &offsets,
-    std::vector<int> const &dist_idx
+    std::vector<int> const &dist_idx,
+    double const &thresh
 ){
     auto x = X.mutable_unchecked<1>();
     auto w = weights.mutable_unchecked<2>();
@@ -43,7 +44,7 @@ void prox_weighted_monotonic(
                 ref_flux += x(nidx) * w(i, didx);
             }
         }
-        x(didx) = std::min(x(didx), ref_flux);
+        x(didx) = std::min(x(didx), ref_flux*(1-thresh));
     }
 }
 
