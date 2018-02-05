@@ -187,6 +187,7 @@ class ConstraintList:
                 self.L_morph = [c.L_morph]
             else:
                 self.L_morph.append(c.L_morph)
+        return self
 
     def reset(self, source):
         for c in self.constraints:
