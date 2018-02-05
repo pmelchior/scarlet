@@ -72,7 +72,7 @@ class MonotonicityConstraint(Constraint):
         # lazy initialization: wait for the reset to set the source size
         self.use_nearest = use_nearest
 
-    def resize(self, source):
+    def reset(self, source):
         shape = source.shape[1:]
         self.L_morph = transformations.getRadialMonotonicOp(shape, useNearest=self.use_nearest)
 
@@ -82,7 +82,7 @@ class SymmetryConstraint(Constraint):
         self.prox_g_morph = proxmin.operators.prox_zero
         # lazy initialization: wait for the reset to set the source size
 
-    def resize(self, source):
+    def reset(self, source):
         shape = source.shape[1:]
         self.L_morph = transformations.getSymmetryOp(shape)
 
@@ -92,7 +92,7 @@ class TVxConstraint(Constraint):
         self.proxs_g_morph = partial(proxmin.operators.prox_soft, thresh=thresh)
         # lazy initialization: wait for the reset to set the source size
 
-    def resize(self, source):
+    def reset(self, source):
         shape = source.shape[1:]
         self.L_morph = proxmin.transformations.get_gradient_x(shape, source.Nx)
 
@@ -102,7 +102,7 @@ class TVyConstraint(Constraint):
         self.proxs_g_morph = partial(proxmin.operators.prox_soft, thresh=thresh)
         # lazy initialization: wait for the reset to set the source size
 
-    def resize(self, source):
+    def reset(self, source):
         shape = source.shape[1:]
         self.L_morph = proxmin.transformations.get_gradient_y(shape, source.Ny)
 
