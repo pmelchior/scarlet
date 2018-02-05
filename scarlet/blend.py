@@ -113,21 +113,13 @@ class Blend(object):
         See Algorithm 3, line 12 in Moolekamp and Melchior 2017
         (https://arxiv.org/pdf/1708.09066.pdf) for more.
         """
-        proxs_g_A = [None] * self.K
-        proxs_g_S = [None] * self.K
+        proxs_g_sed = []
+        proxs_g_morph = []
         for k in range(self.K):
             m,l = self.source_of(k)
-            try:
-                if self.sources[m].proxs_g_A is not None:
-                    proxs_g_A[k] = self.sources[m].proxs_g_A[l]
-            except AttributeError:
-                pass
-            try:
-                if self.sources[m].proxs_g_S is not None:
-                    proxs_g_S[k] = self.sources[m].proxs_g_S[l]
-            except AttributeError:
-                pass
-        return proxs_g_A + proxs_g_S
+            proxs_g_sed.append(self.sources[m].constraints[l].prox_g_sed)
+            proxs_g_morph.append(self.sources[m].constraints[l].prox_g_morph)
+        return proxs_g_sed + proxs_g_morph
 
     @property
     def _Ls(self):
@@ -136,21 +128,13 @@ class Blend(object):
         See section 2.3 in Moolekamp and Melchior 2017
         (https://arxiv.org/pdf/1708.09066.pdf) for details.
         """
-        LA = [None] * self.K
-        LS = [None] * self.K
+        Ls_sed = []
+        Ls_morph = []
         for k in range(self.K):
             m,l = self.source_of(k)
-            try:
-                if self.sources[m].LA is not None:
-                    LA[k] = self.sources[m].LA[l]
-            except AttributeError:
-                pass
-            try:
-                if self.sources[m].LS is not None:
-                    LS[k] = self.sources[m].LS[l]
-            except AttributeError:
-                pass
-        return LA + LS
+            Ls_sed.append(self.sources[m].constraints[l].L_sed)
+            Ls_morph.append(self.sources[m].constraints[l].L_morph)
+        return Ls_sed + Ls_morph
 
     def fit(self, steps=200, e_rel=None, max_iter=None):
         """Fit the model for each source to the data
@@ -431,7 +415,7 @@ class Blend(object):
                 grad = np.einsum('...ij,...ij', self._diff, self._models[k])
 
                 # apply per component prox projection and save in source
-                self.sources[m].sed[l] =  self.sources[m].prox_sed[l](X - step*grad, step)
+                self.sources[m].sed[l] =  self.sources[m].constraints[l].prox_sed(X - step*grad, step)
             return self.sources[m].sed[l]
 
         # S update
@@ -456,7 +440,7 @@ class Blend(object):
                         grad += self.sources[m].sed[l,b]*self.sources[m].Gamma[b].T.dot(diff_k[b].flatten())
 
                 # apply per component prox projection and save in source
-                self.sources[m].morph[l] = self.sources[m].prox_morph[l](X - step*grad, step)
+                self.sources[m].morph[l] = self.sources[m].constraints[l].prox_morph(X - step*grad, step)
             return self.sources[m].morph[l]
         else:
             raise ValueError("Expected index j in [0,%d]" % (2*self.K))

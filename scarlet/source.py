@@ -4,7 +4,7 @@ from functools import partial
 
 import proxmin
 from . import transformations
-from . import operators
+from . import constraints as sc
 
 import logging
 logger = logging.getLogger("scarlet.source")
@@ -123,6 +123,7 @@ def init_above_noise(source, img, bg_rms, thresh=1., symmetric=True, monotonic=T
         morph = np.min([morph, symm], axis=0)
     if monotonic:
         # use finite thresh to remove flat bridges
+        from . import operators
         prox_monotonic = operators.prox_strict_monotonic((source.Ny, source.Nx), thresh=0.1, use_nearest=False)
         morph = prox_monotonic(morph.flatten(), 0).reshape(Ny,Nx)
 
@@ -163,13 +164,11 @@ def init_above_noise(source, img, bg_rms, thresh=1., symmetric=True, monotonic=T
     return sed.reshape((1,B)), morph.reshape((1, morph.shape[0], morph.shape[1]))
 
 
-from abc import ABCMeta, abstractmethod
-class Source:
-    __metaclass__ = ABCMeta
+class Source(object):
 
     """A single source in a blend
     """
-    def __init__(self, sed, morph_image, prox_sed, prox_morph, center=None, psf=None, fix_sed=False, fix_morph=False,
+    def __init__(self, sed, morph_image, constraints=None, center=None, psf=None, fix_sed=False, fix_morph=False,
                  fix_frame=False, shift_center=0.2):
         """Constructor
 
@@ -229,14 +228,22 @@ class Source:
         else:
             self.fix_morph = [fix_morph] * self.K
 
-        if hasattr(prox_sed, '__iter__') and len(prox_sed) == self.K:
-            self.prox_sed = prox_sed
+        # set up constraints: should be Constraint or ConstraintList for each component
+        if constraints is None:
+            self.constraints = [sc.SimpleConstraint()] * self.K
+        elif isinstance(constraints, sc.Constraint) or isinstance(constraints, sc.ConstraintList):
+            self.constraints = [constraints] * self.K
+        elif len(constraints) == self.K:
+            self.constraints = constraints
         else:
-            self.prox_sed = [prox_sed] * self.K
-        if hasattr(prox_morph, '__iter__') and len(prox_morph) == self.K:
-            self.prox_morph = prox_morph
-        else:
-            self.prox_morph = [prox_morph] * self.K
+            raise NotImplementedError("constraint %r not understood" % constraints)
+
+        # check if prox_sed and prox_morph are set in constraints
+        for k in range(self.K):
+            if self.constraints[k].prox_sed is None or self.constraints[k].prox_morph is None:
+                self.constraints[k] &= sc.SimpleConstraint()
+        # needs to set constraints when shape of source is known
+        self.set_constraints()
 
     @property
     def Nx(self):
@@ -275,10 +282,9 @@ class Source:
         """
         return self._gammaOp.psf is not None
 
-    @abstractmethod
-    def set_constraints(self, *args, **kwargs):
-        while False:
-            yield None
+    def set_constraints(self):
+        for k in range(self.K):
+            self.constraints[k].reset(self)
 
     def get_slice_for(self, im_shape):
         """Return the slice of the source frame in the full multiband image
@@ -434,7 +440,7 @@ class Source:
             # update GammaOp and center (including subpixel shifts)
             self.set_center(self.center)
 
-            # set constraints: this is a method of the derived classes!
+            # set constraints
             self.set_constraints()
 
     def get_morph_error(self, weights):
