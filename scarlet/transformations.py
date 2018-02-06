@@ -3,6 +3,18 @@ from __future__ import print_function, division
 import numpy as np
 import scipy.sparse
 
+# global cache to hold all transformation matrices
+cache = {}
+
+def check_cache(name, key):
+    global cache
+    try:
+        cache[name]
+    except KeyError:
+        cache[name] = {}
+
+    return cache[name][key]
+
 class GammaOp():
     """Combination of Linear (x,y) Transformation and PSF Convolution
 
@@ -31,7 +43,14 @@ class GammaOp():
         if offset_int is None:
             offset_int = (0,0)
         self.psf = psf
-        self._cache = {}
+
+        # link to cache and make sure it has Gamma
+        global cache
+        try:
+            cache['Gamma']
+        except KeyError:
+            cache['Gamma'] = {}
+        self._cache = cache['Gamma']
 
     def _make_matrices(self, shape, offset_int):
         """Build Tx, Ty, P, Gamma
@@ -155,14 +174,102 @@ class GammaOp():
         return P
 
 
+def getPSFOp(psf, imgShape):
+    """Create an operator to convolve intensities with the PSF
+
+    Given a psf image ``psf`` and the shape of the blended image ``imgShape``,
+    make a banded matrix out of all non-zero pixels in ``psfImg`` that acts as
+    the PSF operator.
+    """
+
+    name = "PSF"
+    key = tuple(imgShape)
+    try:
+        psfOp = check_cache(name, key)
+
+    except KeyError:
+        height, width = imgShape
+        size = width * height
+
+        # Calculate the coordinates of the pixels in the psf image above the threshold
+        indices = np.where(psf != 0)
+        indices = np.dstack(indices)[0]
+        # assume all PSF images have odd dimensions and are centered!
+        cy, cx = psf.shape[0]//2, psf.shape[1]//2
+        coords = indices-np.array([cy,cx])
+
+        # Create the PSF Operator
+        offsets, slices, slicesInv = getOffsets(width, coords)
+        psfDiags = [psf[y,x] for y,x in indices]
+        psfOp = scipy.sparse.diags(psfDiags, offsets, shape=(size, size), dtype=np.float64)
+        psfOp = psfOp.tolil()
+
+        # Remove entries for pixels on the left or right edges
+        cxRange = np.unique([cx for cy,cx in coords])
+        for h in range(height):
+            for y,x in coords:
+                # Left edge
+                if x<0 and width*(h+y)+x>=0 and h+y<=height:
+                    psfOp[width*h, width*(h+y)+x] = 0
+
+                    # Pixels closer to the left edge
+                    # than the radius of the psf
+                    for x_ in cxRange[cxRange<0]:
+                        if (x<x_ and
+                            width*h-x_>=0 and
+                            width*(h+y)+x-x_>=0 and
+                            h+y<=height
+                        ):
+                            psfOp[width*h-x_, width*(h+y)+x-x_] = 0
+
+                # Right edge
+                if x>0 and width*(h+1)-1>=0 and width*(h+y+1)+x-1>=0 and h+y<=height and width*(h+1+y)+x-1<size:
+                    psfOp[width*(h+1)-1, width*(h+y+1)+x-1] = 0
+
+                    for x_ in cxRange[cxRange>0]:
+                        # Near right edge
+                        if (x>x_ and
+                            width*(h+1)-x_-1>=0 and
+                            width*(h+y+1)+x-x_-1>=0 and
+                            h+y<=height and
+                            width*(h+1+y)+x-x_-1<size
+                        ):
+                            psfOp[width*(h+1)-x_-1, width*(h+y+1)+x-x_-1] = 0
+
+        # Return the transpose, which correctly convolves the data with the PSF
+        psfOp = psfOp.T.tocoo()
+
+        global cache
+        cache[name][key] = psfOp
+
+    return psfOp
+
+
 def getZeroOp(shape):
     size = shape[0]*shape[1]
-    # matrix with ones on diagonal shifted by k, here out of matrix: all zeros
-    return scipy.sparse.eye(size,k=size)
+    name = "Zero"
+    key = tuple(shape)
+    try:
+        L = check_cache(name, key)
+    except KeyError:
+        # matrix with ones on diagonal shifted by k, here out of matrix: all zeros
+        L = scipy.sparse.eye(size, k=size)
+        global cache
+        cache[name][key] = L
+    return L
 
 def getIdentityOp(shape):
     size = shape[0]*shape[1]
-    return scipy.sparse.identity(size)
+    name = "Id"
+    key = tuple(shape)
+    try:
+        L = check_cache(name, key)
+    except KeyError:
+        # matrix with ones on diagonal shifted by k, here out of matrix: all zeros
+        L = scipy.sparse.identity(size)
+        global cache
+        cache[name][key] = L
+    return L
 
 def getSymmetryOp(shape):
     """Create a linear operator to symmetrize an image
@@ -171,10 +278,17 @@ def getSymmetryOp(shape):
     acts on the flattened image to return its symmetric version.
     """
     size = shape[0]*shape[1]
-    idx = np.arange(shape[0]*shape[1])
-    sidx = idx[::-1]
-    symmetryOp = scipy.sparse.identity(size)
-    symmetryOp -= scipy.sparse.coo_matrix((np.ones(size),(idx, sidx)), shape=(size,size))
+    name = "Symm"
+    key = tuple(shape)
+    try:
+        symmetryOp = check_cache(name, key)
+    except KeyError:
+        idx = np.arange(shape[0]*shape[1])
+        sidx = idx[::-1]
+        symmetryOp = getIdentityOp(shape)
+        symmetryOp -= scipy.sparse.coo_matrix((np.ones(size),(idx, sidx)), shape=(size,size))
+        global cache
+        cache[name][key] = symmetryOp
     return symmetryOp
 
 def getOffsets(width, coords=None):
@@ -266,69 +380,80 @@ def getRadialMonotonicWeights(shape, useNearest=True, minGradient=1):
     for each pixel and weights their flux based on their alignment with a vector from the pixel
     to the peak. In order to quickly create this using sparse matrices, its construction is a bit opaque.
     """
-    # Center on the center pixel
-    px = int(shape[1]/2)
-    py = int(shape[0]/2)
-    # Calculate the distance between each pixel and the peak
-    size = shape[0]*shape[1]
-    x = np.arange(shape[1])
-    y = np.arange(shape[0])
-    X,Y = np.meshgrid(x,y)
-    X = X - px
-    Y = Y - py
-    distance = np.sqrt(X**2+Y**2)
 
-    # Find each pixels neighbors further from the peak and mark them as invalid
-    # (to be removed later)
-    distArr, mask = diagonalizeArray(distance, dtype=np.float64)
-    relativeDist = (distance.flatten()[:,None]-distArr.T).T
-    invalidPix = relativeDist<=0
+    name = "RadialMonotonicWeights"
+    key = tuple(shape) + (useNearest, minGradient)
+    try:
+        cosNorm = check_cache(name, key)
+    except KeyError:
 
-    # Calculate the angle between each pixel and the x axis, relative to the peak position
-    # (also avoid dividing by zero and set the tan(infinity) pixel values to pi/2 manually)
-    inf = X==0
-    tX = X.copy()
-    tX[inf] = 1
-    angles = np.arctan2(-Y,-tX)
-    angles[inf&(Y!=0)] = 0.5*np.pi*np.sign(angles[inf&(Y!=0)])
+        # Center on the center pixel
+        px = int(shape[1]/2)
+        py = int(shape[0]/2)
+        # Calculate the distance between each pixel and the peak
+        size = shape[0]*shape[1]
+        x = np.arange(shape[1])
+        y = np.arange(shape[0])
+        X,Y = np.meshgrid(x,y)
+        X = X - px
+        Y = Y - py
+        distance = np.sqrt(X**2+Y**2)
 
-    # Calcualte the angle between each pixel and it's neighbors
-    xArr, m = diagonalizeArray(X)
-    yArr, m = diagonalizeArray(Y)
-    dx = (xArr.T-X.flatten()[:, None]).T
-    dy = (yArr.T-Y.flatten()[:, None]).T
-    # Avoid dividing by zero and set the tan(infinity) pixel values to pi/2 manually
-    inf = dx==0
-    dx[inf] = 1
-    relativeAngles = np.arctan2(dy,dx)
-    relativeAngles[inf&(dy!=0)] = 0.5*np.pi*np.sign(relativeAngles[inf&(dy!=0)])
+        # Find each pixels neighbors further from the peak and mark them as invalid
+        # (to be removed later)
+        distArr, mask = diagonalizeArray(distance, dtype=np.float64)
+        relativeDist = (distance.flatten()[:,None]-distArr.T).T
+        invalidPix = relativeDist<=0
 
-    # Find the difference between each pixels angle with the peak
-    # and the relative angles to its neighbors, and take the
-    # cos to find its neighbors weight
-    dAngles = (angles.flatten()[:, None]-relativeAngles.T).T
-    cosWeight = np.cos(dAngles)
-    # Mask edge pixels, array elements outside the operator (for offdiagonal bands with < N elements),
-    # and neighbors further from the peak than the reference pixel
-    cosWeight[invalidPix] = 0
-    cosWeight[mask] = 0
+        # Calculate the angle between each pixel and the x axis, relative to the peak position
+        # (also avoid dividing by zero and set the tan(infinity) pixel values to pi/2 manually)
+        inf = X==0
+        tX = X.copy()
+        tX[inf] = 1
+        angles = np.arctan2(-Y,-tX)
+        angles[inf&(Y!=0)] = 0.5*np.pi*np.sign(angles[inf&(Y!=0)])
 
-    if useNearest:
-        # Only use a single pixel most in line with peak
-        cosNorm = np.zeros_like(cosWeight)
-        columnIndices =  np.arange(cosWeight.shape[1])
-        maxIndices = np.argmax(cosWeight, axis=0)
-        indices = maxIndices*cosNorm.shape[1]+columnIndices
-        indices = np.unravel_index(indices, cosNorm.shape)
-        cosNorm[indices] = minGradient
-        # Remove the reference for the peak pixel
-        cosNorm[:,px+py*shape[1]] = 0
-    else:
-        # Normalize the cos weights for each pixel
-        normalize = np.sum(cosWeight, axis=0)
-        normalize[normalize==0] = 1
-        cosNorm = (cosWeight.T/normalize[:,None]).T
-        cosNorm[mask] = 0
+        # Calcualte the angle between each pixel and it's neighbors
+        xArr, m = diagonalizeArray(X)
+        yArr, m = diagonalizeArray(Y)
+        dx = (xArr.T-X.flatten()[:, None]).T
+        dy = (yArr.T-Y.flatten()[:, None]).T
+        # Avoid dividing by zero and set the tan(infinity) pixel values to pi/2 manually
+        inf = dx==0
+        dx[inf] = 1
+        relativeAngles = np.arctan2(dy,dx)
+        relativeAngles[inf&(dy!=0)] = 0.5*np.pi*np.sign(relativeAngles[inf&(dy!=0)])
+
+        # Find the difference between each pixels angle with the peak
+        # and the relative angles to its neighbors, and take the
+        # cos to find its neighbors weight
+        dAngles = (angles.flatten()[:, None]-relativeAngles.T).T
+        cosWeight = np.cos(dAngles)
+        # Mask edge pixels, array elements outside the operator (for offdiagonal bands with < N elements),
+        # and neighbors further from the peak than the reference pixel
+        cosWeight[invalidPix] = 0
+        cosWeight[mask] = 0
+
+        if useNearest:
+            # Only use a single pixel most in line with peak
+            cosNorm = np.zeros_like(cosWeight)
+            columnIndices =  np.arange(cosWeight.shape[1])
+            maxIndices = np.argmax(cosWeight, axis=0)
+            indices = maxIndices*cosNorm.shape[1]+columnIndices
+            indices = np.unravel_index(indices, cosNorm.shape)
+            cosNorm[indices] = minGradient
+            # Remove the reference for the peak pixel
+            cosNorm[:,px+py*shape[1]] = 0
+        else:
+            # Normalize the cos weights for each pixel
+            normalize = np.sum(cosWeight, axis=0)
+            normalize[normalize==0] = 1
+            cosNorm = (cosWeight.T/normalize[:,None]).T
+            cosNorm[mask] = 0
+
+        global cache
+        cache[name][key] = cosNorm
+
     return cosNorm
 
 def getRadialMonotonicOp(shape, useNearest=True, minGradient=1, subtract=True):
@@ -338,81 +463,35 @@ def getRadialMonotonicOp(shape, useNearest=True, minGradient=1, subtract=True):
     for each pixel and weights their flux based on their alignment with a vector from the pixel
     to the peak. In order to quickly create this using sparse matrices, its construction is a bit opaque.
     """
-    cosNorm = getRadialMonotonicWeights(shape, useNearest=useNearest, minGradient=1)
-    cosArr = diagonalsToSparse(cosNorm, shape)
 
-    # The identity with the peak pixel removed represents the reference pixels
-    # Center on the center pixel
-    px = int(shape[1]/2)
-    py = int(shape[0]/2)
-    # Calculate the distance between each pixel and the peak
-    size = shape[0]*shape[1]
-    diagonal = np.ones(size)
-    diagonal[px+py*shape[1]] = -1
-    if subtract:
-        monotonic = cosArr-scipy.sparse.diags(diagonal, offsets=0)
-    else:
-        monotonic = cosArr
+    name = "RadialMonotonic"
+    key = tuple(shape) + (useNearest, minGradient, subtract)
+    try:
+        monotonic = check_cache(name, key)
+    except KeyError:
 
-    return monotonic.tocoo()
+        cosNorm = getRadialMonotonicWeights(shape, useNearest=useNearest, minGradient=1)
+        cosArr = diagonalsToSparse(cosNorm, shape)
 
-def getPSFOp(psf, imgShape):
-    """Create an operator to convolve intensities with the PSF
+        # The identity with the peak pixel removed represents the reference pixels
+        # Center on the center pixel
+        px = int(shape[1]/2)
+        py = int(shape[0]/2)
+        # Calculate the distance between each pixel and the peak
+        size = shape[0]*shape[1]
+        diagonal = np.ones(size)
+        diagonal[px+py*shape[1]] = -1
+        if subtract:
+            monotonic = cosArr-scipy.sparse.diags(diagonal, offsets=0)
+        else:
+            monotonic = cosArr
+        monotonic = monotonic.tocoo()
 
-    Given a psf image ``psf`` and the shape of the blended image ``imgShape``,
-    make a banded matrix out of all non-zero pixels in ``psfImg`` that acts as
-    the PSF operator.
-    """
-    height, width = imgShape
-    size = width * height
+        global cache
+        cache[name][key] = monotonic
 
-    # Calculate the coordinates of the pixels in the psf image above the threshold
-    indices = np.where(psf != 0)
-    indices = np.dstack(indices)[0]
-    # assume all PSF images have odd dimensions and are centered!
-    cy, cx = psf.shape[0]//2, psf.shape[1]//2
-    coords = indices-np.array([cy,cx])
+    return monotonic
 
-    # Create the PSF Operator
-    offsets, slices, slicesInv = getOffsets(width, coords)
-    psfDiags = [psf[y,x] for y,x in indices]
-    psfOp = scipy.sparse.diags(psfDiags, offsets, shape=(size, size), dtype=np.float64)
-    psfOp = psfOp.tolil()
-
-    # Remove entries for pixels on the left or right edges
-    cxRange = np.unique([cx for cy,cx in coords])
-    for h in range(height):
-        for y,x in coords:
-            # Left edge
-            if x<0 and width*(h+y)+x>=0 and h+y<=height:
-                psfOp[width*h, width*(h+y)+x] = 0
-
-                # Pixels closer to the left edge
-                # than the radius of the psf
-                for x_ in cxRange[cxRange<0]:
-                    if (x<x_ and
-                        width*h-x_>=0 and
-                        width*(h+y)+x-x_>=0 and
-                        h+y<=height
-                    ):
-                        psfOp[width*h-x_, width*(h+y)+x-x_] = 0
-
-            # Right edge
-            if x>0 and width*(h+1)-1>=0 and width*(h+y+1)+x-1>=0 and h+y<=height and width*(h+1+y)+x-1<size:
-                psfOp[width*(h+1)-1, width*(h+y+1)+x-1] = 0
-
-                for x_ in cxRange[cxRange>0]:
-                    # Near right edge
-                    if (x>x_ and
-                        width*(h+1)-x_-1>=0 and
-                        width*(h+y+1)+x-x_-1>=0 and
-                        h+y<=height and
-                        width*(h+1+y)+x-x_-1<size
-                    ):
-                        psfOp[width*(h+1)-x_-1, width*(h+y+1)+x-x_-1] = 0
-
-    # Return the transpose, which correctly convolves the data with the PSF
-    return psfOp.T.tocoo()
 
 # ring-shaped masks around the peak
 def getRingMask(im_shape, peak, outer, inner=0, flatten=False):
