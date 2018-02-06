@@ -5,11 +5,11 @@ from functools import partial
 
 class Constraint(object):
     def __init__(self):
-        self.prox_sed = None # might be None, single operator, or AlternatingProjections
+        self.prox_sed = None  # None, single operator, or AlternatingProjections
         self.prox_morph = None
-        self.prox_g_sed = None
+        self.prox_g_sed = None # None or operator
         self.prox_g_morph = None
-        self.L_sed = None
+        self.L_sed = None      # None or matrix
         self.L_morph = None
 
     def reset(self, source):
@@ -111,9 +111,9 @@ class ConstraintList:
     def __init__(self, constraints):
         self.prox_sed = None # might be None, single operator, or AlternatingProjections
         self.prox_morph = None
-        self.prox_g_sed = None
+        self.prox_g_sed = None # None or list of operators
         self.prox_g_morph = None
-        self.L_sed = None
+        self.L_sed = None # None or list of matrices
         self.L_morph = None
         self.constraints = []
         for c in constraints:

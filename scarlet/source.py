@@ -3,7 +3,6 @@ import numpy as np
 from functools import partial
 
 import proxmin
-from . import transformations
 from . import constraints as sc
 
 import logging
@@ -208,6 +207,7 @@ class Source(object):
         self.fix_frame = fix_frame
 
         # set up psf and translations matrices
+        from . import transformations
         if isinstance(psf, transformations.GammaOp):
             self._gammaOp = psf
         else:
@@ -526,3 +526,23 @@ class Source(object):
             PS = [scipy.sparse.block_diag([model[k,b,:,:].reshape((1,-1)).T for b in range(self.B)])
                         for k in range(self.K)]
             return [np.sqrt(np.diag(np.linalg.inv(PSk.T.dot(Sigma_pix.dot(PSk)).toarray()))) for PSk in PS]
+
+class ExtendedSource(Source):
+    def __init__(self, center, img, bg_rms, constraints=None, psf=None):
+        self.center = center
+        sed, morph = init_above_noise(self, img, bg_rms)
+
+        if constraints is None:
+            constraints = sc.SimpleConstraint() & sc.DirectMonotonicityConstraint(use_nearest=False) & sc.SymmetryConstraint()
+
+        super(ExtendedSource, self).__init__(sed, morph, center=center, constraints=constraints, psf=psf, fix_sed=False, fix_morph=False, fix_frame=False, shift_center=0.2)
+
+class PointSource(Source):
+    def __init__(self, center, img, shape, constraints=None, psf=None):
+        self.center = center
+        sed, morph = init_peak(self, img, shape)
+
+        if constraints is None:
+            constraints = sc.SimpleConstraint() & sc.DirectMonotonicityConstraint(use_nearest=False) & sc.SymmetryConstraint()
+
+        super(PointSource, self).__init__(sed, morph, center=center, onstraints=constraints, psf=psf, fix_sed=False, fix_morph=False, fix_frame=False, shift_center=0.1)

@@ -1,10 +1,10 @@
 from __future__ import print_function, division
-import logging
 from functools import partial
 
 import numpy as np
 import proxmin
 
+import logging
 logger = logging.getLogger("scarlet.operators")
 
 def _prox_strict_monotonic(X, step, ref_idx, dist_idx, thresh=0):
