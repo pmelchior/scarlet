@@ -163,7 +163,7 @@ class Blend(object):
             the internal reference to that list.
         """
         try:
-            self.it += 1
+            self.it # test of this is first time fit is called
         except AttributeError:
             self.it = 0
             self._model_it = -1
