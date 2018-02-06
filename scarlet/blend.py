@@ -15,8 +15,8 @@ class Blend(object):
     """The blended scene as interpreted by the deblender.
     """
     def __init__(self, sources, img, weights=None, sky=None, bg_rms=None,
-                 refine_skip=10, center_min_dist=1e-3, edge_flux_thresh=1.,
-                 exact_lipschitz=False, e_rel=1e-2):
+                 refine_skip=10, center_min_dist=1e-3, source_sizes=[15,25,45,75,115,165], edge_flux_thresh=1.,
+                 exact_lipschitz=False):
         """Constructor
 
         Parameters
@@ -47,12 +47,12 @@ class Blend(object):
         center_min_dist: float, default=1e-3
             Minimum change is position required to trigger repositioning a source
         edge_flux_thresh: float, 1.0
-            Boxes are resized when flux at an edge is > `edge_flux_thresh` * `bg_rms`.
+            Boxes are resized when flux at an edge is > `edge_flux_thresh` * `bg_rms`
+        source_sizes: array_like, integer-valued
+            Size of the source boxes available when resizing
         exact_lipschitz: bool, default=False
             Calculate exact Lipschitz constant in every step or only calculate the Lipschitz
-            constant with significant changes in A,S.
-        e_rel: float, default=1e-2
-            Relative error for convergence
+            constant with significant changes in A,S
         """
         assert len(sources)
         # store all source and make search structures
@@ -64,12 +64,12 @@ class Blend(object):
         self.refine_skip = refine_skip
         self.center_min_dist = center_min_dist
         self.edge_flux_thresh = edge_flux_thresh
+        self.source_sizes = source_sizes
 
         # fit parameters
         self.update_order = [1,0]
         self.slack = 0.2
         self.exact_lipschitz = exact_lipschitz
-        self.e_rel = e_rel
 
         # set up data structures
         self.set_data(img, weights=weights, sky=sky, bg_rms=bg_rms)
@@ -141,7 +141,7 @@ class Blend(object):
                 LS[k] = self.sources[m].LS[l]
         return LA + LS
 
-    def fit(self, steps=200, e_rel=None, max_iter=None):
+    def fit(self, steps=200, e_rel=1e-2, max_iter=None):
         """Fit the model for each source to the data
 
         Parameters
@@ -199,8 +199,7 @@ class Blend(object):
             max_iter = steps
 
         # define error limits
-        if e_rel is not None:
-            self.e_rel = e_rel
+        self.e_rel = e_rel
         self._set_error_limits()
 
         # collect all SEDs and morphologies, plus associated errors
@@ -668,6 +667,16 @@ class Blend(object):
         self._edge_flux[m,2,:] = np.abs(model[:,:,0,:]).sum(axis=0).mean(axis=1)
         self._edge_flux[m,3,:] = np.abs(model[:,:,:,0]).sum(axis=0).mean(axis=1)
 
+    def _find_next_source_size(self, value):
+        # find first element not smaller than value
+        idx = np.where(self.source_sizes >= value)
+        # if not possible, use largest element
+        if len(idx):
+            idx = idx[0][0]
+        else:
+            idx = -1
+        return self.source_sizes[idx]
+
     def resize_sources(self):
         """Resize frames for sources (if necessary).
 
@@ -684,29 +693,23 @@ class Blend(object):
             if not self.sources[m].fix_frame:
                 size = [self.sources[m].Ny, self.sources[m].Nx]
                 increase = [int(max(0.25*s, 10)) for s in size]
+                newsize = [self._find_next_source_size(size[i] + increase[i]) for i in range(2)]
 
                 # check if max flux along edge in band b < avg noise level along edge in b
                 at_edge = (self._edge_flux[m] > self._bg_rms*self.edge_flux_thresh)
                 # TODO: without symmetry constraints, the four edges of the box
                 # should be allowed to resize independently
-                max_height = 2*max(self._img.shape[1]-self.sources[m].center_int[0],
-                                 self.sources[m].center_int[0])+1
-                max_width = 2*max(self._img.shape[2]-self.sources[m].center_int[1],
-                                self.sources[m].center_int[1])+1
                 _size = [size[0], size[1]]
                 resized_source = False
-                if (at_edge[0].any() or at_edge[2].any()) and size[0] < max_height:
-                    size[0] += increase[0]
-                    size[0] = min(size[0], max_height)
+                if (at_edge[0].any() or at_edge[2].any()):
+                    size[0] = newsize[0]
                     resized = resized_source = True
-                if (at_edge[1].any() or at_edge[3].any()) and size[1] < max_width:
-                    size[1] += increase[1]
-                    size[1] = min(size[1], max_width)
+                if (at_edge[1].any() or at_edge[3].any()):
+                    size[1] = newsize[1]
                     resized = resized_source = True
                 if resized_source:
                     logger.info("resizing source {0} from ({1},{2}) to ({3},{4}) at it {5}" .format(
                         m, _size[0], _size[1], size[0], size[1], self.it))
-                    logger.info("max height: {0}, width:{1}".format(max_height, max_width))
                     self.sources[m].resize(size)
         return resized
 
