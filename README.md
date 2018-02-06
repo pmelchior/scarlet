@@ -17,7 +17,9 @@ import scarlet
 # load image data as image cube with B bands, Ny x Nx pixels
 img = np.empty((B,Ny,Nx))
 
-# detect objects in img with sep (https://github.com/kbarbary/sep)
+# detect objects in img
+# we use the python SExtractor clone sep (https://github.com/kbarbary/sep)
+# but use whatever you prefer
 def makeCatalog(img):
     detect = img.mean(axis=0) # simple average for detection
     bkg = sep.Background(detect)
@@ -26,28 +28,39 @@ def makeCatalog(img):
     return catalog, bg_rms
 catalog, bg_rms = makeCatalog(img)
 
-# constraints on morphology:
-# "S": symmetry
-# "m": monotonicity (with neighbor pixel weighting)
-# "+": non-negativity
-constraints = {"S": None, "m": {'use_nearest': False}, "+": None}
-
-# initial size of the box around each object
-# will be adjusted as needed
-shape = (B, 15, 15)
+# define sources in the model (this is where the magic happens...)
+# for convenience, we predefine PointSource and ExtendedSource classes.
+# 1) by default, ExtendedSources are initialized and constrained
+# as strictly postive, symmetric, and monotonic.
 # WARNING: coordinates are expected to use numpy/C ordering: (y,x)
-sources = [scarlet.Source((obj['y'],obj['x']), shape, constraints=constraints) for obj in catalog]
+sources = [scarlet.ExtendedSource((obj['y'],obj['x']), img, bg_rms) for obj in catalog]
+
+# 2) if you want to change the constraints (but not the initialization)
+# e.g. add a l0 sparsity penalty at approx the noise level
+import scarlet.constraints as sc
+constraints = sc.SimpleConstraint() & sc.DirectMonotonicityConstraint(use_nearest=False) & sc.SymmetryConstraint() & sc.L1Constraint(bg_rms.sum())
+sources = [scarlet.ExtendedSource((obj['y'],obj['x']), img, bg_rms, constraints=constraints) for obj in catalog]
+
+# 3) if you have per-band PSF kernel images:
+# Note: These need to be difference kernels to a common minimum size
+pdiff = [PSF[b] for b in range(B)]
+psf = scarlet.transformations.GammaOp(shape, pdiff)
+sources = [scarlet.ExtendedSource((obj['y'],obj['x']), img, bg_rms, psf=psf) for obj in catalog]
+
+# 4) if you want more control over source initialization and constraints,
+# make your own class:
+class MySource(scarlet.Source):
+    def __init__(self, *args, **kwargs):
+        # determine the initial sed and morphology, center, constraints
+        # then construct the source, e.g:
+        super(MySource, self).__init__(sed, morph, center=center, constraints=constraints, psf=psf, fix_sed=False, fix_morph=False, fix_frame=False, shift_center=0.2)
+
+# define blended scene from all sources
 blend = scarlet.Blend(sources, img, bg_rms=bg_rms)
 
 # if you have per-pixel weights:
 weights = np.empty((B,Ny,Nx))
 blend = scarlet.Blend(sources, img, bg_rms=bg_rms, weights=weights)
-
-# if you have per-band PSF kernel images:
-# Note: These need to be difference kernels to a common minimum 
-pdiff = [PSF[b] for b in range(B)]
-psf = scarlet.transformations.GammaOp(shape, pdiff)
-blend = scarlet.Blend(sources, img, bg_rms=bg_rms, psf=psf)
 
 # run the fitter for 200 steps (or until convergence)
 blend.fit(200)
@@ -55,7 +68,11 @@ blend.fit(200)
 # render the multi-band model: has same shape as img
 model = blend.get_model()
 
-# inspect the components
+# render single component of the blend model in scene
+k = 0
+model_k = blend.get_model(k)
+
+# inspect the source in their own frame (centered in bounding box)
 for source in sources:
     model = source.get_model()
 ```
