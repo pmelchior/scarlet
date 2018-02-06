@@ -119,6 +119,9 @@ class ConstraintList:
         for c in constraints:
             self.__iand__(c)
 
+    def __getitem__(self, index):
+        return self.constraints[index]
+
     def __and__(self, c):
         cl = ConstraintList(self.constraints)
         return cl.__iand__(c)
@@ -143,9 +146,10 @@ class ConstraintList:
             else:
                 # self.prox_sed is AlternatingProjections
                 if isinstance(c.prox_sed, proxmin.operators.AlternatingProjections):
-                    self.prox_sed.operators += c.prox_sed.operators
+                    ops = self.prox_sed.operators + c.prox_sed.operators
                 else:
-                    self.prox_sed.operators.append(c.prox_sed)
+                    ops = self.prox_sed.operators + [c.prox_sed]
+                self.prox_sed = proxmin.operators.AlternatingProjections(ops)
 
         if c.prox_morph is not None:
             if self.prox_morph is None:
@@ -158,11 +162,12 @@ class ConstraintList:
                     ops = [self.prox_morph, c.prox_morph]
                 self.prox_morph = proxmin.operators.AlternatingProjections(ops)
             else:
-                # self.prox_sed is AlternatingProjections
+                # self.prox_morph is AlternatingProjections
                 if isinstance(c.prox_morph, proxmin.operators.AlternatingProjections):
-                    self.prox_morph.operators += c.prox_morph.operators
+                    ops = self.prox_morph.operators + c.prox_morph.operators
                 else:
-                    self.prox_morph.operators.append(c.prox_morph)
+                    ops = self.prox_morph.operators + [c.prox_morph]
+                self.prox_morph = proxmin.operators.AlternatingProjections(ops)
 
         if c.prox_g_sed is not None:
             if self.prox_g_sed is None:
