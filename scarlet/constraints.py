@@ -62,7 +62,7 @@ class DirectMonotonicityConstraint(Constraint):
         else:
             # cone method for monotonicity: exact but VERY slow
             G = transformations.getRadialMonotonicOp(shape, useNearest=self.useNearest).toarray()
-            self.prox_morphh = partial(operators.prox_cone, G=G)
+            self.prox_morph = partial(operators.prox_cone, G=G)
 
 class MonotonicityConstraint(Constraint):
     def __init__(self, use_nearest=False):
@@ -133,68 +133,48 @@ class ConstraintList:
             return self
 
         self.constraints.append(c)
-        if c.prox_sed is not None:
-            if self.prox_sed is None:
-                self.prox_sed = c.prox_sed
-            elif isinstance(self.prox_sed, proxmin.operators.AlternatingProjections) is False:
-                # self.prox_sed is single operator
-                if isinstance(c.prox_sed, proxmin.operators.AlternatingProjections):
-                    ops = [self.prox_sed] + c.prox_sed.operators
-                else:
-                    ops = [self.prox_sed, c.prox_sed]
-                self.prox_sed = proxmin.operators.AlternatingProjections(ops)
-            else:
-                # self.prox_sed is AlternatingProjections
-                if isinstance(c.prox_sed, proxmin.operators.AlternatingProjections):
-                    ops = self.prox_sed.operators + c.prox_sed.operators
-                else:
-                    ops = self.prox_sed.operators + [c.prox_sed]
-                self.prox_sed = proxmin.operators.AlternatingProjections(ops)
-
-        if c.prox_morph is not None:
-            if self.prox_morph is None:
-                self.prox_morph = c.prox_morph
-            elif isinstance(self.prox_morph, proxmin.operators.AlternatingProjections) is False:
-                # self.prox_morph is single operator
-                if isinstance(c.prox_morph, proxmin.operators.AlternatingProjections):
-                    ops = [self.prox_morph] + c.prox_morph.operators
-                else:
-                    ops = [self.prox_morph, c.prox_morph]
-                self.prox_morph = proxmin.operators.AlternatingProjections(ops)
-            else:
-                # self.prox_morph is AlternatingProjections
-                if isinstance(c.prox_morph, proxmin.operators.AlternatingProjections):
-                    ops = self.prox_morph.operators + c.prox_morph.operators
-                else:
-                    ops = self.prox_morph.operators + [c.prox_morph]
-                self.prox_morph = proxmin.operators.AlternatingProjections(ops)
-
-        if c.prox_g_sed is not None:
-            if self.prox_g_sed is None:
-                self.prox_g_sed = [c.prox_g_sed]
-            else:
-                self.prox_g_sed.append(c.prox_g_sed)
-
-        if c.prox_g_morph is not None:
-            if self.prox_g_morph is None:
-                self.prox_g_morph = [c.prox_g_morph]
-            else:
-                self.prox_g_morph.append(c.prox_g_morph)
-
-        if c.L_sed is not None:
-            if self.L_sed is None:
-                self.L_sed = [c.L_sed]
-            else:
-                self.L_sed.append(c.L_sed)
-
-        if c.L_morph is not None:
-            if self.L_morph is None:
-                self.L_morph = [c.L_morph]
-            else:
-                self.L_morph.append(c.L_morph)
+        self._update_projections(c, 'prox_sed')
+        self._update_projections(c, 'prox_morph')
+        self._update_constraint_list(c, 'prox_g_sed')
+        self._update_constraint_list(c, 'prox_g_morph')
+        self._update_constraint_list(c, 'L_sed')
+        self._update_constraint_list(c, 'L_morph')
         return self
 
     def reset(self, source):
         for c in self.constraints:
             c.reset(source)
         self.__init__(self.constraints)
+
+    def _update_projections(self, constraint, prox_name):
+        prox = getattr(self, prox_name)
+        cprox = getattr(constraint, prox_name)
+        if cprox is not None:
+            if prox is None:
+                prox = cprox
+            elif isinstance(prox, proxmin.operators.AlternatingProjections) is False:
+                # self.<prox_name> is single operator
+                if isinstance(cprox, proxmin.operators.AlternatingProjections):
+                    ops = [prox] + cprox.operators
+                else:
+                    ops = [prox, cprox]
+                prox = proxmin.operators.AlternatingProjections(ops)
+            else:
+                # self.<prox_name> is AlternatingProjections
+                if isinstance(cprox, proxmin.operators.AlternatingProjections):
+                    ops = prox.operators + cprox.operators
+                else:
+                    ops = prox.operators + [cprox]
+                prox = proxmin.operators.AlternatingProjections(ops)
+        setattr(self, prox_name, prox)
+
+    def _update_constraint_list(self, constraint, key):
+        if hasattr(constraint, key):
+            clist = getattr(self, key)
+            c = getattr(constraint, key)
+            if c is not None:
+                if clist is None:
+                    clist = [c]
+                else:
+                    clist.append(c)
+                setattr(self, key, clist)

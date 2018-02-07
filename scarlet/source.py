@@ -139,17 +139,14 @@ def init_above_noise(source, img, bg_rms, thresh=1., symmetric=True, monotonic=T
     ypix, xpix = np.where(mask)
     _Ny = np.max(ypix)-np.min(ypix)
     _Nx = np.max(xpix)-np.min(xpix)
-    # make sure source has off pixel numbers
+    # make sure source has odd pixel numbers
     _Ny += 1 - _Ny % 2
     _Nx += 1 - _Nx % 2
 
     # get the model of the source
     source._set_frame(source.center, (_Ny, _Nx))
-    #source.morph = np.zeros((source.K, _Ny * _Nx))
     Dy, Dx = Ny - _Ny, Nx - _Nx
     inner = (slice(Dy//2, -Dy//2), slice(Dx//2, -Dx//2))
-    #source.morph[0] = morph[inner].flatten()
-    #source.set_center(source.center)
     morph = morph[inner]
 
     # updated SED with mean sed under weight function morph
