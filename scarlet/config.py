@@ -18,3 +18,14 @@ source_sizes = [15,25,45,75,115,165]
 center_min_dist = 1e-3
 edge_flux_thresh=1.
 exact_lipschitz=False
+
+def find_next_source_size(size):
+    from numpy import where
+    # find first element not smaller than size
+    idx = where(source_sizes >= size)
+    # if not possible, use largest element
+    if len(idx):
+        idx = idx[0][0]
+    else:
+        idx = -1
+    return source_sizes[idx]

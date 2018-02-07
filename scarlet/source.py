@@ -4,6 +4,7 @@ from functools import partial
 
 import proxmin
 from . import constraints as sc
+from . import config
 
 import logging
 logger = logging.getLogger("scarlet.source")
@@ -421,8 +422,10 @@ def get_integrated_sed(img, weight):
 
 
 class PointSource(Source):
-    def __init__(self, center, img, shape, constraints=None, psf=None):
+    def __init__(self, center, img, shape=None, constraints=None, psf=None):
         self.center = center
+        if shape is None:
+            shape = np.min(config.source_sizes)
         sed, morph = self.make_initial(img, shape)
 
         if constraints is None:
@@ -503,7 +506,7 @@ class ExtendedSource(Source):
 
         # symmetric, monotonic
         if symmetric:
-            symm = np.fliplr(np.flipud(morph))#(morph.flatten()[::-1]).reshape(Ny,Nx)
+            symm = np.fliplr(np.flipud(morph))
             morph = np.min([morph, symm], axis=0)
         if monotonic:
             # use finite thresh to remove flat bridges
@@ -524,9 +527,10 @@ class ExtendedSource(Source):
         ypix, xpix = np.where(mask)
         _Ny = np.max(ypix)-np.min(ypix)
         _Nx = np.max(xpix)-np.min(xpix)
+
         # make sure source has odd pixel numbers
-        _Ny += 1 - _Ny % 2
-        _Nx += 1 - _Nx % 2
+        _Ny = config.find_next_source_size(_Ny)
+        _Nx = config.find_next_source_size(_Nx)
 
         # get the model of the source
         Dy, Dx = self.Ny - _Ny, self.Nx - _Nx

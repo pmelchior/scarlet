@@ -632,16 +632,6 @@ class Blend(object):
         self._edge_flux[m,2,:] = np.abs(model[:,:,0,:]).sum(axis=0).mean(axis=1)
         self._edge_flux[m,3,:] = np.abs(model[:,:,:,0]).sum(axis=0).mean(axis=1)
 
-    def _find_next_source_size(self, value):
-        # find first element not smaller than value
-        idx = np.where(config.source_sizes >= value)
-        # if not possible, use largest element
-        if len(idx):
-            idx = idx[0][0]
-        else:
-            idx = -1
-        return config.source_sizes[idx]
-
     def resize_sources(self):
         """Resize frames for sources (if necessary).
 
@@ -658,7 +648,7 @@ class Blend(object):
             if not self.sources[m].fix_frame:
                 size = [self.sources[m].Ny, self.sources[m].Nx]
                 increase = [int(max(0.25*s, 10)) for s in size]
-                newsize = [self._find_next_source_size(size[i] + increase[i]) for i in range(2)]
+                newsize = [config.find_next_source_size(size[i] + increase[i]) for i in range(2)]
 
                 # check if max flux along edge in band b < avg noise level along edge in b
                 at_edge = (self._edge_flux[m] > self._bg_rms * config.edge_flux_thresh)
