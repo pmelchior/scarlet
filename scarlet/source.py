@@ -425,13 +425,13 @@ class PointSource(Source):
     def __init__(self, center, img, shape=None, constraints=None, psf=None):
         self.center = center
         if shape is None:
-            shape = np.min(config.source_sizes)
+            shape = (np.min(config.source_sizes),) * 2
         sed, morph = self.make_initial(img, shape)
 
         if constraints is None:
             constraints = sc.SimpleConstraint() & sc.DirectMonotonicityConstraint(use_nearest=False) & sc.SymmetryConstraint()
 
-        super(PointSource, self).__init__(sed, morph, center=center, onstraints=constraints, psf=psf, fix_sed=False, fix_morph=False, fix_frame=False, shift_center=0.1)
+        super(PointSource, self).__init__(sed, morph, center=center, constraints=constraints, psf=psf, fix_sed=False, fix_morph=False, fix_frame=False, shift_center=0.1)
 
     def make_initial(self, img, shape, tiny=1e-10):
         """Initialize the source using only the peak pixel
@@ -452,7 +452,7 @@ class PointSource(Source):
         B, Ny, Nx = img.shape
         _y, _x = self.center_int
         try:
-            sed = get_pixel_sed(img, source.center_int)
+            sed = get_pixel_sed(img, self.center_int)
         except SourceInitError:
             # flat weights as fall-back
             sed = np.ones(B) / B
