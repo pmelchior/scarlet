@@ -19,10 +19,17 @@ center_min_dist = 1e-3
 edge_flux_thresh=1.
 exact_lipschitz=False
 
+import numpy as np
+def fix_source_sizes():
+    global source_sizes
+    source_sizes = np.array(source_sizes, dtype='int')
+    mask = (source_sizes % 2 == 0)
+    source_sizes[mask] += 1
+    source_sizes.sort()
+
 def find_next_source_size(size):
-    from numpy import where
     # find first element not smaller than size
-    idx = where(source_sizes >= size)
+    idx = np.where(source_sizes >= size)
     # if not possible, use largest element
     if len(idx):
         idx = idx[0][0]

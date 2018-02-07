@@ -425,7 +425,8 @@ class PointSource(Source):
     def __init__(self, center, img, shape=None, constraints=None, psf=None):
         self.center = center
         if shape is None:
-            shape = (np.min(config.source_sizes),) * 2
+            config.fix_source_sizes()
+            shape = (config.source_sizes[0],) * 2
         sed, morph = self.make_initial(img, shape)
 
         if constraints is None:
@@ -528,7 +529,8 @@ class ExtendedSource(Source):
         _Ny = np.max(ypix)-np.min(ypix)
         _Nx = np.max(xpix)-np.min(xpix)
 
-        # make sure source has odd pixel numbers
+        # make sure source has odd pixel numbers and is from config.source_sizes
+        config.fix_source_sizes()
         _Ny = config.find_next_source_size(_Ny)
         _Nx = config.find_next_source_size(_Nx)
 
