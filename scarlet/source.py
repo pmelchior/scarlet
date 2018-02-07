@@ -509,7 +509,7 @@ class ExtendedSource(Source):
             # use finite thresh to remove flat bridges
             from . import operators
             prox_monotonic = operators.prox_strict_monotonic((self.Ny, self.Nx), thresh=0.1, use_nearest=False)
-            morph = prox_monotonic(morph.flatten(), 0).reshape(Ny,Nx)
+            morph = prox_monotonic(morph.flatten(), 0).reshape(self.Ny, self.Nx)
 
         # trim morph to pixels above threshold
         # thresh is multiple above the rms of detect (weighted variance across bands)
@@ -529,13 +529,12 @@ class ExtendedSource(Source):
         _Nx += 1 - _Nx % 2
 
         # get the model of the source
-        self._set_frame(self.center, (_Ny, _Nx))
-        Dy, Dx = Ny - _Ny, Nx - _Nx
+        Dy, Dx = self.Ny - _Ny, self.Nx - _Nx
         inner = (slice(Dy//2, -Dy//2), slice(Dx//2, -Dx//2))
         morph = morph[inner]
 
         # updated SED with mean sed under weight function morph
-        #model = source.get_model(use_sed=False)
+        self._set_frame(self.center, (_Ny, _Nx))
         source_slice = self.get_slice_for(img.shape)
         # use mean sed from image, weighted with the morphology of each component
         try:
