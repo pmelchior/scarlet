@@ -11,155 +11,6 @@ logger = logging.getLogger("scarlet.source")
 class SourceInitError(Exception):
     pass
 
-def get_pixel_sed(img, position):
-    """Get the SED at `position` in `img`
-
-    Parameters
-    ----------
-    img: `~numpy.array`
-        (Bands, Height, Width) data array that contains a 2D image for each band
-    position: array-like
-        (y,x) coordinates of the source in the larger image
-
-    Returns
-    -------
-    SED: `~numpy.array`
-        SED for a single source
-    """
-    _y, _x = position
-    sed = np.zeros((img.shape[0],))
-    sed[:] = img[:,_y,_x]
-    if np.all(sed<=0):
-        # If the flux in all bands is  <=0,
-        # the new sed will be filled with NaN values,
-        # which will cause the code to crash later
-        msg = "Zero or negative flux at y={0}, x={1}"
-        raise SourceInitError(msg.format(_y, _x))
-
-    # ensure proper normalization
-    return proxmin.operators.prox_unity_plus(sed, 0)
-
-def get_integrated_sed(img, weight):
-    """Calculated the SED by summing the flux in the image in each band
-    """
-    B, Ny, Nx = img.shape
-    sed = (img * weight).reshape(B, -1).sum(axis=1)
-    if np.all(sed<=0):
-        # If the flux in all bands is  <=0,
-        # the new sed will be filled with NaN values,
-        # which will cause the code to crash later
-        msg = "Zero or negative flux under weight function"
-        raise SourceInitError(msg)
-
-    # ensure proper normalization
-    return proxmin.operators.prox_unity_plus(sed, 0)
-
-
-def init_peak(source, img, shape, tiny=1e-10):
-    """Initialize the source using only the peak pixel
-
-    Parameters
-    ----------
-    source: `~scarlet.source.Source`
-        `Source` to initialize.
-    img: `~numpy.array`
-        (Bands, Height, Width) data array that contains a 2D image for each band
-
-    This implementation initializes the sed from the pixel in
-    the center of the frame and sets morphology to only comprise that pixel,
-    which works well for point sources and poorly resolved galaxies.
-
-    """
-    # determine initial SED from peak position
-    B, Ny, Nx = img.shape
-    _y, _x = source.center_int
-    try:
-        sed = get_pixel_sed(img, source.center_int)
-    except SourceInitError:
-        # flat weights as fall-back
-        sed = np.ones(B) / B
-    morph = np.zeros(shape[0] * shape[1])
-    # Turn on a single pixel at the peak
-    center_pix = morph.size // 2
-    morph[center_pix] = max(img[:,_y,_x].sum(axis=0), tiny)
-    return sed.reshape((1,B)), morph.reshape((1, shape[0], shape[1]))
-
-def init_above_noise(source, img, bg_rms, thresh=1., symmetric=True, monotonic=True):
-
-    # every source as large as the entire image, but shifted to its centroid
-    B, Ny, Nx = img.shape
-    source._set_frame(source.center, (Ny,Nx))
-
-    # determine initial SED from peak position
-    try:
-        sed = get_pixel_sed(img, source.center_int)
-    except SourceInitError:
-        # flat weights as fall-back
-        sed = np.ones(B) / B
-
-    # build optimal detection coadd
-    weights = np.array([sed[b]/bg_rms[b]**2 for b in range(B)])
-    jacobian = np.array([sed[b]**2/bg_rms[b]**2 for b in range(B)]).sum()
-    detect = np.einsum('i,i...', weights, img) / jacobian
-
-    # copy morph from detect cutout, make non-negative
-    source_slice = source.get_slice_for(img.shape)
-    morph = np.zeros((source.Ny, source.Nx))
-    morph[source_slice[1:]] = detect[source.bb[1:]]
-
-    # check if source_slice is covering the whole of morph:
-    # if not, extend morph by coping last row/column from img
-    if source_slice[1].stop - source_slice[1].start < source.Ny:
-        morph[0:source_slice[1].start,:] = morph[source_slice[1].start,:]
-        morph[source_slice[1].stop:,:] = morph[source_slice[1].stop-1,:]
-    if source_slice[2].stop - source_slice[2].start < source.Nx:
-        morph[:,0:source_slice[2].start] = morph[:,source_slice[2].start][:,None]
-        morph[:,source_slice[2].stop:] = morph[:,source_slice[2].stop-1][:,None]
-
-    # symmetric, monotonic
-    if symmetric:
-        symm = np.fliplr(np.flipud(morph))#(morph.flatten()[::-1]).reshape(Ny,Nx)
-        morph = np.min([morph, symm], axis=0)
-    if monotonic:
-        # use finite thresh to remove flat bridges
-        from . import operators
-        prox_monotonic = operators.prox_strict_monotonic((source.Ny, source.Nx), thresh=0.1, use_nearest=False)
-        morph = prox_monotonic(morph.flatten(), 0).reshape(Ny,Nx)
-
-    # trim morph to pixels above threshold
-    # thresh is multiple above the rms of detect (weighted variance across bands)
-    _thresh = thresh * np.sqrt((weights**2 * bg_rms**2).sum()) / jacobian
-    mask = morph > _thresh
-    if mask.sum() == 0:
-        msg = "No flux above threshold={2} for source at y={0}, x={1}"
-        _y, _x = source.center_int
-        raise SourceInitError(msg.format(_y, _x, _thresh))
-    morph[~mask] = 0
-
-    ypix, xpix = np.where(mask)
-    _Ny = np.max(ypix)-np.min(ypix)
-    _Nx = np.max(xpix)-np.min(xpix)
-    # make sure source has odd pixel numbers
-    _Ny += 1 - _Ny % 2
-    _Nx += 1 - _Nx % 2
-
-    # get the model of the source
-    source._set_frame(source.center, (_Ny, _Nx))
-    Dy, Dx = Ny - _Ny, Nx - _Nx
-    inner = (slice(Dy//2, -Dy//2), slice(Dx//2, -Dx//2))
-    morph = morph[inner]
-
-    # updated SED with mean sed under weight function morph
-    #model = source.get_model(use_sed=False)
-    source_slice = source.get_slice_for(img.shape)
-    # use mean sed from image, weighted with the morphology of each component
-    try:
-        sed = get_integrated_sed(img[source.bb], morph[source_slice[1:]])
-    except SourceInitError:
-        pass # keep the peak sed
-    return sed.reshape((1,B)), morph.reshape((1, morph.shape[0], morph.shape[1]))
-
-
 class Source(object):
 
     """A single source in a blend
@@ -524,22 +375,171 @@ class Source(object):
                         for k in range(self.K)]
             return [np.sqrt(np.diag(np.linalg.inv(PSk.T.dot(Sigma_pix.dot(PSk)).toarray()))) for PSk in PS]
 
+
+def get_pixel_sed(img, position):
+    """Get the SED at `position` in `img`
+
+    Parameters
+    ----------
+    img: `~numpy.array`
+        (Bands, Height, Width) data array that contains a 2D image for each band
+    position: array-like
+        (y,x) coordinates of the source in the larger image
+
+    Returns
+    -------
+    SED: `~numpy.array`
+        SED for a single source
+    """
+    _y, _x = position
+    sed = np.zeros((img.shape[0],))
+    sed[:] = img[:,_y,_x]
+    if np.all(sed<=0):
+        # If the flux in all bands is  <=0,
+        # the new sed will be filled with NaN values,
+        # which will cause the code to crash later
+        msg = "Zero or negative flux at y={0}, x={1}"
+        raise SourceInitError(msg.format(_y, _x))
+
+    # ensure proper normalization
+    return proxmin.operators.prox_unity_plus(sed, 0)
+
+def get_integrated_sed(img, weight):
+    """Calculated the SED by summing the flux in the image in each band
+    """
+    B, Ny, Nx = img.shape
+    sed = (img * weight).reshape(B, -1).sum(axis=1)
+    if np.all(sed<=0):
+        # If the flux in all bands is  <=0,
+        # the new sed will be filled with NaN values,
+        # which will cause the code to crash later
+        msg = "Zero or negative flux under weight function"
+        raise SourceInitError(msg)
+
+    # ensure proper normalization
+    return proxmin.operators.prox_unity_plus(sed, 0)
+
+
+class PointSource(Source):
+    def __init__(self, center, img, shape, constraints=None, psf=None):
+        self.center = center
+        sed, morph = self.make_initial(img, shape)
+
+        if constraints is None:
+            constraints = sc.SimpleConstraint() & sc.DirectMonotonicityConstraint(use_nearest=False) & sc.SymmetryConstraint()
+
+        super(PointSource, self).__init__(sed, morph, center=center, onstraints=constraints, psf=psf, fix_sed=False, fix_morph=False, fix_frame=False, shift_center=0.1)
+
+    def make_initial(self, img, shape, tiny=1e-10):
+        """Initialize the source using only the peak pixel
+
+        Parameters
+        ----------
+        source: `~scarlet.source.Source`
+            `Source` to initialize.
+        img: `~numpy.array`
+            (Bands, Height, Width) data array that contains a 2D image for each band
+
+        This implementation initializes the sed from the pixel in
+        the center of the frame and sets morphology to only comprise that pixel,
+        which works well for point sources and poorly resolved galaxies.
+
+        """
+        # determine initial SED from peak position
+        B, Ny, Nx = img.shape
+        _y, _x = self.center_int
+        try:
+            sed = get_pixel_sed(img, source.center_int)
+        except SourceInitError:
+            # flat weights as fall-back
+            sed = np.ones(B) / B
+        morph = np.zeros(shape[0] * shape[1])
+        # Turn on a single pixel at the peak
+        center_pix = morph.size // 2
+        morph[center_pix] = max(img[:,_y,_x].sum(axis=0), tiny)
+        return sed.reshape((1,B)), morph.reshape((1, shape[0], shape[1]))
+
 class ExtendedSource(Source):
     def __init__(self, center, img, bg_rms, constraints=None, psf=None):
         self.center = center
-        sed, morph = init_above_noise(self, img, bg_rms)
+        sed, morph = self.make_initial(img, bg_rms)
 
         if constraints is None:
             constraints = sc.SimpleConstraint() & sc.DirectMonotonicityConstraint(use_nearest=False) & sc.SymmetryConstraint()
 
         super(ExtendedSource, self).__init__(sed, morph, center=center, constraints=constraints, psf=psf, fix_sed=False, fix_morph=False, fix_frame=False, shift_center=0.2)
 
-class PointSource(Source):
-    def __init__(self, center, img, shape, constraints=None, psf=None):
-        self.center = center
-        sed, morph = init_peak(self, img, shape)
+    def make_initial(self, img, bg_rms, thresh=1., symmetric=True, monotonic=True):
 
-        if constraints is None:
-            constraints = sc.SimpleConstraint() & sc.DirectMonotonicityConstraint(use_nearest=False) & sc.SymmetryConstraint()
+        # every source as large as the entire image, but shifted to its centroid
+        B, Ny, Nx = img.shape
+        self._set_frame(self.center, (Ny,Nx))
 
-        super(PointSource, self).__init__(sed, morph, center=center, onstraints=constraints, psf=psf, fix_sed=False, fix_morph=False, fix_frame=False, shift_center=0.1)
+        # determine initial SED from peak position
+        try:
+            sed = get_pixel_sed(img, self.center_int)
+        except SourceInitError:
+            # flat weights as fall-back
+            sed = np.ones(B) / B
+
+        # build optimal detection coadd
+        weights = np.array([sed[b]/bg_rms[b]**2 for b in range(B)])
+        jacobian = np.array([sed[b]**2/bg_rms[b]**2 for b in range(B)]).sum()
+        detect = np.einsum('i,i...', weights, img) / jacobian
+
+        # copy morph from detect cutout, make non-negative
+        source_slice = self.get_slice_for(img.shape)
+        morph = np.zeros((self.Ny, self.Nx))
+        morph[source_slice[1:]] = detect[self.bb[1:]]
+
+        # check if source_slice is covering the whole of morph:
+        # if not, extend morph by coping last row/column from img
+        if source_slice[1].stop - source_slice[1].start < self.Ny:
+            morph[0:source_slice[1].start,:] = morph[source_slice[1].start,:]
+            morph[source_slice[1].stop:,:] = morph[source_slice[1].stop-1,:]
+        if source_slice[2].stop - source_slice[2].start < self.Nx:
+            morph[:,0:source_slice[2].start] = morph[:,source_slice[2].start][:,None]
+            morph[:,source_slice[2].stop:] = morph[:,source_slice[2].stop-1][:,None]
+
+        # symmetric, monotonic
+        if symmetric:
+            symm = np.fliplr(np.flipud(morph))#(morph.flatten()[::-1]).reshape(Ny,Nx)
+            morph = np.min([morph, symm], axis=0)
+        if monotonic:
+            # use finite thresh to remove flat bridges
+            from . import operators
+            prox_monotonic = operators.prox_strict_monotonic((self.Ny, self.Nx), thresh=0.1, use_nearest=False)
+            morph = prox_monotonic(morph.flatten(), 0).reshape(Ny,Nx)
+
+        # trim morph to pixels above threshold
+        # thresh is multiple above the rms of detect (weighted variance across bands)
+        _thresh = thresh * np.sqrt((weights**2 * bg_rms**2).sum()) / jacobian
+        mask = morph > _thresh
+        if mask.sum() == 0:
+            msg = "No flux above threshold={2} for source at y={0}, x={1}"
+            _y, _x = self.center_int
+            raise SourceInitError(msg.format(_y, _x, _thresh))
+        morph[~mask] = 0
+
+        ypix, xpix = np.where(mask)
+        _Ny = np.max(ypix)-np.min(ypix)
+        _Nx = np.max(xpix)-np.min(xpix)
+        # make sure source has odd pixel numbers
+        _Ny += 1 - _Ny % 2
+        _Nx += 1 - _Nx % 2
+
+        # get the model of the source
+        self._set_frame(self.center, (_Ny, _Nx))
+        Dy, Dx = Ny - _Ny, Nx - _Nx
+        inner = (slice(Dy//2, -Dy//2), slice(Dx//2, -Dx//2))
+        morph = morph[inner]
+
+        # updated SED with mean sed under weight function morph
+        #model = source.get_model(use_sed=False)
+        source_slice = self.get_slice_for(img.shape)
+        # use mean sed from image, weighted with the morphology of each component
+        try:
+            sed = get_integrated_sed(img[self.bb], morph[source_slice[1:]])
+        except SourceInitError:
+            pass # keep the peak sed
+        return sed.reshape((1,B)), morph.reshape((1, morph.shape[0], morph.shape[1]))
