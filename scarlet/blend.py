@@ -109,7 +109,7 @@ class Blend(object):
             Ls_morph.append(self.sources[m].constraints[l].L_morph)
         return Ls_sed + Ls_morph
 
-    def fit(self, steps=200, e_rel=1e-2, max_iter=None):
+    def fit(self, steps=200, e_rel=1e-2):
         """Fit the model for each source to the data
 
         Parameters
@@ -119,13 +119,6 @@ class Blend(object):
         e_rel: float, default=`None`
             Relative error for convergence. If `e_rel` is `None`, the default
             `~scarlet.blend.Blend.e_rel` is used for convergence checks
-        max_iter: int, default=`None`
-            Maximum number of iterations, including restarts.
-            The difference between `max_iter` and `steps` is that the
-            deblender might throw a `ScarletRestartException`, which
-            restarts the deblender. In this case the total number of
-            iterations will still not exceed `max_iter`.
-            If `max_iter` is `None` then `max_iter=`steps`.
 
         Returns
         -------
@@ -162,10 +155,6 @@ class Blend(object):
                 self._Gamma_full = [ source._gammaOp(pos, self._img.shape, offset_int=source.center_int)
                                     for source in self.sources]
 
-        # only needed if the restart exception has been thrown
-        if max_iter is None:
-            max_iter = steps
-
         # define error limits
         self.e_rel = e_rel
         self._set_error_limits()
@@ -190,13 +179,16 @@ class Blend(object):
         steps_g_update = 'steps_f'
         accelerated = True
         traceback = False
+
+        max_iter = self.it + steps
         try:
             res = proxmin.algorithms.bsdmm(X, self._prox_f, self._steps_f, self._proxs_g, steps_g=steps_g,
                 Ls=self._Ls, update_order=_update_order, steps_g_update=steps_g_update, max_iter=steps,
                 e_rel=self._e_rel, e_abs=self._e_abs, accelerated=accelerated, traceback=traceback)
         except ScarletRestartException:
-            steps = max_iter - self.it
-            self.fit(steps=steps, max_iter=max_iter)
+            if self.it < max_iter: # don't restart at last iteration
+                steps = max_iter - self.it
+                self.fit(steps=steps)
         return self
 
     def set_data(self, img, weights=None, bg_rms=None):
@@ -359,29 +351,20 @@ class Blend(object):
         # which update to do now
         block = j//self.K
         k = j%self.K
+        m,l = self.source_of(k)
 
         # computing likelihood gradients for S and A:
         # build model only once per iteration
         if k == 0:
             if block == config.update_order[0]:
-                self.it += 1
-
-                # refine sources
-                if self.it > 0 and self.it % config.refine_skip == 0:
-                    resized = self.resize_sources()
-                    self.recenter_sources()
-                    self.adjust_absolute_error()
-                    if resized:
-                        raise ScarletRestartException()
-
                 self._compute_model()
 
             # compute weighted residuals
             self._diff = self._weights[block]*(self._model-self._img)
 
         # A update
+
         if block == 0:
-            m,l = self.source_of(k)
             if not self.sources[m].fix_sed[l]:
                 # gradient of likelihood wrt A: nominally np.dot(diff, S^T)
                 # but with PSF convolution, S_ij -> sum_q Gamma_bqi S_qj
@@ -389,12 +372,10 @@ class Blend(object):
                 grad = np.einsum('...ij,...ij', self._diff, self._models[k])
 
                 # apply per component prox projection and save in source
-                self.sources[m].sed[l] =  self.sources[m].constraints[l].prox_sed(X - step*grad, step)
-            return self.sources[m].sed[l]
+                X = self.sources[m].sed[l] =  self.sources[m].constraints[l].prox_sed(X - step*grad, step)
 
         # S update
         elif block == 1:
-            m,l = self.source_of(k)
             if not self.sources[m].fix_morph[l]:
                 # gradient of likelihood wrt S: nominally np.dot(A^T,diff)
                 # but again: with convolution, it's more complicated
@@ -414,10 +395,21 @@ class Blend(object):
                         grad += self.sources[m].sed[l,b]*self.sources[m].Gamma[b].T.dot(diff_k[b].flatten())
 
                 # apply per component prox projection and save in source
-                self.sources[m].morph[l] = self.sources[m].constraints[l].prox_morph(X - step*grad, step)
-            return self.sources[m].morph[l]
-        else:
-            raise ValueError("Expected index j in [0,%d]" % (2*self.K))
+                X = self.sources[m].morph[l] = self.sources[m].constraints[l].prox_morph(X - step*grad, step)
+
+        # resize & recenter: after all blocks are updated
+        if k == self.K - 1 and block == config.update_order[1]:
+            self.it += 1
+
+            if self.it % config.refine_skip == 0:
+                resized = self.resize_sources()
+                self.recenter_sources()
+                self.adjust_absolute_error()
+                if resized:
+                    raise ScarletRestartException()
+
+        return X
+
 
     def _one_over_lipschitz(self, block):
         """Calculate 1/Lipschitz constant for A and S
@@ -686,31 +678,3 @@ class Blend(object):
         """Adjust the absolute error for each source
         """
         self._e_abs[self.K:] = self._absolute_morph_error()
-
-    def remove_degenerate_components(self, sed_diff=1e-5):
-        """Remove degenerate components of individual sources
-
-        This method does _not_ check for degenerate sources but components
-        in a single source whose SED's are similar enough to consider them
-        a single component.
-        This is useful to run after 10-20 iterations to remove second
-        components for stars and faint galaxies.
-
-        Parameters
-        ----------
-        sed_diff: float, default=1e-5
-            Maximum difference between component SED's to consider
-            them degenerate.
-
-        Returns
-        -------
-        removed: bool
-            Whether or not any components were removed
-        """
-        removed = False
-        for m, src in enumerate(self.sources):
-            result = src.remove_degenerate_components(sed_diff)
-            removed = removed or result
-        if removed:
-            self._register_sources(self.sources)
-        return removed
