@@ -474,6 +474,7 @@ class ExtendedSource(Source):
         # every source as large as the entire image, but shifted to its centroid
         B, Ny, Nx = img.shape
         self._set_frame(self.center, (Ny,Nx))
+        bg_rms = np.array(bg_rms)
 
         # determine initial SED from peak position
         try:
