@@ -206,7 +206,6 @@ class Blend(object):
         """
         self._img = img
         B, Ny, Nx = img.shape
-        config.fix_source_sizes()
         max_size = config.source_sizes[-1]
         if max(Ny,Nx) > max_size:
             logger.info("max source size {0} smaller than image size ({1},{2}); truncation possible".format(max_size, Ny, Nx))

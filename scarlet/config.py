@@ -11,28 +11,31 @@
         Calculate exact Lipschitz constant in every step or only calculate the Lipschitz
         constant with significant changes in A,S
 """
+import numpy as np
 update_order = [1,0]
 slack = 0.2
 refine_skip=10
-source_sizes = [15,25,45,75,115,165]
+source_sizes = np.array([15,25,45,75,115,165]) # int, odd, sorted
 center_min_dist = 1e-3
 edge_flux_thresh=1.
 exact_lipschitz=False
 
-import numpy as np
-def fix_source_sizes():
-    global source_sizes
-    source_sizes = np.array(source_sizes, dtype='int')
-    mask = (source_sizes % 2 == 0)
-    source_sizes[mask] += 1
-    source_sizes.sort()
+def set_source_sizes(sizes):
+    if hasattr(sizes, "__iter__"):
+        global source_sizes
+        source_sizes = np.array(sizes, dtype='int')
+        mask = (source_sizes % 2 == 0)
+        source_sizes[mask] += 1
+        source_sizes.sort()
+    else:
+        raise NotImplementedError("Source sizes must be list of numbers")
 
 def find_next_source_size(size):
     # find first element not smaller than size
-    idx = np.where(source_sizes >= size)
     # if not possible, use largest element
+    idx = np.flatnonzero(source_sizes >= size)
     if len(idx):
-        idx = idx[0][0]
+        idx = idx[0]
     else:
         idx = -1
     return source_sizes[idx]
