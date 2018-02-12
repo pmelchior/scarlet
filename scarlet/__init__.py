@@ -3,3 +3,4 @@ from proxmin import nmf as nmf
 from .constraints import *
 from .source import *
 from .blend import Blend
+from .config import Config

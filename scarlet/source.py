@@ -4,6 +4,7 @@ from functools import partial
 
 import proxmin
 from . import constraints as sc
+from .config import Config
 
 import logging
 logger = logging.getLogger("scarlet.source")
@@ -13,7 +14,10 @@ class SourceInitError(Exception):
 
 class Source(object):
 
-    """A single source in a blend
+    """A single source in a blend.
+
+    This class is fully functional and acts as base class for specialized
+    initialization, constraints, etc.
     """
     def __init__(self, sed, morph_image, constraints=None, center=None, psf=None, fix_sed=False, fix_morph=False,
                  fix_frame=False, shift_center=0.2):
@@ -421,14 +425,18 @@ def get_integrated_sed(img, weight):
 
 
 class PointSource(Source):
-    def __init__(self, center, img, shape, constraints=None, psf=None):
+    def __init__(self, center, img, shape=None, constraints=None, psf=None, config=None):
         self.center = center
+        if shape is None:
+            if config is None:
+                config = Config()
+            shape = (config.source_sizes[0],) * 2
         sed, morph = self.make_initial(img, shape)
 
         if constraints is None:
             constraints = sc.SimpleConstraint() & sc.DirectMonotonicityConstraint(use_nearest=False) & sc.SymmetryConstraint()
 
-        super(PointSource, self).__init__(sed, morph, center=center, onstraints=constraints, psf=psf, fix_sed=False, fix_morph=False, fix_frame=False, shift_center=0.1)
+        super(PointSource, self).__init__(sed, morph, center=center, constraints=constraints, psf=psf, fix_sed=False, fix_morph=False, fix_frame=False, shift_center=0.1)
 
     def make_initial(self, img, shape, tiny=1e-10):
         """Initialize the source using only the peak pixel
@@ -449,7 +457,7 @@ class PointSource(Source):
         B, Ny, Nx = img.shape
         _y, _x = self.center_int
         try:
-            sed = get_pixel_sed(img, source.center_int)
+            sed = get_pixel_sed(img, self.center_int)
         except SourceInitError:
             # flat weights as fall-back
             sed = np.ones(B) / B
@@ -460,16 +468,19 @@ class PointSource(Source):
         return sed.reshape((1,B)), morph.reshape((1, shape[0], shape[1]))
 
 class ExtendedSource(Source):
-    def __init__(self, center, img, bg_rms, constraints=None, psf=None):
+    def __init__(self, center, img, bg_rms, constraints=None, psf=None, config=None):
         self.center = center
-        sed, morph = self.make_initial(img, bg_rms)
+        sed, morph = self.make_initial(img, bg_rms, config=config)
 
         if constraints is None:
             constraints = sc.SimpleConstraint() & sc.DirectMonotonicityConstraint(use_nearest=False) & sc.SymmetryConstraint()
 
         super(ExtendedSource, self).__init__(sed, morph, center=center, constraints=constraints, psf=psf, fix_sed=False, fix_morph=False, fix_frame=False, shift_center=0.2)
 
-    def make_initial(self, img, bg_rms, thresh=1., symmetric=True, monotonic=True):
+    def make_initial(self, img, bg_rms, thresh=1., symmetric=True, monotonic=True, config=None):
+
+        if config is None:
+            config = Config()
 
         # every source as large as the entire image, but shifted to its centroid
         B, Ny, Nx = img.shape
@@ -504,7 +515,7 @@ class ExtendedSource(Source):
 
         # symmetric, monotonic
         if symmetric:
-            symm = np.fliplr(np.flipud(morph))#(morph.flatten()[::-1]).reshape(Ny,Nx)
+            symm = np.fliplr(np.flipud(morph))
             morph = np.min([morph, symm], axis=0)
         if monotonic:
             # use finite thresh to remove flat bridges
@@ -525,9 +536,10 @@ class ExtendedSource(Source):
         ypix, xpix = np.where(mask)
         _Ny = np.max(ypix)-np.min(ypix)
         _Nx = np.max(xpix)-np.min(xpix)
-        # make sure source has odd pixel numbers
-        _Ny += 1 - _Ny % 2
-        _Nx += 1 - _Nx % 2
+
+        # make sure source has odd pixel numbers and is from config.source_sizes
+        _Ny = config.find_next_source_size(_Ny)
+        _Nx = config.find_next_source_size(_Nx)
 
         # get the model of the source
         Dy, Dx = self.Ny - _Ny, self.Nx - _Nx

@@ -3,6 +3,7 @@ import numpy as np
 from functools import partial
 
 import proxmin
+from .config import Config
 
 import logging
 logger = logging.getLogger("scarlet.blend")
@@ -14,9 +15,7 @@ class ScarletRestartException(Exception):
 class Blend(object):
     """The blended scene as interpreted by the deblender.
     """
-    def __init__(self, sources, img, weights=None, sky=None, bg_rms=None,
-                 refine_skip=10, center_min_dist=1e-3, source_sizes=[15,25,45,75,115,165], edge_flux_thresh=1.,
-                 exact_lipschitz=False):
+    def __init__(self, sources, img, weights=None, bg_rms=None, config=None):
         """Constructor
 
         Parameters
@@ -36,23 +35,10 @@ class Blend(object):
                 Our analysis has shown that when the weights are widely varying
                 over an image in a single band, SED colors (and hence morphologies)
                 are poorly modeled.
-        sky: array-like, default=`None`
-            Array (Bands, Height, Width) of the estimated sky level in each image, in each band.
-            This is subtracted from `img`, so if `img` has already happend then this
-            should be `None`.
         bg_rms: array-like, default=`None`
             Array of length `Bands` that contains the sky background RMS in the image for each band
-        refine_skip: int, default=10
-            How many iterations to skip before refining box sizes/positions
-        center_min_dist: float, default=1e-3
-            Minimum change is position required to trigger repositioning a source
-        edge_flux_thresh: float, 1.0
-            Boxes are resized when flux at an edge is > `edge_flux_thresh` * `bg_rms`
-        source_sizes: array_like, integer-valued
-            Size of the source boxes available when resizing
-        exact_lipschitz: bool, default=False
-            Calculate exact Lipschitz constant in every step or only calculate the Lipschitz
-            constant with significant changes in A,S
+        config: `~scarlet.Config` instance, default=`None`
+            Special configuration to overwrite default optimization parameters
         """
         assert len(sources)
         # store all source and make search structures
@@ -60,19 +46,12 @@ class Blend(object):
         self.M = len(self.sources)
         self.B = self.sources[0].B
 
-        # source refinement parameters
-        self.refine_skip = refine_skip
-        self.center_min_dist = center_min_dist
-        self.edge_flux_thresh = edge_flux_thresh
-        self.source_sizes = source_sizes
-
-        # fit parameters
-        self.update_order = [1,0]
-        self.slack = 0.2
-        self.exact_lipschitz = exact_lipschitz
+        if config is None:
+            config = Config()
+        self.config = config
 
         # set up data structures
-        self.set_data(img, weights=weights, sky=sky, bg_rms=bg_rms)
+        self.set_data(img, weights=weights, bg_rms=bg_rms)
 
     def source_of(self, k):
         """Get the indices of model component k.
@@ -161,10 +140,10 @@ class Blend(object):
             self.it = 0
             self._model_it = -1
             # Caches for 1/Lipschitz for A and S
-            self._cbAS = [proxmin.utils.ApproximateCache(self._one_over_lipschitz, slack=self.slack),
-                          proxmin.utils.ApproximateCache(self._one_over_lipschitz, slack=self.slack)]
+            self._cbAS = [proxmin.utils.ApproximateCache(self._one_over_lipschitz, slack=self.config.slack),
+                          proxmin.utils.ApproximateCache(self._one_over_lipschitz, slack=self.config.slack)]
 
-        if self.exact_lipschitz:
+        if self.config.exact_lipschitz:
             # use full weight matrixes
             try:
                 self._Sigma_1
@@ -196,7 +175,7 @@ class Blend(object):
         X = XA + XS
 
         # update_order for bSDMM is over *all* components
-        if self.update_order[0] == 0:
+        if self.config.update_order[0] == 0:
             _update_order = list(range(2*self.K))
         else:
             _update_order = list(range(self.K,2*self.K)) + list(range(self.K))
@@ -218,15 +197,17 @@ class Blend(object):
                 self.fit(steps=steps)
         return self
 
-    def set_data(self, img, weights=None, sky=None, bg_rms=None):
+    def set_data(self, img, weights=None, bg_rms=None):
         """Initialize the data.
 
-        Subtract the sky from the image, initialize the weights and background rms.
+        Hold reference to img, initialize the weights and background rms.
         """
-        if sky is None:
-            self._img = img
-        else:
-            self._img = img-sky
+        self._img = img
+        B, Ny, Nx = img.shape
+        max_size = self.config.source_sizes[-1]
+        if max(Ny,Nx) > max_size:
+            logger.info("max source size {0} smaller than image size ({1},{2}); truncation possible".format(max_size, Ny, Nx))
+
         if bg_rms is None:
             self._bg_rms = np.zeros(self.B)
         else:
@@ -381,17 +362,7 @@ class Blend(object):
         # computing likelihood gradients for S and A:
         # build model only once per iteration
         if k == 0:
-            if block == self.update_order[0]:
-                """self.it += 1
-
-                # refine sources
-                if self.it % self.refine_skip == 0:
-                    resized = self.resize_sources()
-                    self.recenter_sources()
-                    self.adjust_absolute_error()
-                    if resized:
-                        raise ScarletRestartException()
-                """
+            if block == self.config.update_order[0]:
                 self._compute_model()
 
             # compute weighted residuals
@@ -433,10 +404,10 @@ class Blend(object):
                 X = self.sources[m].morph[l] = self.sources[m].constraints[l].prox_morph(X - step*grad, step)
 
         # resize & recenter: after all blocks are updated
-        if k == self.K - 1 and block == self.update_order[1]:
+        if k == self.K - 1 and block == self.config.update_order[1]:
             self.it += 1
 
-            if self.it % self.refine_skip == 0:
+            if self.it % self.config.refine_skip == 0:
                 resized = self.resize_sources()
                 self.recenter_sources()
                 self.adjust_absolute_error()
@@ -454,7 +425,7 @@ class Blend(object):
 
         B, Ny, Nx = self._img.shape
         if block == 0: # A
-            if self.exact_lipschitz:
+            if self.config.exact_lipschitz:
                 # model[b] is S in band b, but need to go to frame in which
                 # A and S are serialized. Then Lischitz constant of A:
                 # LA = ||Sigma_a||_s with
@@ -477,7 +448,7 @@ class Blend(object):
             return 1./LA
 
         if block == 1: # S
-            if self.exact_lipschitz:
+            if self.config.exact_lipschitz:
                 if not self.use_psf:
                     # Lipschitz constant for grad_S = || A.T Sigma_1 A||_s
                     # need to go to frame in which A and S are serialized
@@ -524,7 +495,7 @@ class Blend(object):
 
         # computing likelihood gradients for S and A: only once per iteration
         # equal to spectral norm of covariance matrix of A or S
-        if block == self.update_order[0] and k==0:
+        if block == self.config.update_order[0] and k==0:
             self._compute_model()
             # compute step sizes and save to reuse for every component of A or S
             # _cbAS is the cached values 1/Lipschitz for A and S
@@ -575,13 +546,14 @@ class Blend(object):
         else:
             w = self._weights.flatten()[:,None]
             result = np.dot(np.dot(np.linalg.inv(np.dot(MT, MT.T*w)), MT), y.flatten())
+
         # Apply the corrections to all of the sources
         for m in range(self.M):
             if m not in updated:
                 continue
             _m = updated.index(m)
             ddx, ddy = result[2*_m:2*_m+2]
-            if ddx**2 + ddy**2 > self.center_min_dist**2:
+            if ddx**2 + ddy**2 > self.config.center_min_dist**2:
                 source = self.sources[m]
                 center = source.center + (ddy, ddx)
                 source.set_center(center)
@@ -658,16 +630,6 @@ class Blend(object):
         self._edge_flux[m,2,:] = np.abs(model[:,:,0,:]).sum(axis=0).mean(axis=1)
         self._edge_flux[m,3,:] = np.abs(model[:,:,:,0]).sum(axis=0).mean(axis=1)
 
-    def _find_next_source_size(self, value):
-        # find first element not smaller than value
-        idx = np.where(self.source_sizes >= value)
-        # if not possible, use largest element
-        if len(idx):
-            idx = idx[0][0]
-        else:
-            idx = -1
-        return self.source_sizes[idx]
-
     def resize_sources(self):
         """Resize frames for sources (if necessary).
 
@@ -683,11 +645,11 @@ class Blend(object):
         for m in range(self.M):
             if not self.sources[m].fix_frame:
                 size = [self.sources[m].Ny, self.sources[m].Nx]
-                increase = [int(max(0.25*s, 10)) for s in size]
-                newsize = [self._find_next_source_size(size[i] + increase[i]) for i in range(2)]
+                increase = 1 # minimal increase, new size will be determine by config
+                newsize = [self.config.find_next_source_size(size[i] + increase) for i in range(2)]
 
                 # check if max flux along edge in band b < avg noise level along edge in b
-                at_edge = (self._edge_flux[m] > self._bg_rms*self.edge_flux_thresh)
+                at_edge = (self._edge_flux[m] > self._bg_rms * self.config.edge_flux_thresh)
                 # TODO: without symmetry constraints, the four edges of the box
                 # should be allowed to resize independently
                 _size = [size[0], size[1]]
