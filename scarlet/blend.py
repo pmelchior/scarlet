@@ -645,8 +645,8 @@ class Blend(object):
         for m in range(self.M):
             if not self.sources[m].fix_frame:
                 size = [self.sources[m].Ny, self.sources[m].Nx]
-                increase = [int(max(0.25*s, 10)) for s in size]
-                newsize = [self.config.find_next_source_size(size[i] + increase[i]) for i in range(2)]
+                increase = 1 # minimal increase, new size will be determine by config
+                newsize = [self.config.find_next_source_size(size[i] + increase) for i in range(2)]
 
                 # check if max flux along edge in band b < avg noise level along edge in b
                 at_edge = (self._edge_flux[m] > self._bg_rms * self.config.edge_flux_thresh)
