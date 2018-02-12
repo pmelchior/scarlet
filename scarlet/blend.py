@@ -3,7 +3,7 @@ import numpy as np
 from functools import partial
 
 import proxmin
-from . import config
+from .config import Config
 
 import logging
 logger = logging.getLogger("scarlet.blend")
@@ -15,7 +15,7 @@ class ScarletRestartException(Exception):
 class Blend(object):
     """The blended scene as interpreted by the deblender.
     """
-    def __init__(self, sources, img, weights=None, bg_rms=None):
+    def __init__(self, sources, img, weights=None, bg_rms=None, config=None):
         """Constructor
 
         Parameters
@@ -37,12 +37,18 @@ class Blend(object):
                 are poorly modeled.
         bg_rms: array-like, default=`None`
             Array of length `Bands` that contains the sky background RMS in the image for each band
+        config: `~scarlet.Config` instance, default=`None`
+            Special configuration to overwrite default optimization parameters
         """
         assert len(sources)
         # store all source and make search structures
         self._register_sources(sources)
         self.M = len(self.sources)
         self.B = self.sources[0].B
+
+        if config is None:
+            config = Config()
+        self.config = config
 
         # set up data structures
         self.set_data(img, weights=weights, bg_rms=bg_rms)
@@ -134,10 +140,10 @@ class Blend(object):
             self.it = 0
             self._model_it = -1
             # Caches for 1/Lipschitz for A and S
-            self._cbAS = [proxmin.utils.ApproximateCache(self._one_over_lipschitz, slack=config.slack),
-                          proxmin.utils.ApproximateCache(self._one_over_lipschitz, slack=config.slack)]
+            self._cbAS = [proxmin.utils.ApproximateCache(self._one_over_lipschitz, slack=self.config.slack),
+                          proxmin.utils.ApproximateCache(self._one_over_lipschitz, slack=self.config.slack)]
 
-        if config.exact_lipschitz:
+        if self.config.exact_lipschitz:
             # use full weight matrixes
             try:
                 self._Sigma_1
@@ -168,8 +174,8 @@ class Blend(object):
             XS.append(self.sources[m].morph[l])
         X = XA + XS
 
-        # config.update_order for bSDMM is over *all* components
-        if config.update_order[0] == 0:
+        # update_order for bSDMM is over *all* components
+        if self.config.update_order[0] == 0:
             _update_order = list(range(2*self.K))
         else:
             _update_order = list(range(self.K,2*self.K)) + list(range(self.K))
@@ -198,7 +204,7 @@ class Blend(object):
         """
         self._img = img
         B, Ny, Nx = img.shape
-        max_size = config.source_sizes[-1]
+        max_size = self.config.source_sizes[-1]
         if max(Ny,Nx) > max_size:
             logger.info("max source size {0} smaller than image size ({1},{2}); truncation possible".format(max_size, Ny, Nx))
 
@@ -356,7 +362,7 @@ class Blend(object):
         # computing likelihood gradients for S and A:
         # build model only once per iteration
         if k == 0:
-            if block == config.update_order[0]:
+            if block == self.config.update_order[0]:
                 self._compute_model()
 
             # compute weighted residuals
@@ -398,10 +404,10 @@ class Blend(object):
                 X = self.sources[m].morph[l] = self.sources[m].constraints[l].prox_morph(X - step*grad, step)
 
         # resize & recenter: after all blocks are updated
-        if k == self.K - 1 and block == config.update_order[1]:
+        if k == self.K - 1 and block == self.config.update_order[1]:
             self.it += 1
 
-            if self.it % config.refine_skip == 0:
+            if self.it % self.config.refine_skip == 0:
                 resized = self.resize_sources()
                 self.recenter_sources()
                 self.adjust_absolute_error()
@@ -419,7 +425,7 @@ class Blend(object):
 
         B, Ny, Nx = self._img.shape
         if block == 0: # A
-            if config.exact_lipschitz:
+            if self.config.exact_lipschitz:
                 # model[b] is S in band b, but need to go to frame in which
                 # A and S are serialized. Then Lischitz constant of A:
                 # LA = ||Sigma_a||_s with
@@ -442,7 +448,7 @@ class Blend(object):
             return 1./LA
 
         if block == 1: # S
-            if config.exact_lipschitz:
+            if self.config.exact_lipschitz:
                 if not self.use_psf:
                     # Lipschitz constant for grad_S = || A.T Sigma_1 A||_s
                     # need to go to frame in which A and S are serialized
@@ -489,7 +495,7 @@ class Blend(object):
 
         # computing likelihood gradients for S and A: only once per iteration
         # equal to spectral norm of covariance matrix of A or S
-        if block == config.update_order[0] and k==0:
+        if block == self.config.update_order[0] and k==0:
             self._compute_model()
             # compute step sizes and save to reuse for every component of A or S
             # _cbAS is the cached values 1/Lipschitz for A and S
@@ -547,7 +553,7 @@ class Blend(object):
                 continue
             _m = updated.index(m)
             ddx, ddy = result[2*_m:2*_m+2]
-            if ddx**2 + ddy**2 > config.center_min_dist**2:
+            if ddx**2 + ddy**2 > self.config.center_min_dist**2:
                 source = self.sources[m]
                 center = source.center + (ddy, ddx)
                 source.set_center(center)
@@ -640,10 +646,10 @@ class Blend(object):
             if not self.sources[m].fix_frame:
                 size = [self.sources[m].Ny, self.sources[m].Nx]
                 increase = [int(max(0.25*s, 10)) for s in size]
-                newsize = [config.find_next_source_size(size[i] + increase[i]) for i in range(2)]
+                newsize = [self.config.find_next_source_size(size[i] + increase[i]) for i in range(2)]
 
                 # check if max flux along edge in band b < avg noise level along edge in b
-                at_edge = (self._edge_flux[m] > self._bg_rms * config.edge_flux_thresh)
+                at_edge = (self._edge_flux[m] > self._bg_rms * self.config.edge_flux_thresh)
                 # TODO: without symmetry constraints, the four edges of the box
                 # should be allowed to resize independently
                 _size = [size[0], size[1]]

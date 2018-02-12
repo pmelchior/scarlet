@@ -4,7 +4,7 @@ from functools import partial
 
 import proxmin
 from . import constraints as sc
-from . import config
+from .config import Config
 
 import logging
 logger = logging.getLogger("scarlet.source")
@@ -14,7 +14,10 @@ class SourceInitError(Exception):
 
 class Source(object):
 
-    """A single source in a blend
+    """A single source in a blend.
+
+    This class is fully functional and acts as base class for specialized
+    initialization, constraints, etc.
     """
     def __init__(self, sed, morph_image, constraints=None, center=None, psf=None, fix_sed=False, fix_morph=False,
                  fix_frame=False, shift_center=0.2):
@@ -422,9 +425,11 @@ def get_integrated_sed(img, weight):
 
 
 class PointSource(Source):
-    def __init__(self, center, img, shape=None, constraints=None, psf=None):
+    def __init__(self, center, img, shape=None, constraints=None, psf=None, config=None):
         self.center = center
         if shape is None:
+            if config is None:
+                config = Config()
             shape = (config.source_sizes[0],) * 2
         sed, morph = self.make_initial(img, shape)
 
@@ -463,16 +468,19 @@ class PointSource(Source):
         return sed.reshape((1,B)), morph.reshape((1, shape[0], shape[1]))
 
 class ExtendedSource(Source):
-    def __init__(self, center, img, bg_rms, constraints=None, psf=None):
+    def __init__(self, center, img, bg_rms, constraints=None, psf=None, config=None):
         self.center = center
-        sed, morph = self.make_initial(img, bg_rms)
+        sed, morph = self.make_initial(img, bg_rms, config=config)
 
         if constraints is None:
             constraints = sc.SimpleConstraint() & sc.DirectMonotonicityConstraint(use_nearest=False) & sc.SymmetryConstraint()
 
         super(ExtendedSource, self).__init__(sed, morph, center=center, constraints=constraints, psf=psf, fix_sed=False, fix_morph=False, fix_frame=False, shift_center=0.2)
 
-    def make_initial(self, img, bg_rms, thresh=1., symmetric=True, monotonic=True):
+    def make_initial(self, img, bg_rms, thresh=1., symmetric=True, monotonic=True, config=None):
+
+        if config is None:
+            config = Config()
 
         # every source as large as the entire image, but shifted to its centroid
         B, Ny, Nx = img.shape
