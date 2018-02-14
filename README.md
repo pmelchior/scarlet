@@ -38,7 +38,7 @@ sources = [scarlet.ExtendedSource((obj['y'],obj['x']), img, bg_rms) for obj in c
 # 2) if you want to change the constraints (but not the initialization)
 # e.g. add a l0 sparsity penalty at approx the noise level
 import scarlet.constraints as sc
-constraints = sc.SimpleConstraint() & sc.DirectMonotonicityConstraint(use_nearest=False) & sc.SymmetryConstraint() & sc.L1Constraint(bg_rms.sum())
+constraints = sc.SimpleConstraint() & sc.DirectMonotonicityConstraint() & sc.SymmetryConstraint() & sc.L0Constraint(bg_rms.sum())
 sources = [scarlet.ExtendedSource((obj['y'],obj['x']), img, bg_rms, constraints=constraints) for obj in catalog]
 
 # 3) if you have per-band PSF kernel images:
