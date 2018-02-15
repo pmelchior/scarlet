@@ -88,22 +88,51 @@ class Asinh(Normalize):
         result = (result-xmin)/(xmax-xmin)
         return result
 
-def img_to_rgb(img, vmin=None, vmax=None, Q=10, fill_value=0, filter_indices=None):
+class Linear(Normalize):
+    def __init__(self, vmin=None, vmax=None, img=None, clip=False):
+        Normalize.__init__(self, vmin, vmax, clip)
+        if img is not None:
+            vmin, vmax = self._get_scale(vmin, vmax, img)
+        if vmin is not None and vmax is not None:
+            self._set_scale(vmin, vmax)
+
+    def _get_scale(self, vmin, vmax, img):
+        if vmin is None:
+            vmin = np.ma.min(img)
+        if vmax is None:
+            vmax = np.ma.max(img)
+        return vmin, vmax
+
+    def _set_scale(self, vmin, vmax):
+        self.vmin = vmin
+        self.vmax = vmax
+        self.data_range = vmax-vmin
+
+    def __call__(self, value, clip=None):
+        if self.vmax is None or self.vmin is None:
+            vmin, vmax = self._get_scale(self.vmin, self.vmax, value)
+        else:
+            vmin, vmax = self.vmin, self.vmax
+        result = np.zeros_like(value)
+        result[:] = value
+        result[result<vmin] = vmin
+        result[result>vmax] = vmax
+        result = (result-vmin)/(vmax-vmin)
+        return result
+
+def img_to_rgb(img, norm=None, fill_value=0, filter_indices=None):
     """Convert an image array into an RGB image array
 
     Parameters
     ----------
     img: array_like
         This should be an array with dimensions (bands, height, width).
-    vmin: float, default=`None`
-        Minimum pixel value.
-        If `vmin` is `None`, the minimum value of `img` will be used.
-    vmax: float, default=`None`
-        Maximum pixel value.
-        If `vmin` is `None`, the maximum value of `img` will be used.
-    Q: float, default=`10`
-        Stretching parameter for the arcsinh function.
-        This reduces to a linear stretch when Q=0
+    norm: `matplotlib.colors.Normalize`, default=`None`
+        Normalization to use for colormap scaling.
+        The default is `None`, which uses a linear scaling.
+        This is expected to be class that inherits from
+        `matplotlib.colors.Normalize`, which adjusts the scale of the
+        input image to the range [0,1].
     fill_value: float, default=`0`
         Value to use for any masked pixels.
     filter_indices: list, default=`None`
@@ -122,9 +151,11 @@ def img_to_rgb(img, vmin=None, vmax=None, Q=10, fill_value=0, filter_indices=Non
     if len(filter_indices)!=3:
         raise ValueError("filter_indices must be a list with 3 entries, not {0}".format(filter_indices))
 
-    norm = Asinh(vmin, vmax, img, Q)
-    # The result is a masked array, so we have to set the masked pixels to something
-    rgb = norm(img).filled(fill_value)
+    if norm is None:
+        norm = Linear(img=img)
+    rgb = norm(img)
+    if hasattr(rgb,"mask"):
+        rgb = rgb.filled(fill_value)
     # The result of calling Asinh is an array mapped to [0,1]
     # We need to map this to a uint8 in the range [0,255]
     rgb *= 255
