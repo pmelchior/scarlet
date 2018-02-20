@@ -207,6 +207,10 @@ class Source(object):
         subset of the entire blended image. This method takes the coordinates of
         the source and the size of the frame and creates a bonding box (`self.bb`).
 
+        Sets `self.bottom`, `self.top`, `self.left`, `self.right` as
+        the edges of the frame, `self.bb` as the slices (bounding box)
+        containing the frame, and `self.center` as the center of the frame.
+
         Parameters
         ----------
         center: array-like
@@ -217,10 +221,8 @@ class Source(object):
 
         Returns
         -------
-        None.
-        But it defines `self.bottom`, `self.top`, `self.left`, `self.right` as
-        the edges of the frame, `self.bb` as the slices (bounding box) containing the frame,
-        and `self.center` as the center of the frame.
+        old_slice, new_slice: to map subsections of `self.morph` from the old to
+        the new shape.
 
         """
         assert len(center) == 2
@@ -229,6 +231,14 @@ class Source(object):
             size = size[:2]
         else:
             size = (size,) * 2
+
+
+        # store old edge coordinates
+        try:
+            top, right, bottom, left = self.top, self.right, self.bottom, self.left
+        except AttributeError:
+            top, right, bottom, left = [0,] * 4
+
         # make cutout of in units of the original image frame (that defines xy)
         # ensure odd pixel number
         y_, x_ = self.center_int
@@ -238,6 +248,21 @@ class Source(object):
         # since slice wrap around if start or stop are negative, need to sanitize
         # start values (stop always postive)
         self.bb = (slice(None), slice(max(0, self.bottom), self.top), slice(max(0, self.left), self.right))
+
+        # slices to update self.morph: check if new size is larger or smaller
+        new_slice_y = slice(max(0, bottom - self.bottom),
+                            min(self.top - self.bottom, self.top - self.bottom - (self.top - top)))
+        old_slice_y = slice(max(0, self.bottom - bottom), min(top - bottom, top - bottom - (top - self.top)))
+        if top-bottom == self.Ny:
+            new_slice_y = old_slice_y = slice(None)
+        new_slice_x = slice(max(0, left - self.left),
+                            min(self.right - self.left, self.right - self.left - (self.right - right)))
+        old_slice_x = slice(max(0, self.left - left), min(right - left, right - left - (right - self.right)))
+        if right-left == self.Nx:
+            new_slice_x = old_slice_x = slice(None)
+        new_slice = (slice(None), new_slice_y, new_slice_x)
+        old_slice = (slice(None), old_slice_y, old_slice_x)
+        return old_slice, new_slice
 
     def set_center(self, center):
         """Given a (y,x) `center`, update the frame and `Gamma`
@@ -263,27 +288,12 @@ class Source(object):
             Either a (height,width) shape or a single size to create a
             square (size,size) frame.
         """
-        # store old edge coordinates
-        top, right, bottom, left = self.top, self.right, self.bottom, self.left
-        self._set_frame(self.center, size)
-
-        # check if new size is larger or smaller
-        new_slice_y = slice(max(0, bottom - self.bottom),
-                            min(self.top - self.bottom, self.top - self.bottom - (self.top - top)))
-        old_slice_y = slice(max(0, self.bottom - bottom), min(top - bottom, top - bottom - (top - self.top)))
-        if top-bottom == self.Ny:
-            new_slice_y = old_slice_y = slice(None)
-        new_slice_x = slice(max(0, left - self.left),
-                            min(self.right - self.left, self.right - self.left - (self.right - right)))
-        old_slice_x = slice(max(0, self.left - left), min(right - left, right - left - (right - self.right)))
-        if right-left == self.Nx:
-            new_slice_x = old_slice_x = slice(None)
-        new_slice = (slice(None), new_slice_y, new_slice_x)
-        old_slice = (slice(None), old_slice_y, old_slice_x)
+        _, Ny, Nx = self.shape
+        old_slice, new_slice = self._set_frame(self.center, size)
 
         if new_slice != old_slice:
             # change morph
-            _morph = self.morph.copy().reshape((self.K, top-bottom, right-left))
+            _morph = self.morph.copy().reshape((self.K, Ny, Nx))
             self.morph = np.zeros((self.K, self.Ny, self.Nx))
 
             self.morph[new_slice] = _morph[old_slice]
@@ -541,16 +551,18 @@ class ExtendedSource(Source):
         _Ny = config.find_next_source_size(_Ny)
         _Nx = config.find_next_source_size(_Nx)
 
-        # get the model of the source
-        Dy, Dx = self.Ny - _Ny, self.Nx - _Nx
-        inner = (slice(Dy//2, -Dy//2), slice(Dx//2, -Dx//2))
-        morph = morph[inner]
+        # need to reshape morph: store old edge coordinates
+        old_slice, new_slice = self._set_frame(self.center, (_Ny, _Nx))
 
-        # updated SED with mean sed under weight function morph
-        self._set_frame(self.center, (_Ny, _Nx))
-        source_slice = self.get_slice_for(img.shape)
+        # update morph
+        if new_slice != old_slice:
+            _morph = np.zeros((self.Ny, self.Nx))
+            _morph[new_slice[1],new_slice[2]] = morph[old_slice[1],old_slice[2]]
+            morph = _morph
+
         # use mean sed from image, weighted with the morphology of each component
         try:
+            source_slice = self.get_slice_for(img.shape)
             sed = get_integrated_sed(img[self.bb], morph[source_slice[1:]])
         except SourceInitError:
             pass # keep the peak sed
