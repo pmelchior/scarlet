@@ -3,7 +3,7 @@ from __future__ import print_function, division
 import numpy as np
 import scipy.sparse
 
-# global cache to hold all transformation matrices
+# global cache to hold all transformation matrices, except for GammaOp
 cache = {}
 
 def check_cache(name, key):
@@ -34,14 +34,7 @@ class GammaOp():
             or an array/list of images with a PSF image for each band.
         """
         self.psf = psf
-
-        # link to cache and make sure it has Gamma
-        global cache
-        try:
-            cache['Gamma']
-        except KeyError:
-            cache['Gamma'] = {}
-        self._cache = cache['Gamma']
+        self.cache = {}
 
     def _make_matrices(self, shape, offset_int):
         """Build Tx, Ty, P, Gamma
@@ -108,10 +101,9 @@ class GammaOp():
         key = tuple(shape[1:]) + tuple(offset_int)
 
         try:
-            tx,tx_plus,tx_minus,ty,ty_plus,ty_minus,P = self._cache[key]
+            tx,tx_plus,tx_minus,ty,ty_plus,ty_minus,P = self.cache[key]
         except KeyError:
-            self._cache[key] = self._make_matrices(shape, offset_int)
-            tx, tx_plus, tx_minus, ty, ty_plus, ty_minus, P = self._cache[key]
+            self.cache[key] = tx, tx_plus, tx_minus, ty, ty_plus, ty_minus, P = self._make_matrices(shape, offset_int)
 
         # Create Tx
         if dx<0:
@@ -133,7 +125,7 @@ class GammaOp():
         if hasattr(P, 'shape'):
             _gamma = P.dot(Ty.dot(Tx))
             # simplifies things later on: PSF always comes with B Gamma operators
-            return [_gamma] * self.B
+            return [_gamma] * shape[0]
         return [Pb.dot(Ty.dot(Tx)) for Pb in P]
 
     def _adapt_PSF(self, shape):
