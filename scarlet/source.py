@@ -63,7 +63,7 @@ class Source(object):
         if isinstance(psf, transformations.GammaOp):
             self._gammaOp = psf
         else:
-            self._gammaOp = transformations.GammaOp(self.shape, psf=psf)
+            self._gammaOp = transformations.GammaOp(psf=psf)
 
         # set center coordinates and translation operators
         # needs to have GammaOp set up first
