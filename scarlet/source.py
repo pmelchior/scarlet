@@ -565,5 +565,6 @@ class ExtendedSource(Source):
             source_slice = self.get_slice_for(img.shape)
             sed = get_integrated_sed(img[self.bb], morph[source_slice[1:]])
         except SourceInitError:
-            pass # keep the peak sed
+            # keep the peak sed
+            logger.INFO("Using peak SED for source at {0}/{1}".format(self.center_int[0], self.center_int[1]))
         return sed.reshape((1,B)), morph.reshape((1, morph.shape[0], morph.shape[1]))
