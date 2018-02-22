@@ -55,7 +55,7 @@ sources = [scarlet.ExtendedSource((obj['y'],obj['x']), img, bg_rms, constraints=
 # 3) if you have per-band PSF kernel images:
 # Note: These need to be difference kernels to a common minimum size
 pdiff = [PSF[b] for b in range(B)]
-psf = scarlet.transformations.GammaOp(shape, pdiff)
+psf = scarlet.transformations.GammaOp(pdiff)
 sources = [scarlet.ExtendedSource((obj['y'],obj['x']), img, bg_rms, psf=psf) for obj in catalog]
 
 # 4) if you want more control over source initialization and constraints,

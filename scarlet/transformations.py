@@ -24,24 +24,15 @@ class GammaOp():
     Gamma = Ty.P.Tx, where Tx,Ty are the translation operators and P is the PSF
     convolution operator.
     """
-    def __init__(self, shape, psf=None, offset_int=None):
+    def __init__(self, psf=None):
         """Constructor
 
         Parameters
         ----------
-        shape: tuple
-            Shape of the Source frame
         psf: array-like, default=`None`
             PSF image in either a single band (used for all images)
             or an array/list of images with a PSF image for each band.
-        offset_int: int, default=`None`
-            The translation matrices only care about fractional offsets.
-            Integer offsets are handled in a different way, but are no longer necessary
-            because we are now creating frames around sources.
-            TODO: remove this option
         """
-        if offset_int is None:
-            offset_int = (0,0)
         self.psf = psf
 
         # link to cache and make sure it has Gamma
