@@ -4,6 +4,8 @@ from . import transformations
 from functools import partial
 
 class Constraint(object):
+    """A constraint on either the SED or Morphology of a :class:`~scarlet.source.Source`
+    """
     def __init__(self):
         self.prox_sed = None  # None, single operator, or AlternatingProjections
         self.prox_morph = None
