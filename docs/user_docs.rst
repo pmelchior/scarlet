@@ -12,4 +12,5 @@ User Documentation
    operators
    transformations
    psf_match
+   config
    display

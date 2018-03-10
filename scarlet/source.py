@@ -137,6 +137,8 @@ class Source(object):
         return self._gammaOp.psf is not None
 
     def set_constraints(self):
+        """Iterate through all constraints and call their `reset` method
+        """
         for k in range(self.K):
             self.constraints[k].reset(self)
 
@@ -144,7 +146,7 @@ class Source(object):
         """Return the slice of the source frame in the full multiband image
 
         In other words, return the slice so that
-        self.image[k][slice] corresponds to image[self.bb],
+        self.get_model()[k][slice] corresponds to image[self.bb],
         where image has shape (Band, Height, Width).
 
         Parameters
@@ -446,14 +448,16 @@ class PointSource(Source):
     """
     def __init__(self, center, img, shape=None, constraints=None, psf=None, config=None):
         self.center = center
+        if config is None:
+            config = Config()
         if shape is None:
-            if config is None:
-                config = Config()
             shape = (config.source_sizes[0],) * 2
         sed, morph = self.make_initial(img, shape)
 
         if constraints is None:
-            constraints = sc.SimpleConstraint() & sc.DirectMonotonicityConstraint(use_nearest=False) & sc.SymmetryConstraint()
+            constraints = (sc.SimpleConstraint()
+                           & sc.DirectMonotonicityConstraint(use_nearest=False)
+                           & sc.SymmetryConstraint())
 
         super(PointSource, self).__init__(sed, morph, center=center, constraints=constraints, psf=psf, fix_sed=False, fix_morph=False, fix_frame=False, shift_center=0.1)
 

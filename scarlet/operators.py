@@ -104,8 +104,11 @@ def prox_cone(X, step, G=None):
     return X
 
 def prox_center_on(X, step, tiny=1e-10):
-    # make sure that the center pixel as at least some amount of flux
-    # otherwise centering will go off rails
+    """Ensure that the central pixel has positive flux
+
+    Make sure that the center pixel as at least some amount of flux
+    otherwise centering will go off rails
+    """
     center_pix = X.size // 2 # only works for odd pixel numbers in x and y
     X[center_pix] = max(X[center_pix], tiny)
     return X

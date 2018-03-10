@@ -89,7 +89,28 @@ class Asinh(Normalize):
         return result
 
 class Linear(Normalize):
+    """Use a linear interpolation to map image intensities in matplotlib
+
+    This class is used in order to map the intensities to the range [0,1].
+    """
     def __init__(self, vmin=None, vmax=None, img=None, clip=False):
+        """Initialize
+
+        Parameters
+        ----------
+        vmin: float, default=`None`
+            Minimum pixel value.
+            If `vmin` is `None`, the minimum value of `img` will be used.
+        vmax: float, default=`None`
+            Maximum pixel value.
+            If `vmin` is `None`, the maximum value of `img` will be used.
+        img: array_like, default=`None`
+            This should be an array with dimensions (bands, height, width).
+            Either `vmin` and `vmax` or `img` is required to create an Asinh mapping
+        clip: bool, default=`False`
+            Whether or not to clip values.
+            This is a default from matplotlib, but clip=True is currently not supported.
+        """
         Normalize.__init__(self, vmin, vmax, clip)
         if img is not None:
             vmin, vmax = self._get_scale(vmin, vmax, img)
@@ -109,6 +130,8 @@ class Linear(Normalize):
         self.data_range = vmax-vmin
 
     def __call__(self, value, clip=None):
+        """Map the `value` onto [0,1]
+        """
         if self.vmax is None or self.vmin is None:
             vmin, vmax = self._get_scale(self.vmin, self.vmax, value)
         else:
@@ -118,7 +141,7 @@ class Linear(Normalize):
         result[result<vmin] = vmin
         result[result>vmax] = vmax
         result = (result-vmin)/(vmax-vmin)
-        return result
+        return np.ma.array(result)
 
 def img_to_rgb(img, norm=None, fill_value=0, filter_indices=None):
     """Convert an image array into an RGB image array

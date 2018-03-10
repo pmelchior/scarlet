@@ -10,6 +10,15 @@ logger = logging.getLogger("scarlet.blend")
 
 # declare special exception for resizing events
 class ScarletRestartException(Exception):
+    """Restart the bSDMM algorithm
+
+    If the size or number of components changes during the fit,
+    the `proxmin.algorithms.bsdmm` function will fail.
+    The `ScarletRestartException` is thrown by `Blend.fit`
+    when a breaking change is made to one of the components so
+    that `Blend.fit` can catch the exception and restart
+    the bSDMM algorithm from the last iteration.
+    """
     pass
 
 class Blend(object):
@@ -36,7 +45,9 @@ class Blend(object):
                 over an image in a single band, SED colors (and hence morphologies)
                 are poorly modeled.
         bg_rms: array-like, default=`None`
-            Array of length `Bands` that contains the sky background RMS in the image for each band
+            Array of length `Bands` that contains the sky background RMS in the image for each band,
+            used primarily as a minimum flux threshold to set the box size for each source during resizing.
+            If `bg_rms` is `None` then a zero valued array is used as the minimum flux threshold.
         config: `~scarlet.Config` instance, default=`None`
             Special configuration to overwrite default optimization parameters
         """
@@ -369,7 +380,6 @@ class Blend(object):
             self._diff = self._weights[block]*(self._model-self._img)
 
         # A update
-
         if block == 0:
             if not self.sources[m].fix_sed[l]:
                 # gradient of likelihood wrt A: nominally np.dot(diff, S^T)
@@ -402,6 +412,7 @@ class Blend(object):
 
                 # apply per component prox projection and save in source
                 X = self.sources[m].morph[l] = self.sources[m].constraints[l].prox_morph(X - step*grad, step)
+
 
         # resize & recenter: after all blocks are updated
         if k == self.K - 1 and block == self.config.update_order[1]:

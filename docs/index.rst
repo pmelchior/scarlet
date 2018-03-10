@@ -10,6 +10,14 @@
 *SCARLET* is an open source python library for leveraging multi-band and/or multi-epoch information
 to "deblend" sources in astrophysical images.
 
+.. note::
+
+    `astropy`_ and `matplotlib`_ are not required to run *scarlet* but are required for many of the examples
+    in this documentation.
+
+.. _matplotlib: https://matplotlib.org
+.. _astropy: http://www.astropy.org
+
 .. _getting_started:
 
 Getting Started
@@ -22,10 +30,3 @@ Getting Started
    quickstart
    overview
    user_docs
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
