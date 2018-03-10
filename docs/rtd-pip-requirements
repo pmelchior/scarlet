@@ -1,0 +1,9 @@
+numpy
+scipy
+astropy
+nbsphinx
+matplotlib
+numpydoc
+jupyter
+pybind11
+git+https://github.com/pmelchior/proxmin.git
