@@ -1,5 +1,5 @@
-User Documentation
-==================
+API Documentation
+=================
 
 .. _user_docs:
 

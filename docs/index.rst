@@ -28,5 +28,5 @@ Getting Started
    
    install
    quickstart
-   overview
    user_docs
+   api_docs
