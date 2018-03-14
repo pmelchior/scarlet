@@ -13,6 +13,7 @@ class Constraint(object):
         prox_sed, prox_morph, prox_g_sed, prox_g_morph,
         L_sed, L_morph all set to None
         """
+        self.smooth = False # Only true for smooth, convex constraints (as opposed to prox)
         self.prox_sed = None  # None, single operator, or AlternatingProjections
         self.prox_morph = None
         self.prox_g_sed = None # None or operator
@@ -30,6 +31,37 @@ class Constraint(object):
         """
         pass
 
+    def gradient(self, blend, m, l, block):
+        """Return the gradient of a smooth, convex, constraint
+
+        Some constraints are smooth and convex, so instead of using the
+        machinery of proximal operators that are not needed, it's gradient
+        can be added directly to the likelihood.
+        """
+        return 0
+
+    def lipschitz_const(self, blend, m, l, block):
+        r"""Lipschitz constant of the constraint
+        
+        For a function `f` that maps :math:`f[a,b] \rightarrow \mathbb{R}`,
+        the Lipschitz constant `L` is the smallest constant that obeys the
+        Lipschitz condition
+
+        .. math::
+            |f(x_2)-f(x_1)| \leq L_f |x_1-x_2|
+
+        which, for for a function that is differentiable everywhere with
+        a bounded derivative is
+        
+        .. math::
+            \substack{\textrm{sup} \\ x} |f'(x)|
+
+        For non-smooth or non-convex constraints that require
+        proximal operators, the Lipschitz constant is not needed
+        and should return `0`.
+        """
+        return 0
+
     def __and__(self, c):
         """Combine two constraints
         """
@@ -37,6 +69,61 @@ class Constraint(object):
             return ConstraintList([self, c])
         else:
             raise NotImplementedError
+
+class SmoothSymmetryConstraint(Constraint):
+    r"""Smooth and convex symmetry constraint
+
+    This class implements symmetry as a smooth convex constraint added
+    to the likelihood:
+    
+    .. math::
+        \frac{\sigma}{2} |\Sigma S|_2^2
+    
+    where :math:`\Sigma \equiv S-S^\dagger` and :math:`S^\dagger`
+    is the symmetric version of `S`.
+    """
+    def __init__(self, sigma=0.1):
+        """Initialize the Constraint
+
+        Parameters
+        ----------
+        sigma: float
+            Strength of the constraint
+        """
+        if sigma<0 or sigma>1:
+            raise ValueError("`sigma` must be between 0 and 1")
+        super(SmoothSymmetryConstraint, self).__init__()
+        self.sigma = sigma
+        self.smooth = True
+
+    def gradient(self, blend, m, l, block):
+        """Calculate the symmetry gradient
+        """
+        if block == 0:
+            return 0
+        return self._symmetry_grad.dot(blend.sources[m].morph[l])
+
+    def lipschitz_const(self, blend, m, l, block):
+        """Calculate the Lipschitz constant
+
+        See `Constraint` class for a definition.
+        """
+        if block == 0:
+            return 0
+        return 2*self.sigma
+
+    def reset(self, source, sigma=None):
+        """Build the symmetry operator
+
+        Symmetry depends on the shape of the source,
+        so it cannot be built until after the `source` has been created
+        with a bounding box.
+        """
+        if sigma is not None:
+            self.sigma = sigma
+        shape = source.shape[1:]
+        _symmetry_op = transformations.getSymmetryOp(shape)
+        self._symmetry_grad = 0.5 * self.sigma * _symmetry_op.T*_symmetry_op
 
 class MinimalConstraint(Constraint):
     """The minimal constraint required for the result to make sense
@@ -255,6 +342,8 @@ class ConstraintList:
     The `ConstraintList` contains all of the constraints on a single component.
     """
     def __init__(self, constraints):
+        self.smooth = False
+        self.smooth_constraints = None
         self.prox_sed = None # might be None, single operator, or AlternatingProjections
         self.prox_morph = None
         self.prox_g_sed = None # None or list of operators
@@ -291,6 +380,7 @@ class ConstraintList:
         self._update_constraint_list(c, 'prox_g_morph')
         self._update_constraint_list(c, 'L_sed')
         self._update_constraint_list(c, 'L_morph')
+        self._update_smooth_list(c)
         return self
 
     def reset(self, source):
@@ -344,3 +434,30 @@ class ConstraintList:
                 else:
                     clist.append(c)
                 setattr(self, key, clist)
+
+    def _update_smooth_list(self, constraint):
+        """Add a new smooth, convex constraint to the likelihood
+        """
+        if constraint.smooth:
+            if self.smooth_constraints is None:
+                self.smooth_constraints = []
+            self.smooth_constraints.append(constraint)
+            self.smooth = True
+
+    def gradient(self, blend, m, l, block):
+        """Apply any smooth and convex constraints
+        """
+        grad = 0
+        for c in self.smooth_constraints:
+            grad += c.gradient(blend, m, l, block)
+        return grad
+
+    def lipschitz_const(self, blend, m, l, block):
+        """Calculate the Lipschitz constant
+
+        See `Constraint` class for a better description.
+        """
+        lipschitz_const = 0
+        for c in self.smooth_constraints:
+            lipschitz_const += c.lipschitz_const(blend, m, l, block)
+        return lipschitz_const
