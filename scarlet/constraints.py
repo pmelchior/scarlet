@@ -266,6 +266,28 @@ class MonotonicityConstraint(Constraint):
         shape = source.shape[1:]
         self.L_morph = transformations.getRadialMonotonicOp(shape, useNearest=self.use_nearest)
 
+class SoftSymmetryConstraint(Constraint):
+    """Soft symmetry constraint
+
+    This creates a :math:`prox_f` constraint to the morphology that
+    applies a symmetry constraint using a linear parameter `sigma`
+    that can vary from `sigma=0` (no symmetry required) to
+    `sigma=1` (perfect symmetry required).
+    """
+    def __init__(self, sigma=1):
+        super(SoftSymmetryConstraint, self).__init__()
+        self.sigma = sigma
+
+    def reset(self, source):
+        """Build the proximal operator
+
+        Symmetry depends on the shape of the source,
+        so it cannot be built until after the `source` has been created
+        with a bounding box.
+        """
+        shape = source.shape[1:]
+        self.prox_morph = partial(operators.prox_soft_symmetry, sigma=self.sigma)
+
 class SymmetryConstraint(Constraint):
     """$prox_g$ symmetry constraint
 
@@ -343,7 +365,7 @@ class ConstraintList:
     """
     def __init__(self, constraints):
         self.smooth = False
-        self.smooth_constraints = None
+        self.smooth_constraints = []
         self.prox_sed = None # might be None, single operator, or AlternatingProjections
         self.prox_morph = None
         self.prox_g_sed = None # None or list of operators
@@ -439,8 +461,6 @@ class ConstraintList:
         """Add a new smooth, convex constraint to the likelihood
         """
         if constraint.smooth:
-            if self.smooth_constraints is None:
-                self.smooth_constraints = []
             self.smooth_constraints.append(constraint)
             self.smooth = True
 
