@@ -10,6 +10,15 @@ logger = logging.getLogger("scarlet.blend")
 
 # declare special exception for resizing events
 class ScarletRestartException(Exception):
+    """Restart the bSDMM algorithm
+
+    If the size or number of components changes during the fit,
+    the `proxmin.algorithms.bsdmm` function will fail.
+    The `ScarletRestartException` is thrown by `Blend.fit`
+    when a breaking change is made to one of the components so
+    that `Blend.fit` can catch the exception and restart
+    the bSDMM algorithm from the last iteration.
+    """
     pass
 
 class Blend(object):
@@ -36,7 +45,9 @@ class Blend(object):
                 over an image in a single band, SED colors (and hence morphologies)
                 are poorly modeled.
         bg_rms: array-like, default=`None`
-            Array of length `Bands` that contains the sky background RMS in the image for each band
+            Array of length `Bands` that contains the sky background RMS in the image for each band,
+            used primarily as a minimum flux threshold to set the box size for each source during resizing.
+            If `bg_rms` is `None` then a zero valued array is used as the minimum flux threshold.
         config: `~scarlet.Config` instance, default=`None`
             Special configuration to overwrite default optimization parameters
         """
@@ -369,13 +380,15 @@ class Blend(object):
             self._diff = self._weights[block]*(self._model-self._img)
 
         # A update
-
         if block == 0:
             if not self.sources[m].fix_sed[l]:
                 # gradient of likelihood wrt A: nominally np.dot(diff, S^T)
                 # but with PSF convolution, S_ij -> sum_q Gamma_bqi S_qj
                 # however, that's exactly the operation done for models[k]
                 grad = np.einsum('...ij,...ij', self._diff, self._models[k])
+
+                # Include any convex constraints in the gradient
+                grad += self.sources[m].constraints[l].gradient(blend=self, m=m, l=l, block=0)
 
                 # apply per component prox projection and save in source
                 X = self.sources[m].sed[l] =  self.sources[m].constraints[l].prox_sed(X - step*grad, step)
@@ -400,8 +413,12 @@ class Blend(object):
                     for b in range(self.B):
                         grad += self.sources[m].sed[l,b]*self.sources[m].Gamma[b].T.dot(diff_k[b].flatten())
 
+                # Include any convex constraints in the gradient
+                grad += self.sources[m].constraints[l].gradient(blend=self, m=m, l=l, block=1)
+
                 # apply per component prox projection and save in source
                 X = self.sources[m].morph[l] = self.sources[m].constraints[l].prox_morph(X - step*grad, step)
+
 
         # resize & recenter: after all blocks are updated
         if k == self.K - 1 and block == self.config.update_order[1]:
@@ -416,7 +433,6 @@ class Blend(object):
 
         return X
 
-
     def _one_over_lipschitz(self, block):
         """Calculate 1/Lipschitz constant for A and S
         """
@@ -424,6 +440,13 @@ class Blend(object):
         import scipy.sparse.linalg
 
         B, Ny, Nx = self._img.shape
+        # Calculate the maximum Lipschitz constant for all of the constraints
+        Lc = 0
+        for k in range(self.K):
+            m,l = self.source_of(k)
+            constraint = self.sources[m].constraints[l]
+            Lc = max(Lc, constraint.lipschitz_const(self, m, l, block))
+        # Calculate the Lipschitz constant for A or S
         if block == 0: # A
             if self.config.exact_lipschitz:
                 # model[b] is S in band b, but need to go to frame in which
@@ -445,7 +468,7 @@ class Blend(object):
                 PS = self._models.mean(axis=1).reshape((self.K, Ny*Nx))
                 SSigma_1S = PS.dot(PS.T)
                 LA = np.real(np.linalg.eigvals(SSigma_1S).max())
-            return 1./LA
+            return 1./(LA+Lc)
 
         if block == 1: # S
             if self.config.exact_lipschitz:

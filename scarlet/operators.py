@@ -104,10 +104,25 @@ def prox_cone(X, step, G=None):
     return X
 
 def prox_center_on(X, step, tiny=1e-10):
-    # make sure that the center pixel as at least some amount of flux
-    # otherwise centering will go off rails
+    """Ensure that the central pixel has positive flux
+
+    Make sure that the center pixel as at least some amount of flux
+    otherwise centering will go off rails
+    """
     center_pix = X.size // 2 # only works for odd pixel numbers in x and y
     X[center_pix] = max(X[center_pix], tiny)
+    return X
+
+def prox_soft_symmetry(X, step, sigma=1):
+    """Soft version of symmetry
+
+    Using a `sigma` that varies from 0 to 1,
+    with 0 meaning no symmetry enforced at all and
+    1  being completely symmetric, the user can customize
+    the level of symmetry required for a component
+    """
+    Xs = X[::-1]
+    X = 0.5 *sigma * (X+Xs) + (1-sigma) * X
     return X
 
 def proj(A,B):
