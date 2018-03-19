@@ -6,12 +6,23 @@ from functools import partial
 class Constraint(object):
     """A constraint on either the SED or Morphology of a :class:`~scarlet.source.Source`
     """
-    def __init__(self):
+    def __init__(self, repeat=1):
         """Initialize the properties
 
         All `Constraint` objects have the properties
-        prox_sed, prox_morph, prox_g_sed, prox_g_morph,
-        L_sed, L_morph all set to None
+        `prox_sed`, `prox_morph`, `prox_g_sed`, `prox_g_morph`,
+        `L_sed`, `L_morph` all set to `None`.
+        
+        Parameters
+        ----------
+        repeat: int
+            Number of times to repeat alternating projections.
+            In cases with multiple :math:`prox_f` constraints
+            that do not commute, the alternating projection algorithm
+            can repeat applications of the proximal operators to have a
+            more convergent total projection.
+            If multiple constraints are combined into a `ConstraintList`,
+            the maximum of all the `Constraint.repeat` values is used.
         """
         self.prox_sed = None  # None, single operator, or AlternatingProjections
         self.prox_morph = None
@@ -19,6 +30,7 @@ class Constraint(object):
         self.prox_g_morph = None
         self.L_sed = None      # None or matrix
         self.L_morph = None
+        self.repeat = repeat
 
     def reset(self, source):
         """Action to perform when the Constraint is reset
@@ -46,8 +58,8 @@ class MinimalConstraint(Constraint):
     `proxmin.operators.prox_unity_plus` constraint on the SED
     (because the SED should always be positive and sum to unity).
     """
-    def __init__(self):
-        super(MinimalConstraint, self).__init__()
+    def __init__(self, repeat=1):
+        super(MinimalConstraint, self).__init__(repeat)
         self.prox_morph = proxmin.operators.prox_plus
         self.prox_sed = proxmin.operators.prox_unity_plus
 
@@ -59,22 +71,22 @@ class PositivityConstraint(Constraint):
     pixel of the morphology to have a tiny amount of flux, which is necessary for
     the recentering algorithm.
     """
-    def __init__(self):
-        super(PositivityConstraint, self).__init__()
+    def __init__(self, repeat=1):
+        super(PositivityConstraint, self).__init__(repeat)
         self.prox_morph = proxmin.operators.AlternatingProjections([
             operators.prox_center_on, proxmin.operators.prox_plus])
 
 class SimpleConstraint(PositivityConstraint):
     """Constrain the SED to be positive and sum to unity
     """
-    def __init__(self):
-        super(SimpleConstraint, self).__init__()
+    def __init__(self, repeat=1):
+        super(SimpleConstraint, self).__init__(repeat)
         self.prox_sed = proxmin.operators.prox_unity_plus
 
 class L0Constraint(Constraint):
     """Add an L0 sparsity penalty to the morphology
     """
-    def __init__(self, thresh):
+    def __init__(self, thresh, repeat=1):
         """Initialize the constraint
 
         Parameters
@@ -82,13 +94,13 @@ class L0Constraint(Constraint):
         thresh: float
             Threshold to use in `proxmin.operators.prox_hard`
         """
-        super(L0Constraint, self).__init__()
+        super(L0Constraint, self).__init__(repeat)
         self.prox_morph = partial(proxmin.operators.prox_hard, thresh=thresh)
 
 class L1Constraint(Constraint):
     """Add an L1 sparsity penalty to the morphology
     """
-    def __init__(self, thresh):
+    def __init__(self, thresh, repeat=1):
         """Initialize the constraint
 
         Parameters
@@ -96,7 +108,7 @@ class L1Constraint(Constraint):
         thresh: float
             Threshold to use in `proxmin.operators.prox_soft`
         """
-        super(L1Constraint, self).__init__()
+        super(L1Constraint, self).__init__(repeat)
         self.prox_morph = partial(proxmin.operators.prox_soft, thresh=thresh)
 
 class DirectMonotonicityConstraint(Constraint):
@@ -105,7 +117,7 @@ class DirectMonotonicityConstraint(Constraint):
     This creates a $prox_f$ constraint to the morphology that forces it
     to be montonically decreasing from the center.
     """
-    def __init__(self, use_nearest=False, exact=False, thresh=0):
+    def __init__(self, use_nearest=False, exact=False, thresh=0, repeat=1):
         """Initialize the constraint
 
         Parameters
@@ -123,7 +135,7 @@ class DirectMonotonicityConstraint(Constraint):
             Minimum ratio between the current pixel and it's reference pixel.
             When `thresh=0` (default) a flat morphology is allowed.
         """
-        super(DirectMonotonicityConstraint, self).__init__()
+        super(DirectMonotonicityConstraint, self).__init__(repeat)
         self.use_nearest = use_nearest
         self.exact = exact
         self.thresh = thresh
@@ -199,6 +211,26 @@ class SymmetryConstraint(Constraint):
         shape = source.shape[1:]
         self.L_morph = transformations.getSymmetryOp(shape)
 
+class SoftSymmetryConstraint(Constraint):
+    """Soft symmetry constraint
+    This creates a :math:`prox_f` constraint to the morphology that
+    applies a symmetry constraint using a linear parameter `sigma`
+    that can vary from `sigma=0` (no symmetry required) to
+    `sigma=1` (perfect symmetry required).
+    """
+    def __init__(self, sigma=1, repeat=1):
+        super(SoftSymmetryConstraint, self).__init__(repeat)
+        self.sigma = sigma
+
+    def reset(self, source):
+        """Build the proximal operator
+        Symmetry depends on the shape of the source,
+        so it cannot be built until after the `source` has been created
+        with a bounding box.
+        """
+        shape = source.shape[1:]
+        self.prox_morph = partial(operators.prox_soft_symmetry, sigma=self.sigma)
+
 class TVxConstraint(Constraint):
     """Total Variation (TV) in X
 
@@ -262,6 +294,7 @@ class ConstraintList:
         self.L_sed = None # None or list of matrices
         self.L_morph = None
         self.constraints = []
+        self.repeat = 1
         for c in constraints:
             self.__iand__(c)
 
@@ -291,6 +324,7 @@ class ConstraintList:
         self._update_constraint_list(c, 'prox_g_morph')
         self._update_constraint_list(c, 'L_sed')
         self._update_constraint_list(c, 'L_morph')
+        self.repeat = max(c.repeat, self.repeat)
         return self
 
     def reset(self, source):

@@ -113,6 +113,17 @@ def prox_center_on(X, step, tiny=1e-10):
     X[center_pix] = max(X[center_pix], tiny)
     return X
 
+def prox_soft_symmetry(X, step, sigma=1):
+    """Soft version of symmetry
+    Using a `sigma` that varies from 0 to 1,
+    with 0 meaning no symmetry enforced at all and
+    1  being completely symmetric, the user can customize
+    the level of symmetry required for a component
+    """
+    Xs = X[::-1]
+    X = 0.5 *sigma * (X+Xs) + (1-sigma) * X
+    return X
+
 def proj(A,B):
     """Returns the projection of A onto the hyper-plane defined by B"""
     return A - (A*B).sum()*B/(B**2).sum()
