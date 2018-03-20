@@ -11,7 +11,7 @@ class Constraint(object):
 
         All `Constraint` objects have the properties
         `prox_sed`, `prox_morph`, `prox_g_sed`, `prox_g_morph`,
-        `L_sed`, `L_morph` all set to `None`.
+        `L_sed`, `L_morph`, `source` all set to `None`.
         """
         self.prox_sed = None  # None, single operator, or AlternatingProjections
         self.prox_morph = None
@@ -19,16 +19,19 @@ class Constraint(object):
         self.prox_g_morph = None
         self.L_sed = None      # None or matrix
         self.L_morph = None
+        self.source = None
 
     def reset(self, source):
         """Action to perform when the Constraint is reset
 
-        No action is performed in the base class, but inherited classes may
+        Inherited classes may
         utilize this method, typically when the `Constraint`
         depends on the shape of the image or source,
         which may not be known when the `Constraint` is initialized.
+        So the base `Constraint` class uses this method to store the source
+        used to initialize the constraint and mark the constraint as initialized.
         """
-        pass
+        self.source = source
 
     def __and__(self, c):
         """Combine two constraints
@@ -37,6 +40,25 @@ class Constraint(object):
             return ConstraintList([self, c])
         else:
             raise NotImplementedError
+
+    def copy(self):
+        """Make a copy of the constraint
+
+        If the inherited `Constraint` class requires any initialization
+        arguments then this method needs to be overwritten in the
+        inherited class to pass the keyword arguments to `self._copy`
+        """
+        return self._copy()
+
+    def _copy(self, **kwargs):
+        """Make a copy of the constraint with keyword arguments
+        """
+        result = self.__class__(**kwargs)
+        # If the constraint has already been initialized,
+        # initialize the copy
+        if self.source is not None:
+            result.reset(self.source)
+        return result
 
 class MinimalConstraint(Constraint):
     """The minimal constraint required for the result to make sense
@@ -84,6 +106,12 @@ class L0Constraint(Constraint):
         """
         super(L0Constraint, self).__init__()
         self.prox_morph = partial(proxmin.operators.prox_hard, thresh=thresh)
+        self.thresh = thresh
+
+    def copy(self):
+        """Make a copy of the constraint
+        """
+        return super(L0Constraint, self)._copy(thresh=self.thresh)
 
 class L1Constraint(Constraint):
     """Add an L1 sparsity penalty to the morphology
@@ -98,6 +126,12 @@ class L1Constraint(Constraint):
         """
         super(L1Constraint, self).__init__()
         self.prox_morph = partial(proxmin.operators.prox_soft, thresh=thresh)
+        self.thresh = thresh
+
+    def copy(self):
+        """Make a copy of the constraint
+        """
+        return super(L1Constraint, self)._copy(thresh=self.thresh)
 
 class DirectMonotonicityConstraint(Constraint):
     """Strict monotonicity constraint
@@ -136,6 +170,7 @@ class DirectMonotonicityConstraint(Constraint):
         so it cannot be built until after the `source` has been created
         with a bounding box.
         """
+        super(DirectMonotonicityConstraint, self).reset(source)
         shape = source.shape[1:]
         if not self.exact:
             self.prox_morph = operators.prox_strict_monotonic(shape, use_nearest=self.use_nearest,
@@ -144,6 +179,14 @@ class DirectMonotonicityConstraint(Constraint):
             # cone method for monotonicity: exact but VERY slow
             G = transformations.getRadialMonotonicOp(shape, useNearest=self.useNearest).toarray()
             self.prox_morph = partial(operators.prox_cone, G=G)
+
+    def copy(self):
+        """Make a copy of the constraint
+        """
+        return super(DirectMonotonicityConstraint, self)._copy(
+            use_nearest=self.use_nearest,
+            exact=self.exact,
+            thresh=self.thresh)
 
 class MonotonicityConstraint(Constraint):
     """$prox_g$ monotonicity constraint
@@ -176,8 +219,14 @@ class MonotonicityConstraint(Constraint):
         so it cannot be built until after the `source` has been created
         with a bounding box.
         """
+        super(MonotonicityConstraint, self).reset(source)
         shape = source.shape[1:]
         self.L_morph = transformations.getRadialMonotonicOp(shape, useNearest=self.use_nearest)
+
+    def copy(self):
+        """Make a copy of the constraint
+        """
+        return super(MonotonicityConstraint, self)._copy(use_nearest=self.use_nearest)
 
 class SymmetryConstraint(Constraint):
     """$prox_g$ symmetry constraint
@@ -196,10 +245,11 @@ class SymmetryConstraint(Constraint):
         so it cannot be built until after the `source` has been created
         with a bounding box.
         """
+        super(SymmetryConstraint, self).reset(source)
         shape = source.shape[1:]
         self.L_morph = transformations.getSymmetryOp(shape)
 
-class SoftSymmetryConstraint(Constraint):
+class DirectSymmetryConstraint(Constraint):
     """Soft symmetry constraint
     This creates a :math:`prox_f` constraint to the morphology that
     applies a symmetry constraint using a linear parameter `sigma`
@@ -207,8 +257,9 @@ class SoftSymmetryConstraint(Constraint):
     `sigma=1` (perfect symmetry required).
     """
     def __init__(self, sigma=1):
-        super(SoftSymmetryConstraint, self).__init__()
+        super(DirectSymmetryConstraint, self).__init__()
         self.sigma = sigma
+        self.initialized = False
 
     def reset(self, source):
         """Build the proximal operator
@@ -216,8 +267,14 @@ class SoftSymmetryConstraint(Constraint):
         so it cannot be built until after the `source` has been created
         with a bounding box.
         """
+        super(DirectSymmetryConstraint, self).reset(source)
         shape = source.shape[1:]
         self.prox_morph = partial(operators.prox_soft_symmetry, sigma=self.sigma)
+
+    def copy(self):
+        """Make a copy of the constraint
+        """
+        return super(DirectSymmetryConstraint, self)._copy(sigma=self.sigma)
 
 class TVxConstraint(Constraint):
     """Total Variation (TV) in X
@@ -235,11 +292,18 @@ class TVxConstraint(Constraint):
         """
         super(DirectMonotonicityConstraint, self).__init__()
         self.proxs_g_morph = partial(proxmin.operators.prox_soft, thresh=thresh)
+        self.thresh = thresh
         # lazy initialization: wait for the reset to set the source size
 
     def reset(self, source):
+        super(Constraint, self).reset(source)
         shape = source.shape[1:]
         self.L_morph = proxmin.transformations.get_gradient_x(shape, source.Nx)
+
+    def copy(self):
+        """Make a copy of the constraint
+        """
+        return super(TVxConstraint, self)._copy(thresh=self.thresh)
 
 class TVyConstraint(Constraint):
     """Total Variation (TV) in Y
@@ -257,12 +321,17 @@ class TVyConstraint(Constraint):
         """
         super(DirectMonotonicityConstraint, self).__init__()
         self.proxs_g_morph = partial(proxmin.operators.prox_soft, thresh=thresh)
+        self.thresh = thresh
         # lazy initialization: wait for the reset to set the source size
 
     def reset(self, source):
         shape = source.shape[1:]
         self.L_morph = proxmin.transformations.get_gradient_y(shape, source.Ny)
 
+    def copy(self):
+        """Make a copy of the constraint
+        """
+        return super(TVyConstraint, self)._copy(thresh=self.thresh)
 
 class ConstraintList:
     """List of `Constraint` objects
@@ -285,6 +354,11 @@ class ConstraintList:
         self.repeat = repeat
         for c in constraints:
             self.__iand__(c)
+
+    def copy(self):
+        """Make a copy of the entire `ConstraintList`
+        """
+        return ConstraintList(constraints=[c.copy() for c in self.constraints], repeat=self.repeat)
 
     def __getitem__(self, index):
         """Get the `Constraint` at index `index`.
