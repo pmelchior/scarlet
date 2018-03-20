@@ -10,8 +10,8 @@ class Constraint(object):
         """Initialize the properties
 
         All `Constraint` objects have the properties
-        prox_sed, prox_morph, prox_g_sed, prox_g_morph,
-        L_sed, L_morph all set to None
+        `prox_sed`, `prox_morph`, `prox_g_sed`, `prox_g_morph`,
+        `L_sed`, `L_morph` all set to `None`.
         """
         self.prox_sed = None  # None, single operator, or AlternatingProjections
         self.prox_morph = None
@@ -199,6 +199,26 @@ class SymmetryConstraint(Constraint):
         shape = source.shape[1:]
         self.L_morph = transformations.getSymmetryOp(shape)
 
+class SoftSymmetryConstraint(Constraint):
+    """Soft symmetry constraint
+    This creates a :math:`prox_f` constraint to the morphology that
+    applies a symmetry constraint using a linear parameter `sigma`
+    that can vary from `sigma=0` (no symmetry required) to
+    `sigma=1` (perfect symmetry required).
+    """
+    def __init__(self, sigma=1):
+        super(SoftSymmetryConstraint, self).__init__()
+        self.sigma = sigma
+
+    def reset(self, source):
+        """Build the proximal operator
+        Symmetry depends on the shape of the source,
+        so it cannot be built until after the `source` has been created
+        with a bounding box.
+        """
+        shape = source.shape[1:]
+        self.prox_morph = partial(operators.prox_soft_symmetry, sigma=self.sigma)
+
 class TVxConstraint(Constraint):
     """Total Variation (TV) in X
 
@@ -254,7 +274,7 @@ class ConstraintList:
     SED or morphology of the component.
     The `ConstraintList` contains all of the constraints on a single component.
     """
-    def __init__(self, constraints):
+    def __init__(self, constraints, repeat=1):
         self.prox_sed = None # might be None, single operator, or AlternatingProjections
         self.prox_morph = None
         self.prox_g_sed = None # None or list of operators
@@ -262,6 +282,7 @@ class ConstraintList:
         self.L_sed = None # None or list of matrices
         self.L_morph = None
         self.constraints = []
+        self.repeat = repeat
         for c in constraints:
             self.__iand__(c)
 
@@ -318,14 +339,14 @@ class ConstraintList:
                     ops = [prox] + cprox.operators
                 else:
                     ops = [prox, cprox]
-                prox = proxmin.operators.AlternatingProjections(ops)
+                prox = proxmin.operators.AlternatingProjections(ops, repeat=self.repeat)
             else:
                 # self.<prox_name> is AlternatingProjections
                 if isinstance(cprox, proxmin.operators.AlternatingProjections):
                     ops = prox.operators + cprox.operators
                 else:
                     ops = prox.operators + [cprox]
-                prox = proxmin.operators.AlternatingProjections(ops)
+                prox = proxmin.operators.AlternatingProjections(ops, repeat=self.repeat)
         setattr(self, prox_name, prox)
 
     def _update_constraint_list(self, constraint, key):
