@@ -457,7 +457,7 @@ class PointSource(Source):
         if constraints is None:
             constraints = (sc.SimpleConstraint()
                            & sc.DirectMonotonicityConstraint(use_nearest=False)
-                           & sc.SymmetryConstraint())
+                           & sc.DirectSymmetryConstraint())
 
         super(PointSource, self).__init__(sed, morph, center=center, constraints=constraints, psf=psf, fix_sed=False, fix_morph=False, fix_frame=False, shift_center=0.1)
 
@@ -508,7 +508,7 @@ class ExtendedSource(Source):
         if constraints is None:
             constraints = (sc.SimpleConstraint() &
                            sc.DirectMonotonicityConstraint(use_nearest=False) &
-                           sc.SymmetryConstraint())
+                           sc.DirectSymmetryConstraint())
 
         super(ExtendedSource, self).__init__(sed, morph, center=center, constraints=constraints, psf=psf,
                                              fix_sed=False, fix_morph=False, fix_frame=False, shift_center=0.2)
