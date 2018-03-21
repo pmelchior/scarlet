@@ -1,3 +1,6 @@
+[![](https://readthedocs.org/projects/scarlet/badge/?version=latest)](https://scarlet.readthedocs.org)
+[![](http://img.shields.io/badge/license-MIT-blue.svg?style=flat)](https://github.com/fred3m/scarlet/blob/master/LICENSE.md)
+
 # Scarlet
 
 This package performs source separation (aka "deblending") on multi-band images. It's geared towards optical astronomy, where scenes are composed of stars and galaxies, but it is straightforward to apply it to other imaging data.
