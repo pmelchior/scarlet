@@ -1,5 +1,5 @@
 [![](https://readthedocs.org/projects/scarlet/badge/?version=latest)](https://scarlet.readthedocs.org)
-[![](http://img.shields.io/badge/license-MIT-blue.svg?style=flat)](https://github.com/fred3m/scarlet/blob/master/LICENSE.md)
+[![](https://img.shields.io/github/license/fred3m/scarlet.svg)](https://github.com/fred3m/scarlet/blob/master/LICENSE.md)
 
 # Scarlet
 
