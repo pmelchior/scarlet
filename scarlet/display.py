@@ -1,6 +1,38 @@
 import numpy as np
 from matplotlib.colors import Normalize
 
+def zscale(img, contrast=0.25, samples=500):
+    """Calculate minimum and maximum pixel values based on the image
+
+    Parameters
+    ----------
+    img: array-like
+        Image to scale
+    constrast: float
+        Contrast of the result
+    samples: int
+        Number of random samples to take from the image to set the zscale
+    """
+    ravel = img.ravel()
+    if len(ravel) > samples:
+        imsort = np.sort(np.random.choice(ravel, size=samples))
+    else:
+        imsort = np.sort(ravel)
+
+    n = len(imsort)
+    idx = np.arange(n)
+
+    med = imsort[int(n/2)]
+    w = 0.25
+    i_lo, i_hi = int((0.5-w)*n), int((0.5+w)*n)
+    p = np.polyfit(idx[i_lo:i_hi], imsort[i_lo:i_hi], 1)
+    slope, intercept = p
+
+    z1 = med - (slope/contrast)*(n/2-n*w)
+    z2 = med + (slope/contrast)*(n/2-n*w)
+
+    return z1, z2
+
 class Asinh(Normalize):
     """Use arcsinh to map image intensities in matplotlib
     """
