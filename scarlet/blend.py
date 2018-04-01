@@ -167,9 +167,8 @@ class Blend(object):
                     self._Sigma_1 = [scipy.sparse.diags(w.flatten()) for w in self._weights]
             # use full-frame Gamma matrices
             if self.use_psf:
-                from .transformations import GammaOp
                 pos = (0,0)
-                self._Gamma_full = [ source._gammaOp(pos, self._img.shape, offset_int=source.center_int)
+                self._Gamma_full = [ source._gamma(pos, self._img.shape, offset_int=source.center_int)
                                     for source in self.sources]
 
         # define error limits
@@ -405,10 +404,10 @@ class Blend(object):
                 grad = np.zeros_like(X)
                 if not self.use_psf:
                     for b in range(self.B):
-                        grad += self.sources[m].sed[l,b]*self.sources[m].Gamma.T.dot(diff_k[b].flatten())
+                        grad += self.sources[m].sed[l,b]*self.sources[m].Gamma.T.dot(diff_k[b])
                 else:
                     for b in range(self.B):
-                        grad += self.sources[m].sed[l,b]*self.sources[m].Gamma[b].T.dot(diff_k[b].flatten())
+                        grad += self.sources[m].sed[l,b]*self.sources[m].Gamma[b].T.dot(diff_k[b])
 
                 # apply per component prox projection and save in source
                 X = self.sources[m].morph[l] = self.sources[m].constraints[l].prox_morph(X - step*grad, step)
@@ -608,8 +607,8 @@ class Blend(object):
         height = self._img.shape[1]
         #TODO: Implement bounding check on the source
 
-        dGamma_x = source._gammaOp(pos_x, source.shape)
-        dGamma_y = source._gammaOp(pos_y, source.shape)
+        dGamma_x = source._gamma(pos_x)
+        dGamma_y = source._gamma(pos_y)
         diff_img = [source.get_model(combine=True, Gamma=dGamma_x),
                     source.get_model(combine=True, Gamma=dGamma_y)]
         diff_img[0] = (model_m-diff_img[0][slice_m])/source.shift_center

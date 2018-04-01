@@ -1,4 +1,5 @@
 from __future__ import print_function, division
+import warnings
 
 import numpy as np
 import scipy.sparse
@@ -15,147 +16,411 @@ def check_cache(name, key):
 
     return cache[name][key]
 
-class GammaOp():
+def get_filter_slices(coords):
+    """Convert a list of relative coordinates to slices
+
+    A `LinearFilter` is defined by an image of weights
+    and a list of relative coordinates from the current pixels
+    for each weight.
+    This method converts those coordinates into slices that are
+    used to apply the filter.
+    """
+    slices = []
+    inv_slices = []
+    for cy, cx in coords:
+        _slice = [slice(None),slice(None)]
+        _inv_slice = [slice(None),slice(None)]
+        if cy>0:
+            _slice[0] = slice(cy,None)
+            _inv_slice[0] = slice(None,-cy)
+        elif cy<0:
+            _slice[0] = slice(None,cy)
+            _inv_slice[0] = slice(-cy, None)
+        if cx>0:
+            _slice[1] = slice(cx,None)
+            _inv_slice[1] = slice(None,-cx)
+        elif cx<0:
+            _slice[1] = slice(None,cx)
+            _inv_slice[1] = slice(-cx, None)
+        slices.append(_slice)
+        inv_slices.append(_inv_slice)
+    return slices, inv_slices
+
+def apply_filter(X, weights, slices, inv_slices):
+    """Apply a filter to a 2D image X
+
+    Parameters
+    ----------
+    X: 2D numpy array
+        The image to apply the filter to
+    weights: 1D array
+        Weights corresponding to each slice in `slices`
+    slices: list of `slice` objects
+        Slices in the new `X` to store the filtered X
+    inv_slices: list of `slice` objects
+        Slices of `X` to apply each weight
+    
+    Returns
+    -------
+    new_X: 2D numpy array
+        The result of applying the filter to `X`
+    """
+    assert len(slices) == len(inv_slices) == len(weights)
+    result = np.zeros(X.shape, dtype=X.dtype)
+    for n, weight in enumerate(weights):
+        result[slices[n]] += weight * X[inv_slices[n]]
+    return result
+
+class LinearFilter:
+    """A filter that can be applied to an image
+
+    This acts like a sparse diagonal matrix that applies an
+    image of weights to a 2D matrix.
+    """
+    def __init__(self, img, coords):
+        """Initialize the Filter
+
+        Parameters
+        ----------
+        img: 2D or 1D array-like
+            Weights to apply to the filter
+        coords: 2D or 1D array-like
+            Relative coordinates from the current pixel
+            for each weight in `img`
+            (so [0,0] is the current pixel).
+        """
+        self.img = np.array(img)
+        self._coords = np.array(coords)
+        self.coords = self._coords
+        self.slices, self.inv_slices = get_filter_slices(self.coords.reshape(-1, 2))
+    
+    @property
+    def T(self):
+        """Transpose the filter
+        """
+        return LinearFilter(self.img, -self._coords)
+
+    def dot(self, X):
+        """Apply the filter to an image
+
+        Parameters
+        ----------
+        X: 2D numpy array or `LinearFilter` or `LinearFilterChain`
+            Array to apply the filter to, or chain of filters to
+            prepend this filter to.
+        
+        Returns
+        -------
+        result: 2D numpy array or `LinearFilterChain`
+            If `X` is an array, this is the result of the
+            filter applied to `X`.
+            If `X` is not an image but is another filter
+            (or chain of filters) then a new `LinearFilterChain` is
+            returned with this one prepended.
+        """
+        if isinstance(X, LinearFilter):
+            return LinearFilterChain([self, X])
+        elif isinstance(X, LinearFilterChain):
+            X.filters.insert(0,self)
+            return X
+        else:
+            return apply_filter(X, self.img.reshape(-1), self.slices, self.inv_slices)
+
+class LinearFilterChain:
+    """Chain of `LinearFilter` objects
+
+    Because `LinearFilter` objects are not really arrays,
+    this class keeps track of the order of a series of filters.
+    """
+    def __init__(self, filters):
+        """Initialize the class
+
+        Parameters
+        ----------
+        filters: list
+            List of `LinearFilter` objects, in the order from
+            left to right. So the last element in `filters` is
+            applied to an image first.
+        """
+        self.filters = filters
+    
+    @property
+    def T(self):
+        """Transpose the list of filters
+
+        Reverse the order and transpose each `LinearFilter` in
+        `self.filters`.
+        """
+        return LinearFilterChain([f.T for f in self.filters[::-1]])
+
+    def dot(self, X):
+        """Apply the filters
+
+        Apply the filters in reverse order,
+        starting with the last element, to the
+        image `X`.
+
+        Parameters
+        ----------
+        X: 2D numpy array
+            Image to apply the filters to.
+        
+        Returns
+        -------
+        result: 2D numpy array or `LinearFilterChain`
+            If `X` is an array, this will be the result of
+            applying all of the filters in `X`.
+            Otherwise this returns a new `LinearFilterChain`
+            that appends `X`.
+        """
+        if isinstance(X, LinearFilter):
+            self.filters.append(X)
+        elif isinstance(X, LinearFilterChain):
+            for f in X.filters:
+                self.filters.append(f)
+        else:
+            _filters = self.filters[::-1]
+            result = X
+            for f in _filters:
+                result = f.dot(result)
+            return result
+        return self
+
+class LinearTranslation(LinearFilter):
+    """Linear translation in x and y
+    """
+    def __init__(self, dy=0, dx=0):
+        """Initialize the filter
+
+        Parameters
+        ----------
+        dy: float
+            Fractional amount (from 0 to 1) to
+            shift the image in the y-direction
+        dx: float
+            Fractional amount (from 0 to 1) to
+            shift the image in the x-direction
+        """
+        self.set_transform(dy, dx)
+
+    def set_transform(self, dy=0, dx=0):
+        """Create the image and coords for the transform
+
+        Parameters
+        ----------
+        dy: float
+            Fractional amount (from 0 to 1) to
+            shift the image in the y-direction
+        dx: float
+            Fractional amount (from 0 to 1) to
+            shift the image in the x-direction
+        """
+        sign_x = np.sign(dx)
+        sign_y = np.sign(dy)
+        dx = np.abs(dx)
+        dy = np.abs(dy)
+        ddx = 1-dx
+        ddy = 1-dy
+        img = np.array([ddx*ddy, ddy*dx, ddx*dy, dx*dy])
+        coords = np.array([[0,0], [0,sign_x], [sign_y,0], [sign_y,sign_x]], dtype=int)
+        super(LinearTranslation,self).__init__(img, coords)
+
+class Gamma:
     """Combination of Linear (x,y) Transformation and PSF Convolution
 
     Since the translation operators and PSF convolution operators both act
-    on the deconvolved, centered S matrix, we can instead think of the translation
+    on the de-convolved, centered S matrix, we can instead think of the translation
     operators translating the PSF convolution kernel, making a single transformation
     Gamma = Ty.P.Tx, where Tx,Ty are the translation operators and P is the PSF
     convolution operator.
     """
-    def __init__(self, psf=None):
+    def __init__(self, psfs=None, center=None, dy=0, dx=0):
         """Constructor
 
         Parameters
         ----------
-        psf: array-like, default=`None`
+        psfs: array-like, default=`None`
             PSF image in either a single band (used for all images)
             or an array/list of images with a PSF image for each band.
+            If `psfs` is `None` then no PSF convolution is performed, but
+            a number of bands `B` must be specified.
+        center: integer array-like, default=`None`
+            Center of the PSF. If `center` is `None` and a set of `psfs` is given,
+            the central pixel of `psfs[0]` is used.
+        dy: float
+            Fractional shift in the y direction
+        dx: float
+            Fractional shift in the x direction
         """
-        self.psf = psf
-        self.cache = {}
+        self.psfs = psfs
 
-    def _make_matrices(self, shape, offset_int):
-        """Build Tx, Ty, P, Gamma
-
-        To save processing time we separate the diagonal component
-        (which is just an identity matrix) and the off-diagonal
-        component (which is just a band diagonal matrix that is all zeros).
-
-        Parameters
-        ----------
-        shape: tuple
-            Shape of the `~scarlet.Source` frame
-        offset_int: int, default=`None`
-            Integer offset of the translation. See `__init__`.
-
-        Returns
-        -------
-        result: tuple
-            tx, tx_plus, tx_minus, ty, ty_plus, ty_minus, P
-        tx, ty: `~scipy.sparse` array
-            Sparse arrays that contain the diagonal components of the Tx, Ty matrices
-        tx_plus, ty_plus: `~scipy.sparse` array
-            Sparse arrays that contain the off diagonal components of the Tx, Ty matrices.
-
-        """
-        self.B, height, width = shape
-        tx = scipy.sparse.diags([1.], offsets=[offset_int[1]], shape=(width, width))
-        tx_minus = scipy.sparse.diags([-1.,1.], offsets=[offset_int[1],offset_int[1]+1], shape=(width, width))
-        tx_plus = scipy.sparse.diags([1.,-1.],offsets=[offset_int[1],offset_int[1]-1], shape=(width, width))
-        tx = scipy.sparse.block_diag([tx]*height)
-        tx_plus = scipy.sparse.block_diag([tx_plus]*height)
-        tx_minus = scipy.sparse.block_diag([tx_minus]*height)
-
-        size = height*width
-        ty = scipy.sparse.diags([1], offsets=[offset_int[0]*width], shape=(size, size), dtype=np.float64)
-        ty_minus = scipy.sparse.diags([-1., 1.], offsets=[offset_int[0]*width, (offset_int[0]+1)*width],
-                                      shape=(size, size))
-        ty_plus = scipy.sparse.diags([1., -1.], offsets=[offset_int[0]*width, (offset_int[0]-1)*width],
-                                     shape=(size, size))
-
-        P = self._adapt_PSF(shape[1:])
-        return tx,tx_plus,tx_minus,ty,ty_plus,ty_minus,P
-
-    def __call__(self, pos, shape, offset_int=None):
-        """Get the operators to translate source
-
-        Parameters
-        ----------
-        pos: array-like
-            (dy,dx) Fractional position in the x and y directions to shift the source.
-        shape: tuple
-            Shape of the `~scarlet.Source` frame
-        offset_int: int, default=`None`
-            Integer offset of the translation. See `__init__`.
-
-        Returns
-        -------
-        Gamma: list of `~scipy.sparse` arrays
-            Sparse Gamma array for each band, where Gamma=Ty.P.Tx.
-        """
-        dy, dx = pos
-        if offset_int is None:
-            offset_int = (0,0)
-        key = tuple(shape[1:]) + tuple(offset_int)
-
-        try:
-            tx,tx_plus,tx_minus,ty,ty_plus,ty_minus,P = self.cache[key]
-        except KeyError:
-            self.cache[key] = tx, tx_plus, tx_minus, ty, ty_plus, ty_minus, P = self._make_matrices(shape, offset_int)
-
-        # Create Tx
-        if dx<0:
-            dtx = tx_minus
+        # Create the PSF filter for each band
+        if psfs is not None:
+            self._update_psf(psfs, center)
+            self.B = len(psfs)
         else:
-            dtx = tx_plus
-        # linear interpolation between centers and offset by one pixel
-        Tx = tx - dx*dtx
-        # Create Ty
-        if dy<0:
-            dty = ty_minus
-        else:
-            dty = ty_plus
-        Ty = ty - dy*dty
-        # return Tx, Ty
+            self.psfFilters = None
+            self.B = None
+        # Create the transformation matrices
+        self._update_translation(dy, dx)
+    
+    def _update_psf(self, psfs, center=None):
+        """Update the psf convolution filter
+        """
+        if center is None:
+            center = [psfs[0].shape[0]//2, psfs[0].shape[1]//2]
+        self.center = center
+        self.psfFilters = []
+        x = np.arange(psfs[0].shape[1])
+        y = np.arange(psfs[0].shape[0])
+        x,y = np.meshgrid(x,y)
+        x -= center[1]
+        y -= center[0]
+        coords = np.dstack([y,x])
+        for psf in psfs:
+            self.psfFilters.append(LinearFilter(psf, coords))
 
-        if P is None:
-            return Ty.dot(Tx)
-        if hasattr(P, 'shape'):
-            _gamma = P.dot(Ty.dot(Tx))
-            # simplifies things later on: PSF always comes with B Gamma operators
-            return [_gamma] * shape[0]
-        return [Pb.dot(Ty.dot(Tx)) for Pb in P]
+    def _update_translation(self, dy=0, dx=0):
+        """Update the translation filter
+        """
+        self.dx = dx
+        self.dy = dy
+        self.translation = LinearTranslation(dy, dx)
 
-    def _adapt_PSF(self, shape):
-        """Create multiband PSF operator (if necessary)
+    def update(self, psfs=None, center=None, dx=None, dy=None):
+        """Update the psf convolution filter and/or the translations
 
-        `~scipy.sparse` only works for 2D matrices. Since we have a
-        3rd dimension, the band, we need an adapter to keep track of the
-        PSF operator in different bands.
+        See `self.__init__` for parameter descriptions
+        """
+        if psfs is not None:
+            self._update_psf(psfs, center)
+        if dx is not None or dy is not None:
+            if dx is None:
+                dx = self.dx
+            if dy is None:
+                dy = self.dy
+            self._update_translation(dy, dx)
+
+    def __call__(self, dyx=None):
+        """Build a Gamma "Matrix"
+
+        Combine the translation and PSF convolution into
+        a single class that acts like a linear operator.
 
         Parameters
         ----------
-        shape: tuple
-            Shape of the `~scarlet.Source` frame.
-
-        Returns
-        -------
-        P: `~scipy.sparse` array or list of `~scipy.sparse` arrays
-            PSF convolution operator.
+        dyx: 2D array-like, default=`None`
+            Fractional shift in position in `[dy,dx]`.
+            If `dyx` is `None`, then the already built
+            translation matrix is used.
         """
-        if self.psf is None:
-            return None
+        if dyx is None or (dyx[0] == self.dy and dyx[1] == self.dx):
+            translation = self.translation
+        else:
+            translation = LinearTranslation(*dyx)
+        if self.psfFilters is None:
+            gamma = translation
+        else:
+            gamma = []
+            for b in range(self.B):
+                gamma.append(LinearFilterChain([translation, self.psfFilters[b]]))
+        return gamma
 
-        if hasattr(self.psf, 'shape'): # single matrix
-            return getPSFOp(self.psf, shape)
+class LinearOperator:
+    """Mock a linear operator
 
-        P = []
-        for b in range(len(self.psf)):
-            P.append(getPSFOp(self.psf[b], shape))
-        return P
+    Because scarlet uses 2D images for morphologies,
+    the morphology they operate on must be flattened,
+    so this class mocks a linear operator by applying it's
+    functions to a flattened variable.
+    """
+    def __init__(self, L):
+        """Initialize the class
+        """
+        while isinstance(L, LinearOperator):
+            L = L.L
+        self.L = L
 
+    def dot(self, X):
+        """Take the dot product with a 2D X
+        """
+        if isinstance(X, np.ndarray):
+            return self.L.dot(X.reshape(-1)).reshape(X.shape)
+        else:
+            return LinearOperator(self.L.dot(X))
+
+    @property
+    def T(self):
+        """Return a transposed version of the linear operator
+        """
+        return LinearOperator(self.L.T)
+
+    def spectral_norm(self):
+        """Spectral norm of the operator
+        """
+        from scipy.sparse import issparse
+        LTL = self.L.T.dot(self.L)
+        if issparse(self.L):
+            if min(self.L.shape) <= 2:
+                L2 = np.real(np.linalg.eigvals(LTL.toarray()).max())
+            else:
+                import scipy.sparse.linalg
+                L2 = np.real(scipy.sparse.linalg.eigs(LTL, k=1, return_eigenvectors=False)[0])
+        else:
+            import IPython; IPython.embed()
+            L2 = np.real(np.linalg.eigvals(LTL).max())
+        return L2
+
+    def __len__(self):
+        return len(self.L)
+
+    @property
+    def shape(self):
+        return self.L.shape
+
+    @property
+    def size(self):
+        return self.L.size
+    
+    @property
+    def ndim(self):
+        print(self.L.ndim)
+        return self.L.ndim
+
+    def __sub__(self, op):
+        return LinearOperator(self.L - op)
+
+    def __rsub__(self, op):
+        return LinearOperator(op - self.L)
+
+    def __add__(self, op):
+        return LinearOperator(self.L + op)
+
+    def __radd__(self, op):
+        return LinearOperator(op + self.L)
+
+    def __mul__(self, op):
+        return LinearOperator(self.L * op)
+
+    def __rmul__(self, op):
+        return LinearOperator(op * self.L)
+
+    def __div__(self, op):
+        return LinearOperator(self.L / op)
+
+    def __rdiv__(self, op):
+        return LinearOperator(self.L / op)
+    
+    def reshape(self, shape):
+        return LinearOperator(self.L.reshape(shape))
+
+    def __array_prepare__(self, *args):
+        print("preparing")
+        return self.L.__array_prepare__(*args)
+
+    def __getattr__(self, attr):
+        if attr not in self.__dict__.keys:
+            return getattr(self.L, attr)
 
 def getPSFOp(psf, imgShape):
     """Create an operator to convolve intensities with the PSF
@@ -165,6 +430,7 @@ def getPSFOp(psf, imgShape):
     the PSF operator.
     """
 
+    warnings.warn("The 'psfOp' is deprecated, use 'LinearFilter' instead")
     name = "PSF"
     key = tuple(imgShape)
     try:
@@ -220,13 +486,12 @@ def getPSFOp(psf, imgShape):
                             psfOp[width*(h+1)-x_-1, width*(h+y+1)+x-x_-1] = 0
 
         # Return the transpose, which correctly convolves the data with the PSF
-        psfOp = psfOp.T.tocoo()
+        psfOp = LinearOperator(psfOp.T.tocoo())
 
         global cache
         cache[name][key] = psfOp
 
     return psfOp
-
 
 def getZeroOp(shape):
     size = shape[0]*shape[1]
@@ -236,7 +501,7 @@ def getZeroOp(shape):
         L = check_cache(name, key)
     except KeyError:
         # matrix with ones on diagonal shifted by k, here out of matrix: all zeros
-        L = scipy.sparse.eye(size, k=size)
+        L = LinearOperator(scipy.sparse.eye(size, k=size))
         global cache
         cache[name][key] = L
     return L
@@ -249,7 +514,7 @@ def getIdentityOp(shape):
         L = check_cache(name, key)
     except KeyError:
         # matrix with ones on diagonal shifted by k, here out of matrix: all zeros
-        L = scipy.sparse.identity(size)
+        L = LinearOperator(scipy.sparse.identity(size))
         global cache
         cache[name][key] = L
     return L
@@ -270,6 +535,7 @@ def getSymmetryOp(shape):
         sidx = idx[::-1]
         symmetryOp = getIdentityOp(shape)
         symmetryOp -= scipy.sparse.coo_matrix((np.ones(size),(idx, sidx)), shape=(size,size))
+        symmetryOp = LinearOperator(symmetryOp)
         global cache
         cache[name][key] = symmetryOp
     return symmetryOp
@@ -468,7 +734,7 @@ def getRadialMonotonicOp(shape, useNearest=True, minGradient=1, subtract=True):
             monotonic = cosArr-scipy.sparse.diags(diagonal, offsets=0)
         else:
             monotonic = cosArr
-        monotonic = monotonic.tocoo()
+        monotonic = LinearOperator(monotonic.tocoo())
 
         global cache
         cache[name][key] = monotonic

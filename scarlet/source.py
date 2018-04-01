@@ -21,18 +21,18 @@ class Source(object):
     This class is fully functional and acts as base class for specialized
     initialization, constraints, etc.
     """
-    def __init__(self, sed, morph_image, constraints=None, center=None, psf=None, fix_sed=False, fix_morph=False,
-                 fix_frame=False, shift_center=0.2):
+    def __init__(self, sed, morph_image, constraints=None, center=None, psf=None, fix_sed=False,
+                 fix_morph=False, fix_frame=False, shift_center=0.2):
         """Constructor
 
         Parameters
         ----------
         center: array-like
             (y,x) coordinates of the source in the larger image
-        psf: array-like or `~scarlet.transformations.GammaOp`, default=`None`
+        psf: array-like or `~scarlet.transformations.Gamma`, default=`None`
             2D image of the psf in a single band (Height, Width),
             or 2D image of the psf in each band (Bands, Height, Width),
-            or `~scarlet.transformations.GammaOp` created from a psf array.
+            or `~scarlet.transformations.Gamma` created from a psf array.
         fix_sed: bool or list of bools, default=`False`
             Whether or not the SED is fixed, or can be updated
             If K>1, a list of bools can be given, one for each component.
@@ -52,7 +52,7 @@ class Source(object):
         self.sed = sed.copy()
         assert len(morph_image.shape) == 3
         assert morph_image.shape[0] == sed.shape[0]
-        self.morph = morph_image.copy().reshape(self.K, -1)
+        self.morph = morph_image
 
         if center is None:
             center = (morph_image.shape[1] // 2, morph_image.shape[2] // 2)
@@ -62,13 +62,13 @@ class Source(object):
 
         # set up psf and translations matrices
         from . import transformations
-        if isinstance(psf, transformations.GammaOp):
-            self._gammaOp = psf
+        if isinstance(psf, transformations.Gamma):
+            self._gamma = psf
         else:
-            self._gammaOp = transformations.GammaOp(psf=psf)
+            self._gamma = transformations.Gamma(psfs=psf)
 
         # set center coordinates and translation operators
-        # needs to have GammaOp set up first
+        # needs to have Gamma set up first
         self.set_center(center)
         self.shift_center = shift_center
 
@@ -118,13 +118,6 @@ class Source(object):
         return (self.B, self.Ny, self.Nx)
 
     @property
-    def image(self):
-        """Reshaped morphology into an array of 2D images for each component
-        """
-        morph_shape = (self.K, self.Ny, self.Nx)
-        return self.morph.reshape(morph_shape) # this *should* be a view
-
-    @property
     def center_int(self):
         """Rounded (not truncated) integer pixel position of the center
         """
@@ -134,7 +127,7 @@ class Source(object):
     def has_psf(self):
         """Whether the source has a psf
         """
-        return self._gammaOp.psf is not None
+        return self._gamma.psfs is not None
 
     def set_constraints(self):
         """Iterate through all constraints and call their `reset` method
@@ -169,7 +162,7 @@ class Source(object):
         ----------
         combine: bool, default=`True`
             Whether or not to combine all of the components into a single model
-        Gamma: `~scarlet.transformations.GammaOp`, default=`None`
+        Gamma: `~scarlet.transformations.Gamma`, default=`None`
             Gamma transformation to convolve with PSF and perform linear transform.
             If `Gamma` is `None` then `self.Gamma` is used.
         use_sed: bool, default=`True`
@@ -188,17 +181,14 @@ class Source(object):
             sed = np.ones_like(self.sed)
         # model for all components of this source
         if not self.has_psf:
-            model = np.empty((self.K, self.B, self.Ny*self.Nx))
+            model = np.empty((self.K, self.B, self.Ny, self.Nx))
             for k in range(self.K):
-                model[k] = np.outer(sed[k], Gamma.dot(self.morph[k]))
+                model[k] = np.outer(sed[k], Gamma.dot(self.morph[k])).reshape(self.B, self.Ny, self.Nx)
         else:
-            model = np.zeros((self.K, self.B, self.Ny*self.Nx))
+            model = np.zeros((self.K, self.B, self.Ny, self.Nx))
             for k in range(self.K):
                 for b in range(self.B):
                     model[k,b] += sed[k,b] * Gamma[b].dot(self.morph[k])
-
-        # reshape the image into a 2D array
-        model = model.reshape(self.K, self.B, self.Ny, self.Nx)
 
         if combine:
             model = model.sum(axis=0)
@@ -235,7 +225,6 @@ class Source(object):
             size = size[:2]
         else:
             size = (size,) * 2
-
 
         # store old edge coordinates
         try:
@@ -277,8 +266,8 @@ class Source(object):
         self._set_frame(center, size)
 
         # update translation operator
-        dx = self.center - self.center_int
-        self.Gamma = self._gammaOp(dx, self.shape)
+        dyx = self.center - self.center_int
+        self.Gamma = self._gamma(dyx)
 
     def resize(self, size):
         """Resize the frame
@@ -297,13 +286,11 @@ class Source(object):
 
         if new_slice != old_slice:
             # change morph
-            _morph = self.morph.copy().reshape((self.K, Ny, Nx))
+            _morph = self.morph.copy()
             self.morph = np.zeros((self.K, self.Ny, self.Nx))
-
             self.morph[new_slice] = _morph[old_slice]
-            self.morph = self.morph.reshape((self.K, self.Ny*self.Nx))
 
-            # update GammaOp and center (including subpixel shifts)
+            # update Gamma and center (including subpixel shifts)
             self.set_center(self.center)
 
             # set constraints
@@ -484,10 +471,10 @@ class PointSource(Source):
         except SourceInitError:
             # flat weights as fall-back
             sed = np.ones(B) / B
-        morph = np.zeros(shape[0] * shape[1])
+        morph = np.zeros(shape)
         # Turn on a single pixel at the peak
-        center_pix = morph.size // 2
-        morph[center_pix] = max(img[:,_y,_x].sum(axis=0), tiny)
+        cy, cx = (shape[0] // 2, shape[1] //2)
+        morph[cy, cx] = max(img[:,_y,_x].sum(axis=0), tiny)
         return sed.reshape((1,B)), morph.reshape((1, shape[0], shape[1]))
 
 class ExtendedSource(Source):
@@ -571,7 +558,7 @@ class ExtendedSource(Source):
             # use finite thresh to remove flat bridges
             from . import operators
             prox_monotonic = operators.prox_strict_monotonic((self.Ny, self.Nx), thresh=0.1, use_nearest=False)
-            morph = prox_monotonic(morph.flatten(), 0).reshape(self.Ny, self.Nx)
+            morph = prox_monotonic(morph, 0).reshape(self.Ny, self.Nx)
 
         # trim morph to pixels above threshold
         # thresh is multiple above the rms of detect (weighted variance across bands)
