@@ -65,7 +65,6 @@ def apply_filter(X, weights, slices, inv_slices):
     new_X: 2D numpy array
         The result of applying the filter to `X`
     """
-    assert len(slices) == len(inv_slices) == len(weights)
     result = np.zeros(X.shape, dtype=X.dtype)
     for n, weight in enumerate(weights):
         result[slices[n]] += weight * X[inv_slices[n]]
@@ -91,8 +90,7 @@ class LinearFilter:
         """
         self.img = np.array(img)
         self._coords = np.array(coords)
-        self.coords = self._coords
-        self.slices, self.inv_slices = get_filter_slices(self.coords.reshape(-1, 2))
+        self.slices, self.inv_slices = get_filter_slices(self._coords.reshape(-1, 2))
     
     @property
     def T(self):
@@ -215,15 +213,34 @@ class LinearTranslation(LinearFilter):
             Fractional amount (from 0 to 1) to
             shift the image in the x-direction
         """
-        sign_x = np.sign(dx)
-        sign_y = np.sign(dy)
+        self.dy = dy
+        self.dx = dx
+        sign_x = 1 if dx>= 0 else -1
+        sign_y = 1 if dy>= 0 else -1
         dx = np.abs(dx)
         dy = np.abs(dy)
         ddx = 1-dx
         ddy = 1-dy
-        img = np.array([ddx*ddy, ddy*dx, ddx*dy, dx*dy])
-        coords = np.array([[0,0], [0,sign_x], [sign_y,0], [sign_y,sign_x]], dtype=int)
-        super(LinearTranslation,self).__init__(img, coords)
+        self.img = np.array([ddx*ddy, ddy*dx, ddx*dy, dx*dy])
+        slice_name = "Tyx_slice"
+        coord_name = "Tyx_coord"
+        key = (sign_y, sign_x)
+        try:
+            self._coords = check_cache(coord_name, key)
+            self.slices, self.inv_slices = check_cache(slice_name, key)
+        except KeyError:
+            self._coords = np.array([[0,0], [0,sign_x], [sign_y,0], [sign_y,sign_x]])
+            cache[coord_name][key] = self._coords
+            if slice_name not in cache:
+                cache[slice_name] = {}
+            self.slices, self.inv_slices = get_filter_slices(self._coords.reshape(-1, 2))
+            cache[slice_name][key] = (self.slices, self.inv_slices)
+
+    @property
+    def T(self):
+        """Transpose the filter
+        """
+        return LinearTranslation(-self.dy, -self.dx)
 
 class Gamma:
     """Combination of Linear (x,y) Transformation and PSF Convolution
@@ -314,10 +331,7 @@ class Gamma:
             If `dyx` is `None`, then the already built
             translation matrix is used.
         """
-        if dyx is None or (dyx[0] == self.dy and dyx[1] == self.dx):
-            translation = self.translation
-        else:
-            translation = LinearTranslation(*dyx)
+        translation = LinearTranslation(*dyx)
         if self.psfFilters is None:
             gamma = translation
         else:
