@@ -1,5 +1,6 @@
 [![](https://readthedocs.org/projects/scarlet/badge/?version=latest)](https://scarlet.readthedocs.org)
 [![](https://img.shields.io/github/license/fred3m/scarlet.svg)](https://github.com/fred3m/scarlet/blob/master/LICENSE.md)
+[![arXiv](https://img.shields.io/badge/arxiv-1802.10157-red.svg)](https://arxiv.org/abs/1802.10157)
 
 # Scarlet
 
@@ -13,7 +14,21 @@ Because of its generic utility, this package provides a stand-alone implementati
 
 The API is reasonably stable, but feel free to contact the authors [fred3m](https://github.com/fred3m) and [pmelchior](https://github.com/pmelchior) for guidance. For bug reports and feature request, open an issue.
 
-If you make use of scarlet, please acknowledge [Melchior et al. (2018)](http://arxiv.org/abs/1802.10157), which describe in detail the algorithms and constraints used in this package.
+If you make use of scarlet, please acknowledge [Melchior et al. (2018)](http://arxiv.org/abs/1802.10157), which describe in detail the algorithms and constraints used in this package:
+```
+@ARTICLE{scarlet,
+   author = {{Melchior}, P. and {Moolekamp}, F. and {Jerdee}, M. and {Armstrong}, R. and 
+	{Sun}, A.-L. and {Bosch}, J. and {Lupton}, R.},
+    title = "{SCARLET: Source separation in multi-band images by Constrained Matrix Factorization}",
+  journal = {ArXiv e-prints},
+archivePrefix = "arXiv",
+   eprint = {1802.10157},
+ primaryClass = "astro-ph.IM",
+     year = 2018,
+    month = feb,
+   adsurl = {http://adsabs.harvard.edu/abs/2018arXiv180210157M},
+}
+```
 
 ## Prerequisites
 
