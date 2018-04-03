@@ -32,12 +32,11 @@ void prox_weighted_monotonic(
 ){
     auto x = X.mutable_unchecked<1>();
     auto w = weights.mutable_unchecked<2>();
-    double ref_flux;
 
     // Start at the center of the image and set each pixel to the minimum
     // between itself and its reference pixel (which is closer to the peak)
     for(auto &didx: dist_idx){
-        ref_flux = 0;
+        double ref_flux = 0;
         for(std::size_t i=0; i<offsets.size(); i++){
             if(w(i,didx)>0){
                 int nidx = offsets[i] + didx;
