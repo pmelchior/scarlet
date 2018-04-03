@@ -26,7 +26,7 @@ archivePrefix = "arXiv",
  primaryClass = "astro-ph.IM",
      year = 2018,
     month = feb,
-   adsurl = {http://adsabs.harvard.edu/abs/2018arXiv180210157M},
+   adsurl = {http://adsabs.harvard.edu/abs/2018arXiv180210157M}
 }
 ```
 
