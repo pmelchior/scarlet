@@ -401,7 +401,7 @@ class Blend(object):
                 diff_k[slice_m] = self._diff[self.sources[m].bb]
 
                 # now a gradient vector and a mask of pixel with updates
-                grad = np.zeros_like(X)
+                grad = np.zeros(X.shape, dtype=X.dtype)
                 if not self.use_psf:
                     for b in range(self.B):
                         grad += self.sources[m].sed[l,b]*self.sources[m].Gamma.T.dot(diff_k[b])

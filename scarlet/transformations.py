@@ -99,7 +99,7 @@ class LinearFilter:
         return LinearFilter(self.img, -self._coords)
 
     def dot(self, X):
-        """Apply the filter to an image
+        """Apply the filter to an image or combine filters
 
         Parameters
         ----------
@@ -122,7 +122,18 @@ class LinearFilter:
             X.filters.insert(0,self)
             return X
         else:
-            return apply_filter(X, self.img.reshape(-1), self.slices, self.inv_slices)
+            return self.apply_filter(X)
+
+    def apply_filter(self, X):
+        """Apply the filter to an image
+
+        Parameters
+        ----------
+        X: 2D numpy array or `LinearFilter` or `LinearFilterChain`
+            Array to apply the filter to, or chain of filters to
+            prepend this filter to.
+        """
+        return apply_filter(X, self.img.reshape(-1), self.slices, self.inv_slices)
 
 class LinearFilterChain:
     """Chain of `LinearFilter` objects
@@ -217,23 +228,24 @@ class LinearTranslation(LinearFilter):
         self.dx = dx
         sign_x = 1 if dx>= 0 else -1
         sign_y = 1 if dy>= 0 else -1
-        dx = np.abs(dx)
-        dy = np.abs(dy)
-        ddx = 1-dx
-        ddy = 1-dy
+        dx = abs(dx)
+        dy = abs(dy)
+        ddx = 1.-dx
+        ddy = 1.-dy
         self.img = np.array([ddx*ddy, ddy*dx, ddx*dy, dx*dy])
         slice_name = "Tyx_slice"
         coord_name = "Tyx_coord"
         key = (sign_y, sign_x)
+        self.key = key
         try:
             self._coords = check_cache(coord_name, key)
             self.slices, self.inv_slices = check_cache(slice_name, key)
         except KeyError:
-            self._coords = np.array([[0,0], [0,sign_x], [sign_y,0], [sign_y,sign_x]])
+            self._coords = np.array([[0,0], [0,sign_x], [sign_y,0], [sign_y,sign_x]], dtype=int)
             cache[coord_name][key] = self._coords
             if slice_name not in cache:
                 cache[slice_name] = {}
-            self.slices, self.inv_slices = get_filter_slices(self._coords.reshape(-1, 2))
+            self.slices, self.inv_slices = get_filter_slices(self._coords)
             cache[slice_name][key] = (self.slices, self.inv_slices)
 
     @property
