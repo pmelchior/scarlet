@@ -194,14 +194,11 @@ class Blend(object):
         # run bSDMM on all SEDs and morphologies
         steps_g = None
         steps_g_update = 'steps_f'
-        accelerated = True
-        traceback = False
-
         max_iter = self.it + steps
         try:
             res = proxmin.algorithms.bsdmm(X, self._prox_f, self._steps_f, self._proxs_g, steps_g=steps_g,
                 Ls=self._Ls, update_order=_update_order, steps_g_update=steps_g_update, max_iter=steps,
-                e_rel=self._e_rel, e_abs=self._e_abs, accelerated=accelerated, traceback=traceback)
+                e_rel=self._e_rel, e_abs=self._e_abs)
         except ScarletRestartException:
             if self.it < max_iter: # don't restart at last iteration
                 steps = max_iter - self.it
