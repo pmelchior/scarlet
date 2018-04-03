@@ -487,7 +487,7 @@ class ExtendedSource(Source):
     but other `constraints` can be used.
     """
     def __init__(self, center, img, bg_rms, constraints=None, psf=None, symmetric=True, monotonic=True,
-                 thresh=1., config=None):
+                 thresh=1., config=None, fix_sed=False, fix_morph=False, fix_frame=False, shift_center=0.2):
         self.center = center
         sed, morph = self.make_initial(img, bg_rms, thresh=thresh, symmetric=symmetric,
                                        monotonic=monotonic, config=config)
@@ -498,7 +498,8 @@ class ExtendedSource(Source):
                            sc.DirectSymmetryConstraint())
 
         super(ExtendedSource, self).__init__(sed, morph, center=center, constraints=constraints, psf=psf,
-                                             fix_sed=False, fix_morph=False, fix_frame=False, shift_center=0.2)
+                                             fix_sed=fix_sed, fix_morph=fix_morph, fix_frame=fix_frame,
+                                             shift_center=shift_center)
 
     def make_initial(self, img, bg_rms, thresh=1., symmetric=True, monotonic=True, config=None):
         """Initialize the source that is symmetric and monotonic
