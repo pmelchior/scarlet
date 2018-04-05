@@ -193,9 +193,6 @@ class Blend(object):
         # run bSDMM on all SEDs and morphologies
         steps_g = None
         steps_g_update = 'steps_f'
-        accelerated = True
-        traceback = False
-
         max_iter = self.it + steps
         try:
             res = proxmin.algorithms.bsdmm(X, self._prox_f, self._steps_f, self._proxs_g, steps_g=steps_g,
