@@ -76,27 +76,76 @@ class LinearFilter:
     This acts like a sparse diagonal matrix that applies an
     image of weights to a 2D matrix.
     """
-    def __init__(self, img, coords):
+    def __init__(self, values, coords=None, center=None):
         """Initialize the Filter
 
         Parameters
         ----------
-        img: 2D or 1D array-like
-            Weights to apply to the filter
+        values: 2D or 1D array-like
+            Weights to apply to the filter.
+            If `coords` is `None` than either `values` must
+            be 2D with an odd number of rows and columns
+            (and the current pixel in the center) or the
+            location of the current pixel (`center`) in
+            `values` must be specified.
         coords: 2D or 1D array-like
             Relative coordinates from the current pixel
             for each weight in `img`
             (so [0,0] is the current pixel).
+        center: array-like
+            index of the current pixel in `values`.
+            If a set of `coords` is not defined, they can be
+            created as long as either the `center` location in
+            `values` is specified or `values` has an odd number
+            of rows and columns.
+            For example, if `values` is `[[0,1],[2,3]]` and the
+            current pixel is the upper right element, then
+            `center=[0,0]` (`values=0`). If current pixel is the top right then
+            `center=[0,1]` (`values=1`).
         """
-        self.img = np.array(img)
-        self._coords = np.array(coords)
-        self.slices, self.inv_slices = get_filter_slices(self._coords.reshape(-1, 2))
-    
+        self.values = np.array(values)
+        self.update_coords(coords, center)
+
     @property
     def T(self):
         """Transpose the filter
         """
-        return LinearFilter(self.img, -self._coords)
+        return LinearFilter(self.values, -self._coords)
+
+    def update_coords(self, coords=None, center=None):
+        """Update the coordinates for the values
+
+        Create (if necessary) and store the `coords` and `flat_coords`
+        (a flattened version of coords), which map the values to the
+        filter.
+
+        See `__init__` for a description of the parameters
+        """
+        if coords is None:
+            # Attempt to automatically create coordinate grid
+            if len(values.shape)!=2:
+                raise ValueError("Either `values` must be 2D or `coords` must be specified")
+            if center is None:
+                if self.values.shape[0] % 2 == 0 or self.values.shape[1] % 2 == 0:
+                    msg = """Ambiguous center of the `values` array,
+                             you must either specify a set of `coords` or use
+                             a `values` array with an odd number of rows and columns"""
+                    raise ValueError(msg)
+                center = [self.values.shape[0]//2, self.values.shape[1]//2]
+            self.center = center
+            x = np.arange(self.values.shape[1])
+            y = np.arange(self.values.shape[0])
+            x,y = np.meshgrid(x,y)
+            x -= center[1]
+            y -= center[0]
+            coords = np.dstack([y,x])
+        self._coords = np.array(coords)
+        assert(np.all(self.values.shape==self._coords.shape[:-1]))
+        assert(self._coords.shape[-1] = 2)
+        # Flattened version of the values and coordinates for each value
+        self._flat_values = self.values.reshape(-1)
+        self._flat_coords = self._coords.reshape(-1,2)
+        self._slices, self._inv_slices = get_filter_slices(self._flat_coords)
 
     def dot(self, X):
         """Apply the filter to an image or combine filters
@@ -122,18 +171,7 @@ class LinearFilter:
             X.filters.insert(0,self)
             return X
         else:
-            return self.apply_filter(X)
-
-    def apply_filter(self, X):
-        """Apply the filter to an image
-
-        Parameters
-        ----------
-        X: 2D numpy array or `LinearFilter` or `LinearFilterChain`
-            Array to apply the filter to, or chain of filters to
-            prepend this filter to.
-        """
-        return apply_filter(X, self.img.reshape(-1), self.slices, self.inv_slices)
+            return apply_filter(X, self._flat_values, self._slices, self._inv_slices)
 
 class LinearFilterChain:
     """Chain of `LinearFilter` objects
@@ -296,18 +334,9 @@ class Gamma:
     def _update_psf(self, psfs, center=None):
         """Update the psf convolution filter
         """
-        if center is None:
-            center = [psfs[0].shape[0]//2, psfs[0].shape[1]//2]
-        self.center = center
         self.psfFilters = []
-        x = np.arange(psfs[0].shape[1])
-        y = np.arange(psfs[0].shape[0])
-        x,y = np.meshgrid(x,y)
-        x -= center[1]
-        y -= center[0]
-        coords = np.dstack([y,x])
         for psf in psfs:
-            self.psfFilters.append(LinearFilter(psf, coords))
+            self.psfFilters.append(LinearFilter(psf, center=center))
 
     def _update_translation(self, dy=0, dx=0):
         """Update the translation filter
@@ -381,6 +410,7 @@ class LinearOperator:
         """
         return LinearOperator(self.L.T)
 
+    @property
     def spectral_norm(self):
         """Spectral norm of the operator
         """
