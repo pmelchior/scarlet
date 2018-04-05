@@ -11,12 +11,12 @@ def _prox_strict_monotonic(X, step, ref_idx, dist_idx, thresh=0):
     """Force an intensity profile to be monotonic
     """
     from . import operators_pybind11
-    operators_pybind11.prox_monotonic(X, step, ref_idx, dist_idx, thresh)
+    operators_pybind11.prox_monotonic(X.reshape(-1), step, ref_idx, dist_idx, thresh)
     return X
 
 def _prox_weighted_monotonic(X, step, weights, didx, offsets, thresh=0):
     from . import operators_pybind11
-    operators_pybind11.prox_weighted_monotonic(X, step, weights, offsets, didx, thresh)
+    operators_pybind11.prox_weighted_monotonic(X.reshape(-1), step, weights, offsets, didx, thresh)
     return X
 
 def sort_by_radius(shape):
@@ -109,8 +109,9 @@ def prox_center_on(X, step, tiny=1e-10):
     Make sure that the center pixel as at least some amount of flux
     otherwise centering will go off rails
     """
-    center_pix = X.size // 2 # only works for odd pixel numbers in x and y
-    X[center_pix] = max(X[center_pix], tiny)
+    cy = X.shape[0] // 2
+    cx = X.shape[1] // 2
+    X[cy, cx] = max(X[cy, cx], tiny)
     return X
 
 def prox_soft_symmetry(X, step, sigma=1):
@@ -120,7 +121,7 @@ def prox_soft_symmetry(X, step, sigma=1):
     1  being completely symmetric, the user can customize
     the level of symmetry required for a component
     """
-    Xs = X[::-1]
+    Xs = np.fliplr(np.flipud(X))
     X = 0.5 *sigma * (X+Xs) + (1-sigma) * X
     return X
 
