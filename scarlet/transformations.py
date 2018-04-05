@@ -103,49 +103,43 @@ class LinearFilter:
             `center=[0,0]` (`values=0`). If current pixel is the top right then
             `center=[0,1]` (`values=1`).
         """
-        self.values = np.array(values)
-        self.update_coords(coords, center)
-
-    @property
-    def T(self):
-        """Transpose the filter
-        """
-        return LinearFilter(self.values, -self._coords)
-
-    def update_coords(self, coords=None, center=None):
-        """Update the coordinates for the values
-
-        Create (if necessary) and store the `coords` and `flat_coords`
-        (a flattened version of coords), which map the values to the
-        filter.
-
-        See `__init__` for a description of the parameters
-        """
         if coords is None:
             # Attempt to automatically create coordinate grid
             if len(values.shape)!=2:
                 raise ValueError("Either `values` must be 2D or `coords` must be specified")
             if center is None:
-                if self.values.shape[0] % 2 == 0 or self.values.shape[1] % 2 == 0:
+                if values.shape[0] % 2 == 0 or values.shape[1] % 2 == 0:
                     msg = """Ambiguous center of the `values` array,
                              you must either specify a set of `coords` or use
                              a `values` array with an odd number of rows and columns"""
                     raise ValueError(msg)
-                center = [self.values.shape[0]//2, self.values.shape[1]//2]
+                center = [values.shape[0]//2, values.shape[1]//2]
             self.center = center
-            x = np.arange(self.values.shape[1])
-            y = np.arange(self.values.shape[0])
+            x = np.arange(values.shape[1])
+            y = np.arange(values.shape[0])
             x,y = np.meshgrid(x,y)
             x -= center[1]
             y -= center[0]
             coords = np.dstack([y,x])
-        self._coords = np.array(coords)
-        assert(np.all(self.values.shape==self._coords.shape[:-1]))
-        assert(self._coords.shape[-1] = 2)
-        # Flattened version of the values and coordinates for each value
-        self._flat_values = self.values.reshape(-1)
-        self._flat_coords = self._coords.reshape(-1,2)
+        else:
+            self.center = None
+            coords = np.array(coords)
+        values = np.array(values)
+        self._flat_values = np.array(values).reshape(-1)
+        self._flat_coords = coords.reshape(-1,2)
+        assert(np.all(values.shape==coords.shape[:-1]))
+        assert(coords.shape[-1] == 2)
+        # remove elements with zero value
+        non_zero = self._flat_values != 0
+        self._flat_values = self._flat_values[non_zero]
+        self._flat_coords = self._flat_coords[non_zero]
         self._slices, self._inv_slices = get_filter_slices(self._flat_coords)
+
+    @property
+    def T(self):
+        """Transpose the filter
+        """
+        return LinearFilter(self._flat_values, -self._flat_coords)
 
     def dot(self, X):
         """Apply the filter to an image or combine filters
@@ -270,21 +264,21 @@ class LinearTranslation(LinearFilter):
         dy = abs(dy)
         ddx = 1.-dx
         ddy = 1.-dy
-        self.img = np.array([ddx*ddy, ddy*dx, ddx*dy, dx*dy])
+        self._flat_values = np.array([ddx*ddy, ddy*dx, ddx*dy, dx*dy])
         slice_name = "Tyx_slice"
         coord_name = "Tyx_coord"
         key = (sign_y, sign_x)
         self.key = key
         try:
-            self._coords = check_cache(coord_name, key)
-            self.slices, self.inv_slices = check_cache(slice_name, key)
+            self._flat_coords = check_cache(coord_name, key)
+            self._slices, self._inv_slices = check_cache(slice_name, key)
         except KeyError:
-            self._coords = np.array([[0,0], [0,sign_x], [sign_y,0], [sign_y,sign_x]], dtype=int)
-            cache[coord_name][key] = self._coords
+            self._flat_coords = np.array([[0,0], [0,sign_x], [sign_y,0], [sign_y,sign_x]], dtype=int)
+            cache[coord_name][key] = self._flat_coords
             if slice_name not in cache:
                 cache[slice_name] = {}
-            self.slices, self.inv_slices = get_filter_slices(self._coords)
-            cache[slice_name][key] = (self.slices, self.inv_slices)
+            self._slices, self._inv_slices = get_filter_slices(self._flat_coords)
+            cache[slice_name][key] = (self._slices, self._inv_slices)
 
     @property
     def T(self):
