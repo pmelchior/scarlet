@@ -46,6 +46,18 @@ def get_filter_slices(coords):
         inv_slices.append(_inv_slice)
     return slices, inv_slices
 
+def get_cpp_filter_slices(coords):
+    """Get the slices in x and y to apply a filter
+    """
+    z = np.zeros((len(coords),), dtype=int)
+    # Set the y slices
+    y_start = np.max([z, coords[:,0]], axis=0)
+    y_end = -np.min([z, coords[:,0]], axis=0)
+    # Set the x slices
+    x_start = np.max([z, coords[:,1]], axis=0)
+    x_end = -np.min([z, coords[:,1]], axis=0)
+    return y_start, y_end, x_start, x_end
+
 def apply_filter(X, weights, slices, inv_slices):
     """Apply a filter to a 2D image X
 
@@ -76,7 +88,7 @@ class LinearFilter:
     This acts like a sparse diagonal matrix that applies an
     image of weights to a 2D matrix.
     """
-    def __init__(self, values, coords=None, center=None):
+    def __init__(self, values, coords=None, center=None, cpp=True):
         """Initialize the Filter
 
         Parameters
@@ -133,13 +145,17 @@ class LinearFilter:
         non_zero = self._flat_values != 0
         self._flat_values = self._flat_values[non_zero]
         self._flat_coords = self._flat_coords[non_zero]
-        self._slices, self._inv_slices = get_filter_slices(self._flat_coords)
+        self.cpp = cpp
+        if cpp:
+            self._slices = get_cpp_filter_slices(self._flat_coords)
+        else:
+            self._slices = get_filter_slices(self._flat_coords)
 
     @property
     def T(self):
         """Transpose the filter
         """
-        return LinearFilter(self._flat_values, -self._flat_coords)
+        return LinearFilter(self._flat_values, -self._flat_coords, cpp=self.cpp)
 
     def dot(self, X):
         """Apply the filter to an image or combine filters
@@ -165,7 +181,13 @@ class LinearFilter:
             X.filters.insert(0,self)
             return X
         else:
-            return apply_filter(X, self._flat_values, self._slices, self._inv_slices)
+            if self.cpp:
+                from .operators_pybind11 import apply_filter as apply_filter_cpp
+                result = apply_filter_cpp(X, self._flat_values, 
+                             self._slices[0], self._slices[1], self._slices[2], self._slices[3])
+            else:
+                result = apply_filter(X, self._flat_values, self._slices[0], self._slices[1])
+            return result
 
 class LinearFilterChain:
     """Chain of `LinearFilter` objects
@@ -230,7 +252,7 @@ class LinearFilterChain:
 class LinearTranslation(LinearFilter):
     """Linear translation in x and y
     """
-    def __init__(self, dy=0, dx=0):
+    def __init__(self, dy=0, dx=0, cpp=True):
         """Initialize the filter
 
         Parameters
@@ -242,6 +264,7 @@ class LinearTranslation(LinearFilter):
             Fractional amount (from 0 to 1) to
             shift the image in the x-direction
         """
+        self.cpp = cpp
         self.set_transform(dy, dx)
 
     def set_transform(self, dy=0, dx=0):
@@ -265,26 +288,29 @@ class LinearTranslation(LinearFilter):
         ddx = 1.-dx
         ddy = 1.-dy
         self._flat_values = np.array([ddx*ddy, ddy*dx, ddx*dy, dx*dy])
-        slice_name = "Tyx_slice"
-        coord_name = "Tyx_coord"
+        slice_name = "Tyx_slice_{0}".format(self.cpp)
+        coord_name = "Tyx_coord_{0}".format(self.cpp)
         key = (sign_y, sign_x)
         self.key = key
         try:
             self._flat_coords = check_cache(coord_name, key)
-            self._slices, self._inv_slices = check_cache(slice_name, key)
+            self._slices = check_cache(slice_name, key)
         except KeyError:
             self._flat_coords = np.array([[0,0], [0,sign_x], [sign_y,0], [sign_y,sign_x]], dtype=int)
             cache[coord_name][key] = self._flat_coords
             if slice_name not in cache:
                 cache[slice_name] = {}
-            self._slices, self._inv_slices = get_filter_slices(self._flat_coords)
-            cache[slice_name][key] = (self._slices, self._inv_slices)
+            if self.cpp:
+                self._slices = get_cpp_filter_slices(self._flat_coords)
+            else:
+                self._slices = get_filter_slices(self._flat_coords)
+            cache[slice_name][key] = self._slices
 
     @property
     def T(self):
         """Transpose the filter
         """
-        return LinearTranslation(-self.dy, -self.dx)
+        return LinearTranslation(-self.dy, -self.dx, cpp=self.cpp)
 
 class Gamma:
     """Combination of Linear (x,y) Transformation and PSF Convolution
@@ -295,7 +321,7 @@ class Gamma:
     Gamma = Ty.P.Tx, where Tx,Ty are the translation operators and P is the PSF
     convolution operator.
     """
-    def __init__(self, psfs=None, center=None, dy=0, dx=0):
+    def __init__(self, psfs=None, center=None, dy=0, dx=0, cpp=True):
         """Constructor
 
         Parameters
@@ -314,6 +340,7 @@ class Gamma:
             Fractional shift in the x direction
         """
         self.psfs = psfs
+        self.cpp = cpp
 
         # Create the PSF filter for each band
         if psfs is not None:
@@ -330,14 +357,14 @@ class Gamma:
         """
         self.psfFilters = []
         for psf in psfs:
-            self.psfFilters.append(LinearFilter(psf, center=center))
+            self.psfFilters.append(LinearFilter(psf, center=center, cpp=self.cpp))
 
     def _update_translation(self, dy=0, dx=0):
         """Update the translation filter
         """
         self.dx = dx
         self.dy = dy
-        self.translation = LinearTranslation(dy, dx)
+        self.translation = LinearTranslation(dy, dx, cpp=self.cpp)
 
     def update(self, psfs=None, center=None, dx=None, dy=None):
         """Update the psf convolution filter and/or the translations
@@ -366,7 +393,7 @@ class Gamma:
             If `dyx` is `None`, then the already built
             translation matrix is used.
         """
-        translation = LinearTranslation(*dyx)
+        translation = LinearTranslation(*dyx, cpp=self.cpp)
         if self.psfFilters is None:
             gamma = translation
         else:

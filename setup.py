@@ -18,8 +18,6 @@ for root, dirs, files in os.walk('.'):
         packages.append(root[2:])
 print("Packages:", packages)
 
-print('Packages:', packages)
-
 class get_pybind_include(object):
     """Helper class to determine the pybind11 include path
     The purpose of this class is to postpone importing pybind11
@@ -39,7 +37,9 @@ ext_modules = [
         ['scarlet/operators_pybind11.cc'],
         include_dirs=[
             get_pybind_include(),
-            get_pybind_include(user=True)
+            get_pybind_include(user=True),
+            # Path to Eigen submodule
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), "eigen")
         ],
         language='c++'
     )

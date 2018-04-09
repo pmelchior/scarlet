@@ -1,9 +1,12 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 #include <pybind11/stl.h>
+#include <pybind11/eigen.h>
 #include <algorithm>
 
 namespace py = pybind11;
+
+typedef Eigen::Matrix<int, Eigen::Dynamic, 1> EigenVector;
 
 void prox_monotonic(
   // Fast implementation of monotonicity constraint
@@ -47,33 +50,25 @@ void prox_weighted_monotonic(
     }
 }
 
-// This function is currently unused but might be useful to implement
-// and speed up PSF covolution
-void apply_filter(
-    py::array_t<double> &X,
-    py::array_t<double> &weights,
-    std::vector<std::vector<std::vector<ssize_t>>> &slices,
-    std::vector<std::vector<std::vector<ssize_t>>> &inv_slices,
-    py::array_t<double> &result
+// Apply a filter to an image
+template <typename M, typename V>
+M apply_filter(
+    Eigen::Ref<const M> image,
+    Eigen::Ref<const V> values,
+    Eigen::Ref<const EigenVector> y_start,
+    Eigen::Ref<const EigenVector> y_end,
+    Eigen::Ref<const EigenVector> x_start,
+    Eigen::Ref<const EigenVector> x_end
 ){
-    assert((slices.size()==inv_slices.size()) && (weights.shape(0))==slices.size());
-    auto x = X.mutable_unchecked<2>();
-    auto w = weights.mutable_unchecked<1>();
-    auto r = result.mutable_unchecked<2>();
-
-    for(ssize_t n=0; n<w.shape(0); n++){
-        ssize_t y_min = slices[n][0][0];
-        ssize_t dy = slices[n][0][1] - y_min;
-        ssize_t x_min = slices[n][1][0];
-        ssize_t dx = slices[n][1][1] - x_min;
-        ssize_t inv_y_min = inv_slices[n][0][0];
-        ssize_t inv_x_min = inv_slices[n][1][0];
-        for(ssize_t i=0; i<dy; i++){
-            for(ssize_t j=0; j<dx; j++){
-                r(i+y_min, i+x_min) += w(i) * x(i+inv_y_min, i+inv_x_min);
-            }
-        }
+    M result(image.rows(), image.cols());
+    result.setZero(image.rows(), image.cols());
+    for(int n=0; n<values.size(); n++){
+        int rows = image.rows()-y_start(n)-y_end(n);
+        int cols = image.cols()-x_start(n)-x_end(n);
+        result.block(y_start(n), x_start(n), rows, cols) +=
+            values(n) * image.block(y_end(n), x_end(n), rows, cols);
     }
+    return result;
 }
 
 PYBIND11_PLUGIN(operators_pybind11)
@@ -81,6 +76,12 @@ PYBIND11_PLUGIN(operators_pybind11)
   py::module mod("operators_pybind11", "Fast proximal operators");
   mod.def("prox_monotonic", &prox_monotonic, "Monotonic Proximal Operator");
   mod.def("prox_weighted_monotonic", &prox_weighted_monotonic, "Weighted Monotonic Proximal Operator");
-  mod.def("apply_filter", &apply_filter, "Apply a filter to a 2D array");
+  typedef Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> MatrixF;
+  typedef Eigen::Matrix<float, Eigen::Dynamic, 1> VectorF;
+  typedef Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> MatrixD;
+  typedef Eigen::Matrix<double, Eigen::Dynamic, 1> VectorD;
+
+  mod.def("apply_filter", &apply_filter<MatrixF, VectorF>);
+  mod.def("apply_filter", &apply_filter<MatrixD, VectorD>);
   return mod.ptr();
 }
