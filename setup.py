@@ -4,10 +4,12 @@
 
 import os
 from setuptools import setup, Extension
+from setuptools.command.install import install
 from setuptools.command.build_ext import build_ext
 import sys
 import setuptools
 import subprocess
+import warnings
 
 # Use the firt 7 digits of the git hash to set the version
 __version__ = '0.2.'+subprocess.check_output(['git', 'rev-parse', 'HEAD'])[:7].decode("utf-8")
@@ -39,7 +41,7 @@ ext_modules = [
             get_pybind_include(),
             get_pybind_include(user=True),
             # Path to Eigen submodule
-            os.path.join(os.path.dirname(os.path.abspath(__file__)), "eigen")
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), "include")
         ],
         language='c++'
     )
@@ -73,6 +75,50 @@ def cpp_flag(compiler):
         raise RuntimeError('Unsupported compiler -- at least C++11 support '
                            'is needed!')
 
+class InstallEigen(install):
+    description="(optionally) Install Eigen Headers"
+    user_options = install.user_options + [
+        ("eigen=", None, "Whether or not to install eigen headers"),
+    ]
+
+    def initialize_options(self):
+        install.initialize_options(self)
+        self.eigen = "true"
+
+    def finalize_options(self):
+        self.eigen = self.eigen.lower() in ["true", "t"]
+        if not self.eigen:
+            msg = """You have chosen to use your system version of 'Eigen.'
+                     If there is an error during compilation, we recommend
+                     using the headers that are downloaded by default by scarlet"""
+            warnings.warn(msg)
+        self.eigen = self.eigen and not os.path.exists(os.path.join("include","Eigen"))
+        install.finalize_options(self)
+
+    def run(self):
+        if self.eigen:
+            import os
+            from io import BytesIO
+            import tarfile
+            import requests
+            import tempfile
+
+            print("Downloading and extracting Eigen headers")
+            url = "http://bitbucket.org/eigen/eigen/get/3.3.4.tar.gz"
+            download = requests.get(url)
+            tarball = tarfile.open(mode="r:gz", fileobj=BytesIO(download.content))
+            files = [f for f in tarball.getnames() if f.startswith("eigen-eigen-5a0156e40feb/Eigen")]
+            # Exctract only the header fiels from the archive
+            for f in files:
+                dirname, fname = os.path.split(f)
+                path = os.path.join("include", *dirname.split(os.sep)[1:])
+                nf = os.path.join(path, fname)
+                member = tarball.getmember(f)
+                if not os.path.exists(path):
+                    os.makedirs(path)
+                tarball.makefile(member, nf)
+            tarball.close()
+        install.run(self)
 
 class BuildExt(build_ext):
     """A custom build extension for adding compiler-specific options."""
@@ -109,6 +155,6 @@ setup(
   keywords = ['astro', 'deblending', 'photometry', 'nmf'],
   ext_modules=ext_modules,
   install_requires=['proxmin>=0.5.0', 'pybind11>=1.7', 'numpy', 'scipy'],
-  cmdclass={'build_ext': BuildExt},
+  cmdclass={'develop': InstallEigen, 'build_ext': BuildExt, 'install': InstallEigen},
   zip_safe=False
 )
