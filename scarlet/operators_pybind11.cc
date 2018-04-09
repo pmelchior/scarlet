@@ -24,29 +24,28 @@ void prox_monotonic(
   }
 }
 
+template <typename T, typename M, typename V>
 void prox_weighted_monotonic(
     // Fast implementation of weighted monotonicity constraint
-    py::array_t<double> &X,
+    Eigen::Ref<V> flat_img,
     double const &step,
-    py::array_t<double> &weights,
-    std::vector<int> const &offsets,
-    std::vector<int> const &dist_idx,
-    double const &thresh
+    Eigen::Ref<const M> weights,
+    Eigen::Ref<const EigenVector> offsets,
+    Eigen::Ref<const EigenVector> dist_idx,
+    T const &thresh
 ){
-    auto x = X.mutable_unchecked<1>();
-    auto w = weights.mutable_unchecked<2>();
-
     // Start at the center of the image and set each pixel to the minimum
     // between itself and its reference pixel (which is closer to the peak)
-    for(auto &didx: dist_idx){
-        double ref_flux = 0;
-        for(std::size_t i=0; i<offsets.size(); i++){
-            if(w(i,didx)>0){
+    for(int d=0; d<dist_idx.size(); d++){
+        int didx = dist_idx(d);
+        T ref_flux = 0;
+        for(int i=0; i<offsets.size(); i++){
+            if(weights(i,didx)>0){
                 int nidx = offsets[i] + didx;
-                ref_flux += x(nidx) * w(i, didx);
+                ref_flux += flat_img(nidx) * weights(i, didx);
             }
         }
-        x(didx) = std::min(x(didx), ref_flux*(1-thresh));
+        flat_img(didx) = std::min(flat_img(didx), ref_flux*(1-thresh));
     }
 }
 
@@ -75,13 +74,19 @@ PYBIND11_PLUGIN(operators_pybind11)
 {
   py::module mod("operators_pybind11", "Fast proximal operators");
   mod.def("prox_monotonic", &prox_monotonic, "Monotonic Proximal Operator");
-  mod.def("prox_weighted_monotonic", &prox_weighted_monotonic, "Weighted Monotonic Proximal Operator");
+
   typedef Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> MatrixF;
   typedef Eigen::Matrix<float, Eigen::Dynamic, 1> VectorF;
   typedef Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> MatrixD;
   typedef Eigen::Matrix<double, Eigen::Dynamic, 1> VectorD;
 
-  mod.def("apply_filter", &apply_filter<MatrixF, VectorF>);
-  mod.def("apply_filter", &apply_filter<MatrixD, VectorD>);
+  mod.def("prox_weighted_monotonic", &prox_weighted_monotonic<float, MatrixF, VectorF>,
+          "Weighted Monotonic Proximal Operator");
+  mod.def("prox_weighted_monotonic", &prox_weighted_monotonic<double, MatrixD, VectorD>,
+          "Weighted Monotonic Proximal Operator");
+
+  mod.def("apply_filter", &apply_filter<MatrixF, VectorF>, "Apply a filter to a 2D image");
+  mod.def("apply_filter", &apply_filter<MatrixD, VectorD>, "Apply a filter to a 2D image");
+
   return mod.ptr();
 }
