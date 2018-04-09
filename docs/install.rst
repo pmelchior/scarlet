@@ -22,7 +22,13 @@ From Source
 ::
 
     git clone https://github.com/fred3m/scarlet.git
-    python setup.py
+    python setup.py install
+
+.. note::
+
+    This installation method will download the Eigen_ headers for faster computation.
+    If you want to use a locally installed version of Eigen_ use
+    `python setup.py install --eigen False`.
 
 From pip
 --------
@@ -39,3 +45,4 @@ From pip
 .. _matplotlib: https://matplotlib.org
 .. _astropy: http://www.astropy.org
 .. _galsim: https://github.com/GalSim-developers/GalSim
+.. _Eigen: http://eigen.tuxfamily.org/index.php?title=Main_Page
