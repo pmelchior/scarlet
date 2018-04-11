@@ -446,7 +446,8 @@ class PointSource(Source):
                            & sc.DirectMonotonicityConstraint(use_nearest=False)
                            & sc.DirectSymmetryConstraint())
 
-        super(PointSource, self).__init__(sed, morph, center=center, constraints=constraints, psf=psf, fix_sed=False, fix_morph=False, fix_frame=False, shift_center=0.1)
+        super(PointSource, self).__init__(sed, morph, center=center, constraints=constraints, psf=psf,
+                                          fix_sed=False, fix_morph=False, fix_frame=False, shift_center=0.1)
 
     def make_initial(self, img, shape, tiny=1e-10):
         """Initialize the source using only the peak pixel

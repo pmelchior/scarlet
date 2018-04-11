@@ -4,6 +4,8 @@ import warnings
 import numpy as np
 import scipy.sparse
 
+from .operators_pybind11 import apply_filter
+
 # global cache to hold all transformation matrices, except for GammaOp
 cache = {}
 
@@ -17,58 +19,16 @@ def check_cache(name, key):
     return cache[name][key]
 
 def get_filter_slices(coords):
-    """Convert a list of relative coordinates to slices
-
-    A `LinearFilter` is defined by an image of weights
-    and a list of relative coordinates from the current pixels
-    for each weight.
-    This method converts those coordinates into slices that are
-    used to apply the filter.
+    """Get the slices in x and y to apply a filter
     """
-    slices = []
-    inv_slices = []
-    for cy, cx in coords:
-        _slice = [slice(None),slice(None)]
-        _inv_slice = [slice(None),slice(None)]
-        if cy>0:
-            _slice[0] = slice(cy,None)
-            _inv_slice[0] = slice(None,-cy)
-        elif cy<0:
-            _slice[0] = slice(None,cy)
-            _inv_slice[0] = slice(-cy, None)
-        if cx>0:
-            _slice[1] = slice(cx,None)
-            _inv_slice[1] = slice(None,-cx)
-        elif cx<0:
-            _slice[1] = slice(None,cx)
-            _inv_slice[1] = slice(-cx, None)
-        slices.append(_slice)
-        inv_slices.append(_inv_slice)
-    return slices, inv_slices
-
-def apply_filter(X, weights, slices, inv_slices):
-    """Apply a filter to a 2D image X
-
-    Parameters
-    ----------
-    X: 2D numpy array
-        The image to apply the filter to
-    weights: 1D array
-        Weights corresponding to each slice in `slices`
-    slices: list of `slice` objects
-        Slices in the new `X` to store the filtered X
-    inv_slices: list of `slice` objects
-        Slices of `X` to apply each weight
-    
-    Returns
-    -------
-    new_X: 2D numpy array
-        The result of applying the filter to `X`
-    """
-    result = np.zeros(X.shape, dtype=X.dtype)
-    for n, weight in enumerate(weights):
-        result[slices[n]] += weight * X[inv_slices[n]]
-    return result
+    z = np.zeros((len(coords),), dtype=int)
+    # Set the y slices
+    y_start = np.max([z, coords[:,0]], axis=0)
+    y_end = -np.min([z, coords[:,0]], axis=0)
+    # Set the x slices
+    x_start = np.max([z, coords[:,1]], axis=0)
+    x_end = -np.min([z, coords[:,1]], axis=0)
+    return y_start, y_end, x_start, x_end
 
 class LinearFilter:
     """A filter that can be applied to an image
@@ -133,7 +93,7 @@ class LinearFilter:
         non_zero = self._flat_values != 0
         self._flat_values = self._flat_values[non_zero]
         self._flat_coords = self._flat_coords[non_zero]
-        self._slices, self._inv_slices = get_filter_slices(self._flat_coords)
+        self._slices = get_filter_slices(self._flat_coords)
 
     @property
     def T(self):
@@ -165,7 +125,10 @@ class LinearFilter:
             X.filters.insert(0,self)
             return X
         else:
-            return apply_filter(X, self._flat_values, self._slices, self._inv_slices)
+            result = np.empty(X.shape, dtype=X.dtype)
+            apply_filter(X, self._flat_values, self._slices[0], self._slices[1],
+                                 self._slices[2], self._slices[3], result)
+            return result
 
 class LinearFilterChain:
     """Chain of `LinearFilter` objects
@@ -271,14 +234,14 @@ class LinearTranslation(LinearFilter):
         self.key = key
         try:
             self._flat_coords = check_cache(coord_name, key)
-            self._slices, self._inv_slices = check_cache(slice_name, key)
+            self._slices = check_cache(slice_name, key)
         except KeyError:
             self._flat_coords = np.array([[0,0], [0,sign_x], [sign_y,0], [sign_y,sign_x]], dtype=int)
             cache[coord_name][key] = self._flat_coords
             if slice_name not in cache:
                 cache[slice_name] = {}
-            self._slices, self._inv_slices = get_filter_slices(self._flat_coords)
-            cache[slice_name][key] = (self._slices, self._inv_slices)
+            self._slices = get_filter_slices(self._flat_coords)
+            cache[slice_name][key] = self._slices
 
     @property
     def T(self):

@@ -3,11 +3,12 @@
 # as a template to integrate pybind11
 
 import os
-from setuptools import setup, Extension
+from setuptools import setup, Extension, Command
 from setuptools.command.build_ext import build_ext
 import sys
 import setuptools
 import subprocess
+import warnings
 
 # Use the firt 7 digits of the git hash to set the version
 __version__ = '0.2.'+subprocess.check_output(['git', 'rev-parse', 'HEAD'])[:7].decode("utf-8")
@@ -17,8 +18,6 @@ for root, dirs, files in os.walk('.'):
     if not root.startswith('./build') and '__init__.py' in files:
         packages.append(root[2:])
 print("Packages:", packages)
-
-print('Packages:', packages)
 
 class get_pybind_include(object):
     """Helper class to determine the pybind11 include path
@@ -33,13 +32,17 @@ class get_pybind_include(object):
         import pybind11
         return pybind11.get_include(self.user)
 
+# Path to Eigen headers
+eigen_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "include")
+
 ext_modules = [
     Extension(
         'scarlet.operators_pybind11',
         ['scarlet/operators_pybind11.cc'],
         include_dirs=[
             get_pybind_include(),
-            get_pybind_include(user=True)
+            get_pybind_include(user=True),
+            eigen_path
         ],
         language='c++'
     )
@@ -73,7 +76,6 @@ def cpp_flag(compiler):
         raise RuntimeError('Unsupported compiler -- at least C++11 support '
                            'is needed!')
 
-
 class BuildExt(build_ext):
     """A custom build extension for adding compiler-specific options."""
     c_opts = {
@@ -85,6 +87,27 @@ class BuildExt(build_ext):
         c_opts['unix'] += ['-stdlib=libc++', '-mmacosx-version-min=10.7']
 
     def build_extensions(self):
+        if len(self.include_dirs)==1 and not os.path.exists(os.path.join(eigen_path, "Eigen")):
+            from io import BytesIO
+            import tarfile
+            import requests
+            import tempfile
+
+            print("Downloading and extracting Eigen headers")
+            url = "http://bitbucket.org/eigen/eigen/get/3.3.4.tar.gz"
+            download = requests.get(url)
+            tarball = tarfile.open(mode="r:gz", fileobj=BytesIO(download.content))
+            files = [f for f in tarball.getnames() if f.startswith("eigen-eigen-5a0156e40feb/Eigen")]
+            # Exctract only the header files from the archive
+            for f in files:
+                dirname, fname = os.path.split(f)
+                path = os.path.join("include", *dirname.split(os.sep)[1:])
+                nf = os.path.join(path, fname)
+                member = tarball.getmember(f)
+                if not os.path.exists(path):
+                    os.makedirs(path)
+                tarball.makefile(member, nf)
+            tarball.close()
         ct = self.compiler.compiler_type
         opts = self.c_opts.get(ct, [])
         if ct == 'unix':
@@ -108,7 +131,7 @@ setup(
   url = 'https://github.com/fred3m/deblender',
   keywords = ['astro', 'deblending', 'photometry', 'nmf'],
   ext_modules=ext_modules,
-  install_requires=['proxmin>=0.5.0', 'pybind11>=1.7', 'numpy', 'scipy'],
+  install_requires=['proxmin>=0.5.0', 'pybind11>=1.7', 'numpy', 'scipy', 'requests'],
   cmdclass={'build_ext': BuildExt},
   zip_safe=False
 )

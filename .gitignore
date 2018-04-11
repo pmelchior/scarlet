@@ -7,6 +7,7 @@ dist/
 *.so
 .ipynb_checkpoints/
 tmp/
+include/
 
 docs/_build
 docs/api
