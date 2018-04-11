@@ -22,7 +22,7 @@ class Source(object):
     initialization, constraints, etc.
     """
     def __init__(self, sed, morph_image, constraints=None, center=None, psf=None, fix_sed=False,
-                 fix_morph=False, fix_frame=False, shift_center=0.2, cpp=True):
+                 fix_morph=False, fix_frame=False, shift_center=0.2):
         """Constructor
 
         Parameters
@@ -46,7 +46,6 @@ class Source(object):
             Amount to shift the differential image in x and y to fit
             changes in position.
         """
-        self.cpp = cpp
         # set size of the source frame
         assert len(sed.shape) == 2
         self.K, self.B = sed.shape
@@ -66,7 +65,7 @@ class Source(object):
         if isinstance(psf, transformations.Gamma):
             self._gamma = psf
         else:
-            self._gamma = transformations.Gamma(psfs=psf, cpp=cpp)
+            self._gamma = transformations.Gamma(psfs=psf)
 
         # set center coordinates and translation operators
         # needs to have Gamma set up first
@@ -434,7 +433,7 @@ class PointSource(Source):
     While a `~scarlet.source.PointSource` can have any `constraints`, the default constraints are
     symmetry and monotonicity.
     """
-    def __init__(self, center, img, shape=None, constraints=None, psf=None, config=None, cpp=True):
+    def __init__(self, center, img, shape=None, constraints=None, psf=None, config=None):
         self.center = center
         if config is None:
             config = Config()
@@ -448,8 +447,7 @@ class PointSource(Source):
                            & sc.DirectSymmetryConstraint())
 
         super(PointSource, self).__init__(sed, morph, center=center, constraints=constraints, psf=psf,
-                                          fix_sed=False, fix_morph=False, fix_frame=False, shift_center=0.1,
-                                          cpp=cpp)
+                                          fix_sed=False, fix_morph=False, fix_frame=False, shift_center=0.1)
 
     def make_initial(self, img, shape, tiny=1e-10):
         """Initialize the source using only the peak pixel
@@ -490,8 +488,7 @@ class ExtendedSource(Source):
     but other `constraints` can be used.
     """
     def __init__(self, center, img, bg_rms, constraints=None, psf=None, symmetric=True, monotonic=True,
-                 thresh=1., config=None, fix_sed=False, fix_morph=False, fix_frame=False, shift_center=0.2,
-                 cpp=True):
+                 thresh=1., config=None, fix_sed=False, fix_morph=False, fix_frame=False, shift_center=0.2):
         self.center = center
         sed, morph = self.make_initial(img, bg_rms, thresh=thresh, symmetric=symmetric,
                                        monotonic=monotonic, config=config)
@@ -503,7 +500,7 @@ class ExtendedSource(Source):
 
         super(ExtendedSource, self).__init__(sed, morph, center=center, constraints=constraints, psf=psf,
                                              fix_sed=fix_sed, fix_morph=fix_morph, fix_frame=fix_frame,
-                                             shift_center=shift_center, cpp=cpp)
+                                             shift_center=shift_center)
 
     def make_initial(self, img, bg_rms, thresh=1., symmetric=True, monotonic=True, config=None):
         """Initialize the source that is symmetric and monotonic
