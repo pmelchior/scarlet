@@ -6,7 +6,7 @@
 
 namespace py = pybind11;
 
-typedef Eigen::Matrix<int, Eigen::Dynamic, 1> EigenVector;
+typedef Eigen::Array<int, Eigen::Dynamic, 1> IndexVector;
 
 void prox_monotonic(
   // Fast implementation of monotonicity constraint
@@ -30,8 +30,8 @@ void prox_weighted_monotonic(
     Eigen::Ref<V> flat_img,
     double const &step,
     Eigen::Ref<const M> weights,
-    Eigen::Ref<const EigenVector> offsets,
-    Eigen::Ref<const EigenVector> dist_idx,
+    Eigen::Ref<const IndexVector> offsets,
+    Eigen::Ref<const IndexVector> dist_idx,
     T const &thresh
 ){
     // Start at the center of the image and set each pixel to the minimum
@@ -51,23 +51,22 @@ void prox_weighted_monotonic(
 
 // Apply a filter to an image
 template <typename M, typename V>
-M apply_filter(
+void apply_filter(
     Eigen::Ref<const M> image,
     Eigen::Ref<const V> values,
-    Eigen::Ref<const EigenVector> y_start,
-    Eigen::Ref<const EigenVector> y_end,
-    Eigen::Ref<const EigenVector> x_start,
-    Eigen::Ref<const EigenVector> x_end
+    Eigen::Ref<const IndexVector> y_start,
+    Eigen::Ref<const IndexVector> y_end,
+    Eigen::Ref<const IndexVector> x_start,
+    Eigen::Ref<const IndexVector> x_end,
+    Eigen::Ref<M, 0, Eigen::Stride<Eigen::Dynamic, Eigen::Dynamic>> result
 ){
-    M result(image.rows(), image.cols());
-    result.setZero(image.rows(), image.cols());
+    result.setZero();
     for(int n=0; n<values.size(); n++){
         int rows = image.rows()-y_start(n)-y_end(n);
         int cols = image.cols()-x_start(n)-x_end(n);
         result.block(y_start(n), x_start(n), rows, cols) +=
             values(n) * image.block(y_end(n), x_end(n), rows, cols);
     }
-    return result;
 }
 
 PYBIND11_PLUGIN(operators_pybind11)

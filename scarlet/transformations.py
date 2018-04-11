@@ -183,8 +183,9 @@ class LinearFilter:
         else:
             if self.cpp:
                 from .operators_pybind11 import apply_filter as apply_filter_cpp
-                result = apply_filter_cpp(X, self._flat_values, 
-                             self._slices[0], self._slices[1], self._slices[2], self._slices[3])
+                result = np.empty(X.shape, dtype=X.dtype)
+                apply_filter_cpp(X, self._flat_values, self._slices[0], self._slices[1],
+                                 self._slices[2], self._slices[3], result)
             else:
                 result = apply_filter(X, self._flat_values, self._slices[0], self._slices[1])
             return result
