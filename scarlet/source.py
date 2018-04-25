@@ -410,7 +410,7 @@ def get_pixel_sed(img, position):
     return proxmin.operators.prox_unity_plus(sed, 0)
 
 def get_integrated_sed(img, weight):
-    """Calculated the SED by summing the flux in the image in each band
+    """Calculate SED from weighted sum of the image in each band
     """
     B, Ny, Nx = img.shape
     sed = (img * weight).reshape(B, -1).sum(axis=1)
@@ -424,6 +424,15 @@ def get_integrated_sed(img, weight):
     # ensure proper normalization
     return proxmin.operators.prox_unity_plus(sed, 0)
 
+def get_best_fit_sed(img, S):
+    """Calculate best fitting SED for multiple components.
+
+    Solves min_A ||img - AS||^2 for the SED matrix A, assuming that img only
+    contains a single source.
+    """
+    B = len(img)
+    Y = img.reshape(B,-1)
+    return np.dot(np.linalg.inv(np.dot(S,S.T)), np.dot(S, Y.T))
 
 class PointSource(Source):
     """Create a point source
@@ -597,3 +606,64 @@ class ExtendedSource(Source):
             # keep the peak sed
             logger.INFO("Using peak SED for source at {0}/{1}".format(self.center_int[0], self.center_int[1]))
         return sed.reshape((1,B)), morph.reshape((1, morph.shape[0], morph.shape[1]))
+
+
+class MultiComponentSource(ExtendedSource):
+    def __init__(self, center, img, bg_rms, size_percentiles=[50], constraints=None, psf=None, symmetric=True, monotonic=True,
+                 thresh=1., config=None, fix_sed=False, fix_morph=False, fix_frame=False, shift_center=0.2):
+        self.center = center
+        sed, morph = self.make_initial(img, bg_rms, size_percentiles=size_percentiles,
+                                       thresh=thresh, symmetric=symmetric,
+                                       monotonic=monotonic, config=config)
+        K = len(sed)
+        if constraints is None:
+            constraints = [sc.SimpleConstraint() &
+                           sc.DirectMonotonicityConstraint(use_nearest=False) &
+                           sc.DirectSymmetryConstraint()] * K
+
+        super(ExtendedSource, self).__init__(sed, morph, center=center, constraints=constraints, psf=psf, fix_sed=fix_sed, fix_morph=fix_morph, fix_frame=fix_frame, shift_center=shift_center)
+
+    def make_initial(self, img, bg_rms, size_percentiles=[50], thresh=1., symmetric=True, monotonic=True, config=None):
+        # call make_initial from ExtendedSource to give single-component morphology and sed
+        sed, morph = super(MultiComponentSource, self).make_initial(img, bg_rms, thresh=thresh, symmetric=symmetric, monotonic=monotonic, config=config)
+
+        # create a list of components from morph by layering them on top of each
+        # other and sum up to morph
+        from scipy.ndimage.morphology import binary_erosion
+        K = len(size_percentiles) + 1
+        Ny, Nx = morph.shape[1:]
+        morph_ = np.zeros((K, Ny, Nx))
+        morph_[0,:,:] = morph[0]
+        mask = morph[0] > 0
+        radius = np.sqrt(mask.sum()/np.pi)
+        # make sure they are in decendind order
+        percentiles_ = np.sort(size_percentiles)[::-1]
+        for k in range(1,K):
+            perc = percentiles_[k-1]
+            while True:
+                # erode footprint from the outside
+                mask_ = binary_erosion(mask)
+                # keep central pixel on
+                mask_[Ny//2,Nx//2] = True
+                if np.sqrt(mask_.sum()/np.pi) < perc*radius/100 or mask_.sum() == 1:
+                    # set inside of prior component to value at perimeter
+                    perimeter = mask & (~mask_)
+                    perimeter_val = morph[0][perimeter].mean()
+                    morph_[k-1][mask_] = perimeter_val
+                    # set this component to morph - perimeter_val, bounded by 0
+                    morph[0] -= perimeter_val
+                    morph_[k][mask_] = np.maximum(morph[0][mask_], 0)
+                    # correct for negative pixels by putting them into k-1 component
+                    below = mask_ & (morph[0] < 0)
+                    if below.sum():
+                        morph_[k-1][below] += morph[0][below]
+                    mask = mask_
+                    break
+                mask = mask_
+
+        # optimal SED assuming img only has that source
+        source_slice = self.get_slice_for(img.shape)
+        S = morph_[:,source_slice[1], source_slice[2]].reshape(K, -1)
+        sed_ = get_best_fit_sed(img[self.bb], S)
+
+        return sed_, morph_
