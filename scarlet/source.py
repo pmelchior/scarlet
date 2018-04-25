@@ -609,6 +609,17 @@ class ExtendedSource(Source):
 
 
 class MultiComponentSource(ExtendedSource):
+    """Create an extended source with multiple components layered vertically.
+
+    Uses `~scarlet.source.ExtendedSource` to derfine the overall morphology,
+    then erodes the outer footprint until it reaches the specified size percentile.
+    For the narrower footprint, it evaluates the mean value at the perimeter and
+    set the inside to the perimeter value, creating a flat distribution inside.
+    The following component(s) is/are set to the difference between the flattened
+    and the overall morphology.
+    The SED for all components is calculated as the best fit of the multi-component
+    morphology to the multi-band image.
+    """
     def __init__(self, center, img, bg_rms, size_percentiles=[50], constraints=None, psf=None, symmetric=True, monotonic=True,
                  thresh=1., config=None, fix_sed=False, fix_morph=False, fix_frame=False, shift_center=0.2):
         self.center = center
@@ -624,7 +635,12 @@ class MultiComponentSource(ExtendedSource):
         super(ExtendedSource, self).__init__(sed, morph, center=center, constraints=constraints, psf=psf, fix_sed=fix_sed, fix_morph=fix_morph, fix_frame=fix_frame, shift_center=shift_center)
 
     def make_initial(self, img, bg_rms, size_percentiles=[50], thresh=1., symmetric=True, monotonic=True, config=None):
-        # call make_initial from ExtendedSource to give single-component morphology and sed
+        """Initialize multi-component source, where the inner components begin
+        at the given size_percentiles.
+
+        See `~scarlet.source.ExtendedSource` for details.
+        """
+            # call make_initial from ExtendedSource to give single-component morphology and sed
         sed, morph = super(MultiComponentSource, self).make_initial(img, bg_rms, thresh=thresh, symmetric=symmetric, monotonic=monotonic, config=config)
 
         # create a list of components from morph by layering them on top of each
