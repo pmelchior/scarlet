@@ -611,7 +611,7 @@ class ExtendedSource(Source):
 class MultiComponentSource(ExtendedSource):
     """Create an extended source with multiple components layered vertically.
 
-    Uses `~scarlet.source.ExtendedSource` to derfine the overall morphology,
+    Uses `~scarlet.source.ExtendedSource` to define the overall morphology,
     then erodes the outer footprint until it reaches the specified size percentile.
     For the narrower footprint, it evaluates the mean value at the perimeter and
     set the inside to the perimeter value, creating a flat distribution inside.
