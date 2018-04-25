@@ -597,3 +597,114 @@ class ExtendedSource(Source):
             # keep the peak sed
             logger.INFO("Using peak SED for source at {0}/{1}".format(self.center_int[0], self.center_int[1]))
         return sed.reshape((1,B)), morph.reshape((1, morph.shape[0], morph.shape[1]))
+
+class PSFDiffKernel(Source):
+    """Create a model of the PSF in a single band
+
+    Passing a `PSFDiffKernel` for each band as a list of sources to
+    the :class:`scarlet.blend.Blend` class can be used to model
+    the difference kernel in each band, which gives more accurate
+    results when performing PSF deconvolution.
+    """
+    def __init__(self, center, psf, cutoff, target_psf, band,
+                 constraints=None, monotonic=True, config=None, fix_frame=True, shift_center=0.0):
+        """Initialize the model
+
+        Parameters
+        ----------
+        cutoff: array-like
+            Minimum values of a psf in any given band, used to contrain
+            the initial size of the PSF.
+        target_psf: array-like
+            The target PSF for all of the bands
+        band: int
+            Each `PSFDiffKernel` has a fixed SED with only a single
+            non-zero band, where `band` is the index in the multi-band
+            data corresponding to this `PSFDiffKernel`.
+        constraints: :class:`scarlet.constraint.Constraint` or :class:`scarlet.constraint.ConstraintList`
+            Constraints used to constrain the SED and/or morphology.
+            When `constraints` is `None` then
+            :class:`scarlet.constraint.DirectMonotonicityConstraint`
+            and :class:`scarlet.constraint.SimpleConstraint` are used.
+        monotonic: bool
+            Whether or not to make the initial difference kernel monotonic
+        config: :class:`scarlet.config.Config` instance, default=`None`
+            Special configuration to overwrite default optimization parameters
+
+        see :class:`scarelt.source.Source` for other parameters.
+        """
+        self.center = center
+        sed, morph = self._make_initial(psf, cutoff, target_psf, band, monotonic=monotonic, config=config)
+
+        if constraints is None:
+            constraints = (sc.SimpleConstraint() &
+                           sc.DirectMonotonicityConstraint(use_nearest=False))
+
+        super(PSFDiffKernel, self).__init__(sed, morph, center=center, constraints=constraints,
+                                       fix_sed=True, fix_morph=False, fix_frame=fix_frame,
+                                       shift_center=shift_center, psf=target_psf)
+
+    def _make_initial(self, psf, cutoff, target_psf, band, monotonic=True, config=None):
+        """Initialize the source that is symmetric and monotonic
+        """
+        # Use a default configuration if config is not specified
+        if config is None:
+            config = Config(source_sizes=np.array([np.max(psf.shape[1:])]))
+        # every source as large as the entire image, but shifted to its centroid
+        B, Ny, Nx = psf.shape
+        self._set_frame(self.center, (Ny,Nx))
+        cutoff = np.array(cutoff)
+
+        # determine initial SED from peak position
+        sed = np.zeros((B,))
+        sed[band] = 1
+
+        # copy morph from detect cutout, make non-negative
+        source_slice = self.get_slice_for(psf.shape)
+        morph = np.zeros((self.Ny, self.Nx))
+        morph[source_slice[1:]] = psf[band, self.bb[1], self.bb[2]].copy()
+
+        # check if source_slice is covering the whole of morph:
+        # if not, extend morph by coping last row/column from psf
+        if source_slice[1].stop - source_slice[1].start < self.Ny:
+            morph[0:source_slice[1].start,:] = morph[source_slice[1].start,:]
+            morph[source_slice[1].stop:,:] = morph[source_slice[1].stop-1,:]
+        if source_slice[2].stop - source_slice[2].start < self.Nx:
+            morph[:,0:source_slice[2].start] = morph[:,source_slice[2].start][:,None]
+            morph[:,source_slice[2].stop:] = morph[:,source_slice[2].stop-1][:,None]
+
+        if monotonic:
+            # use finite thresh to remove flat bridges
+            from . import operators
+            prox_monotonic = operators.prox_strict_monotonic((self.Ny, self.Nx),
+                                                             thresh=0.1, use_nearest=False)
+            morph = prox_monotonic(morph, 0).reshape(self.Ny, self.Nx)
+
+        # trim morph to pixels above threshold
+        # thresh is multiple above the rms of detect (weighted variance across bands)
+        _thresh = cutoff.sum()
+        mask = morph > _thresh
+        if mask.sum() == 0:
+            msg = "No flux above threshold={2} for source at y={0}, x={1}"
+            _y, _x = self.center_int
+            raise SourceInitError(msg.format(_y, _x, _thresh))
+        morph[~mask] = 0
+
+        ypix, xpix = np.where(mask)
+        _Ny = np.max(ypix)-np.min(ypix)
+        _Nx = np.max(xpix)-np.min(xpix)
+
+        # make sure source has odd pixel numbers and is from config.source_sizes
+        _Ny = config.find_next_source_size(_Ny)
+        _Nx = config.find_next_source_size(_Nx)
+
+        # need to reshape morph: store old edge coordinates
+        old_slice, new_slice = self._set_frame(self.center, (_Ny, _Nx))
+
+        # update morph
+        if new_slice != old_slice:
+            _morph = np.zeros((self.Ny, self.Nx))
+            _morph[new_slice[1],new_slice[2]] = morph[old_slice[1],old_slice[2]]
+            morph = _morph
+
+        return sed.reshape((1,B)), morph.reshape((1, morph.shape[0], morph.shape[1]))
