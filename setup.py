@@ -33,7 +33,13 @@ class get_pybind_include(object):
         return pybind11.get_include(self.user)
 
 # Path to Eigen headers
-eigen_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "include")
+try:
+    import peigen
+    use_peigen = True
+    eigen_path = peigen.header_path
+except ImportError:
+    use_peigen = False
+    eigen_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "include")
 
 ext_modules = [
     Extension(
@@ -87,7 +93,10 @@ class BuildExt(build_ext):
         c_opts['unix'] += ['-stdlib=libc++', '-mmacosx-version-min=10.7']
 
     def build_extensions(self):
-        if len(self.include_dirs)==1 and not os.path.exists(os.path.join(eigen_path, "Eigen")):
+        if (not use_peigen
+            and len(self.include_dirs)==1
+            and not os.path.exists(os.path.join(eigen_path, "Eigen"))
+        ):
             from io import BytesIO
             import tarfile
             import requests
@@ -128,7 +137,7 @@ setup(
   description = 'Blind Source Separation using proximal matrix factorization',
   author = 'Fred Moolekamp and Peter Melchior',
   author_email = 'fred.moolekamp@gmail.com',
-  url = 'https://github.com/fred3m/deblender',
+  url = 'https://github.com/fred3m/scarlet',
   keywords = ['astro', 'deblending', 'photometry', 'nmf'],
   ext_modules=ext_modules,
   install_requires=['proxmin>=0.5.0', 'pybind11>=1.7', 'numpy', 'scipy', 'requests'],
