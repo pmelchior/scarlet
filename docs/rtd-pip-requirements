@@ -5,6 +5,6 @@ nbsphinx
 matplotlib
 numpydoc
 jupyter
-pybind11
 git+https://github.com/pmelchior/proxmin.git
 git+https://github.com/fred3m/peigen.git
+pybind11
