@@ -228,7 +228,7 @@ class Source(object):
         self.sed = np.concatenate((self.sed, sed))
         self.morph = np.concatenate((self.morph, morph))
 
-        self.set_fix(fix_sed, fix_morph)
+        self.set_fix(fix_sed, fix_morph, extend=K)
         self.set_constraints(constraints, extend=K)
 
         self.K += K
