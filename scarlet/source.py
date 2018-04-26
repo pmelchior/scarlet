@@ -201,7 +201,7 @@ class Source(object):
     def add_component(self, sed, morph, constraints=None, fix_sed=False, fix_morph=False):
         """Extend Source by adding component(s).
 
-        Add sK' new components with their constraints to this Source.
+        Add K' new components with their constraints to this Source.
 
         Parameters
         ----------
