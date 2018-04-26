@@ -15,18 +15,27 @@ class SourceInitError(Exception):
     pass
 
 class Source(object):
-
     """A single source in a blend.
 
-    This class is fully functional and acts as base class for specialized
-    initialization, constraints, etc.
+    This class acts as base class for specifying sources and can be
+    extended by specialized initialization, constraints, etc.
     """
-    def __init__(self, sed, morph_image, constraints=None, center=None, psf=None, fix_sed=False,
+    def __init__(self, sed, morph, constraints=None, center=None, psf=None, fix_sed=False,
                  fix_morph=False, fix_frame=False, shift_center=0.2):
         """Constructor
 
+        Create source with K components from a matrix of SEDs and morphologies.
+
         Parameters
         ----------
+        sed: array-like, shape (K, B)
+            The SED(s) for the each component
+        morph: array-like, shape (K, Ny, Nx)
+            The morphology for each component
+        constraints: None, constraint or array-like, default=none
+            Constraints can be either `~scarlet.constraints.Constraint` or
+            `~scarlet.constraints.ConstraintList`. If an array is given, it is
+            one constraint per component.
         center: array-like
             (y,x) coordinates of the source in the larger image
         psf: array-like or `~scarlet.transformations.Gamma`, default=`None`
@@ -50,13 +59,13 @@ class Source(object):
         assert len(sed.shape) == 2
         self.K, self.B = sed.shape
         self.sed = sed.copy()
-        assert len(morph_image.shape) == 3
-        assert morph_image.shape[0] == sed.shape[0]
-        self.morph = morph_image
+        assert len(morph.shape) == 3
+        assert morph.shape[0] == sed.shape[0]
+        self.morph = morph
 
         if center is None:
-            center = (morph_image.shape[1] // 2, morph_image.shape[2] // 2)
-        self._set_frame(center, morph_image.shape[1:])
+            center = (morph.shape[1] // 2, morph.shape[2] // 2)
+        self._set_frame(center, morph.shape[1:])
         size = (self.Ny, self.Nx)
         self.fix_frame = fix_frame
 
@@ -73,31 +82,9 @@ class Source(object):
         self.shift_center = shift_center
 
         # updates for sed or morph?
-        if hasattr(fix_sed, '__iter__') and len(fix_sed) == self.K:
-            self.fix_sed = fix_sed
-        else:
-            self.fix_sed = [fix_sed] * self.K
-        if hasattr(fix_morph, '__iter__') and len(fix_morph) == self.K:
-            self.fix_morph = fix_morph
-        else:
-            self.fix_morph = [fix_morph] * self.K
-
-        # set up constraints: should be Constraint or ConstraintList for each component
-        if constraints is None:
-            self.constraints = [sc.SimpleConstraint()] * self.K
-        elif isinstance(constraints, sc.Constraint) or isinstance(constraints, sc.ConstraintList):
-            self.constraints = [constraints] * self.K
-        elif len(constraints) == self.K:
-            self.constraints = constraints
-        else:
-            raise NotImplementedError("constraint %r not understood" % constraints)
-
-        # check if prox_sed and prox_morph are set in constraints
-        for k in range(self.K):
-            if self.constraints[k].prox_sed is None or self.constraints[k].prox_morph is None:
-                self.constraints[k] &= sc.SimpleConstraint()
+        self.set_fix(fix_sed, fix_morph)
         # needs to set constraints when shape of source is known
-        self.set_constraints()
+        self.set_constraints(constraints)
 
     @property
     def Nx(self):
@@ -129,11 +116,122 @@ class Source(object):
         """
         return self._gamma.psfs is not None
 
-    def set_constraints(self):
+    def set_fix(self, fix_sed, fix_morph, extend=0):
+        """Set up the fix_sed and fix_morph lists.
+
+        Parameters
+        ----------
+        fix_sed: bool or array-like
+            Whether sed is kept fixed. If array-like, one per component.
+        fix_morph: bool or array-like
+            Whether morph is kept fixed. If array-like, one per component.
+        extend: int
+            The number of new components by which the constraint list is extended
+
+        Returns
+        -------
+        None
+        """
+        if extend == 0:
+            self.fix_sed = []
+            self.fix_morph = []
+            K = self.K
+        else:
+            K = extend
+
+        if hasattr(fix_sed, '__iter__') and len(fix_sed) == K:
+            self.fix_sed += fix_sed
+        else:
+            self.fix_sed += [fix_sed] * K
+        if hasattr(fix_morph, '__iter__') and len(fix_morph) == K:
+            self.fix_morph += fix_morph
+        else:
+            self.fix_morph += [fix_morph] * K
+
+
+    def set_constraints(self, constraints, extend=0):
+        """Set up constraints for each component.
+
+        Parameters
+        ----------
+        constraints: None, constraint or array-like, default=none
+            Constraints can be either `~scarlet.constraints.Constraint` or
+            `~scarlet.constraints.ConstraintList`. If an array is given, it is
+            one constraint per component.
+        extend: int
+            The number of new components by which the constraint list is extended
+
+        Returns
+        -------
+        None
+        """
+        if extend == 0:
+            self.constraints = []
+            K = self.K
+        else:
+            K = extend
+
+        if constraints is None:
+            self.constraints += [sc.SimpleConstraint()] * K
+        elif isinstance(constraints, sc.Constraint) or isinstance(constraints, sc.ConstraintList):
+            self.constraints += [constraints] * K
+        elif len(constraints) == K:
+            self.constraints += constraints
+        else:
+            raise NotImplementedError("constraint %r not understood" % constraints)
+
+        # reset constaints once source size is known
+        # also check if prox_sed and prox_morph are set in constraints
+        if extend == 0:
+            range_ = range(self.K)
+        else:
+            range_ = range(self.K, self.K + K)
+
+        for k in range_:
+            if self.constraints[k].prox_sed is None or self.constraints[k].prox_morph is None:
+                self.constraints[k] &= sc.SimpleConstraint()
+            self.constraints[k].reset(self)
+
+    def reset_constraints(self):
         """Iterate through all constraints and call their `reset` method
         """
         for k in range(self.K):
             self.constraints[k].reset(self)
+
+    def add_component(self, sed, morph, constraints=None, fix_sed=False, fix_morph=False):
+        """Extend Source by adding component(s).
+
+        Add sK' new components with their constraints to this Source.
+
+        Parameters
+        ----------
+        sed: array-like, shape (K', B)
+            The SED(s) for the new component(s)
+        morph: array-like, shape (K', Ny, Nx)
+            The morphology for the new component(s)
+        constraints: None, constraint or array-like, default=none
+            Constraints can be either `~scarlet.constraints.Constraint` or
+            `~scarlet.constraints.ConstraintList`. If an array is given, it is
+            one constraint per component.
+        fix_sed: bool or array-like
+            Whether sed is kept fixed. If array-like, one per component.
+        fix_morph: bool or array-like
+            Whether morph is kept fixed. If array-like, one per component.
+
+        Returns
+        -------
+        None
+        """
+        K = sed.shape[0]
+        assert sed.shape[1] == self.sed.shape[1]
+        assert morph.shape[1:] == self.morph.shape[1:]
+        self.sed = np.concatenate((self.sed, sed))
+        self.morph = np.concatenate((self.morph, morph))
+
+        self.set_fix(fix_sed, fix_morph)
+        self.set_constraints(constraints, extend=K)
+
+        self.K += K
 
     def get_slice_for(self, im_shape):
         """Return the slice of the source frame in the full multiband image
@@ -294,7 +392,7 @@ class Source(object):
             self.set_center(self.center)
 
             # set constraints
-            self.set_constraints()
+            self.reset_constraints()
 
     def get_morph_error(self, weights):
         """Get error in the morphology
@@ -435,11 +533,11 @@ def get_best_fit_sed(img, S):
     return np.dot(np.linalg.inv(np.dot(S,S.T)), np.dot(S, Y.T))
 
 class PointSource(Source):
-    """Create a point source
+    """Create a point source.
 
-    `~scarlet.source.PointSource` objects are initialized with the SED of the peak pixel,
-    and the morphology of a single pixel (the peak) turned on.
-    While a `~scarlet.source.PointSource` can have any `constraints`, the default constraints are
+    Point sources are initialized with the SED of the center pixel,
+    and the morphology of a single pixel (the center) turned on.
+    While the source can have any `constraints`, the default constraints are
     symmetry and monotonicity.
     """
     def __init__(self, center, img, shape=None, constraints=None, psf=None, config=None):
@@ -488,11 +586,14 @@ class PointSource(Source):
         return sed.reshape((1,B)), morph.reshape((1, shape[0], shape[1]))
 
 class ExtendedSource(Source):
-    """Create an extended source
+    """Create an extended source.
 
-    Extended sources are initialized to have flux that are (optionally) symmetric and
-    monotonically decreasing from the peak pixel,
-    contained in the minimal box necessary to enclose all of the initial flux.
+    Extended sources are initialized to have a morphology given by the pixels in the
+    multi-band image that are detectable above the background noise.
+    The initial morphology can be constrained to be symmetric and monotonically
+    decreasing from the center pixel, and will be enclosed in a frame with the
+    minimal box size, as specied by `~scarlet.config.Config`.
+
     By default the model for the source will continue to be monotonic and symmetric,
     but other `constraints` can be used.
     """
@@ -614,11 +715,11 @@ class MultiComponentSource(ExtendedSource):
     Uses `~scarlet.source.ExtendedSource` to define the overall morphology,
     then erodes the outer footprint until it reaches the specified size percentile.
     For the narrower footprint, it evaluates the mean value at the perimeter and
-    set the inside to the perimeter value, creating a flat distribution inside.
-    The following component(s) is/are set to the difference between the flattened
+    sets the inside to the perimeter value, creating a flat distribution inside.
+    The subsequent component(s) is/are set to the difference between the flattened
     and the overall morphology.
     The SED for all components is calculated as the best fit of the multi-component
-    morphology to the multi-band image.
+    morphology to the multi-band image in the region of the source.
     """
     def __init__(self, center, img, bg_rms, size_percentiles=[50], constraints=None, psf=None, symmetric=True, monotonic=True,
                  thresh=1., config=None, fix_sed=False, fix_morph=False, fix_frame=False, shift_center=0.2):
