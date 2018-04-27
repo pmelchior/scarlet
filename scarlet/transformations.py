@@ -4,8 +4,6 @@ import warnings
 import numpy as np
 import scipy.sparse
 
-from .operators_pybind11 import apply_filter
-
 # global cache to hold all transformation matrices, except for GammaOp
 cache = {}
 
@@ -119,6 +117,8 @@ class LinearFilter:
             (or chain of filters) then a new `LinearFilterChain` is
             returned with this one prepended.
         """
+        from .operators_pybind11 import apply_filter
+
         if isinstance(X, LinearFilter):
             return LinearFilterChain([self, X])
         elif isinstance(X, LinearFilterChain):
