@@ -4,8 +4,6 @@ import warnings
 import numpy as np
 import scipy.sparse
 
-from .operators_pybind11 import apply_filter
-
 # global cache to hold all transformation matrices, except for GammaOp
 cache = {}
 
@@ -119,6 +117,8 @@ class LinearFilter:
             (or chain of filters) then a new `LinearFilterChain` is
             returned with this one prepended.
         """
+        from .operators_pybind11 import apply_filter
+
         if isinstance(X, LinearFilter):
             return LinearFilterChain([self, X])
         elif isinstance(X, LinearFilterChain):
@@ -264,8 +264,7 @@ class Gamma:
         Parameters
         ----------
         psfs: array-like, default=`None`
-            PSF image in either a single band (used for all images)
-            or an array/list of images with a PSF image for each band.
+            An array/list of images with a PSF image for each band.
             If `psfs` is `None` then no PSF convolution is performed, but
             a number of bands `B` must be specified.
         center: integer array-like, default=`None`

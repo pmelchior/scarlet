@@ -29,4 +29,5 @@ Getting Started
    install
    quickstart
    user_docs
+   tutorials
    api_docs

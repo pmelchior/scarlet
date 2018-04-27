@@ -28,14 +28,16 @@ class Source(object):
 
         Parameters
         ----------
-        sed: array-like, shape (K, B)
-            The SED(s) for the each component
-        morph: array-like, shape (K, Ny, Nx)
-            The morphology for each component
-        constraints: None, constraint or array-like, default=none
-            Constraints can be either `~scarlet.constraints.Constraint` or
-            `~scarlet.constraints.ConstraintList`. If an array is given, it is
-            one constraint per component.
+        sed: array
+            2D array (components, bands) of initial SED's for each component in the `Source`.
+        morph_image: array
+            Data cube (components, Height, Width) of initial morphologies for each component
+            in the `Source`.
+        constraints: :class:`scarlet.constraint.Constraint` or :class:`scarlet.constraint.ConstraintList`
+            Constraints used to constrain the SED and/or morphology.
+            When `constraints` is `None` then
+            :class:`scarlet.constraint.DirectMonotonicityConstraint`
+            and :class:`scarlet.constraint.SimpleConstraint` are used.
         center: array-like
             (y,x) coordinates of the source in the larger image
         psf: array-like or `~scarlet.transformations.Gamma`, default=`None`
@@ -74,6 +76,8 @@ class Source(object):
         if isinstance(psf, transformations.Gamma):
             self._gamma = psf
         else:
+            if psf is not None and len(psf.shape)==2:
+                psf = np.array([psf]*self.B)
             self._gamma = transformations.Gamma(psfs=psf)
 
         # set center coordinates and translation operators
@@ -541,12 +545,29 @@ class PointSource(Source):
     symmetry and monotonicity.
     """
     def __init__(self, center, img, shape=None, constraints=None, psf=None, config=None):
+        """Initialize
+
+        This implementation initializes the sed from the pixel in
+        the center of the frame and sets morphology to only comprise that pixel,
+        which works well for point sources and poorly resolved galaxies.
+
+        See :class:`~scarlet.source.Source` for parameter descriptions not listed below.
+
+        Parameters
+        ----------
+        img: :class:`~numpy.array`
+            (Bands, Height, Width) data array that contains a 2D image for each band
+        shape: tuple
+            Shape of the initial morphology.
+            If `shape` is `None` then the smallest shape specified by `config.source_sizes`
+            is used.
+        """
         self.center = center
         if config is None:
             config = Config()
         if shape is None:
             shape = (config.source_sizes[0],) * 2
-        sed, morph = self.make_initial(img, shape)
+        sed, morph = self._make_initial(img, shape)
 
         if constraints is None:
             constraints = (sc.SimpleConstraint()
@@ -556,20 +577,17 @@ class PointSource(Source):
         super(PointSource, self).__init__(sed, morph, center=center, constraints=constraints, psf=psf,
                                           fix_sed=False, fix_morph=False, fix_frame=False, shift_center=0.1)
 
-    def make_initial(self, img, shape, tiny=1e-10):
+    def _make_initial(self, img, shape, tiny=1e-10):
         """Initialize the source using only the peak pixel
+
+        See `self.__init__` for parameters not listed below
 
         Parameters
         ----------
-        source: `~scarlet.source.Source`
-            `Source` to initialize.
-        img: `~numpy.array`
-            (Bands, Height, Width) data array that contains a 2D image for each band
-
-        This implementation initializes the sed from the pixel in
-        the center of the frame and sets morphology to only comprise that pixel,
-        which works well for point sources and poorly resolved galaxies.
-
+        tiny: float
+            Minimal non-zero value allowed for a source.
+            This ensures that the source is initialized with
+            some non-zero flux.
         """
         # determine initial SED from peak position
         B, Ny, Nx = img.shape
@@ -599,9 +617,27 @@ class ExtendedSource(Source):
     """
     def __init__(self, center, img, bg_rms, constraints=None, psf=None, symmetric=True, monotonic=True,
                  thresh=1., config=None, fix_sed=False, fix_morph=False, fix_frame=False, shift_center=0.2):
+        """Initialize
+
+        See :class:`~scarlet.source.Source` for parameter descriptions not listed below.
+
+        Parameters
+        ----------
+        img: :class:`~numpy.array`
+            (Bands, Height, Width) data array that contains a 2D image for each band
+        bg_rms: array_like
+            RMS value of the background in each band.
+        symmetric: `bool`
+            Whether or not to make the initial morphology symmetric about the peak.
+        monotonic: `bool`
+            Whether or not to make the initial morphology monotonically decreasing from the peak.
+        thresh: float
+            Multiple of the RMS used to set the minimum non-zero flux.
+            Use `thresh=1` to just use `bg_rms` to set the flux floor.
+        """
         self.center = center
-        sed, morph = self.make_initial(img, bg_rms, thresh=thresh, symmetric=symmetric,
-                                       monotonic=monotonic, config=config)
+        sed, morph = self._make_initial(img, bg_rms, thresh=thresh, symmetric=symmetric,
+                                        monotonic=monotonic, config=config)
 
         if constraints is None:
             constraints = (sc.SimpleConstraint() &
@@ -612,21 +648,10 @@ class ExtendedSource(Source):
                                              fix_sed=fix_sed, fix_morph=fix_morph, fix_frame=fix_frame,
                                              shift_center=shift_center)
 
-    def make_initial(self, img, bg_rms, thresh=1., symmetric=True, monotonic=True, config=None):
+    def _make_initial(self, img, bg_rms, thresh=1., symmetric=True, monotonic=True, config=None):
         """Initialize the source that is symmetric and monotonic
 
-        Parameters
-        ----------
-        source: :class:`~scarlet.source.Source`
-            `Source` to initialize.
-        img: :class:`~numpy.array`
-            (Bands, Height, Width) data array that contains a 2D image for each band
-        bg_rms: array_like
-            RMS value of the background in each band. This should have the same shape as `img`.
-        symmetric: `bool`
-            Whether or not to make the initial morphology symmetric about the peak.
-        monotonic: `bool`
-            Whether or not to make the initial morphology monotonically decreasing from the peak.
+        See `self.__init__` for a description of the parameters
         """
         # Use a default configuration if config is not specified
         if config is None:
@@ -653,6 +678,32 @@ class ExtendedSource(Source):
         morph = np.zeros((self.Ny, self.Nx))
         morph[source_slice[1:]] = detect[self.bb[1:]]
 
+        # thresh is multiple above the rms of detect (weighted variance across bands)
+        bg_cutoff = thresh * np.sqrt((weights**2 * bg_rms**2).sum()) / jacobian
+        morph = self._init_morph(morph, source_slice, bg_cutoff, symmetric, monotonic, config)
+
+        # use mean sed from image, weighted with the morphology of each component
+        try:
+            source_slice = self.get_slice_for(img.shape)
+            sed = get_integrated_sed(img[self.bb], morph[source_slice[1:]])
+        except SourceInitError:
+            # keep the peak sed
+            logger.INFO("Using peak SED for source at {0}/{1}".format(self.center_int[0], self.center_int[1]))
+        return sed.reshape((1,B)), morph.reshape((1, morph.shape[0], morph.shape[1]))
+
+    def _init_morph(self, morph, source_slice, bg_cutoff=0, symmetric=True, monotonic=True, config=None):
+        """Initialize the morphology
+
+        Parameters
+        ----------
+        morph: array
+            Initial morphology guess
+        source_slice: list of slices
+            Slices corresponding to the pixels in the image data that
+            are contained in `morph`.
+        bg_cutoff: float
+            Minimum non-zero flux value allowed before truncating the morphology
+        """
         # check if source_slice is covering the whole of morph:
         # if not, extend morph by coping last row/column from img
         if source_slice[1].stop - source_slice[1].start < self.Ny:
@@ -669,17 +720,16 @@ class ExtendedSource(Source):
         if monotonic:
             # use finite thresh to remove flat bridges
             from . import operators
-            prox_monotonic = operators.prox_strict_monotonic((self.Ny, self.Nx), thresh=0.1, use_nearest=False)
+            prox_monotonic = operators.prox_strict_monotonic((self.Ny, self.Nx), thresh=0.1,
+                                                             use_nearest=False)
             morph = prox_monotonic(morph, 0).reshape(self.Ny, self.Nx)
 
         # trim morph to pixels above threshold
-        # thresh is multiple above the rms of detect (weighted variance across bands)
-        _thresh = thresh * np.sqrt((weights**2 * bg_rms**2).sum()) / jacobian
-        mask = morph > _thresh
+        mask = morph > bg_cutoff
         if mask.sum() == 0:
             msg = "No flux above threshold={2} for source at y={0}, x={1}"
             _y, _x = self.center_int
-            raise SourceInitError(msg.format(_y, _x, _thresh))
+            raise SourceInitError(msg.format(_y, _x, bg_cutoff))
         morph[~mask] = 0
 
         ypix, xpix = np.where(mask)
@@ -698,15 +748,7 @@ class ExtendedSource(Source):
             _morph = np.zeros((self.Ny, self.Nx))
             _morph[new_slice[1],new_slice[2]] = morph[old_slice[1],old_slice[2]]
             morph = _morph
-
-        # use mean sed from image, weighted with the morphology of each component
-        try:
-            source_slice = self.get_slice_for(img.shape)
-            sed = get_integrated_sed(img[self.bb], morph[source_slice[1:]])
-        except SourceInitError:
-            # keep the peak sed
-            logger.INFO("Using peak SED for source at {0}/{1}".format(self.center_int[0], self.center_int[1]))
-        return sed.reshape((1,B)), morph.reshape((1, morph.shape[0], morph.shape[1]))
+        return morph
 
 
 class MultiComponentSource(ExtendedSource):
