@@ -2,7 +2,7 @@ import numpy as np
 
 from .config import Config
 from . import constraints as sc
-from .source import PSFDiffKernel
+from .source import Source, ExtendedSource
 from .blend import Blend
 
 def moffat(coords, y0, x0, amplitude, alpha, beta=1.5):
@@ -116,7 +116,7 @@ def fit_target_psf(psfs, func, init_values=None, extract_values=None):
     target_psf = target_psf/np.sum(target_psf)
     return target_psf
 
-def build_diff_kernels(psfs, target_psf, max_iter=100, e_rel=1e-3, constraints=None, cutoffs=None,
+def build_diff_kernels(psfs, target_psf, max_iter=100, e_rel=1e-3, constraints=None, cutoff=None,
                        l0_thresh=1e-4):
     """Build the difference kernel to match a list of `psfs` to a `target_psf`
 
@@ -137,9 +137,9 @@ def build_diff_kernels(psfs, target_psf, max_iter=100, e_rel=1e-3, constraints=N
         Constraints used to match the PSFs.
         If `constraints` is `None` then `SimpleConstraint` and `L0Constraint`
         are used.
-    `cutoffs`: list of floats
+    `cutoff`: floats
         Minimum non-zero value of the difference kernel for each PSF.
-        If `cutoffs` is `None`, then each PSF has no minimum value set,
+        If `cutoff` is `None`, then each PSF has no minimum value set,
         which is the recommended value.
 
     Returns
@@ -155,14 +155,80 @@ def build_diff_kernels(psfs, target_psf, max_iter=100, e_rel=1e-3, constraints=N
     center = np.array([psfs[0].shape[0] // 2, psfs[0].shape[1] //2], dtype=psfs.dtype)
     if constraints is None:
         constraints = sc.SimpleConstraint() & sc.L0Constraint(l0_thresh)
-    if cutoffs is None:
-        cutoffs = [0]*len(psfs)
-    target_psfs = np.array([target_psf]*len(psfs))
+    if cutoff is None:
+        cutoff = 0
     sources = [
-        PSFDiffKernel(center, psfs, cutoffs, target_psfs, b, constraints=constraints.copy(),
+        PSFDiffKernel(center, psfs, cutoff, target_psf, b, constraints=constraints.copy(),
                       monotonic=False, config=config) for b in range(len(psfs))
     ]
-    psf_blend = Blend(sources, psfs, bg_rms=cutoffs, config=config)
+    psf_blend = Blend(sources, psfs, bg_rms=[cutoff]*len(psfs), config=config)
     psf_blend.fit(100, e_rel=1e-3)
     diff_kernels = np.array([kernel.morph for kernel in psf_blend.sources]).reshape(psfs.shape)
     return diff_kernels, psf_blend
+
+class PSFDiffKernel(ExtendedSource):
+    """Create a model of the PSF in a single band
+
+    Passing a `PSFDiffKernel` for each band as a list of sources to
+    the :class:`scarlet.blend.Blend` class can be used to model
+    the difference kernel in each band, which gives more accurate
+    results when performing PSF deconvolution.
+    """
+    def __init__(self, center, psf, cutoff, target_psf, band,
+                 constraints=None, monotonic=True, config=None, fix_frame=True, shift_center=0.0):
+        """Initialize the difference kernel in a single band
+
+        See :class:`~scarlet.source.Source` for parameter descriptions not listed below.
+
+        Parameters
+        ----------
+        cutoff: array-like
+            Minimum values of a psf in any given band, used to contrain
+            the initial size of the PSF.
+        target_psf: array-like
+            The target PSF for all of the bands
+        band: int
+            Each `PSFDiffKernel` has a fixed SED with only a single
+            non-zero band, where `band` is the index in the multi-band
+            data corresponding to this `PSFDiffKernel`.
+        monotonic: bool
+            Whether or not to make the initial difference kernel monotonic
+        config: :class:`scarlet.config.Config` instance, default=`None`
+            Special configuration to overwrite default optimization parameters
+
+        see :class:`scarelt.source.Source` for other parameters.
+        """
+        self.center = center
+        sed, morph = self._make_initial(psf, cutoff, target_psf, band, monotonic=monotonic, config=config)
+
+        if constraints is None:
+            constraints = (sc.SimpleConstraint() &
+                           sc.DirectMonotonicityConstraint(use_nearest=False))
+
+        Source.__init__(self, sed=sed, morph_image=morph, center=center, constraints=constraints,
+                        fix_sed=True, fix_morph=False, fix_frame=fix_frame,
+                        shift_center=shift_center, psf=target_psf)
+
+    def _make_initial(self, psf, cutoff, target_psf, band, monotonic=True, config=None):
+        """Initialize the source that is symmetric and monotonic
+        """
+        # Use a default configuration if config is not specified
+        if config is None:
+            config = Config(source_sizes=np.array([np.max(psf.shape[1:])]))
+        # every source as large as the entire image, but shifted to its centroid
+        B, Ny, Nx = psf.shape
+        self._set_frame(self.center, (Ny,Nx))
+
+        # determine initial SED from peak position
+        sed = np.zeros((B,))
+        sed[band] = 1
+
+        # copy morph from detect cutout, make non-negative
+        source_slice = self.get_slice_for(psf.shape)
+        morph = np.zeros((self.Ny, self.Nx))
+        morph[source_slice[1:]] = psf[band, self.bb[1], self.bb[2]].copy()
+
+        morph = self._init_morph(morph, source_slice, cutoff,
+                                 symmetric=False, monotonic=monotonic, config=config)
+
+        return sed.reshape((1,B)), morph.reshape((1, morph.shape[0], morph.shape[1]))

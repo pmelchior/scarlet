@@ -264,8 +264,7 @@ class Gamma:
         Parameters
         ----------
         psfs: array-like, default=`None`
-            PSF image in either a single band (used for all images)
-            or an array/list of images with a PSF image for each band.
+            An array/list of images with a PSF image for each band.
             If `psfs` is `None` then no PSF convolution is performed, but
             a number of bands `B` must be specified.
         center: integer array-like, default=`None`
