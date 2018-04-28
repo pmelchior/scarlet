@@ -30,7 +30,7 @@ class Source(object):
         ----------
         sed: array
             2D array (components, bands) of initial SED's for each component in the `Source`.
-        morph_image: array
+        morph: array
             Data cube (components, Height, Width) of initial morphologies for each component
             in the `Source`.
         constraints: :class:`scarlet.constraint.Constraint` or :class:`scarlet.constraint.ConstraintList`

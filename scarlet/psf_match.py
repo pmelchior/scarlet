@@ -205,7 +205,7 @@ class PSFDiffKernel(ExtendedSource):
             constraints = (sc.SimpleConstraint() &
                            sc.DirectMonotonicityConstraint(use_nearest=False))
 
-        Source.__init__(self, sed=sed, morph_image=morph, center=center, constraints=constraints,
+        Source.__init__(self, sed=sed, morph=morph, center=center, constraints=constraints,
                         fix_sed=True, fix_morph=False, fix_frame=fix_frame,
                         shift_center=shift_center, psf=target_psf)
 
