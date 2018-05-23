@@ -90,6 +90,20 @@ class Blend(object):
         """
         return self.M
 
+    def save(self, filename):
+        # store S and A for each source
+        _dict = {}
+        for m in range(self.M):
+            _dict["sed_%d" % m] = self.sources[m].sed
+            _dict["morph_%d" % m] = self.sources[m].morph
+        np.savez(filename, **_dict)
+
+    def load(self, filename):
+        _dict = np.load(filename)
+        for m in range(self.M):
+            self.sources[m].sed = _dict["sed_%d" % m]
+            self.sources[m].morph = _dict["morph_%d" % m]
+
     @property
     def _proxs_g(self):
         """Proximal operator for each source in the dual update
