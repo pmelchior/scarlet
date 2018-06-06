@@ -3,6 +3,7 @@ import warnings
 
 import numpy as np
 import scipy.sparse
+import proxmin.utils
 
 # global cache to hold all transformation matrices, except for GammaOp
 cache = {}
@@ -337,54 +338,6 @@ class Gamma:
                 gamma.append(LinearFilterChain([translation, self.psfFilters[b]]))
         return gamma
 
-import proxmin.utils
-class LinearOperator(proxmin.utils.MatrixAdapter):
-    """Mock a linear operator
-
-    Because scarlet uses 2D images for morphologies,
-    the morphology they operate on must be flattened,
-    so this class mocks a linear operator by applying it's
-    functions to a flattened variable.
-    """
-    def __init__(self, L):
-        """Initialize the class
-        """
-        super(LinearOperator, self).__init__(L, axis=1)
-
-    @property
-    def T(self):
-        """Return a transposed version of the linear operator
-        """
-        return LinearOperator(self.L.T)
-
-    def __sub__(self, op):
-        return LinearOperator(self.L - op)
-
-    def __rsub__(self, op):
-        return LinearOperator(op - self.L)
-
-    def __add__(self, op):
-        return LinearOperator(self.L + op)
-
-    def __radd__(self, op):
-        return LinearOperator(op + self.L)
-
-    def __mul__(self, op):
-        return LinearOperator(self.L * op)
-
-    def __rmul__(self, op):
-        return LinearOperator(op * self.L)
-
-    def __div__(self, op):
-        return LinearOperator(self.L / op)
-
-    def __rdiv__(self, op):
-        return LinearOperator(self.L / op)
-
-    def reshape(self, shape):
-        return LinearOperator(self.L.reshape(shape))
-
-
 def getPSFOp(psf, imgShape):
     """Create an operator to convolve intensities with the PSF
 
@@ -449,7 +402,7 @@ def getPSFOp(psf, imgShape):
                             psfOp[width*(h+1)-x_-1, width*(h+y+1)+x-x_-1] = 0
 
         # Return the transpose, which correctly convolves the data with the PSF
-        psfOp = LinearOperator(psfOp.T.tocoo())
+        psfOp = proxmin.utils.MatrixAdapter(psfOp.T.tocoo(), axis=1)
 
         global cache
         cache[name][key] = psfOp
@@ -464,7 +417,7 @@ def getZeroOp(shape):
         L = check_cache(name, key)
     except KeyError:
         # matrix with ones on diagonal shifted by k, here out of matrix: all zeros
-        L = LinearOperator(scipy.sparse.eye(size, k=size))
+        L = proxmin.utils.MatrixAdapter(scipy.sparse.eye(size, k=size), axis=1)
         global cache
         cache[name][key] = L
     return L
@@ -477,7 +430,7 @@ def getIdentityOp(shape):
         L = check_cache(name, key)
     except KeyError:
         # matrix with ones on diagonal shifted by k, here out of matrix: all zeros
-        L = LinearOperator(scipy.sparse.identity(size))
+        L = proxmin.utils.MatrixAdapter(scipy.sparse.identity(size), axis=1)
         global cache
         cache[name][key] = L
     return L
@@ -498,7 +451,7 @@ def getSymmetryOp(shape):
         sidx = idx[::-1]
         symmetryOp = getIdentityOp(shape)
         symmetryOp -= scipy.sparse.coo_matrix((np.ones(size),(idx, sidx)), shape=(size,size))
-        symmetryOp = LinearOperator(symmetryOp)
+        symmetryOp = proxmin.utils.MatrixAdapter(symmetryOp, axis=1)
         global cache
         cache[name][key] = symmetryOp
     return symmetryOp
@@ -697,7 +650,7 @@ def getRadialMonotonicOp(shape, useNearest=True, minGradient=1, subtract=True):
             monotonic = cosArr-scipy.sparse.diags(diagonal, offsets=0)
         else:
             monotonic = cosArr
-        monotonic = LinearOperator(monotonic.tocoo())
+        monotonic = proxmin.utils.MatrixAdapter(monotonic.tocoo(), axis=1)
 
         global cache
         cache[name][key] = monotonic
