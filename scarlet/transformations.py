@@ -107,7 +107,7 @@ class LinearFilter:
         X: 2D numpy array or `LinearFilter` or `LinearFilterChain`
             Array to apply the filter to, or chain of filters to
             prepend this filter to.
-        
+
         Returns
         -------
         result: 2D numpy array or `LinearFilterChain`
@@ -147,7 +147,7 @@ class LinearFilterChain:
             applied to an image first.
         """
         self.filters = filters
-    
+
     @property
     def T(self):
         """Transpose the list of filters
@@ -168,7 +168,7 @@ class LinearFilterChain:
         ----------
         X: 2D numpy array
             Image to apply the filters to.
-        
+
         Returns
         -------
         result: 2D numpy array or `LinearFilterChain`
@@ -286,7 +286,7 @@ class Gamma:
             self.B = None
         # Create the transformation matrices
         self._update_translation(dy, dx)
-    
+
     def _update_psf(self, psfs, center=None):
         """Update the psf convolution filter
         """
@@ -337,7 +337,8 @@ class Gamma:
                 gamma.append(LinearFilterChain([translation, self.psfFilters[b]]))
         return gamma
 
-class LinearOperator:
+import proxmin.utils
+class LinearOperator(proxmin.utils.MatrixAdapter):
     """Mock a linear operator
 
     Because scarlet uses 2D images for morphologies,
@@ -351,14 +352,16 @@ class LinearOperator:
         while isinstance(L, LinearOperator):
             L = L.L
         self.L = L
+        self.axis = 1
 
+    """
     def dot(self, X):
-        """Take the dot product with a 2D X
-        """
+        Take the dot product with a 2D X
         if isinstance(X, np.ndarray):
             return self.L.dot(X.reshape(-1)).reshape(X.shape)
         else:
-            return LinearOperator(self.L.dot(X))
+            return self.L.dot(X)
+    """
 
     @property
     def T(self):
@@ -393,7 +396,7 @@ class LinearOperator:
     @property
     def size(self):
         return self.L.size
-    
+
     @property
     def ndim(self):
         print(self.L.ndim)
@@ -422,12 +425,11 @@ class LinearOperator:
 
     def __rdiv__(self, op):
         return LinearOperator(self.L / op)
-    
+
     def reshape(self, shape):
         return LinearOperator(self.L.reshape(shape))
 
     def __array_prepare__(self, *args):
-        print("preparing")
         return self.L.__array_prepare__(*args)
 
     def __getattr__(self, attr):
