@@ -22,7 +22,7 @@ class ScarletRestartException(Exception):
     pass
 
 class Blend(object):
-    """The blended scene as interpreted by the deblender.
+    """The blended scene.
     """
     def __init__(self, sources, img, weights=None, bg_rms=None, config=None):
         """Constructor
@@ -90,19 +90,27 @@ class Blend(object):
         """
         return self.M
 
-    def save(self, filename):
-        # store S and A for each source
-        _dict = {}
-        for m in range(self.M):
-            _dict["sed_%d" % m] = self.sources[m].sed
-            _dict["morph_%d" % m] = self.sources[m].morph
-        np.savez(filename, **_dict)
+    def save(self, directory):
+        import os
+        if not os.path.exists(directory):
+            os.makedirs(directory)
 
-    def load(self, filename):
-        _dict = np.load(filename)
+        # store S and A for each source
+        suffix = ""
         for m in range(self.M):
-            self.sources[m].sed = _dict["sed_%d" % m]
-            self.sources[m].morph = _dict["morph_%d" % m]
+            base_filename = "source_%d" % m
+            filename = os.path.join(directory, base_filename + suffix)
+            self.sources[m].save(filename)
+
+    def load(self, directory):
+        import os
+        suffix = '.npz'
+        # since sources need to exist from the constructor, we can simply
+        # fill their content from file
+        for m in range(self.M):
+            base_filename = "source_%d" % m
+            filename = os.path.join(directory, base_filename + suffix)
+            self.sources[m].load(filename)
 
     @property
     def _proxs_g(self):

@@ -120,6 +120,20 @@ class Source(object):
         """
         return self._gamma.psfs is not None
 
+    def save(self, filename):
+        _dict = {}
+        _dict["sed"] = self.sed
+        _dict["morph"] = self.morph
+        _dict["center"] = self.center
+        np.savez(filename, **_dict)
+
+    def load(self, filename):
+        _dict = np.load(filename)
+        self.sed = _dict["sed"]
+        self.morph = _dict["morph"]
+        center = _dict["center"]
+        self._set_frame(center, self.morph.shape[1:])
+
     def set_fix(self, fix_sed, fix_morph, extend=0):
         """Set up the fix_sed and fix_morph lists.
 
