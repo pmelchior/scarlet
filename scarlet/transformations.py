@@ -349,58 +349,13 @@ class LinearOperator(proxmin.utils.MatrixAdapter):
     def __init__(self, L):
         """Initialize the class
         """
-        while isinstance(L, LinearOperator):
-            L = L.L
-        self.L = L
-        self.axis = 1
-
-    """
-    def dot(self, X):
-        Take the dot product with a 2D X
-        if isinstance(X, np.ndarray):
-            return self.L.dot(X.reshape(-1)).reshape(X.shape)
-        else:
-            return self.L.dot(X)
-    """
+        super(LinearOperator, self).__init__(L, axis=1)
 
     @property
     def T(self):
         """Return a transposed version of the linear operator
         """
         return LinearOperator(self.L.T)
-
-    @property
-    def spectral_norm(self):
-        """Spectral norm of the operator
-        """
-        from scipy.sparse import issparse
-        LTL = self.L.T.dot(self.L)
-        if issparse(self.L):
-            if min(self.L.shape) <= 2:
-                L2 = np.real(np.linalg.eigvals(LTL.toarray()).max())
-            else:
-                import scipy.sparse.linalg
-                L2 = np.real(scipy.sparse.linalg.eigs(LTL, k=1, return_eigenvectors=False)[0])
-        else:
-            import IPython; IPython.embed()
-            L2 = np.real(np.linalg.eigvals(LTL).max())
-        return L2
-
-    def __len__(self):
-        return len(self.L)
-
-    @property
-    def shape(self):
-        return self.L.shape
-
-    @property
-    def size(self):
-        return self.L.size
-
-    @property
-    def ndim(self):
-        print(self.L.ndim)
-        return self.L.ndim
 
     def __sub__(self, op):
         return LinearOperator(self.L - op)
@@ -429,12 +384,6 @@ class LinearOperator(proxmin.utils.MatrixAdapter):
     def reshape(self, shape):
         return LinearOperator(self.L.reshape(shape))
 
-    def __array_prepare__(self, *args):
-        return self.L.__array_prepare__(*args)
-
-    def __getattr__(self, attr):
-        if attr not in self.__dict__.keys:
-            return getattr(self.L, attr)
 
 def getPSFOp(psf, imgShape):
     """Create an operator to convolve intensities with the PSF

@@ -87,7 +87,6 @@ class Source(object):
 
         # updates for sed or morph?
         self.set_fix(fix_sed, fix_morph)
-        # needs to set constraints when shape of source is known
         self.set_constraints(constraints)
 
     @property
@@ -183,24 +182,6 @@ class Source(object):
             self.constraints += constraints
         else:
             raise NotImplementedError("constraint %r not understood" % constraints)
-
-        # reset constaints once source size is known
-        # also check if prox_sed and prox_morph are set in constraints
-        if extend == 0:
-            range_ = range(self.K)
-        else:
-            range_ = range(self.K, self.K + K)
-
-        for k in range_:
-            if self.constraints[k].prox_sed is None or self.constraints[k].prox_morph is None:
-                self.constraints[k] &= sc.SimpleConstraint()
-            self.constraints[k].reset(self)
-
-    def reset_constraints(self):
-        """Iterate through all constraints and call their `reset` method
-        """
-        for k in range(self.K):
-            self.constraints[k].reset(self)
 
     def add_component(self, sed, morph, constraints=None, fix_sed=False, fix_morph=False):
         """Extend Source by adding component(s).
@@ -394,9 +375,6 @@ class Source(object):
 
             # update Gamma and center (including subpixel shifts)
             self.set_center(self.center)
-
-            # set constraints
-            self.reset_constraints()
 
     def get_morph_error(self, weights):
         """Get error in the morphology
