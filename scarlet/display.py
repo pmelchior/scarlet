@@ -1,37 +1,7 @@
+from collections import Iterable
+
 import numpy as np
 from matplotlib.colors import Normalize
-
-def zscale(img, contrast=0.25, samples=500):
-    """Calculate minimum and maximum pixel values based on the image
-
-    Parameters
-    ----------
-    img: array-like
-        Image to scale
-    constrast: float
-        Contrast of the result
-    samples: int
-        Number of random samples to take from the image to set the zscale
-    """
-    ravel = img.ravel()
-    if len(ravel) > samples:
-        imsort = np.sort(np.random.choice(ravel, size=samples))
-    else:
-        imsort = np.sort(ravel)
-
-    n = len(imsort)
-    idx = np.arange(n)
-
-    med = imsort[int(n/2)]
-    w = 0.25
-    i_lo, i_hi = int((0.5-w)*n), int((0.5+w)*n)
-    p = np.polyfit(idx[i_lo:i_hi], imsort[i_lo:i_hi], 1)
-    slope, intercept = p
-
-    z1 = med - (slope/contrast)*(n/2-n*w)
-    z2 = med + (slope/contrast)*(n/2-n*w)
-
-    return z1, z2
 
 class Asinh(Normalize):
     """Use arcsinh to map image intensities in matplotlib
@@ -182,7 +152,7 @@ def img_to_rgb(img, norm=None, fill_value=0, filter_indices=None):
     ----------
     img: array_like
         This should be an array with dimensions (bands, height, width).
-    norm: `matplotlib.colors.Normalize`, default=`None`
+    norm: `matplotlib.colors.Normalize` of list, default=`None`
         Normalization to use for colormap scaling.
         The default is `None`, which uses a linear scaling.
         This is expected to be class that inherits from
@@ -208,7 +178,13 @@ def img_to_rgb(img, norm=None, fill_value=0, filter_indices=None):
 
     if norm is None:
         norm = Linear(img=img)
-    rgb = norm(img)
+    if isinstance(norm, Iterable):
+        assert len(norm) == len(img)
+        rgb = np.zeros_like(img)
+        for b in range(len(norm)):
+            rgb[b] = norm[b](img[b])
+    else:
+        rgb = norm(img)
     if hasattr(rgb,"mask"):
         rgb = rgb.filled(fill_value)
     # The result of calling Asinh is an array mapped to [0,1]
@@ -220,3 +196,25 @@ def img_to_rgb(img, norm=None, fill_value=0, filter_indices=None):
     # Now we move the SED to the outer axis and use only the selected colors
     rgb = np.transpose(rgb[filter_indices], axes=(1,2,0))
     return rgb
+
+def zscale(img, contrast=0.25, samples=500, fraction=.75):
+    """Calculate minimum and maximum pixel values based on the image
+    """
+    if img.size > samples:
+        sorted_img = np.sort(np.random.choice(img.reshape(-1), size=samples))
+    else:
+        sorted_img = np.sort(img.reshape(-1))
+
+    n_pix = len(sorted_img)
+    center = n_pix/2
+    median = sorted_img[int(center)]
+    idx = np.arange(n_pix)
+
+    radius = 1-fraction/2
+    sample_slice = slice(int(np.floor((0.5-radius)*n_pix)), int(np.ceil((0.5+radius)*n_pix)))
+    result = np.polyfit(idx[sample_slice], sorted_img[sample_slice], 1)
+    slope, intercept = result
+
+    z1 = max(median - center * (slope/contrast), np.min(img))
+    z2 = min(median + (n_pix-center-1) * (slope/contrast), np.max(img))
+    return z1, z2
