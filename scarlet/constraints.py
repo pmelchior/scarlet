@@ -26,27 +26,27 @@ class ConstraintAdapter(object):
 
     @property
     def prox_sed(self):
-        return self.C.prox_sed(self.source.sed.shape)
+        return self.C.prox_sed(self.source.sed[0].shape)
 
     @property
     def prox_morph(self):
-        return self.C.prox_morph(self.source.morph.shape)
+        return self.C.prox_morph(self.source.morph[0].shape)
 
     @property
     def prox_g_sed(self):
-        return self.C.prox_g_sed(self.source.sed.shape)
+        return self.C.prox_g_sed(self.source.sed[0].shape)
 
     @property
     def prox_g_morph(self):
-        return self.C.prox_g_morph(self.source.morph.shape)
+        return self.C.prox_g_morph(self.source.morph[0].shape)
 
     @property
     def L_sed(self):
-        return self.C.L_sed(self.source.sed.shape)
+        return self.C.L_sed(self.source.sed[0].shape)
 
     @property
     def L_morph(self):
-        return self.C.L_morph(self.source.morph.shape)
+        return self.C.L_morph(self.source.morph[0].shape)
 
     def __repr__(self):
         return repr(self.C)
