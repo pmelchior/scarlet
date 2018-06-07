@@ -234,6 +234,7 @@ class TVxConstraint(Constraint):
             return check_cache(name, key)
         except KeyError:
             L = proxmin.transformations.get_gradient_x(shape, shape[1])
+            _ = L.spectral_norm
             cache[name][key] = L
             return L
 
@@ -263,6 +264,7 @@ class TVyConstraint(Constraint):
             return check_cache(name, key)
         except KeyError:
             L = proxmin.transformations.get_gradient_y(shape, shape[0])
+            _ = L.spectral_norm
             cache[name][key] = L
             return L
 

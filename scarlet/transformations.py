@@ -418,6 +418,7 @@ def getZeroOp(shape):
     except KeyError:
         # matrix with ones on diagonal shifted by k, here out of matrix: all zeros
         L = proxmin.utils.MatrixAdapter(scipy.sparse.eye(size, k=size), axis=1)
+        L._spec_norm = 0
         global cache
         cache[name][key] = L
     return L
@@ -431,6 +432,7 @@ def getIdentityOp(shape):
     except KeyError:
         # matrix with ones on diagonal shifted by k, here out of matrix: all zeros
         L = proxmin.utils.MatrixAdapter(scipy.sparse.identity(size), axis=1)
+        L._spec_norm = 1
         global cache
         cache[name][key] = L
     return L
@@ -452,6 +454,7 @@ def getSymmetryOp(shape):
         symmetryOp = getIdentityOp(shape).L
         symmetryOp -= scipy.sparse.coo_matrix((np.ones(size),(idx, sidx)), shape=(size,size))
         symmetryOp = proxmin.utils.MatrixAdapter(symmetryOp, axis=1)
+        _ = symmetryOp.spectral_norm
         global cache
         cache[name][key] = symmetryOp
     return symmetryOp
@@ -651,7 +654,7 @@ def getRadialMonotonicOp(shape, useNearest=True, minGradient=1, subtract=True):
         else:
             monotonic = cosArr
         monotonic = proxmin.utils.MatrixAdapter(monotonic.tocoo(), axis=1)
-
+        _ = monotonic.spectral_norm
         global cache
         cache[name][key] = monotonic
 
