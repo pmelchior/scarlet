@@ -4,18 +4,7 @@ import warnings
 import numpy as np
 import scipy.sparse
 import proxmin.utils
-
-# global cache to hold all transformation matrices, except for GammaOp
-cache = {}
-
-def check_cache(name, key):
-    global cache
-    try:
-        cache[name]
-    except KeyError:
-        cache[name] = {}
-
-    return cache[name][key]
+from .cache import Cache
 
 def get_filter_slices(coords):
     """Get the slices in x and y to apply a filter
@@ -229,20 +218,18 @@ class LinearTranslation(LinearFilter):
         ddx = 1.-dx
         ddy = 1.-dy
         self._flat_values = np.array([ddx*ddy, ddy*dx, ddx*dy, dx*dy])
-        slice_name = "Tyx_slice"
-        coord_name = "Tyx_coord"
+        slice_name = "LinearTranslation.Tyx_slice"
+        coord_name = "LinearTranslation.Tyx_coord"
         key = (sign_y, sign_x)
         self.key = key
         try:
-            self._flat_coords = check_cache(coord_name, key)
-            self._slices = check_cache(slice_name, key)
+            self._flat_coords = Cache.check(coord_name, key)
+            self._slices = Cache.check(slice_name, key)
         except KeyError:
             self._flat_coords = np.array([[0,0], [0,sign_x], [sign_y,0], [sign_y,sign_x]], dtype=int)
-            cache[coord_name][key] = self._flat_coords
-            if slice_name not in cache:
-                cache[slice_name] = {}
             self._slices = get_filter_slices(self._flat_coords)
-            cache[slice_name][key] = self._slices
+            Cache.set(coord_name, key, self._flat_coords)
+            Cache.set(slice_name, key, self._slices)
 
     @property
     def T(self):
@@ -347,11 +334,10 @@ def getPSFOp(psf, imgShape):
     """
 
     warnings.warn("The 'psfOp' is deprecated, use 'LinearFilter' instead")
-    name = "PSF"
+    name = "getPSFOp"
     key = tuple(imgShape)
     try:
-        psfOp = check_cache(name, key)
-
+        psfOp = Cache.check(name, key)
     except KeyError:
         height, width = imgShape
         size = width * height
@@ -403,38 +389,34 @@ def getPSFOp(psf, imgShape):
 
         # Return the transpose, which correctly convolves the data with the PSF
         psfOp = proxmin.utils.MatrixAdapter(psfOp.T.tocoo(), axis=1)
-
-        global cache
-        cache[name][key] = psfOp
+        Cache.set(name, key, psfOp)
 
     return psfOp
 
 def getZeroOp(shape):
     size = shape[0]*shape[1]
-    name = "Zero"
+    name = "getZeroOp"
     key = tuple(shape)
     try:
-        L = check_cache(name, key)
+        L = Cache.check(name, key)
     except KeyError:
         # matrix with ones on diagonal shifted by k, here out of matrix: all zeros
         L = proxmin.utils.MatrixAdapter(scipy.sparse.eye(size, k=size), axis=1)
         L._spec_norm = 0
-        global cache
-        cache[name][key] = L
+        Cache.set(name, key, L)
     return L
 
 def getIdentityOp(shape):
     size = shape[0]*shape[1]
-    name = "Id"
+    name = "getIdentityOp"
     key = tuple(shape)
     try:
-        L = check_cache(name, key)
+        L = Cache.check(name, key)
     except KeyError:
         # matrix with ones on diagonal shifted by k, here out of matrix: all zeros
         L = proxmin.utils.MatrixAdapter(scipy.sparse.identity(size), axis=1)
         L._spec_norm = 1
-        global cache
-        cache[name][key] = L
+        Cache.set(name, key, L)
     return L
 
 def getSymmetryOp(shape):
@@ -444,10 +426,10 @@ def getSymmetryOp(shape):
     acts on the flattened image to return its symmetric version.
     """
     size = shape[0]*shape[1]
-    name = "Symm"
+    name = "getSymmetryOp"
     key = tuple(shape)
     try:
-        symmetryOp = check_cache(name, key)
+        symmetryOp = Cache.check(name, key)
     except KeyError:
         idx = np.arange(shape[0]*shape[1])
         sidx = idx[::-1]
@@ -455,8 +437,7 @@ def getSymmetryOp(shape):
         symmetryOp -= scipy.sparse.coo_matrix((np.ones(size),(idx, sidx)), shape=(size,size))
         symmetryOp = proxmin.utils.MatrixAdapter(symmetryOp, axis=1)
         _ = symmetryOp.spectral_norm
-        global cache
-        cache[name][key] = symmetryOp
+        Cache.set(name, key, symmetryOp)
     return symmetryOp
 
 def getOffsets(width, coords=None):
@@ -552,7 +533,7 @@ def getRadialMonotonicWeights(shape, useNearest=True, minGradient=1):
     name = "RadialMonotonicWeights"
     key = tuple(shape) + (useNearest, minGradient)
     try:
-        cosNorm = check_cache(name, key)
+        cosNorm = Cache.check(name, key)
     except KeyError:
 
         # Center on the center pixel
@@ -619,8 +600,7 @@ def getRadialMonotonicWeights(shape, useNearest=True, minGradient=1):
             cosNorm = (cosWeight.T/normalize[:,None]).T
             cosNorm[mask] = 0
 
-        global cache
-        cache[name][key] = cosNorm
+        Cache.set(name, key, cosNorm)
 
     return cosNorm
 
@@ -635,7 +615,7 @@ def getRadialMonotonicOp(shape, useNearest=True, minGradient=1, subtract=True):
     name = "RadialMonotonic"
     key = tuple(shape) + (useNearest, minGradient, subtract)
     try:
-        monotonic = check_cache(name, key)
+        monotonic = Cache.check(name, key)
     except KeyError:
 
         cosNorm = getRadialMonotonicWeights(shape, useNearest=useNearest, minGradient=1)
@@ -655,8 +635,7 @@ def getRadialMonotonicOp(shape, useNearest=True, minGradient=1, subtract=True):
             monotonic = cosArr
         monotonic = proxmin.utils.MatrixAdapter(monotonic.tocoo(), axis=1)
         _ = monotonic.spectral_norm
-        global cache
-        cache[name][key] = monotonic
+        Cache.set(name, key, monotonic)
 
     return monotonic
 

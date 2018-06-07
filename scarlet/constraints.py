@@ -1,19 +1,9 @@
 import proxmin
 from . import operators
 from . import transformations
+from .cache import Cache
 from functools import partial
 
-# global cache to hold all complex proximal operators
-cache = {}
-
-def check_cache(name, key):
-    global cache
-    try:
-        cache[name]
-    except KeyError:
-        cache[name] = {}
-
-    return cache[name][key]
 
 class Constraint(object):
     """A constraint generator for SED and Morphology.
@@ -146,7 +136,7 @@ class DirectMonotonicityConstraint(Constraint):
         prox_name = "DirectMonotonicityConstraint.prox_morph"
         key = shape
         try:
-            prox = check_cache(prox_name, key)
+            prox = Cache.check(prox_name, key)
         except KeyError:
             if not self.exact:
                 prox = operators.prox_strict_monotonic(shape, use_nearest=self.use_nearest, thresh=self.thresh)
@@ -154,7 +144,7 @@ class DirectMonotonicityConstraint(Constraint):
                 # cone method for monotonicity: exact but VERY slow
                 G = transformations.getRadialMonotonicOp(shape, useNearest=self.useNearest).toarray()
                 prox = partial(operators.prox_cone, G=G)
-            cache[prox_name][key] = prox
+            Cache.set(prox_name, key, prox)
         return prox
 
 class MonotonicityConstraint(Constraint):
@@ -231,11 +221,11 @@ class TVxConstraint(Constraint):
         name = "TVxConstraint.L_morph"
         key = shape
         try:
-            return check_cache(name, key)
+            return Cache.check(name, key)
         except KeyError:
             L = proxmin.transformations.get_gradient_x(shape, shape[1])
             _ = L.spectral_norm
-            cache[name][key] = L
+            Cache.set(name, key, L)
             return L
 
 class TVyConstraint(Constraint):
@@ -261,11 +251,11 @@ class TVyConstraint(Constraint):
         name = "TVyConstraint.L_morph"
         key = shape
         try:
-            return check_cache(name, key)
+            return Cache.check(name, key)
         except KeyError:
             L = proxmin.transformations.get_gradient_y(shape, shape[0])
             _ = L.spectral_norm
-            cache[name][key] = L
+            Cache.set(name, key, L)
             return L
 
 
