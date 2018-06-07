@@ -453,9 +453,9 @@ class PointSource(Source):
         sed, morph = self._make_initial(img, shape)
 
         if constraints is None:
-            constraints = (sc.SimpleConstraint()
-                           & sc.DirectMonotonicityConstraint(use_nearest=False)
-                           & sc.DirectSymmetryConstraint())
+            constraints = (sc.SimpleConstraint(),
+                           sc.DirectMonotonicityConstraint(use_nearest=False),
+                           sc.DirectSymmetryConstraint())
 
         super(PointSource, self).__init__(sed, morph, center=center, constraints=constraints, psf=psf,
                                           fix_sed=False, fix_morph=False, fix_frame=False, shift_center=0.1)
@@ -523,8 +523,8 @@ class ExtendedSource(Source):
                                         monotonic=monotonic, config=config)
 
         if constraints is None:
-            constraints = (sc.SimpleConstraint() &
-                           sc.DirectMonotonicityConstraint(use_nearest=False) &
+            constraints = (sc.SimpleConstraint(),
+                           sc.DirectMonotonicityConstraint(use_nearest=False),
                            sc.DirectSymmetryConstraint())
 
         super(ExtendedSource, self).__init__(sed, morph, center=center, constraints=constraints, psf=psf,
