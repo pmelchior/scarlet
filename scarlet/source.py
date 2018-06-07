@@ -29,10 +29,9 @@ class Source(object):
         Parameters
         ----------
         sed: array
-            2D array (components, bands) of initial SED's for each component in the `Source`.
+            1D array (bands) of the initial SED.
         morph: array
-            Data cube (components, Height, Width) of initial morphologies for each component
-            in the `Source`.
+            Data cube (Height, Width) of the initial morphology.
         constraints: :class:`scarlet.constraint.Constraint` or :class:`scarlet.constraint.ConstraintList`
             Constraints used to constrain the SED and/or morphology.
             When `constraints` is `None` then
@@ -44,32 +43,25 @@ class Source(object):
             2D image of the psf in a single band (Height, Width),
             or 2D image of the psf in each band (Bands, Height, Width),
             or `~scarlet.transformations.Gamma` created from a psf array.
-        fix_sed: bool or list of bools, default=`False`
+        fix_sed: bool, default=`False`
             Whether or not the SED is fixed, or can be updated
-            If K>1, a list of bools can be given, one for each component.
-        fix_morph: bool or list of bools, default=`False`
+        fix_morph: bool, default=`False`
             Whether or not the morphology is fixed, or can be updated
-            If K>1, a list of bools can be given, one for each component.
-        fix_frame: bool or list of bools, default=`False`
+        fix_frame: bool, default=`False`
             Whether or not the frame dimensions are fixed, or can be updated
-            If K>1, a list of bools can be given, one for each component.
         shift_center: float, default=0.2
             Amount to shift the differential image in x and y to fit
             changes in position.
         """
         # set size of the source frame
-        assert len(sed.shape) == 2
-        self.K, self.B = sed.shape
+        self.B = sed.shape
         self.sed = sed.copy()
-        assert len(morph.shape) == 3
-        assert morph.shape[0] == sed.shape[0]
-        self.morph = morph
+        assert len(morph.shape) == 2
+        self.morph = morph.copy()
 
         if center is None:
-            center = (morph.shape[1] // 2, morph.shape[2] // 2)
-        self._set_frame(center, morph.shape[1:])
-        size = (self.Ny, self.Nx)
-        self.fix_frame = fix_frame
+            center = (morph.shape[0] // 2, morph.shape[1] // 2)
+        self._set_frame(center, morph.shape)
 
         # set up psf and translations matrices
         from . import transformations
@@ -85,8 +77,11 @@ class Source(object):
         self.set_center(center)
         self.shift_center = shift_center
 
-        # updates for sed or morph?
-        self.set_fix(fix_sed, fix_morph)
+        # updates for frame, sed, morph?
+        self.fix_frame = fix_frame
+        self.fix_sed = fix_sed
+        self.fix_morph = fix_morph
+
         self.set_constraints(constraints)
 
     @property
@@ -119,40 +114,7 @@ class Source(object):
         """
         return self._gamma.psfs is not None
 
-    def set_fix(self, fix_sed, fix_morph, extend=0):
-        """Set up the fix_sed and fix_morph lists.
-
-        Parameters
-        ----------
-        fix_sed: bool or array-like
-            Whether sed is kept fixed. If array-like, one per component.
-        fix_morph: bool or array-like
-            Whether morph is kept fixed. If array-like, one per component.
-        extend: int
-            The number of new components by which the constraint list is extended
-
-        Returns
-        -------
-        None
-        """
-        if extend == 0:
-            self.fix_sed = []
-            self.fix_morph = []
-            K = self.K
-        else:
-            K = extend
-
-        if hasattr(fix_sed, '__iter__') and len(fix_sed) == K:
-            self.fix_sed += fix_sed
-        else:
-            self.fix_sed += [fix_sed] * K
-        if hasattr(fix_morph, '__iter__') and len(fix_morph) == K:
-            self.fix_morph += fix_morph
-        else:
-            self.fix_morph += [fix_morph] * K
-
-
-    def set_constraints(self, constraints, extend=0):
+    def set_constraints(self, constraints):
         """Set up constraints for each component.
 
         Parameters
@@ -161,58 +123,16 @@ class Source(object):
             Constraints can be either `~scarlet.constraints.Constraint` or
             `~scarlet.constraints.ConstraintList`. If an array is given, it is
             one constraint per component.
-        extend: int
-            The number of new components by which the constraint list is extended
 
         Returns
         -------
         None
         """
-        if extend == 0:
-            self.constraints = []
-            K = self.K
-        else:
-            K = extend
 
         if constraints is None:
             constraints = sc.SimpleConstraint()
 
-        self.constraints = [sc.ConstraintAdapter(constraints, self)] * K
-
-    def add_component(self, sed, morph, constraints=None, fix_sed=False, fix_morph=False):
-        """Extend Source by adding component(s).
-
-        Add K' new components with their constraints to this Source.
-
-        Parameters
-        ----------
-        sed: array-like, shape (K', B)
-            The SED(s) for the new component(s)
-        morph: array-like, shape (K', Ny, Nx)
-            The morphology for the new component(s)
-        constraints: None, constraint or array-like, default=none
-            Constraints can be either `~scarlet.constraints.Constraint` or
-            `~scarlet.constraints.ConstraintList`. If an array is given, it is
-            one constraint per component.
-        fix_sed: bool or array-like
-            Whether sed is kept fixed. If array-like, one per component.
-        fix_morph: bool or array-like
-            Whether morph is kept fixed. If array-like, one per component.
-
-        Returns
-        -------
-        None
-        """
-        K = sed.shape[0]
-        assert sed.shape[1] == self.sed.shape[1]
-        assert morph.shape[1:] == self.morph.shape[1:]
-        self.sed = np.concatenate((self.sed, sed))
-        self.morph = np.concatenate((self.morph, morph))
-
-        self.set_fix(fix_sed, fix_morph, extend=K)
-        self.set_constraints(constraints, extend=K)
-
-        self.K += K
+        self.constraints = sc.ConstraintAdapter(constraints, self)
 
     def get_slice_for(self, im_shape):
         """Return the slice of the source frame in the full multiband image
@@ -234,13 +154,11 @@ class Source(object):
         top = self.Ny - max(0, self.top - NY)
         return (slice(None), slice(bottom, top), slice(left, right))
 
-    def get_model(self, combine=True, Gamma=None, use_sed=True):
+    def get_model(self, Gamma=None, use_sed=True):
         """Get the model of all components for the current source
 
         Parameters
         ----------
-        combine: bool, default=`True`
-            Whether or not to combine all of the components into a single model
         Gamma: `~scarlet.transformations.Gamma`, default=`None`
             Gamma transformation to convolve with PSF and perform linear transform.
             If `Gamma` is `None` then `self.Gamma` is used.
@@ -260,17 +178,13 @@ class Source(object):
             sed = np.ones_like(self.sed)
         # model for all components of this source
         if not self.has_psf:
-            model = np.empty((self.K, self.B, self.Ny, self.Nx))
-            for k in range(self.K):
-                model[k] = np.outer(sed[k], Gamma.dot(self.morph[k])).reshape(self.B, self.Ny, self.Nx)
+            model = np.empty((self.B, self.Ny, self.Nx))
+            model = np.outer(sed, Gamma.dot(self.morph)).reshape(self.B, self.Ny, self.Nx)
         else:
-            model = np.zeros((self.K, self.B, self.Ny, self.Nx))
-            for k in range(self.K):
-                for b in range(self.B):
-                    model[k,b] += sed[k,b] * Gamma[b].dot(self.morph[k])
+            model = np.zeros((self.B, self.Ny, self.Nx))
+            for b in range(self.B):
+                model[b] += sed[b] * Gamma[b].dot(self.morph)
 
-        if combine:
-            model = model.sum(axis=0)
         return model
 
     def _set_frame(self, center, size):
@@ -332,8 +246,8 @@ class Source(object):
         old_slice_x = slice(max(0, self.left - left), min(right - left, right - left - (right - self.right)))
         if right-left == self.Nx:
             new_slice_x = old_slice_x = slice(None)
-        new_slice = (slice(None), new_slice_y, new_slice_x)
-        old_slice = (slice(None), old_slice_y, old_slice_x)
+        new_slice = (new_slice_y, new_slice_x)
+        old_slice = (old_slice_y, old_slice_x)
         return old_slice, new_slice
 
     def set_center(self, center):
@@ -360,13 +274,12 @@ class Source(object):
             Either a (height,width) shape or a single size to create a
             square (size,size) frame.
         """
-        _, Ny, Nx = self.shape
         old_slice, new_slice = self._set_frame(self.center, size)
 
         if new_slice != old_slice:
             # change morph
             _morph = self.morph.copy()
-            self.morph = np.zeros((self.K, self.Ny, self.Nx))
+            self.morph = np.zeros((self.Ny, self.Nx))
             self.morph[new_slice] = _morph[old_slice]
 
             # update Gamma and center (including subpixel shifts)
@@ -407,21 +320,19 @@ class Source(object):
         # Instead, estimate noise for each component separately:
         # simple multiplication for diagonal pixel covariance matrix
         if not self.has_psf:
-            me = [1./np.sqrt(np.dot(a.T, np.multiply(w, a[:,None]))) for a in self.sed]
+            me = 1./np.sqrt(np.dot(self.sed.T, np.multiply(w, self.sed[:,None])))
         else:
             # see Blend.steps_f for details for the complete covariance matrix
             import scipy.sparse
             Sigma_pix = scipy.sparse.diags(w.flatten(), 0)
-            PA = [scipy.sparse.bmat([[self.sed[k,b] * self.Gamma[b]] for b in range(self.B)])
-                    for k in range(self.K)]
-            Sigma_s = [PAk.T.dot(Sigma_pix.dot(PAk)) for PAk in PA]
-            me = [np.sqrt(np.diag(np.linalg.inv(Sigma_sk.toarray()))) for Sigma_sk in Sigma_s]
+            PA = scipy.sparse.bmat([self.sed[b] * self.Gamma[b] for b in range(self.B)])
+            Sigma_s = PA.T.dot(Sigma_pix.dot(PA)
+            me = np.sqrt(np.diag(np.linalg.inv(Sigma_s.toarray())))
 
             # TODO: the matrix inversion is instable if the PSF gets wide
             # possible options: Tikhonov regularization or similar
         if mask.sum():
-            for mek in me:
-                mek[mask] = 0
+            me[mask] = 0
         return me
 
     def get_sed_error(self, weights):
@@ -447,15 +358,13 @@ class Source(object):
 
         # See explanation in get_morph_error and Blend.steps_f
         if not self.has_psf:
-            return [1./np.sqrt(np.dot(s,np.multiply(w.T, s[None,:].T))) for s in self.morph]
+            return 1./np.sqrt(np.dot(self.morph,np.multiply(w.T, self.morph[None,:].T)))
         else:
             import scipy.sparse
             Sigma_pix = scipy.sparse.diags(w.flatten(), 0)
             model = self.get_model(combine=False, use_sed=False)
-            PS = [scipy.sparse.block_diag([model[k,b,:,:].reshape((1,-1)).T for b in range(self.B)])
-                        for k in range(self.K)]
-            return [np.sqrt(np.diag(np.linalg.inv(PSk.T.dot(Sigma_pix.dot(PSk)).toarray()))) for PSk in PS]
-
+            PS = scipy.sparse.block_diag([model[b,:,:].reshape((1,-1)).T for b in range(self.B)])
+            return np.sqrt(np.diag(np.linalg.inv(PS.T.dot(Sigma_pix.dot(PS)).toarray())))
 
 def get_pixel_sed(img, position):
     """Get the SED at `position` in `img`
@@ -575,7 +484,7 @@ class PointSource(Source):
         # Turn on a single pixel at the peak
         cy, cx = (shape[0] // 2, shape[1] //2)
         morph[cy, cx] = max(img[:,_y,_x].sum(axis=0), tiny)
-        return sed.reshape((1,B)), morph.reshape((1, shape[0], shape[1]))
+        return sed, morph
 
 class ExtendedSource(Source):
     """Create an extended source.
@@ -663,7 +572,7 @@ class ExtendedSource(Source):
         except SourceInitError:
             # keep the peak sed
             logger.INFO("Using peak SED for source at {0}/{1}".format(self.center_int[0], self.center_int[1]))
-        return sed.reshape((1,B)), morph.reshape((1, morph.shape[0], morph.shape[1]))
+        return sed, morph
 
     def _init_morph(self, morph, source_slice, bg_cutoff=0, symmetric=True, monotonic=True, config=None):
         """Initialize the morphology
@@ -720,23 +629,12 @@ class ExtendedSource(Source):
         # update morph
         if new_slice != old_slice:
             _morph = np.zeros((self.Ny, self.Nx))
-            _morph[new_slice[1],new_slice[2]] = morph[old_slice[1],old_slice[2]]
+            _morph[new_slice] = morph[old_slice]
             morph = _morph
         return morph
 
-
+"""
 class MultiComponentSource(ExtendedSource):
-    """Create an extended source with multiple components layered vertically.
-
-    Uses `~scarlet.source.ExtendedSource` to define the overall morphology,
-    then erodes the outer footprint until it reaches the specified size percentile.
-    For the narrower footprint, it evaluates the mean value at the perimeter and
-    sets the inside to the perimeter value, creating a flat distribution inside.
-    The subsequent component(s) is/are set to the difference between the flattened
-    and the overall morphology.
-    The SED for all components is calculated as the best fit of the multi-component
-    morphology to the multi-band image in the region of the source.
-    """
     def __init__(self, center, img, bg_rms, size_percentiles=[50], constraints=None, psf=None, symmetric=True, monotonic=True,
                  thresh=1., config=None, fix_sed=False, fix_morph=False, fix_frame=False, shift_center=0.2):
         self.center = center
@@ -752,12 +650,7 @@ class MultiComponentSource(ExtendedSource):
         super(ExtendedSource, self).__init__(sed, morph, center=center, constraints=constraints, psf=psf, fix_sed=fix_sed, fix_morph=fix_morph, fix_frame=fix_frame, shift_center=shift_center)
 
     def make_initial(self, img, bg_rms, size_percentiles=[50], thresh=1., symmetric=True, monotonic=True, config=None):
-        """Initialize multi-component source, where the inner components begin
-        at the given size_percentiles.
-
-        See `~scarlet.source.ExtendedSource` for details.
-        """
-            # call make_initial from ExtendedSource to give single-component morphology and sed
+        # call make_initial from ExtendedSource to give single-component morphology and sed
         sed, morph = super(MultiComponentSource, self).make_initial(img, bg_rms, thresh=thresh, symmetric=symmetric, monotonic=monotonic, config=config)
 
         # create a list of components from morph by layering them on top of each
@@ -800,3 +693,4 @@ class MultiComponentSource(ExtendedSource):
         sed_ = get_best_fit_sed(img[self.bb], S)
 
         return sed_, morph_
+"""

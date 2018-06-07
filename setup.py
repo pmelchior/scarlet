@@ -11,7 +11,7 @@ import subprocess
 import warnings
 
 # Use the firt 7 digits of the git hash to set the version
-__version__ = '0.2.'+subprocess.check_output(['git', 'rev-parse', 'HEAD'])[:7].decode("utf-8")
+__version__ = '0.3.'+subprocess.check_output(['git', 'rev-parse', 'HEAD'])[:7].decode("utf-8")
 
 packages = []
 for root, dirs, files in os.walk('.'):
