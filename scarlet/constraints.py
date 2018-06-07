@@ -265,65 +265,51 @@ class ConstraintAdapter(object):
     def __init__(self, C, source):
         """Initialize the constraint adapter.
         """
-        if isinstance(C, Constraint) or (isinstance(C, list) and all([isinstance(c_, Constraint) for c_ in C])):
-            self.C = C
+        if isinstance(C, Constraint):
+            _C = [C]
+        else:
+            _C = C
+        if isinstance(_C, list) and all([isinstance(_c, Constraint) for _c in _C]):
+            self.C = _C
         else:
             raise NotImplementedError("argument `C` must be constraint or list of constraints")
         self.source = source
 
     @property
     def prox_sed(self):
-        if not isinstance(self.C, list):
-            return self.C.prox_sed(self.source.sed[0].shape)
+        ops = [c.prox_sed(self.source.sed[0].shape) for c in self.C if c.prox_sed(self.source.sed[0].shape) is not proxmin.operators.prox_id]
+        if len(ops) == 0:
+            return proxmin.operators.prox_id
+        if len(ops) == 1:
+            return ops[0]
         else:
-            ops = [ c.prox_sed(self.source.sed[0].shape) for c in self.C if c.prox_sed(self.source.sed[0].shape) is not proxmin.operators.prox_id ]
-            if len(ops) == 0:
-                return proxmin.operators.prox_id
-            if len(ops) == 1:
-                return ops[0]
-            else:
-                return proxmin.operators.AlternatingProjections(ops)
+            return proxmin.operators.AlternatingProjections(ops)
 
     @property
     def prox_morph(self):
-        if not isinstance(self.C, list):
-            return self.C.prox_morph(self.source.morph[0].shape)
+        ops = [c.prox_morph(self.source.morph[0].shape) for c in self.C if c.prox_morph(self.source.morph[0].shape) is not proxmin.operators.prox_id]
+        if len(ops) == 0:
+            return proxmin.operators.prox_id
+        if len(ops) == 1:
+            return ops[0]
         else:
-            ops = [ c.prox_morph(self.source.morph[0].shape) for c in self.C if c.prox_morph(self.source.morph[0].shape) is not proxmin.operators.prox_id ]
-            if len(ops) == 0:
-                return proxmin.operators.prox_id
-            if len(ops) == 1:
-                return ops[0]
-            else:
-                return proxmin.operators.AlternatingProjections(ops)
+            return proxmin.operators.AlternatingProjections(ops)
 
     @property
     def prox_g_sed(self):
-        if not isinstance(self.C, list):
-            return self.C.prox_g_sed(self.source.sed[0].shape)
-        else:
-            return [ c.prox_g_sed(self.source.sed[0].shape) for c in self.C if c.prox_g_sed(self.source.sed[0].shape) is not None ]
+        return [c.prox_g_sed(self.source.sed[0].shape) for c in self.C if c.prox_g_sed(self.source.sed[0].shape) is not None]
 
     @property
     def prox_g_morph(self):
-        if not isinstance(self.C, list):
-            return self.C.prox_g_morph(self.source.morph[0].shape)
-        else:
-            return [ c.prox_g_morph(self.source.morph[0].shape) for c in self.C if c.prox_g_morph(self.source.morph[0].shape) is not None ]
+        return [c.prox_g_morph(self.source.morph[0].shape) for c in self.C if c.prox_g_morph(self.source.morph[0].shape) is not None]
 
     @property
     def L_sed(self):
-        if not isinstance(self.C, list):
-            return self.C.L_sed(self.source.sed[0].shape)
-        else:
-            return [ c.L_sed(self.source.sed[0].shape) for c in self.C if c.prox_g_sed(self.source.sed[0].shape) is not None ]
+        return [c.L_sed(self.source.sed[0].shape) for c in self.C if c.prox_g_sed(self.source.sed[0].shape) is not None]
 
     @property
     def L_morph(self):
-        if not isinstance(self.C, list):
-            return self.C.L_morph(self.source.morph[0].shape)
-        else:
-            return [c.L_morph(self.source.morph[0].shape) for c in self.C if c.prox_g_morph(self.source.morph[0].shape) is not None ]
+        return [c.L_morph(self.source.morph[0].shape) for c in self.C if c.prox_g_morph(self.source.morph[0].shape) is not None]
 
     def __repr__(self):
         return repr(self.C)
