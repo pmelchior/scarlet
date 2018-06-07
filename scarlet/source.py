@@ -449,6 +449,12 @@ class Source(object):
     def update_morph(self):
         pass
 
+    def __add__(self, source):
+        return Source(self.components + source.components)
+
+    def __iadd__(self, source):
+        self.components += source.components
+        return self
 
 class PointSource(Source):
     """Create a point source.
