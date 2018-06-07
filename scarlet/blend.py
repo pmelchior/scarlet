@@ -24,7 +24,7 @@ class ScarletRestartException(Exception):
 class Blend(object):
     """The blended scene as interpreted by the deblender.
     """
-    def __init__(self, sources, img, weights=None, bg_rms=None, config=None):
+    def __init__(self, sources):
         """Constructor
 
         Parameters
@@ -33,39 +33,24 @@ class Blend(object):
             Individual sources in the blend.
             The scarlet deblender requires the user to detect sources
             and configure their constraints before initializing a blend
-        img: array-like
-            (Bands, Height, Width) image array containing the data.
-        weights: `~numpy.array`, default=`None`
-            Array (Bands, Height, Width) of weights to use for each pixel in each band.
-            .. warning::
-
-                The weights should be flat in each band
-                (except for zero weighted masked out pixels).
-                Our analysis has shown that when the weights are widely varying
-                over an image in a single band, SED colors (and hence morphologies)
-                are poorly modeled.
-        bg_rms: array-like, default=`None`
-            Array of length `Bands` that contains the sky background RMS in the image for each band,
-            used primarily as a minimum flux threshold to set the box size for each source during resizing.
-            If `bg_rms` is `None` then a zero valued array is used as the minimum flux threshold.
-        config: `~scarlet.Config` instance, default=`None`
-            Special configuration to overwrite default optimization parameters
         """
-        assert len(sources)
+
         # store all source and make search structures
         self._register_sources(sources)
         self.B = self.sources[0].B
 
-        if config is None:
-            config = Config()
-        self.config = config
-
-        # set up data structures
-        self.set_data(img, weights=weights, bg_rms=bg_rms)
-
     @property
     def K(self):
         return len(self.sources)
+
+    def _register_sources(self, sources):
+        """Unpack the components to register them as individual sources.
+        """
+        assert len(sources)
+        self.sources = sources # do not copy!
+        have_psf = [source.has_psf for source in self.sources]
+        self.use_psf = any(have_psf)
+        assert any(have_psf) == all(have_psf)
 
     @property
     def _proxs_g(self):
@@ -120,6 +105,11 @@ class Blend(object):
             at construction time or `~scarlet.blend.Blend.sources`, which is
             the internal reference to that list.
         """
+        try:
+            self._img
+        except AttributeError:
+            raise RuntimeError("img not set: call set_data() before fit()!")
+
         try:
             self.it # test of this is first time fit is called
         except AttributeError:
@@ -178,11 +168,33 @@ class Blend(object):
                 self.fit(steps=steps)
         return self
 
-    def set_data(self, img, weights=None, bg_rms=None):
-        """Initialize the data.
+    def set_data(self, img, weights=None, bg_rms=None, config=None):
+        """Set data and fitting parameters.
 
-        Hold reference to img, initialize the weights and background rms.
+        Parameters
+        ----------
+        img: array-like
+            (Bands, Height, Width) image array containing the data.
+        weights: `~numpy.array`, default=`None`
+            Array (Bands, Height, Width) of weights to use for each pixel in each band.
+            .. warning::
+
+                The weights should be flat in each band
+                (except for zero weighted masked out pixels).
+                Our analysis has shown that when the weights are widely varying
+                over an image in a single band, SED colors (and hence morphologies)
+                are poorly modeled.
+        bg_rms: array-like, default=`None`
+            Array of length `Bands` that contains the sky background RMS in the image for each band,
+            used primarily as a minimum flux threshold to set the box size for each source during resizing.
+            If `bg_rms` is `None` then a zero valued array is used as the minimum flux threshold.
+        config: `~scarlet.Config` instance, default=`None`
+            Special configuration to overwrite default optimization parameters
         """
+        if config is None:
+            config = Config()
+        self.config = config
+
         self._img = img
         B, Ny, Nx = img.shape
         max_size = self.config.source_sizes[-1]
@@ -195,6 +207,7 @@ class Blend(object):
             assert len(bg_rms) == self.B
             self._bg_rms = np.array(bg_rms)
         self._set_weights(weights)
+        return self
 
     def get_model(self, k=None, combine=True, use_sed=True):
         """Compute the current model for the entire image.
@@ -216,14 +229,6 @@ class Blend(object):
             return np.sum([self.get_model(k=k, use_sed=use_sed) for k in range(self.K)], axis=0)
         else:
             return np.array([self.get_model(k=k, use_sed=use_sed) for k in range(self.K)])
-
-    def _register_sources(self, sources):
-        """Unpack the components to register them as individual sources.
-        """
-        self.sources = sources # do not copy!
-        have_psf = [source.has_psf for source in self.sources]
-        self.use_psf = any(have_psf)
-        assert any(have_psf) == all(have_psf)
 
     def _set_weights(self, weights):
         """Set the weights and pixel covariance matrix `_Sigma_1`.
@@ -537,20 +542,15 @@ class Blend(object):
         # compute (model - dxy*shifted_model)/dxy for first-order derivative
         source = self.sources[k]
         slice_k = source.get_slice_for(self._img.shape)
-        model_k = self._models[k][self.sources[k].bb].copy() * source.sed[:,None,None]
+        model_k = self._models[k][self.sources[k].bb] * source.sed[:,None,None]
 
         # get Gamma matrices of source m with additional shift
         offset = source.shift_center
         dx = source.center - source.center_int
         pos_x = dx + (0, offset)
         pos_y = dx + (offset, 0)
-        # If the source shifted off of the image,
-        # recenter and re-initialize it
-        center_x = source.center + pos_x
-        center_y = source.center + pos_y
-        width = self._img.shape[2]
-        height = self._img.shape[1]
-        #TODO: Implement bounding check on the source
+
+        #TODO: Implement bounds check on the source
 
         dGamma_x = source._gamma(pos_x)
         dGamma_y = source._gamma(pos_y)
