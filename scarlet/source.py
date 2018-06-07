@@ -54,7 +54,7 @@ class Source(object):
             changes in position.
         """
         # set size of the source frame
-        self.B = sed.shape
+        self.B = sed.size
         self.sed = sed.copy()
         assert len(morph.shape) == 2
         self.morph = morph.copy()
@@ -326,7 +326,7 @@ class Source(object):
             import scipy.sparse
             Sigma_pix = scipy.sparse.diags(w.flatten(), 0)
             PA = scipy.sparse.bmat([self.sed[b] * self.Gamma[b] for b in range(self.B)])
-            Sigma_s = PA.T.dot(Sigma_pix.dot(PA)
+            Sigma_s = PA.T.dot(Sigma_pix.dot(PA))
             me = np.sqrt(np.diag(np.linalg.inv(Sigma_s.toarray())))
 
             # TODO: the matrix inversion is instable if the PSF gets wide

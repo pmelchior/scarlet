@@ -54,7 +54,6 @@ class Blend(object):
         assert len(sources)
         # store all source and make search structures
         self._register_sources(sources)
-        self.M = len(self.sources)
         self.B = self.sources[0].B
 
         if config is None:
@@ -64,31 +63,9 @@ class Blend(object):
         # set up data structures
         self.set_data(img, weights=weights, bg_rms=bg_rms)
 
-    def source_of(self, k):
-        """Get the indices of model component k.
-
-        Each of `m` `~scarlet.source.Source`s in the model can have multiple
-        components, but the main algorithm recognizes each component as a single
-        source, for `k=Sum_m(m_l)` total sources.
-        This method returns the tuple of indices `(m,l)` for source `k`.
-        """
-        return self._source_of[k]
-
-    def component_of(self, m, l):
-        """Search for k index of source m, component l.
-
-        This is the inverse of source_of, and returns `k` for the given
-        pair `(m,l)`.
-        """
-        for k in range(self.K):
-            if self._source_of[k] == (m,l):
-                return k
-        raise IndexError
-
-    def __len__(self):
-        """Number of `~scarlet.source.Source`s (not including components)
-        """
-        return self.M
+    @property
+    def K(self):
+        return len(self.sources)
 
     @property
     def _proxs_g(self):
@@ -106,9 +83,8 @@ class Blend(object):
         proxs_g_sed = []
         proxs_g_morph = []
         for k in range(self.K):
-            m,l = self.source_of(k)
-            proxs_g_sed.append(self.sources[m].constraints[l].prox_g_sed)
-            proxs_g_morph.append(self.sources[m].constraints[l].prox_g_morph)
+            proxs_g_sed.append(self.sources[k].constraints.prox_g_sed)
+            proxs_g_morph.append(self.sources[k].constraints.prox_g_morph)
         return proxs_g_sed + proxs_g_morph
 
     @property
@@ -121,9 +97,8 @@ class Blend(object):
         Ls_sed = []
         Ls_morph = []
         for k in range(self.K):
-            m,l = self.source_of(k)
-            Ls_sed.append(self.sources[m].constraints[l].L_sed)
-            Ls_morph.append(self.sources[m].constraints[l].L_morph)
+            Ls_sed.append(self.sources[k].constraints.L_sed)
+            Ls_morph.append(self.sources[k].constraints.L_morph)
         return Ls_sed + Ls_morph
 
     def fit(self, steps=200, e_rel=1e-2):
@@ -179,9 +154,8 @@ class Blend(object):
         XA = []
         XS = []
         for k in range(self.K):
-            m,l = self.source_of(k)
-            XA.append(self.sources[m].sed[l])
-            XS.append(self.sources[m].morph[l])
+            XA.append(self.sources[k].sed)
+            XS.append(self.sources[k].morph)
         X = XA + XS
 
         # update_order for bSDMM is over *all* components
@@ -222,33 +196,26 @@ class Blend(object):
             self._bg_rms = np.array(bg_rms)
         self._set_weights(weights)
 
-    def get_model(self, m=None, combine=True, combine_source_components=True, use_sed=True, flat=True):
+    def get_model(self, k=None, combine=True, use_sed=True, flat=True):
         """Compute the current model for the entire image.
         """
-        if m is not None:
-            source = self.sources[m]
-            model = source.get_model(combine=combine_source_components, use_sed=use_sed)
+        if k is not None:
+            source = self.sources[k]
+            model = source.get_model(use_sed=use_sed)
             model_slice = source.get_slice_for(self._img.shape)
 
-            if combine_source_components:
-                model_img = np.zeros(self._img.shape)
-                model_img[source.bb] = model[model_slice]
-            else:
-                # keep record of flux at edge of the source model
-                self._set_edge_flux(m, model)
+            # keep record of flux at edge of the source model
+            self._set_edge_flux(k, model)
 
-                model_img = np.zeros((source.K,) + (self._img.shape))
-                for k in range(source.K):
-                    model_img[k][source.bb] = model[k][model_slice]
+            model_img = np.zeros(self._img.shape)
+            model_img[source.bb] = model[model_slice]
             return model_img
 
         # for all sources
         if combine:
-            return np.sum([self.get_model(m=m, combine_source_components=True, use_sed=use_sed)
-                                for m in range(self.M)], axis=0)
+            return np.sum([self.get_model(k=k, use_sed=use_sed) for k in range(self.K)], axis=0)
         else:
-            models = [self.get_model(m=m, combine_source_components=combine_source_components,
-                                     use_sed=use_sed) for m in range(self.M)]
+            models = [self.get_model(k=k, use_sed=use_sed) for k in range(self.K)]
             if flat:
                 models = np.vstack(models)
             else:
@@ -259,16 +226,9 @@ class Blend(object):
         """Unpack the components to register them as individual sources.
         """
         self.sources = sources # do not copy!
-        self.K =  sum([source.K for source in self.sources])
         have_psf = [source.has_psf for source in self.sources]
         self.use_psf = any(have_psf)
         assert any(have_psf) == all(have_psf)
-
-        # lookup of source/component tuple given component number k
-        self._source_of = []
-        for m in range(len(sources)):
-            for l in range(self.sources[m].K):
-                self._source_of.append((m,l))
 
     def _set_weights(self, weights):
         """Set the weights and pixel covariance matrix `_Sigma_1`.
@@ -311,6 +271,7 @@ class Blend(object):
             # when estimating A do not use (partially) saturated pixels
             self._weights[0][:,mask] = 0
 
+
     def _compute_model(self):
         """Build the entire model.
 
@@ -325,11 +286,10 @@ class Blend(object):
         if self._model_it < self.it:
             # model each each component over image
             # do not use SED, so that it can be reused later
-            self._models = self.get_model(combine=False, combine_source_components=False, use_sed=False)
+            self._models = self.get_model(combine=False, use_sed=False)
             self._A = np.empty((self.B,self.K))
-            for k_ in range(self.K):
-                m,l = self._source_of[k_]
-                self._A[:,k_] = self.sources[m].sed[l]
+            for k in range(self.K):
+                self._A[:,k] = self.sources[k].sed
             self._model = np.sum(self._A.T[:,:,None,None] * self._models, axis=0)
             self._model_it = self.it
 
@@ -364,7 +324,6 @@ class Blend(object):
         # which update to do now
         block = j//self.K
         k = j%self.K
-        m,l = self.source_of(k)
 
         # computing likelihood gradients for S and A:
         # build model only once per iteration
@@ -377,37 +336,37 @@ class Blend(object):
 
         # A update
         if block == 0:
-            if not self.sources[m].fix_sed[l]:
+            if not self.sources[k].fix_sed:
                 # gradient of likelihood wrt A: nominally np.dot(diff, S^T)
                 # but with PSF convolution, S_ij -> sum_q Gamma_bqi S_qj
                 # however, that's exactly the operation done for models[k]
                 grad = np.einsum('...ij,...ij', self._diff, self._models[k])
 
                 # apply per component prox projection and save in source
-                X = self.sources[m].sed[l] =  self.sources[m].constraints[l].prox_sed(X - step*grad, step)
+                X = self.sources[k].sed =  self.sources[k].constraints.prox_sed(X - step*grad, step)
 
         # S update
         elif block == 1:
-            if not self.sources[m].fix_morph[l]:
+            if not self.sources[k].fix_morph:
                 # gradient of likelihood wrt S: nominally np.dot(A^T,diff)
                 # but again: with convolution, it's more complicated
 
                 # first create diff image in frame of source k
-                slice_m = self.sources[m].get_slice_for(self._img.shape)
-                diff_k = np.zeros(self.sources[m].shape)
-                diff_k[slice_m] = self._diff[self.sources[m].bb]
+                slice_k = self.sources[k].get_slice_for(self._img.shape)
+                diff_k = np.zeros(self.sources[k].shape)
+                diff_k[slice_k] = self._diff[self.sources[k].bb]
 
                 # now a gradient vector and a mask of pixel with updates
                 grad = np.zeros(X.shape, dtype=X.dtype)
                 if not self.use_psf:
                     for b in range(self.B):
-                        grad += self.sources[m].sed[l,b]*self.sources[m].Gamma.T.dot(diff_k[b])
+                        grad += self.sources[k].sed[b]*self.sources[k].Gamma.T.dot(diff_k[b])
                 else:
                     for b in range(self.B):
-                        grad += self.sources[m].sed[l,b]*self.sources[m].Gamma[b].T.dot(diff_k[b])
+                        grad += self.sources[k].sed[b]*self.sources[k].Gamma[b].T.dot(diff_k[b])
 
                 # apply per component prox projection and save in source
-                X = self.sources[m].morph[l] = self.sources[m].constraints[l].prox_morph(X - step*grad, step)
+                X = self.sources[k].morph = self.sources[k].constraints.prox_morph(X - step*grad, step)
 
 
         # resize & recenter: after all blocks are updated
@@ -519,15 +478,15 @@ class Blend(object):
         # Create the differential images for all sources
         MT = []
         updated = []
-        for m in range(self.M):
-            if self.sources[m].shift_center:
-                source = self.sources[m]
-                bb_m = source.bb
-                diff_x,diff_y = self._get_shift_differential(m)
+        for k in range(self.K):
+            if self.sources[k].shift_center:
+                source = self.sources[k]
+                bb_k = source.bb
+                diff_x,diff_y = self._get_shift_differential(k)
                 if np.sum(diff_x)==0 or np.sum(diff_y)==0:
                     # The source might not have any flux,
                     # so don't try to fit it's position
-                    logger.info("No flux in {0}, skipping recentering in it {1}".format(m, self.it))
+                    logger.info("No flux in {0}, skipping recentering in it {1}".format(k, self.it))
                     continue
                 diff_x[:,:,-1] = 0
                 diff_y[:,-1,:] = 0
@@ -555,24 +514,24 @@ class Blend(object):
             result = np.dot(np.dot(np.linalg.inv(np.dot(MT, MT.T*w)), MT), y.flatten())
 
         # Apply the corrections to all of the sources
-        for m in range(self.M):
-            if m not in updated:
+        for k in range(self.k):
+            if k not in updated:
                 continue
-            _m = updated.index(m)
+            _k = updated.index(k)
             ddx, ddy = result[2*_m:2*_m+2]
             if ddx**2 + ddy**2 > self.config.center_min_dist**2:
-                source = self.sources[m]
+                source = self.sources[k]
                 center = source.center + (ddy, ddx)
                 source.set_center(center)
                 msg = "shifting source {0} by ({1:.3f}/{2:.3f}) to ({3:.3f}/{4:.3f}) in it {5}"
-                logger.debug(msg.format(m, ddy, ddx, source.center[0], source.center[1], self.it))
+                logger.debug(msg.format(k, ddy, ddx, source.center[0], source.center[1], self.it))
 
-    def _get_shift_differential(self, m):
+    def _get_shift_differential(self, k):
         """Calculate the difference image used ot fit positions
 
         Parameters
         ----------
-        m: int
+        k: int
             Index of the source in `~scarlet.blend.Blend.sources`
 
         Returns
@@ -581,15 +540,9 @@ class Blend(object):
             Difference image in each band used to fit the position
         """
         # compute (model - dxy*shifted_model)/dxy for first-order derivative
-        source = self.sources[m]
-        slice_m = source.get_slice_for(self._img.shape)
-        k = self.component_of(m, 0)
-        model_m = self._models[k][self.sources[m].bb].copy() * source.sed[0][:,None,None]
-        # in self._models, per-source components aren't combined,
-        # need to combine here
-        for l in range(1,source.K):
-            k = self.component_of(m,l)
-            model_m += self._models[k][self.sources[m].bb] * source.sed[l][:,None,None]
+        source = self.sources[k]
+        slice_k = source.get_slice_for(self._img.shape)
+        model_m = self._models[k][self.sources[k].bb].copy() * source.sed[:,None,None]
 
         # get Gamma matrices of source m with additional shift
         offset = source.shift_center
@@ -612,12 +565,12 @@ class Blend(object):
         diff_img[1] = (model_m-diff_img[1][slice_m])/source.shift_center
         return diff_img
 
-    def _set_edge_flux(self, m, model):
+    def _set_edge_flux(self, k, model):
         """Keep track of the flux at the edge of the model.
 
         Parameters
         ----------
-        m: int
+        k: int
             Index of the source
         model: `~numpy.array`
             (Band,Height,Width) array of the model.
@@ -629,13 +582,13 @@ class Blend(object):
         try:
             self._edge_flux
         except AttributeError:
-            self._edge_flux = np.zeros((self.M, 4, self.B))
+            self._edge_flux = np.zeros((self.K, 4, self.B))
 
         # top, right, bottom, left
-        self._edge_flux[m,0,:] = np.abs(model[:,:,-1,:]).sum(axis=0).mean(axis=1)
-        self._edge_flux[m,1,:] = np.abs(model[:,:,:,-1]).sum(axis=0).mean(axis=1)
-        self._edge_flux[m,2,:] = np.abs(model[:,:,0,:]).sum(axis=0).mean(axis=1)
-        self._edge_flux[m,3,:] = np.abs(model[:,:,:,0]).sum(axis=0).mean(axis=1)
+        self._edge_flux[k,0,:] = np.abs(model[:,:,-1,:]).sum(axis=0).mean(axis=1)
+        self._edge_flux[k,1,:] = np.abs(model[:,:,:,-1]).sum(axis=0).mean(axis=1)
+        self._edge_flux[k,2,:] = np.abs(model[:,:,0,:]).sum(axis=0).mean(axis=1)
+        self._edge_flux[k,3,:] = np.abs(model[:,:,:,0]).sum(axis=0).mean(axis=1)
 
     def resize_sources(self):
         """Resize frames for sources (if necessary).
@@ -649,14 +602,14 @@ class Blend(object):
 
         """
         resized = False
-        for m in range(self.M):
-            if not self.sources[m].fix_frame:
-                size = [self.sources[m].Ny, self.sources[m].Nx]
+        for k in range(self.K):
+            if not self.sources[k].fix_frame:
+                size = [self.sources[k].Ny, self.sources[k].Nx]
                 increase = 1 # minimal increase, new size will be determine by config
                 newsize = [self.config.find_next_source_size(size[i] + increase) for i in range(2)]
 
                 # check if max flux along edge in band b < avg noise level along edge in b
-                at_edge = (self._edge_flux[m] > self._bg_rms * self.config.edge_flux_thresh)
+                at_edge = (self._edge_flux[k] > self._bg_rms * self.config.edge_flux_thresh)
                 # TODO: without symmetry constraints, the four edges of the box
                 # should be allowed to resize independently
                 _size = [size[0], size[1]]
@@ -669,15 +622,14 @@ class Blend(object):
                     resized = resized_source = True
                 if resized_source:
                     logger.info("resizing source {0} from ({1},{2}) to ({3},{4}) at it {5}" .format(
-                        m, _size[0], _size[1], size[0], size[1], self.it))
-                    self.sources[m].resize(size)
+                        k, _size[0], _size[1], size[0], size[1], self.it))
+                    self.sources[k].resize(size)
         return resized
 
     def _absolute_morph_error(self):
         """Get the absolute morphology error
         """
-        return [self.e_rel * self.sources[m].morph[l].mean()
-                for m in range(self.M) for l in range(self.sources[m].K)]
+        return [self.e_rel * self.sources[k].morph.mean() for k in range(self.K)]
 
     def _set_error_limits(self):
         """Set the error limits for each source
