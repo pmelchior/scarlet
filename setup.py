@@ -119,7 +119,7 @@ setup(
   url = 'https://github.com/fred3m/scarlet',
   keywords = ['astro', 'deblending', 'photometry', 'nmf'],
   ext_modules=ext_modules,
-  install_requires=['numpy', 'scipy', 'pybind11>=2.2', 'proxmin>=0.5.0', 'peigen>=0.0.9'],
+  install_requires=['numpy', 'scipy', 'pybind11>=2.2', 'proxmin>=0.5.1', 'peigen>=0.0.9'],
   cmdclass={'build_ext': BuildExt},
   zip_safe=False,
 )
