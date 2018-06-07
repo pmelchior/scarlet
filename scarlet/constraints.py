@@ -276,14 +276,26 @@ class ConstraintAdapter(object):
         if not isinstance(self.C, list):
             return self.C.prox_sed(self.source.sed[0].shape)
         else:
-            return proxmin.operators.AlternatingProjections([c.prox_sed(self.source.sed[0].shape) for c in self.C])
+            ops = [ c.prox_sed(self.source.sed[0].shape) for c in self.C if c.prox_sed(self.source.sed[0].shape) is not proxmin.operators.prox_id ]
+            if len(ops) == 0:
+                return proxmin.operators.prox_id
+            if len(ops) == 1:
+                return ops[0]
+            else:
+                return proxmin.operators.AlternatingProjections(ops)
 
     @property
     def prox_morph(self):
         if not isinstance(self.C, list):
             return self.C.prox_morph(self.source.morph[0].shape)
         else:
-            return proxmin.operators.AlternatingProjections([c.prox_morph(self.source.morph[0].shape) for c in self.C])
+            ops = [ c.prox_morph(self.source.morph[0].shape) for c in self.C if c.prox_morph(self.source.morph[0].shape) is not proxmin.operators.prox_id ]
+            if len(ops) == 0:
+                return proxmin.operators.prox_id
+            if len(ops) == 1:
+                return ops[0]
+            else:
+                return proxmin.operators.AlternatingProjections(ops)
 
     @property
     def prox_g_sed(self):
