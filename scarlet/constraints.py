@@ -15,23 +15,65 @@ def check_cache(name, key):
 
     return cache[name][key]
 
+class ConstraintAdapter(object):
+    """A constraint container for SED and Morphology of a :class:`~scarlet.source.Source`
+    """
+    def __init__(self, C, source):
+        """Initialize the constraint adapter.
+        """
+        self.C = C
+        self.source = source
+
+    @property
+    def prox_sed(self):
+        return self.C.prox_sed(self.source.sed.shape)
+
+    @property
+    def prox_morph(self):
+        return self.C.prox_morph(self.source.morph.shape)
+
+    @property
+    def prox_g_sed(self):
+        return self.C.prox_g_sed(self.source.sed.shape)
+
+    @property
+    def prox_g_morph(self):
+        return self.C.prox_g_morph(self.source.morph.shape)
+
+    @property
+    def L_sed(self):
+        return self.C.L_sed(self.source.sed.shape)
+
+    @property
+    def L_morph(self):
+        return self.C.L_morph(self.source.morph.shape)
+
+    def __repr__(self):
+        return repr(self.C)
+
 class Constraint(object):
-    """A constraint on either the SED or Morphology of a :class:`~scarlet.source.Source`
+    """A constraint generator for SED and Morphology.
     """
     def __init__(self):
-        """Initialize the properties
+        pass
 
-        All `Constraint` objects have the properties
-        `prox_sed`, `prox_morph`, `prox_g_sed`, `prox_g_morph`,
-        `L_sed`, `L_morph`, `source` all set to `None`.
-        """
-        self.prox_sed = proxmin.operators.prox_id  # None, single operator, or AlternatingProjections
-        self.prox_morph = proxmin.operators.prox_id
-        self.prox_g_sed = None # None or operator
-        self.prox_g_morph = None
-        self.L_sed = None      # None or matrix
-        self.L_morph = None
-        self.source = None
+    def prox_sed(self, shape):
+        return proxmin.operators.prox_id
+
+    def prox_morph(self, shape):
+        return proxmin.operators.prox_id
+
+    def prox_g_sed(self, shape):
+        return None # None or operator
+
+    def prox_g_morph(self, shape):
+        return None
+
+    def L_sed(self, shape):
+        return None # None or matrix
+
+    def L_morph(self, shape):
+        return None
 
     def __and__(self, c):
         """Combine two constraints
@@ -41,41 +83,36 @@ class Constraint(object):
         else:
             raise NotImplementedError
 
+
 class MinimalConstraint(Constraint):
-    """The minimal constraint required for the result to make sense
+    """The minimal constraint for sources.
 
     This constraint uses a `proxmin.operators.prox_plus` constraint on the
     morphology (because the flux should always be positive), and a
     `proxmin.operators.prox_unity_plus` constraint on the SED
     (because the SED should always be positive and sum to unity).
     """
-    def __init__(self):
-        super(MinimalConstraint, self).__init__()
-        self.prox_morph = proxmin.operators.prox_plus
-        self.prox_sed = proxmin.operators.prox_unity_plus
+    def prox_morph(self, shape):
+        return proxmin.operators.prox_plus
 
-class PositivityConstraint(Constraint):
-    """Constrain the morphology to always be positive
+    def prox_sed(self, shape):
+        return proxmin.operators.prox_unity_plus
 
-    This is slightly more strict than non-negative, where the
-    `operators.prox_center_on` proximal operator forces the central
-    pixel of the morphology to have a tiny amount of flux, which is necessary for
-    the recentering algorithm.
+class SimpleConstraint(Constraint):
+    """Effective but still minimally restrictive constraint.
+
+    SED positive and normalized to unity;
+    morphology positive and with non-zero center.
     """
-    def __init__(self):
-        super(PositivityConstraint, self).__init__()
-        self.prox_morph = proxmin.operators.AlternatingProjections([
-            operators.prox_center_on, proxmin.operators.prox_plus])
+    def prox_sed(self, shape):
+        return proxmin.operators.prox_unity_plus
 
-class SimpleConstraint(PositivityConstraint):
-    """Constrain the SED to be positive and sum to unity
-    """
-    def __init__(self):
-        super(SimpleConstraint, self).__init__()
-        self.prox_sed = proxmin.operators.prox_unity_plus
+    def prox_morph(self, shape):
+        return proxmin.operators.AlternatingProjections([
+                operators.prox_center_on, proxmin.operators.prox_plus])
 
 class L0Constraint(Constraint):
-    """Add an L0 sparsity penalty to the morphology
+    """L0 sparsity penalty for the morphology
     """
     def __init__(self, thresh):
         """Initialize the constraint
@@ -85,12 +122,13 @@ class L0Constraint(Constraint):
         thresh: float
             Threshold to use in `proxmin.operators.prox_hard`
         """
-        super(L0Constraint, self).__init__()
-        self.prox_morph = partial(proxmin.operators.prox_hard, thresh=thresh)
         self.thresh = thresh
 
+    def prox_morph(self, shape):
+        return partial(proxmin.operators.prox_hard, thresh=self.thresh)
+
 class L1Constraint(Constraint):
-    """Add an L1 sparsity penalty to the morphology
+    """L1 sparsity penalty for the morphology
     """
     def __init__(self, thresh):
         """Initialize the constraint
@@ -100,9 +138,10 @@ class L1Constraint(Constraint):
         thresh: float
             Threshold to use in `proxmin.operators.prox_soft`
         """
-        super(L1Constraint, self).__init__()
-        self.prox_morph = partial(proxmin.operators.prox_soft, thresh=thresh)
         self.thresh = thresh
+
+    def prox_morph(self, shape):
+        return partial(proxmin.operators.prox_soft, thresh=self.thresh)
 
 class DirectMonotonicityConstraint(Constraint):
     """Strict monotonicity constraint
@@ -128,32 +167,29 @@ class DirectMonotonicityConstraint(Constraint):
             Minimum ratio between the current pixel and it's reference pixel.
             When `thresh=0` (default) a flat morphology is allowed.
         """
-        super(DirectMonotonicityConstraint, self).__init__()
         self.use_nearest = use_nearest
         self.exact = exact
         self.thresh = thresh
-        self.prox_morph = self._prox_morph
 
-    def _prox_morph(self, X, step):
+    def prox_morph(self, shape):
         """Build the proximal operator
 
         Strict monotonicity depends on the shape of the source,
         so this function selects the proper one from a cache.
         """
         prox_name = "DirectMonotonicityConstraint.prox_morph"
-        key = X.shape
+        key = shape
         try:
             prox = check_cache(prox_name, key)
         except KeyError:
             if not self.exact:
-                prox = operators.prox_strict_monotonic(X.shape, use_nearest=self.use_nearest, thresh=self.thresh)
+                prox = operators.prox_strict_monotonic(shape, use_nearest=self.use_nearest, thresh=self.thresh)
             else:
                 # cone method for monotonicity: exact but VERY slow
-                G = transformations.getRadialMonotonicOp(X.shape, useNearest=self.useNearest).toarray()
+                G = transformations.getRadialMonotonicOp(shape, useNearest=self.useNearest).toarray()
                 prox = partial(operators.prox_cone, G=G)
             cache[prox_name][key] = prox
-
-        return prox(X, step)
+        return prox
 
 class MonotonicityConstraint(Constraint):
     """$prox_g$ monotonicity constraint
@@ -173,43 +209,25 @@ class MonotonicityConstraint(Constraint):
             Otherwise (the default) a weighted average of all a pixels neighbors
             closer to the peak is used.
         """
-        super(MonotonicityConstraint, self).__init__()
-        # positive radial gradients:
-        self.prox_g_morph = proxmin.operators.prox_plus
-        # lazy initialization: wait for the reset to set the source size
         self.use_nearest = use_nearest
 
-    def reset(self, source):
-        """Build the proximal operator
+    def prox_g_morph(self, shape):
+        return proxmin.operators.prox_plus
 
-        Monotonicity depends on the shape of the source,
-        so it cannot be built until after the `source` has been created
-        with a bounding box.
-        """
-        super(MonotonicityConstraint, self).reset(source)
-        shape = source.shape[1:]
-        self.L_morph = transformations.getRadialMonotonicOp(shape, useNearest=self.use_nearest)
+    def L_morph(self, shape):
+        return transformations.getRadialMonotonicOp(shape, useNearest=self.use_nearest)
 
 class SymmetryConstraint(Constraint):
     """$prox_g$ symmetry constraint
 
     Requires that the source is symmetric about the peak
     """
-    def __init__(self):
-        super(SymmetryConstraint, self).__init__()
-        self.prox_g_morph = proxmin.operators.prox_zero
-        # lazy initialization: wait for the reset to set the source size
 
-    def reset(self, source):
-        """Build the proximal operator
+    def prox_g_morph(self, shape):
+        return proxmin.operators.prox_zero
 
-        Symmetry depends on the shape of the source,
-        so it cannot be built until after the `source` has been created
-        with a bounding box.
-        """
-        super(SymmetryConstraint, self).reset(source)
-        shape = source.shape[1:]
-        self.L_morph = transformations.getSymmetryOp(shape)
+    def L_morph(self, shape):
+        return transformations.getSymmetryOp(shape)
 
 class DirectSymmetryConstraint(Constraint):
     """Soft symmetry constraint
@@ -219,9 +237,10 @@ class DirectSymmetryConstraint(Constraint):
     `sigma=1` (perfect symmetry required).
     """
     def __init__(self, sigma=1):
-        super(DirectSymmetryConstraint, self).__init__()
-        self.prox_morph = partial(operators.prox_soft_symmetry, sigma=sigma)
         self.sigma = sigma
+
+    def prox_morph(self, shape):
+        return partial(operators.prox_soft_symmetry, sigma=self.sigma)
 
 class TVxConstraint(Constraint):
     """Total Variation (TV) in X
@@ -237,15 +256,20 @@ class TVxConstraint(Constraint):
         thresh: float
             Threshold to use in `proxmin.operators.prox_soft`
         """
-        super(DirectMonotonicityConstraint, self).__init__()
-        self.proxs_g_morph = partial(proxmin.operators.prox_soft, thresh=thresh)
         self.thresh = thresh
-        # lazy initialization: wait for the reset to set the source size
 
-    def reset(self, source):
-        super(Constraint, self).reset(source)
-        shape = source.shape[1:]
-        self.L_morph = proxmin.transformations.get_gradient_x(shape, source.Nx)
+    def proxs_g_morph(self, shape):
+        return partial(proxmin.operators.prox_soft, thresh=self.thresh)
+
+    def L_morph(self, shape):
+        name = "TVxConstraint.L_morph"
+        key = shape
+        try:
+            return check_cache(name, key)
+        except KeyError:
+            L = proxmin.transformations.get_gradient_x(shape, shape[1])
+            cache[name][key] = L
+            return L
 
 class TVyConstraint(Constraint):
     """Total Variation (TV) in Y
@@ -261,14 +285,20 @@ class TVyConstraint(Constraint):
         thresh: float
             Threshold to use in `proxmin.operators.prox_soft`
         """
-        super(DirectMonotonicityConstraint, self).__init__()
-        self.proxs_g_morph = partial(proxmin.operators.prox_soft, thresh=thresh)
         self.thresh = thresh
-        # lazy initialization: wait for the reset to set the source size
 
-    def reset(self, source):
-        shape = source.shape[1:]
-        self.L_morph = proxmin.transformations.get_gradient_y(shape, source.Ny)
+    def proxs_g_morph(self, shape):
+        return partial(proxmin.operators.prox_soft, thresh=self.thresh)
+
+    def L_morph(self, shape):
+        name = "TVyConstraint.L_morph"
+        key = shape
+        try:
+            return check_cache(name, key)
+        except KeyError:
+            L = proxmin.transformations.get_gradient_y(shape, shape[0])
+            cache[name][key] = L
+            return L
 
 class ConstraintList:
     """List of `Constraint` objects

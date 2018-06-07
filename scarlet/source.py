@@ -175,13 +175,11 @@ class Source(object):
             K = extend
 
         if constraints is None:
-            self.constraints += [sc.SimpleConstraint()] * K
-        elif isinstance(constraints, sc.Constraint) or isinstance(constraints, sc.ConstraintList):
-            self.constraints += [constraints] * K
-        elif len(constraints) == K:
-            self.constraints += constraints
-        else:
-            raise NotImplementedError("constraint %r not understood" % constraints)
+            constraints = sc.SimpleConstraint()
+
+        assert isinstance(constraints, sc.Constraint)
+
+        self.constraints = [sc.ConstraintAdapter(constraints, self)] * K
 
     def add_component(self, sed, morph, constraints=None, fix_sed=False, fix_morph=False):
         """Extend Source by adding component(s).
