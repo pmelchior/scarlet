@@ -29,17 +29,6 @@ class Constraint(object):
     def L_morph(self, shape):
         return None
 
-    def __and__(self, c):
-        """Combine multiple constraints
-        """
-        if isinstance(c, Constraint):
-            return [self, c]
-        elif isinstance(c, list) and all([isinstance(c_, Constraint) for c_ in c]):
-            return [self] + c
-        else:
-            raise NotImplementedError("second argument must be constraint or list of constraints")
-
-
 class MinimalConstraint(Constraint):
     """The minimal constraint for sources.
 
@@ -269,7 +258,7 @@ class ConstraintAdapter(object):
             _C = [C]
         else:
             _C = C
-        if isinstance(_C, list) and all([isinstance(_c, Constraint) for _c in _C]):
+        if hasattr(_C, '__iter__') and all([isinstance(_c, Constraint) for _c in _C]):
             self.C = _C
         else:
             raise NotImplementedError("argument `C` must be constraint or list of constraints")
