@@ -449,7 +449,7 @@ def getSymmetryOp(shape):
     except KeyError:
         idx = np.arange(shape[0]*shape[1])
         sidx = idx[::-1]
-        symmetryOp = getIdentityOp(shape)
+        symmetryOp = getIdentityOp(shape).L
         symmetryOp -= scipy.sparse.coo_matrix((np.ones(size),(idx, sidx)), shape=(size,size))
         symmetryOp = proxmin.utils.MatrixAdapter(symmetryOp, axis=1)
         global cache

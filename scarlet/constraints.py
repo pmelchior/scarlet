@@ -15,42 +15,6 @@ def check_cache(name, key):
 
     return cache[name][key]
 
-class ConstraintAdapter(object):
-    """A constraint container for SED and Morphology of a :class:`~scarlet.source.Source`
-    """
-    def __init__(self, C, source):
-        """Initialize the constraint adapter.
-        """
-        self.C = C
-        self.source = source
-
-    @property
-    def prox_sed(self):
-        return self.C.prox_sed(self.source.sed[0].shape)
-
-    @property
-    def prox_morph(self):
-        return self.C.prox_morph(self.source.morph[0].shape)
-
-    @property
-    def prox_g_sed(self):
-        return self.C.prox_g_sed(self.source.sed[0].shape)
-
-    @property
-    def prox_g_morph(self):
-        return self.C.prox_g_morph(self.source.morph[0].shape)
-
-    @property
-    def L_sed(self):
-        return self.C.L_sed(self.source.sed[0].shape)
-
-    @property
-    def L_morph(self):
-        return self.C.L_morph(self.source.morph[0].shape)
-
-    def __repr__(self):
-        return repr(self.C)
-
 class Constraint(object):
     """A constraint generator for SED and Morphology.
     """
@@ -76,12 +40,14 @@ class Constraint(object):
         return None
 
     def __and__(self, c):
-        """Combine two constraints
+        """Combine multiple constraints
         """
         if isinstance(c, Constraint):
-            return ConstraintList([self, c])
+            return [self, c]
+        elif isinstance(c, list) and all([isinstance(c_, Constraint) for c_ in c]):
+            return [self] + c
         else:
-            raise NotImplementedError
+            raise NotImplementedError("second argument must be constraint or list of constraints")
 
 
 class MinimalConstraint(Constraint):
@@ -300,99 +266,60 @@ class TVyConstraint(Constraint):
             cache[name][key] = L
             return L
 
-class ConstraintList:
-    """List of `Constraint` objects
 
-    In general a single component of a source might have multiple
-    constraints.
-    Some of these might be $prox_f$ strict constraints while others may be
-    $prox_g$ linear constraints, which can both apply to either the
-    SED or morphology of the component.
-    The `ConstraintList` contains all of the constraints on a single component.
+class ConstraintAdapter(object):
+    """A constraint container for SED and Morphology of a :class:`~scarlet.source.Source`
     """
-    def __init__(self, constraints, repeat=1):
-        self.prox_sed = None # might be None, single operator, or AlternatingProjections
-        self.prox_morph = None
-        self.prox_g_sed = None # None or list of operators
-        self.prox_g_morph = None
-        self.L_sed = None # None or list of matrices
-        self.L_morph = None
-        self.constraints = []
-        self.repeat = repeat
-        for c in constraints:
-            self.__iand__(c)
-
-    def __getitem__(self, index):
-        """Get the `Constraint` at index `index`.
+    def __init__(self, C, source):
+        """Initialize the constraint adapter.
         """
-        return self.constraints[index]
+        if isinstance(C, Constraint) or (isinstance(C, list) and all([isinstance(c_, Constraint) for c_ in C])):
+            self.C = C
+        else:
+            raise NotImplementedError("argument `C` must be constraint or list of constraints")
+        self.source = source
 
-    def __and__(self, c):
-        """Combine multiple constraints
-        """
-        cl = ConstraintList(self.constraints)
-        return cl.__iand__(c)
+    @property
+    def prox_sed(self):
+        if not isinstance(self.C, list):
+            return self.C.prox_sed(self.source.sed[0].shape)
+        else:
+            return proxmin.operators.AlternatingProjections([c.prox_sed(self.source.sed[0].shape) for c in self.C])
 
-    def __iand__(self, c):
-        """Combine multiple constraints
-        """
-        if isinstance(c, ConstraintList):
-            for _c in c.constraints:
-                self.__iand__(_c)
-            return self
+    @property
+    def prox_morph(self):
+        if not isinstance(self.C, list):
+            return self.C.prox_morph(self.source.morph[0].shape)
+        else:
+            return proxmin.operators.AlternatingProjections([c.prox_morph(self.source.morph[0].shape) for c in self.C])
 
-        self.constraints.append(c)
-        self._update_projections(c, 'prox_sed')
-        self._update_projections(c, 'prox_morph')
-        self._update_constraint_list(c, 'prox_g_sed')
-        self._update_constraint_list(c, 'prox_g_morph')
-        self._update_constraint_list(c, 'L_sed')
-        self._update_constraint_list(c, 'L_morph')
-        return self
+    @property
+    def prox_g_sed(self):
+        if not isinstance(self.C, list):
+            return self.C.prox_g_sed(self.source.sed[0].shape)
+        else:
+            return [ c.prox_g_sed(self.source.sed[0].shape) for c in self.C if c.prox_g_sed(self.source.sed[0].shape) is not None ]
 
-    def _update_projections(self, constraint, prox_name):
-        """Update $prox_f$ constraints
+    @property
+    def prox_g_morph(self):
+        if not isinstance(self.C, list):
+            return self.C.prox_g_morph(self.source.morph[0].shape)
+        else:
+            return [ c.prox_g_morph(self.source.morph[0].shape) for c in self.C if c.prox_g_morph(self.source.morph[0].shape) is not None ]
 
-        When daisy chaining multiple $prox_f$ constraints,
-        which might not commute, we use a
-        `proxmin.operators.AlternatingProjections` to combine the
-        constraints such that they are alternated in each step of the
-        minimization.
-        """
-        prox = getattr(self, prox_name)
-        cprox = getattr(constraint, prox_name)
-        if cprox is not None:
-            if prox is None or prox is proxmin.operators.prox_id:
-                prox = cprox
-            elif isinstance(prox, proxmin.operators.AlternatingProjections) is False:
-                # self.<prox_name> is single operator
-                if isinstance(cprox, proxmin.operators.AlternatingProjections):
-                    ops = [prox] + cprox.operators
-                else:
-                    ops = [prox, cprox]
-                prox = proxmin.operators.AlternatingProjections(ops, repeat=self.repeat)
-            else:
-                # self.<prox_name> is AlternatingProjections
-                if isinstance(cprox, proxmin.operators.AlternatingProjections):
-                    ops = prox.operators + cprox.operators
-                else:
-                    ops = prox.operators + [cprox]
-                prox = proxmin.operators.AlternatingProjections(ops, repeat=self.repeat)
-        setattr(self, prox_name, prox)
+    @property
+    def L_sed(self):
+        if not isinstance(self.C, list):
+            return self.C.L_sed(self.source.sed[0].shape)
+        else:
+            return [ c.L_sed(self.source.sed[0].shape) for c in self.C if c.prox_g_sed(self.source.sed[0].shape) is not None ]
 
-    def _update_constraint_list(self, constraint, key):
-        """Combine individual constraints
+    @property
+    def L_morph(self):
+        if not isinstance(self.C, list):
+            return self.C.L_morph(self.source.morph[0].shape)
+        else:
+            return [c.L_morph(self.source.morph[0].shape) for c in self.C if c.prox_g_morph(self.source.morph[0].shape) is not None ]
 
-        Each `Constraint` can contain multiple types of constraints.
-        When multiple `Constraint`s are combined, this method updates
-        the appropriate constraints in the list
-        """
-        if hasattr(constraint, key):
-            clist = getattr(self, key)
-            c = getattr(constraint, key)
-            if c is not None:
-                if clist is None:
-                    clist = [c]
-                else:
-                    clist.append(c)
-                setattr(self, key, clist)
+    def __repr__(self):
+        return repr(self.C)

@@ -177,8 +177,6 @@ class Source(object):
         if constraints is None:
             constraints = sc.SimpleConstraint()
 
-        assert isinstance(constraints, sc.Constraint)
-
         self.constraints = [sc.ConstraintAdapter(constraints, self)] * K
 
     def add_component(self, sed, morph, constraints=None, fix_sed=False, fix_morph=False):
