@@ -196,7 +196,7 @@ class Blend(object):
             self._bg_rms = np.array(bg_rms)
         self._set_weights(weights)
 
-    def get_model(self, k=None, combine=True, use_sed=True, flat=True):
+    def get_model(self, k=None, combine=True, use_sed=True):
         """Compute the current model for the entire image.
         """
         if k is not None:
@@ -215,12 +215,7 @@ class Blend(object):
         if combine:
             return np.sum([self.get_model(k=k, use_sed=use_sed) for k in range(self.K)], axis=0)
         else:
-            models = [self.get_model(k=k, use_sed=use_sed) for k in range(self.K)]
-            if flat:
-                models = np.vstack(models)
-            else:
-                models = np.array(models)
-            return models
+            return np.array([self.get_model(k=k, use_sed=use_sed) for k in range(self.K)])
 
     def _register_sources(self, sources):
         """Unpack the components to register them as individual sources.
@@ -497,7 +492,7 @@ class Blend(object):
                 _img_x[source.bb] = diff_x
                 _img_y = np.zeros(y.shape)
                 _img_y[source.bb] = diff_y
-                updated.append(m)
+                updated.append(k)
                 MT.append(_img_x.flatten())
                 MT.append(_img_y.flatten())
         if len(MT)==0:
@@ -514,11 +509,11 @@ class Blend(object):
             result = np.dot(np.dot(np.linalg.inv(np.dot(MT, MT.T*w)), MT), y.flatten())
 
         # Apply the corrections to all of the sources
-        for k in range(self.k):
+        for k in range(self.K):
             if k not in updated:
                 continue
             _k = updated.index(k)
-            ddx, ddy = result[2*_m:2*_m+2]
+            ddx, ddy = result[2*_k:2*_k+2]
             if ddx**2 + ddy**2 > self.config.center_min_dist**2:
                 source = self.sources[k]
                 center = source.center + (ddy, ddx)
@@ -542,7 +537,7 @@ class Blend(object):
         # compute (model - dxy*shifted_model)/dxy for first-order derivative
         source = self.sources[k]
         slice_k = source.get_slice_for(self._img.shape)
-        model_m = self._models[k][self.sources[k].bb].copy() * source.sed[:,None,None]
+        model_k = self._models[k][self.sources[k].bb].copy() * source.sed[:,None,None]
 
         # get Gamma matrices of source m with additional shift
         offset = source.shift_center
@@ -559,10 +554,10 @@ class Blend(object):
 
         dGamma_x = source._gamma(pos_x)
         dGamma_y = source._gamma(pos_y)
-        diff_img = [source.get_model(combine=True, Gamma=dGamma_x),
-                    source.get_model(combine=True, Gamma=dGamma_y)]
-        diff_img[0] = (model_m-diff_img[0][slice_m])/source.shift_center
-        diff_img[1] = (model_m-diff_img[1][slice_m])/source.shift_center
+        diff_img = [source.get_model(Gamma=dGamma_x),
+                    source.get_model(Gamma=dGamma_y)]
+        diff_img[0] = (model_k-diff_img[0][slice_k])/source.shift_center
+        diff_img[1] = (model_k-diff_img[1][slice_k])/source.shift_center
         return diff_img
 
     def _set_edge_flux(self, k, model):
@@ -585,10 +580,10 @@ class Blend(object):
             self._edge_flux = np.zeros((self.K, 4, self.B))
 
         # top, right, bottom, left
-        self._edge_flux[k,0,:] = np.abs(model[:,:,-1,:]).sum(axis=0).mean(axis=1)
-        self._edge_flux[k,1,:] = np.abs(model[:,:,:,-1]).sum(axis=0).mean(axis=1)
-        self._edge_flux[k,2,:] = np.abs(model[:,:,0,:]).sum(axis=0).mean(axis=1)
-        self._edge_flux[k,3,:] = np.abs(model[:,:,:,0]).sum(axis=0).mean(axis=1)
+        self._edge_flux[k,0,:] = np.abs(model[:,-1,:]).mean(axis=1)
+        self._edge_flux[k,1,:] = np.abs(model[:,:,-1]).mean(axis=1)
+        self._edge_flux[k,2,:] = np.abs(model[:,0,:]).mean(axis=1)
+        self._edge_flux[k,3,:] = np.abs(model[:,:,0]).mean(axis=1)
 
     def resize_sources(self):
         """Resize frames for sources (if necessary).

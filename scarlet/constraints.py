@@ -277,7 +277,7 @@ class ConstraintAdapter(object):
 
     @property
     def prox_sed(self):
-        ops = [c.prox_sed(self.source.sed[0].shape) for c in self.C if c.prox_sed(self.source.sed[0].shape) is not proxmin.operators.prox_id]
+        ops = [c.prox_sed(self.source.sed.shape) for c in self.C if c.prox_sed(self.source.sed.shape) is not proxmin.operators.prox_id]
         if len(ops) == 0:
             return proxmin.operators.prox_id
         if len(ops) == 1:
@@ -287,7 +287,7 @@ class ConstraintAdapter(object):
 
     @property
     def prox_morph(self):
-        ops = [c.prox_morph(self.source.morph[0].shape) for c in self.C if c.prox_morph(self.source.morph[0].shape) is not proxmin.operators.prox_id]
+        ops = [c.prox_morph(self.source.morph.shape) for c in self.C if c.prox_morph(self.source.morph.shape) is not proxmin.operators.prox_id]
         if len(ops) == 0:
             return proxmin.operators.prox_id
         if len(ops) == 1:
@@ -297,19 +297,19 @@ class ConstraintAdapter(object):
 
     @property
     def prox_g_sed(self):
-        return [c.prox_g_sed(self.source.sed[0].shape) for c in self.C if c.prox_g_sed(self.source.sed[0].shape) is not None]
+        return [c.prox_g_sed(self.source.sed.shape) for c in self.C if c.prox_g_sed(self.source.sed.shape) is not None]
 
     @property
     def prox_g_morph(self):
-        return [c.prox_g_morph(self.source.morph[0].shape) for c in self.C if c.prox_g_morph(self.source.morph[0].shape) is not None]
+        return [c.prox_g_morph(self.source.morph.shape) for c in self.C if c.prox_g_morph(self.source.morph.shape) is not None]
 
     @property
     def L_sed(self):
-        return [c.L_sed(self.source.sed[0].shape) for c in self.C if c.prox_g_sed(self.source.sed[0].shape) is not None]
+        return [c.L_sed(self.source.sed.shape) for c in self.C if c.prox_g_sed(self.source.sed.shape) is not None]
 
     @property
     def L_morph(self):
-        return [c.L_morph(self.source.morph[0].shape) for c in self.C if c.prox_g_morph(self.source.morph[0].shape) is not None]
+        return [c.L_morph(self.source.morph.shape) for c in self.C if c.prox_g_morph(self.source.morph.shape) is not None]
 
     def __repr__(self):
         return repr(self.C)
