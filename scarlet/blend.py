@@ -24,7 +24,7 @@ class ScarletRestartException(Exception):
 class Blend(object):
     """The blended scene as interpreted by the deblender.
     """
-    def __init__(self, sources):
+    def __init__(self, sources, groups=None):
         """Constructor
 
         Parameters
@@ -33,17 +33,20 @@ class Blend(object):
             Individual sources in the blend.
             The scarlet deblender requires the user to detect sources
             and configure their constraints before initializing a blend
+        groups: list of `~scarlet.SourceGroup` objects, default None
+            Related sources in the blend that may enforce mutual conditions
+            on centers, seds, and morphologies.
         """
 
         # store all source and make search structures
-        self._register_sources(sources)
+        self._register_sources(sources, groups=groups)
         self.B = self.sources[0].B
 
     @property
     def K(self):
         return len(self.sources)
 
-    def _register_sources(self, sources):
+    def _register_sources(self, sources, groups=None):
         """Unpack the components to register them as individual sources.
         """
         assert len(sources)
@@ -51,6 +54,12 @@ class Blend(object):
         have_psf = [source.has_psf for source in self.sources]
         self.use_psf = any(have_psf)
         assert any(have_psf) == all(have_psf)
+
+        if groups is not None:
+            if not hasattr(groups, '__iter__'):
+                groups = [groups]
+        self.groups = groups
+
 
     def set_data(self, img, weights=None, bg_rms=None, config=None):
         """Set data and fitting parameters.
@@ -338,12 +347,23 @@ class Blend(object):
         if k == self.K - 1 and block == self.config.update_order[1]:
             self.it += 1
 
+            if self.groups is not None:
+                for group in self.groups:
+                    group.update_sed()
+                    group.update_morph()
+
+            resized = False
             if self.it % self.config.refine_skip == 0:
                 resized = self.resize_sources()
                 self.recenter_sources()
                 self.adjust_absolute_error()
-                if resized:
-                    raise ScarletRestartException()
+
+                if self.groups is not None:
+                    for group in self.groups:
+                        group.update_center()
+
+            if resized:
+                raise ScarletRestartException()
 
         return X
 

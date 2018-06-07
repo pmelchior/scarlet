@@ -633,6 +633,25 @@ class ExtendedSource(Source):
             morph = _morph
         return morph
 
+
+class SourceGroup:
+    def __init__(self, sources):
+        self.sources = sources
+
+    def update_center(self):
+        _flux = np.array([s.morph.sum() for s in self.sources])
+        _center = np.sum([_flux[k]*self.sources[k].center for k in range(len(self.sources))], axis=0)
+        _center /= _flux.sum()
+        for source in self.sources:
+            if source.shift_center:
+                source.center = _center
+
+    def update_sed(self):
+        pass
+
+    def update_morph(self):
+        pass
+
 """
 class MultiComponentSource(ExtendedSource):
     def __init__(self, center, img, bg_rms, size_percentiles=[50], constraints=None, psf=None, symmetric=True, monotonic=True,
