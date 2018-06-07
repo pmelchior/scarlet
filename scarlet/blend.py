@@ -52,39 +52,46 @@ class Blend(object):
         self.use_psf = any(have_psf)
         assert any(have_psf) == all(have_psf)
 
-    @property
-    def _proxs_g(self):
-        """Proximal operator for each source in the dual update
+    def set_data(self, img, weights=None, bg_rms=None, config=None):
+        """Set data and fitting parameters.
 
-        Each source can have its own value for prox g, and because the size and shape of
-        a source can change at runtime, _proxs_g is property called by the bSDMM algorithm.
-        These functions are created in `~scarlet.source.Source.set_constraints`.
+        Parameters
+        ----------
+        img: array-like
+            (Bands, Height, Width) image array containing the data.
+        weights: `~numpy.array`, default=`None`
+            Array (Bands, Height, Width) of weights to use for each pixel in each band.
+            .. warning::
 
-        This is the proximal operator that is applied to the `A` or `S` update
-        of the dual variable.
-        See Algorithm 3, line 12 in Moolekamp and Melchior 2017
-        (https://arxiv.org/pdf/1708.09066.pdf) for more.
+                The weights should be flat in each band
+                (except for zero weighted masked out pixels).
+                Our analysis has shown that when the weights are widely varying
+                over an image in a single band, SED colors (and hence morphologies)
+                are poorly modeled.
+        bg_rms: array-like, default=`None`
+            Array of length `Bands` that contains the sky background RMS in the image for each band,
+            used primarily as a minimum flux threshold to set the box size for each source during resizing.
+            If `bg_rms` is `None` then a zero valued array is used as the minimum flux threshold.
+        config: `~scarlet.Config` instance, default=`None`
+            Special configuration to overwrite default optimization parameters
         """
-        proxs_g_sed = []
-        proxs_g_morph = []
-        for k in range(self.K):
-            proxs_g_sed.append(self.sources[k].constraints.prox_g_sed)
-            proxs_g_morph.append(self.sources[k].constraints.prox_g_morph)
-        return proxs_g_sed + proxs_g_morph
+        if config is None:
+            config = Config()
+        self.config = config
 
-    @property
-    def _Ls(self):
-        """Linear operator for each source in the dual update
+        self._img = img
+        B, Ny, Nx = img.shape
+        max_size = self.config.source_sizes[-1]
+        if max(Ny,Nx) > max_size:
+            logger.info("max source size {0} smaller than image size ({1},{2}); truncation possible".format(max_size, Ny, Nx))
 
-        See section 2.3 in Moolekamp and Melchior 2017
-        (https://arxiv.org/pdf/1708.09066.pdf) for details.
-        """
-        Ls_sed = []
-        Ls_morph = []
-        for k in range(self.K):
-            Ls_sed.append(self.sources[k].constraints.L_sed)
-            Ls_morph.append(self.sources[k].constraints.L_morph)
-        return Ls_sed + Ls_morph
+        if bg_rms is None:
+            self._bg_rms = np.zeros(self.B)
+        else:
+            assert len(bg_rms) == self.B
+            self._bg_rms = np.array(bg_rms)
+        self._set_weights(weights)
+        return self
 
     def fit(self, steps=200, e_rel=1e-2):
         """Fit the model for each source to the data
@@ -168,47 +175,6 @@ class Blend(object):
                 self.fit(steps=steps)
         return self
 
-    def set_data(self, img, weights=None, bg_rms=None, config=None):
-        """Set data and fitting parameters.
-
-        Parameters
-        ----------
-        img: array-like
-            (Bands, Height, Width) image array containing the data.
-        weights: `~numpy.array`, default=`None`
-            Array (Bands, Height, Width) of weights to use for each pixel in each band.
-            .. warning::
-
-                The weights should be flat in each band
-                (except for zero weighted masked out pixels).
-                Our analysis has shown that when the weights are widely varying
-                over an image in a single band, SED colors (and hence morphologies)
-                are poorly modeled.
-        bg_rms: array-like, default=`None`
-            Array of length `Bands` that contains the sky background RMS in the image for each band,
-            used primarily as a minimum flux threshold to set the box size for each source during resizing.
-            If `bg_rms` is `None` then a zero valued array is used as the minimum flux threshold.
-        config: `~scarlet.Config` instance, default=`None`
-            Special configuration to overwrite default optimization parameters
-        """
-        if config is None:
-            config = Config()
-        self.config = config
-
-        self._img = img
-        B, Ny, Nx = img.shape
-        max_size = self.config.source_sizes[-1]
-        if max(Ny,Nx) > max_size:
-            logger.info("max source size {0} smaller than image size ({1},{2}); truncation possible".format(max_size, Ny, Nx))
-
-        if bg_rms is None:
-            self._bg_rms = np.zeros(self.B)
-        else:
-            assert len(bg_rms) == self.B
-            self._bg_rms = np.array(bg_rms)
-        self._set_weights(weights)
-        return self
-
     def get_model(self, k=None, combine=True, use_sed=True):
         """Compute the current model for the entire image.
         """
@@ -270,7 +236,6 @@ class Blend(object):
             # and mask all bands for that pixel:
             # when estimating A do not use (partially) saturated pixels
             self._weights[0][:,mask] = 0
-
 
     def _compute_model(self):
         """Build the entire model.
@@ -382,7 +347,6 @@ class Blend(object):
 
         return X
 
-
     def _one_over_lipschitz(self, block):
         """Calculate 1/Lipschitz constant for A and S
         """
@@ -468,6 +432,40 @@ class Blend(object):
             self._stepAS = [self._cbAS[block](block) for block in [0,1]]
 
         return self._stepAS[block]
+
+    @property
+    def _proxs_g(self):
+        """Proximal operator for each source in the dual update
+
+        Each source can have its own value for prox g, and because the size and shape of
+        a source can change at runtime, _proxs_g is property called by the bSDMM algorithm.
+        These functions are created in `~scarlet.source.Source.set_constraints`.
+
+        This is the proximal operator that is applied to the `A` or `S` update
+        of the dual variable.
+        See Algorithm 3, line 12 in Moolekamp and Melchior 2017
+        (https://arxiv.org/pdf/1708.09066.pdf) for more.
+        """
+        proxs_g_sed = []
+        proxs_g_morph = []
+        for k in range(self.K):
+            proxs_g_sed.append(self.sources[k].constraints.prox_g_sed)
+            proxs_g_morph.append(self.sources[k].constraints.prox_g_morph)
+        return proxs_g_sed + proxs_g_morph
+
+    @property
+    def _Ls(self):
+        """Linear operator for each source in the dual update
+
+        See section 2.3 in Moolekamp and Melchior 2017
+        (https://arxiv.org/pdf/1708.09066.pdf) for details.
+        """
+        Ls_sed = []
+        Ls_morph = []
+        for k in range(self.K):
+            Ls_sed.append(self.sources[k].constraints.L_sed)
+            Ls_morph.append(self.sources[k].constraints.L_morph)
+        return Ls_sed + Ls_morph
 
     def recenter_sources(self):
         """Shift center position of sources to minimize residuals in all bands
