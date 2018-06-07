@@ -55,6 +55,22 @@ class Blend(object):
         self.use_psf = any(have_psf)
         assert any(have_psf) == all(have_psf)
 
+        # lookup of source/component tuple given component number k
+        self._source_of = []
+        for m in range(len(self.sources)):
+            self.sources[m].label = m
+            for l in range(self.sources[m].K):
+                self._source_of.append((m,l))
+
+    def source_of(self, k):
+        """Get the source index of component k.
+        Each of the `~scarlet.source.Source`s in the model can have multiple
+        components, but the algorithm operates on each component
+
+        This method returns the tuple of indices `(m,l)` for source `k`.
+        """
+        return self._source_of[k]
+
     def set_data(self, img, weights=None, bg_rms=None, config=None):
         """Set data and fitting parameters.
 
@@ -488,13 +504,14 @@ class Blend(object):
         MT = []
         updated = []
         for k in range(self.K):
+            label = self._label_of(k)
             if self.components[k].shift_center:
                 c = self.components[k]
                 diff_x,diff_y = self._get_shift_differential(k)
                 if np.sum(diff_x)==0 or np.sum(diff_y)==0:
                     # The component might not have any flux,
                     # so don't try to fit it's position
-                    logger.info("No flux in {0}, skipping recentering in it {1}".format(k, self.it))
+                    logger.info("No flux in {0}, skipping recentering in it {1}".format(label, self.it))
                     continue
                 diff_x[:,:,-1] = 0
                 diff_y[:,-1,:] = 0
@@ -525,6 +542,7 @@ class Blend(object):
         for k in range(self.K):
             if k not in updated:
                 continue
+            label = self._label_of(k)
             _k = updated.index(k)
             ddx, ddy = result[2*_k:2*_k+2]
             if ddx**2 + ddy**2 > self.config.center_min_dist**2:
@@ -532,7 +550,7 @@ class Blend(object):
                 center = c.center + (ddy, ddx)
                 c.set_center(center)
                 msg = "shifting component {0} by ({1:.3f}/{2:.3f}) to ({3:.3f}/{4:.3f}) in it {5}"
-                logger.debug(msg.format(k, ddy, ddx, c.center[0], c.center[1], self.it))
+                logger.debug(msg.format(label, ddy, ddx, c.center[0], c.center[1], self.it))
 
     def _get_shift_differential(self, k):
         """Calculate the difference image used ot fit positions
@@ -645,3 +663,10 @@ class Blend(object):
         """Adjust the absolute error for each component
         """
         self._e_abs[self.K:] = self._absolute_morph_error()
+
+    def _label_of(self, k):
+        m,l = self.source_of(k)
+        label = "%r" % self.sources[m].label
+        if self.sources[m].K > 1:
+            label += ".%d" % l
+        return label

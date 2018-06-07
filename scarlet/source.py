@@ -421,23 +421,27 @@ def get_best_fit_sed(img, S):
 
 
 class Source(object):
-    def __init__(self, components, label=None):
+    def __init__(self, components):
         if isinstance(components, Component):
             components = [components]
         self.components = components
-        self.label = label
+        self.label = None
+
+    @property
+    def K(self):
+        return len(self.components)
 
     def update_center(self):
         _flux = np.array([c.morph.sum() for c in self.components])
-        _center = np.sum([_flux[k]*self.components[k].center for k in range(len(self.components))], axis=0)
+        _center = np.sum([_flux[k]*self.components[k].center for k in range(self.K)], axis=0)
         _center /= _flux.sum()
         if len(self.components) > 1:
-            for k in range(len(self.components)):
+            for k in range(self.K):
                 c = self.components[k]
                 if c.shift_center:
                     c.center = _center
                     msg = "updating component {0}.{1} center to ({2:.3f}/{3:.3f})"
-                    logger.debug(msg.format(self.label, k, source.center[0], source.center[1]))
+                    logger.debug(msg.format(self.label, k, c.center[0], c.center[1]))
 
     def update_sed(self):
         pass
@@ -454,7 +458,7 @@ class PointSource(Source):
     While the source can have any `constraints`, the default constraints are
     symmetry and monotonicity.
     """
-    def __init__(self, center, img, label=None, shape=None, constraints=None, psf=None, config=None):
+    def __init__(self, center, img, shape=None, constraints=None, psf=None, config=None):
         """Initialize
 
         This implementation initializes the sed from the pixel in
@@ -484,7 +488,7 @@ class PointSource(Source):
                            sc.DirectSymmetryConstraint())
 
         component = Component(sed, morph, center=center, constraints=constraints, psf=psf, fix_sed=False, fix_morph=False, fix_frame=False, shift_center=0.1)
-        super(PointSource, self).__init__(component, label=label)
+        super(PointSource, self).__init__(component)
 
     def _make_initial(self, img, center, shape, tiny=1e-10):
         """Initialize the source using only the peak pixel
@@ -524,7 +528,7 @@ class ExtendedSource(Source):
     By default the model for the source will continue to be monotonic and symmetric,
     but other `constraints` can be used.
     """
-    def __init__(self, center, img, bg_rms, label=None, constraints=None, psf=None, symmetric=True, monotonic=True,
+    def __init__(self, center, img, bg_rms, constraints=None, psf=None, symmetric=True, monotonic=True,
                  thresh=1., config=None, fix_sed=False, fix_morph=False, fix_frame=False, shift_center=0.2):
         """Initialize
 
@@ -552,7 +556,7 @@ class ExtendedSource(Source):
                            sc.DirectSymmetryConstraint())
 
         component = Component(sed, morph, center=center, constraints=constraints, psf=psf, fix_sed=fix_sed, fix_morph=fix_morph, fix_frame=fix_frame, shift_center=shift_center)
-        super(ExtendedSource, self).__init__(component, label=label)
+        super(ExtendedSource, self).__init__(component)
 
     def _make_initial(self, img, center, bg_rms, thresh=1., symmetric=True, monotonic=True, config=None):
         """Initialize the source that is symmetric and monotonic
