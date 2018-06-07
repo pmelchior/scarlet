@@ -635,16 +635,20 @@ class ExtendedSource(Source):
 
 
 class SourceGroup:
-    def __init__(self, sources):
-        self.sources = sources
+    def __init__(self, sources, index):
+        self.index = index
+        self.sources = [sources[i] for i in index]
 
     def update_center(self):
         _flux = np.array([s.morph.sum() for s in self.sources])
         _center = np.sum([_flux[k]*self.sources[k].center for k in range(len(self.sources))], axis=0)
         _center /= _flux.sum()
-        for source in self.sources:
+        for k in range(len(self.sources)):
+            source = self.sources[k]
             if source.shift_center:
                 source.center = _center
+                msg = "updating source {0} center to ({1:.3f}/{2:.3f})"
+                logger.debug(msg.format(self.index[k], source.center[0], source.center[1]))
 
     def update_sed(self):
         pass
