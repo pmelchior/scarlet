@@ -426,16 +426,15 @@ class ComponentGroup(object):
     def __init__(self, components):
         """Constructor
 
-        Form a blended scene from a collection of `~scarlet.Component`s,
-        grouped into a list of `~scarlet.Source`s.
+        Group a list of `~scarlet.Component`s, possibly hierarchically.
 
         Parameters
         ----------
-        sources: list of `~scarlet.Source` objects
+        components: list of `~scarlet.Component` or `~scarlet.ComponentGroup`
         """
-        if isinstance(components, Component):
-            components = [components]
-        self.components = components
+        if not hasattr(components, "__iter__"):
+            components = (components,)
+        self.components = tuple(components)
 
     @property
     def K(self):
@@ -451,19 +450,22 @@ class ComponentGroup(object):
             return np.array([self.get_model(k=k, use_sed=use_sed) for k in range(self.K)])
 
     def update_center(self):
-        pass
+        for c in self.components:
+            if isinstance(c, ComponentGroup):
+                c.update_center()
 
     def update_sed(self):
-        pass
+        for c in self.components:
+            if isinstance(c, ComponentGroup):
+                c.update_sed()
 
     def update_morph(self):
-        pass
+        for c in self.components:
+            if isinstance(c, ComponentGroup):
+                c.update_morph()
 
-    def __add__(self, source):
-        return Source(self.components + source.components)
-
-    def __iadd__(self, source):
-        self.components += source.components
+    def __iadd__(self, c):
+        self.components = self.components + c.components
         return self
 
 
@@ -709,9 +711,9 @@ class MultiComponentSource(ExtendedSource):
             config = Config()
 
         if constraints is None:
-            constraints = [sc.SimpleConstraint(),
+            constraints = (sc.SimpleConstraint(),
                            sc.DirectMonotonicityConstraint(use_nearest=False),
-                           sc.DirectSymmetryConstraint()]
+                           sc.DirectSymmetryConstraint())
 
         # start from ExtendedSource for single-component morphology and sed
         super(MultiComponentSource, self).__init__(center, img, bg_rms, constraints=constraints, psf=psf, symmetric=symmetric, monotonic=monotonic, thresh=thresh, config=config, fix_sed=fix_sed, fix_morph=fix_morph, fix_frame=fix_frame, shift_center=shift_center)
@@ -774,4 +776,4 @@ class MultiComponentSource(ExtendedSource):
                 _Nx = config.find_next_source_size(_Nx)
                 component.resize((_Ny, _Nx))
 
-                self.components.append(component)
+                self.components = self.components + (component,)
