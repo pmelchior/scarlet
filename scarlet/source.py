@@ -554,6 +554,10 @@ class ExtendedSource(Source):
             Multiple of the RMS used to set the minimum non-zero flux.
             Use `thresh=1` to just use `bg_rms` to set the flux floor.
         """
+        # Use a default configuration if config is not specified
+        if config is None:
+            config = Config()
+
         sed, morph = self._make_initial(center, img, bg_rms, thresh=thresh, symmetric=symmetric, monotonic=monotonic, config=config)
 
         if constraints is None:
@@ -569,10 +573,6 @@ class ExtendedSource(Source):
 
         See `self.__init__` for a description of the parameters
         """
-        # Use a default configuration if config is not specified
-        if config is None:
-            config = Config()
-
         # every source as large as the entire image, but shifted to its centroid
         # using a temp Component for its frame methods
         B, Ny, Nx = img.shape
@@ -671,38 +671,34 @@ class ExtendedSource(Source):
             morph = _morph
         return morph
 
-
-"""
 class MultiComponentSource(ExtendedSource):
     def __init__(self, center, img, bg_rms, size_percentiles=[50], constraints=None, psf=None, symmetric=True, monotonic=True,
                  thresh=1., config=None, fix_sed=False, fix_morph=False, fix_frame=False, shift_center=0.2):
-        self.center = center
-        sed, morph = self.make_initial(img, bg_rms, size_percentiles=size_percentiles,
-                                       thresh=thresh, symmetric=symmetric,
-                                       monotonic=monotonic, config=config)
-        K = len(sed)
+
+        # Use a default configuration if config is not specified
+        if config is None:
+            config = Config()
+
         if constraints is None:
-            constraints = [sc.SimpleConstraint() &
-                           sc.DirectMonotonicityConstraint(use_nearest=False) &
-                           sc.DirectSymmetryConstraint()] * K
+            constraints = [sc.SimpleConstraint(),
+                           sc.DirectMonotonicityConstraint(use_nearest=False),
+                           sc.DirectSymmetryConstraint()]
 
-        super(ExtendedSource, self).__init__(sed, morph, center=center, constraints=constraints, psf=psf, fix_sed=fix_sed, fix_morph=fix_morph, fix_frame=fix_frame, shift_center=shift_center)
+        # start from ExtendedSource for single-component morphology and sed
+        super(MultiComponentSource, self).__init__(center, img, bg_rms, constraints=constraints, psf=psf, symmetric=symmetric, monotonic=monotonic, thresh=thresh, config=config, fix_sed=fix_sed, fix_morph=fix_morph, fix_frame=fix_frame, shift_center=shift_center)
 
-    def make_initial(self, img, bg_rms, size_percentiles=[50], thresh=1., symmetric=True, monotonic=True, config=None):
-        # call make_initial from ExtendedSource to give single-component morphology and sed
-        sed, morph = super(MultiComponentSource, self).make_initial(img, bg_rms, thresh=thresh, symmetric=symmetric, monotonic=monotonic, config=config)
-
-        # create a list of components from morph by layering them on top of each
-        # other and sum up to morph
+        # create a list of components from base morph by layering them on top of
+        # each other so that they sum up to morph
         from scipy.ndimage.morphology import binary_erosion
         K = len(size_percentiles) + 1
-        Ny, Nx = morph.shape[1:]
-        morph_ = np.zeros((K, Ny, Nx))
-        morph_[0,:,:] = morph[0]
-        mask = morph[0] > 0
+
+        morph = self.components[0].morph
+        Ny, Nx = morph.shape
+        morphs = [np.zeros((Ny, Nx)) for k in range(K)]
+        morphs[0][:,:] = morph[:,:]
+        mask = morph > 0
         radius = np.sqrt(mask.sum()/np.pi)
-        # make sure they are in decendind order
-        percentiles_ = np.sort(size_percentiles)[::-1]
+        percentiles_ = np.sort(size_percentiles)[::-1] # decending order
         for k in range(1,K):
             perc = percentiles_[k-1]
             while True:
@@ -713,23 +709,40 @@ class MultiComponentSource(ExtendedSource):
                 if np.sqrt(mask_.sum()/np.pi) < perc*radius/100 or mask_.sum() == 1:
                     # set inside of prior component to value at perimeter
                     perimeter = mask & (~mask_)
-                    perimeter_val = morph[0][perimeter].mean()
-                    morph_[k-1][mask_] = perimeter_val
+                    perimeter_val = morph[perimeter].mean()
+                    morphs[k-1][mask_] = perimeter_val
                     # set this component to morph - perimeter_val, bounded by 0
-                    morph[0] -= perimeter_val
-                    morph_[k][mask_] = np.maximum(morph[0][mask_], 0)
+                    morph -= perimeter_val
+                    morphs[k][mask_] = np.maximum(morph[mask_], 0)
                     # correct for negative pixels by putting them into k-1 component
-                    below = mask_ & (morph[0] < 0)
+                    below = mask_ & (morph < 0)
                     if below.sum():
-                        morph_[k-1][below] += morph[0][below]
+                        morphs[k-1][below] += morph[below]
                     mask = mask_
                     break
                 mask = mask_
 
-        # optimal SED assuming img only has that source
-        source_slice = self.get_slice_for(img.shape)
-        S = morph_[:,source_slice[1], source_slice[2]].reshape(K, -1)
-        sed_ = get_best_fit_sed(img[self.bb], S)
+        # optimal SEDs given the morphologies, assuming img only has that source
+        c = self.components[0]
+        component_slice = c.get_slice_for(img.shape)
+        S = np.array(morphs)[:,component_slice[1], component_slice[2]].reshape(K, -1)
+        seds = get_best_fit_sed(img[c.bb], S)
 
-        return sed_, morph_
-"""
+        for k in range(K):
+            if k == 0:
+                self.components[0].morph = morphs[0]
+                self.components[0].sed = seds[0]
+            else:
+                component = Component(seds[k], morphs[k], center=center, constraints=constraints, psf=psf, fix_sed=fix_sed, fix_morph=fix_morph, fix_frame=fix_frame, shift_center=shift_center)
+
+                # reduce the shape of the additional components as much as possible
+                mask = morphs[k] > 0
+                ypix, xpix = np.where(mask)
+                _Ny = np.max(ypix)-np.min(ypix)
+                _Nx = np.max(xpix)-np.min(xpix)
+                # make sure source has odd pixel numbers and is from config.source_sizes
+                _Ny = config.find_next_source_size(_Ny)
+                _Nx = config.find_next_source_size(_Nx)
+                component.resize((_Ny, _Nx))
+
+                self.components.append(component)
