@@ -486,7 +486,7 @@ class PointSource(Source):
             config = Config()
         if shape is None:
             shape = (config.source_sizes[0],) * 2
-        sed, morph = self._make_initial(img, center, shape)
+        sed, morph = self._make_initial(center, img, shape)
 
         if constraints is None:
             constraints = (sc.SimpleConstraint(),
@@ -496,7 +496,7 @@ class PointSource(Source):
         component = Component(sed, morph, center=center, constraints=constraints, psf=psf, fix_sed=False, fix_morph=False, fix_frame=False, shift_center=0.1)
         super(PointSource, self).__init__(component)
 
-    def _make_initial(self, img, center, shape, tiny=1e-10):
+    def _make_initial(self, center, img, shape, tiny=1e-10):
         """Initialize the source using only the peak pixel
 
         See `self.__init__` for parameters not listed below
@@ -554,7 +554,7 @@ class ExtendedSource(Source):
             Multiple of the RMS used to set the minimum non-zero flux.
             Use `thresh=1` to just use `bg_rms` to set the flux floor.
         """
-        sed, morph = self._make_initial(img, center, bg_rms, thresh=thresh, symmetric=symmetric, monotonic=monotonic, config=config)
+        sed, morph = self._make_initial(center, img, bg_rms, thresh=thresh, symmetric=symmetric, monotonic=monotonic, config=config)
 
         if constraints is None:
             constraints = (sc.SimpleConstraint(),
@@ -564,7 +564,7 @@ class ExtendedSource(Source):
         component = Component(sed, morph, center=center, constraints=constraints, psf=psf, fix_sed=fix_sed, fix_morph=fix_morph, fix_frame=fix_frame, shift_center=shift_center)
         super(ExtendedSource, self).__init__(component)
 
-    def _make_initial(self, img, center, bg_rms, thresh=1., symmetric=True, monotonic=True, config=None):
+    def _make_initial(self, center, img, bg_rms, thresh=1., symmetric=True, monotonic=True, config=None):
         """Initialize the source that is symmetric and monotonic
 
         See `self.__init__` for a description of the parameters
