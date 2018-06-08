@@ -431,6 +431,15 @@ class Source(object):
     def K(self):
         return len(self.components)
 
+    def get_model(self, k=None, combine=True, use_sed=True):
+        if k is not None:
+            return self.components[k].get_model(use_sed=use_sed)
+        # for all components
+        if combine:
+            return np.sum([self.get_model(k=k, use_sed=use_sed) for k in range(self.K)], axis=0)
+        else:
+            return np.array([self.get_model(k=k, use_sed=use_sed) for k in range(self.K)])
+
     def update_center(self):
         _flux = np.array([c.morph.sum() for c in self.components])
         _center = np.sum([_flux[k]*self.components[k].center for k in range(self.K)], axis=0)
