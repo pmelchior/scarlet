@@ -420,12 +420,22 @@ def get_best_fit_sed(img, S):
     return np.dot(np.linalg.inv(np.dot(S,S.T)), np.dot(S, Y.T))
 
 
-class Source(object):
+class ComponentGroup(object):
+    """Base class for collections of `~scarlet.Component`s.
+    """
     def __init__(self, components):
+        """Constructor
+
+        Form a blended scene from a collection of `~scarlet.Component`s,
+        grouped into a list of `~scarlet.Source`s.
+
+        Parameters
+        ----------
+        sources: list of `~scarlet.Source` objects
+        """
         if isinstance(components, Component):
             components = [components]
         self.components = components
-        self.label = None
 
     @property
     def K(self):
@@ -441,16 +451,7 @@ class Source(object):
             return np.array([self.get_model(k=k, use_sed=use_sed) for k in range(self.K)])
 
     def update_center(self):
-        _flux = np.array([c.morph.sum() for c in self.components])
-        _center = np.sum([_flux[k]*self.components[k].center for k in range(self.K)], axis=0)
-        _center /= _flux.sum()
-        if len(self.components) > 1:
-            for k in range(self.K):
-                c = self.components[k]
-                if c.shift_center:
-                    c.center = _center
-                    msg = "updating component {0}.{1} center to ({2:.3f}/{3:.3f})"
-                    logger.debug(msg.format(self.label, k, c.center[0], c.center[1]))
+        pass
 
     def update_sed(self):
         pass
@@ -464,6 +465,25 @@ class Source(object):
     def __iadd__(self, source):
         self.components += source.components
         return self
+
+
+class Source(ComponentGroup):
+    def __init__(self, components):
+        super(Source, self).__init__(components)
+        self.label = None
+
+    def update_center(self):
+        _flux = np.array([c.morph.sum() for c in self.components])
+        _center = np.sum([_flux[k]*self.components[k].center for k in range(self.K)], axis=0)
+        _center /= _flux.sum()
+        if len(self.components) > 1:
+            for k in range(self.K):
+                c = self.components[k]
+                if c.shift_center:
+                    c.center = _center
+                    msg = "updating component {0}.{1} center to ({2:.3f}/{3:.3f})"
+                    logger.debug(msg.format(self.label, k, c.center[0], c.center[1]))
+
 
 class PointSource(Source):
     """Create a point source.

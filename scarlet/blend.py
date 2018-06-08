@@ -22,29 +22,32 @@ class ScarletRestartException(Exception):
     pass
 
 class Blend(object):
-    """The blended scene as interpreted by the deblender.
+    """The blended scene.
+
+    The class represents a celestial scene and provides the functions to fit it
+    to data.
     """
     def __init__(self, sources):
         """Constructor
 
+        Form a blended scene from a collection of `~scarlet.Component`s,
+        grouped into a list of `~scarlet.Source`s.
+
         Parameters
         ----------
         sources: list of `~scarlet.Source` objects
-            Individual sources in the blend.
-            The scarlet deblender requires the user to detect sources
-            and configure their constraints before initializing a blend
         """
 
         # store all source and make search structures
-        self._register_sources(sources)
+        self._register_components(sources)
         self.B = self.components[0].B
 
     @property
     def K(self):
         return len(self.components)
 
-    def _register_sources(self, sources):
-        """Unpack the components to register them as individual sources.
+    def _register_components(self, sources):
+        """Register all components from all sources.
         """
         assert len(sources)
         self.sources = sources # do not copy!
