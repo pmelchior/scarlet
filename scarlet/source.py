@@ -114,6 +114,8 @@ class Component(object):
 
     @property
     def coord(self):
+        """The coordinate in a `~scarlet.source.ComponentTree`.
+        """
         if self._index is not None:
             if self._parent._index is not None:
                 return tuple(self._parent.coord) + (self._index,)
@@ -121,7 +123,7 @@ class Component(object):
                 return (self._index,)
 
     def set_constraints(self, constraints):
-        """Set up constraints for component.
+        """Set constraints for component.
 
         Parameters
         ----------
@@ -347,6 +349,8 @@ class Component(object):
         This error estimate uses linear error propagation and assumes that the
         component was isolated (it ignores blending).
 
+
+
         Parameters
         ----------
         weights: `~numpy.array`
@@ -402,6 +406,13 @@ class ComponentTree(object):
 
     @property
     def components(self):
+        """Flattened tuple of all components in the tree.
+
+        CAUTION: Each component in a tree can only be a leaf of a single node.
+        While one can construct trees that hold the same component multiple
+        times, this method will only return that component at its first
+        encountered location
+        """
         if self._components is None:
             components = []
             for c in self._tree:
@@ -418,18 +429,28 @@ class ComponentTree(object):
 
     @property
     def n_components(self):
+        """Number of components.
+        """
         return len(self.components)
 
     @property
     def K(self):
+        """Number of components.
+        """
         return self.n_components
 
     @property
     def n_nodes(self):
+        """Number of direct attached nodes.
+        """
         return len(self._tree)
 
     @property
     def coord(self):
+        """The coordinate in tree.
+
+        The coordinate can be used to traverse the tree and for `__getitem__`.
+        """
         if self._index is not None:
             if self._parent._index is not None:
                 return tuple(self._parent.coord) + (self._index,)
@@ -437,21 +458,43 @@ class ComponentTree(object):
                 return (self._index,)
 
     def update_center(self):
+        """Update the center location of attached nodes.
+
+        This methods recursively call the same function of all attached tree nodes.
+        """
         for c in self._tree:
             if isinstance(c, ComponentTree):
                 c.update_center()
 
     def update_sed(self):
+        """Update the SEDs of attached nodes.
+
+        This methods recursively call the same function of all attached tree nodes.
+        While the method has complete freedom to perform updates, it is
+        recommended that its behavior mimics a proximal operator in the direct domain.
+        """
         for c in self._tree:
             if isinstance(c, ComponentTree):
                 c.update_sed()
 
     def update_morph(self):
+        """Update the morphologies of attached nodes.
+
+        This methods recursively call the same function of all attached tree nodes.
+        While the method has complete freedom to perform updates, it is
+        recommended that its behavior mimics a proximal operator in the direct domain.
+        """
         for c in self._tree:
             if isinstance(c, ComponentTree):
                 c.update_morph()
 
     def __iadd__(self, c):
+        """Add another component or tree.
+
+        Parameters
+        ----------
+        c: `~scarlet.Component` or `~scarlet.ComponentTree`
+        """
         c_index = self.n_nodes
         if isinstance(c, ComponentTree):
             self._tree = self._tree + c._tree
@@ -465,6 +508,16 @@ class ComponentTree(object):
         return self
 
     def __getitem__(self, coord):
+        """Access node in the tree.
+
+        Parameters
+        ----------
+        coords: int or tuple of ints
+
+        Returns
+        -------
+        `~scarlet.Component` or `~scarlet.ComponentTree`
+        """
         if isinstance(coord, (tuple, list)):
             if len(coord) > 1:
                 return self._tree[coord[0]].__getitem__(coord[1:])
@@ -477,20 +530,54 @@ class ComponentTree(object):
 
 
 class Source(ComponentTree):
+    """Base class for co-centered `~scarlet.source.Component`s.
+
+    The class implements `update_center` to set all components with `shift_center > 0`
+    to the flux-weighted mean center position of all components.
+    """
     def __init__(self, components):
+        """Constructor.
+
+        Parameters
+        ----------
+        components: list of `~scarlet.Component` or `~scarlet.ComponentTree`
+        """
         super(Source, self).__init__(components)
 
-    def get_model(self, k=None, combine=True, use_sed=True):
-        if k is not None:
-            return self.components[k].get_model(use_sed=use_sed)
-        # for all components
-        # TODO: doesn't work if components have different morph shape
-        if combine:
-            return np.sum([self.get_model(k=k, use_sed=use_sed) for k in range(self.K)], axis=0)
-        else:
-            return np.array([self.get_model(k=k, use_sed=use_sed) for k in range(self.K)])
+    def get_model(self):
+        """Compute the model for this source.
+
+        NOTE: If individual components have different shape, the resulting
+        model will be set in a box that can contain all of them.
+
+        Returns
+        -------
+        `~numpy.array` with shape (B, Ny, Nx)
+        """
+        models = [c.get_model() for c in self.components]
+        # model may have different boxes, need to put into box that fits all
+        maxNy, maxNx = 0,0
+        for model in models:
+            Ny, Nx = model.shape[1:]
+            if Ny > maxNy:
+                maxNy = Ny
+            if Nx > maxNx:
+                maxNx = Nx
+        for k in range(len(models)):
+            Ny, Nx = models[k].shape[1:]
+            if (Ny, Nx) != (maxNy, maxNx):
+                _model = np.zeros((models[k].shape[0], maxNy, maxNx))
+                _model[:, (maxNy-Ny)//2:maxNy-(maxNy-Ny)//2 , (maxNx-Nx)//2:maxNx-(maxNx-Nx)//2] = models[k][:,:,:]
+                models[k] = _model
+        for model in models:
+            print(model.shape)
+        return np.sum(models, axis=0)
 
     def update_center(self):
+        """Center update to set all component centers to flux-weighted mean position.
+
+        NOTE: Only components with `shift_center > 0` will be moved.
+        """
         if len(self.components) > 1:
             _flux = np.array([c.morph.sum() for c in self.components])
             _center = np.sum([_flux[k]*self.components[k].center for k in range(self.K)], axis=0)
@@ -778,9 +865,22 @@ class ExtendedSource(Source):
         return morph
 
 class MultiComponentSource(ExtendedSource):
+    """Create an extended source with multiple components layered vertically.
+    Uses `~scarlet.source.ExtendedSource` to define the overall morphology,
+    then erodes the outer footprint until it reaches the specified size percentile.
+    For the narrower footprint, it evaluates the mean value at the perimeter and
+    sets the inside to the perimeter value, creating a flat distribution inside.
+    The subsequent component(s) is/are set to the difference between the flattened
+    and the overall morphology.
+    The SED for all components is calculated as the best fit of the multi-component
+    morphology to the multi-band image in the region of the source.
+    """
     def __init__(self, center, img, bg_rms, size_percentiles=[50], constraints=None, psf=None, symmetric=True, monotonic=True,
                  thresh=1., config=None, fix_sed=False, fix_morph=False, fix_frame=False, shift_center=0.2):
-
+        """Initialize multi-component source, where the inner components begin
+        at the given size_percentiles.
+        See `~scarlet.source.ExtendedSource` for details.
+        """
         # Use a default configuration if config is not specified
         if config is None:
             config = Config()

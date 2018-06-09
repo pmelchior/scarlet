@@ -170,6 +170,19 @@ class Blend(ComponentTree):
 
     def get_model(self, k=None, combine=True, use_sed=True):
         """Compute the current model for the entire image.
+
+        Parameters
+        ----------
+        k: int
+            Index of a single component.
+        combine: bool
+            Whether all components should be combined.
+        use_sed: bool
+            Whether components are "colored" vs monochromatic.
+
+        Returns
+        -------
+        `~numpy.array` with shape (B, Ny, Nx)
         """
         if k is not None:
             c = self.components[k]

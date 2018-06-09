@@ -9,24 +9,68 @@ class Constraint(object):
     """A constraint generator for SED and Morphology.
     """
     def __init__(self):
+        """Constructor.
+        """
         pass
 
     def prox_sed(self, shape):
+        """Return the proximal operator to apply to the SED of a given `shape`.
+
+        Parameters
+        ----------
+        shape: tuple of int
+            The shape of the SED container.
+        """
         return proxmin.operators.prox_id
 
     def prox_morph(self, shape):
+        """Return the proximal operator to apply to the morphology of a given `shape`.
+
+        Parameters
+        ----------
+        shape: tuple of int
+            The shape of the morph container.
+        """
         return proxmin.operators.prox_id
 
     def prox_g_sed(self, shape):
+        """Return the proximal operator for the SED in the transformed domain.
+
+        Parameters
+        ----------
+        shape: tuple of int
+            The shape of the SED container.
+        """
         return None # None or operator
 
     def prox_g_morph(self, shape):
+        """Return the proximal operator for the morphology in the transformed domain.
+
+        Parameters
+        ----------
+        shape: tuple of int
+            The shape of the morph container.
+        """
         return None
 
     def L_sed(self, shape):
+        """Return the SED transformation matrix.
+
+        Parameters
+        ----------
+        shape: tuple of int
+            The shape of the SED container.
+        """
         return None # None or matrix
 
     def L_morph(self, shape):
+        """Return the morphology transformation matrix.
+
+        Parameters
+        ----------
+        shape: tuple of int
+            The shape of the morphology container.
+        """
         return None
 
 class MinimalConstraint(Constraint):
@@ -165,7 +209,7 @@ class MonotonicityConstraint(Constraint):
 class SymmetryConstraint(Constraint):
     """$prox_g$ symmetry constraint
 
-    Requires that the source is symmetric about the peak
+    Enforces that the source is 180-degree rotation symmetric with respect to the peak.
     """
 
     def prox_g_morph(self, shape):
@@ -176,6 +220,7 @@ class SymmetryConstraint(Constraint):
 
 class DirectSymmetryConstraint(Constraint):
     """Soft symmetry constraint
+
     This creates a :math:`prox_f` constraint to the morphology that
     applies a symmetry constraint using a linear parameter `sigma`
     that can vary from `sigma=0` (no symmetry required) to
@@ -249,24 +294,33 @@ class TVyConstraint(Constraint):
 
 
 class ConstraintAdapter(object):
-    """A constraint container for SED and Morphology of a :class:`~scarlet.source.Source`
+    """A constraint container for SED and Morphology of a :class:`~scarlet.source.Component`
+
+    Using the adapter, the constraints are always evaluated with the current size
+    of the component SED and morphology. It implements the same methods as
+    `~scarlet.constraints.Constraint`, but without the `shape` argument.
     """
-    def __init__(self, C, source):
+    def __init__(self, constraint, component):
         """Initialize the constraint adapter.
+
+        Parameters
+        ----------
+        constraint: `~scarlet.constraints.Constraint` or list thereof
+        component: `~scarlet.source.Component`
         """
-        if isinstance(C, Constraint):
-            _C = [C]
+        if isinstance(constraint, Constraint):
+            _C = [constraint]
         else:
-            _C = C
+            _C = constraint
         if hasattr(_C, '__iter__') and all([isinstance(_c, Constraint) for _c in _C]):
             self.C = _C
         else:
-            raise NotImplementedError("argument `C` must be constraint or list of constraints")
-        self.source = source
+            raise NotImplementedError("argument `constraint` must be constraint or list of constraints")
+        self.component = component
 
     @property
     def prox_sed(self):
-        ops = [c.prox_sed(self.source.sed.shape) for c in self.C if c.prox_sed(self.source.sed.shape) is not proxmin.operators.prox_id]
+        ops = [c.prox_sed(self.component.sed.shape) for c in self.C if c.prox_sed(self.component.sed.shape) is not proxmin.operators.prox_id]
         if len(ops) == 0:
             return proxmin.operators.prox_id
         if len(ops) == 1:
@@ -276,7 +330,7 @@ class ConstraintAdapter(object):
 
     @property
     def prox_morph(self):
-        ops = [c.prox_morph(self.source.morph.shape) for c in self.C if c.prox_morph(self.source.morph.shape) is not proxmin.operators.prox_id]
+        ops = [c.prox_morph(self.component.morph.shape) for c in self.C if c.prox_morph(self.component.morph.shape) is not proxmin.operators.prox_id]
         if len(ops) == 0:
             return proxmin.operators.prox_id
         if len(ops) == 1:
@@ -286,19 +340,16 @@ class ConstraintAdapter(object):
 
     @property
     def prox_g_sed(self):
-        return [c.prox_g_sed(self.source.sed.shape) for c in self.C if c.prox_g_sed(self.source.sed.shape) is not None]
+        return [c.prox_g_sed(self.component.sed.shape) for c in self.C if c.prox_g_sed(self.component.sed.shape) is not None]
 
     @property
     def prox_g_morph(self):
-        return [c.prox_g_morph(self.source.morph.shape) for c in self.C if c.prox_g_morph(self.source.morph.shape) is not None]
+        return [c.prox_g_morph(self.component.morph.shape) for c in self.C if c.prox_g_morph(self.component.morph.shape) is not None]
 
     @property
     def L_sed(self):
-        return [c.L_sed(self.source.sed.shape) for c in self.C if c.prox_g_sed(self.source.sed.shape) is not None]
+        return [c.L_sed(self.component.sed.shape) for c in self.C if c.prox_g_sed(self.component.sed.shape) is not None]
 
     @property
     def L_morph(self):
-        return [c.L_morph(self.source.morph.shape) for c in self.C if c.prox_g_morph(self.source.morph.shape) is not None]
-
-    def __repr__(self):
-        return repr(self.C)
+        return [c.L_morph(self.component.morph.shape) for c in self.C if c.prox_g_morph(self.component.morph.shape) is not None]
