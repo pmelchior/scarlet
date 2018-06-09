@@ -46,7 +46,6 @@ class Blend(ComponentTree):
         self.use_psf = any(have_psf)
         assert any(have_psf) == all(have_psf)
 
-
     def set_data(self, img, weights=None, bg_rms=None, config=None):
         """Set data and fitting parameters.
 
@@ -331,19 +330,9 @@ class Blend(ComponentTree):
         # resize & recenter: after all blocks are updated
         if k == self.K - 1 and block == self.config.update_order[1]:
             self.it += 1
-
             self.update_sed()
             self.update_morph()
-
-            resized = False
-            if self.it % self.config.refine_skip == 0:
-                resized = self.resize_components()
-                self.recenter_components()
-                self.adjust_absolute_error()
-                self.update_center()
-
-            if resized:
-                raise ScarletRestartException()
+            self.update_center()
 
         return X
 
@@ -467,7 +456,29 @@ class Blend(ComponentTree):
             Ls_morph.append(self.components[k].constraints.L_morph)
         return Ls_sed + Ls_morph
 
-    def recenter_components(self):
+    def update_center(self):
+        """Update the centers of all nodes in `Blend`.
+
+        This overwrites the default `~scarlet.source.ComponentTree` method
+        and also updates the box sizes for each component.
+        """
+        resized = False
+        if self.it % self.config.refine_skip == 0:
+            self._recenter_components()
+
+            # call nodes to update centers
+            for i in range(self.n_nodes):
+                node = self[i]
+                if isinstance(node, ComponentTree):
+                    node.update_center()
+
+            resized = self._resize_components()
+            self._adjust_absolute_error()
+
+        if resized:
+            raise ScarletRestartException()
+
+    def _recenter_components(self):
         """Shift center position of components to minimize residuals in all bands
         """
         # residuals weighted with full/original weight matrix
@@ -581,7 +592,7 @@ class Blend(ComponentTree):
         self._edge_flux[k,2,:] = np.abs(model[:,0,:]).mean(axis=1)
         self._edge_flux[k,3,:] = np.abs(model[:,:,0]).mean(axis=1)
 
-    def resize_components(self):
+    def _resize_components(self):
         """Resize frames for components (if necessary).
 
         If for any component, the mean flux at the edges of the frame exceeds
@@ -631,7 +642,7 @@ class Blend(ComponentTree):
         self._e_abs = [self.e_rel / self.B] * self.K
         self._e_abs += self._absolute_morph_error()
 
-    def adjust_absolute_error(self):
+    def _adjust_absolute_error(self):
         """Adjust the absolute error for each component
         """
         self._e_abs[self.K:] = self._absolute_morph_error()
