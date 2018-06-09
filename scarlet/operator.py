@@ -5,7 +5,7 @@ import numpy as np
 import proxmin
 
 import logging
-logger = logging.getLogger("scarlet.operators")
+logger = logging.getLogger("scarlet.operator")
 
 def _prox_strict_monotonic(X, step, ref_idx, dist_idx, thresh=0):
     """Force an intensity profile to be monotonic

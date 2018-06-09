@@ -31,11 +31,11 @@ class Blend(ComponentTree):
     def __init__(self, components):
         """Constructor
 
-        Form a blended scene from a collection of `~scarlet.Component`s
+        Form a blended scene from a collection of `~scarlet.component.Component`s
 
         Parameters
         ----------
-        components: list of `~scarlet.Source` objects
+        components: list of `~scarlet.component.Component` or `~scarlet.component.ComponentTree`
         """
 
         super(Blend, self).__init__(components)
