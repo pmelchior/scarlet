@@ -4,6 +4,7 @@ from functools import partial
 
 import proxmin
 from .config import Config
+from .source import ComponentTree
 
 import logging
 logger = logging.getLogger("scarlet.blend")
@@ -21,58 +22,30 @@ class ScarletRestartException(Exception):
     """
     pass
 
-class Blend(object):
+class Blend(ComponentTree):
     """The blended scene.
 
     The class represents a celestial scene and provides the functions to fit it
     to data.
     """
-    def __init__(self, sources):
+    def __init__(self, components):
         """Constructor
 
-        Form a blended scene from a collection of `~scarlet.Component`s,
-        grouped into a list of `~scarlet.Source`s.
+        Form a blended scene from a collection of `~scarlet.Component`s
 
         Parameters
         ----------
-        sources: list of `~scarlet.Source` objects
+        components: list of `~scarlet.Source` objects
         """
 
-        # store all source and make search structures
-        self._register_components(sources)
+        super(Blend, self).__init__(components)
+
+        # check bands and PSFs
         self.B = self.components[0].B
-
-    @property
-    def K(self):
-        return len(self.components)
-
-    def _register_components(self, sources):
-        """Register all components from all sources.
-        """
-        assert len(sources)
-        self.sources = sources # do not copy!
-        self.components = []
-        for s in self.sources:
-            self.components += s.components
         have_psf = [c.has_psf for c in self.components]
         self.use_psf = any(have_psf)
         assert any(have_psf) == all(have_psf)
 
-        # lookup of source/component tuple given component number k
-        self._source_of = []
-        for m in range(len(self.sources)):
-            self.sources[m].label = m
-            for l in range(self.sources[m].K):
-                self._source_of.append((m,l))
-
-    def source_of(self, k):
-        """Get the source index of component k.
-        Each of the `~scarlet.source.Source`s in the model can have multiple
-        components, but the algorithm operates on each component
-
-        This method returns the tuple of indices `(m,l)` for source `k`.
-        """
-        return self._source_of[k]
 
     def set_data(self, img, weights=None, bg_rms=None, config=None):
         """Set data and fitting parameters.
@@ -359,18 +332,15 @@ class Blend(object):
         if k == self.K - 1 and block == self.config.update_order[1]:
             self.it += 1
 
-            for source in self.sources:
-                source.update_sed()
-                source.update_morph()
+            self.update_sed()
+            self.update_morph()
 
             resized = False
             if self.it % self.config.refine_skip == 0:
                 resized = self.resize_components()
                 self.recenter_components()
                 self.adjust_absolute_error()
-
-                for source in self.sources:
-                    source.update_center()
+                self.update_center()
 
             if resized:
                 raise ScarletRestartException()
@@ -507,14 +477,13 @@ class Blend(object):
         MT = []
         updated = []
         for k in range(self.K):
-            label = self._label_of(k)
-            if self.components[k].shift_center:
-                c = self.components[k]
+            c = self.components[k]
+            if c.shift_center:
                 diff_x,diff_y = self._get_shift_differential(k)
                 if np.sum(diff_x)==0 or np.sum(diff_y)==0:
                     # The component might not have any flux,
                     # so don't try to fit it's position
-                    logger.info("No flux in {0}, skipping recentering in it {1}".format(label, self.it))
+                    logger.debug("no flux in component {0}, skipping recentering in it {1}".format(c.coord, self.it))
                     continue
                 diff_x[:,:,-1] = 0
                 diff_y[:,-1,:] = 0
@@ -545,7 +514,6 @@ class Blend(object):
         for k in range(self.K):
             if k not in updated:
                 continue
-            label = self._label_of(k)
             _k = updated.index(k)
             ddx, ddy = result[2*_k:2*_k+2]
             if ddx**2 + ddy**2 > self.config.center_min_dist**2:
@@ -553,7 +521,7 @@ class Blend(object):
                 center = c.center + (ddy, ddx)
                 c.set_center(center)
                 msg = "shifting component {0} by ({1:.3f}/{2:.3f}) to ({3:.3f}/{4:.3f}) in it {5}"
-                logger.debug(msg.format(label, ddy, ddx, c.center[0], c.center[1], self.it))
+                logger.debug(msg.format(c.coord, ddy, ddx, c.center[0], c.center[1], self.it))
 
     def _get_shift_differential(self, k):
         """Calculate the difference image used ot fit positions
@@ -626,7 +594,8 @@ class Blend(object):
         """
         resized = False
         for k in range(self.K):
-            if not self.components[k].fix_frame:
+            c = self.components[k]
+            if not c.fix_frame:
                 size = [self.components[k].Ny, self.components[k].Nx]
                 increase = 1 # minimal increase, new size will be determine by config
                 newsize = [self.config.find_next_source_size(size[i] + increase) for i in range(2)]
@@ -645,8 +614,8 @@ class Blend(object):
                     resized = resized_component = True
                 if resized_component:
                     logger.info("resizing component {0} from ({1},{2}) to ({3},{4}) at it {5}" .format(
-                        k, _size[0], _size[1], size[0], size[1], self.it))
-                    self.components[k].resize(size)
+                        c.coord, _size[0], _size[1], size[0], size[1], self.it))
+                    c.resize(size)
         return resized
 
     def _absolute_morph_error(self):
@@ -666,10 +635,3 @@ class Blend(object):
         """Adjust the absolute error for each component
         """
         self._e_abs[self.K:] = self._absolute_morph_error()
-
-    def _label_of(self, k):
-        m,l = self.source_of(k)
-        label = "%r" % self.sources[m].label
-        if self.sources[m].K > 1:
-            label += ".%d" % l
-        return label

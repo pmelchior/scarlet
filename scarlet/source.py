@@ -78,6 +78,10 @@ class Component(object):
 
         self.set_constraints(constraints)
 
+        # for ComponentTree
+        self._index = None
+        self._parent = None
+
     @property
     def Nx(self):
         """Width of the frame
@@ -107,6 +111,14 @@ class Component(object):
         """Whether the source has a psf
         """
         return self._gamma.psfs is not None
+
+    @property
+    def coord(self):
+        if self._index is not None:
+            if self._parent._index is not None:
+                return tuple(self._parent.coord) + (self._index,)
+            else:
+                return (self._index,)
 
     def set_constraints(self, constraints):
         """Set up constraints for component.
@@ -361,10 +373,140 @@ class Component(object):
             return np.sqrt(np.diag(np.linalg.inv(PS.T.dot(Sigma_pix.dot(PS)).toarray())))
 
 
+class ComponentTree(object):
+    """Base class for hierarchical collections of `~scarlet.Component`s.
+    """
+    def __init__(self, components):
+        """Constructor
+
+        Group a list of `~scarlet.Component`s in a hierarchy.
+
+        Parameters
+        ----------
+        components: list of `~scarlet.Component` or `~scarlet.ComponentTree`
+        """
+        if not hasattr(components, "__iter__"):
+            components = (components,)
+
+        # check type and set coords of subordinate nodes in tree
+        self._tree = tuple(components)
+        self._index = None
+        self._parent = None
+        for i,c in enumerate(self._tree):
+            if not isinstance(c, ComponentTree) and not isinstance(c, Component):
+                raise NotImplementedError("argument needs to be list of Components or ComponentTrees")
+            c._index = i
+            c._parent = self
+
+        self._components = None
+
+    @property
+    def components(self):
+        if self._components is None:
+            components = []
+            for c in self._tree:
+                if isinstance(c, ComponentTree):
+                    _c = c.components
+                else:
+                    _c = [c]
+                # check uniqueness
+                for __c in _c:
+                    if __c not in components:
+                        components.append(__c)
+            self._components = tuple(components)
+        return self._components
+
+    @property
+    def n_components(self):
+        return len(self.components)
+
+    @property
+    def K(self):
+        return self.n_components
+
+    @property
+    def n_nodes(self):
+        return len(self._tree)
+
+    @property
+    def coord(self):
+        if self._index is not None:
+            if self._parent._index is not None:
+                return tuple(self._parent.coord) + (self._index,)
+            else:
+                return (self._index,)
+
+    def update_center(self):
+        for c in self._tree:
+            if isinstance(c, ComponentTree):
+                c.update_center()
+
+    def update_sed(self):
+        for c in self._tree:
+            if isinstance(c, ComponentTree):
+                c.update_sed()
+
+    def update_morph(self):
+        for c in self._tree:
+            if isinstance(c, ComponentTree):
+                c.update_morph()
+
+    def __iadd__(self, c):
+        c_index = self.n_nodes
+        if isinstance(c, ComponentTree):
+            self._tree = self._tree + c._tree
+        elif isinstance(c, Component):
+            self._tree = self._tree + (c,)
+        else:
+            raise NotImplementedError("argument needs to be Component or ComponentTree")
+        c._index = c_index
+        c._parent = self
+        self._components = None
+        return self
+
+    def __getitem__(self, coord):
+        if isinstance(coord, (tuple, list)):
+            if len(coord) > 1:
+                return self._tree[coord[0]].__getitem__(coord[1:])
+            else:
+                return self._tree[coord[0]]
+        elif isinstance(coord, int):
+            return self._tree[coord]
+        else:
+            raise NotImplementedError("coord needs to be index or list of indices")
+
+
+class Source(ComponentTree):
+    def __init__(self, components):
+        super(Source, self).__init__(components)
+
+    def get_model(self, k=None, combine=True, use_sed=True):
+        if k is not None:
+            return self.components[k].get_model(use_sed=use_sed)
+        # for all components
+        # TODO: doesn't work if components have different morph shape
+        if combine:
+            return np.sum([self.get_model(k=k, use_sed=use_sed) for k in range(self.K)], axis=0)
+        else:
+            return np.array([self.get_model(k=k, use_sed=use_sed) for k in range(self.K)])
+
+    def update_center(self):
+        if len(self.components) > 1:
+            _flux = np.array([c.morph.sum() for c in self.components])
+            _center = np.sum([_flux[k]*self.components[k].center for k in range(self.K)], axis=0)
+            _center /= _flux.sum()
+            for c in self.components:
+                if c.shift_center:
+                    c.center = _center
+                    msg = "updating component {0} center to ({1:.3f}/{2:.3f})"
+                    logger.debug(msg.format(c.coord, c.center[0], c.center[1]))
+
+
 class SourceInitError(Exception):
     """Error during source initialization
     """
     pass
+
 
 def get_pixel_sed(img, position):
     """Get the SED at `position` in `img`
@@ -418,73 +560,6 @@ def get_best_fit_sed(img, S):
     B = len(img)
     Y = img.reshape(B,-1)
     return np.dot(np.linalg.inv(np.dot(S,S.T)), np.dot(S, Y.T))
-
-
-class ComponentGroup(object):
-    """Base class for collections of `~scarlet.Component`s.
-    """
-    def __init__(self, components):
-        """Constructor
-
-        Group a list of `~scarlet.Component`s, possibly hierarchically.
-
-        Parameters
-        ----------
-        components: list of `~scarlet.Component` or `~scarlet.ComponentGroup`
-        """
-        if not hasattr(components, "__iter__"):
-            components = (components,)
-        self.components = tuple(components)
-
-    @property
-    def K(self):
-        return len(self.components)
-
-    def get_model(self, k=None, combine=True, use_sed=True):
-        if k is not None:
-            return self.components[k].get_model(use_sed=use_sed)
-        # for all components
-        if combine:
-            return np.sum([self.get_model(k=k, use_sed=use_sed) for k in range(self.K)], axis=0)
-        else:
-            return np.array([self.get_model(k=k, use_sed=use_sed) for k in range(self.K)])
-
-    def update_center(self):
-        for c in self.components:
-            if isinstance(c, ComponentGroup):
-                c.update_center()
-
-    def update_sed(self):
-        for c in self.components:
-            if isinstance(c, ComponentGroup):
-                c.update_sed()
-
-    def update_morph(self):
-        for c in self.components:
-            if isinstance(c, ComponentGroup):
-                c.update_morph()
-
-    def __iadd__(self, c):
-        self.components = self.components + c.components
-        return self
-
-
-class Source(ComponentGroup):
-    def __init__(self, components):
-        super(Source, self).__init__(components)
-        self.label = None
-
-    def update_center(self):
-        _flux = np.array([c.morph.sum() for c in self.components])
-        _center = np.sum([_flux[k]*self.components[k].center for k in range(self.K)], axis=0)
-        _center /= _flux.sum()
-        if len(self.components) > 1:
-            for k in range(self.K):
-                c = self.components[k]
-                if c.shift_center:
-                    c.center = _center
-                    msg = "updating component {0}.{1} center to ({2:.3f}/{3:.3f})"
-                    logger.debug(msg.format(self.label, k, c.center[0], c.center[1]))
 
 
 class PointSource(Source):
@@ -776,4 +851,4 @@ class MultiComponentSource(ExtendedSource):
                 _Nx = config.find_next_source_size(_Nx)
                 component.resize((_Ny, _Nx))
 
-                self.components = self.components + (component,)
+                self += component
