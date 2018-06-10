@@ -50,8 +50,6 @@ class Source(ComponentTree):
                 _model = np.zeros((models[k].shape[0], maxNy, maxNx))
                 _model[:, (maxNy-Ny)//2:maxNy-(maxNy-Ny)//2 , (maxNx-Nx)//2:maxNx-(maxNx-Nx)//2] = models[k][:,:,:]
                 models[k] = _model
-        for model in models:
-            print(model.shape)
         return np.sum(models, axis=0)
 
     def update_center(self):

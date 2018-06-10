@@ -1,7 +1,7 @@
 import numpy as np
 
 from .config import Config
-from . import constraints as sc
+from . import constraint as sc
 from .source import Source, ExtendedSource
 from .blend import Blend
 
@@ -11,7 +11,7 @@ def moffat(coords, y0, x0, amplitude, alpha, beta=1.5):
     Symmetric 2D Moffat function:
 
     .. math::
-        
+
         A (1+\frac{(x-x0)^2+(y-y0)^2}{\alpha^2})^{-\beta}
     """
     Y,X = coords
