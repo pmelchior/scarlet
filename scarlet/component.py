@@ -256,8 +256,6 @@ class Component(object):
     def set_center(self, center):
         """Given a (y,x) `center`, update the frame and `Gamma`
         """
-        if not hasattr(self, '_init_center'):
-            self._init_center = np.array([center[0], center[1]])
         size = (self.Ny, self.Nx)
         self._set_frame(center, size)
 

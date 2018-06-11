@@ -249,7 +249,7 @@ class ExtendedSource(Source):
         # using a temp Component for its frame methods
         B, Ny, Nx = img.shape
         sed = np.empty(B)
-        morph = np.empty((Ny, Nx))
+        morph = np.zeros((Ny, Nx))
         component = Component(sed, morph, center=center)
         bg_rms = np.array(bg_rms)
 
@@ -267,7 +267,7 @@ class ExtendedSource(Source):
 
         # thresh is multiple above the rms of detect (weighted variance across bands)
         bg_cutoff = thresh * np.sqrt((weights**2 * bg_rms**2).sum()) / jacobian
-        morph = self._init_morph(morph, detect, component, bg_cutoff, symmetric, monotonic, config)
+        morph = self._init_morph(component, detect, bg_cutoff, symmetric, monotonic, config)
 
         # use mean sed from image, weighted with the morphology of each component
         try:
@@ -278,24 +278,21 @@ class ExtendedSource(Source):
             logger.INFO("Using peak SED for source at {0}/{1}".format(component.center_int[0], component.center_int[1]))
         return sed, morph
 
-    def _init_morph(self, morph, detect, component, bg_cutoff=0, symmetric=True, monotonic=True, config=None):
+    def _init_morph(self, component, detect, bg_cutoff=0, symmetric=True, monotonic=True, config=None):
         """Initialize the morphology
 
         Parameters
         ----------
-        morph: array
-            Initial morphology guess
-        source_slice: list of slices
-            Slices corresponding to the pixels in the image data that
-            are contained in `morph`.
+        detect: `~numpy.array` (Ny, Nx)
+        component: `scarlet.component.Component`
         bg_cutoff: float
             Minimum non-zero flux value allowed before truncating the morphology
         """
 
         # copy morph from detect cutout, make non-negative
+        morph = component.morph
         shape = (component.B,) + detect.shape
         component_slice = component.get_slice_for(shape)
-        morph[:,:] = 0
         morph[component_slice[1:]] = detect[component.bb[1:]]
 
         # check if component_slice is covering the whole of morph:
@@ -313,8 +310,8 @@ class ExtendedSource(Source):
             morph = np.min([morph, symm], axis=0)
         if monotonic:
             # use finite thresh to remove flat bridges
-            from . import operators
-            prox_monotonic = operators.prox_strict_monotonic((component.Ny, component.Nx), thresh=0.1, use_nearest=False)
+            from . import operator
+            prox_monotonic = operator.prox_strict_monotonic((component.Ny, component.Nx), thresh=0.1, use_nearest=False)
             morph = prox_monotonic(morph, 0).reshape(component.Ny, component.Nx)
 
         # trim morph to pixels above threshold
