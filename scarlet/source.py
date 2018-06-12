@@ -291,6 +291,11 @@ class ExtendedSource(Source):
         """
         # take morph from detect, same frame but shifted to center
         Ny, Nx = detect.shape
+        # for monotonicity, we need an odd shape
+        if Ny % 2 == 0:
+            Ny += 1
+        if Nx % 2 ==0:
+            Nx += 1
         morph = np.zeros((Ny,Nx))
         im_slice, morph_slice = Component.get_frame(detect.shape, center, (Ny,Nx))
         morph[morph_slice] = detect[im_slice]
