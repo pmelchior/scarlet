@@ -46,11 +46,8 @@ class Component(object):
         self.B = sed.size
         self.sed = sed.copy()
         assert len(morph.shape) == 2
+        assert all([morph.shape[i] % 2 == 1 for i in range(2)])
         self.morph = morph.copy()
-
-        if center is None:
-            center = (morph.shape[0] // 2, morph.shape[1] // 2)
-        self._set_frame(center, morph.shape)
 
         # set up psf and translations matrices
         from . import transformation
@@ -63,7 +60,10 @@ class Component(object):
 
         # set center coordinates and translation operators
         # needs to have Gamma set up first
+        if center is None:
+            center = (morph.shape[0] // 2, morph.shape[1] // 2)
         self.set_center(center)
+        self.set_frame()
         self.shift_center = shift_center
 
         # updates for frame, sed, morph?
@@ -96,10 +96,17 @@ class Component(object):
         return (self.B, self.Ny, self.Nx)
 
     @property
+    def bb(self):
+        # TODO: docstring
+        # since slice wrap around if start or stop are negative, need to sanitize
+        # start values (stop always postive)
+        return (slice(None), slice(max(0, self.bottom), self.top), slice(max(0, self.left), self.right))
+
+    @property
     def center_int(self):
         """Rounded (not truncated) integer pixel position of the center
         """
-        return np.round(self.center).astype('int')
+        return Component.get_int(self.center)
 
     @property
     def has_psf(self):
@@ -133,7 +140,7 @@ class Component(object):
         """
 
         if constraints is None:
-            constraints = sc.SimpleConstraint()
+            constraints = sc.MinimalConstraint()
 
         self.constraints = sc.ConstraintAdapter(constraints, self)
 
@@ -190,7 +197,12 @@ class Component(object):
 
         return model
 
-    def _set_frame(self, center, size):
+    @staticmethod
+    def get_int(x):
+        return np.round(x).astype('int')
+
+    @staticmethod
+    def get_frame(shape, center, new_shape):
         """Create a frame and bounding box
 
         To save memory and computation time, each source is contained in a small
@@ -215,40 +227,21 @@ class Component(object):
         the new shape.
 
         """
-        assert len(center) == 2
-        self.center = np.array(center)
-        if hasattr(size, '__iter__'):
-            size = size[:2]
-        else:
-            size = (size,) * 2
-
         # store old edge coordinates
-        try:
-            top, right, bottom, left = self.top, self.right, self.bottom, self.left
-        except AttributeError:
-            top, right, bottom, left = [0,] * 4
+        (top, right), (bottom, left) = shape, [0,] * 2
 
-        # make cutout of in units of the original image frame (that defines xy)
         # ensure odd pixel number
-        y_, x_ = self.center_int
-        self.bottom, self.top = y_ - int(size[0]//2), y_ + int(size[0]//2) + 1
-        self.left, self.right = x_ - int(size[1]//2), x_ + int(size[1]//2) + 1
+        y, x = Component.get_int(center)
+        _bottom, _top = y - int(new_shape[0]//2), y + int(new_shape[0]//2) + 1
+        _left, _right = x - int(new_shape[1]//2), x + int(new_shape[1]//2) + 1
 
-        # since slice wrap around if start or stop are negative, need to sanitize
-        # start values (stop always postive)
-        self.bb = (slice(None), slice(max(0, self.bottom), self.top), slice(max(0, self.left), self.right))
-
-        # slices to update self.morph: check if new size is larger or smaller
-        new_slice_y = slice(max(0, bottom - self.bottom),
-                            min(self.top - self.bottom, self.top - self.bottom - (self.top - top)))
-        old_slice_y = slice(max(0, self.bottom - bottom), min(top - bottom, top - bottom - (top - self.top)))
-        if top-bottom == self.Ny:
-            new_slice_y = old_slice_y = slice(None)
-        new_slice_x = slice(max(0, left - self.left),
-                            min(self.right - self.left, self.right - self.left - (self.right - right)))
-        old_slice_x = slice(max(0, self.left - left), min(right - left, right - left - (right - self.right)))
-        if right-left == self.Nx:
-            new_slice_x = old_slice_x = slice(None)
+        # slices to update _morph: check if new size is larger or smaller
+        new_slice_y = slice(max(0, bottom - _bottom),
+                            min(_top - _bottom, _top - _bottom - (_top - top)))
+        old_slice_y = slice(max(0, _bottom - bottom), min(top - bottom, top - bottom - (top - _top)))
+        new_slice_x = slice(max(0, left - _left),
+                            min(_right - _left, _right - _left - (_right - right)))
+        old_slice_x = slice(max(0, _left - left), min(right - left, right - left - (right - _right)))
         new_slice = (new_slice_y, new_slice_x)
         old_slice = (old_slice_y, old_slice_x)
         return old_slice, new_slice
@@ -256,12 +249,23 @@ class Component(object):
     def set_center(self, center):
         """Given a (y,x) `center`, update the frame and `Gamma`
         """
-        size = (self.Ny, self.Nx)
-        self._set_frame(center, size)
+        assert len(center) == 2
+        self.center = np.array(center)
+
+        # TODO: check if needed
+        # frame update for tracking moving centers
+        self.set_frame()
 
         # update translation operator
         dyx = self.center - self.center_int
         self.Gamma = self._gamma(dyx)
+
+    def set_frame(self):
+        # ensure odd pixel number
+        y, x = Component.get_int(self.center)
+        shape = self.morph.shape
+        self.bottom, self.top = y - int(shape[0]//2), y + int(shape[0]//2) + 1
+        self.left, self.right = x - int(shape[1]//2), x + int(shape[1]//2) + 1
 
     def resize(self, size):
         """Resize the frame
@@ -275,16 +279,19 @@ class Component(object):
             Either a (height,width) shape or a single size to create a
             square (size,size) frame.
         """
-        old_slice, new_slice = self._set_frame(self.center, size)
+        if hasattr(size, '__iter__'):
+            size = size[:2]
+        else:
+            size = (size,) * 2
 
+        morph_center = self.center - np.array([self.bottom, self.left])
+        old_slice, new_slice = Component.get_frame(self.morph.shape, morph_center, size)
         if new_slice != old_slice:
             # change morph
             _morph = self.morph.copy()
-            self.morph = np.zeros((self.Ny, self.Nx))
+            self.morph = np.zeros(size)
             self.morph[new_slice] = _morph[old_slice]
-
-            # update Gamma and center (including subpixel shifts)
-            self.set_center(self.center)
+            self.set_frame()
 
     def get_morph_error(self, weights):
         """Get error in the morphology

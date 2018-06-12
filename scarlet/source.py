@@ -147,6 +147,8 @@ class PointSource(Source):
 
         Parameters
         ----------
+        center: array-like
+            (y,x) coordinates of the component in the larger image
         img: :class:`~numpy.array`
             (Bands, Height, Width) data array that contains a 2D image for each band
         shape: tuple
@@ -214,6 +216,8 @@ class ExtendedSource(Source):
 
         Parameters
         ----------
+        center: array-like
+            (y,x) coordinates of the component in the larger image
         img: :class:`~numpy.array`
             (Bands, Height, Width) data array that contains a 2D image for each band
         bg_rms: array_like
@@ -245,64 +249,64 @@ class ExtendedSource(Source):
 
         See `self.__init__` for a description of the parameters
         """
-        # every source as large as the entire image, but shifted to its centroid
-        # using a temp Component for its frame methods
-        B, Ny, Nx = img.shape
-        sed = np.empty(B)
-        morph = np.zeros((Ny, Nx))
-        component = Component(sed, morph, center=center)
-        bg_rms = np.array(bg_rms)
-
         # determine initial SED from peak position
+        B = img.shape[0]
+        center_int = np.round(center).astype('int')
+        sed = np.empty(B)
         try:
-            sed = get_pixel_sed(img, component.center_int)
+            sed = get_pixel_sed(img, center_int)
         except SourceInitError:
             # flat weights as fall-back
             sed = np.ones(B) / B
 
-        # build optimal detection coadd
+        # build optimal detection coadd given the sed
+        bg_rms = np.array(bg_rms)
         weights = np.array([sed[b]/bg_rms[b]**2 for b in range(B)])
         jacobian = np.array([sed[b]**2/bg_rms[b]**2 for b in range(B)]).sum()
         detect = np.einsum('i,i...', weights, img) / jacobian
 
         # thresh is multiple above the rms of detect (weighted variance across bands)
         bg_cutoff = thresh * np.sqrt((weights**2 * bg_rms**2).sum()) / jacobian
-        morph = self._init_morph(component, detect, bg_cutoff, symmetric, monotonic, config)
+        morph = self._init_morph(detect, center, bg_cutoff, symmetric, monotonic, config)
 
         # use mean sed from image, weighted with the morphology of each component
         try:
-            component_slice = component.get_slice_for(img.shape)
-            sed = get_integrated_sed(img[component.bb], morph[component_slice[1:]])
+            im_slice, morph_slice = Component.get_frame(detect.shape, center, morph.shape)
+            sed = get_integrated_sed(img[slice(None), im_slice[0], im_slice[1]], morph[morph_slice])
         except SourceInitError:
             # keep the peak sed
-            logger.INFO("Using peak SED for source at {0}/{1}".format(component.center_int[0], component.center_int[1]))
+            logger.INFO("Using peak SED for source at {0}/{1}".format(center_int[0], center_int[1]))
         return sed, morph
 
-    def _init_morph(self, component, detect, bg_cutoff=0, symmetric=True, monotonic=True, config=None):
+    def _init_morph(self, detect, center, bg_cutoff=0, symmetric=True, monotonic=True, config=None):
         """Initialize the morphology
 
         Parameters
         ----------
+        center: array-like
+            (y,x) coordinates of the component in the larger image
         detect: `~numpy.array` (Ny, Nx)
-        component: `scarlet.component.Component`
         bg_cutoff: float
             Minimum non-zero flux value allowed before truncating the morphology
         """
+        # take morph from detect, same frame but shifted to center
+        Ny, Nx = detect.shape
+        if Ny % 2 == 0:
+            Ny += 1
+        if Nx % 2 ==0:
+            Nx += 1
+        morph = np.zeros((Ny,Nx))
+        im_slice, morph_slice = Component.get_frame(detect.shape, center, (Ny,Nx))
+        morph[morph_slice] = detect[im_slice]
 
-        # copy morph from detect cutout, make non-negative
-        morph = component.morph
-        shape = (component.B,) + detect.shape
-        component_slice = component.get_slice_for(shape)
-        morph[component_slice[1:]] = detect[component.bb[1:]]
-
-        # check if component_slice is covering the whole of morph:
-        # if not, extend morph by coping last row/column from img
-        if component_slice[1].stop - component_slice[1].start < component.Ny:
-            morph[0:component_slice[1].start,:] = morph[component_slice[1].start,:]
-            morph[component_slice[1].stop:,:] = morph[component_slice[1].stop-1,:]
-        if component_slice[2].stop - component_slice[2].start < component.Nx:
-            morph[:,0:component_slice[2].start] = morph[:,component_slice[2].start][:,None]
-            morph[:,component_slice[2].stop:] = morph[:,component_slice[2].stop-1][:,None]
+        # check if morph_slice is covering the whole of morph:
+        # if not, extend morph by coping last row/column from detect
+        if morph_slice[0].stop - morph_slice[0].start < Ny:
+            morph[0:morph_slice[0].start,:] = morph[morph_slice[0].start,:]
+            morph[morph_slice[0].stop:,:] = morph[morph_slice[0].stop-1,:]
+        if morph_slice[1].stop - morph_slice[1].start < Nx:
+            morph[:,0:morph_slice[1].start] = morph[:,morph_slice[1].start][:,None]
+            morph[:,morph_slice[1].stop:] = morph[:,morph_slice[1].stop-1][:,None]
 
         # symmetric, monotonic
         if symmetric:
@@ -311,8 +315,8 @@ class ExtendedSource(Source):
         if monotonic:
             # use finite thresh to remove flat bridges
             from . import operator
-            prox_monotonic = operator.prox_strict_monotonic((component.Ny, component.Nx), thresh=0.1, use_nearest=False)
-            morph = prox_monotonic(morph, 0).reshape(component.Ny, component.Nx)
+            prox_monotonic = operator.prox_strict_monotonic((Ny, Nx), thresh=0.1, use_nearest=False)
+            morph = prox_monotonic(morph, 0).reshape(Ny, Nx)
 
         # trim morph to pixels above threshold
         mask = morph > bg_cutoff
@@ -321,7 +325,6 @@ class ExtendedSource(Source):
             _y, _x = component.center_int
             raise SourceInitError(msg.format(_y, _x, bg_cutoff))
         morph[~mask] = 0
-
         ypix, xpix = np.where(mask)
         _Ny = np.max(ypix)-np.min(ypix)
         _Nx = np.max(xpix)-np.min(xpix)
@@ -330,12 +333,13 @@ class ExtendedSource(Source):
         _Ny = config.find_next_source_size(_Ny)
         _Nx = config.find_next_source_size(_Nx)
 
-        # need to reshape morph: store old edge coordinates
-        old_slice, new_slice = component._set_frame(component.center, (_Ny, _Nx))
+        # need to reshape morph?
+        _center = (morph.shape[0] // 2, morph.shape[1] // 2)
+        old_slice, new_slice = Component.get_frame((Ny, Nx), _center, (_Ny, _Nx))
 
         # update morph
         if new_slice != old_slice:
-            _morph = np.zeros((component.Ny, component.Nx))
+            _morph = np.zeros((_Ny, _Nx))
             _morph[new_slice] = morph[old_slice]
             morph = _morph
         return morph
