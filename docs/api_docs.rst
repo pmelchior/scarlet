@@ -7,10 +7,12 @@ API Documentation
    :maxdepth: 1
 
    blend
+   component
    source
-   constraints
-   operators
-   transformations
+   constraint
    psf_match
    config
    display
+   operator
+   transformation
+   cache
