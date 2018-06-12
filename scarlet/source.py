@@ -63,7 +63,7 @@ class Source(ComponentTree):
             _center /= _flux.sum()
             for c in self.components:
                 if c.shift_center:
-                    c.center = _center
+                    c.set_center(_center)
                     msg = "updating component {0} center to ({1:.3f}/{2:.3f})"
                     logger.debug(msg.format(c.coord, c.center[0], c.center[1]))
 
@@ -136,7 +136,7 @@ class PointSource(Source):
     While the source can have any `constraints`, the default constraints are
     symmetry and monotonicity.
     """
-    def __init__(self, center, img, shape=None, constraints=None, psf=None, config=None):
+    def __init__(self, center, img, shape=None, constraints=None, psf=None, config=None, fix_sed=False, fix_morph=False, fix_frame=False, shift_center=0.1):
         """Initialize
 
         This implementation initializes the sed from the pixel in
@@ -167,7 +167,7 @@ class PointSource(Source):
                            sc.DirectMonotonicityConstraint(use_nearest=False),
                            sc.DirectSymmetryConstraint())
 
-        component = Component(sed, morph, center=center, constraints=constraints, psf=psf, fix_sed=False, fix_morph=False, fix_frame=False, shift_center=0.1)
+        component = Component(sed, morph, center=center, constraints=constraints, psf=psf, fix_sed=fix_sed, fix_morph=fix_morph, fix_frame=fix_frame, shift_center=shift_center)
         super(PointSource, self).__init__(component)
 
     def _make_initial(self, center, img, shape, tiny=1e-10):
