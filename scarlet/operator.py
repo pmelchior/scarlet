@@ -58,7 +58,7 @@ def sort_by_radius(shape):
 def prox_strict_monotonic(shape, use_nearest=False, thresh=0):
     """Build the prox_monotonic operator
     """
-    from . import transformations
+    from . import transformation
 
     height, width = shape
     if not height % 2 or not width % 2:
@@ -68,7 +68,7 @@ def prox_strict_monotonic(shape, use_nearest=False, thresh=0):
 
     if use_nearest:
         from scipy import sparse
-        monotonicOp = transformations.getRadialMonotonicOp(shape, useNearest=True)
+        monotonicOp = transformation.getRadialMonotonicOp(shape, useNearest=True)
         x_idx, ref_idx = sparse.find(monotonicOp==1)[:2]
         ref_idx = ref_idx[np.argsort(x_idx)]
         result = partial(_prox_strict_monotonic, ref_idx=ref_idx.tolist(),
@@ -76,7 +76,7 @@ def prox_strict_monotonic(shape, use_nearest=False, thresh=0):
     else:
         coords = [(-1,-1), (-1,0), (-1, 1), (0,-1), (0,1), (1, -1), (1,0), (1,1)]
         offsets = np.array([width*y+x for y,x in coords])
-        weights = transformations.getRadialMonotonicWeights(shape, useNearest=False)
+        weights = transformation.getRadialMonotonicWeights(shape, useNearest=False)
         result = partial(_prox_weighted_monotonic, weights=weights, didx=didx[1:], offsets=offsets, thresh=thresh)
     return result
 
