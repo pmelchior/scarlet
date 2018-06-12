@@ -28,7 +28,7 @@ class Source(ComponentTree):
     def get_model(self):
         """Compute the model for this source.
 
-        NOTE: If individual components have different shape, the resulting
+        NOTE: If individual components have different shapes, the resulting
         model will be set in a box that can contain all of them.
 
         Returns

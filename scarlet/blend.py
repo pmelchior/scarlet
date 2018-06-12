@@ -620,7 +620,7 @@ class Blend(ComponentTree):
         for k in range(self.K):
             c = self.components[k]
             if not c.fix_frame:
-                size = [self.components[k].Ny, self.components[k].Nx]
+                size = [c.Ny, c.Nx]
                 increase = 1 # minimal increase, new size will be determine by config
                 newsize = [self.config.find_next_source_size(size[i] + increase) for i in range(2)]
 

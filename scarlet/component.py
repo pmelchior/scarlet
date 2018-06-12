@@ -7,13 +7,13 @@ logger = logging.getLogger("scarlet.component")
 class Component(object):
     """A single component in a blend.
 
-    This class acts as base for building complex sources.
+    This class acts as base for building complex :class:`scarlet.source.Source`.
     """
     def __init__(self, sed, morph, center=None, constraints=None, psf=None, fix_sed=False,
                  fix_morph=False, fix_frame=False, shift_center=0.2):
         """Constructor
 
-        Create source with K components from a matrix of SEDs and morphologies.
+        Create component from a SED vector and morphology image.
 
         Parameters
         ----------
@@ -23,11 +23,10 @@ class Component(object):
             Data cube (Height, Width) of the initial morphology.
         center: array-like
             (y,x) coordinates of the component in the larger image
-        constraints: :class:`scarlet.constraint.Constraint` or :class:`scarlet.constraint.ConstraintList`
+        constraints: :class:`scarlet.constraint.Constraint` or list thereof
             Constraints used to constrain the SED and/or morphology.
             When `constraints` is `None` then
-            :class:`scarlet.constraint.DirectMonotonicityConstraint`
-            and :class:`scarlet.constraint.SimpleConstraint` are used.
+            :class:`scarlet.constraint.MinimalConstraint` is used.
         psf: array-like or `~scarlet.transformation.Gamma`, default=`None`
             2D image of the psf in a single band (Height, Width),
             or 2D image of the psf in each band (Bands, Height, Width),
@@ -121,13 +120,13 @@ class Component(object):
 
     @property
     def has_psf(self):
-        """Whether the source has a psf
+        """Whether the component has a psf
         """
         return self._gamma.psfs is not None
 
     @property
     def coord(self):
-        """The coordinate in a `~scarlet.source.ComponentTree`.
+        """The coordinate in a `~scarlet.component.ComponentTree`.
         """
         if self._index is not None:
             if self._parent._index is not None:
@@ -159,7 +158,7 @@ class Component(object):
         """Return the slice of the component frame in the full multiband image
 
         In other words, return the slice so that
-        self.get_model()[k][slice] corresponds to image[self.bb],
+        self.get_model()[slice] corresponds to image[self.bb],
         where image has shape (Band, Height, Width).
 
         Parameters
@@ -197,7 +196,7 @@ class Component(object):
             sed = self.sed
         else:
             sed = np.ones_like(self.sed)
-        # model for all components of this source
+
         if not self.has_psf:
             model = np.empty((self.B, self.Ny, self.Nx))
             model = np.outer(sed, Gamma.dot(self.morph)).reshape(self.B, self.Ny, self.Nx)
@@ -210,13 +209,15 @@ class Component(object):
 
     @staticmethod
     def get_int(x):
+        """Return rounded integer version of argument.
+        """
         return np.round(x).astype('int')
 
     @staticmethod
     def get_frame(shape, center, new_shape):
         """Create a frame and bounding box
 
-        To save memory and computation time, each source is contained in a small
+        To save memory and computation time, each component is contained in a small
         subset of the entire blended image. This method takes the coordinates of
         the component and the size of the frame and creates a bonding box (`self.bb`).
 
@@ -332,7 +333,7 @@ class Component(object):
         if mask.sum():
             w[:,mask] = 1e-3 * w[:,~mask].min(axis=1)[:,None]
 
-        # compute direct error propagation assuming only this source SED(s)
+        # compute direct error propagation assuming only this component SED(s)
         # and the pixel covariances: Sigma_morph = diag((A^T Sigma^-1 A)^-1)
         # CAVEAT: If done on the entire A matrix, degeneracies in the linear
         # solution arise and substantially amplify the error estimate:
@@ -466,14 +467,18 @@ class ComponentTree(object):
             else:
                 return (self._index,)
 
+    def _update(self, update_type):
+        """Recursively update the tree"""
+        for c in self._tree:
+            if hasattr(c, update_type):
+                getattr(c, update_type)()
+
     def update_center(self):
         """Update the center location of attached nodes.
 
         This methods recursively call the same function of all attached tree nodes.
         """
-        for c in self._tree:
-            if isinstance(c, ComponentTree):
-                c.update_center()
+        self._update("update_center")
 
     def update_sed(self):
         """Update the SEDs of attached nodes.
@@ -482,9 +487,8 @@ class ComponentTree(object):
         While the method has complete freedom to perform updates, it is
         recommended that its behavior mimics a proximal operator in the direct domain.
         """
-        for c in self._tree:
-            if isinstance(c, ComponentTree):
-                c.update_sed()
+        self._update("update_sed")
+
 
     def update_morph(self):
         """Update the morphologies of attached nodes.
@@ -493,9 +497,7 @@ class ComponentTree(object):
         While the method has complete freedom to perform updates, it is
         recommended that its behavior mimics a proximal operator in the direct domain.
         """
-        for c in self._tree:
-            if isinstance(c, ComponentTree):
-                c.update_morph()
+        self._update("update_morph")
 
     def __iadd__(self, c):
         """Add another component or tree.
