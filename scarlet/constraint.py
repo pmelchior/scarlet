@@ -1,6 +1,6 @@
 import proxmin
-from . import operators
-from . import transformations
+from . import operator
+from . import transformation
 from .cache import Cache
 from functools import partial
 
@@ -98,7 +98,7 @@ class SimpleConstraint(Constraint):
 
     def prox_morph(self, shape):
         return proxmin.operators.AlternatingProjections([
-                operators.prox_center_on, proxmin.operators.prox_plus])
+                operator.prox_center_on, proxmin.operators.prox_plus])
 
 class L0Constraint(Constraint):
     """L0 sparsity penalty for the morphology
@@ -151,7 +151,7 @@ class DirectMonotonicityConstraint(Constraint):
             If `exact` is `True`, this argument is ignored.
         exact: bool
             If `exact` is `True` then the exact (but *extremely slow*) monotonic operator is used.
-            Otherwise `transformations.getRadialMonotonicOp` is used.
+            Otherwise `transformation.getRadialMonotonicOp` is used.
         thresh: float
             Minimum ratio between the current pixel and it's reference pixel.
             When `thresh=0` (default) a flat morphology is allowed.
@@ -172,11 +172,11 @@ class DirectMonotonicityConstraint(Constraint):
             prox = Cache.check(prox_name, key)
         except KeyError:
             if not self.exact:
-                prox = operators.prox_strict_monotonic(shape, use_nearest=self.use_nearest, thresh=self.thresh)
+                prox = operator.prox_strict_monotonic(shape, use_nearest=self.use_nearest, thresh=self.thresh)
             else:
                 # cone method for monotonicity: exact but VERY slow
-                G = transformations.getRadialMonotonicOp(shape, useNearest=self.useNearest).toarray()
-                prox = partial(operators.prox_cone, G=G)
+                G = transformation.getRadialMonotonicOp(shape, useNearest=self.useNearest).toarray()
+                prox = partial(operator.prox_cone, G=G)
             Cache.set(prox_name, key, prox)
         return prox
 
@@ -204,7 +204,7 @@ class MonotonicityConstraint(Constraint):
         return proxmin.operators.prox_plus
 
     def L_morph(self, shape):
-        return transformations.getRadialMonotonicOp(shape, useNearest=self.use_nearest)
+        return transformation.getRadialMonotonicOp(shape, useNearest=self.use_nearest)
 
 class SymmetryConstraint(Constraint):
     """$prox_g$ symmetry constraint
@@ -216,7 +216,7 @@ class SymmetryConstraint(Constraint):
         return proxmin.operators.prox_zero
 
     def L_morph(self, shape):
-        return transformations.getSymmetryOp(shape)
+        return transformation.getSymmetryOp(shape)
 
 class DirectSymmetryConstraint(Constraint):
     """Soft symmetry constraint
@@ -230,7 +230,7 @@ class DirectSymmetryConstraint(Constraint):
         self.sigma = sigma
 
     def prox_morph(self, shape):
-        return partial(operators.prox_soft_symmetry, sigma=self.sigma)
+        return partial(operator.prox_soft_symmetry, sigma=self.sigma)
 
 class TVxConstraint(Constraint):
     """Total Variation (TV) in X
@@ -257,7 +257,7 @@ class TVxConstraint(Constraint):
         try:
             return Cache.check(name, key)
         except KeyError:
-            L = proxmin.transformations.get_gradient_x(shape, shape[1])
+            L = proxmin.transformation.get_gradient_x(shape, shape[1])
             _ = L.spectral_norm
             Cache.set(name, key, L)
             return L
@@ -287,7 +287,7 @@ class TVyConstraint(Constraint):
         try:
             return Cache.check(name, key)
         except KeyError:
-            L = proxmin.transformations.get_gradient_y(shape, shape[0])
+            L = proxmin.transformation.get_gradient_y(shape, shape[0])
             _ = L.spectral_norm
             Cache.set(name, key, L)
             return L
