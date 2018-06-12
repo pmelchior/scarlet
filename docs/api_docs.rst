@@ -15,4 +15,3 @@ API Documentation
    display
    operator
    transformation
-   cache

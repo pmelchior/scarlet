@@ -194,7 +194,7 @@ class PSFDiffKernel(Source):
         config: :class:`scarlet.config.Config` instance, default=`None`
             Special configuration to overwrite default optimization parameters
 
-        see :class:`scarelt.source.Source` for other parameters.
+        see :class:`scarlet.source.Source` for other parameters.
         """
 
         # set sed and morph to that of `band`
