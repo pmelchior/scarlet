@@ -275,7 +275,7 @@ class ExtendedSource(Source):
             sed = get_integrated_sed(img[slice(None), im_slice[0], im_slice[1]], morph[morph_slice])
         except SourceInitError:
             # keep the peak sed
-            logger.INFO("Using peak SED for source at {0}/{1}".format(center_int[0], center_int[1]))
+            logger.INFO("Using peak SED for source at {0}".format(center_int))
         return sed, morph
 
     def _init_morph(self, detect, center, bg_cutoff=0, symmetric=True, monotonic=True, config=None):
@@ -321,9 +321,8 @@ class ExtendedSource(Source):
         # trim morph to pixels above threshold
         mask = morph > bg_cutoff
         if mask.sum() == 0:
-            msg = "No flux above threshold={2} for source at y={0}, x={1}"
-            _y, _x = component.center_int
-            raise SourceInitError(msg.format(_y, _x, bg_cutoff))
+            msg = "No flux above threshold={1} for source at {0}"
+            raise SourceInitError(msg.format(center, bg_cutoff))
         morph[~mask] = 0
         ypix, xpix = np.where(mask)
         _Ny = np.max(ypix)-np.min(ypix)
