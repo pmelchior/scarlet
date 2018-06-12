@@ -202,10 +202,6 @@ class PSFDiffKernel(Source):
         sed = np.zeros(B)
         sed[band] = 1
 
-        if Ny % 2 == 0:
-            Ny += 1
-        if Nx % 2 ==0:
-            Nx += 1
         morph = np.zeros((Ny,Nx))
         im_slice, morph_slice = Component.get_frame(psfs[band].shape, center, (Ny,Nx))
         morph[morph_slice] = psfs[band][im_slice]

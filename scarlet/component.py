@@ -42,12 +42,23 @@ class Component(object):
             Amount to shift the differential image in x and y to fit
             changes in position.
         """
-        # set size of the source frame
+        # set sed and morph
         self.B = sed.size
         self.sed = sed.copy()
+
+        # check that morph has odd dimensions
         assert len(morph.shape) == 2
-        assert all([morph.shape[i] % 2 == 1 for i in range(2)])
-        self.morph = morph.copy()
+        Ny, Nx = morph.shape
+        if all([morph.shape[i] % 2 == 1 for i in range(2)]):
+            self.morph = morph.copy()
+        else:
+            _Ny, _Nx = Ny, Nx
+            if _Ny % 2 == 0:
+                _Ny += 1
+            if _Nx % 2 ==0:
+                _Nx += 1
+            self.morph = np.zeros((_Ny, _Nx))
+            self.morph[:Ny,:Nx] = morph[:,:]
 
         # set up psf and translations matrices
         from . import transformation
