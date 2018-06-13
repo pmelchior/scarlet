@@ -322,8 +322,8 @@ class ExtendedSource(Source):
         # trim morph to pixels above threshold
         mask = morph > bg_cutoff
         if mask.sum() == 0:
-            msg = "No flux above threshold={1} for source at {0}"
-            raise SourceInitError(msg.format(center, bg_cutoff))
+            msg = "No flux above threshold={2} for source at y={0} x={1}"
+            raise SourceInitError(msg.format(center[0], center[1], bg_cutoff))
         morph[~mask] = 0
         ypix, xpix = np.where(mask)
         _Ny = np.max(ypix)-np.min(ypix)
