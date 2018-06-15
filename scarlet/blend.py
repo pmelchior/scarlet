@@ -469,6 +469,12 @@ class Blend(ComponentTree):
             Ls_morph.append(self.components[k].constraints.L_morph)
         return Ls_sed + Ls_morph
 
+    @property
+    def sources(self):
+        """Return the list of `~scarlet.Source` used in the blend.
+        """
+        return self.nodes
+
     def update_center(self):
         """Update the centers of all nodes in `Blend`.
 

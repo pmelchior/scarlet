@@ -450,6 +450,16 @@ class ComponentTree(object):
         return self.n_components
 
     @property
+    def nodes(self):
+        """Initial list that generates the tree.
+
+        Returns
+        -------
+        The arguments of `__init__`
+        """
+        return self._tree
+
+    @property
     def n_nodes(self):
         """Number of direct attached nodes.
         """
