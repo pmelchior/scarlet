@@ -11,7 +11,7 @@ import subprocess
 import warnings
 
 # Use the firt 7 digits of the git hash to set the version
-__version__ = '0.2.'+subprocess.check_output(['git', 'rev-parse', 'HEAD'])[:7].decode("utf-8")
+__version__ = '0.3.'+subprocess.check_output(['git', 'rev-parse', 'HEAD'])[:7].decode("utf-8")
 
 packages = []
 for root, dirs, files in os.walk('.'):
@@ -119,7 +119,7 @@ setup(
   url = 'https://github.com/fred3m/scarlet',
   keywords = ['astro', 'deblending', 'photometry', 'nmf'],
   ext_modules=ext_modules,
-  install_requires=['numpy', 'scipy', 'pybind11>=2.2', 'proxmin>=0.5.0', 'peigen>=0.0.9'],
+  install_requires=['numpy', 'scipy', 'pybind11>=2.2', 'proxmin>=0.5.1', 'peigen>=0.0.9'],
   cmdclass={'build_ext': BuildExt},
   zip_safe=False,
 )

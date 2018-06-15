@@ -3,18 +3,8 @@ import warnings
 
 import numpy as np
 import scipy.sparse
-
-# global cache to hold all transformation matrices, except for GammaOp
-cache = {}
-
-def check_cache(name, key):
-    global cache
-    try:
-        cache[name]
-    except KeyError:
-        cache[name] = {}
-
-    return cache[name][key]
+import proxmin.utils
+from .cache import Cache
 
 def get_filter_slices(coords):
     """Get the slices in x and y to apply a filter
@@ -107,7 +97,7 @@ class LinearFilter:
         X: 2D numpy array or `LinearFilter` or `LinearFilterChain`
             Array to apply the filter to, or chain of filters to
             prepend this filter to.
-        
+
         Returns
         -------
         result: 2D numpy array or `LinearFilterChain`
@@ -147,7 +137,7 @@ class LinearFilterChain:
             applied to an image first.
         """
         self.filters = filters
-    
+
     @property
     def T(self):
         """Transpose the list of filters
@@ -168,7 +158,7 @@ class LinearFilterChain:
         ----------
         X: 2D numpy array
             Image to apply the filters to.
-        
+
         Returns
         -------
         result: 2D numpy array or `LinearFilterChain`
@@ -228,20 +218,18 @@ class LinearTranslation(LinearFilter):
         ddx = 1.-dx
         ddy = 1.-dy
         self._flat_values = np.array([ddx*ddy, ddy*dx, ddx*dy, dx*dy])
-        slice_name = "Tyx_slice"
-        coord_name = "Tyx_coord"
+        slice_name = "LinearTranslation.Tyx_slice"
+        coord_name = "LinearTranslation.Tyx_coord"
         key = (sign_y, sign_x)
         self.key = key
         try:
-            self._flat_coords = check_cache(coord_name, key)
-            self._slices = check_cache(slice_name, key)
+            self._flat_coords = Cache.check(coord_name, key)
+            self._slices = Cache.check(slice_name, key)
         except KeyError:
             self._flat_coords = np.array([[0,0], [0,sign_x], [sign_y,0], [sign_y,sign_x]], dtype=int)
-            cache[coord_name][key] = self._flat_coords
-            if slice_name not in cache:
-                cache[slice_name] = {}
             self._slices = get_filter_slices(self._flat_coords)
-            cache[slice_name][key] = self._slices
+            Cache.set(coord_name, key, self._flat_coords)
+            Cache.set(slice_name, key, self._slices)
 
     @property
     def T(self):
@@ -286,7 +274,7 @@ class Gamma:
             self.B = None
         # Create the transformation matrices
         self._update_translation(dy, dx)
-    
+
     def _update_psf(self, psfs, center=None):
         """Update the psf convolution filter
         """
@@ -337,103 +325,6 @@ class Gamma:
                 gamma.append(LinearFilterChain([translation, self.psfFilters[b]]))
         return gamma
 
-class LinearOperator:
-    """Mock a linear operator
-
-    Because scarlet uses 2D images for morphologies,
-    the morphology they operate on must be flattened,
-    so this class mocks a linear operator by applying it's
-    functions to a flattened variable.
-    """
-    def __init__(self, L):
-        """Initialize the class
-        """
-        while isinstance(L, LinearOperator):
-            L = L.L
-        self.L = L
-
-    def dot(self, X):
-        """Take the dot product with a 2D X
-        """
-        if isinstance(X, np.ndarray):
-            return self.L.dot(X.reshape(-1)).reshape(X.shape)
-        else:
-            return LinearOperator(self.L.dot(X))
-
-    @property
-    def T(self):
-        """Return a transposed version of the linear operator
-        """
-        return LinearOperator(self.L.T)
-
-    @property
-    def spectral_norm(self):
-        """Spectral norm of the operator
-        """
-        from scipy.sparse import issparse
-        LTL = self.L.T.dot(self.L)
-        if issparse(self.L):
-            if min(self.L.shape) <= 2:
-                L2 = np.real(np.linalg.eigvals(LTL.toarray()).max())
-            else:
-                import scipy.sparse.linalg
-                L2 = np.real(scipy.sparse.linalg.eigs(LTL, k=1, return_eigenvectors=False)[0])
-        else:
-            import IPython; IPython.embed()
-            L2 = np.real(np.linalg.eigvals(LTL).max())
-        return L2
-
-    def __len__(self):
-        return len(self.L)
-
-    @property
-    def shape(self):
-        return self.L.shape
-
-    @property
-    def size(self):
-        return self.L.size
-    
-    @property
-    def ndim(self):
-        print(self.L.ndim)
-        return self.L.ndim
-
-    def __sub__(self, op):
-        return LinearOperator(self.L - op)
-
-    def __rsub__(self, op):
-        return LinearOperator(op - self.L)
-
-    def __add__(self, op):
-        return LinearOperator(self.L + op)
-
-    def __radd__(self, op):
-        return LinearOperator(op + self.L)
-
-    def __mul__(self, op):
-        return LinearOperator(self.L * op)
-
-    def __rmul__(self, op):
-        return LinearOperator(op * self.L)
-
-    def __div__(self, op):
-        return LinearOperator(self.L / op)
-
-    def __rdiv__(self, op):
-        return LinearOperator(self.L / op)
-    
-    def reshape(self, shape):
-        return LinearOperator(self.L.reshape(shape))
-
-    def __array_prepare__(self, *args):
-        print("preparing")
-        return self.L.__array_prepare__(*args)
-
-    def __getattr__(self, attr):
-        if attr not in self.__dict__.keys:
-            return getattr(self.L, attr)
-
 def getPSFOp(psf, imgShape):
     """Create an operator to convolve intensities with the PSF
 
@@ -443,11 +334,10 @@ def getPSFOp(psf, imgShape):
     """
 
     warnings.warn("The 'psfOp' is deprecated, use 'LinearFilter' instead")
-    name = "PSF"
+    name = "getPSFOp"
     key = tuple(imgShape)
     try:
-        psfOp = check_cache(name, key)
-
+        psfOp = Cache.check(name, key)
     except KeyError:
         height, width = imgShape
         size = width * height
@@ -498,37 +388,35 @@ def getPSFOp(psf, imgShape):
                             psfOp[width*(h+1)-x_-1, width*(h+y+1)+x-x_-1] = 0
 
         # Return the transpose, which correctly convolves the data with the PSF
-        psfOp = LinearOperator(psfOp.T.tocoo())
-
-        global cache
-        cache[name][key] = psfOp
+        psfOp = proxmin.utils.MatrixAdapter(psfOp.T.tocoo(), axis=1)
+        Cache.set(name, key, psfOp)
 
     return psfOp
 
 def getZeroOp(shape):
     size = shape[0]*shape[1]
-    name = "Zero"
+    name = "getZeroOp"
     key = tuple(shape)
     try:
-        L = check_cache(name, key)
+        L = Cache.check(name, key)
     except KeyError:
         # matrix with ones on diagonal shifted by k, here out of matrix: all zeros
-        L = LinearOperator(scipy.sparse.eye(size, k=size))
-        global cache
-        cache[name][key] = L
+        L = proxmin.utils.MatrixAdapter(scipy.sparse.eye(size, k=size), axis=1)
+        L._spec_norm = 0
+        Cache.set(name, key, L)
     return L
 
 def getIdentityOp(shape):
     size = shape[0]*shape[1]
-    name = "Id"
+    name = "getIdentityOp"
     key = tuple(shape)
     try:
-        L = check_cache(name, key)
+        L = Cache.check(name, key)
     except KeyError:
         # matrix with ones on diagonal shifted by k, here out of matrix: all zeros
-        L = LinearOperator(scipy.sparse.identity(size))
-        global cache
-        cache[name][key] = L
+        L = proxmin.utils.MatrixAdapter(scipy.sparse.identity(size), axis=1)
+        L._spec_norm = 1
+        Cache.set(name, key, L)
     return L
 
 def getSymmetryOp(shape):
@@ -538,18 +426,18 @@ def getSymmetryOp(shape):
     acts on the flattened image to return its symmetric version.
     """
     size = shape[0]*shape[1]
-    name = "Symm"
+    name = "getSymmetryOp"
     key = tuple(shape)
     try:
-        symmetryOp = check_cache(name, key)
+        symmetryOp = Cache.check(name, key)
     except KeyError:
         idx = np.arange(shape[0]*shape[1])
         sidx = idx[::-1]
-        symmetryOp = getIdentityOp(shape)
+        symmetryOp = getIdentityOp(shape).L
         symmetryOp -= scipy.sparse.coo_matrix((np.ones(size),(idx, sidx)), shape=(size,size))
-        symmetryOp = LinearOperator(symmetryOp)
-        global cache
-        cache[name][key] = symmetryOp
+        symmetryOp = proxmin.utils.MatrixAdapter(symmetryOp, axis=1)
+        _ = symmetryOp.spectral_norm
+        Cache.set(name, key, symmetryOp)
     return symmetryOp
 
 def getOffsets(width, coords=None):
@@ -645,7 +533,7 @@ def getRadialMonotonicWeights(shape, useNearest=True, minGradient=1):
     name = "RadialMonotonicWeights"
     key = tuple(shape) + (useNearest, minGradient)
     try:
-        cosNorm = check_cache(name, key)
+        cosNorm = Cache.check(name, key)
     except KeyError:
 
         # Center on the center pixel
@@ -712,8 +600,7 @@ def getRadialMonotonicWeights(shape, useNearest=True, minGradient=1):
             cosNorm = (cosWeight.T/normalize[:,None]).T
             cosNorm[mask] = 0
 
-        global cache
-        cache[name][key] = cosNorm
+        Cache.set(name, key, cosNorm)
 
     return cosNorm
 
@@ -728,7 +615,7 @@ def getRadialMonotonicOp(shape, useNearest=True, minGradient=1, subtract=True):
     name = "RadialMonotonic"
     key = tuple(shape) + (useNearest, minGradient, subtract)
     try:
-        monotonic = check_cache(name, key)
+        monotonic = Cache.check(name, key)
     except KeyError:
 
         cosNorm = getRadialMonotonicWeights(shape, useNearest=useNearest, minGradient=1)
@@ -746,10 +633,9 @@ def getRadialMonotonicOp(shape, useNearest=True, minGradient=1, subtract=True):
             monotonic = cosArr-scipy.sparse.diags(diagonal, offsets=0)
         else:
             monotonic = cosArr
-        monotonic = LinearOperator(monotonic.tocoo())
-
-        global cache
-        cache[name][key] = monotonic
+        monotonic = proxmin.utils.MatrixAdapter(monotonic.tocoo(), axis=1)
+        _ = monotonic.spectral_norm
+        Cache.set(name, key, monotonic)
 
     return monotonic
 

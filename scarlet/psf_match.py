@@ -1,8 +1,9 @@
 import numpy as np
 
 from .config import Config
-from . import constraints as sc
-from .source import Source, ExtendedSource
+from . import constraint as sc
+from .component import Component
+from .source import Source
 from .blend import Blend
 
 def moffat(coords, y0, x0, amplitude, alpha, beta=1.5):
@@ -11,7 +12,7 @@ def moffat(coords, y0, x0, amplitude, alpha, beta=1.5):
     Symmetric 2D Moffat function:
 
     .. math::
-        
+
         A (1+\frac{(x-x0)^2+(y-y0)^2}{\alpha^2})^{-\beta}
     """
     Y,X = coords
@@ -154,19 +155,18 @@ def build_diff_kernels(psfs, target_psf, max_iter=100, e_rel=1e-3, constraints=N
     config = Config(refine_skip=100, source_sizes=np.array([np.max(psfs.shape[1:])]))
     center = np.array([psfs[0].shape[0] // 2, psfs[0].shape[1] //2], dtype=psfs.dtype)
     if constraints is None:
-        constraints = sc.SimpleConstraint() & sc.L0Constraint(l0_thresh)
+        constraints = (sc.SimpleConstraint(), sc.L0Constraint(l0_thresh))
     if cutoff is None:
         cutoff = 0
     sources = [
-        PSFDiffKernel(center, psfs, cutoff, target_psf, b, constraints=constraints.copy(),
-                      monotonic=False, config=config) for b in range(len(psfs))
+        PSFDiffKernel(center, psfs, cutoff, target_psf, b, constraints=constraints, config=config) for b in range(len(psfs))
     ]
-    psf_blend = Blend(sources, psfs, bg_rms=[cutoff]*len(psfs), config=config)
+    psf_blend = Blend(sources).set_data(psfs, bg_rms=[cutoff]*len(psfs), config=config)
     psf_blend.fit(100, e_rel=1e-3)
-    diff_kernels = np.array([kernel.morph for kernel in psf_blend.sources]).reshape(psfs.shape)
+    diff_kernels = np.array([kernel.morph for kernel in psf_blend.components])
     return diff_kernels, psf_blend
 
-class PSFDiffKernel(ExtendedSource):
+class PSFDiffKernel(Source):
     """Create a model of the PSF in a single band
 
     Passing a `PSFDiffKernel` for each band as a list of sources to
@@ -174,8 +174,8 @@ class PSFDiffKernel(ExtendedSource):
     the difference kernel in each band, which gives more accurate
     results when performing PSF deconvolution.
     """
-    def __init__(self, center, psf, cutoff, target_psf, band,
-                 constraints=None, monotonic=True, config=None, fix_frame=True, shift_center=0.0):
+    def __init__(self, center, psfs, cutoff, target_psf, band,
+                 constraints=None, config=None, fix_frame=True, shift_center=0.0):
         """Initialize the difference kernel in a single band
 
         See :class:`~scarlet.source.Source` for parameter descriptions not listed below.
@@ -191,44 +191,20 @@ class PSFDiffKernel(ExtendedSource):
             Each `PSFDiffKernel` has a fixed SED with only a single
             non-zero band, where `band` is the index in the multi-band
             data corresponding to this `PSFDiffKernel`.
-        monotonic: bool
-            Whether or not to make the initial difference kernel monotonic
         config: :class:`scarlet.config.Config` instance, default=`None`
             Special configuration to overwrite default optimization parameters
 
-        see :class:`scarelt.source.Source` for other parameters.
+        see :class:`scarlet.source.Source` for other parameters.
         """
-        self.center = center
-        sed, morph = self._make_initial(psf, cutoff, target_psf, band, monotonic=monotonic, config=config)
 
-        if constraints is None:
-            constraints = (sc.SimpleConstraint() &
-                           sc.DirectMonotonicityConstraint(use_nearest=False))
-
-        Source.__init__(self, sed=sed, morph=morph, center=center, constraints=constraints,
-                        fix_sed=True, fix_morph=False, fix_frame=fix_frame,
-                        shift_center=shift_center, psf=target_psf)
-
-    def _make_initial(self, psf, cutoff, target_psf, band, monotonic=True, config=None):
-        """Initialize the source that is symmetric and monotonic
-        """
-        # Use a default configuration if config is not specified
-        if config is None:
-            config = Config(source_sizes=np.array([np.max(psf.shape[1:])]))
-        # every source as large as the entire image, but shifted to its centroid
-        B, Ny, Nx = psf.shape
-        self._set_frame(self.center, (Ny,Nx))
-
-        # determine initial SED from peak position
-        sed = np.zeros((B,))
+        # set sed and morph to that of `band`
+        B, Ny, Nx = psfs.shape
+        sed = np.zeros(B)
         sed[band] = 1
 
-        # copy morph from detect cutout, make non-negative
-        source_slice = self.get_slice_for(psf.shape)
-        morph = np.zeros((self.Ny, self.Nx))
-        morph[source_slice[1:]] = psf[band, self.bb[1], self.bb[2]].copy()
+        morph = np.zeros((Ny,Nx))
+        im_slice, morph_slice = Component.get_frame(psfs[band].shape, center, (Ny,Nx))
+        morph[morph_slice] = psfs[band][im_slice]
 
-        morph = self._init_morph(morph, source_slice, cutoff,
-                                 symmetric=False, monotonic=monotonic, config=config)
-
-        return sed.reshape((1,B)), morph.reshape((1, morph.shape[0], morph.shape[1]))
+        component = Component(sed, morph, center=center, constraints=constraints, psf=target_psf, fix_sed=True, fix_morph=False, fix_frame=fix_frame, shift_center=shift_center)
+        super(PSFDiffKernel, self).__init__(component)
