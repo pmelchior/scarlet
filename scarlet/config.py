@@ -5,10 +5,11 @@ class Config(object):
 
     Attributes
     ----------
+    accelerated: bool, default=True
+        Whether to use an accelerated proximal agorithm
     update_order: array-like
         Whether to update A before S (`update_order=[0,1]`) or
-        S before A (`update_order=[1,0]`) in each step of the
-        fit.
+        S before A (`update_order=[1,0]`) in each step of the fit.
     refine_skip: int, default=10
         How many iterations to skip between refining box sizes/positions.
     center_min_dist: float, default=1e-3
@@ -29,7 +30,7 @@ class Config(object):
         or only calculate the Lipschitz constant with significant changes in A,S
         (`exact_lipschitz` is `False`)
     """
-    def __init__(self, update_order=None, slack=0.2, refine_skip=10, source_sizes=None,
+    def __init__(self, accelerated=True, update_order=None, slack=0.2, refine_skip=10, source_sizes=None,
                  center_min_dist=1e-3, edge_flux_thresh=1., exact_lipschitz=False):
         """Initialize the Class
 
@@ -37,6 +38,7 @@ class Config(object):
         ----------
         See properties
         """
+        self.accelerated = accelerated
         if update_order is None:
             update_order = [1,0]
         self.update_order = update_order

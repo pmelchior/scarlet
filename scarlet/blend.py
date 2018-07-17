@@ -150,18 +150,27 @@ class Blend(ComponentTree):
 
         # update_order for bSDMM is over *all* components
         if self.config.update_order[0] == 0:
-            _update_order = list(range(2*self.K))
+            update_order = list(range(2*self.K))
         else:
-            _update_order = list(range(self.K,2*self.K)) + list(range(self.K))
+            update_order = list(range(self.K,2*self.K)) + list(range(self.K))
 
-        # run bSDMM on all SEDs and morphologies
+        # run bSDMM or bPGM on all SEDs and morphologies
+        proxs_g = self._proxs_g
         steps_g = None
         steps_g_update = 'steps_f'
+        update = 'cascade'
         max_iter = self.it + steps
         try:
-            res = proxmin.algorithms.bsdmm(X, self._prox_f, self._steps_f, self._proxs_g, steps_g=steps_g,
-                Ls=self._Ls, update_order=_update_order, steps_g_update=steps_g_update, max_iter=steps,
-                e_rel=self._e_rel, e_abs=self._e_abs)
+            # use accelerated block-PGM if there's no proxs_g
+            if proxs_g is None or not proxmin.utils.hasNotNone(proxs_g):
+                res = proxmin.algorithms.bpgm(X, self._prox_f, self._steps_f,
+                    accelerated=self.config.accelerated, update=update,
+                    update_order=update_order, max_iter=max_iter, e_rel=self._e_rel)
+            else:
+                res = proxmin.algorithms.bsdmm(X, self._prox_f, self._steps_f, proxs_g, steps_g=steps_g,
+                    Ls=self._Ls, update=update, update_order=update_order, steps_g_update=steps_g_update, max_iter=steps,
+                    e_rel=self._e_rel, e_abs=self._e_abs)
+
         except ScarletRestartException:
             if self.it < max_iter: # don't restart at last iteration
                 steps = max_iter - self.it
