@@ -165,7 +165,7 @@ class Blend(ComponentTree):
             if proxs_g is None or not proxmin.utils.hasNotNone(proxs_g):
                 res = proxmin.algorithms.bpgm(X, self._prox_f, self._steps_f,
                     accelerated=self.config.accelerated, update=update,
-                    update_order=update_order, max_iter=max_iter, e_rel=self._e_rel)
+                    update_order=update_order, max_iter=steps, e_rel=self._e_rel)
             else:
                 res = proxmin.algorithms.bsdmm(X, self._prox_f, self._steps_f, proxs_g, steps_g=steps_g,
                     Ls=self._Ls, update=update, update_order=update_order, steps_g_update=steps_g_update, max_iter=steps,
