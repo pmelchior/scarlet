@@ -260,13 +260,17 @@ class ExtendedSource(Source):
             sed = np.ones(B) / B
 
         # build optimal detection coadd given the sed
-        bg_rms = np.array(bg_rms)
-        weights = np.array([sed[b]/bg_rms[b]**2 for b in range(B)])
-        jacobian = np.array([sed[b]**2/bg_rms[b]**2 for b in range(B)]).sum()
-        detect = np.einsum('i,i...', weights, img) / jacobian
+        if np.all([bg_rms > 0]):
+            bg_rms = np.array(bg_rms)
+            weights = np.array([sed[b]/bg_rms[b]**2 for b in range(B)])
+            jacobian = np.array([sed[b]**2/bg_rms[b]**2 for b in range(B)]).sum()
+            detect = np.einsum('i,i...', weights, img) / jacobian
 
-        # thresh is multiple above the rms of detect (weighted variance across bands)
-        bg_cutoff = thresh * np.sqrt((weights**2 * bg_rms**2).sum()) / jacobian
+            # thresh is multiple above the rms of detect (weighted variance across bands)
+            bg_cutoff = thresh * np.sqrt((weights**2 * bg_rms**2).sum()) / jacobian
+        else:
+            detect = np.sum(img, axis=0)
+            bg_cutoff = 0
         morph = self._init_morph(detect, center, bg_cutoff, symmetric, monotonic, config)
 
         # use mean sed from image, weighted with the morphology of each component
