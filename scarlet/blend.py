@@ -133,8 +133,9 @@ class Blend(ComponentTree):
                     self._Sigma_1 = [scipy.sparse.diags(w.flatten()) for w in self._weights]
             # use full-frame Gamma matrices
             if self.use_psf:
-                pos = (0,0)
-                self._Gamma_full = [ c._gamma(pos, self._img.shape, offset_int=source.center_int) for c in self.components]
+                raise NotImplementedError("Exact Lipschitz calculation with PSF currently unavailable")
+                #pos = (0,0)
+                #self._Gamma_full = [ c._gamma(pos, self._img.shape, offset_int=source.center_int) for c in self.components]
 
         # define error limits
         self.e_rel = e_rel
