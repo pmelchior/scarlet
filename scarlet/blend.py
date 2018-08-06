@@ -116,6 +116,7 @@ class Blend(ComponentTree):
         except AttributeError:
             self.it = 0
             self._model_it = -1
+            self.converged = False
             # Caches for 1/Lipschitz for A and S
             self._cbAS = [proxmin.utils.ApproximateCache(self._one_over_lipschitz, slack=self.config.slack),
                           proxmin.utils.ApproximateCache(self._one_over_lipschitz, slack=self.config.slack)]
@@ -171,6 +172,9 @@ class Blend(ComponentTree):
                 res = proxmin.algorithms.bsdmm(X, self._prox_f, self._steps_f, proxs_g, steps_g=steps_g,
                     Ls=self._Ls, update=update, update_order=update_order, steps_g_update=steps_g_update, max_iter=steps,
                     e_rel=self._e_rel, e_abs=self._e_abs)
+
+            X, converged, errors = res
+            self.converged = all(converged)
 
         except ScarletRestartException:
             if self.it < max_iter: # don't restart at last iteration
