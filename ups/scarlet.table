@@ -1,3 +1,7 @@
+setupRequired(pybind11)
+setupRequired(scipy)
+setupRequired(numpy)
+setupRequired(eigen)
 setupRequired(proxmin)
 
 envPrepend(LD_LIBRARY_PATH, ${PRODUCT_DIR}/lib)
