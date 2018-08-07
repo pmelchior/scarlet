@@ -10,6 +10,13 @@ import setuptools
 import subprocess
 import warnings
 
+pybind11_path = None
+if "PYBIND11_DIR" in os.environ:
+    pybind11_path = os.environ["PYBIND11_DIR"] 
+eigen_path = None
+if "EIGEN_DIR" in os.environ:
+    eigen_path = os.environ["EIGEN_DIR"]
+
 # Use the firt 7 digits of the git hash to set the version
 __version__ = '0.3.'+subprocess.check_output(['git', 'rev-parse', 'HEAD'])[:7].decode("utf-8")
 
@@ -28,8 +35,11 @@ class get_pybind_include(object):
         self.user = user
 
     def __str__(self):
-        import pybind11
-        return pybind11.get_include(self.user)
+        if pybind11_path is not None:
+            return os.path.join(os.environ["PYBIND11_DIR"], "include")
+        else:
+            import pybind11
+            return pybind11.get_include(self.user)
 
 class get_eigen_include(object):
     """Helper class to determine the peigen include path
@@ -41,8 +51,11 @@ class get_eigen_include(object):
         self.user = user
 
     def __str__(self):
-        import peigen
-        return peigen.header_path
+        if eigen_path is not None:
+            return os.path.join(os.environ["EIGEN_DIR"], "include")
+        else:
+            import peigen
+            return peigen.header_path
 
 ext_modules = [
     Extension(
@@ -109,6 +122,15 @@ class BuildExt(build_ext):
             ext.extra_compile_args = opts
         build_ext.build_extensions(self)
 
+install_requires = ['numpy', 'scipy', 'proxmin>=0.5.1']
+# Only require the pybind11 and peigen packages if
+# the C++ headers are not already installed
+if pybind11_path is None:
+    install_requires.append('pybind11>=2.2')
+if eigen_path is None:
+    install_requires.append('peigen>=0.0.9')
+
+
 setup(
   name = 'scarlet',
   packages = packages,
@@ -119,7 +141,7 @@ setup(
   url = 'https://github.com/fred3m/scarlet',
   keywords = ['astro', 'deblending', 'photometry', 'nmf'],
   ext_modules=ext_modules,
-  install_requires=['numpy', 'scipy', 'pybind11>=2.2', 'proxmin>=0.5.1', 'peigen>=0.0.9'],
+  install_requires=install_requires,
   cmdclass={'build_ext': BuildExt},
   zip_safe=False,
 )
