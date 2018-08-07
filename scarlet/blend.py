@@ -174,7 +174,8 @@ class Blend(ComponentTree):
                     e_rel=self._e_rel, e_abs=self._e_abs)
 
             X, converged, errors = res
-            self.converged = all(converged)
+            # reformat as [(A,S) for k in Blend.K]
+            self.converged = np.dstack((converged[::2], converged[1::2]))[0]
 
         except ScarletRestartException:
             if self.it < max_iter: # don't restart at last iteration
