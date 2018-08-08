@@ -12,7 +12,7 @@ import warnings
 
 pybind11_path = None
 if "PYBIND11_DIR" in os.environ:
-    pybind11_path = os.environ["PYBIND11_DIR"] 
+    pybind11_path = os.environ["PYBIND11_DIR"]
 eigen_path = None
 if "EIGEN_DIR" in os.environ:
     eigen_path = os.environ["EIGEN_DIR"]
@@ -122,7 +122,7 @@ class BuildExt(build_ext):
             ext.extra_compile_args = opts
         build_ext.build_extensions(self)
 
-install_requires = ['numpy', 'scipy', 'proxmin>=0.5.1']
+install_requires = ['numpy', 'scipy', 'proxmin>=0.5.2']
 # Only require the pybind11 and peigen packages if
 # the C++ headers are not already installed
 if pybind11_path is None:
