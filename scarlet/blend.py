@@ -160,26 +160,21 @@ class Blend(ComponentTree):
         proxs_g = self._proxs_g
         steps_g = None
         steps_g_update = 'steps_f'
-        max_iter = self.it + steps
-        try:
-            # use accelerated block-PGM if there's no proxs_g
-            if proxs_g is None or not proxmin.utils.hasNotNone(proxs_g):
-                res = proxmin.algorithms.bpgm(X, self._prox_f, self._steps_f,
-                    accelerated=self.config.accelerated,
-                    update_order=update_order, max_iter=steps, e_rel=self._e_rel)
-            else:
-                res = proxmin.algorithms.bsdmm(X, self._prox_f, self._steps_f, proxs_g, steps_g=steps_g,
-                    Ls=self._Ls, update_order=update_order, steps_g_update=steps_g_update, max_iter=steps,
-                    e_rel=self._e_rel, e_abs=self._e_abs)
 
-            converged, errors = res
-            # reformat as [(A,S) for k in Blend.K]
-            self.converged = np.dstack((converged[::2], converged[1::2]))[0]
+        # use accelerated block-PGM if there's no proxs_g
+        if proxs_g is None or not proxmin.utils.hasNotNone(proxs_g):
+            res = proxmin.algorithms.bpgm(X, self._prox_f, self._steps_f,
+                accelerated=self.config.accelerated,
+                update_order=update_order, max_iter=steps, e_rel=self._e_rel)
+        else:
+            res = proxmin.algorithms.bsdmm(X, self._prox_f, self._steps_f, proxs_g, steps_g=steps_g,
+                Ls=self._Ls, update_order=update_order, steps_g_update=steps_g_update, max_iter=steps,
+                e_rel=self._e_rel, e_abs=self._e_abs)
 
-        except ScarletRestartException:
-            if self.it < max_iter: # don't restart at last iteration
-                steps = max_iter - self.it
-                self.fit(steps=steps)
+        converged, errors = res
+        # reformat as [(A,S) for k in Blend.K]
+        self.converged = np.dstack((converged[::2], converged[1::2]))[0]
+
         return self
 
     def get_model(self, k=None, combine=True, use_sed=True):
@@ -357,9 +352,9 @@ class Blend(ComponentTree):
         # resize & recenter: after all blocks are updated
         if k == self.K - 1 and block == self.config.update_order[1]:
             self.it += 1
+            self.update_center()
             self.update_sed()
             self.update_morph()
-            self.update_center()
 
         return res
 
@@ -492,10 +487,9 @@ class Blend(ComponentTree):
     def update_center(self):
         """Update the centers of all nodes in `Blend`.
 
-        This overwrites the default `~scarlet.source.ComponentTree` method
-        and also updates the box sizes for each component.
+        First computes improved centers, then calls the respective
+        `~scarlet.source.ComponentTree` method.
         """
-        resized = False
         if self.it % self.config.refine_skip == 0:
             self._recenter_components()
 
@@ -504,12 +498,6 @@ class Blend(ComponentTree):
                 node = self[i]
                 if isinstance(node, ComponentTree):
                     node.update_center()
-
-            resized = self._resize_components()
-            self._adjust_absolute_error()
-
-        if resized:
-            raise ScarletRestartException()
 
     def _recenter_components(self):
         """Shift center position of components to minimize residuals in all bands
@@ -599,6 +587,22 @@ class Blend(ComponentTree):
         diff_img[0] = (model_k-diff_img[0][slice_k])/c.shift_center
         diff_img[1] = (model_k-diff_img[1][slice_k])/c.shift_center
         return diff_img
+
+    def update_morph(self):
+        """Update the morphologies of all nodes in `Blend`.
+
+        This updates the box sizes for each component and then calls the
+        respective `~scarlet.source.ComponentTree` method.
+        """
+        if self.it % self.config.refine_skip == 0:
+            self._resize_components()
+            self._adjust_absolute_error()
+
+            # call nodes to update centers
+            for i in range(self.n_nodes):
+                node = self[i]
+                if isinstance(node, ComponentTree):
+                    node.update_morph()
 
     def _set_edge_flux(self, k, model):
         """Keep track of the flux at the edge of the model.
