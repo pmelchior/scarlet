@@ -4,4 +4,4 @@ setupRequired(numpy)
 setupRequired(eigen)
 setupRequired(proxmin)
 
-envPrepend(PYTHONPATH, ${PRODUCT_DIR})
+envPrepend(PYTHONPATH, ${PRODUCT_DIR}/lib/python)
