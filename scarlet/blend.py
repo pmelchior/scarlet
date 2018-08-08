@@ -160,20 +160,19 @@ class Blend(ComponentTree):
         proxs_g = self._proxs_g
         steps_g = None
         steps_g_update = 'steps_f'
-        update = 'cascade'
         max_iter = self.it + steps
         try:
             # use accelerated block-PGM if there's no proxs_g
             if proxs_g is None or not proxmin.utils.hasNotNone(proxs_g):
                 res = proxmin.algorithms.bpgm(X, self._prox_f, self._steps_f,
-                    accelerated=self.config.accelerated, update=update,
+                    accelerated=self.config.accelerated,
                     update_order=update_order, max_iter=steps, e_rel=self._e_rel)
             else:
                 res = proxmin.algorithms.bsdmm(X, self._prox_f, self._steps_f, proxs_g, steps_g=steps_g,
-                    Ls=self._Ls, update=update, update_order=update_order, steps_g_update=steps_g_update, max_iter=steps,
+                    Ls=self._Ls, update_order=update_order, steps_g_update=steps_g_update, max_iter=steps,
                     e_rel=self._e_rel, e_abs=self._e_abs)
 
-            X, converged, errors = res
+            converged, errors = res
             # reformat as [(A,S) for k in Blend.K]
             self.converged = np.dstack((converged[::2], converged[1::2]))[0]
 
@@ -329,7 +328,7 @@ class Blend(ComponentTree):
                 grad = np.einsum('...ij,...ij', self._diff, self._models[k])
 
                 # apply per component prox projection and save in component
-                X = self.components[k].sed =  self.components[k].constraints.prox_sed(X - step*grad, step)
+                res = self.components[k].constraints.prox_sed(X - step*grad, step)
 
         # S update
         elif block == 1:
@@ -352,7 +351,7 @@ class Blend(ComponentTree):
                         grad += self.components[k].sed[b]*self.components[k].Gamma[b].T.dot(diff_k[b])
 
                 # apply per component prox projection and save in component
-                X = self.components[k].morph = self.components[k].constraints.prox_morph(X - step*grad, step)
+                res = self.components[k].constraints.prox_morph(X - step*grad, step)
 
 
         # resize & recenter: after all blocks are updated
@@ -362,7 +361,7 @@ class Blend(ComponentTree):
             self.update_morph()
             self.update_center()
 
-        return X
+        return res
 
     def _one_over_lipschitz(self, block):
         """Calculate 1/Lipschitz constant for A and S
