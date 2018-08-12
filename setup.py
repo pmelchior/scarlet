@@ -18,7 +18,11 @@ if "EIGEN_DIR" in os.environ:
     eigen_path = os.environ["EIGEN_DIR"]
 
 # Use the firt 7 digits of the git hash to set the version
-__version__ = '0.3.'+subprocess.check_output(['git', 'rev-parse', 'HEAD'])[:7].decode("utf-8")
+version_root = '0.3'
+try:
+    __version__ = version_root+'.'+subprocess.check_output(['git', 'rev-parse', 'HEAD'])[:7].decode("utf-8")
+except:
+    __version__ = version_root
 
 packages = []
 for root, dirs, files in os.walk('.'):
