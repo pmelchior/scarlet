@@ -18,17 +18,18 @@ The API is reasonably stable, but feel free to contact the authors [fred3m](http
 If you make use of scarlet, please acknowledge [Melchior et al. (2018)](https://doi.org/10.1016/j.ascom.2018.07.001), which describe in detail the concepts and algorithms used in this package:
 ```
 @ARTICLE{scarlet,
-   author = {{Melchior}, Peter and {Moolekamp}, Fred and {Jerdee}, Maximilian and {Armstrong}, Robsert and 
+   author = {{Melchior}, Peter and {Moolekamp}, Fred and {Jerdee}, Maximilian and {Armstrong}, Robert and 
 	{Sun}, Ai-Lei and {Bosch}, James and {Lupton}, Robert},
     title = "{SCARLET: Source separation in multi-band images by Constrained Matrix Factorization}",
-  journal = "Astronomy and Computing",
+  journal = {Astronomy and Computing},
    volume = "24",
-    pages = "129 - 142",
+    pages = {129 - 142},
      year = "2018",
-     issn = "2213-1337",
-      doi = "https://doi.org/10.1016/j.ascom.2018.07.001",
-      url = "http://www.sciencedirect.com/science/article/pii/S2213133718300301",
- keywords = "Methods, Data analysis, Techniques, Image processing, Galaxies, Non-negative matrix factorization"
+     month = jul,
+     issn = {2213-1337},
+      doi = {10.1016/j.ascom.2018.07.001},
+      url = {http://www.sciencedirect.com/science/article/pii/S2213133718300301},
+ keywords = {Methods, Data analysis, Techniques, Image processing, Galaxies, Non-negative matrix factorization}
 archivePrefix = "arXiv",
    eprint = {1802.10157},
  primaryClass = "astro-ph.IM"
