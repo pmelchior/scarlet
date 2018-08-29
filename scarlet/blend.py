@@ -117,6 +117,7 @@ class Blend(ComponentTree):
             self.it = 0
             self._model_it = -1
             self.converged = False
+            self.mse = []
             # Caches for 1/Lipschitz for A and S
             self._cbAS = [proxmin.utils.ApproximateCache(self._one_over_lipschitz, slack=self.config.slack),
                           proxmin.utils.ApproximateCache(self._one_over_lipschitz, slack=self.config.slack)]
@@ -313,6 +314,15 @@ class Blend(ComponentTree):
 
             # compute weighted residuals
             self._diff = self._weights[block]*(self._model-self._img)
+            # and chi^2
+            mse = (self._diff * (self._model-self._img)).sum() / self._diff.size
+            if block == self.config.update_order[0]:
+                mse_AS = [None,] * 2
+                mse_AS[block] = mse
+                self.mse.append(mse_AS)
+            else:
+                self.mse[-1][block] = mse
+
 
         # A update
         if block == 0:
