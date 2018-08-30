@@ -334,6 +334,8 @@ class Blend(ComponentTree):
 
                 # apply per component prox projection and save in component
                 res = self.components[k].constraints.prox_sed(X - step*grad, step)
+            else:
+                res = self.components[k].sed
 
         # S update
         elif block == 1:
@@ -357,6 +359,8 @@ class Blend(ComponentTree):
 
                 # apply per component prox projection and save in component
                 res = self.components[k].constraints.prox_morph(X - step*grad, step)
+            else:
+                res = self.components[k].morph
 
 
         # resize & recenter: after all blocks are updated
