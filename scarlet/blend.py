@@ -25,8 +25,24 @@ class ScarletRestartException(Exception):
 class Blend(ComponentTree):
     """The blended scene.
 
-    The class represents a celestial scene and provides the functions to fit it
+    The class represents a scene as collection of components, internally as a
+    `~scarlet.component.ComponentTree`, and provides the functions to fit it
     to data.
+
+    Attributes
+    ----------
+    B: int
+        Number of bands in the image data
+    has_psf: bool
+        Whether the modeled scene accounts for PSF convolution
+    it: int
+        Number of iterations run in the `fit` method
+    converged: `~numpy.array`
+        Array (K, 2) of convergence flags, one for each components sed and morph
+        in that order
+    mse: list
+        Array (it, 2) of mean squared errors in each iteration, for sed and morph
+        in that order
     """
     def __init__(self, components):
         """Constructor
