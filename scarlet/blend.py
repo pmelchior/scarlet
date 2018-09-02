@@ -323,7 +323,6 @@ class Blend(ComponentTree):
             else:
                 self.mse[-1][block] = mse
 
-
         # A update
         if block == 0:
             if not self.components[k].fix_sed:
@@ -333,13 +332,13 @@ class Blend(ComponentTree):
                 grad = np.einsum('...ij,...ij', self._diff, self._models[k])
 
                 # apply per component prox projection and save in component
-                res = self.components[k].constraints.prox_sed(X - step*grad, step)
+                X_ = self.components[k].constraints.prox_sed(X - step*grad, step)
             else:
-                res = self.components[k].sed
+                X_ = self.components[k].sed
 
         # S update
         elif block == 1:
-            if not self.components[k].fix_morph:
+            if not self.components[k].fix_morph:# and self.it % 2 != 0:
                 # gradient of likelihood wrt S: nominally np.dot(A^T,diff)
                 # but again: with convolution, it's more complicated
 
@@ -358,9 +357,9 @@ class Blend(ComponentTree):
                         grad += self.components[k].sed[b]*self.components[k].Gamma[b].T.dot(diff_k[b])
 
                 # apply per component prox projection and save in component
-                res = self.components[k].constraints.prox_morph(X - step*grad, step)
+                X_ = self.components[k].constraints.prox_morph(X - step*grad, step)
             else:
-                res = self.components[k].morph
+                X_ = self.components[k].morph
 
 
         # resize & recenter: after all blocks are updated
@@ -370,7 +369,7 @@ class Blend(ComponentTree):
             self.update_sed()
             self.update_morph()
 
-        return res
+        return X_
 
     def _one_over_lipschitz(self, block):
         """Calculate 1/Lipschitz constant for A and S
