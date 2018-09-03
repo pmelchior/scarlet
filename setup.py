@@ -122,7 +122,7 @@ class BuildExt(build_ext):
             ext.extra_compile_args = opts
         build_ext.build_extensions(self)
 
-install_requires = ['numpy', 'scipy', 'proxmin>=0.5.2']
+install_requires = ['numpy', 'scipy', 'proxmin>=0.5.3']
 # Only require the pybind11 and peigen packages if
 # the C++ headers are not already installed
 if pybind11_path is None:

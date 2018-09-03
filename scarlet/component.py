@@ -301,7 +301,8 @@ class Component(object):
         if new_slice != old_slice:
             # change morph
             _morph = self.morph.copy()
-            self.morph = np.zeros(size)
+            self.morph.resize(size, refcheck=False)
+            self.morph[:,:] = 0
             self.morph[new_slice] = _morph[old_slice]
             self.set_frame()
 

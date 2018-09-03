@@ -25,8 +25,24 @@ class ScarletRestartException(Exception):
 class Blend(ComponentTree):
     """The blended scene.
 
-    The class represents a celestial scene and provides the functions to fit it
+    The class represents a scene as collection of components, internally as a
+    `~scarlet.component.ComponentTree`, and provides the functions to fit it
     to data.
+
+    Attributes
+    ----------
+    B: int
+        Number of bands in the image data
+    has_psf: bool
+        Whether the modeled scene accounts for PSF convolution
+    it: int
+        Number of iterations run in the `fit` method
+    converged: `~numpy.array`
+        Array (K, 2) of convergence flags, one for each components sed and morph
+        in that order
+    mse: list
+        Array (it, 2) of mean squared errors in each iteration, for sed and morph
+        in that order
     """
     def __init__(self, components):
         """Constructor
@@ -117,6 +133,7 @@ class Blend(ComponentTree):
             self.it = 0
             self._model_it = -1
             self.converged = False
+            self.mse = []
             # Caches for 1/Lipschitz for A and S
             self._cbAS = [proxmin.utils.ApproximateCache(self._one_over_lipschitz, slack=self.config.slack),
                           proxmin.utils.ApproximateCache(self._one_over_lipschitz, slack=self.config.slack)]
@@ -160,27 +177,21 @@ class Blend(ComponentTree):
         proxs_g = self._proxs_g
         steps_g = None
         steps_g_update = 'steps_f'
-        update = 'cascade'
-        max_iter = self.it + steps
-        try:
-            # use accelerated block-PGM if there's no proxs_g
-            if proxs_g is None or not proxmin.utils.hasNotNone(proxs_g):
-                res = proxmin.algorithms.bpgm(X, self._prox_f, self._steps_f,
-                    accelerated=self.config.accelerated, update=update,
-                    update_order=update_order, max_iter=steps, e_rel=self._e_rel)
-            else:
-                res = proxmin.algorithms.bsdmm(X, self._prox_f, self._steps_f, proxs_g, steps_g=steps_g,
-                    Ls=self._Ls, update=update, update_order=update_order, steps_g_update=steps_g_update, max_iter=steps,
-                    e_rel=self._e_rel, e_abs=self._e_abs)
 
-            X, converged, errors = res
-            # reformat as [(A,S) for k in Blend.K]
-            self.converged = np.dstack((converged[::2], converged[1::2]))[0]
+        # use accelerated block-PGM if there's no proxs_g
+        if proxs_g is None or not proxmin.utils.hasNotNone(proxs_g):
+            res = proxmin.algorithms.bpgm(X, self._prox_f, self._steps_f,
+                accelerated=self.config.accelerated,
+                update_order=update_order, max_iter=steps, e_rel=self._e_rel)
+        else:
+            res = proxmin.algorithms.bsdmm(X, self._prox_f, self._steps_f, proxs_g, steps_g=steps_g,
+                Ls=self._Ls, update_order=update_order, steps_g_update=steps_g_update, max_iter=steps,
+                e_rel=self._e_rel, e_abs=self._e_abs)
 
-        except ScarletRestartException:
-            if self.it < max_iter: # don't restart at last iteration
-                steps = max_iter - self.it
-                self.fit(steps=steps)
+        converged, errors = res
+        # reformat as [(A,S) for k in Blend.K]
+        self.converged = np.dstack((converged[::2], converged[1::2]))[0]
+
         return self
 
     def get_model(self, k=None, combine=True, use_sed=True):
@@ -319,6 +330,14 @@ class Blend(ComponentTree):
 
             # compute weighted residuals
             self._diff = self._weights[block]*(self._model-self._img)
+            # and chi^2
+            mse = (self._diff * (self._model-self._img)).sum() / self._diff.size
+            if block == self.config.update_order[0]:
+                mse_AS = [None,] * 2
+                mse_AS[block] = mse
+                self.mse.append(mse_AS)
+            else:
+                self.mse[-1][block] = mse
 
         # A update
         if block == 0:
@@ -329,11 +348,13 @@ class Blend(ComponentTree):
                 grad = np.einsum('...ij,...ij', self._diff, self._models[k])
 
                 # apply per component prox projection and save in component
-                X = self.components[k].sed =  self.components[k].constraints.prox_sed(X - step*grad, step)
+                X_ = self.components[k].constraints.prox_sed(X - step*grad, step)
+            else:
+                X_ = self.components[k].sed
 
         # S update
         elif block == 1:
-            if not self.components[k].fix_morph:
+            if not self.components[k].fix_morph:# and self.it % 2 != 0:
                 # gradient of likelihood wrt S: nominally np.dot(A^T,diff)
                 # but again: with convolution, it's more complicated
 
@@ -352,17 +373,19 @@ class Blend(ComponentTree):
                         grad += self.components[k].sed[b]*self.components[k].Gamma[b].T.dot(diff_k[b])
 
                 # apply per component prox projection and save in component
-                X = self.components[k].morph = self.components[k].constraints.prox_morph(X - step*grad, step)
+                X_ = self.components[k].constraints.prox_morph(X - step*grad, step)
+            else:
+                X_ = self.components[k].morph
 
 
         # resize & recenter: after all blocks are updated
         if k == self.K - 1 and block == self.config.update_order[1]:
             self.it += 1
+            self.update_center()
             self.update_sed()
             self.update_morph()
-            self.update_center()
 
-        return X
+        return X_
 
     def _one_over_lipschitz(self, block):
         """Calculate 1/Lipschitz constant for A and S
@@ -493,10 +516,9 @@ class Blend(ComponentTree):
     def update_center(self):
         """Update the centers of all nodes in `Blend`.
 
-        This overwrites the default `~scarlet.source.ComponentTree` method
-        and also updates the box sizes for each component.
+        First computes improved centers, then calls the respective
+        `~scarlet.source.ComponentTree` method.
         """
-        resized = False
         if self.it % self.config.refine_skip == 0:
             self._recenter_components()
 
@@ -505,12 +527,6 @@ class Blend(ComponentTree):
                 node = self[i]
                 if isinstance(node, ComponentTree):
                     node.update_center()
-
-            resized = self._resize_components()
-            self._adjust_absolute_error()
-
-        if resized:
-            raise ScarletRestartException()
 
     def _recenter_components(self):
         """Shift center position of components to minimize residuals in all bands
@@ -600,6 +616,22 @@ class Blend(ComponentTree):
         diff_img[0] = (model_k-diff_img[0][slice_k])/c.shift_center
         diff_img[1] = (model_k-diff_img[1][slice_k])/c.shift_center
         return diff_img
+
+    def update_morph(self):
+        """Update the morphologies of all nodes in `Blend`.
+
+        This updates the box sizes for each component and then calls the
+        respective `~scarlet.source.ComponentTree` method.
+        """
+        if self.it % self.config.refine_skip == 0:
+            self._resize_components()
+            self._adjust_absolute_error()
+
+            # call nodes to update centers
+            for i in range(self.n_nodes):
+                node = self[i]
+                if isinstance(node, ComponentTree):
+                    node.update_morph()
 
     def _set_edge_flux(self, k, model):
         """Keep track of the flux at the edge of the model.

@@ -47,7 +47,7 @@ class Config(object):
         self.source_sizes = source_sizes
         self.center_min_dist = center_min_dist
         self.edge_flux_thresh = edge_flux_thresh
-        self.exact_lipschitz = False
+        self.exact_lipschitz = exact_lipschitz
         if source_sizes is None:
             source_sizes = np.array([15, 25, 45, 75, 115, 165])
         # Call `self.set_source_sizes` to ensure that all sizes are odd
