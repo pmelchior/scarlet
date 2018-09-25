@@ -5,6 +5,7 @@ import proxmin
 from . import constraint as sc
 from .config import Config
 from .component import Component, ComponentTree
+from .operator import prox_sed_on
 
 import logging
 logger = logging.getLogger("scarlet.source")
@@ -136,7 +137,9 @@ class PointSource(Source):
     While the source can have any `constraints`, the default constraints are
     symmetry and monotonicity.
     """
-    def __init__(self, center, img, shape=None, constraints=None, psf=None, config=None, fix_sed=False, fix_morph=False, fix_frame=False, shift_center=0.1):
+    def __init__(self, center, img, shape=None, constraints=None, psf=None, config=None,
+                 fix_sed=False, fix_morph=False, fix_frame=False, shift_center=0.1,
+                 normalize_S=False, tiny=1e-10):
         """Initialize
 
         This implementation initializes the sed from the pixel in
@@ -160,17 +163,17 @@ class PointSource(Source):
             config = Config()
         if shape is None:
             shape = (config.source_sizes[0],) * 2
-        sed, morph = self._make_initial(center, img, shape)
+        sed, morph = self._make_initial(center, img, shape, psf, tiny, normalize_S)
 
         if constraints is None:
-            constraints = (sc.SimpleConstraint(),
+            constraints = (sc.SimpleConstraint(normalize_S),
                            sc.DirectMonotonicityConstraint(use_nearest=False),
                            sc.DirectSymmetryConstraint())
 
         component = Component(sed, morph, center=center, constraints=constraints, psf=psf, fix_sed=fix_sed, fix_morph=fix_morph, fix_frame=fix_frame, shift_center=shift_center)
         super(PointSource, self).__init__(component)
 
-    def _make_initial(self, center, img, shape, tiny=1e-10):
+    def _make_initial(self, center, img, shape, psf, tiny=1e-10, normalize_S=False):
         """Initialize the source using only the peak pixel
 
         See `self.__init__` for parameters not listed below
@@ -182,18 +185,34 @@ class PointSource(Source):
             This ensures that the source is initialized with
             some non-zero flux.
         """
-        # determine initial SED from peak position
         B, Ny, Nx = img.shape
         _y, _x = center_int = np.round(center).astype('int')
-        try:
-            sed = get_pixel_sed(img, center_int)
-        except SourceInitError:
-            # flat weights as fall-back
-            sed = np.ones(B) / B
-        morph = np.zeros(shape)
-        # Turn on a single pixel at the peak
-        cy, cx = (shape[0] // 2, shape[1] //2)
-        morph[cy, cx] = max(img[:,_y,_x].sum(axis=0), tiny)
+        if normalize_S:
+            sed = img[:, _y, _x]
+            if psf is not None:
+                # Increase the magnitude of the SED's to account
+                # for the normalized PSF's
+                py, px = (psf.shape[0] // 2, psf.shape[1] //2)
+                centers = psf[:, py, px]
+                centers = np.max(psf, axis=(1,2))
+                sed = sed/centers
+            sed = prox_sed_on(sed, 0)
+            morph = np.zeros(shape, dtype=img.dtype)
+            # Turn on a single pixel at the peak
+            cy, cx = (shape[0] // 2, shape[1] //2)
+            morph[cy, cx] = 1
+            return sed, morph
+        else:
+            # determine initial SED from peak position
+            try:
+                sed = get_pixel_sed(img, center_int)
+            except SourceInitError:
+                # flat weights as fall-back
+                sed = np.ones(B) / B
+            morph = np.zeros(shape)
+            # Turn on a single pixel at the peak
+            cy, cx = (shape[0] // 2, shape[1] //2)
+            morph[cy, cx] = max(img[:,_y,_x].sum(axis=0), tiny)
         return sed, morph
 
 class ExtendedSource(Source):

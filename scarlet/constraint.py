@@ -81,11 +81,19 @@ class MinimalConstraint(Constraint):
     `proxmin.operators.prox_unity_plus` constraint on the SED
     (because the SED should always be positive and sum to unity).
     """
-    def prox_morph(self, shape):
-        return proxmin.operators.prox_plus
+    def __init__(self, normalize_S=False):
+        self.normalize_S = normalize_S
 
     def prox_sed(self, shape):
+        if self.normalize_S:
+            return proxmin.operators.prox_plus
         return proxmin.operators.prox_unity_plus
+
+    def prox_morph(self, shape):
+        if self.normalize_S:
+            return proxmin.operators.prox_unity_plus
+        return proxmin.operators.prox_plus
+
 
 class SimpleConstraint(Constraint):
     """Effective but still minimally restrictive constraint.
@@ -93,10 +101,19 @@ class SimpleConstraint(Constraint):
     SED positive and normalized to unity;
     morphology positive and with non-zero center.
     """
+    def __init__(self, normalize_S=False):
+        self.normalize_S = normalize_S
+
     def prox_sed(self, shape):
+        if self.normalize_S:
+            return proxmin.operators.AlternatingProjections([
+                operator.prox_sed_on, proxmin.operators.prox_plus
+            ])
         return proxmin.operators.prox_unity_plus
 
     def prox_morph(self, shape):
+        if self.normalize_S:
+            return proxmin.operators.prox_unity_plus
         return proxmin.operators.AlternatingProjections([
                 operator.prox_center_on, proxmin.operators.prox_plus])
 
