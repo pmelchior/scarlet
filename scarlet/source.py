@@ -3,7 +3,7 @@ import numpy as np
 
 import proxmin
 from . import constraint as sc
-from .config import Config
+from .config import Config, Normalization
 from .component import Component, ComponentTree
 from .operator import prox_sed_on
 
@@ -138,8 +138,7 @@ class PointSource(Source):
     symmetry and monotonicity.
     """
     def __init__(self, center, img, shape=None, constraints=None, psf=None, config=None,
-                 fix_sed=False, fix_morph=False, fix_frame=False, shift_center=0.1,
-                 normalize_S=False, tiny=1e-10):
+                 fix_sed=False, fix_morph=False, fix_frame=False, shift_center=0.1, tiny=1e-10):
         """Initialize
 
         This implementation initializes the sed from the pixel in
@@ -163,17 +162,17 @@ class PointSource(Source):
             config = Config()
         if shape is None:
             shape = (config.source_sizes[0],) * 2
-        sed, morph = self._make_initial(center, img, shape, psf, tiny, normalize_S)
+        sed, morph = self._make_initial(center, img, shape, psf, config, tiny)
 
         if constraints is None:
-            constraints = (sc.SimpleConstraint(normalize_S),
+            constraints = (sc.SimpleConstraint(config.normalization),
                            sc.DirectMonotonicityConstraint(use_nearest=False),
                            sc.DirectSymmetryConstraint())
 
         component = Component(sed, morph, center=center, constraints=constraints, psf=psf, fix_sed=fix_sed, fix_morph=fix_morph, fix_frame=fix_frame, shift_center=shift_center)
         super(PointSource, self).__init__(component)
 
-    def _make_initial(self, center, img, shape, psf, tiny=1e-10, normalize_S=False):
+    def _make_initial(self, center, img, shape, psf, config, tiny=1e-10):
         """Initialize the source using only the peak pixel
 
         See `self.__init__` for parameters not listed below
@@ -187,7 +186,7 @@ class PointSource(Source):
         """
         B, Ny, Nx = img.shape
         _y, _x = center_int = np.round(center).astype('int')
-        if normalize_S:
+        if config.normalization != Normalization.A:
             sed = img[:, _y, _x]
             if psf is not None:
                 # Increase the magnitude of the SED's to account
@@ -253,14 +252,16 @@ class ExtendedSource(Source):
         if config is None:
             config = Config()
 
-        sed, morph = self._make_initial(center, img, bg_rms, thresh=thresh, symmetric=symmetric, monotonic=monotonic, config=config)
+        sed, morph = self._make_initial(center, img, bg_rms, thresh=thresh, symmetric=symmetric,
+                                        monotonic=monotonic, config=config)
 
         if constraints is None:
-            constraints = (sc.SimpleConstraint(),
+            constraints = (sc.SimpleConstraint(config.normalization),
                            sc.DirectMonotonicityConstraint(use_nearest=False),
                            sc.DirectSymmetryConstraint())
 
-        component = Component(sed, morph, center=center, constraints=constraints, psf=psf, fix_sed=fix_sed, fix_morph=fix_morph, fix_frame=fix_frame, shift_center=shift_center)
+        component = Component(sed, morph, center=center, constraints=constraints, psf=psf, fix_sed=fix_sed,
+                              fix_morph=fix_morph, fix_frame=fix_frame, shift_center=shift_center)
         super(ExtendedSource, self).__init__(component)
 
     def _make_initial(self, center, img, bg_rms, thresh=1., symmetric=True, monotonic=True, config=None):
@@ -299,6 +300,18 @@ class ExtendedSource(Source):
         except SourceInitError:
             # keep the peak sed
             logger.INFO("Using peak SED for source at {0}".format(center_int))
+
+        # By default the A matrix is normalized to unity.
+        # For the different S matrix normalizations,
+        # we make sure that our inital values are in agreement
+        # with the correct normalization
+        if config.normalization != Normalization.A:
+            if config.normalization == Normalization.S:
+                norm = np.sum(morph)
+            elif config.normalization == Normalization.Smax:
+                norm = np.max(morph)
+            sed *= norm
+            morph /= norm
         return sed, morph
 
     def _init_morph(self, detect, center, bg_cutoff=0, symmetric=True, monotonic=True, config=None):

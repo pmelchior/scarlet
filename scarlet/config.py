@@ -1,4 +1,13 @@
+from enum import Enum
+
 import numpy as np
+
+
+class Normalization(Enum):
+    A = 1
+    S = 2
+    Smax = 3
+
 
 class Config(object):
     """Blend Configuration
@@ -31,7 +40,8 @@ class Config(object):
         (`exact_lipschitz` is `False`)
     """
     def __init__(self, accelerated=True, update_order=None, slack=0.2, refine_skip=10, source_sizes=None,
-                 center_min_dist=1e-3, edge_flux_thresh=1., exact_lipschitz=False):
+                 center_min_dist=1e-3, edge_flux_thresh=1., exact_lipschitz=False,
+                 normalization=Normalization.A):
         """Initialize the Class
 
         Parameters
@@ -52,6 +62,7 @@ class Config(object):
             source_sizes = np.array([15, 25, 45, 75, 115, 165])
         # Call `self.set_source_sizes` to ensure that all sizes are odd
         self.set_source_sizes(source_sizes)
+        self.normalization = normalization
 
     def set_source_sizes(self, sizes):
         """Set the available source sizes

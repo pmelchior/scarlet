@@ -2,6 +2,7 @@ import proxmin
 from . import operator
 from . import transformation
 from .cache import Cache
+from .config import Normalization
 from functools import partial
 
 
@@ -81,17 +82,22 @@ class MinimalConstraint(Constraint):
     `proxmin.operators.prox_unity_plus` constraint on the SED
     (because the SED should always be positive and sum to unity).
     """
-    def __init__(self, normalize_S=False):
-        self.normalize_S = normalize_S
+    def __init__(self, normalization=Normalization.A):
+        self.normalization = normalization
 
     def prox_sed(self, shape):
-        if self.normalize_S:
+        if norm == Normalization.S or norm == Normalization.Smax:
             return proxmin.operators.prox_plus
         return proxmin.operators.prox_unity_plus
 
     def prox_morph(self, shape):
-        if self.normalize_S:
-            return proxmin.operators.prox_unity_plus
+        if self.normalization == Normalization.S:
+            return partial(proxmin.operators.prox_unity_plus, axis=(0,1))
+        elif self.normalization == Normalization.Smax:
+            return proxmin.operators.AlternatingProjections([
+                operator.prox_max,
+                proxmin.operators.prox_plus,
+            ])
         return proxmin.operators.prox_plus
 
 
@@ -101,19 +107,30 @@ class SimpleConstraint(Constraint):
     SED positive and normalized to unity;
     morphology positive and with non-zero center.
     """
-    def __init__(self, normalize_S=False):
-        self.normalize_S = normalize_S
+    def __init__(self, normalization=Normalization.A):
+        self.normalization = normalization
 
     def prox_sed(self, shape):
-        if self.normalize_S:
+        norm = self.normalization
+        if norm == Normalization.S or norm == Normalization.Smax:
             return proxmin.operators.AlternatingProjections([
                 operator.prox_sed_on, proxmin.operators.prox_plus
             ])
         return proxmin.operators.prox_unity_plus
 
     def prox_morph(self, shape):
-        if self.normalize_S:
-            return proxmin.operators.prox_unity_plus
+        if self.normalization == Normalization.S:
+            return proxmin.operators.AlternatingProjections([
+                partial(proxmin.operators.prox_unity, axis=(0,1)),
+                operator.prox_center_on,
+                proxmin.operators.prox_plus,
+            ])
+        elif self.normalization == Normalization.Smax:
+            return proxmin.operators.AlternatingProjections([
+                operator.prox_max,
+                operator.prox_center_on,
+                proxmin.operators.prox_plus,
+            ])
         return proxmin.operators.AlternatingProjections([
                 operator.prox_center_on, proxmin.operators.prox_plus])
 

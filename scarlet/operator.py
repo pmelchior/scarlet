@@ -115,6 +115,13 @@ def prox_center_on(X, step, tiny=1e-10):
     return X
 
 
+def prox_max(X, step):
+    """Normalize X so that it's max value is unity."""
+    norm = np.max(X)
+    X = X/norm
+    return X
+
+
 def prox_sed_on(X, step, tiny=1e-10):
     """Ensure that the SED has some flux.
 
