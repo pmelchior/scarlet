@@ -325,7 +325,7 @@ class Blend(ComponentTree):
         # computing likelihood gradients for S and A:
         # build model only once per iteration
         if k == 0:
-            if block == self.config.update_order[0]:
+            if block == self.config.update_order[0] or self.config.update_model:
                 self._compute_model()
 
             # compute weighted residuals

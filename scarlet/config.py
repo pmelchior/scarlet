@@ -41,7 +41,7 @@ class Config(object):
     """
     def __init__(self, accelerated=True, update_order=None, slack=0.2, refine_skip=10, source_sizes=None,
                  center_min_dist=1e-3, edge_flux_thresh=1., exact_lipschitz=False,
-                 normalization=Normalization.A):
+                 normalization=Normalization.A, update_model=False):
         """Initialize the Class
 
         Parameters
@@ -63,6 +63,7 @@ class Config(object):
         # Call `self.set_source_sizes` to ensure that all sizes are odd
         self.set_source_sizes(source_sizes)
         self.normalization = normalization
+        self.update_model = update_model
 
     def set_source_sizes(self, sizes):
         """Set the available source sizes
