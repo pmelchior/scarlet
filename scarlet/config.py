@@ -4,6 +4,22 @@ import numpy as np
 
 
 class Normalization(Enum):
+    """Type of normalization to use for A and S
+
+    Due to degeneracies in the product AS it is common to
+    normalize one of the two matrices to unity. This
+    enumerator is used to define which normalization is
+    used to break this degeneracy.
+
+    Attributes
+    ----------
+    A: 1
+        Normalize the A (color) matrix to unity
+    S: 2
+        Normalize the S (morphology) matrix to unity
+    Smax: 3
+        Normalize S so that the maximum (peak) value is unity
+    """
     A = 1
     S = 2
     Smax = 3
@@ -38,16 +54,17 @@ class Config(object):
         Calculate exact Lipschitz constant in every step (`exact_lipschitz` is `True`)
         or only calculate the Lipschitz constant with significant changes in A,S
         (`exact_lipschitz` is `False`)
+    normalization: `Normalization`, default = `Normalization.A`
+        The normalization method used to break the AS degeneracy.
+    update_model: bool, default=false
+        The standard method for fitting A and S is to only update the model
+        once per iteration.  If `update_model` is `True` then the model
+        is updated twice per iteration (once after the A update and once
+        after the S update).
     """
     def __init__(self, accelerated=True, update_order=None, slack=0.2, refine_skip=10, source_sizes=None,
                  center_min_dist=1e-3, edge_flux_thresh=1., exact_lipschitz=False,
                  normalization=Normalization.A, update_model=False):
-        """Initialize the Class
-
-        Parameters
-        ----------
-        See properties
-        """
         self.accelerated = accelerated
         if update_order is None:
             update_order = [1,0]
