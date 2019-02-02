@@ -1,10 +1,31 @@
+from enum import Enum
 import proxmin
 from . import operator
 from . import transformation
 from .cache import Cache
-from .config import Normalization
 from functools import partial
 
+
+class Normalization(Enum):
+    """Type of normalization to use for A and S
+
+    Due to degeneracies in the product AS it is common to
+    normalize one of the two matrices to unity. This
+    enumerator is used to define which normalization is
+    used to break this degeneracy.
+
+    Attributes
+    ----------
+    A: 1
+        Normalize the A (color) matrix to unity
+    S: 2
+        Normalize the S (morphology) matrix to unity
+    Smax: 3
+        Normalize S so that the maximum (peak) value is unity
+    """
+    A = 1
+    S = 2
+    Smax = 3
 
 class Constraint(object):
     """A constraint generator for SED and Morphology.
