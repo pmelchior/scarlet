@@ -1,9 +1,31 @@
+from enum import Enum
 import proxmin
 from . import operator
 from . import transformation
 from .cache import Cache
 from functools import partial
 
+
+class Normalization(Enum):
+    """Type of normalization to use for A and S
+
+    Due to degeneracies in the product AS it is common to
+    normalize one of the two matrices to unity. This
+    enumerator is used to define which normalization is
+    used to break this degeneracy.
+
+    Attributes
+    ----------
+    A: 1
+        Normalize the A (color) matrix to unity
+    S: 2
+        Normalize the S (morphology) matrix to unity
+    Smax: 3
+        Normalize S so that the maximum (peak) value is unity
+    """
+    A = 1
+    S = 2
+    Smax = 3
 
 class Constraint(object):
     """A constraint generator for SED and Morphology.
@@ -81,11 +103,24 @@ class MinimalConstraint(Constraint):
     `proxmin.operators.prox_unity_plus` constraint on the SED
     (because the SED should always be positive and sum to unity).
     """
-    def prox_morph(self, shape):
-        return proxmin.operators.prox_plus
+    def __init__(self, normalization=Normalization.A):
+        self.normalization = normalization
 
     def prox_sed(self, shape):
+        if norm == Normalization.S or norm == Normalization.Smax:
+            return proxmin.operators.prox_plus
         return proxmin.operators.prox_unity_plus
+
+    def prox_morph(self, shape):
+        if self.normalization == Normalization.S:
+            return partial(proxmin.operators.prox_unity_plus, axis=(0,1))
+        elif self.normalization == Normalization.Smax:
+            return proxmin.operators.AlternatingProjections([
+                operator.prox_max,
+                proxmin.operators.prox_plus,
+            ])
+        return proxmin.operators.prox_plus
+
 
 class SimpleConstraint(Constraint):
     """Effective but still minimally restrictive constraint.
@@ -93,10 +128,30 @@ class SimpleConstraint(Constraint):
     SED positive and normalized to unity;
     morphology positive and with non-zero center.
     """
+    def __init__(self, normalization=Normalization.A):
+        self.normalization = normalization
+
     def prox_sed(self, shape):
+        norm = self.normalization
+        if norm == Normalization.S or norm == Normalization.Smax:
+            return proxmin.operators.AlternatingProjections([
+                operator.prox_sed_on, proxmin.operators.prox_plus
+            ])
         return proxmin.operators.prox_unity_plus
 
     def prox_morph(self, shape):
+        if self.normalization == Normalization.S:
+            return proxmin.operators.AlternatingProjections([
+                partial(proxmin.operators.prox_unity, axis=(0,1)),
+                operator.prox_center_on,
+                proxmin.operators.prox_plus,
+            ])
+        elif self.normalization == Normalization.Smax:
+            return proxmin.operators.AlternatingProjections([
+                operator.prox_max,
+                operator.prox_center_on,
+                proxmin.operators.prox_plus,
+            ])
         return proxmin.operators.AlternatingProjections([
                 operator.prox_center_on, proxmin.operators.prox_plus])
 

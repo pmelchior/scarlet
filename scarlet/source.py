@@ -5,6 +5,7 @@ import proxmin
 from . import constraint as sc
 from .config import Config
 from .component import Component, ComponentTree
+from .operator import prox_sed_on
 
 import logging
 logger = logging.getLogger("scarlet.source")
@@ -136,7 +137,9 @@ class PointSource(Source):
     While the source can have any `constraints`, the default constraints are
     symmetry and monotonicity.
     """
-    def __init__(self, center, img, shape=None, constraints=None, psf=None, config=None, fix_sed=False, fix_morph=False, fix_frame=False, shift_center=0.1):
+    def __init__(self, center, img, shape=None, constraints=None, psf=None, config=None,
+                 fix_sed=False, fix_morph=False, fix_frame=False, shift_center=0.1, tiny=1e-10,
+                 normalization=sc.Normalization.A):
         """Initialize
 
         This implementation initializes the sed from the pixel in
@@ -155,22 +158,26 @@ class PointSource(Source):
             Shape of the initial morphology.
             If `shape` is `None` then the smallest shape specified by `config.source_sizes`
             is used.
+        normalization: `Normalization`, default = `Normalization.A`
+            The normalization method used to break the AS degeneracy.
         """
         if config is None:
             config = Config()
         if shape is None:
             shape = (config.source_sizes[0],) * 2
-        sed, morph = self._make_initial(center, img, shape)
+        sed, morph = self._make_initial(center, img, shape, psf, config, tiny)
 
+        self.normalization = normalization
         if constraints is None:
-            constraints = (sc.SimpleConstraint(),
+            constraints = (sc.SimpleConstraint(normalization),
                            sc.DirectMonotonicityConstraint(use_nearest=False),
                            sc.DirectSymmetryConstraint())
 
-        component = Component(sed, morph, center=center, constraints=constraints, psf=psf, fix_sed=fix_sed, fix_morph=fix_morph, fix_frame=fix_frame, shift_center=shift_center)
+        component = Component(sed, morph, center=center, constraints=constraints, psf=psf, fix_sed=fix_sed,
+                              fix_morph=fix_morph, fix_frame=fix_frame, shift_center=shift_center)
         super(PointSource, self).__init__(component)
 
-    def _make_initial(self, center, img, shape, tiny=1e-10):
+    def _make_initial(self, center, img, shape, psf, config, tiny=1e-10):
         """Initialize the source using only the peak pixel
 
         See `self.__init__` for parameters not listed below
@@ -182,18 +189,34 @@ class PointSource(Source):
             This ensures that the source is initialized with
             some non-zero flux.
         """
-        # determine initial SED from peak position
         B, Ny, Nx = img.shape
         _y, _x = center_int = np.round(center).astype('int')
-        try:
-            sed = get_pixel_sed(img, center_int)
-        except SourceInitError:
-            # flat weights as fall-back
-            sed = np.ones(B) / B
-        morph = np.zeros(shape)
-        # Turn on a single pixel at the peak
-        cy, cx = (shape[0] // 2, shape[1] //2)
-        morph[cy, cx] = max(img[:,_y,_x].sum(axis=0), tiny)
+        if self.normalization != sc.Normalization.A:
+            sed = img[:, _y, _x]
+            if psf is not None:
+                # Increase the magnitude of the SED's to account
+                # for the normalized PSF's
+                py, px = (psf.shape[0] // 2, psf.shape[1] //2)
+                centers = psf[:, py, px]
+                centers = np.max(psf, axis=(1,2))
+                sed = sed/centers
+            sed = prox_sed_on(sed, 0)
+            morph = np.zeros(shape, dtype=img.dtype)
+            # Turn on a single pixel at the peak
+            cy, cx = (shape[0] // 2, shape[1] //2)
+            morph[cy, cx] = 1
+            return sed, morph
+        else:
+            # determine initial SED from peak position
+            try:
+                sed = get_pixel_sed(img, center_int)
+            except SourceInitError:
+                # flat weights as fall-back
+                sed = np.ones(B) / B
+            morph = np.zeros(shape)
+            # Turn on a single pixel at the peak
+            cy, cx = (shape[0] // 2, shape[1] //2)
+            morph[cy, cx] = max(img[:,_y,_x].sum(axis=0), tiny)
         return sed, morph
 
 class ExtendedSource(Source):
@@ -209,7 +232,8 @@ class ExtendedSource(Source):
     but other `constraints` can be used.
     """
     def __init__(self, center, img, bg_rms, constraints=None, psf=None, symmetric=True, monotonic=True,
-                 thresh=1., config=None, fix_sed=False, fix_morph=False, fix_frame=False, shift_center=0.2):
+                 thresh=1., config=None, fix_sed=False, fix_morph=False, fix_frame=False, shift_center=0.2,
+                 normalization=sc.Normalization.A):
         """Initialize
 
         See :class:`~scarlet.source.Source` for parameter descriptions not listed below.
@@ -229,19 +253,24 @@ class ExtendedSource(Source):
         thresh: float
             Multiple of the RMS used to set the minimum non-zero flux.
             Use `thresh=1` to just use `bg_rms` to set the flux floor.
+        normalization: `Normalization`, default = `Normalization.A`
+            The normalization method used to break the AS degeneracy.
         """
         # Use a default configuration if config is not specified
         if config is None:
             config = Config()
 
-        sed, morph = self._make_initial(center, img, bg_rms, thresh=thresh, symmetric=symmetric, monotonic=monotonic, config=config)
+        sed, morph = self._make_initial(center, img, bg_rms, thresh=thresh, symmetric=symmetric,
+                                        monotonic=monotonic, config=config)
 
+        self.normalization = normalization
         if constraints is None:
-            constraints = (sc.SimpleConstraint(),
+            constraints = (sc.SimpleConstraint(normalization),
                            sc.DirectMonotonicityConstraint(use_nearest=False),
                            sc.DirectSymmetryConstraint())
 
-        component = Component(sed, morph, center=center, constraints=constraints, psf=psf, fix_sed=fix_sed, fix_morph=fix_morph, fix_frame=fix_frame, shift_center=shift_center)
+        component = Component(sed, morph, center=center, constraints=constraints, psf=psf, fix_sed=fix_sed,
+                              fix_morph=fix_morph, fix_frame=fix_frame, shift_center=shift_center)
         super(ExtendedSource, self).__init__(component)
 
     def _make_initial(self, center, img, bg_rms, thresh=1., symmetric=True, monotonic=True, config=None):
@@ -280,6 +309,18 @@ class ExtendedSource(Source):
         except SourceInitError:
             # keep the peak sed
             logger.INFO("Using peak SED for source at {0}".format(center_int))
+
+        # By default the A matrix is normalized to unity.
+        # For the different S matrix normalizations,
+        # we make sure that our inital values are in agreement
+        # with the correct normalization
+        if self.normalization != sc.Normalization.A:
+            if self.normalization == sc.Normalization.S:
+                norm = np.sum(morph)
+            elif self.normalization == sc.Normalization.Smax:
+                norm = np.max(morph)
+            sed *= norm
+            morph /= norm
         return sed, morph
 
     def _init_morph(self, detect, center, bg_cutoff=0, symmetric=True, monotonic=True, config=None):
@@ -359,8 +400,9 @@ class MultiComponentSource(ExtendedSource):
     The SED for all components is calculated as the best fit of the multi-component
     morphology to the multi-band image in the region of the source.
     """
-    def __init__(self, center, img, bg_rms, size_percentiles=[50], constraints=None, psf=None, symmetric=True, monotonic=True,
-                 thresh=1., config=None, fix_sed=False, fix_morph=False, fix_frame=False, shift_center=0.2):
+    def __init__(self, center, img, bg_rms, size_percentiles=[50], constraints=None, psf=None,
+                 symmetric=True, monotonic=True, thresh=1., config=None, fix_sed=False, fix_morph=False,
+                 fix_frame=False, shift_center=0.2, normalization=sc.Normalization.A):
         """Initialize multi-component source, where the inner components begin
         at the given size_percentiles.
         See `~scarlet.source.ExtendedSource` for details.
@@ -369,13 +411,17 @@ class MultiComponentSource(ExtendedSource):
         if config is None:
             config = Config()
 
+        self.normalization = normalization
         if constraints is None:
-            constraints = (sc.SimpleConstraint(),
+            constraints = (sc.SimpleConstraint(normalization),
                            sc.DirectMonotonicityConstraint(use_nearest=False),
                            sc.DirectSymmetryConstraint())
 
         # start from ExtendedSource for single-component morphology and sed
-        super(MultiComponentSource, self).__init__(center, img, bg_rms, constraints=constraints, psf=psf, symmetric=symmetric, monotonic=monotonic, thresh=thresh, config=config, fix_sed=fix_sed, fix_morph=fix_morph, fix_frame=fix_frame, shift_center=shift_center)
+        super(MultiComponentSource, self).__init__(center, img, bg_rms, constraints=constraints, psf=psf,
+                                                   symmetric=symmetric, monotonic=monotonic, thresh=thresh,
+                                                   config=config, fix_sed=fix_sed, fix_morph=fix_morph,
+                                                   fix_frame=fix_frame, shift_center=shift_center)
 
         # create a list of components from base morph by layering them on top of
         # each other so that they sum up to morph

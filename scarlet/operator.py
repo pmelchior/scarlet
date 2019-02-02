@@ -114,6 +114,28 @@ def prox_center_on(X, step, tiny=1e-10):
     X[cy, cx] = max(X[cy, cx], tiny)
     return X
 
+
+def prox_max(X, step):
+    """Normalize X so that it's max value is unity."""
+    norm = np.max(X)
+    X = X/norm
+    return X
+
+
+def prox_sed_on(X, step, tiny=1e-10):
+    """Ensure that the SED has some flux.
+
+    This is used when S is normalized and A is
+    not to prevent a source from having no flux,
+    which is known to break the centering algorithm.
+    Once we put in a check to ensure that the difference
+    image has a dipole this operator will be rendered unecessary
+    """
+    if np.all(X <= 0):
+        X[:] = tiny
+    return X
+
+
 def prox_soft_symmetry(X, step, sigma=1):
     """Soft version of symmetry
     Using a `sigma` that varies from 0 to 1,

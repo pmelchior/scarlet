@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class Config(object):
     """Blend Configuration
 
@@ -29,15 +30,14 @@ class Config(object):
         Calculate exact Lipschitz constant in every step (`exact_lipschitz` is `True`)
         or only calculate the Lipschitz constant with significant changes in A,S
         (`exact_lipschitz` is `False`)
+    update_model: bool, default=false
+        The standard method for fitting A and S is to only update the model
+        once per iteration.  If `update_model` is `True` then the model
+        is updated twice per iteration (once after the A update and once
+        after the S update).
     """
     def __init__(self, accelerated=True, update_order=None, slack=0.2, refine_skip=10, source_sizes=None,
-                 center_min_dist=1e-3, edge_flux_thresh=1., exact_lipschitz=False):
-        """Initialize the Class
-
-        Parameters
-        ----------
-        See properties
-        """
+                 center_min_dist=1e-3, edge_flux_thresh=1., exact_lipschitz=False, update_model=False):
         self.accelerated = accelerated
         if update_order is None:
             update_order = [1,0]
@@ -52,6 +52,7 @@ class Config(object):
             source_sizes = np.array([15, 25, 45, 75, 115, 165])
         # Call `self.set_source_sizes` to ensure that all sizes are odd
         self.set_source_sizes(source_sizes)
+        self.update_model = update_model
 
     def set_source_sizes(self, sizes):
         """Set the available source sizes
