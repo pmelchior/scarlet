@@ -2,7 +2,7 @@ numpy
 scipy
 astropy==2.0.4
 nbsphinx
-matplotlib
+matplotlib>=3.02
 numpydoc
 jupyter
 pybind11
