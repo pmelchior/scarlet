@@ -139,7 +139,7 @@ class PointSource(Source):
     """
     def __init__(self, center, img, shape=None, constraints=None, psf=None, config=None,
                  fix_sed=False, fix_morph=False, fix_frame=False, shift_center=0.1, tiny=1e-10,
-                 normalization=sc.Normalization.A):
+                 normalization=sc.Normalization.S):
         """Initialize
 
         This implementation initializes the sed from the pixel in
@@ -165,9 +165,9 @@ class PointSource(Source):
             config = Config()
         if shape is None:
             shape = (config.source_sizes[0],) * 2
+        self.normalization = normalization
         sed, morph = self._make_initial(center, img, shape, psf, config, tiny)
 
-        self.normalization = normalization
         if constraints is None:
             constraints = (sc.SimpleConstraint(normalization),
                            sc.DirectMonotonicityConstraint(use_nearest=False),
@@ -260,10 +260,10 @@ class ExtendedSource(Source):
         if config is None:
             config = Config()
 
+        self.normalization = normalization
         sed, morph = self._make_initial(center, img, bg_rms, thresh=thresh, symmetric=symmetric,
                                         monotonic=monotonic, config=config)
 
-        self.normalization = normalization
         if constraints is None:
             constraints = (sc.SimpleConstraint(normalization),
                            sc.DirectMonotonicityConstraint(use_nearest=False),
