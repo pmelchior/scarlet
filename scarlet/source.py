@@ -139,7 +139,7 @@ class PointSource(Source):
     """
     def __init__(self, center, img, shape=None, constraints=None, psf=None, config=None,
                  fix_sed=False, fix_morph=False, fix_frame=False, shift_center=0.1, tiny=1e-10,
-                 normalization=sc.Normalization.S):
+                 normalization=sc.Normalization.A):
         """Initialize
 
         This implementation initializes the sed from the pixel in
