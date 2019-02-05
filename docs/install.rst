@@ -16,6 +16,10 @@ Optional Dependencies (required to build docs)
 #. matplotlib_ (required to use the plotting functionality in `scarlet.display`)
 #. astropy_ (required for some of the tutorials and sample data)
 #. galsim_ (required for PSF de-convolution and matching)
+#. sphinx_ (required to build the docs) 
+#. sphinx_rtd_theme_ (required to use the Read the Docs theme)
+#. nbsphinx_ (required to compile notebooks)
+#. numpydoc_ (allow for numpy style docstrings)
 
 From Source
 -----------
@@ -42,14 +46,6 @@ If you already have a local version of Eigen_ and don't want to download the hea
     `build_ext` does not accept relative paths, so `<full path to your Eigen header files>`
     must be a full path.
 
-From pip
---------
-(not yet active, but coming soon)
-
-::
-
-    pip install scarlet
-
 .. _numpy: http://www.numpy.org
 .. _scipy: https://www.scipy.org
 .. _proxmin: https://github.com/pmelchior/proxmin/tree/master/proxmin
@@ -59,3 +55,7 @@ From pip
 .. _astropy: http://www.astropy.org
 .. _galsim: https://github.com/GalSim-developers/GalSim
 .. _Eigen: http://eigen.tuxfamily.org/index.php?title=Main_Page
+.. _sphinx: http://www.sphinx-doc.org/en/master/
+.. _sphinx_rtd_theme: https://sphinx-rtd-theme.readthedocs.io/en/latest/
+.. _nbsphinx: https://nbsphinx.readthedocs.io/en/0.4.2/
+.. _numpydoc: https://numpydoc.readthedocs.io/en/latest/
