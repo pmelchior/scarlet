@@ -326,12 +326,9 @@ class Component(object):
             self.sed *= norm
 
     def get_flux(self):
-        """Get bolometric flux
-
-        To be independent of the particular normalization, this method computes
-        the total flux of the source, i.e. morph.sum() * sed.sum().
+        """Get flux in every band
         """
-        return self.morph.sum() * self.sed.sum()
+        return self.morph.sum() * self.sed
 
     def get_morph_error(self, weights):
         """Get error in the morphology

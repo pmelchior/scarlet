@@ -53,6 +53,11 @@ class Source(ComponentTree):
                 models[k] = _model
         return np.sum(models, axis=0)
 
+    def get_flux(self):
+        """Get flux in every band
+        """
+        return np.sum([c.get_flux() for c in self.components], axis=0)
+
     def update_center(self):
         """Center update to set all component centers to flux-weighted mean position.
 
@@ -62,7 +67,7 @@ class Source(ComponentTree):
             # TODO: find optimal centering Weights
             # With flux weighting, larger components often have large weights
             # even if they are shallow and thus hard to center ...
-            # _flux = np.array([c.get_flux() for c in self.components])
+            # _flux = np.array([c.get_flux().sum() for c in self.components])
             #  ... use flat weights instead
             _flux = np.array([1 for c in self.components])
             _center = np.sum([_flux[k]*self.components[k].center for k in range(self.K)], axis=0)
