@@ -165,7 +165,6 @@ class PointSource(Source):
             config = Config()
         if shape is None:
             shape = (config.source_sizes[0],) * 2
-        self.normalization = normalization
         sed, morph = self._make_initial(center, img, shape, psf, config, tiny)
 
         if constraints is None:
@@ -175,6 +174,7 @@ class PointSource(Source):
 
         component = Component(sed, morph, center=center, constraints=constraints, psf=psf, fix_sed=fix_sed,
                               fix_morph=fix_morph, fix_frame=fix_frame, shift_center=shift_center)
+        component.normalize(normalization)
         super(PointSource, self).__init__(component)
 
     def _make_initial(self, center, img, shape, psf, config, tiny=1e-10):
@@ -191,32 +191,16 @@ class PointSource(Source):
         """
         B, Ny, Nx = img.shape
         _y, _x = center_int = np.round(center).astype('int')
-        if self.normalization != sc.Normalization.A:
-            sed = img[:, _y, _x]
-            if psf is not None:
-                # Increase the magnitude of the SED's to account
-                # for the normalized PSF's
-                py, px = (psf.shape[0] // 2, psf.shape[1] //2)
-                centers = psf[:, py, px]
-                centers = np.max(psf, axis=(1,2))
-                sed = sed/centers
-            sed = prox_sed_on(sed, 0)
-            morph = np.zeros(shape, dtype=img.dtype)
-            # Turn on a single pixel at the peak
-            cy, cx = (shape[0] // 2, shape[1] //2)
-            morph[cy, cx] = 1
-            return sed, morph
-        else:
-            # determine initial SED from peak position
-            try:
-                sed = get_pixel_sed(img, center_int)
-            except SourceInitError:
-                # flat weights as fall-back
-                sed = np.ones(B) / B
-            morph = np.zeros(shape)
-            # Turn on a single pixel at the peak
-            cy, cx = (shape[0] // 2, shape[1] //2)
-            morph[cy, cx] = max(img[:,_y,_x].sum(axis=0), tiny)
+        # determine initial SED from peak position
+        try:
+            sed = get_pixel_sed(img, center_int)
+        except SourceInitError:
+            # flat weights as fall-back
+            sed = np.ones(B) / B
+        morph = np.zeros(shape)
+        # Turn on a single pixel at the peak
+        cy, cx = (shape[0] // 2, shape[1] //2)
+        morph[cy, cx] = max(img[:,_y,_x].sum(axis=0), tiny)
         return sed, morph
 
 class ExtendedSource(Source):
@@ -260,7 +244,6 @@ class ExtendedSource(Source):
         if config is None:
             config = Config()
 
-        self.normalization = normalization
         sed, morph = self._make_initial(center, img, bg_rms, thresh=thresh, symmetric=symmetric,
                                         monotonic=monotonic, config=config)
 
@@ -271,6 +254,7 @@ class ExtendedSource(Source):
 
         component = Component(sed, morph, center=center, constraints=constraints, psf=psf, fix_sed=fix_sed,
                               fix_morph=fix_morph, fix_frame=fix_frame, shift_center=shift_center)
+        component.normalize(normalization)
         super(ExtendedSource, self).__init__(component)
 
     def _make_initial(self, center, img, bg_rms, thresh=1., symmetric=True, monotonic=True, config=None):
@@ -309,18 +293,6 @@ class ExtendedSource(Source):
         except SourceInitError:
             # keep the peak sed
             logger.INFO("Using peak SED for source at {0}".format(center_int))
-
-        # By default the A matrix is normalized to unity.
-        # For the different S matrix normalizations,
-        # we make sure that our inital values are in agreement
-        # with the correct normalization
-        if self.normalization != sc.Normalization.A:
-            if self.normalization == sc.Normalization.S:
-                norm = np.sum(morph)
-            elif self.normalization == sc.Normalization.Smax:
-                norm = np.max(morph)
-            sed *= norm
-            morph /= norm
         return sed, morph
 
     def _init_morph(self, detect, center, bg_cutoff=0, symmetric=True, monotonic=True, config=None):
@@ -411,7 +383,6 @@ class MultiComponentSource(ExtendedSource):
         if config is None:
             config = Config()
 
-        self.normalization = normalization
         if constraints is None:
             constraints = (sc.SimpleConstraint(normalization),
                            sc.DirectMonotonicityConstraint(use_nearest=False),
@@ -421,7 +392,7 @@ class MultiComponentSource(ExtendedSource):
         super(MultiComponentSource, self).__init__(center, img, bg_rms, constraints=constraints, psf=psf,
                                                    symmetric=symmetric, monotonic=monotonic, thresh=thresh,
                                                    config=config, fix_sed=fix_sed, fix_morph=fix_morph,
-                                                   fix_frame=fix_frame, shift_center=shift_center)
+                                                   fix_frame=fix_frame, shift_center=shift_center, normalization=normalization)
 
         # create a list of components from base morph by layering them on top of
         # each other so that they sum up to morph
@@ -480,5 +451,6 @@ class MultiComponentSource(ExtendedSource):
                 _Ny = config.find_next_source_size(_Ny)
                 _Nx = config.find_next_source_size(_Nx)
                 component.resize((_Ny, _Nx))
+                component.normalize(normalization)
 
                 self += component

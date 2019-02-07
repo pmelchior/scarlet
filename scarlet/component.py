@@ -306,6 +306,26 @@ class Component(object):
             self.morph[new_slice] = _morph[old_slice]
             self.set_frame()
 
+    def normalize(self, normalization):
+        """Apply normalization to SED & Morphology
+
+        Parameters
+        ----------
+        normalization: `~scarlet.constraint.Normalization`
+        """
+        if normalization == sc.Normalization.A:
+            norm = self.sed.sum()
+            self.sed /= norm
+            self.morph *= norm
+        else:
+            if normalization == sc.Normalization.S:
+                norm = self.morph.sum()
+            elif normalization == sc.Normalization.Smax:
+                norm = self.morph.max()
+            self.morph /= norm
+            self.sed *= norm
+
+
     def get_morph_error(self, weights):
         """Get error in the morphology
 
