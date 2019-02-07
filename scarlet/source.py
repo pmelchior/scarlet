@@ -59,7 +59,7 @@ class Source(ComponentTree):
         NOTE: Only components with `shift_center > 0` will be moved.
         """
         if len(self.components) > 1:
-            _flux = np.array([c.morph.sum() for c in self.components])
+            _flux = np.array([c.get_flux() for c in self.components])
             _center = np.sum([_flux[k]*self.components[k].center for k in range(self.K)], axis=0)
             _center /= _flux.sum()
             for c in self.components:
