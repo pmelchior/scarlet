@@ -107,7 +107,7 @@ class MinimalConstraint(Constraint):
         self.normalization = normalization
 
     def prox_sed(self, shape):
-        if norm == Normalization.S or norm == Normalization.Smax:
+        if self.normalization != Normalization.A:
             return proxmin.operators.prox_plus
         return proxmin.operators.prox_unity_plus
 
@@ -132,8 +132,7 @@ class SimpleConstraint(Constraint):
         self.normalization = normalization
 
     def prox_sed(self, shape):
-        norm = self.normalization
-        if norm == Normalization.S or norm == Normalization.Smax:
+        if self.normalization != Normalization.A:
             return proxmin.operators.AlternatingProjections([
                 operator.prox_sed_on, proxmin.operators.prox_plus
             ])
