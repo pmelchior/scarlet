@@ -109,24 +109,21 @@ def get_pixel_sed(img, position):
         # which will cause the code to crash later
         msg = "Zero or negative flux at y={0}, x={1}"
         raise SourceInitError(msg.format(_y, _x))
+    return sed
 
-    # ensure proper normalization
-    return proxmin.operators.prox_unity_plus(sed, 0)
-
-def get_integrated_sed(img, weight):
+def get_integrated_sed(img, weight, p=1):
     """Calculate SED from weighted sum of the image in each band
     """
     B, Ny, Nx = img.shape
-    sed = (img * weight).reshape(B, -1).sum(axis=1)
+    sed = (img * weight).reshape(B, -1).sum(axis=1) / (weight**p).sum()
     if np.all(sed<=0):
         # If the flux in all bands is  <=0,
         # the new sed will be filled with NaN values,
         # which will cause the code to crash later
         msg = "Zero or negative flux under weight function"
         raise SourceInitError(msg)
+    return sed
 
-    # ensure proper normalization
-    return proxmin.operators.prox_unity_plus(sed, 0)
 
 def get_best_fit_sed(img, S):
     """Calculate best fitting SED for multiple components.
@@ -184,7 +181,7 @@ class PointSource(Source):
 
         component = Component(sed, morph, center=center, constraints=constraints, psf=psf, fix_sed=fix_sed,
                               fix_morph=fix_morph, fix_frame=fix_frame, shift_center=shift_center)
-        component.normalize(normalization)
+        component._normalize(normalization)
         super(PointSource, self).__init__(component)
 
     def _make_initial(self, center, img, shape, psf, config, tiny=1e-10):
@@ -201,16 +198,12 @@ class PointSource(Source):
         """
         B, Ny, Nx = img.shape
         _y, _x = center_int = np.round(center).astype('int')
-        # determine initial SED from peak position
-        try:
-            sed = get_pixel_sed(img, center_int)
-        except SourceInitError:
-            # flat weights as fall-back
-            sed = np.ones(B) / B
+        # determine initial SED from peak position: amplitude is in sed
+        sed = get_pixel_sed(img, center_int)
         morph = np.zeros(shape)
-        # Turn on a single pixel at the peak
+        # Turn on a single pixel at the peak: normalized S
         cy, cx = (shape[0] // 2, shape[1] //2)
-        morph[cy, cx] = max(img[:,_y,_x].sum(axis=0), tiny)
+        morph[cy, cx] = 1
         return sed, morph
 
 class ExtendedSource(Source):
@@ -264,7 +257,7 @@ class ExtendedSource(Source):
 
         component = Component(sed, morph, center=center, constraints=constraints, psf=psf, fix_sed=fix_sed,
                               fix_morph=fix_morph, fix_frame=fix_frame, shift_center=shift_center)
-        component.normalize(normalization)
+        component._normalize(normalization)
         super(ExtendedSource, self).__init__(component)
 
     def _make_initial(self, center, img, bg_rms, thresh=1., symmetric=True, monotonic=True, config=None):
@@ -275,12 +268,7 @@ class ExtendedSource(Source):
         # determine initial SED from peak position
         B = img.shape[0]
         center_int = np.round(center).astype('int')
-        sed = np.empty(B)
-        try:
-            sed = get_pixel_sed(img, center_int)
-        except SourceInitError:
-            # flat weights as fall-back
-            sed = np.ones(B) / B
+        sed = get_pixel_sed(img, center_int) # amplitude is in sed
 
         # build optimal detection coadd given the sed
         if np.all([bg_rms > 0]):
@@ -296,10 +284,16 @@ class ExtendedSource(Source):
             bg_cutoff = 0
         morph = self._init_morph(detect, center, bg_cutoff, symmetric, monotonic, config)
 
+        # normalize to unity at peak pixel
+        cy, cx = (morph.shape[0] // 2, morph.shape[1] //2)
+        center_morph = morph[cy,cx]
+        morph /= center_morph
+
         # use mean sed from image, weighted with the morphology of each component
         try:
             im_slice, morph_slice = Component.get_frame(detect.shape, center, morph.shape)
-            sed = get_integrated_sed(img[slice(None), im_slice[0], im_slice[1]], morph[morph_slice])
+            # need p=2 to undo the intensity normalization, since we want Smax initially
+            sed = get_integrated_sed(img[slice(None), im_slice[0], im_slice[1]], morph[morph_slice], p=2)
         except SourceInitError:
             # keep the peak sed
             logger.INFO("Using peak SED for source at {0}".format(center_int))
@@ -461,6 +455,6 @@ class MultiComponentSource(ExtendedSource):
                 _Ny = config.find_next_source_size(_Ny)
                 _Nx = config.find_next_source_size(_Nx)
                 component.resize((_Ny, _Nx))
-                component.normalize(normalization)
+                component._normalize(normalization)
 
                 self += component

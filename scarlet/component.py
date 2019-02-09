@@ -306,8 +306,13 @@ class Component(object):
             self.morph[new_slice] = _morph[old_slice]
             self.set_frame()
 
-    def normalize(self, normalization):
-        """Apply normalization to SED & Morphology
+    def get_flux(self):
+        """Get flux in every band
+        """
+        return self.morph.sum() * self.sed
+
+    def _normalize(self, normalization):
+        """Apply normalization to SED & Morphology, assuming an initial Smax norm
 
         Parameters
         ----------
@@ -317,18 +322,10 @@ class Component(object):
             norm = self.sed.sum()
             self.sed /= norm
             self.morph *= norm
-        else:
-            if normalization == sc.Normalization.S:
-                norm = self.morph.sum()
-            elif normalization == sc.Normalization.Smax:
-                norm = self.morph.max()
+        elif normalization == sc.Normalization.S:
+            norm = self.morph.sum()
             self.morph /= norm
             self.sed *= norm
-
-    def get_flux(self):
-        """Get flux in every band
-        """
-        return self.morph.sum() * self.sed
 
     def get_morph_error(self, weights):
         """Get error in the morphology
