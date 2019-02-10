@@ -376,7 +376,7 @@ class MultiComponentSource(ExtendedSource):
     The SED for all components is calculated as the best fit of the multi-component
     morphology to the multi-band image in the region of the source.
     """
-    def __init__(self, center, img, bg_rms, size_percentiles=[50], constraints=None, psf=None,
+    def __init__(self, center, img, bg_rms, flux_percentiles=[25], constraints=None, psf=None,
                  symmetric=True, monotonic=True, thresh=1., config=None, fix_sed=False, fix_morph=False,
                  fix_frame=False, shift_center=0.2, normalization=sc.Normalization.A):
         """Initialize multi-component source, where the inner components begin
@@ -400,38 +400,27 @@ class MultiComponentSource(ExtendedSource):
 
         # create a list of components from base morph by layering them on top of
         # each other so that they sum up to morph
-        from scipy.ndimage.morphology import binary_erosion
-        K = len(size_percentiles) + 1
+        K = len(flux_percentiles) + 1
 
         morph = self.components[0].morph
         Ny, Nx = morph.shape
         morphs = [np.zeros((Ny, Nx)) for k in range(K)]
         morphs[0][:,:] = morph[:,:]
         mask = morph > 0
-        radius = np.sqrt(mask.sum()/np.pi)
-        percentiles_ = np.sort(size_percentiles)[::-1] # decending order
+        max_flux = morph.max()
+        percentiles_ = np.sort(flux_percentiles)
+        last_thresh = 0
         for k in range(1,K):
             perc = percentiles_[k-1]
-            while True:
-                # erode footprint from the outside
-                mask_ = binary_erosion(mask)
-                # keep central pixel on
-                mask_[Ny//2,Nx//2] = True
-                if np.sqrt(mask_.sum()/np.pi) < perc*radius/100 or mask_.sum() == 1:
-                    # set inside of prior component to value at perimeter
-                    perimeter = mask & (~mask_)
-                    perimeter_val = morph[perimeter].mean()
-                    morphs[k-1][mask_] = perimeter_val
-                    # set this component to morph - perimeter_val, bounded by 0
-                    morph -= perimeter_val
-                    morphs[k][mask_] = np.maximum(morph[mask_], 0)
-                    # correct for negative pixels by putting them into k-1 component
-                    below = mask_ & (morph < 0)
-                    if below.sum():
-                        morphs[k-1][below] += morph[below]
-                    mask = mask_
-                    break
-                mask = mask_
+            flux_thresh = perc*max_flux/100
+            mask_ = morph > flux_thresh
+            morphs[k-1][mask_] = flux_thresh - last_thresh
+            morphs[k][mask_] = morph[mask_] - flux_thresh
+            last_thresh = flux_thresh
+
+        # renormalize morphs: initially Smax
+        for k in range(K):
+            morphs[k] /= morphs[k].max()
 
         # optimal SEDs given the morphologies, assuming img only has that source
         c = self.components[0]
@@ -439,10 +428,12 @@ class MultiComponentSource(ExtendedSource):
         S = np.array(morphs)[:,component_slice[1], component_slice[2]].reshape(K, -1)
         seds = get_best_fit_sed(img[c.bb], S)
 
+        # insert into components
         for k in range(K):
             if k == 0:
                 self.components[0].morph = morphs[0]
                 self.components[0].sed = seds[0]
+                self.components[0]._normalize(normalization)
             else:
                 component = Component(seds[k], morphs[k], center=center, constraints=constraints, psf=psf, fix_sed=fix_sed, fix_morph=fix_morph, fix_frame=fix_frame, shift_center=shift_center)
 
