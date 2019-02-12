@@ -91,7 +91,7 @@ def get_pixel_sed(img, position):
     Parameters
     ----------
     img: `~numpy.array`
-        (Bands, Height, Width) data array that contains a 2D image for each band
+        (Bands, Height, Width) array that contains a 2D image for each band
     position: array-like
         (y,x) coordinates of the source in the larger image
 
@@ -113,6 +113,21 @@ def get_pixel_sed(img, position):
 
 def get_integrated_sed(img, weight, p=1):
     """Calculate SED from weighted sum of the image in each band
+
+    Parameters
+    ----------
+    img: `~numpy.array`
+        (Bands, Height, Width) array that contains a 2D image for each band
+    weight: `~numpy.array`
+        (Height, Width) weights to apply to each pixel in `img`
+    p: int
+        power for the weight normalization: 1/(weight**p).sum()
+
+    Returns
+    -------
+    SED: `~numpy.array`
+        SED for a single source
+
     """
     B, Ny, Nx = img.shape
     sed = (img * weight).reshape(B, -1).sum(axis=1) / (weight**p).sum()
@@ -130,10 +145,18 @@ def get_best_fit_sed(img, S):
 
     Solves min_A ||img - AS||^2 for the SED matrix A, assuming that img only
     contains a single source.
+
+    Parameters
+    ----------
+    img: `~numpy.array`
+        (Bands, Height, Width) array that contains a 2D image for each band
+    S: `~numpy.array`
+        (Components, Height, Width) array with the 2D image for each component
     """
-    B = len(img)
+    B, K = len(img), len(S)
     Y = img.reshape(B,-1)
-    return np.dot(np.linalg.inv(np.dot(S,S.T)), np.dot(S, Y.T))
+    S_ = S.reshape(K, -1)
+    return np.dot(np.linalg.inv(np.dot(S_,S_.T)), np.dot(S_, Y.T))
 
 
 class PointSource(Source):
@@ -200,7 +223,7 @@ class PointSource(Source):
         _y, _x = center_int = np.round(center).astype('int')
         # determine initial SED from peak position: amplitude is in sed
         sed = get_pixel_sed(img, center_int)
-        morph = np.zeros(shape)
+        morph = np.zeros(shape, dtype=img.dtype)
         # Turn on a single pixel at the peak: normalized S
         cy, cx = (shape[0] // 2, shape[1] //2)
         morph[cy, cx] = 1
@@ -425,7 +448,7 @@ class MultiComponentSource(ExtendedSource):
         # optimal SEDs given the morphologies, assuming img only has that source
         c = self.components[0]
         component_slice = c.get_slice_for(img.shape)
-        S = np.array(morphs)[:,component_slice[1], component_slice[2]].reshape(K, -1)
+        S = np.array(morphs)[:,component_slice[1], component_slice[2]]
         seds = get_best_fit_sed(img[c.bb], S)
 
         # insert into components
