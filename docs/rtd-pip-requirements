@@ -1,6 +1,6 @@
 numpy
 scipy
-astropy==2.0.4
+astropy
 nbsphinx
 matplotlib>=3.0.2
 numpydoc
