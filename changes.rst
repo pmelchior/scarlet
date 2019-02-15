@@ -1,4 +1,8 @@
-0.4 (unreleased)
+0.5 (unreleased)
+----------------
+- no changes yet
+
+0.4 (2019-2-15)
 ----------------
 
 General
