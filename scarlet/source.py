@@ -169,7 +169,7 @@ class PointSource(Source):
     """
     def __init__(self, center, img, shape=None, constraints=None, psf=None, config=None,
                  fix_sed=False, fix_morph=False, fix_frame=False, shift_center=0.1, tiny=1e-10,
-                 normalization=sc.Normalization.A):
+                 normalization=sc.Normalization.Smax):
         """Initialize
 
         This implementation initializes the sed from the pixel in
@@ -243,7 +243,7 @@ class ExtendedSource(Source):
     """
     def __init__(self, center, img, bg_rms, constraints=None, psf=None, symmetric=True, monotonic=True,
                  thresh=1., config=None, fix_sed=False, fix_morph=False, fix_frame=False, shift_center=0.2,
-                 normalization=sc.Normalization.A):
+                 normalization=sc.Normalization.Smax):
         """Initialize
 
         See :class:`~scarlet.source.Source` for parameter descriptions not listed below.
@@ -401,7 +401,7 @@ class MultiComponentSource(ExtendedSource):
     """
     def __init__(self, center, img, bg_rms, flux_percentiles=[25], constraints=None, psf=None,
                  symmetric=True, monotonic=True, thresh=1., config=None, fix_sed=False, fix_morph=False,
-                 fix_frame=False, shift_center=0.2, normalization=sc.Normalization.A):
+                 fix_frame=False, shift_center=0.2, normalization=sc.Normalization.Smax):
         """Initialize multi-component source, where the inner components begin
         at the given size_percentiles.
         See `~scarlet.source.ExtendedSource` for details.
@@ -419,7 +419,8 @@ class MultiComponentSource(ExtendedSource):
         super(MultiComponentSource, self).__init__(center, img, bg_rms, constraints=constraints, psf=psf,
                                                    symmetric=symmetric, monotonic=monotonic, thresh=thresh,
                                                    config=config, fix_sed=fix_sed, fix_morph=fix_morph,
-                                                   fix_frame=fix_frame, shift_center=shift_center, normalization=normalization)
+                                                   fix_frame=fix_frame, shift_center=shift_center,
+                                                   normalization=normalization)
 
         # create a list of components from base morph by layering them on top of
         # each other so that they sum up to morph

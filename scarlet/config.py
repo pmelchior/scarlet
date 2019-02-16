@@ -6,8 +6,11 @@ class Config(object):
 
     Attributes
     ----------
-    accelerated: bool, default=True
-        Whether to use an accelerated proximal agorithm
+    accelerated: bool, default=False
+        Whether to use an accelerated proximal agorithm.
+        Currently there seem to be issues with acceleration
+        and the optimization algorithms, so it is recommended
+        to turn this feature off.
     update_order: array-like
         Whether to update A before S (`update_order=[0,1]`) or
         S before A (`update_order=[1,0]`) in each step of the fit.
@@ -36,7 +39,7 @@ class Config(object):
         is updated twice per iteration (once after the A update and once
         after the S update).
     """
-    def __init__(self, accelerated=True, update_order=None, slack=0.2, refine_skip=10, source_sizes=None,
+    def __init__(self, accelerated=False, update_order=None, slack=0.2, refine_skip=10, source_sizes=None,
                  center_min_dist=1e-3, edge_flux_thresh=1., exact_lipschitz=False, update_model=False):
         self.accelerated = accelerated
         if update_order is None:
