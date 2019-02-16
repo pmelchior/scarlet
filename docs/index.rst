@@ -25,9 +25,13 @@ Getting Started
 
 .. toctree::
    :maxdepth: 2
-   
+
    install
    quickstart
    user_docs
    tutorials
    api_docs
+
+Change Log
+==========
+.. include:: changes.rst
