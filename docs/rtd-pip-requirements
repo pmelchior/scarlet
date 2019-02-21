@@ -8,4 +8,3 @@ jupyter
 pybind11
 git+https://github.com/pmelchior/proxmin.git
 peigen==0.0.9
-torch

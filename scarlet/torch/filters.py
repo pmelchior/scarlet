@@ -25,7 +25,7 @@ def fft_convolve(img, kernel):
     return ifftshift(convolved)
 
 
-def bilinear_interpolation(dx):
+def bilinear_interpolation(dx, dtype=torch.float):
     """Bilinear interpolation kernel
 
     Interpolate between neighboring pixels to shift
@@ -44,15 +44,15 @@ def bilinear_interpolation(dx):
         The pixel values for the window containing the kernel
     """
     if dx >= 0:
-        window = torch.arange(2, dtype=torch.float32)
-        y = torch.tensor([1-dx, dx], dtype=torch.float32)
+        window = torch.arange(2, dtype=dtype)
+        y = torch.tensor([1-dx, dx], dtype=dtype)
     else:
-        window = torch.tensor([-1, 0], dtype=torch.float32)
+        window = torch.tensor([-1, 0], dtype=dtype)
         y = torch.tensor([-dx, 1+dx])
     return y, window
 
 
-def cubic_spline(dx, a=1, b=0):
+def cubic_spline(dx, a=1, b=0, dtype=torch.float):
     """Generate a cubix spline centered on `dx`.
 
     Parameters
@@ -63,6 +63,8 @@ def cubic_spline(dx, a=1, b=0):
         Cubic spline sharpness paremeter
     b: float
         Cubic spline shape parameter
+    dtype: torch.dtype
+        The data type of the output spline.
 
     Returns
     -------
@@ -88,8 +90,8 @@ def cubic_spline(dx, a=1, b=0):
         zero = 24*a + 8*b
         return (zero + first + second + third)/6
 
-    window = torch.arange(-1, 3, dtype=torch.float32) + np.floor(dx)
-    result = torch.zeros(window.shape)
+    window = torch.arange(-1, 3, dtype=dtype) + np.floor(dx)
+    result = torch.zeros(window.shape, dtype=dtype)
     _x = torch.abs(dx-window)
     outer_cut = (_x > 1) & (_x < 2)
     inner_cut = _x <= 1
@@ -98,24 +100,24 @@ def cubic_spline(dx, a=1, b=0):
     return result, np.array(window).astype(int)
 
 
-def catmull_rom(dx):
+def catmull_rom(dx, dtype=torch.float):
     """Cubic spline with a=0.5, b=0
 
     See `cubic_spline` for details.
     """
-    return cubic_spline(dx, a=.5, b=0)
+    return cubic_spline(dx, a=.5, b=0, dtype=dtype)
 
 
-def mitchel_netravali(dx):
+def mitchel_netravali(dx, dtype=torch.float):
     """Cubic spline with a=1/3, b=1/3
 
     See `cubic_spline` for details.
     """
     ab = 1/3
-    return cubic_spline(dx, a=ab, b=ab)
+    return cubic_spline(dx, a=ab, b=ab, dtype=dtype)
 
 
-def lanczos(dx, a=3):
+def lanczos(dx, a=3, dtype=torch.float):
     """Lanczos kernel
 
     Parameters
@@ -135,10 +137,10 @@ def lanczos(dx, a=3):
     # in numpy and then convert to pytorch
     window = np.arange(-a + 1, a + 1) + np.floor(dx)
     y = np.sinc(dx - window) * np.sinc((dx - window) / a)
-    return torch.tensor(y), window.astype(int)
+    return torch.tensor(y).type(dtype), window.astype(int)
 
 
-def get_separable_kernel(dx, dy, kernel=lanczos, **kwargs):
+def get_separable_kernel(dx, dy, kernel=lanczos, dtype=torch.float, **kwargs):
     """Create a 2D kernel from a 1D kernel separable in x and y
 
     Parameters
@@ -161,8 +163,8 @@ def get_separable_kernel(dx, dy, kernel=lanczos, **kwargs):
     y_window: Tensor
         The pixel values for the window containing the kernel in the y-direction
     """
-    kx, x_window = kernel(dx, **kwargs)
-    ky, y_window = kernel(dy, **kwargs)
+    kx, x_window = kernel(dx, dtype=dtype, **kwargs)
+    ky, y_window = kernel(dy, dtype=dtype, **kwargs)
     kxy = torch.ger(ky, kx)
     return kxy, x_window, y_window
 
@@ -193,9 +195,9 @@ def fft_resample(img, dx, dy, kernel=lanczos, **kwargs):
         The convolved image.
     """
     # Build the kernel
-    _kernel, xwin, ywin = get_separable_kernel(dx, dy, kernel=kernel, **kwargs)
+    _kernel, xwin, ywin = get_separable_kernel(dx, dy, kernel=kernel, dtype=img.dtype, **kwargs)
     # Project the kernel onto the same space as the output image
-    full_kernel = torch.zeros(img.shape)
+    full_kernel = torch.zeros(img.shape, dtype=img.dtype)
     cy = img.shape[0] // 2
     cx = img.shape[1] // 2
     y_slice = slice(int(ywin[0].item()) + cy, int(ywin[-1].item()) + cy + 1)
