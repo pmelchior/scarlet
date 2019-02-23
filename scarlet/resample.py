@@ -1,29 +1,113 @@
 import numpy as np
 
 
-def fft_convolve(img, kernel):
+def project_image(img, shape=None, img_window=None):
+    """Project an image centered in a larger image
+
+    The projection pads the image with zeros if
+    necessary or trims the edges if img is larger
+    than shape in a given dimension.
+
+    Parameters
+    ----------
+    img: array
+        2D input image
+    shape: tuple
+        Shape of the new image. Either `shape` or
+        `result_coords` must be provided.
+    img_window: list of arrays
+        Window that contains the image,
+        where (0,0) is the center of the output image.
+        If `img_window` is `None` then the input and
+        output images are co-centered.
+
+    Returns
+    -------
+    result: array
+        The result of projecting `img`.
+    """
+    result = np.zeros(shape)
+    Ny, Nx = shape
+    iNy, iNx = img.shape
+
+    # Align the image centers if no window is specified
+    if img_window is None:
+        ry = iNy // 2
+        rx = iNx // 2
+        iywin = np.array([-ry, ry])
+        ixwin = np.array([-rx, rx])
+    else:
+        iywin = np.array([img_window[0][0], img_window[0][-1]])
+        ixwin = np.array([img_window[1][0], img_window[1][-1]])
+
+    # Shift the window to the center of the output image
+    iywin += Ny // 2
+    ixwin += Nx // 2
+
+    # Set the bounding box of the input image
+    ibottom, itop = iywin[0], iywin[1] + 1
+    ileft, iright = ixwin[0], ixwin[1] + 1
+    ibb = (slice(max(0, ibottom), itop), slice(max(0, ileft), iright))
+
+    # Set the bounding box of the output image
+    left = max(0, -ileft)
+    bottom = max(0, -ibottom)
+    right = iNx - max(0, iright - Nx)
+    top = iNy - max(0, itop - Ny)
+    bb = (slice(bottom, top), slice(left, right))
+
+    # Project the image
+    result[ibb] = img[bb]
+    return result
+
+
+def common_projections(img1, img2):
+    """Project two images to a common frame
+
+    It is assumed that the two images have the same center.
+    This is mainly used for FFT convolutions of source components,
+    where the convolution kernel is a different size than the morphology.
+
+    Parameters
+    ----------
+    img1: array
+        1st 2D image to project
+    img2: array
+        2nd 2D image to project
+
+    Returns
+    -------
+    img1: array
+        Projection of 1st image
+    img2: array
+        Projection of 2nd image
+    """
+    h1, w1 = img1.shape
+    h2, w2 = img2.shape
+    shape = (max(h1, h2), max(w1, w2))
+    return project_image(img1, shape), project_image(img2, shape)
+
+
+def fft_convolve(*images):
     """Use FFT's to convove an image with a kernel
 
     Parameters
     ----------
-    img: array-like
-        The input image.
-    kernel: array-like
-        The kernel to convolve the image with
+    images: list of array-like
+        A list of images to convolve.
 
     Returns
     -------
     result: array
         The convolution in pixel space of `img` with `kernel`.
     """
-    Img = np.fft.fft2(img)
-    Kernel = np.fft.fft2(kernel)
-    Convolved = Img * Kernel
+    Images = [np.fft.fft2(np.fft.ifftshift(img)) for img in images]
+    Convolved = np.prod(Images, 0)
     convolved = np.fft.ifft2(Convolved)
-    return np.fft.ifftshift(np.real(convolved))
+    return np.fft.fftshift(np.real(convolved))
 
 
-def bilinear_interpolation(dx):
+def bilinear(dx):
     """Bilinear interpolation kernel
 
     Interpolate between neighboring pixels to shift
@@ -136,14 +220,14 @@ def lanczos(dx, a=3):
     return y, window.astype(int)
 
 
-def get_separable_kernel(dx, dy, kernel=lanczos, **kwargs):
+def get_separable_kernel(dy, dx, kernel=lanczos, **kwargs):
     """Create a 2D kernel from a 1D kernel separable in x and y
 
     Parameters
     ----------
-    dx: float
-        amount to shift image in x
     dy: float
+        amount to shift image in x
+    dx: float
         amount to shift image in y
     kernel: function
         1D kernel that is separable in x and y
@@ -162,7 +246,7 @@ def get_separable_kernel(dx, dy, kernel=lanczos, **kwargs):
     kx, x_window = kernel(dx, **kwargs)
     ky, y_window = kernel(dy, **kwargs)
     kxy = np.outer(ky, kx)
-    return kxy, x_window, y_window
+    return kxy, y_window, x_window
 
 
 def fft_resample(img, dx, dy, kernel=lanczos, **kwargs):

@@ -203,7 +203,8 @@ class PointSource(Source):
                            sc.DirectSymmetryConstraint())
 
         component = Component(sed, morph, center=center, constraints=constraints, psf=psf, fix_sed=fix_sed,
-                              fix_morph=fix_morph, fix_frame=fix_frame, shift_center=shift_center)
+                              fix_morph=fix_morph, fix_frame=fix_frame, shift_center=shift_center,
+                              config=config)
         component._normalize(normalization)
         super(PointSource, self).__init__(component)
 
@@ -279,7 +280,8 @@ class ExtendedSource(Source):
                            sc.DirectSymmetryConstraint())
 
         component = Component(sed, morph, center=center, constraints=constraints, psf=psf, fix_sed=fix_sed,
-                              fix_morph=fix_morph, fix_frame=fix_frame, shift_center=shift_center)
+                              fix_morph=fix_morph, fix_frame=fix_frame, shift_center=shift_center,
+                              config=config)
         component._normalize(normalization)
         super(ExtendedSource, self).__init__(component)
 
@@ -459,7 +461,9 @@ class MultiComponentSource(ExtendedSource):
                 self.components[0].sed = seds[0]
                 self.components[0]._normalize(normalization)
             else:
-                component = Component(seds[k], morphs[k], center=center, constraints=constraints, psf=psf, fix_sed=fix_sed, fix_morph=fix_morph, fix_frame=fix_frame, shift_center=shift_center)
+                component = Component(seds[k], morphs[k], center=center, constraints=constraints, psf=psf,
+                                      fix_sed=fix_sed, fix_morph=fix_morph, fix_frame=fix_frame,
+                                      shift_center=shift_center, config=config)
 
                 # reduce the shape of the additional components as much as possible
                 mask = morphs[k] > 0

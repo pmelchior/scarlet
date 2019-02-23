@@ -1,5 +1,5 @@
 import numpy as np
-
+from .resample import lanczos
 
 class Config(object):
     """Blend Configuration
@@ -38,9 +38,15 @@ class Config(object):
         once per iteration.  If `update_model` is `True` then the model
         is updated twice per iteration (once after the A update and once
         after the S update).
+    use_fft: bool, default=True
+        Whether or not to use FFT's to peform convolutions.
+    interpolation: function
+        Interpolation function used to resample the image.
+        This parameter is only used when `use_fft=True`.
     """
     def __init__(self, accelerated=False, update_order=None, slack=0.2, refine_skip=10, source_sizes=None,
-                 center_min_dist=1e-3, edge_flux_thresh=1., exact_lipschitz=False, update_model=False):
+                 center_min_dist=1e-3, edge_flux_thresh=1., exact_lipschitz=False, update_model=False,
+                 use_fft=True, interpolation=lanczos):
         self.accelerated = accelerated
         if update_order is None:
             update_order = [1,0]
@@ -56,6 +62,8 @@ class Config(object):
         # Call `self.set_source_sizes` to ensure that all sizes are odd
         self.set_source_sizes(source_sizes)
         self.update_model = update_model
+        self.use_fft = use_fft
+        self.interpolation = interpolation
 
     def set_source_sizes(self, sizes):
         """Set the available source sizes

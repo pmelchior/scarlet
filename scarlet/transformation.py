@@ -5,6 +5,8 @@ import numpy as np
 import scipy.sparse
 import proxmin.utils
 from .cache import Cache
+from . import resample
+
 
 def get_filter_slices(coords):
     """Get the slices in x and y to apply a filter
@@ -18,11 +20,60 @@ def get_filter_slices(coords):
     x_end = -np.min([z, coords[:,1]], axis=0)
     return y_start, y_end, x_start, x_end
 
+
 class LinearFilter:
     """A filter that can be applied to an image
 
     This acts like a sparse diagonal matrix that applies an
-    image of weights to a 2D matrix.
+    image of weights to a 2D matrix. There are two different
+    implementations: `Convolution`, which uses a C++ function
+    `apply_filter` to apply the filter; and `FFTConvolution`,
+    which uses FFT's to apply the filter. Any class inheriting
+    from the `LinearFilter` baseclass must implement a transpose
+    property `T`, which mimicks a matrix transpose, and a `dot`
+    method, which performs the convolution.
+    """
+    @property
+    def T(self):
+        """Pseudo transpose of the filter
+
+        Convolutions can be though of as a large band diagonal matrix
+        that operates on a vector. In this viewpoint the convolution matrix
+        may need to be transposed, so this operation returns a new `LinearFilter`
+        that acts like the transpose of the original.
+
+        Must be overloaded in the child class.
+        """
+        raise NotImplementedError()
+
+    def dot(self, X):
+        """Apply the filter to an image or combine filters
+
+        Must be overloaded in the child class.
+
+        Parameters
+        ----------
+        X: 2D numpy array or `LinearFilter` or `LinearFilterChain`
+            Array to apply the filter to, or chain of filters to
+            prepend this filter to.
+
+        Returns
+        -------
+        result: 2D numpy array or `LinearFilterChain`
+            If `X` is an array, this is the result of the
+            filter applied to `X`.
+            If `X` is not an image but is another filter
+            (or chain of filters) then a new `LinearFilterChain` is
+            returned with this one prepended.
+        """
+        raise NotImplementedError()
+
+
+class Convolution(LinearFilter):
+    """A filter that can be applied to an image
+
+    This implementation applies the filter as a pure
+    convolution.
     """
     def __init__(self, values, coords=None, center=None):
         """Initialize the Filter
@@ -87,7 +138,7 @@ class LinearFilter:
     def T(self):
         """Transpose the filter
         """
-        return LinearFilter(self._flat_values, -self._flat_coords)
+        return Convolution(self._flat_values, -self._flat_coords)
 
     def dot(self, X):
         """Apply the filter to an image or combine filters
@@ -119,6 +170,106 @@ class LinearFilter:
             apply_filter(X, self._flat_values, self._slices[0], self._slices[1],
                                  self._slices[2], self._slices[3], result)
             return result
+
+
+class FFTConvolution(LinearFilter):
+    """A filter that uses FFT's to convolve the filter with an image
+
+    Parameters
+    ----------
+    kernels: list of arrays
+        List of 2D image array of the filter to convolve with the image,
+        for example a resampling kernel and a PSF.
+    """
+    def __init__(self, kernels, windows=None):
+        self.kernels = kernels
+        shape = np.array([kernel.shape for kernel in kernels])
+        self.shape = (np.max(shape[:, 0]), np.max(shape[:, 1]))
+        if windows is None:
+            self.windows = [None] * len(kernels)
+        else:
+            self.windows = windows
+        #print("kernel shapes:", [k.shape for k in self.kernels])
+        #print("windows", self.windows)
+
+    @staticmethod
+    def fromInterpolation(dy=0, dx=0, function=resample.lanczos):
+        """Create resampling kernel from interpolation function
+
+        If the convolution involves a resampling kernel, this
+        method is used to create a kernel image for a `FFTConvolution`
+        using an interpolation function.
+        For example: `scarlet.resample.lanczos`,
+        `scarlet.resample.bilinear`, etc.
+
+        Parameters
+        ----------
+        dy: float
+            Fractional amount (from 0 to 1) to
+            shift the image in the y-direction
+        dx: float
+            Fractional amount (from 0 to 1) to
+            shift the image in the x-direction
+        function: function
+            The 1D interpolation function used to generate
+            the kernel image. Internally the code uses
+            `scarlet.resample.get_separable_kernel` to
+            create a 2D kernel image using the function,
+            which can only take a fractional pixel shift
+            `dx` as an input.
+        """
+        kernel, ywin, xwin = resample.get_separable_kernel(dy, dx, kernel=function)
+        return FFTConvolution([kernel], [(ywin, xwin)])
+
+    @property
+    def T(self):
+        """Pseudo transpose of the filter
+
+        See :class:`~scarlet.transformation.LinearFilter` for more information.
+        """
+        return FFTConvolution(
+            [kernel[::-1, ::-1] for kernel in self.kernels[::-1]],
+            [(-window[1][::-1], (-window[0][::-1])) if window is not None else None
+             for window in self.windows[::-1]]
+        )
+
+    def dot(self, X):
+        """Apply the convolution
+
+        See :class:`~scarlet.transformation.LinearFilter` for more information.
+        """
+        if isinstance(X, FFTConvolution):
+            raise NotImplementedError()
+            kernels = X.kernels + self.kernels
+            windows = X.windows + self.windows
+            return FFTConvolution(kernels, windows)
+        else:
+            # We have to project the image and kernel to the same
+            # shape to multiply them in Fourier space
+            hx, wx = X.shape
+            hk, wk = self.shape
+            shape = [max(hx, hk), max(wx, wk)]
+
+            if X.shape != shape:
+                _X = resample.project_image(X, shape)
+            else:
+                _X = X
+
+            # Convolve the image with all of the kernels in Fourier space
+            kernels = [
+                resample.project_image(self.kernels[n], shape, self.windows[n])
+                for n in range(len(self.kernels))
+            ]
+            kernels = [_X] + kernels
+
+            result = resample.fft_convolve(*kernels)
+
+            # Select the subset of the result that overlaps with
+            # the preconvolved image
+            if result.shape != X.shape:
+                result = resample.project_image(result, X.shape)
+            return result
+
 
 class LinearFilterChain:
     """Chain of `LinearFilter` objects
@@ -180,7 +331,8 @@ class LinearFilterChain:
             return result
         return self
 
-class LinearTranslation(LinearFilter):
+
+class LinearTranslation(Convolution):
     """Linear translation in x and y
     """
     def __init__(self, dy=0, dx=0):
@@ -237,6 +389,7 @@ class LinearTranslation(LinearFilter):
         """
         return LinearTranslation(-self.dy, -self.dx)
 
+
 class Gamma:
     """Combination of Linear (x,y) Transformation and PSF Convolution
 
@@ -246,7 +399,7 @@ class Gamma:
     Gamma = Ty.P.Tx, where Tx,Ty are the translation operators and P is the PSF
     convolution operator.
     """
-    def __init__(self, psfs=None, center=None, dy=0, dx=0):
+    def __init__(self, psfs=None, center=None, dy=0, dx=0, config=None):
         """Constructor
 
         Parameters
@@ -263,6 +416,12 @@ class Gamma:
         dx: float
             Fractional shift in the x direction
         """
+        if config is None:
+            from .config import Config
+            config = Config()
+        self.use_fft = config.use_fft
+        self.interpolation = config.interpolation
+
         self.psfs = psfs
 
         # Create the PSF filter for each band
@@ -280,14 +439,20 @@ class Gamma:
         """
         self.psfFilters = []
         for psf in psfs:
-            self.psfFilters.append(LinearFilter(psf, center=center))
+            if self.use_fft:
+                self.psfFilters.append(FFTConvolution([psf]))
+            else:
+                self.psfFilters.append(Convolution(psf, center=center))
 
     def _update_translation(self, dy=0, dx=0):
         """Update the translation filter
         """
         self.dx = dx
         self.dy = dy
-        self.translation = LinearTranslation(dy, dx)
+        if self.use_fft:
+            self.translation = FFTConvolution.fromInterpolation(dy, dx, self.interpolation)
+        else:
+            self.translation = LinearTranslation(dy, dx)
 
     def update(self, psfs=None, center=None, dx=None, dy=None):
         """Update the psf convolution filter and/or the translations
@@ -316,13 +481,22 @@ class Gamma:
             If `dyx` is `None`, then the already built
             translation matrix is used.
         """
-        translation = LinearTranslation(*dyx)
+        if self.use_fft:
+            translation = FFTConvolution.fromInterpolation(*dyx, self.interpolation)
+        else:
+            translation = LinearTranslation(*dyx)
         if self.psfFilters is None:
             gamma = translation
         else:
             gamma = []
             for b in range(self.B):
-                gamma.append(LinearFilterChain([translation, self.psfFilters[b]]))
+                if self.use_fft:
+                    #gamma.append(LinearFilterChain([translation, self.psfFilters[b]]))
+                    kernels = translation.kernels + self.psfFilters[b].kernels
+                    windows = translation.windows + self.psfFilters[b].windows
+                    gamma.append(FFTConvolution(kernels, windows))
+                else:
+                    gamma.append(LinearFilterChain([translation, self.psfFilters[b]]))
         return gamma
 
 def getPSFOp(psf, imgShape):
