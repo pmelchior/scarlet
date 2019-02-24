@@ -172,26 +172,88 @@ class Convolution(LinearFilter):
             return result
 
 
+class FFTKernel:
+    """A convolution kernel
+
+    In order to project kernels onto the same frame we
+    need to keep track of their window in the image frame.
+    This class also keeps track of caching for the Fourier
+    transform of the kernel to minimize the number of FFT
+    operations called.
+
+    Parameters
+    ----------
+    kernel: array
+        The convolution kernel in real space
+    key: string
+        An identifier for the kernel, used for caching.
+    window: tuple
+        Either `None`, meaning the kernel is centered,
+        or a `(ywin, xwin)` tuple that gives the coordinates
+        of each pixel in the kernel in the image frame.
+    transposed: bool
+        Whether this is the original convolution kernel or its
+        pseudo transpose (see `LinearFilter.T`).
+        This is used for caching so that the Fourier transforms
+        of the kernel and its transpose can be cached separately.
+    """
+    def __init__(self, kernel, key, window=None, transposed=False):
+        self.kernel = kernel
+        self.key = key
+        self.window = window
+        self.transposed = transposed
+
+    @property
+    def T(self):
+        """Return the pseudo transpose of the kernel.
+        """
+        if self.window is not None:
+            window = (-self.window[1][::-1], (-self.window[0][::-1]))
+        else:
+            window = None
+
+        return FFTKernel(
+            self.kernel[::-1, ::-1],
+            self.key,
+            window,
+            not self.transposed
+        )
+
+    def Kernel(self, shape):
+        """Load the Fourier transform of the kernel
+
+        If the FFT has already been calculated, load it from
+        the cache, otherwise calculate the FFT and cache it.
+        """
+        cache_key = (shape, self.transposed)
+        try:
+            _Kernel = Cache.check(self.key, cache_key)
+        except KeyError:
+            _kernel = resample.project_image(self.kernel, shape, self.window)
+            _Kernel = np.fft.fft2(np.fft.ifftshift(_kernel))
+            Cache.set(self.key, cache_key, _Kernel)
+        return _Kernel
+
+    @property
+    def shape(self):
+        """Shape of the kernel
+        """
+        return self.kernel.shape
+
+
 class FFTConvolution(LinearFilter):
     """A filter that uses FFT's to convolve the filter with an image
 
     Parameters
     ----------
-    kernels: list of arrays
-        List of 2D image array of the filter to convolve with the image,
-        for example a resampling kernel and a PSF.
+    kernels: list
+        List of `FFTKernel`s, where each kernel contains a 2D image
+        and a Fourier transform used to convolve the kernel.
     """
-    def __init__(self, kernels, keys, windows=None, transpose=False):
+    def __init__(self, *kernels):
         self.kernels = kernels
         shape = np.array([kernel.shape for kernel in kernels])
         self.shape = (np.max(shape[:, 0]), np.max(shape[:, 1]))
-        if windows is None:
-            self.windows = [None] * len(kernels)
-        else:
-            self.windows = windows
-
-        self.keys = keys
-        self.transpose = transpose
 
     @staticmethod
     def fromInterpolation(dy=0, dx=0, function=resample.lanczos):
@@ -220,7 +282,8 @@ class FFTConvolution(LinearFilter):
             `dx` as an input.
         """
         kernel, ywin, xwin = resample.get_separable_kernel(dy, dx, kernel=function)
-        return FFTConvolution([kernel], ["Tx:{0},{1}".format(dy, dx)], [(ywin, xwin)])
+        _kernel = FFTKernel(kernel, "Tx:{0},{1}".format(dy, dx), (ywin, xwin))
+        return FFTConvolution(_kernel)
 
     @property
     def T(self):
@@ -228,13 +291,7 @@ class FFTConvolution(LinearFilter):
 
         See :class:`~scarlet.transformation.LinearFilter` for more information.
         """
-        return FFTConvolution(
-            [kernel[::-1, ::-1] for kernel in self.kernels[::-1]],
-            self.keys[::-1],
-            [(-window[1][::-1], (-window[0][::-1])) if window is not None else None
-             for window in self.windows[::-1]],
-            not self.transpose
-        )
+        return FFTConvolution(*[kernel.T for kernel in self.kernels[::-1]])
 
     def dot(self, X):
         """Apply the convolution
@@ -242,13 +299,11 @@ class FFTConvolution(LinearFilter):
         See :class:`~scarlet.transformation.LinearFilter` for more information.
         """
         if isinstance(X, FFTConvolution):
-            raise NotImplementedError()
+            # Just combine the kernels, since the convolution is done in Fourier space
             kernels = X.kernels + self.kernels
-            keys = X.keys + self.keys
-            windows = X.windows + self.windows
-            return FFTConvolution(kernels, keys, windows)
+            return FFTConvolution(*kernels)
         else:
-            # We have to project the image and kernel to the same
+            # We have to project the image and kernels to the same
             # shape to multiply them in Fourier space
             hx, wx = X.shape
             hk, wk = self.shape
@@ -259,28 +314,14 @@ class FFTConvolution(LinearFilter):
             else:
                 _X = X
 
-            # Load the Fourier transformed kernels from cache or,
-            # if this is the first time they are used with this
-            # shape, build them and cache them
-
-            Kernel = 1
-            cache_key = (shape, self.transpose)
-            for kernel, key, window in zip(self.kernels, self.keys, self.windows):
-                try:
-                    _Kernel = Cache.check(key, cache_key)
-                    Kernel *= _Kernel
-                except KeyError:
-                    _kernel = resample.project_image(kernel, shape, window)
-                    _Kernel = np.fft.fft2(np.fft.ifftshift(_kernel))
-                    Kernel *= _Kernel
-                    Cache.set(key, cache_key, _Kernel)
-
+            # Multiply the kernels in Fourier space
+            Kernel = np.prod([kernel.Kernel(shape) for kernel in self.kernels], axis=0)
             _X = np.fft.fft2(np.fft.ifftshift(_X))
             Convolved = _X * Kernel
             result = np.fft.fftshift(np.real(np.fft.ifft2(Convolved)))
 
             # Select the subset of the result that overlaps with
-            # the preconvolved image
+            # the preconvolved image.
             if result.shape != X.shape:
                 result = resample.project_image(result, X.shape)
             return result
@@ -455,7 +496,8 @@ class Gamma:
         self.psfFilters = []
         for b, psf in enumerate(psfs):
             if self.use_fft:
-                self.psfFilters.append(FFTConvolution([psf], ["psf:{0}".format(b)]))
+                _kernel = FFTKernel(psf, "psf:{0}".format(b))
+                self.psfFilters.append(FFTConvolution(_kernel))
             else:
                 self.psfFilters.append(Convolution(psf, center=center))
 
@@ -510,10 +552,7 @@ class Gamma:
                     if dy == 0 and dx == 0:
                         gamma.append(self.psfFilters[b])
                     else:
-                        kernels = translation.kernels + self.psfFilters[b].kernels
-                        keys = translation.keys + self.psfFilters[b].keys
-                        windows = translation.windows + self.psfFilters[b].windows
-                        gamma.append(FFTConvolution(kernels, keys, windows))
+                        gamma.append(translation.dot(self.psfFilters[b]))
                 else:
                     gamma.append(LinearFilterChain([translation, self.psfFilters[b]]))
         return gamma
