@@ -492,6 +492,9 @@ class Gamma:
             for b in range(self.B):
                 if self.use_fft:
                     #gamma.append(LinearFilterChain([translation, self.psfFilters[b]]))
+                    dy, dx = dyx
+                    if dy==0 and dx==0:
+                        gamma.append(self.psfFilters[b])
                     kernels = translation.kernels + self.psfFilters[b].kernels
                     windows = translation.windows + self.psfFilters[b].windows
                     gamma.append(FFTConvolution(kernels, windows))
