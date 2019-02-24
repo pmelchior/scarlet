@@ -181,7 +181,7 @@ class FFTConvolution(LinearFilter):
         List of 2D image array of the filter to convolve with the image,
         for example a resampling kernel and a PSF.
     """
-    def __init__(self, kernels, windows=None):
+    def __init__(self, kernels, keys, windows=None, transpose=False):
         self.kernels = kernels
         shape = np.array([kernel.shape for kernel in kernels])
         self.shape = (np.max(shape[:, 0]), np.max(shape[:, 1]))
@@ -189,8 +189,9 @@ class FFTConvolution(LinearFilter):
             self.windows = [None] * len(kernels)
         else:
             self.windows = windows
-        #print("kernel shapes:", [k.shape for k in self.kernels])
-        #print("windows", self.windows)
+
+        self.keys = keys
+        self.transpose = transpose
 
     @staticmethod
     def fromInterpolation(dy=0, dx=0, function=resample.lanczos):
@@ -219,7 +220,7 @@ class FFTConvolution(LinearFilter):
             `dx` as an input.
         """
         kernel, ywin, xwin = resample.get_separable_kernel(dy, dx, kernel=function)
-        return FFTConvolution([kernel], [(ywin, xwin)])
+        return FFTConvolution([kernel], ["Tx:{0},{1}".format(dy, dx)], [(ywin, xwin)])
 
     @property
     def T(self):
@@ -229,8 +230,10 @@ class FFTConvolution(LinearFilter):
         """
         return FFTConvolution(
             [kernel[::-1, ::-1] for kernel in self.kernels[::-1]],
+            self.keys[::-1],
             [(-window[1][::-1], (-window[0][::-1])) if window is not None else None
-             for window in self.windows[::-1]]
+             for window in self.windows[::-1]],
+            not self.transpose
         )
 
     def dot(self, X):
@@ -241,28 +244,40 @@ class FFTConvolution(LinearFilter):
         if isinstance(X, FFTConvolution):
             raise NotImplementedError()
             kernels = X.kernels + self.kernels
+            keys = X.keys + self.keys
             windows = X.windows + self.windows
-            return FFTConvolution(kernels, windows)
+            return FFTConvolution(kernels, keys, windows)
         else:
             # We have to project the image and kernel to the same
             # shape to multiply them in Fourier space
             hx, wx = X.shape
             hk, wk = self.shape
-            shape = [max(hx, hk), max(wx, wk)]
+            shape = (max(hx, hk), max(wx, wk))
 
             if X.shape != shape:
                 _X = resample.project_image(X, shape)
             else:
                 _X = X
 
-            # Convolve the image with all of the kernels in Fourier space
-            kernels = [
-                resample.project_image(self.kernels[n], shape, self.windows[n])
-                for n in range(len(self.kernels))
-            ]
-            kernels = [_X] + kernels
+            # Load the Fourier transformed kernels from cache or,
+            # if this is the first time they are used with this
+            # shape, build them and cache them
 
-            result = resample.fft_convolve(*kernels)
+            Kernel = 1
+            cache_key = (shape, self.transpose)
+            for kernel, key, window in zip(self.kernels, self.keys, self.windows):
+                try:
+                    _Kernel = Cache.check(key, cache_key)
+                    Kernel *= _Kernel
+                except KeyError:
+                    _kernel = resample.project_image(kernel, shape, window)
+                    _Kernel = np.fft.fft2(np.fft.ifftshift(_kernel))
+                    Kernel *= _Kernel
+                    Cache.set(key, cache_key, _Kernel)
+
+            _X = np.fft.fft2(np.fft.ifftshift(_X))
+            Convolved = _X * Kernel
+            result = np.fft.fftshift(np.real(np.fft.ifft2(Convolved)))
 
             # Select the subset of the result that overlaps with
             # the preconvolved image
@@ -438,9 +453,9 @@ class Gamma:
         """Update the psf convolution filter
         """
         self.psfFilters = []
-        for psf in psfs:
+        for b, psf in enumerate(psfs):
             if self.use_fft:
-                self.psfFilters.append(FFTConvolution([psf]))
+                self.psfFilters.append(FFTConvolution([psf], ["psf:{0}".format(b)]))
             else:
                 self.psfFilters.append(Convolution(psf, center=center))
 
@@ -491,13 +506,14 @@ class Gamma:
             gamma = []
             for b in range(self.B):
                 if self.use_fft:
-                    #gamma.append(LinearFilterChain([translation, self.psfFilters[b]]))
                     dy, dx = dyx
-                    if dy==0 and dx==0:
+                    if dy == 0 and dx == 0:
                         gamma.append(self.psfFilters[b])
-                    kernels = translation.kernels + self.psfFilters[b].kernels
-                    windows = translation.windows + self.psfFilters[b].windows
-                    gamma.append(FFTConvolution(kernels, windows))
+                    else:
+                        kernels = translation.kernels + self.psfFilters[b].kernels
+                        keys = translation.keys + self.psfFilters[b].keys
+                        windows = translation.windows + self.psfFilters[b].windows
+                        gamma.append(FFTConvolution(kernels, keys, windows))
                 else:
                     gamma.append(LinearFilterChain([translation, self.psfFilters[b]]))
         return gamma
