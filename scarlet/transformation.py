@@ -208,7 +208,7 @@ class FFTKernel:
         """Return the pseudo transpose of the kernel.
         """
         if self.window is not None:
-            window = (-self.window[1][::-1], (-self.window[0][::-1]))
+            window = (-self.window[0][::-1], (-self.window[1][::-1]))
         else:
             window = None
 
