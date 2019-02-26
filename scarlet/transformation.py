@@ -240,6 +240,13 @@ class FFTKernel:
         """
         return self.kernel.shape
 
+    def __repr__(self):
+        repr = "<FFTKernel>: (key: '{0}', window: {1}".format(self.key, self.window)
+        if self.transposed:
+            repr += ", transposed"
+        repr += ")"
+        return repr
+
 
 class FFTConvolution(LinearFilter):
     """A filter that uses FFT's to convolve the filter with an image
