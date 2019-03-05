@@ -229,7 +229,7 @@ class DirectMonotonicityConstraint(Constraint):
                 prox = operator.prox_strict_monotonic(shape, use_nearest=self.use_nearest, thresh=self.thresh)
             else:
                 # cone method for monotonicity: exact but VERY slow
-                G = transformation.getRadialMonotonicOp(shape, useNearest=self.useNearest).toarray()
+                G = transformation.getRadialMonotonicOp(shape, useNearest=self.use_nearest).L.toarray()
                 prox = partial(operator.prox_cone, G=G)
             Cache.set(prox_name, key, prox)
         return prox
@@ -302,7 +302,7 @@ class TVxConstraint(Constraint):
         """
         self.thresh = thresh
 
-    def proxs_g_morph(self, shape):
+    def prox_g_morph(self, shape):
         return partial(proxmin.operators.prox_soft, thresh=self.thresh)
 
     def L_morph(self, shape):
@@ -311,8 +311,7 @@ class TVxConstraint(Constraint):
         try:
             return Cache.check(name, key)
         except KeyError:
-            L = proxmin.transformation.get_gradient_x(shape, shape[1])
-            _ = L.spectral_norm
+            L = proxmin.operators.get_gradient_x(shape, shape[1] // 2)
             Cache.set(name, key, L)
             return L
 
@@ -332,7 +331,7 @@ class TVyConstraint(Constraint):
         """
         self.thresh = thresh
 
-    def proxs_g_morph(self, shape):
+    def prox_g_morph(self, shape):
         return partial(proxmin.operators.prox_soft, thresh=self.thresh)
 
     def L_morph(self, shape):
@@ -341,8 +340,8 @@ class TVyConstraint(Constraint):
         try:
             return Cache.check(name, key)
         except KeyError:
-            L = proxmin.transformation.get_gradient_y(shape, shape[0])
-            _ = L.spectral_norm
+            L = proxmin.operators.get_gradient_y(shape, shape[0])
+            L.spectral_norm
             Cache.set(name, key, L)
             return L
 

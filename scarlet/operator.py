@@ -68,8 +68,12 @@ def prox_strict_monotonic(shape, use_nearest=False, thresh=0):
 
     if use_nearest:
         from scipy import sparse
+        if thresh != 0:
+            # thresh and nearest neighbors are not compatible, since this thresholds the
+            # central pixel and eventually sets the entire array to zero
+            raise ValueError("Thresholding does not work with nearest neighbor monotonicity")
         monotonicOp = transformation.getRadialMonotonicOp(shape, useNearest=True)
-        x_idx, ref_idx = sparse.find(monotonicOp==1)[:2]
+        x_idx, ref_idx = sparse.find(monotonicOp.L==1)[:2]
         ref_idx = ref_idx[np.argsort(x_idx)]
         result = partial(_prox_strict_monotonic, ref_idx=ref_idx.tolist(),
                          dist_idx=didx.tolist(), thresh=thresh)
@@ -118,7 +122,7 @@ def prox_center_on(X, step, tiny=1e-10):
 def prox_max(X, step):
     """Normalize X so that it's max value is unity."""
     norm = np.max(X)
-    X = X/norm
+    X[:] = X/norm
     return X
 
 
@@ -144,7 +148,7 @@ def prox_soft_symmetry(X, step, sigma=1):
     the level of symmetry required for a component
     """
     Xs = np.fliplr(np.flipud(X))
-    X = 0.5 *sigma * (X+Xs) + (1-sigma) * X
+    X[:] = 0.5 *sigma * (X+Xs) + (1-sigma) * X
     return X
 
 def proj(A,B):
@@ -189,35 +193,6 @@ def find_Q(Vs, n):
     res[int((n-1)/2)] = n
     return res
 
-def strict_monotonicity(images, peaks=None, components=None, l0_thresh=None, l1_thresh=None, constraints="m"):
-    """Use monotonicity as a strict proximal operator
-    """
-    import proxmin
-
-    if components is None:
-        component_count = len(peaks)
-    else:
-        component_count = np.sum([len(c) for c in components])
-    B, N, M = images.shape
-
-    if l0_thresh is None and l1_thresh is None:
-        prox_S = proxmin.operators.prox_plus
-    else:
-        # L0 has preference
-        if l0_thresh is not None:
-            if l1_thresh is not None:
-                logger.warn("l1_thresh ignored in favor of l0_thresh")
-            prox_S = partial(proxmin.operators.prox_hard, thresh=l0_thresh)
-        else:
-            prox_S = partial(proxmin.operators.prox_soft_plus, thresh=l1_thresh)
-    if isinstance(constraints, str):
-        if constraints!="m":
-            raise ValueError("Monotonicity 'm' is the only allowed strict constraint")
-        seeks = [True]*component_count
-    else:
-        seeks = [constraints[k]=="m" for k in range(component_count)]
-    prox_S = build_prox_monotonic(shape=(N,M), seeks=seeks, prox_chain=prox_S)
-    return prox_S
 
 def project_disk_sed_mean(bulge_sed, disk_sed):
     """Project the disk SED onto the space where it is bluer
