@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def project_image(img, shape=None, img_window=None):
+def project_image(img, shape, img_window=None):
     """Project an image centered in a larger image
 
     The projection pads the image with zeros if
@@ -13,8 +13,7 @@ def project_image(img, shape=None, img_window=None):
     img: array
         2D input image
     shape: tuple
-        Shape of the new image. Either `shape` or
-        `result_coords` must be provided.
+        Shape of the new image.
     img_window: list of arrays
         Window that contains the image,
         where (0,0) is the center of the output image.
@@ -29,35 +28,47 @@ def project_image(img, shape=None, img_window=None):
     result = np.zeros(shape)
     Ny, Nx = shape
     iNy, iNx = img.shape
-
-    # Align the image centers if no window is specified
+    dNy = Ny - iNy
+    dNx = Nx - iNx
     if img_window is None:
-        ry = iNy // 2
-        rx = iNx // 2
-        iywin = np.array([-ry, ry])
-        ixwin = np.array([-rx, rx])
+        # We have to handle slices different depending on whether the
+        # input image or target image is larger
+        if dNy > 0:
+            bottom = dNy >> 1
+            yslice = slice(bottom, bottom - dNy)
+            iyslice = slice(None)
+        else:
+            yslice = slice(None)
+            bottom = -dNy >> 1
+            iyslice = slice(bottom, bottom + Ny)
+        if dNx > 0:
+            left = dNx >> 1
+            xslice = slice(left, left - dNx)
+            ixslice = slice(None)
+        else:
+            xslice = slice(None)
+            left = -dNx >> 1
+            ixslice = slice(left, left + Nx)
     else:
-        iywin = np.array([img_window[0][0], img_window[0][-1]])
-        ixwin = np.array([img_window[1][0], img_window[1][-1]])
+        ywin = np.array(img_window[0])
+        xwin = np.array(img_window[1])
+        ywin += Ny >> 1
+        xwin += Nx >> 1
 
-    # Shift the window to the center of the output image
-    iywin += Ny // 2
-    ixwin += Nx // 2
+        bottom = ywin[0]
+        top = ywin[-1] + 1
+        yslice = slice(max(0, bottom), min(Ny, top))
+        iyslice = slice(max(0, -bottom), max(Ny-bottom, -top))
 
-    # Set the bounding box of the input image
-    ibottom, itop = iywin[0], iywin[1] + 1
-    ileft, iright = ixwin[0], ixwin[1] + 1
-    ibb = (slice(max(0, ibottom), itop), slice(max(0, ileft), iright))
-
-    # Set the bounding box of the output image
-    left = max(0, -ileft)
-    bottom = max(0, -ibottom)
-    right = iNx - max(0, iright - Nx)
-    top = iNy - max(0, itop - Ny)
-    bb = (slice(bottom, top), slice(left, right))
+        left = xwin[0]
+        right = xwin[-1] + 1
+        xslice = slice(max(0, left), min(Nx, right))
+        ixslice = slice(max(0, -left), max(Nx-left, -right))
 
     # Project the image
-    result[ibb] = img[bb]
+    bb = (yslice, xslice)
+    ibb = (iyslice, ixslice)
+    result[bb] = img[ibb]
     return result
 
 
