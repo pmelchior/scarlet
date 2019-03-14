@@ -1,7 +1,58 @@
 import numpy as np
 
 
-def project_image(img, shape, img_window=None):
+def get_projection_slices(image, shape, yx0=None):
+    """Get slices needed to project an image
+
+    This method returns the bounding boxes needed to
+    project `image` into a larger image with `shape`.
+    The results can be used with
+    `projection[bb] = image[ibb]`.
+
+    Parameters
+    ----------
+    image: array
+        2D input image
+    shape: tuple
+        Shape of the new image.
+    yx0: tuple
+        Location of the lower left corner of the image in
+        the projection.
+        If `yx0` is `None` then the image is centered in
+        the projection.
+
+    Returns
+    -------
+    bb: tuple
+        `(yslice, xslice)` of the projected image to place `image`.
+    ibb: tuple
+        `(iyslice, ixslice)` of `image` to insert into the projection.
+    bounds: tuple
+        `(bottom, top, left, right)` locations of the corners of `image`
+        in the projection. While this isn't needed for slicing it can be
+        useful for calculating information about the image before projection.
+    """
+    Ny, Nx = shape
+    iNy, iNx = image.shape
+    if yx0 is None:
+        y0 = iNy // 2
+        x0 = iNx // 2
+        yx0 = (-y0, -x0)
+    bottom, left = yx0
+    bottom += Ny >> 1
+    left += Nx >> 1
+
+    top = bottom + iNy
+    yslice = slice(max(0, bottom), min(Ny, top))
+    iyslice = slice(max(0, -bottom), max(Ny-bottom, -top))
+
+    right = left + iNx
+    xslice = slice(max(0, left), min(Nx, right))
+    ixslice = slice(max(0, -left), max(Nx-left, -right))
+    return (yslice, xslice), (iyslice, ixslice), (bottom, top, left, right)
+
+
+def project_image(image, shape, yx0=None):
     """Project an image centered in a larger image
 
     The projection pads the image with zeros if
@@ -10,65 +61,24 @@ def project_image(img, shape, img_window=None):
 
     Parameters
     ----------
-    img: array
+    image: array
         2D input image
     shape: tuple
         Shape of the new image.
-    img_window: list of arrays
-        Window that contains the image,
-        where (0,0) is the center of the output image.
-        If `img_window` is `None` then the input and
-        output images are co-centered.
+    yx0: tuple
+        Location of the lower left corner of the image in
+        the projection.
+        If `yx0` is `None` then the image is centered in
+        the projection.
 
     Returns
     -------
     result: array
-        The result of projecting `img`.
+        The result of projecting `image`.
     """
     result = np.zeros(shape)
-    Ny, Nx = shape
-    iNy, iNx = img.shape
-    dNy = Ny - iNy
-    dNx = Nx - iNx
-    if img_window is None:
-        # We have to handle slices different depending on whether the
-        # input image or target image is larger
-        if dNy > 0:
-            bottom = dNy >> 1
-            yslice = slice(bottom, bottom - dNy)
-            iyslice = slice(None)
-        else:
-            yslice = slice(None)
-            bottom = -dNy >> 1
-            iyslice = slice(bottom, bottom + Ny)
-        if dNx > 0:
-            left = dNx >> 1
-            xslice = slice(left, left - dNx)
-            ixslice = slice(None)
-        else:
-            xslice = slice(None)
-            left = -dNx >> 1
-            ixslice = slice(left, left + Nx)
-    else:
-        ywin = np.array(img_window[0])
-        xwin = np.array(img_window[1])
-        ywin += Ny >> 1
-        xwin += Nx >> 1
-
-        bottom = ywin[0]
-        top = ywin[-1] + 1
-        yslice = slice(max(0, bottom), min(Ny, top))
-        iyslice = slice(max(0, -bottom), max(Ny-bottom, -top))
-
-        left = xwin[0]
-        right = xwin[-1] + 1
-        xslice = slice(max(0, left), min(Nx, right))
-        ixslice = slice(max(0, -left), max(Nx-left, -right))
-
-    # Project the image
-    bb = (yslice, xslice)
-    ibb = (iyslice, ixslice)
-    result[bb] = img[ibb]
+    bb, ibb, _ = get_projection_slices(image, shape, yx0)
+    result[bb] = image[ibb]
     return result
 
 
@@ -136,6 +146,8 @@ def bilinear(dx):
     window: array
         The pixel values for the window containing the kernel
     """
+    if np.abs(dx) > 1:
+        raise ValueError("The fractional shift dx must be between -1 and 1")
     if dx >= 0:
         window = np.arange(2)
         y = np.array([1-dx, dx])
@@ -164,6 +176,9 @@ def cubic_spline(dx, a=1, b=0):
     window: array
         The pixel values for the window containing the kernel
     """
+    if np.abs(dx) > 1:
+        raise ValueError("The fractional shift dx must be between -1 and 1")
+
     def inner(x, a, b):
         """Cubic from 0<=abs(x)<=1
         """
@@ -223,9 +238,8 @@ def lanczos(dx, a=3):
     result: Tensor
         1D Lanczos kernel
     """
-    # sinc is slow in pytorch because of the handling of zero,
-    # which requires indexing, so we calculate the kernel
-    # in numpy and then convert to pytorch
+    if np.abs(dx) > 1:
+        raise ValueError("The fractional shift dx must be between -1 and 1")
     window = np.arange(-a + 1, a + 1) + np.floor(dx)
     y = np.sinc(dx - window) * np.sinc((dx - window) / a)
     return y, window.astype(int)
@@ -256,11 +270,11 @@ def get_separable_kernel(dy, dx, kernel=lanczos, **kwargs):
     """
     kx, x_window = kernel(dx, **kwargs)
     ky, y_window = kernel(dy, **kwargs)
-    kxy = np.outer(ky, kx)
-    return kxy, y_window, x_window
+    kyx = np.outer(ky, kx)
+    return kyx, y_window, x_window
 
 
-def fft_resample(img, dx, dy, kernel=lanczos, **kwargs):
+def fft_resample(img, dy, dx, kernel=lanczos, **kwargs):
     """Translate the image by a fraction of a pixel
 
     This method uses FFT's to convolve the image with a
@@ -286,12 +300,18 @@ def fft_resample(img, dx, dy, kernel=lanczos, **kwargs):
         The convolved image.
     """
     # Build the kernel
-    _kernel, xwin, ywin = get_separable_kernel(dx, dy, kernel=kernel, **kwargs)
+    kernel, ywin, xwin = get_separable_kernel(dy, dx, kernel=kernel, **kwargs)
+    # We have to project the image and kernels to the same
+    # shape to multiply them in Fourier space
+    hx, wx = img.shape
+    hk, wk = kernel.shape
+    # We have to pad the input image by the width of the kernel,
+    # because the Fourier Transform is periodic and will wrap the solution
+    shape = (hx + hk + 3, wx + wk + 3)
+
     # Project the kernel onto the same space as the output image
-    full_kernel = np.zeros(img.shape)
-    cy = img.shape[0] // 2
-    cx = img.shape[1] // 2
-    y_slice = slice(int(ywin[0].item()) + cy, int(ywin[-1].item()) + cy + 1)
-    x_slice = slice(int(xwin[0].item()) + cx, int(xwin[-1].item()) + cx + 1)
-    full_kernel[y_slice, x_slice] = _kernel
-    return fft_convolve(img, full_kernel)
+    yx0 = (ywin[0], xwin[0])
+    _kernel = project_image(kernel, shape, yx0)
+    _img = project_image(img, shape)
+    result = fft_convolve(_img, _kernel)
+    return project_image(result, img.shape)
