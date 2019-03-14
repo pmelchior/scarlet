@@ -249,7 +249,6 @@ class FFTKernel:
         try:
             _Kernel = Cache.check(self.key, cache_key)
         except KeyError:
-            print("in Kernel")
             if self.window is not None:
                 yx0 = (self.window[0][0], self.window[1][0])
             else:
