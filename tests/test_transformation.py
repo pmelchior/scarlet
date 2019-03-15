@@ -243,7 +243,8 @@ class TestFFTConvolution(object):
 
 class TestLinearTranslation(object):
     def test_init(self):
-        _convolution = scarlet.transformation.LinearTranslation(.33, .25)
+        bilinear = scarlet.resample.bilinear
+        _convolution = scarlet.transformation.Convolution.fromInterpolation(.33, .25, bilinear)
         true_values = [0.5025, 0.1675, 0.2475, 0.0825]
         true_coords = np.array([[0, 0, 1, 1], [0, 1, 0, 1]]).T
         true_slices = [[0, 0, 1, 1],
@@ -254,70 +255,65 @@ class TestLinearTranslation(object):
         np.testing.assert_array_equal(_convolution._flat_coords, true_coords)
         np.testing.assert_almost_equal(_convolution._slices, true_slices)
 
-        _convolution = scarlet.transformation.LinearTranslation(-.33, .25)
-        true_values = [0.5025, 0.1675, 0.2475, 0.0825]
-        true_coords = np.array([[0, 0, -1, -1],
+        _convolution = scarlet.transformation.Convolution.fromInterpolation(-.33, .25, bilinear)
+        true_values = [0.2475, 0.0825, 0.5025, 0.1675]
+        true_coords = np.array([[-1, -1, 0, 0],
                                 [0, 1, 0, 1]]).T
-        true_slices = [[0, 0, 0, 0],
-                       [0, 0, 1, 1],
-                       [0, 1, 0, 1],
-                       [0, 0, 0, 0]]
+        true_slices = scarlet.transformation.get_filter_slices(true_coords.reshape(-1, 2))
         np.testing.assert_almost_equal(_convolution._flat_values, true_values)
         np.testing.assert_array_equal(_convolution._flat_coords, true_coords)
         np.testing.assert_almost_equal(_convolution._slices, true_slices)
 
-        _convolution = scarlet.transformation.LinearTranslation(-.33, -.25)
-        true_values = [0.5025, 0.1675, 0.2475, 0.0825]
-        true_coords = np.array([[0, 0, -1, -1],
-                                [0, -1, 0, -1]]).T
-        true_slices = [[0, 0, 0, 0],
-                       [0, 0, 1, 1],
-                       [0, 0, 0, 0],
-                       [0, 1, 0, 1]]
+        _convolution = scarlet.transformation.Convolution.fromInterpolation(-.33, -.25, bilinear)
+        true_values = [0.0825, 0.2475, 0.1675, 0.5025]
+        true_coords = np.array([[-1, -1, 0, 0],
+                                [-1, 0, -1, 0]]).T
+        true_slices = scarlet.transformation.get_filter_slices(true_coords.reshape(-1, 2))
         np.testing.assert_almost_equal(_convolution._flat_values, true_values)
         np.testing.assert_array_equal(_convolution._flat_coords, true_coords)
         np.testing.assert_almost_equal(_convolution._slices, true_slices)
 
     def test_T(self):
+        bilinear = scarlet.resample.bilinear
         shape = (7, 7)
         image = np.zeros(shape)
         image[(2, 2)] = 1
-        _convolution = scarlet.transformation.LinearTranslation(-.33, .25)
+        _convolution = scarlet.transformation.Convolution.fromInterpolation(-.33, .25, bilinear)
         kernel = _convolution.T._flat_values.reshape(2, 2)
         convolution = _convolution.T.dot(image)
         true_convolution = np.zeros(shape)
-        true_convolution[2:4, 1:3] = kernel[:, ::-1]
+        true_convolution[2:4, 1:3] = kernel[::-1, ::-1]
 
         np.testing.assert_almost_equal(convolution, true_convolution)
         np.testing.assert_array_equal(_convolution._flat_values, _convolution.T._flat_values)
         np.testing.assert_array_equal(_convolution._flat_coords, -_convolution.T._flat_coords)
 
     def test_dot(self):
+        bilinear = scarlet.resample.bilinear
         shape = (7, 7)
         image = np.zeros(shape)
         image[(2, 2)] = 1
-        _convolution = scarlet.transformation.LinearTranslation(-.33, .25)
+        _convolution = scarlet.transformation.Convolution.fromInterpolation(-.33, .25, bilinear)
         kernel = _convolution._flat_values.reshape(2, 2)
         convolution = _convolution.dot(image)
         true_convolution = np.zeros(shape)
-        true_convolution[1:3, 2:4] = kernel[::-1, :]
+        true_convolution[1:3, 2:4] = kernel
 
         np.testing.assert_almost_equal(convolution, true_convolution)
 
 
 class TestFilterChain(object):
     def test_all(self):
+        bilinear = scarlet.resample.bilinear
         Cache._cache = {}
         _kernel, _, _ = get_kernel_info(shape=(5, 9))
         _kernel += 1
         dyx = (.234, -.726)
         kernel = scarlet.transformation.FFTKernel(_kernel, "test0")
-        translation = scarlet.transformation.FFTConvolution.fromInterpolation(
-            *dyx, scarlet.resample.bilinear
-        )
+        translation = scarlet.transformation.FFTConvolution.fromInterpolation(*dyx, bilinear)
         kernel_convolution = scarlet.transformation.FFTConvolution(kernel)
         convolution = scarlet.transformation.LinearFilterChain([translation, kernel_convolution])
-        true_translation = scarlet.transformation.LinearTranslation(*dyx)
+        true_translation = scarlet.transformation.Convolution.fromInterpolation(*dyx, bilinear)
         true_kernel_convolution = scarlet.transformation.Convolution(_kernel)
         true_convolution = scarlet.transformation.LinearFilterChain([
             true_translation, true_kernel_convolution
@@ -389,7 +385,7 @@ class TestGamma(object):
         shifted[:, 9:14, 8:15] += dy*dx*psfs
 
         # Convolution
-        config = Config(use_fft=False)
+        config = Config(use_fft=False, interpolation=scarlet.resample.bilinear)
         gamma = scarlet.transformation.Gamma(psfs, config=config)
         convolved = np.array([gamma()[n].dot(image) for n in range(len(psfs))])
         truth = np.zeros((2, 21, 21))

@@ -143,6 +143,37 @@ class Convolution(LinearFilter):
         self._flat_coords = self._flat_coords[non_zero]
         self._slices = get_filter_slices(self._flat_coords)
 
+    @staticmethod
+    def fromInterpolation(dy=0, dx=0, function=resample.lanczos):
+        """Create resampling kernel from interpolation function
+
+        If the convolution involves a resampling kernel, this
+        method is used to create a kernel image for a `Convolution`
+        using an interpolation function.
+        For example: `scarlet.resample.lanczos`,
+        `scarlet.resample.bilinear`, etc.
+
+        Parameters
+        ----------
+        dy: float
+            Fractional amount (from 0 to 1) to
+            shift the image in the y-direction
+        dx: float
+            Fractional amount (from 0 to 1) to
+            shift the image in the x-direction
+        function: function
+            The 1D interpolation function used to generate
+            the kernel image. Internally the code uses
+            `scarlet.resample.get_separable_kernel` to
+            create a 2D kernel image using the function,
+            which can only take a fractional pixel shift
+            `dx` as an input.
+        """
+        kernel, ywin, xwin = resample.get_separable_kernel(dy, dx, kernel=function)
+        X, Y = np.meshgrid(xwin, ywin)
+        coords = np.dstack([Y, X])
+        return Convolution(kernel, coords)
+
     @property
     def T(self):
         """Transpose the filter
@@ -421,64 +452,6 @@ class LinearFilterChain:
         return self
 
 
-class LinearTranslation(Convolution):
-    """Linear translation in x and y
-    """
-    def __init__(self, dy=0, dx=0):
-        """Initialize the filter
-
-        Parameters
-        ----------
-        dy: float
-            Fractional amount (from 0 to 1) to
-            shift the image in the y-direction
-        dx: float
-            Fractional amount (from 0 to 1) to
-            shift the image in the x-direction
-        """
-        self.set_transform(dy, dx)
-
-    def set_transform(self, dy=0, dx=0):
-        """Create the image and coords for the transform
-
-        Parameters
-        ----------
-        dy: float
-            Fractional amount (from 0 to 1) to
-            shift the image in the y-direction
-        dx: float
-            Fractional amount (from 0 to 1) to
-            shift the image in the x-direction
-        """
-        self.dy = dy
-        self.dx = dx
-        sign_x = 1 if dx >= 0 else -1
-        sign_y = 1 if dy >= 0 else -1
-        dx = abs(dx)
-        dy = abs(dy)
-        ddx = 1.-dx
-        ddy = 1.-dy
-        self._flat_values = np.array([ddx*ddy, ddy*dx, ddx*dy, dx*dy])
-        slice_name = "LinearTranslation.Tyx_slice"
-        coord_name = "LinearTranslation.Tyx_coord"
-        key = (sign_y, sign_x)
-        self.key = key
-        try:
-            self._flat_coords = Cache.check(coord_name, key)
-            self._slices = Cache.check(slice_name, key)
-        except KeyError:
-            self._flat_coords = np.array([[0, 0], [0, sign_x], [sign_y, 0], [sign_y, sign_x]], dtype=int)
-            self._slices = get_filter_slices(self._flat_coords)
-            Cache.set(coord_name, key, self._flat_coords)
-            Cache.set(slice_name, key, self._slices)
-
-    @property
-    def T(self):
-        """Transpose the filter
-        """
-        return LinearTranslation(-self.dy, -self.dx)
-
-
 class Gamma:
     """Combination of Linear (x,y) Transformation and PSF Convolution
 
@@ -542,7 +515,7 @@ class Gamma:
         if self.use_fft:
             self.translation = FFTConvolution.fromInterpolation(dy, dx, self.interpolation)
         else:
-            self.translation = LinearTranslation(dy, dx)
+            self.translation = Convolution.fromInterpolation(dy, dx, self.interpolation)
 
     def update(self, psfs=None, center=None, dx=None, dy=None):
         """Update the psf convolution filter and/or the translations
@@ -576,7 +549,7 @@ class Gamma:
         elif self.use_fft:
             translation = FFTConvolution.fromInterpolation(*dyx, self.interpolation)
         else:
-            translation = LinearTranslation(*dyx)
+            translation = Convolution.fromInterpolation(*dyx, self.interpolation)
         if self.psfFilters is None:
             gamma = translation
         else:
