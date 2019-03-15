@@ -9,6 +9,8 @@ constraint.py
   the addition of a TV prox_f operator.
 - ConstraintAdapter tests to be handled by Component
 tranformation.py
+- LinearTranslation was replaced with a static method in the new Convolution class.
+  This makes a stronger similarity between the FFT and filter window methods.
 - getRadialMonotonicOp, getRadialMonotonicWeights, and the utility
   functions to build those are all used in the proximal operators, so
   those functions are already tested and are not further tested.
