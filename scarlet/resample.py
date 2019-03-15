@@ -235,7 +235,7 @@ def lanczos(dx, a=3):
 
     Returns
     -------
-    result: Tensor
+    result: array-like
         1D Lanczos kernel
     """
     if np.abs(dx) > 1:

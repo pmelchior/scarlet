@@ -49,18 +49,21 @@ def test_get_filter_slices():
 
 class TestConvolutions(object):
     def test_init(self):
+        # Use default parameters
         kernel, true_coords, true_slices = get_kernel_info()
         convolution = scarlet.transformation.Convolution(kernel)
         np.testing.assert_almost_equal(convolution._flat_values, kernel.flatten())
         np.testing.assert_array_equal(convolution._flat_coords, true_coords.reshape(-1, 2))
         np.testing.assert_almost_equal(convolution._slices, true_slices)
 
+        # Specify the coordinates of the kernel
         kernel, true_coords, true_slices = get_kernel_info(coords=true_coords+10)
         convolution = scarlet.transformation.Convolution(kernel, coords=true_coords)
         np.testing.assert_almost_equal(convolution._flat_values, kernel.flatten())
         np.testing.assert_array_equal(convolution._flat_coords, true_coords.reshape(-1, 2))
         np.testing.assert_almost_equal(convolution._slices, true_slices)
 
+        # Specify the center pixel of the kernel
         center = (1, 1)
         kernel, true_coords, true_slices = get_kernel_info(center=center)
         convolution = scarlet.transformation.Convolution(kernel, center=center)
@@ -68,6 +71,7 @@ class TestConvolutions(object):
         np.testing.assert_array_equal(convolution._flat_coords, true_coords.reshape(-1, 2))
         np.testing.assert_almost_equal(convolution._slices, true_slices)
 
+        # Test that the appropriate errors are raised
         with pytest.raises(ValueError):
             convolution = scarlet.transformation.Convolution(kernel.flatten())
         with pytest.raises(ValueError):
@@ -128,6 +132,7 @@ class TestConvolutions(object):
 
 
 def test_FFTKernel():
+    # Test the default parameters
     Cache._cache = {}
     kernel, _, _ = get_kernel_info()
     _kernel = scarlet.transformation.FFTKernel(kernel, "test")
@@ -139,6 +144,7 @@ def test_FFTKernel():
     np.testing.assert_array_equal(_kernel.T.window, None)
     np.testing.assert_array_equal(_kernel.T.transposed, True)
 
+    # Test the transpose
     _kernel = scarlet.transformation.FFTKernel(kernel, "test", transposed=False)
     window = (np.arange(kernel.shape[0]), np.arange(kernel.shape[1]))
     _kernel = scarlet.transformation.FFTKernel(kernel, "test", window)
@@ -154,6 +160,7 @@ def test_FFTKernel():
     projected_kernel = scarlet.resample.project_image(kernel, shape)
     Kernel = np.fft.fft2(np.fft.ifftshift(projected_kernel))
     np.testing.assert_almost_equal(_kernel.Kernel(shape), Kernel)
+
     # Check caching
     cache_key = (shape, _kernel.transposed)
     _Kernel = Cache.check("test", cache_key)
