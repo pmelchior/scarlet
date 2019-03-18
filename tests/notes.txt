@@ -1,0 +1,16 @@
+operator.py
+- Eliminated the unused (and broken) `strict_monotonicity` from `operator`
+- Skipped tests for `prox_cone`, since it is not implemented and I am not 100% sure how it works
+- Skipped tests for `project_disk_sed_mean` since it is deprecated and does not work as expected
+- Skipped `proximal_disk_sed` since it is unused and possibly broken
+constraint.py
+- Skipped `DirectMonotonicityConstraint` with `exact=True` since it is broken
+- Skipped broken TVx and TVy constraints, since they are not used. Fixing these could also include
+  the addition of a TV prox_f operator.
+- ConstraintAdapter tests to be handled by Component
+tranformation.py
+- LinearTranslation was replaced with a static method in the new Convolution class.
+  This makes a stronger similarity between the FFT and filter window methods.
+- getRadialMonotonicOp, getRadialMonotonicWeights, and the utility
+  functions to build those are all used in the proximal operators, so
+  those functions are already tested and are not further tested.

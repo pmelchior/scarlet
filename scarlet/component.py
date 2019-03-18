@@ -4,13 +4,14 @@ from . import constraint as sc
 import logging
 logger = logging.getLogger("scarlet.component")
 
+
 class Component(object):
     """A single component in a blend.
 
     This class acts as base for building complex :class:`scarlet.source.Source`.
     """
     def __init__(self, sed, morph, center=None, constraints=None, psf=None, fix_sed=False,
-                 fix_morph=False, fix_frame=False, shift_center=0.2):
+                 fix_morph=False, fix_frame=False, shift_center=0.2, config=None):
         """Constructor
 
         Create component from a SED vector and morphology image.
@@ -66,7 +67,7 @@ class Component(object):
         else:
             if psf is not None and len(psf.shape)==2:
                 psf = np.array([psf]*self.B)
-            self._gamma = transformation.Gamma(psfs=psf)
+            self._gamma = transformation.Gamma(psfs=psf, config=config)
 
         # set center coordinates and translation operators
         # needs to have Gamma set up first

@@ -1,6 +1,23 @@
 0.5 (unreleased)
 ----------------
-- no changes yet
+
+General
+^^^^^^^
+
+- Tests have been added for the `operator`, `constraint`, `resample`, and `transformation`
+  modules. Tests are run on Travis CI with each new build.
+
+New Features
+^^^^^^^^^^^^
+
+- Convolutions can now be done in Fourier space and/or real
+  space by setting the `use_fft` option in `config.Config`.
+
+- A new internal function was added to project images into larger or
+  smaller images by slicing and/or padding.
+
+- Interpolation kernels have been implemented for fractional pixel shifts using
+  bilinear, cubic spline, and Lanczos algorithms.
 
 0.4 (2019-2-15)
 ----------------

@@ -5,24 +5,84 @@ import numpy as np
 import scipy.sparse
 import proxmin.utils
 from .cache import Cache
+from . import resample
+
 
 def get_filter_slices(coords):
     """Get the slices in x and y to apply a filter
     """
     z = np.zeros((len(coords),), dtype=int)
     # Set the y slices
-    y_start = np.max([z, coords[:,0]], axis=0)
-    y_end = -np.min([z, coords[:,0]], axis=0)
+    y_start = np.max([z, coords[:, 0]], axis=0)
+    y_end = -np.min([z, coords[:, 0]], axis=0)
     # Set the x slices
-    x_start = np.max([z, coords[:,1]], axis=0)
-    x_end = -np.min([z, coords[:,1]], axis=0)
+    x_start = np.max([z, coords[:, 1]], axis=0)
+    x_end = -np.min([z, coords[:, 1]], axis=0)
     return y_start, y_end, x_start, x_end
+
 
 class LinearFilter:
     """A filter that can be applied to an image
 
     This acts like a sparse diagonal matrix that applies an
-    image of weights to a 2D matrix.
+    image of weights to a 2D matrix. There are two different
+    implementations: `Convolution`, which uses a C++ function
+    `apply_filter` to apply the filter; and `FFTConvolution`,
+    which uses FFT's to apply the filter. Any class inheriting
+    from the `LinearFilter` baseclass must implement a transpose
+    property `T`, which mimicks a matrix transpose, and a `dot`
+    method, which performs the convolution.
+    """
+    @property
+    def T(self):
+        """Pseudo transpose of the filter
+
+        Convolutions can be though of as a large band diagonal matrix
+        that operates on a vector. In this viewpoint the convolution matrix
+        may need to be transposed, so this operation returns a new `LinearFilter`
+        that acts like the transpose of the original.
+
+        Must be overloaded in the child class.
+        """
+        raise NotImplementedError()
+
+    def dot(self, X):
+        """Apply the filter to an image or combine filters
+
+        Must be overloaded in the child class.
+
+        Parameters
+        ----------
+        X: 2D numpy array or `LinearFilter` or `LinearFilterChain`
+            Array to apply the filter to, or chain of filters to
+            prepend this filter to.
+
+        Returns
+        -------
+        result: 2D numpy array or `LinearFilterChain`
+            If `X` is an array, this is the result of the
+            filter applied to `X`.
+            If `X` is not an image but is another filter
+            (or chain of filters) then a new `LinearFilterChain` is
+            returned with this one prepended.
+        """
+        raise NotImplementedError()
+
+
+class Convolution(LinearFilter):
+    """A filter that can be applied to an image
+
+    This implementation applies the filter as a pure convolution.
+
+    The basic algorithm is to take a 2D input kernel (`values`)
+    and the coordinates (`coords`) relative to the reference pixel
+    where the kernel is applied, with `(0,0)` representing the
+    central pixel. Since we expect the image that is being convolved
+    to be larger than the kernel, we make use of the Eigen `block`
+    object in C++ to iterate over the values in the kernel and apply
+    them to the appropriate blocks in the image. Note that this is
+    the inverse of the way this is commonly done, where the pixels
+    in the image are itetated over and convolved with the kernel.
     """
     def __init__(self, values, coords=None, center=None):
         """Initialize the Filter
@@ -53,7 +113,7 @@ class LinearFilter:
         """
         if coords is None:
             # Attempt to automatically create coordinate grid
-            if len(values.shape)!=2:
+            if len(values.shape) != 2:
                 raise ValueError("Either `values` must be 2D or `coords` must be specified")
             if center is None:
                 if values.shape[0] % 2 == 0 or values.shape[1] % 2 == 0:
@@ -65,17 +125,17 @@ class LinearFilter:
             self.center = center
             x = np.arange(values.shape[1])
             y = np.arange(values.shape[0])
-            x,y = np.meshgrid(x,y)
+            x, y = np.meshgrid(x, y)
             x -= center[1]
             y -= center[0]
-            coords = np.dstack([y,x])
+            coords = np.dstack([y, x])
         else:
             self.center = None
             coords = np.array(coords)
         values = np.array(values)
         self._flat_values = np.array(values).reshape(-1)
-        self._flat_coords = coords.reshape(-1,2)
-        assert(np.all(values.shape==coords.shape[:-1]))
+        self._flat_coords = coords.reshape(-1, 2)
+        assert(np.all(values.shape == coords.shape[:-1]))
         assert(coords.shape[-1] == 2)
         # remove elements with zero value
         non_zero = self._flat_values != 0
@@ -83,11 +143,42 @@ class LinearFilter:
         self._flat_coords = self._flat_coords[non_zero]
         self._slices = get_filter_slices(self._flat_coords)
 
+    @staticmethod
+    def fromInterpolation(dy=0, dx=0, function=resample.lanczos):
+        """Create resampling kernel from interpolation function
+
+        If the convolution involves a resampling kernel, this
+        method is used to create a kernel image for a `Convolution`
+        using an interpolation function.
+        For example: `scarlet.resample.lanczos`,
+        `scarlet.resample.bilinear`, etc.
+
+        Parameters
+        ----------
+        dy: float
+            Fractional amount (from 0 to 1) to
+            shift the image in the y-direction
+        dx: float
+            Fractional amount (from 0 to 1) to
+            shift the image in the x-direction
+        function: function
+            The 1D interpolation function used to generate
+            the kernel image. Internally the code uses
+            `scarlet.resample.get_separable_kernel` to
+            create a 2D kernel image using the function,
+            which can only take a fractional pixel shift
+            `dx` as an input.
+        """
+        kernel, ywin, xwin = resample.get_separable_kernel(dy, dx, kernel=function)
+        X, Y = np.meshgrid(xwin, ywin)
+        coords = np.dstack([Y, X])
+        return Convolution(kernel, coords)
+
     @property
     def T(self):
         """Transpose the filter
         """
-        return LinearFilter(self._flat_values, -self._flat_coords)
+        return Convolution(self._flat_values, -self._flat_coords)
 
     def dot(self, X):
         """Apply the filter to an image or combine filters
@@ -112,13 +203,193 @@ class LinearFilter:
         if isinstance(X, LinearFilter):
             return LinearFilterChain([self, X])
         elif isinstance(X, LinearFilterChain):
-            X.filters.insert(0,self)
+            X.filters.insert(0, self)
             return X
         else:
             result = np.empty(X.shape, dtype=X.dtype)
             apply_filter(X, self._flat_values, self._slices[0], self._slices[1],
-                                 self._slices[2], self._slices[3], result)
+                         self._slices[2], self._slices[3], result)
             return result
+
+
+class FFTKernel:
+    """A convolution kernel
+
+    In order to project kernels onto the same frame we
+    need to keep track of their window in the image frame.
+    This class also keeps track of caching for the Fourier
+    transform of the kernel to minimize the number of FFT
+    operations called.
+
+    Parameters
+    ----------
+    kernel: array
+        The convolution kernel in real space
+    key: string
+        An identifier for the kernel, used for caching.
+    window: tuple
+        Either `None`, meaning the kernel is centered,
+        or a `(ywin, xwin)` tuple that gives the coordinates
+        of each pixel in the kernel in the image frame.
+    transposed: bool
+        Whether this is the original convolution kernel or its
+        pseudo transpose (see `LinearFilter.T`).
+        This is used for caching so that the Fourier transforms
+        of the kernel and its transpose can be cached separately.
+    center: integer array-like, default=`None`
+        Center of the kernel. If both `center` and `window`
+        are not `None`, then `center` is ignored.
+
+        If `center` is `None` and a set of `psfs` is given,
+        the central pixel of `psfs[0]` is used.
+    """
+    def __init__(self, kernel, key, window=None, transposed=False, center=None):
+        self.kernel = kernel
+        self.key = key
+        if center is not None and window is None:
+            Ny, Nx = kernel.shape
+            ywin = np.arange(Ny) - center[0]
+            xwin = np.arange(Nx) - center[1]
+            window = (ywin, xwin)
+        self.window = window
+        self.transposed = transposed
+
+    @property
+    def T(self):
+        """Return the pseudo transpose of the kernel.
+        """
+        if self.window is not None:
+            window = (-self.window[0][::-1], (-self.window[1][::-1]))
+        else:
+            window = None
+
+        return FFTKernel(
+            self.kernel[::-1, ::-1],
+            self.key,
+            window,
+            not self.transposed
+        )
+
+    def Kernel(self, shape):
+        """Load the Fourier transform of the kernel
+
+        If the FFT has already been calculated, load it from
+        the cache, otherwise calculate the FFT and cache it.
+        """
+        cache_key = (shape, self.transposed)
+        try:
+            _Kernel = Cache.check(self.key, cache_key)
+        except KeyError:
+            if self.window is not None:
+                yx0 = (self.window[0][0], self.window[1][0])
+            else:
+                yx0 = None
+            _kernel = resample.project_image(self.kernel, shape, yx0)
+            _Kernel = np.fft.fft2(np.fft.ifftshift(_kernel))
+            Cache.set(self.key, cache_key, _Kernel)
+        return _Kernel
+
+    @property
+    def shape(self):
+        """Shape of the kernel
+        """
+        return self.kernel.shape
+
+    def __repr__(self):
+        repr = "<FFTKernel>: (key: '{0}', window: {1}".format(self.key, self.window)
+        if self.transposed:
+            repr += ", transposed"
+        repr += ")"
+        return repr
+
+
+class FFTConvolution(LinearFilter):
+    """A filter that uses FFT's to convolve the filter with an image
+
+    Parameters
+    ----------
+    kernels: list
+        List of `FFTKernel`s, where each kernel contains a 2D image
+        and a Fourier transform used to convolve the kernel.
+    """
+    def __init__(self, *kernels):
+        self.kernels = kernels
+        shape = np.array([kernel.shape for kernel in kernels])
+        self.shape = (np.max(shape[:, 0]), np.max(shape[:, 1]))
+
+    @staticmethod
+    def fromInterpolation(dy=0, dx=0, function=resample.lanczos):
+        """Create resampling kernel from interpolation function
+
+        If the convolution involves a resampling kernel, this
+        method is used to create a kernel image for a `FFTConvolution`
+        using an interpolation function.
+        For example: `scarlet.resample.lanczos`,
+        `scarlet.resample.bilinear`, etc.
+
+        Parameters
+        ----------
+        dy: float
+            Fractional amount (from 0 to 1) to
+            shift the image in the y-direction
+        dx: float
+            Fractional amount (from 0 to 1) to
+            shift the image in the x-direction
+        function: function
+            The 1D interpolation function used to generate
+            the kernel image. Internally the code uses
+            `scarlet.resample.get_separable_kernel` to
+            create a 2D kernel image using the function,
+            which can only take a fractional pixel shift
+            `dx` as an input.
+        """
+        kernel, ywin, xwin = resample.get_separable_kernel(dy, dx, kernel=function)
+        _kernel = FFTKernel(kernel, "Tx:{0},{1}".format(dy, dx), (ywin, xwin))
+        return FFTConvolution(_kernel)
+
+    @property
+    def T(self):
+        """Pseudo transpose of the filter
+
+        See :class:`~scarlet.transformation.LinearFilter` for more information.
+        """
+        return FFTConvolution(*[kernel.T for kernel in self.kernels[::-1]])
+
+    def dot(self, X):
+        """Apply the convolution
+
+        See :class:`~scarlet.transformation.LinearFilter` for more information.
+        """
+        if isinstance(X, FFTConvolution):
+            # Just combine the kernels, since the convolution is done in Fourier space
+            kernels = self.kernels + X.kernels
+            return FFTConvolution(*kernels)
+        else:
+            # We have to project the image and kernels to the same
+            # shape to multiply them in Fourier space
+            hx, wx = X.shape
+            hk, wk = self.shape
+            # We have to pad the input image by the width of the kernel,
+            # because the Fourier Transform is periodic and will wrap the solution
+            shape = (hx + hk + 3, wx + wk + 3)
+
+            if X.shape != shape:
+                _X = resample.project_image(X, shape)
+            else:
+                _X = X
+
+            # Multiply the kernels in Fourier space
+            Kernel = np.prod([kernel.Kernel(shape) for kernel in self.kernels], axis=0)
+            _X = np.fft.fft2(np.fft.ifftshift(_X))
+            Convolved = _X * Kernel
+            result = np.fft.fftshift(np.real(np.fft.ifft2(Convolved)))
+
+            # Select the subset of the result that overlaps with
+            # the preconvolved image.
+            if result.shape != X.shape:
+                result = resample.project_image(result, X.shape)
+            return result
+
 
 class LinearFilterChain:
     """Chain of `LinearFilter` objects
@@ -180,62 +451,6 @@ class LinearFilterChain:
             return result
         return self
 
-class LinearTranslation(LinearFilter):
-    """Linear translation in x and y
-    """
-    def __init__(self, dy=0, dx=0):
-        """Initialize the filter
-
-        Parameters
-        ----------
-        dy: float
-            Fractional amount (from 0 to 1) to
-            shift the image in the y-direction
-        dx: float
-            Fractional amount (from 0 to 1) to
-            shift the image in the x-direction
-        """
-        self.set_transform(dy, dx)
-
-    def set_transform(self, dy=0, dx=0):
-        """Create the image and coords for the transform
-
-        Parameters
-        ----------
-        dy: float
-            Fractional amount (from 0 to 1) to
-            shift the image in the y-direction
-        dx: float
-            Fractional amount (from 0 to 1) to
-            shift the image in the x-direction
-        """
-        self.dy = dy
-        self.dx = dx
-        sign_x = 1 if dx>= 0 else -1
-        sign_y = 1 if dy>= 0 else -1
-        dx = abs(dx)
-        dy = abs(dy)
-        ddx = 1.-dx
-        ddy = 1.-dy
-        self._flat_values = np.array([ddx*ddy, ddy*dx, ddx*dy, dx*dy])
-        slice_name = "LinearTranslation.Tyx_slice"
-        coord_name = "LinearTranslation.Tyx_coord"
-        key = (sign_y, sign_x)
-        self.key = key
-        try:
-            self._flat_coords = Cache.check(coord_name, key)
-            self._slices = Cache.check(slice_name, key)
-        except KeyError:
-            self._flat_coords = np.array([[0,0], [0,sign_x], [sign_y,0], [sign_y,sign_x]], dtype=int)
-            self._slices = get_filter_slices(self._flat_coords)
-            Cache.set(coord_name, key, self._flat_coords)
-            Cache.set(slice_name, key, self._slices)
-
-    @property
-    def T(self):
-        """Transpose the filter
-        """
-        return LinearTranslation(-self.dy, -self.dx)
 
 class Gamma:
     """Combination of Linear (x,y) Transformation and PSF Convolution
@@ -246,7 +461,7 @@ class Gamma:
     Gamma = Ty.P.Tx, where Tx,Ty are the translation operators and P is the PSF
     convolution operator.
     """
-    def __init__(self, psfs=None, center=None, dy=0, dx=0):
+    def __init__(self, psfs=None, center=None, dy=0, dx=0, config=None):
         """Constructor
 
         Parameters
@@ -263,6 +478,12 @@ class Gamma:
         dx: float
             Fractional shift in the x direction
         """
+        if config is None:
+            from .config import Config
+            config = Config()
+        self.use_fft = config.use_fft
+        self.interpolation = config.interpolation
+
         self.psfs = psfs
 
         # Create the PSF filter for each band
@@ -279,15 +500,22 @@ class Gamma:
         """Update the psf convolution filter
         """
         self.psfFilters = []
-        for psf in psfs:
-            self.psfFilters.append(LinearFilter(psf, center=center))
+        for b, psf in enumerate(psfs):
+            if self.use_fft:
+                _kernel = FFTKernel(psf, "psf:{0}".format(b), center=center)
+                self.psfFilters.append(FFTConvolution(_kernel))
+            else:
+                self.psfFilters.append(Convolution(psf, center=center))
 
     def _update_translation(self, dy=0, dx=0):
         """Update the translation filter
         """
         self.dx = dx
         self.dy = dy
-        self.translation = LinearTranslation(dy, dx)
+        if self.use_fft:
+            self.translation = FFTConvolution.fromInterpolation(dy, dx, self.interpolation)
+        else:
+            self.translation = Convolution.fromInterpolation(dy, dx, self.interpolation)
 
     def update(self, psfs=None, center=None, dx=None, dy=None):
         """Update the psf convolution filter and/or the translations
@@ -316,14 +544,26 @@ class Gamma:
             If `dyx` is `None`, then the already built
             translation matrix is used.
         """
-        translation = LinearTranslation(*dyx)
+        if dyx is None:
+            translation = self.translation
+        elif self.use_fft:
+            translation = FFTConvolution.fromInterpolation(*dyx, self.interpolation)
+        else:
+            translation = Convolution.fromInterpolation(*dyx, self.interpolation)
         if self.psfFilters is None:
             gamma = translation
         else:
             gamma = []
             for b in range(self.B):
-                gamma.append(LinearFilterChain([translation, self.psfFilters[b]]))
+                if self.use_fft:
+                    if (dyx is None and self.dy == 0 and self.dx == 0) or (dyx[0] == 0 and dyx[1] == 0):
+                        gamma.append(self.psfFilters[b])
+                    else:
+                        gamma.append(translation.dot(self.psfFilters[b]))
+                else:
+                    gamma.append(LinearFilterChain([translation, self.psfFilters[b]]))
         return gamma
+
 
 def getPSFOp(psf, imgShape):
     """Create an operator to convolve intensities with the PSF
@@ -333,7 +573,7 @@ def getPSFOp(psf, imgShape):
     the PSF operator.
     """
 
-    warnings.warn("The 'psfOp' is deprecated, use 'LinearFilter' instead")
+    warnings.warn("The 'psfOp' is deprecated, use 'LinearFilter' instead", DeprecationWarning)
     name = "getPSFOp"
     key = tuple(imgShape)
     try:
@@ -347,44 +587,46 @@ def getPSFOp(psf, imgShape):
         indices = np.dstack(indices)[0]
         # assume all PSF images have odd dimensions and are centered!
         cy, cx = psf.shape[0]//2, psf.shape[1]//2
-        coords = indices-np.array([cy,cx])
+        coords = indices-np.array([cy, cx])
 
         # Create the PSF Operator
         offsets, slices, slicesInv = getOffsets(width, coords)
-        psfDiags = [psf[y,x] for y,x in indices]
+        psfDiags = [psf[y, x] for y, x in indices]
         psfOp = scipy.sparse.diags(psfDiags, offsets, shape=(size, size), dtype=np.float64)
         psfOp = psfOp.tolil()
 
         # Remove entries for pixels on the left or right edges
-        cxRange = np.unique([cx for cy,cx in coords])
+        cxRange = np.unique([cx for cy, cx in coords])
         for h in range(height):
-            for y,x in coords:
+            for y, x in coords:
                 # Left edge
-                if x<0 and width*(h+y)+x>=0 and h+y<=height:
+                if x < 0 and width*(h+y)+x >= 0 and h+y <= height:
                     psfOp[width*h, width*(h+y)+x] = 0
 
                     # Pixels closer to the left edge
                     # than the radius of the psf
-                    for x_ in cxRange[cxRange<0]:
-                        if (x<x_ and
-                            width*h-x_>=0 and
-                            width*(h+y)+x-x_>=0 and
-                            h+y<=height
-                        ):
+                    for x_ in cxRange[cxRange < 0]:
+                        if (x < x_ and
+                                width*h-x_ >= 0 and
+                                width*(h+y)+x-x_ >= 0 and
+                                h+y <= height):
                             psfOp[width*h-x_, width*(h+y)+x-x_] = 0
 
                 # Right edge
-                if x>0 and width*(h+1)-1>=0 and width*(h+y+1)+x-1>=0 and h+y<=height and width*(h+1+y)+x-1<size:
+                if (x > 0 and
+                        width*(h+1)-1 >= 0 and
+                        width*(h+y+1)+x-1 >= 0 and
+                        h+y <= height and
+                        width*(h+1+y)+x-1 < size):
                     psfOp[width*(h+1)-1, width*(h+y+1)+x-1] = 0
 
-                    for x_ in cxRange[cxRange>0]:
+                    for x_ in cxRange[cxRange > 0]:
                         # Near right edge
-                        if (x>x_ and
-                            width*(h+1)-x_-1>=0 and
-                            width*(h+y+1)+x-x_-1>=0 and
-                            h+y<=height and
-                            width*(h+1+y)+x-x_-1<size
-                        ):
+                        if (x > x_ and
+                                width*(h+1)-x_-1 >= 0 and
+                                width*(h+y+1)+x-x_-1 >= 0 and
+                                h+y <= height and
+                                width*(h+1+y)+x-x_-1 < size):
                             psfOp[width*(h+1)-x_-1, width*(h+y+1)+x-x_-1] = 0
 
         # Return the transpose, which correctly convolves the data with the PSF
@@ -392,6 +634,7 @@ def getPSFOp(psf, imgShape):
         Cache.set(name, key, psfOp)
 
     return psfOp
+
 
 def getZeroOp(shape):
     size = shape[0]*shape[1]
@@ -406,6 +649,7 @@ def getZeroOp(shape):
         Cache.set(name, key, L)
     return L
 
+
 def getIdentityOp(shape):
     size = shape[0]*shape[1]
     name = "getIdentityOp"
@@ -418,6 +662,7 @@ def getIdentityOp(shape):
         L._spec_norm = 1
         Cache.set(name, key, L)
     return L
+
 
 def getSymmetryOp(shape):
     """Create a linear operator to symmetrize an image
@@ -434,11 +679,12 @@ def getSymmetryOp(shape):
         idx = np.arange(shape[0]*shape[1])
         sidx = idx[::-1]
         symmetryOp = getIdentityOp(shape).L
-        symmetryOp -= scipy.sparse.coo_matrix((np.ones(size),(idx, sidx)), shape=(size,size))
+        symmetryOp -= scipy.sparse.coo_matrix((np.ones(size), (idx, sidx)), shape=(size, size))
         symmetryOp = proxmin.utils.MatrixAdapter(symmetryOp, axis=1)
-        _ = symmetryOp.spectral_norm
+        symmetryOp.spectral_norm
         Cache.set(name, key, symmetryOp)
     return symmetryOp
+
 
 def getOffsets(width, coords=None):
     """Get the offset and slices for a sparse band diagonal array
@@ -453,11 +699,12 @@ def getOffsets(width, coords=None):
     """
     # Use the neighboring pixels by default
     if coords is None:
-        coords = [(-1,-1), (-1,0), (-1, 1), (0,-1), (0,1), (1, -1), (1,0), (1,1)]
-    offsets = [width*y+x for y,x in coords]
-    slices = [slice(None, s) if s<0 else slice(s, None) for s in offsets]
-    slicesInv = [slice(-s, None) if s<0 else slice(None, -s) for s in offsets]
+        coords = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
+    offsets = [width*y+x for y, x in coords]
+    slices = [slice(None, s) if s < 0 else slice(s, None) for s in offsets]
+    slicesInv = [slice(-s, None) if s < 0 else slice(None, -s) for s in offsets]
     return offsets, slices, slicesInv
+
 
 def diagonalizeArray(arr, shape=None, dtype=np.float64):
     """Convert an array to a matrix that compares each pixel to its neighbors
@@ -478,7 +725,7 @@ def diagonalizeArray(arr, shape=None, dtype=np.float64):
     if shape is None:
         height, width = arr.shape
         data = arr.flatten()
-    elif len(arr.shape)==1:
+    elif len(arr.shape) == 1:
         height, width = shape
         data = np.copy(arr)
     else:
@@ -498,14 +745,15 @@ def diagonalizeArray(arr, shape=None, dtype=np.float64):
     # (for example, a pixel on the left edge should not be connected to the
     # pixel to its immediate left in the flattened vector, since that pixel
     # is actual the far right pixel on the row above it).
-    mask[0][np.arange(1,height)*width] = 1
+    mask[0][np.arange(1, height)*width] = 1
     mask[2][np.arange(height)*width-1] = 1
-    mask[3][np.arange(1,height)*width] = 1
-    mask[4][np.arange(1,height)*width-1] = 1
+    mask[3][np.arange(1, height)*width] = 1
+    mask[4][np.arange(1, height)*width-1] = 1
     mask[5][np.arange(height)*width] = 1
-    mask[7][np.arange(1,height-1)*width-1] = 1
+    mask[7][np.arange(1, height-1)*width-1] = 1
 
     return diagonals, mask
+
 
 def diagonalsToSparse(diagonals, shape, dtype=np.float64):
     """Convert a diagonalized array into a sparse diagonal matrix
@@ -521,6 +769,7 @@ def diagonalsToSparse(diagonals, shape, dtype=np.float64):
     diags = [diag[slicesInv[n]] for n, diag in enumerate(diagonals)]
     diagonalArr = scipy.sparse.diags(diags, offsets, dtype=dtype)
     return diagonalArr
+
 
 def getRadialMonotonicWeights(shape, useNearest=True, minGradient=1):
     """Create the weights used for the Radial Monotonicity Operator
@@ -540,10 +789,9 @@ def getRadialMonotonicWeights(shape, useNearest=True, minGradient=1):
         px = int(shape[1]/2)
         py = int(shape[0]/2)
         # Calculate the distance between each pixel and the peak
-        size = shape[0]*shape[1]
         x = np.arange(shape[1])
         y = np.arange(shape[0])
-        X,Y = np.meshgrid(x,y)
+        X, Y = np.meshgrid(x, y)
         X = X - px
         Y = Y - py
         distance = np.sqrt(X**2+Y**2)
@@ -551,16 +799,16 @@ def getRadialMonotonicWeights(shape, useNearest=True, minGradient=1):
         # Find each pixels neighbors further from the peak and mark them as invalid
         # (to be removed later)
         distArr, mask = diagonalizeArray(distance, dtype=np.float64)
-        relativeDist = (distance.flatten()[:,None]-distArr.T).T
-        invalidPix = relativeDist<=0
+        relativeDist = (distance.flatten()[:, None]-distArr.T).T
+        invalidPix = relativeDist <= 0
 
         # Calculate the angle between each pixel and the x axis, relative to the peak position
         # (also avoid dividing by zero and set the tan(infinity) pixel values to pi/2 manually)
-        inf = X==0
+        inf = X == 0
         tX = X.copy()
         tX[inf] = 1
-        angles = np.arctan2(-Y,-tX)
-        angles[inf&(Y!=0)] = 0.5*np.pi*np.sign(angles[inf&(Y!=0)])
+        angles = np.arctan2(-Y, -tX)
+        angles[inf & (Y != 0)] = 0.5*np.pi*np.sign(angles[inf & (Y != 0)])
 
         # Calcualte the angle between each pixel and it's neighbors
         xArr, m = diagonalizeArray(X)
@@ -568,10 +816,10 @@ def getRadialMonotonicWeights(shape, useNearest=True, minGradient=1):
         dx = (xArr.T-X.flatten()[:, None]).T
         dy = (yArr.T-Y.flatten()[:, None]).T
         # Avoid dividing by zero and set the tan(infinity) pixel values to pi/2 manually
-        inf = dx==0
+        inf = dx == 0
         dx[inf] = 1
-        relativeAngles = np.arctan2(dy,dx)
-        relativeAngles[inf&(dy!=0)] = 0.5*np.pi*np.sign(relativeAngles[inf&(dy!=0)])
+        relativeAngles = np.arctan2(dy, dx)
+        relativeAngles[inf & (dy != 0)] = 0.5*np.pi*np.sign(relativeAngles[inf & (dy != 0)])
 
         # Find the difference between each pixels angle with the peak
         # and the relative angles to its neighbors, and take the
@@ -586,18 +834,18 @@ def getRadialMonotonicWeights(shape, useNearest=True, minGradient=1):
         if useNearest:
             # Only use a single pixel most in line with peak
             cosNorm = np.zeros_like(cosWeight)
-            columnIndices =  np.arange(cosWeight.shape[1])
+            columnIndices = np.arange(cosWeight.shape[1])
             maxIndices = np.argmax(cosWeight, axis=0)
             indices = maxIndices*cosNorm.shape[1]+columnIndices
             indices = np.unravel_index(indices, cosNorm.shape)
             cosNorm[indices] = minGradient
             # Remove the reference for the peak pixel
-            cosNorm[:,px+py*shape[1]] = 0
+            cosNorm[:, px+py*shape[1]] = 0
         else:
             # Normalize the cos weights for each pixel
             normalize = np.sum(cosWeight, axis=0)
-            normalize[normalize==0] = 1
-            cosNorm = (cosWeight.T/normalize[:,None]).T
+            normalize[normalize == 0] = 1
+            cosNorm = (cosWeight.T/normalize[:, None]).T
             cosNorm[mask] = 0
 
         Cache.set(name, key, cosNorm)

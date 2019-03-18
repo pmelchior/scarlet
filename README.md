@@ -1,3 +1,4 @@
+[![](https://travis-ci.org/fred3m/scarlet.svg?branch=master)](https://travis-ci.org/fred3m/scarlet)
 [![](https://readthedocs.org/projects/scarlet/badge/?version=latest)](https://scarlet.readthedocs.org)
 [![](https://img.shields.io/github/license/fred3m/scarlet.svg)](https://github.com/fred3m/scarlet/blob/master/LICENSE.md)
 [![DOI](https://img.shields.io/badge/DOI-10.1016%2Fj.ascom.2018.07.001-blue.svg)](https://doi.org/10.1016/j.ascom.2018.07.001)
@@ -18,7 +19,7 @@ The API is reasonably stable, but feel free to contact the authors [fred3m](http
 If you make use of scarlet, please acknowledge [Melchior et al. (2018)](https://doi.org/10.1016/j.ascom.2018.07.001), which describe in detail the concepts and algorithms used in this package:
 ```
 @ARTICLE{scarlet,
-   author = {{Melchior}, Peter and {Moolekamp}, Fred and {Jerdee}, Maximilian and {Armstrong}, Robert and 
+   author = {{Melchior}, Peter and {Moolekamp}, Fred and {Jerdee}, Maximilian and {Armstrong}, Robert and
 	{Sun}, Ai-Lei and {Bosch}, James and {Lupton}, Robert},
     title = "{SCARLET: Source separation in multi-band images by Constrained Matrix Factorization}",
   journal = {Astronomy and Computing},
