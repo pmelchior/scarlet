@@ -7,6 +7,7 @@ import proxmin
 import logging
 logger = logging.getLogger("scarlet.operator")
 
+
 def _prox_strict_monotonic(X, step, ref_idx, dist_idx, thresh=0):
     """Force an intensity profile to be monotonic
     """
@@ -14,10 +15,12 @@ def _prox_strict_monotonic(X, step, ref_idx, dist_idx, thresh=0):
     operators_pybind11.prox_monotonic(X.reshape(-1), step, ref_idx, dist_idx, thresh)
     return X
 
+
 def _prox_weighted_monotonic(X, step, weights, didx, offsets, thresh=0):
     from . import operators_pybind11
     operators_pybind11.prox_weighted_monotonic(X.reshape(-1), step, weights, offsets, didx, thresh)
     return X
+
 
 def sort_by_radius(shape):
     """Sort indices distance from the center
@@ -47,13 +50,14 @@ def sort_by_radius(shape):
     # Calculate the distance between each pixel and the peak
     x = np.arange(shape[1])
     y = np.arange(shape[0])
-    X,Y = np.meshgrid(x,y)
+    X, Y = np.meshgrid(x, y)
     X = X - cx
     Y = Y - cy
     distance = np.sqrt(X**2+Y**2)
     # Get the indices of the pixels sorted by distance from the peak
     didx = np.argsort(distance.flatten())
     return didx
+
 
 def prox_strict_monotonic(shape, use_nearest=False, thresh=0):
     """Build the prox_monotonic operator
@@ -73,16 +77,18 @@ def prox_strict_monotonic(shape, use_nearest=False, thresh=0):
             # central pixel and eventually sets the entire array to zero
             raise ValueError("Thresholding does not work with nearest neighbor monotonicity")
         monotonicOp = transformation.getRadialMonotonicOp(shape, useNearest=True)
-        x_idx, ref_idx = sparse.find(monotonicOp.L==1)[:2]
+        x_idx, ref_idx = sparse.find(monotonicOp.L == 1)[:2]
         ref_idx = ref_idx[np.argsort(x_idx)]
         result = partial(_prox_strict_monotonic, ref_idx=ref_idx.tolist(),
                          dist_idx=didx.tolist(), thresh=thresh)
     else:
-        coords = [(-1,-1), (-1,0), (-1, 1), (0,-1), (0,1), (1, -1), (1,0), (1,1)]
-        offsets = np.array([width*y+x for y,x in coords])
+        coords = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
+        offsets = np.array([width*y+x for y, x in coords])
         weights = transformation.getRadialMonotonicWeights(shape, useNearest=False)
-        result = partial(_prox_weighted_monotonic, weights=weights, didx=didx[1:], offsets=offsets, thresh=thresh)
+        result = partial(_prox_weighted_monotonic, weights=weights,
+                         didx=didx[1:], offsets=offsets, thresh=thresh)
     return result
+
 
 def prox_cone(X, step, G=None):
     """Exact projection of components of X onto cone defined by Gx >= 0"""
@@ -106,6 +112,7 @@ def prox_cone(X, step, G=None):
                 break
         X[i] = Y
     return X
+
 
 def prox_center_on(X, step, tiny=1e-10):
     """Ensure that the central pixel has positive flux
@@ -148,16 +155,19 @@ def prox_soft_symmetry(X, step, sigma=1):
     the level of symmetry required for a component
     """
     Xs = np.fliplr(np.flipud(X))
-    X[:] = 0.5 *sigma * (X+Xs) + (1-sigma) * X
+    X[:] = 0.5 * sigma * (X+Xs) + (1-sigma) * X
     return X
 
-def proj(A,B):
+
+def proj(A, B):
     """Returns the projection of A onto the hyper-plane defined by B"""
     return A - (A*B).sum()*B/(B**2).sum()
 
-def proj_dist(A,B):
+
+def proj_dist(A, B):
     """Returns length of projection of A onto B"""
     return (A*B).sum()/(B**2).sum()**0.5
+
 
 def use_relevant_dim(Y, Q, Vs, index):
     """Uses relevant dimension to reduce problem dimensionality (projects everything onto the
@@ -169,6 +179,7 @@ def use_relevant_dim(Y, Q, Vs, index):
     for i in range(len(Vs)):
         Vs[i] = proj(Vs[i], projector)
     return Y, Q, Vs
+
 
 def find_relevant_dim(Y, Q, Vs):
     """Finds a dimension relevant to the problem by 'raycasting' from Y to Q"""
@@ -185,6 +196,7 @@ def find_relevant_dim(Y, Q, Vs):
             max_t = t
             index = i
     return index
+
 
 def find_Q(Vs, n):
     """Finds a Q that is within the solution space that can act as an appropriate target
@@ -213,10 +225,11 @@ def project_disk_sed_mean(bulge_sed, disk_sed):
     diff = bulge_sed - disk_sed
     slope = (diff[-1]-diff[0])/(len(bulge_sed)-1)
     for s in range(1, len(diff)-1):
-        if diff[s]<diff[s-1]:
+        if diff[s] < diff[s-1]:
             new_sed[s] = bulge_sed[s] - (slope*s + diff[0])
             diff[s] = bulge_sed[s] - new_sed[s]
     return new_sed
+
 
 def project_disk_sed(bulge_sed, disk_sed):
     """Project the disk SED onto the space where it is bluer
@@ -237,10 +250,11 @@ def project_disk_sed(bulge_sed, disk_sed):
     new_sed = disk_sed.copy()
     diff = bulge_sed - disk_sed
     for s in range(1, len(diff)-1):
-        if diff[s]<diff[s-1]:
+        if diff[s] < diff[s-1]:
             new_sed[s] = new_sed[s] + diff[s-1]
             diff[s] = diff[s-1]
     return new_sed
+
 
 def proximal_disk_sed(X, step, peaks, algorithm=project_disk_sed_mean):
     """Ensure that each disk SED is bluer than the bulge SED
@@ -249,6 +263,6 @@ def proximal_disk_sed(X, step, peaks, algorithm=project_disk_sed_mean):
         if "disk" in peak.components and "bulge" in peak.components:
             bulge_k = peak["bulge"].index
             disk_k = peak["disk"].index
-            X[:,disk_k] = algorithm(X[:,bulge_k], X[:,disk_k])
+            X[:, disk_k] = algorithm(X[:, bulge_k], X[:, disk_k])
     X = proxmin.operators.prox_unity_plus(X, step, axis=0)
     return X
