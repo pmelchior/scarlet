@@ -1,9 +1,13 @@
 from enum import Enum
-import proxmin
+from functools import partial
+
 from . import operator
 from . import transformation
+from . import utils
 from .cache import Cache
-from functools import partial
+
+
+from proxmin.operators import prox_id, prox_plus, prox_hard, prox_soft, AlternatingProjections
 
 
 class Normalization(Enum):
@@ -27,6 +31,7 @@ class Normalization(Enum):
     S = 2
     Smax = 3
 
+
 class Constraint(object):
     """A constraint generator for SED and Morphology.
     """
@@ -35,7 +40,7 @@ class Constraint(object):
         """
         pass
 
-    def prox_sed(self, shape):
+    def prox_sed(self, component):
         """Return the proximal operator to apply to the SED of a given `shape`.
 
         Parameters
@@ -43,9 +48,9 @@ class Constraint(object):
         shape: tuple of int
             The shape of the SED container.
         """
-        return proxmin.operators.prox_id
+        return prox_id
 
-    def prox_morph(self, shape):
+    def prox_morph(self, component):
         """Return the proximal operator to apply to the morphology of a given `shape`.
 
         Parameters
@@ -53,47 +58,8 @@ class Constraint(object):
         shape: tuple of int
             The shape of the morph container.
         """
-        return proxmin.operators.prox_id
+        return prox_id
 
-    def prox_g_sed(self, shape):
-        """Return the proximal operator for the SED in the transformed domain.
-
-        Parameters
-        ----------
-        shape: tuple of int
-            The shape of the SED container.
-        """
-        return None # None or operator
-
-    def prox_g_morph(self, shape):
-        """Return the proximal operator for the morphology in the transformed domain.
-
-        Parameters
-        ----------
-        shape: tuple of int
-            The shape of the morph container.
-        """
-        return None
-
-    def L_sed(self, shape):
-        """Return the SED transformation matrix.
-
-        Parameters
-        ----------
-        shape: tuple of int
-            The shape of the SED container.
-        """
-        return None # None or matrix
-
-    def L_morph(self, shape):
-        """Return the morphology transformation matrix.
-
-        Parameters
-        ----------
-        shape: tuple of int
-            The shape of the morphology container.
-        """
-        return None
 
 class MinimalConstraint(Constraint):
     """The minimal constraint for sources.
@@ -106,53 +72,21 @@ class MinimalConstraint(Constraint):
     def __init__(self, normalization=Normalization.A):
         self.normalization = normalization
 
-    def prox_sed(self, shape):
+    def prox_sed(self, component):
         if self.normalization != Normalization.A:
-            return proxmin.operators.prox_plus
-        return proxmin.operators.prox_unity_plus
+            return prox_plus
+        return operator.prox_unity_plus
 
-    def prox_morph(self, shape):
+    def prox_morph(self, component):
         if self.normalization == Normalization.S:
-            return partial(proxmin.operators.prox_unity_plus, axis=(0,1))
+            return partial(operator.prox_unity_plus, axis=(0, 1))
         elif self.normalization == Normalization.Smax:
-            return proxmin.operators.AlternatingProjections([
+            return AlternatingProjections([
                 operator.prox_max,
-                proxmin.operators.prox_plus,
+                prox_plus,
             ])
-        return proxmin.operators.prox_plus
+        return prox_plus
 
-
-class SimpleConstraint(Constraint):
-    """Effective but still minimally restrictive constraint.
-
-    SED positive and normalized to unity;
-    morphology positive and with non-zero center.
-    """
-    def __init__(self, normalization=Normalization.A):
-        self.normalization = normalization
-
-    def prox_sed(self, shape):
-        if self.normalization != Normalization.A:
-            return proxmin.operators.AlternatingProjections([
-                operator.prox_sed_on, proxmin.operators.prox_plus
-            ])
-        return proxmin.operators.prox_unity_plus
-
-    def prox_morph(self, shape):
-        if self.normalization == Normalization.S:
-            return proxmin.operators.AlternatingProjections([
-                partial(proxmin.operators.prox_unity, axis=(0,1)),
-                operator.prox_center_on,
-                proxmin.operators.prox_plus,
-            ])
-        elif self.normalization == Normalization.Smax:
-            return proxmin.operators.AlternatingProjections([
-                operator.prox_max,
-                operator.prox_center_on,
-                proxmin.operators.prox_plus,
-            ])
-        return proxmin.operators.AlternatingProjections([
-                operator.prox_center_on, proxmin.operators.prox_plus])
 
 class L0Constraint(Constraint):
     """L0 sparsity penalty for the morphology
@@ -167,8 +101,9 @@ class L0Constraint(Constraint):
         """
         self.thresh = thresh
 
-    def prox_morph(self, shape):
-        return partial(proxmin.operators.prox_hard, thresh=self.thresh)
+    def prox_morph(self, component):
+        return partial(prox_hard, thresh=self.thresh)
+
 
 class L1Constraint(Constraint):
     """L1 sparsity penalty for the morphology
@@ -183,8 +118,9 @@ class L1Constraint(Constraint):
         """
         self.thresh = thresh
 
-    def prox_morph(self, shape):
-        return partial(proxmin.operators.prox_soft, thresh=self.thresh)
+    def prox_morph(self, component):
+        return partial(prox_soft, thresh=self.thresh)
+
 
 class DirectMonotonicityConstraint(Constraint):
     """Strict monotonicity constraint
@@ -214,63 +150,30 @@ class DirectMonotonicityConstraint(Constraint):
         self.exact = exact
         self.thresh = thresh
 
-    def prox_morph(self, shape):
+    def prox_morph(self, component):
         """Build the proximal operator
 
         Strict monotonicity depends on the shape of the source,
         so this function selects the proper one from a cache.
         """
         prox_name = "DirectMonotonicityConstraint.prox_morph"
-        key = shape
+        shape = component.shape[-2:]
+        center = component.center
+        key = (shape, center)
         try:
             prox = Cache.check(prox_name, key)
         except KeyError:
             if not self.exact:
-                prox = operator.prox_strict_monotonic(shape, use_nearest=self.use_nearest, thresh=self.thresh)
+                prox = operator.prox_strict_monotonic(shape, use_nearest=self.use_nearest,
+                                                      thresh=self.thresh, center=center)
             else:
+                raise NotImplementedError("Exact monotonicity is not currently supported")
                 # cone method for monotonicity: exact but VERY slow
                 G = transformation.getRadialMonotonicOp(shape, useNearest=self.use_nearest).L.toarray()
                 prox = partial(operator.prox_cone, G=G)
             Cache.set(prox_name, key, prox)
         return prox
 
-class MonotonicityConstraint(Constraint):
-    """$prox_g$ monotonicity constraint
-
-    A radial gradient that is required to monotonically decrease from the peak.
-    A warning with this operator is that we have noticed that because monotonicity
-    is not strictly enforced as a $prox_g$ operator, a single hot pixel that does not
-    meet the constraint can cause pixels further from the peak to also monotonically
-    decrease.
-    """
-    def __init__(self, use_nearest=False):
-        """Initialize the constraint
-
-        use_nearest: bool
-            If `use_nearest` is `True`, then the nearest pixel in a line between
-            the current pixel in the peak is used as a reference.
-            Otherwise (the default) a weighted average of all a pixels neighbors
-            closer to the peak is used.
-        """
-        self.use_nearest = use_nearest
-
-    def prox_g_morph(self, shape):
-        return proxmin.operators.prox_plus
-
-    def L_morph(self, shape):
-        return transformation.getRadialMonotonicOp(shape, useNearest=self.use_nearest)
-
-class SymmetryConstraint(Constraint):
-    """$prox_g$ symmetry constraint
-
-    Enforces that the source is 180-degree rotation symmetric with respect to the peak.
-    """
-
-    def prox_g_morph(self, shape):
-        return proxmin.operators.prox_zero
-
-    def L_morph(self, shape):
-        return transformation.getSymmetryOp(shape)
 
 class DirectSymmetryConstraint(Constraint):
     """Soft symmetry constraint
@@ -280,70 +183,33 @@ class DirectSymmetryConstraint(Constraint):
     that can vary from `sigma=0` (no symmetry required) to
     `sigma=1` (perfect symmetry required).
     """
-    def __init__(self, sigma=1):
+    def __init__(self, sigma=.5, use_soft=True):
         self.sigma = sigma
+        self.use_soft = use_soft
 
-    def prox_morph(self, shape):
-        return partial(operator.prox_soft_symmetry, sigma=self.sigma)
+    def prox_morph(self, component):
+        return partial(operator.prox_uncentered_symmetry, sigma=self.sigma, use_soft=self.use_soft,
+                       center=component.center)
 
-class TVxConstraint(Constraint):
-    """Total Variation (TV) in X
 
-    Penalty used in image processing to denoise an image
-    (basically an L1 norm on the X-gradient).
+class ThresholdConstraint(Constraint):
+    """Threshold a component based on the noise in each band
     """
-    def __init__(self, thresh=0):
-        """Initialize the constraint
-
-        Parameters
-        ----------
-        thresh: float
-            Threshold to use in `proxmin.operators.prox_soft`
-        """
-        self.thresh = thresh
-
-    def prox_g_morph(self, shape):
-        return partial(proxmin.operators.prox_soft, thresh=self.thresh)
-
-    def L_morph(self, shape):
-        name = "TVxConstraint.L_morph"
-        key = shape
+    def __init__(self, cutoffs=0):
         try:
-            return Cache.check(name, key)
-        except KeyError:
-            L = proxmin.operators.get_gradient_x(shape, shape[1] // 2)
-            Cache.set(name, key, L)
-            return L
+            len(cutoffs)
+        except TypeError:
+            cutoffs = [cutoffs] * self.B
+        self.cutoffs = cutoffs
 
-class TVyConstraint(Constraint):
-    """Total Variation (TV) in Y
-
-    Penalty used in image processing to denoise an image
-    (basically an L1 norm on the Y-gradient).
-    """
-    def __init__(self, thresh=0):
-        """Initialize the constraint
-
-        Parameters
-        ----------
-        thresh: float
-            Threshold to use in `proxmin.operators.prox_soft`
-        """
-        self.thresh = thresh
-
-    def prox_g_morph(self, shape):
-        return partial(proxmin.operators.prox_soft, thresh=self.thresh)
-
-    def L_morph(self, shape):
-        name = "TVyConstraint.L_morph"
-        key = shape
-        try:
-            return Cache.check(name, key)
-        except KeyError:
-            L = proxmin.operators.get_gradient_y(shape, shape[0])
-            L.spectral_norm
-            Cache.set(name, key, L)
-            return L
+    def prox_morph(self, component):
+        model = component.get_model(trim=False)
+        bbox = component.bbox
+        if any([utils.flux_at_edge(model[b][bbox.slices], self.cutoffs[b]) for b in range(self.B)]):
+            mask = 1-(model < self.cutoffs[:, None, None]).prod(dim=0)
+            component.morph.data *= mask
+            component._bbox = utils.trim(component.morph, 0)
+        return prox_id
 
 
 class ConstraintAdapter(object):
@@ -373,36 +239,20 @@ class ConstraintAdapter(object):
 
     @property
     def prox_sed(self):
-        ops = [c.prox_sed(self.component.sed.shape) for c in self.C if c.prox_sed(self.component.sed.shape) is not proxmin.operators.prox_id]
+        ops = [c.prox_sed(self.component) for c in self.C if c.prox_sed(self.component) is not prox_id]
         if len(ops) == 0:
-            return proxmin.operators.prox_id
+            return prox_id
         if len(ops) == 1:
             return ops[0]
         else:
-            return proxmin.operators.AlternatingProjections(ops)
+            return AlternatingProjections(ops)
 
     @property
     def prox_morph(self):
-        ops = [c.prox_morph(self.component.morph.shape) for c in self.C if c.prox_morph(self.component.morph.shape) is not proxmin.operators.prox_id]
+        ops = [c.prox_morph(self.component) for c in self.C if c.prox_morph(self.component) is not prox_id]
         if len(ops) == 0:
-            return proxmin.operators.prox_id
+            return prox_id
         if len(ops) == 1:
             return ops[0]
         else:
-            return proxmin.operators.AlternatingProjections(ops)
-
-    @property
-    def prox_g_sed(self):
-        return [c.prox_g_sed(self.component.sed.shape) for c in self.C if c.prox_g_sed(self.component.sed.shape) is not None]
-
-    @property
-    def prox_g_morph(self):
-        return [c.prox_g_morph(self.component.morph.shape) for c in self.C if c.prox_g_morph(self.component.morph.shape) is not None]
-
-    @property
-    def L_sed(self):
-        return [c.L_sed(self.component.sed.shape) for c in self.C if c.prox_g_sed(self.component.sed.shape) is not None]
-
-    @property
-    def L_morph(self):
-        return [c.L_morph(self.component.morph.shape) for c in self.C if c.prox_g_morph(self.component.morph.shape) is not None]
+            return AlternatingProjections(ops)

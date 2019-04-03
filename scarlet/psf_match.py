@@ -1,10 +1,13 @@
 import numpy as np
+import torch
 
 from .config import Config
 from . import constraint as sc
 from .component import Component
 from .source import Source
 from .blend import Blend
+from .observation import Observation
+
 
 def moffat(coords, y0, x0, amplitude, alpha, beta=1.5):
     """Moffat Function
@@ -15,19 +18,22 @@ def moffat(coords, y0, x0, amplitude, alpha, beta=1.5):
 
         A (1+\frac{(x-x0)^2+(y-y0)^2}{\alpha^2})^{-\beta}
     """
-    Y,X = coords
+    Y, X = coords
     return (amplitude*(1+((X-x0)**2+(Y-y0)**2)/alpha**2)**-beta)
+
 
 def gaussian(coords, y0, x0, amplitude, sigma):
     """Circular Gaussian Function
     """
-    Y,X = coords
+    Y, X = coords
     return (amplitude*np.exp(-((X-x0)**2+(Y-y0)**2)/(2*sigma**2)))
+
 
 def double_gaussian(coords, y0, x0, A1, sigma1, A2, sigma2):
     """Sum of two Gaussian Functions
     """
     return gaussian(coords, y0, x0, A1, sigma1) + gaussian(coords, y0, x0, A2, sigma2)
+
 
 def fit_target_psf(psfs, func, init_values=None, extract_values=None):
     """Build a target PSF from a collection of psfs
@@ -64,11 +70,12 @@ def fit_target_psf(psfs, func, init_values=None, extract_values=None):
     """
     from scipy.optimize import curve_fit
 
+    psfs = psfs.detach().numpy()
     X = np.arange(psfs.shape[2])
     Y = np.arange(psfs.shape[1])
-    X,Y = np.meshgrid(X,Y)
-    coords = np.array([Y,X])
-    y0, x0 = psfs.shape[1]//2, psfs.shape[2]//2
+    X, Y = np.meshgrid(X, Y)
+    coords = np.stack([Y, X])
+    y0, x0 = (psfs.shape[1]-1) // 2, (psfs.shape[2]-1) // 2
     init_params = [y0, x0]
     if init_values is None:
         if func == moffat:
@@ -98,24 +105,25 @@ def fit_target_psf(psfs, func, init_values=None, extract_values=None):
     if extract_values is None:
         params = []
         if func == moffat:
-            params.append(np.mean(all_params[:,2])) # amplitude
-            params.append(np.min(all_params[:,3])*0.6) # alpha
-            params.append(np.max(all_params[:,4])*1.4) # beta
+            params.append(np.mean(all_params[:, 2]))  # amplitude
+            params.append(np.min(all_params[:, 3])*0.6)  # alpha
+            params.append(np.max(all_params[:, 4])*1.4)  # beta
         elif func == gaussian:
-            params.append(np.mean(all_params[:,2])) # amplitude
-            params.append(np.min(all_params[:,3])*0.6) # sigma
+            params.append(np.mean(all_params[:, 2]))  # amplitude
+            params.append(np.min(all_params[:, 3])*0.6)  # sigma
         elif func == double_gaussian:
-            params.append(np.mean(all_params[:,2])) # amplitude 1
-            params.append(np.min(all_params[:,3])*0.6) # sigma 1
-            params.append(np.mean(all_params[:,4])) # amplitude 2
-            params.append(np.min(all_params[:,5])*0.6) # sigma 2
+            params.append(np.mean(all_params[:, 2]))  # amplitude 1
+            params.append(np.min(all_params[:, 3])*0.6)  # sigma 1
+            params.append(np.mean(all_params[:, 4]))  # amplitude 2
+            params.append(np.min(all_params[:, 5])*0.6)  # sigma 2
     else:
         params = extract_values(all_params)
     target_psf = func(coords, y0, x0, *params)
 
     # normalize the target PSF
-    target_psf = target_psf/np.sum(target_psf)
-    return target_psf
+    target_psf = target_psf/target_psf.sum()
+    return torch.tensor(target_psf.astype(np.float32)), all_params, params
+
 
 def build_diff_kernels(psfs, target_psf, max_iter=100, e_rel=1e-3, constraints=None, cutoff=None,
                        l0_thresh=1e-4):
@@ -152,19 +160,25 @@ def build_diff_kernels(psfs, target_psf, max_iter=100, e_rel=1e-3, constraints=N
         `psfs` to `target_psf`, where `diff_kernels` is an array
         of the `Source.morph` for each source in `psf_blend`.
     """
-    config = Config(refine_skip=100, source_sizes=np.array([np.max(psfs.shape[1:])]))
-    center = np.array([psfs[0].shape[0] // 2, psfs[0].shape[1] //2], dtype=psfs.dtype)
+    config = Config(refine_skip=100)
+    center = np.array([psfs[0].shape[0] // 2, psfs[0].shape[1] // 2])
     if constraints is None:
-        constraints = (sc.SimpleConstraint(), sc.L0Constraint(l0_thresh))
+        constraints = [sc.MinimalConstraint()]
+        if l0_thresh > 0:
+            constraints.append(sc.L0Constraint(l0_thresh))
     if cutoff is None:
         cutoff = 0
     sources = [
-        PSFDiffKernel(center, psfs, cutoff, target_psf, b, constraints=constraints, config=config) for b in range(len(psfs))
+        PSFDiffKernel(center, psfs, cutoff, b, constraints=constraints, config=config)
+        for b in range(len(psfs))
     ]
-    psf_blend = Blend(sources).set_data(psfs, bg_rms=[cutoff]*len(psfs), config=config)
-    psf_blend.fit(100, e_rel=1e-3)
-    diff_kernels = np.array([kernel.morph for kernel in psf_blend.components])
+    target_psf = torch.stack([target_psf for n in range(len(psfs))])
+    observation = Observation(images=psfs, psfs=target_psf, bg_rms=[cutoff]*len(psfs))
+    psf_blend = Blend(sources, observation, config)
+    psf_blend.fit(max_iter, e_rel=1e-3, padding=3)
+    diff_kernels = torch.stack([kernel.morph for kernel in psf_blend.components])
     return diff_kernels, psf_blend
+
 
 class PSFDiffKernel(Source):
     """Create a model of the PSF in a single band
@@ -174,8 +188,7 @@ class PSFDiffKernel(Source):
     the difference kernel in each band, which gives more accurate
     results when performing PSF deconvolution.
     """
-    def __init__(self, center, psfs, cutoff, target_psf, band,
-                 constraints=None, config=None, fix_frame=True, shift_center=0.0):
+    def __init__(self, center, psfs, cutoff, band, constraints=None, config=None):
         """Initialize the difference kernel in a single band
 
         See :class:`~scarlet.source.Source` for parameter descriptions not listed below.
@@ -199,12 +212,10 @@ class PSFDiffKernel(Source):
 
         # set sed and morph to that of `band`
         B, Ny, Nx = psfs.shape
-        sed = np.zeros(B)
+        sed = torch.zeros(B)
         sed[band] = 1
+        morph = psfs[band]
 
-        morph = np.zeros((Ny,Nx))
-        im_slice, morph_slice = Component.get_frame(psfs[band].shape, center, (Ny,Nx))
-        morph[morph_slice] = psfs[band][im_slice]
-
-        component = Component(sed, morph, center=center, constraints=constraints, psf=target_psf, fix_sed=True, fix_morph=False, fix_frame=fix_frame, shift_center=shift_center)
+        component = Component(sed, morph, center=center, constraints=constraints,
+                              fix_sed=True, fix_morph=False)
         super(PSFDiffKernel, self).__init__(component)

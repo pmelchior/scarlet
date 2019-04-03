@@ -2,27 +2,44 @@ from __future__ import print_function, division
 from functools import partial
 
 import numpy as np
-import proxmin
+import torch
+from proxmin.operators import prox_plus
 
 import logging
 logger = logging.getLogger("scarlet.operator")
+
+
+def prox_unity(X, step, axis=0):
+    """Projection onto sum=1 along an axis
+    """
+    return X / X.sum(dim=axis)
+
+
+def prox_unity_plus(X, step, axis=0):
+    """Non-negative projection onto sum=1 along an axis
+    """
+    return prox_unity(prox_plus(X, step), step, axis=axis)
 
 
 def _prox_strict_monotonic(X, step, ref_idx, dist_idx, thresh=0):
     """Force an intensity profile to be monotonic
     """
     from . import operators_pybind11
-    operators_pybind11.prox_monotonic(X.reshape(-1), step, ref_idx, dist_idx, thresh)
+    _X = X.detach().numpy()
+    operators_pybind11.prox_monotonic(_X.reshape(-1), step, ref_idx, dist_idx, thresh)
+    X[:] = torch.tensor(_X)
     return X
 
 
 def _prox_weighted_monotonic(X, step, weights, didx, offsets, thresh=0):
     from . import operators_pybind11
-    operators_pybind11.prox_weighted_monotonic(X.reshape(-1), step, weights, offsets, didx, thresh)
+    _X = X.detach().numpy()
+    operators_pybind11.prox_weighted_monotonic(_X.reshape(-1), step, weights, offsets, didx, thresh)
+    X[:] = torch.tensor(_X)
     return X
 
 
-def sort_by_radius(shape):
+def sort_by_radius(shape, center=None):
     """Sort indices distance from the center
 
     Given a shape, calculate the distance of each
@@ -45,8 +62,11 @@ def sort_by_radius(shape):
         center for each pixel in didx.
     """
     # Get the center pixels
-    cx = (shape[1]-1) >> 1
-    cy = (shape[0]-1) >> 1
+    if center is None:
+        cx = (shape[1]-1) >> 1
+        cy = (shape[0]-1) >> 1
+    else:
+        cy, cx = int(center[0]), int(center[1])
     # Calculate the distance between each pixel and the peak
     x = np.arange(shape[1])
     y = np.arange(shape[0])
@@ -59,16 +79,13 @@ def sort_by_radius(shape):
     return didx
 
 
-def prox_strict_monotonic(shape, use_nearest=False, thresh=0):
+def prox_strict_monotonic(shape, use_nearest=False, thresh=0, center=None):
     """Build the prox_monotonic operator
     """
     from . import transformation
 
     height, width = shape
-    if not height % 2 or not width % 2:
-        err = "Shape must have an odd width and height, received shape {0}".format(shape)
-        raise ValueError(err)
-    didx = sort_by_radius(shape)
+    didx = sort_by_radius(shape, center)
 
     if use_nearest:
         from scipy import sparse
@@ -84,7 +101,7 @@ def prox_strict_monotonic(shape, use_nearest=False, thresh=0):
     else:
         coords = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
         offsets = np.array([width*y+x for y, x in coords])
-        weights = transformation.getRadialMonotonicWeights(shape, useNearest=False)
+        weights = transformation.getRadialMonotonicWeights(shape, useNearest=False, center=center)
         result = partial(_prox_weighted_monotonic, weights=weights,
                          didx=didx[1:], offsets=offsets, thresh=thresh)
     return result
@@ -128,7 +145,7 @@ def prox_center_on(X, step, tiny=1e-10):
 
 def prox_max(X, step):
     """Normalize X so that it's max value is unity."""
-    norm = np.max(X)
+    norm = X.max()
     X[:] = X/norm
     return X
 
@@ -147,6 +164,40 @@ def prox_sed_on(X, step, tiny=1e-10):
     return X
 
 
+def uncentered_operator(X, func, center=None, fill=None, **kwargs):
+    if center is None:
+        py, px = np.unravel_index(torch.argmax(X).numpy(), X.shape)
+    else:
+        py, px = center
+    cy, cx = np.array(X.shape) // 2
+    if py == cy and px == cx:
+        return func(X, **kwargs)
+
+    dy = int(2*(py-cy))
+    dx = int(2*(px-cx))
+    if dx < 0:
+        xslice = slice(None, dx)
+    else:
+        xslice = slice(dx, None)
+    if dy < 0:
+        yslice = slice(None, dy)
+    else:
+        yslice = slice(dy, None)
+    if fill is not None:
+        _X = torch.ones(X.shape) * fill
+        _X[yslice, xslice] = func(X[yslice, xslice], **kwargs)
+        X[:] = _X
+    else:
+        X[yslice, xslice] = func(X[yslice, xslice], **kwargs)
+    return X
+
+
+def prox_sdss_symmetry(X, step):
+    Xs = torch.flip(X, (0, 1))
+    X[:] = torch.min(torch.stack([X, Xs]), dim=0)[0]
+    return X
+
+
 def prox_soft_symmetry(X, step, sigma=1):
     """Soft version of symmetry
     Using a `sigma` that varies from 0 to 1,
@@ -154,9 +205,19 @@ def prox_soft_symmetry(X, step, sigma=1):
     1  being completely symmetric, the user can customize
     the level of symmetry required for a component
     """
-    Xs = np.fliplr(np.flipud(X))
+    Xs = torch.flip(X, (0, 1))
     X[:] = 0.5 * sigma * (X+Xs) + (1-sigma) * X
     return X
+
+
+def prox_uncentered_symmetry(X, step, center=None, sigma=.5, use_soft=True):
+    """Symmetry with off-center peak
+
+    Symmetrize X where it can be made symmetric
+    """
+    if use_soft:
+        return uncentered_operator(X, prox_soft_symmetry, center, step=step, sigma=sigma)
+    return uncentered_operator(X, prox_sdss_symmetry, center, step=step, fill=0)
 
 
 def proj(A, B):
@@ -264,5 +325,5 @@ def proximal_disk_sed(X, step, peaks, algorithm=project_disk_sed_mean):
             bulge_k = peak["bulge"].index
             disk_k = peak["disk"].index
             X[:, disk_k] = algorithm(X[:, bulge_k], X[:, disk_k])
-    X = proxmin.operators.prox_unity_plus(X, step, axis=0)
+    X = prox_unity_plus(X, step, axis=0)
     return X

@@ -771,23 +771,23 @@ def diagonalsToSparse(diagonals, shape, dtype=np.float64):
     return diagonalArr
 
 
-def getRadialMonotonicWeights(shape, useNearest=True, minGradient=1):
+def getRadialMonotonicWeights(shape, useNearest=True, minGradient=1, center=None):
     """Create the weights used for the Radial Monotonicity Operator
 
     This version of the radial monotonicity operator selects all of the pixels closer to the peak
     for each pixel and weights their flux based on their alignment with a vector from the pixel
     to the peak. In order to quickly create this using sparse matrices, its construction is a bit opaque.
     """
-
+    if center is None:
+        center = ((shape[0]-1) // 2, (shape[1]-1) // 2)
     name = "RadialMonotonicWeights"
-    key = tuple(shape) + (useNearest, minGradient)
+    key = tuple(shape) + tuple(center) + (useNearest, minGradient)
     try:
         cosNorm = Cache.check(name, key)
     except KeyError:
 
         # Center on the center pixel
-        px = int(shape[1]/2)
-        py = int(shape[0]/2)
+        py, px = int(center[0]), int(center[1])
         # Calculate the distance between each pixel and the peak
         x = np.arange(shape[1])
         y = np.arange(shape[0])
@@ -851,6 +851,7 @@ def getRadialMonotonicWeights(shape, useNearest=True, minGradient=1):
         Cache.set(name, key, cosNorm)
 
     return cosNorm
+
 
 def getRadialMonotonicOp(shape, useNearest=True, minGradient=1, subtract=True):
     """Create an operator to constrain radial monotonicity

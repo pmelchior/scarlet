@@ -248,22 +248,21 @@ class TestConvolutions:
     """Test FFT convolutions and interpolation algorithms
     """
     def test_fft_convolve(self):
+        import torch
         shape = (11, 11)
-        img = np.zeros(shape)
+        img = torch.zeros(shape, dtype=torch.float32)
         img[3, 3] = 2
         img[2, 3] = .5
         img[3, 4] = .75
         img[3, 2] = .1
-        kernel = np.arange(25).reshape(5, 5)
-        _img = _img = scarlet.resample.project_image(img, shape)
-        _kernel = scarlet.resample.project_image(kernel, shape)
-        result = scarlet.resample.fft_convolve(_kernel, _img)
-        truth = np.zeros(shape)
+        kernel = torch.arange(25, dtype=torch.float32).reshape(5, 5)
+        result = scarlet.convolution.fft_convolve(img, kernel)
+        truth = torch.zeros(shape)
         truth[1:6, 1:6] += 2 * kernel
         truth[:5, 1:6] += .5 * kernel
         truth[1:6, 2:7] += .75 * kernel
         truth[1:6, :5] += .1 * kernel
-        assert_almost_equal(result, truth)
+        assert_almost_equal(result.numpy(), truth.numpy(), decimal=5)
 
     def test_bilinear(self):
         zero_truth = (np.array([1, 0]), np.array([0, 1]))
