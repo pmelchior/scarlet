@@ -2,21 +2,55 @@ import torch
 from . import convolution
 
 
-class Observation(object):
-    def __init__(self, images, psfs=None, masks=None, weights=None, bg_rms=None, padding=3):
-        self.B, self.Ny, self.Nx = images.shape
+def build_detection_coadd(sed, bg_rms, observation, scene, thresh=1):
+    B = observation.B
+    images = observation.get_scene(scene)
+    weights = torch.tensor([sed[b]/bg_rms[b]**2 for b in range(B)])
+    jacobian = torch.tensor([sed[b]**2/bg_rms[b]**2 for b in range(B)]).sum()
+    detect = torch.einsum('i,i...', weights, images) / jacobian
+
+    # thresh is multiple above the rms of detect (weighted variance across bands)
+    bg_cutoff = thresh * torch.sqrt((weights**2 * bg_rms**2).sum()) / jacobian
+    return detect, bg_cutoff
+
+
+class Scene():
+    # extent and characteristics of the modeled scence
+    def __init__(self, shape, wcs=None):
+        self._shape = tuple(shape)
+        self.wcs = wcs
+
+    @property
+    def B(self):
+        return self.shape[0]
+
+    @property
+    def Ny(self):
+        return self.shape[1]
+
+    @property
+    def Nx(self):
+        return self.shape[2]
+
+    @property
+    def shape(self):
+        return self._shape
+
+    def get_pixel(self, coord):
+        if not isinstance(coord, torch.Tensor):
+            coord = torch.tensor(coord)
+        if self.wcs is not None:
+            return self.wcs.radec2pix(coord).int()
+        return coord.int()
+
+
+class Observation(Scene):
+    def __init__(self, images, psfs=None, weights=None, wcs=None, padding=3):
+        super(Observation, self).__init__(images.shape, wcs=wcs)
+
         self.images = images
         self.psfs = psfs
-        self.masks = masks
-        self.weights = weights
         self.padding = padding
-
-        if bg_rms is None:
-            self._bg_rms = torch.zeros(self.B, dtype=images.dtype)
-        else:
-            assert len(bg_rms) == self.B
-            if not isinstance(bg_rms, torch.Tensor):
-                self._bg_rms = torch.tensor(bg_rms, dtype=images.dtype)
 
         if psfs is not None:
             ipad, ppad = convolution.get_common_padding(images, psfs, padding=padding)
@@ -24,7 +58,16 @@ class Observation(object):
             _psfs = torch.nn.functional.pad(psfs, self.psf_padding)
             self.psfs_fft = torch.rfft(_psfs, 2)
 
-    def convolve_model(self, model):
+        if weights is not None:
+            self.weights = weights
+        else:
+            self.weights = 1
+
+    def get_model(self, model, scene):
+        if self.wcs is not None or scene.shape != self.shape:
+            msg = "get_model is currently only supported when the observation frame matches the scene"
+            raise NotImplementedError(msg)
+
         def _convolve_band(model, psf):
             _model = torch.nn.functional.pad(model, self.image_padding)
             Image = torch.rfft(_model, 2)
@@ -36,47 +79,14 @@ class Observation(object):
             return result
         return torch.stack([_convolve_band(model[b], self.psfs_fft[b]) for b in range(self.B)])
 
-    def gradient(self, model):
+    def get_loss(self, model, scene):
         if self.psfs is not None:
-            model = self.convolve_model(model)
-        torch.nn.MSELoss(reduction='sum')(model, self.images).backward()
+            model = self.get_model(model, scene)
+        model *= self.weights
+        return 0.5 * torch.nn.MSELoss(reduction='sum')(model, self.images*self.weights)
 
-    def _set_weights(self, weights):
-        """Set the weights and pixel covariance matrix `_Sigma_1`.
-
-        Parameters
-        ----------
-        weights: array-like
-            Array (Band, Height, Width) of weights for each image, in each band
-
-        Returns
-        -------
-        None, but sets `self._Sigma_1` and `self._weights`.
-        """
-        if weights is None:
-            self._weights = [1, 1]
-        else:
-            self._weights = [None] * 2
-
-            # for S update: normalize the per-pixel variation
-            # i.e. in every pixel: utilize the bands with large weights
-            # CAVEAT: need to filter out pixels that are saturated in every band
-            norm_pixel = weights.median(dim=0)
-            mask = norm_pixel > 0
-            self._weights[1] = weights.clone()
-            self._weights[1][:, mask] /= norm_pixel[mask]
-
-            # reverse is true for A update: for each band, use the pixels that
-            # have the largest weights
-            norm_band = weights.reshape(self.B, -1).median(dim=1)
-            # CAVEAT: some regions may have one band missing completely
-            mask = norm_band > 0
-            self._weights[0] = weights.clone()
-            self._weights[0][mask] /= norm_band[mask, None, None]
-            # CAVEAT: mask all pixels in which at least one band has W=0
-            # these are likely saturated and their colors have large weights
-            # but are incorrect due to missing bands
-            mask = ~torch.all(weights > 0, axis=0)
-            # and mask all bands for that pixel:
-            # when estimating A do not use (partially) saturated pixels
-            self._weights[0][:, mask] = 0
+    def get_scene(self, scene):
+        if self.wcs is not None or scene.shape != self.shape:
+            msg = "get_scene is currently only supported when the observation frame matches the scene"
+            raise NotImplementedError(msg)
+        return self.images

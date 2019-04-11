@@ -2,168 +2,13 @@ from __future__ import print_function, division
 import numpy as np
 import torch
 
-from . import constraint as sc
-from .config import Config
 from .component import Component, ComponentTree
 from . import operator
-from .convolution import fft_convolve
-from . import utils
+from . import update
+from . import observation
 
 import logging
 logger = logging.getLogger("scarlet.source")
-
-
-class Source(ComponentTree):
-    """Base class for co-centered `~scarlet.component.Component`s.
-
-    The class implements `update_center` to set all components with `shift_center > 0`
-    to the flux-weighted mean center position of all components.
-    """
-    def __init__(self, components):
-        """Constructor.
-
-        Parameters
-        ----------
-        components: list of `~scarlet.component.Component` or `~scarlet.component.ComponentTree`
-        """
-        super(Source, self).__init__(components)
-
-    def get_model(self, psfs=None, padding=3, trim=True):
-        """Compute the model for this source.
-
-        Returns
-        -------
-        `~numpy.array` with shape (B, Ny, Nx)
-        """
-        if len(self.components) > 1:
-            model = torch.sum(torch.stack([c.get_model(trim=False) for c in self.components]), dim=0)
-        else:
-            model = self.components[0].get_model(trim=False)
-
-        if psfs is not None:
-            model = torch.stack([
-                fft_convolve(model[b], psfs[b], padding=padding)
-                for b in range(len(model))
-            ])
-
-        if trim:
-            model = model[(slice(None), *self.components[0].bbox.slices)]
-
-        return model
-
-    def get_flux(self):
-        """Get flux in every band
-        """
-        if len(self.components) > 1:
-            return torch.sum(torch.stack([c.get_flux() for c in self.components]), dim=0)
-        else:
-            return self.components[0].get_flux()
-
-    def update_center(self, center):
-        """Center update to set all component centers to flux-weighted mean position.
-
-        NOTE: Only components with `shift_center > 0` will be moved.
-        """
-        for c in self.components:
-            c.update_center(center)
-
-    def update_bbox(self, bbox=None, min_value=None):
-        """Update the bounding boxes.
-
-        If `bbox` is not `None` then all of the components
-        have their bounding boxes set to `bbox`.
-        Otherwise `min_value` must be specified and all of
-        the components are checked to see if they have any flux on
-        their edge larger than `min_value`. If they do then the
-        bounding box is resized and trimmed.
-
-        Parameters
-        ----------
-        bbox: `BoundingBox`
-            The new bounding box for all of the components
-        `min_value`: float
-            Minimum value in a component to avoid being trimmed.
-        """
-        if bbox is not None:
-            for c in self.components:
-                c.update_bbox(bbox)
-        elif min_value is not None:
-            for c in self.components:
-                c._bbox = utils.resize(c.get_model(trim=False), c.bbox, min_value)
-        else:
-            msg = "Either `bbox` or `min_value` must be set to update the bounding boxes"
-            raise ValueError(msg)
-
-    @staticmethod
-    def point_source(center, img, constraints=None, config=None,
-                     fix_sed=False, fix_morph=False, min_value=1e-2,
-                     normalization=sc.Normalization.Smax):
-        """
-        center is always a tuple of integers
-        """
-        if config is None:
-            config = Config()
-
-        B, Ny, Nx = img.shape
-        _y, _x = center
-        # determine initial SED from peak position: amplitude is in sed
-        sed = get_pixel_sed(img, center)
-        morph = torch.zeros(img.shape[1:], dtype=img.dtype)
-        # Turn on a single pixel at the peak: normalized S
-        cy, cx = center
-        morph[cy, cx] = 1
-        bbox = utils.trim(morph)
-
-        if constraints is None:
-            constraints = (sc.MinimalConstraint(normalization),
-                           sc.DirectMonotonicityConstraint(use_nearest=False),
-                           sc.DirectSymmetryConstraint(),
-                           sc.ResizeConstraint(min_value))
-
-        component = Component(sed, morph, constraints=constraints, fix_sed=fix_sed,
-                              fix_morph=fix_morph, config=config, center=center, bbox=bbox)
-        component._normalize(normalization)
-        return Source(component)
-
-    @staticmethod
-    def extended_source(center, img, bg_rms, constraints=None, symmetric=True, monotonic=True,
-                        thresh=1., config=None, fix_sed=False, fix_morph=False,
-                        normalization=sc.Normalization.Smax, min_value=1e-2):
-        # Use a default configuration if config is not specified
-        if config is None:
-            config = Config()
-
-        sed, morph = init_extended_source(center, img, bg_rms, thresh=thresh, symmetric=symmetric,
-                                          monotonic=monotonic)
-        bbox = utils.trim(morph)
-
-        if constraints is None:
-            constraints = (sc.MinimalConstraint(normalization),
-                           sc.DirectMonotonicityConstraint(),
-                           sc.DirectSymmetryConstraint(),
-                           sc.ResizeConstraint(min_value))
-
-        component = Component(sed, morph, constraints=constraints, fix_sed=fix_sed,
-                              fix_morph=fix_morph, config=config, center=center, bbox=bbox)
-        component._normalize(normalization)
-        return Source(component)
-
-    @staticmethod
-    def multicomponent_source(center, img, bg_rms, flux_percentiles=[25], constraints=None,
-                              symmetric=True, monotonic=True, thresh=1., config=None,
-                              fix_sed=False, fix_morph=False, normalization=sc.Normalization.Smax):
-        # Use a default configuration if config is not specified
-        if config is None:
-            config = Config()
-
-        seds, morphs = init_multicomponent_source(center, img, bg_rms, thresh=thresh, symmetric=symmetric,
-                                                  monotonic=monotonic)
-        components = [
-            Component(seds[k], morphs[k], constraints=constraints, fix_sed=fix_sed,
-                      fix_morph=fix_morph, config=config, center=center)
-            for k in range(len(seds))
-        ]
-        return Source(components)
 
 
 class SourceInitError(Exception):
@@ -172,7 +17,7 @@ class SourceInitError(Exception):
     pass
 
 
-def get_pixel_sed(img, position):
+def get_pixel_sed(sky_coord, scene, observations):
     """Get the SED at `position` in `img`
 
     Parameters
@@ -187,48 +32,22 @@ def get_pixel_sed(img, position):
     SED: `~numpy.array`
         SED for a single source
     """
-    _y, _x = position
-    sed = torch.zeros((img.shape[0],))
-    sed[:] = img[:, _y, _x]
+    sed = torch.zeros(scene.B).float()
+    band = 0
+    for obs in observations:
+        pixel = obs.get_pixel(sky_coord)
+        sed[band:band+obs.B] = obs.images[:, pixel[0], pixel[1]]
+        band += obs.B
     if torch.all(sed <= 0):
         # If the flux in all bands is  <=0,
         # the new sed will be filled with NaN values,
         # which will cause the code to crash later
         msg = "Zero or negative flux at y={0}, x={1}"
-        raise SourceInitError(msg.format(_y, _x))
+        raise SourceInitError(msg.format(*sky_coord))
     return sed
 
 
-def get_integrated_sed(img, weight, p=1):
-    """Calculate SED from weighted sum of the image in each band
-
-    Parameters
-    ----------
-    img: `~numpy.array`
-        (Bands, Height, Width) array that contains a 2D image for each band
-    weight: `~numpy.array`
-        (Height, Width) weights to apply to each pixel in `img`
-    p: int
-        power for the weight normalization: 1/(weight**p).sum()
-
-    Returns
-    -------
-    SED: `~numpy.array`
-        SED for a single source
-
-    """
-    B, Ny, Nx = img.shape
-    sed = (img * weight**p).reshape(B, -1).sum(dim=1) / (weight**p).sum()
-    if torch.all(sed <= 0):
-        # If the flux in all bands is  <=0,
-        # the new sed will be filled with NaN values,
-        # which will cause the code to crash later
-        msg = "Zero or negative flux under weight function"
-        raise SourceInitError(msg)
-    return sed
-
-
-def get_best_fit_sed(img, S):
+def get_best_fit_seds(morphs, scene, observations):
     """Calculate best fitting SED for multiple components.
 
     Solves min_A ||img - AS||^2 for the SED matrix A, assuming that img only
@@ -241,35 +60,31 @@ def get_best_fit_sed(img, S):
     S: `~numpy.array`
         (Components, Height, Width) array with the 2D image for each component
     """
-    B, K = len(img), len(S)
-    Y = img.reshape(B, -1)
-    S_ = S.reshape(K, -1)
-    return torch.mm(torch.mm(S_, S_.t()).inverse(), torch.mm(S_, Y.t()))
+    K = len(morphs)
+    seds = torch.tensor((K, scene.B))
+    band = 0
+    _morph = morphs.reshape(K, -1)
+    for k, obs in enumerate(observations):
+        images = obs.get_scene(scene)
+        data = images.reshape(obs.B, -1)
+        sed = torch.mm(torch.mm(_morph, _morph.t()).inverse(), torch.mm(_morph, data.t()))
+        seds[k, band:band+obs.B] = sed
+    return seds
 
 
-def init_extended_source(center, img, bg_rms, thresh=1., symmetric=True, monotonic=True):
+def init_extended_source(sky_coord, scene, observations, bg_rms, obs_idx=0,
+                         thresh=1., symmetric=True, monotonic=True):
     """Initialize the source that is symmetric and monotonic
-
     See `Source.ExtendedSource` for a description of the parameters
     """
+    try:
+        iter(observations)
+    except TypeError:
+        observations = [observations]
     # determine initial SED from peak position
-    B = img.shape[0]
-    sed = get_pixel_sed(img, center)  # amplitude is in sed
-
-    # build optimal detection coadd given the sed
-    if torch.all(bg_rms > 0):
-        bg_rms = bg_rms
-        weights = torch.tensor([sed[b]/bg_rms[b]**2 for b in range(B)])
-        jacobian = torch.tensor([sed[b]**2/bg_rms[b]**2 for b in range(B)]).sum()
-        detect = torch.einsum('i,i...', weights, img) / jacobian
-
-        # thresh is multiple above the rms of detect (weighted variance across bands)
-        bg_cutoff = thresh * np.sqrt((weights**2 * bg_rms**2).sum()) / jacobian
-    else:
-        detect = np.sum(img, axis=0)
-        bg_cutoff = 0
-
-    morph = detect
+    sed = get_pixel_sed(sky_coord, scene, observations)  # amplitude is in sed
+    morph, bg_cutoff = observation.build_detection_coadd(sed, bg_rms, observations[obs_idx], scene, thresh)
+    center = scene.get_pixel(sky_coord)
 
     # symmetric, monotonic
     if symmetric:
@@ -284,33 +99,23 @@ def init_extended_source(center, img, bg_rms, thresh=1., symmetric=True, monoton
     mask = morph > bg_cutoff
     if mask.sum() == 0:
         msg = "No flux above threshold={2} for source at y={0} x={1}"
-        raise SourceInitError(msg.format(center[0], center[1], bg_cutoff))
+        raise SourceInitError(msg.format(*sky_coord, bg_cutoff))
     morph[~mask] = 0
-    ypix, xpix = np.where(mask)
-    left, right, bottom, top = np.min(xpix), np.max(xpix), np.min(ypix), np.max(ypix)
-    morph_slice = (slice(bottom, top), slice(left, right))
 
     # normalize to unity at peak pixel
     cy, cx = center
     center_morph = morph[cy, cx]
     morph /= center_morph
-
-    # use mean sed from image, weighted with the morphology of each component
-    try:
-        # need p=2 to undo the intensity normalization, since we want Smax initially
-        sed = get_integrated_sed(img[:, morph_slice[0], morph_slice[1]], morph[morph_slice], p=4)
-    except SourceInitError:
-        # keep the peak sed
-        logger.INFO("Using peak SED for source at {0}".format(center))
     return sed, morph
 
 
-def init_multicomponent_source(center, img, bg_rms, flux_percentiles=[25],
-                               symmetric=True, monotonic=True, thresh=1.):
-    center = np.array(center).astype(int)
+def init_multicomponent_source(sky_coord, scene, observations, bg_rms, flux_percentiles=None, obs_idx=0,
+                               thresh=1., symmetric=True, monotonic=True):
+    if flux_percentiles is None:
+        flux_percentiles = [25]
     # Initialize the first component as an extended source
-    sed, morph = init_extended_source(center, img, bg_rms, thresh=thresh,
-                                      symmetric=symmetric, monotonic=monotonic)
+    sed, morph = init_extended_source(sky_coord, scene, observations, bg_rms, obs_idx,
+                                      thresh, symmetric, monotonic)
     # create a list of components from base morph by layering them on top of
     # each other so that they sum up to morph
     K = len(flux_percentiles) + 1
@@ -334,6 +139,111 @@ def init_multicomponent_source(center, img, bg_rms, flux_percentiles=[25],
         morphs[k] /= morphs[k].max()
 
     # optimal SEDs given the morphologies, assuming img only has that source
-    seds = get_best_fit_sed(img, morphs)
+    seds = get_best_fit_seds(morphs, scene, observations)
 
     return seds, morphs
+
+
+class PointSource(Component):
+    """Create a point source.
+    Point sources are initialized with the SED of the center pixel,
+    and the morphology of a single pixel (the center) turned on.
+    While the source can have any `constraints`, the default constraints are
+    symmetry and monotonicity.
+    """
+    def __init__(self, scene, sky_coord, observations, **component_kwargs):
+        # this ignores any broadening from the PSFs ...
+        B, Ny, Nx = scene.shape
+        morph = torch.tensor(Ny, Nx)
+        pixel = scene.get_pixel(sky_coord)
+        morph[pixel] = 1
+        self.pixel_center = pixel
+
+        sed = torch.tensor(B)
+        b0 = 0
+        for obs in observations:
+            pixel = obs.get_pixel(sky_coord)
+            sed[b0:b0+obs.B] = obs.img[(None, *pixel)]
+            b0 += obs.B
+
+        super(PointSource, self).__init__(sed, morph, **component_kwargs)
+
+    def update(self):
+        update.symmetric_fit_center(self.morph)  # update the center position
+        update.symmetric(self, self.pixel_center)  # make the morph perfectly symmetric
+        update.monotonic(self, self.pixel_center)  # make the morph monotonically decreasing
+        update.positive(self)  # Make the SED and morph non-negative
+        update.normalize(self)
+        return self
+
+
+class ExtendedSource(Component):
+    def __init__(self, scene, sky_coord, observations, bg_rms, obs_idx=0, thresh=1,
+                 symmetric=True, monotonic=True, **component_kwargs):
+        self.symmetric = symmetric
+        self.monotonic = monotonic
+        self.coords = sky_coord
+        center = scene.get_pixel(sky_coord)
+        self.pixel_center = center
+
+        sed, morph = init_extended_source(sky_coord, scene, observations, bg_rms, obs_idx,
+                                          thresh, symmetric, monotonic)
+
+        super().__init__(sed, morph, **component_kwargs)
+
+    def update(self):
+        if self.symmetric:
+            update.symmetric_fit_center(self.morph)  # update the center position
+            center = self.coords
+            update.symmetric(self, center)  # make the morph perfectly symmetric
+        elif self.monotonic:
+            update.fit_pixel_center(self)
+            center = self.pixel_center
+        if self.monotonic:
+            update.monotonic(self, center)  # make the morph monotonically decreasing
+        update.positive(self)  # Make the SED and morph non-negative
+        update.normalize(self)
+        return self
+
+
+class MultiComponentSource(ComponentTree):
+    """Create an extended source with multiple components layered vertically.
+    Uses `~scarlet.source.ExtendedSource` to define the overall morphology,
+    then erodes the outer footprint until it reaches the specified size percentile.
+    For the narrower footprint, it evaluates the mean value at the perimeter and
+    sets the inside to the perimeter value, creating a flat distribution inside.
+    The subsequent component(s) is/are set to the difference between the flattened
+    and the overall morphology.
+    The SED for all components is calculated as the best fit of the multi-component
+    morphology to the multi-band image in the region of the source.
+    """
+    def __init__(self, scene, sky_coord, observations, bg_rms, obs_idx=0, thresh=1,
+                 symmetric=True, monotonic=True, **component_kwargs):
+        seds, morphs = init_multicomponent_source(sky_coord, scene, observations, bg_rms, obs_idx,
+                                                  thresh, symmetric, monotonic)
+
+        class MultiComponent(Component):
+            def __init__(self, sed, morph, symmetric, monotonic, **kwargs):
+                self.symmetric = symmetric
+                self.monotonic = monotonic
+                super().__init__(sed, morph, **kwargs)
+
+            def update(self):
+                if self.symmetric:
+                    update.symmetric_fit_center(self.morph)  # update the center position
+                    center = self.coords
+                    update.symmetric(self, center)  # make the morph perfectly symmetric
+                elif self.monotonic:
+                    update.fit_pixel_center(self)
+                    center = self.pixel_center
+                if self.monotonic:
+                    update.monotonic(self, center)  # make the morph monotonically decreasing
+                update.positive(self)  # Make the SED and morph non-negative
+                update.normalize(self)
+                return self
+
+        components = [
+            MultiComponent(seds[k], morphs[k], symmetric, monotonic, **component_kwargs)
+            for k in range(len(seds))
+        ]
+        super().__init__(components)

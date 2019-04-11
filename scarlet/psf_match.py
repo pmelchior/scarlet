@@ -1,12 +1,9 @@
 import numpy as np
 import torch
 
-from .config import Config
-from . import constraint as sc
 from .component import Component
-from .source import Source
 from .blend import Blend
-from .observation import Observation
+from .observation import Scene, Observation
 
 
 def moffat(coords, y0, x0, amplitude, alpha, beta=1.5):
@@ -125,8 +122,7 @@ def fit_target_psf(psfs, func, init_values=None, extract_values=None):
     return torch.tensor(target_psf.astype(np.float32)), all_params, params
 
 
-def build_diff_kernels(psfs, target_psf, max_iter=100, e_rel=1e-3, constraints=None, cutoff=None,
-                       l0_thresh=1e-4):
+def build_diff_kernels(psfs, target_psf, max_iter=100, e_rel=1e-3, padding=3):
     """Build the difference kernel to match a list of `psfs` to a `target_psf`
 
     This convenience function runs the `Blend` class on a collection of
@@ -160,27 +156,17 @@ def build_diff_kernels(psfs, target_psf, max_iter=100, e_rel=1e-3, constraints=N
         `psfs` to `target_psf`, where `diff_kernels` is an array
         of the `Source.morph` for each source in `psf_blend`.
     """
-    config = Config(refine_skip=100)
-    center = np.array([psfs[0].shape[0] // 2, psfs[0].shape[1] // 2])
-    if constraints is None:
-        constraints = [sc.MinimalConstraint()]
-        if l0_thresh > 0:
-            constraints.append(sc.L0Constraint(l0_thresh))
-    if cutoff is None:
-        cutoff = 0
-    sources = [
-        PSFDiffKernel(center, psfs, cutoff, b, constraints=constraints, config=config)
-        for b in range(len(psfs))
-    ]
+    scene = Scene(psfs.shape)
+    sources = [PSFDiffKernel(psfs, band) for band in range(len(psfs))]
     target_psf = torch.stack([target_psf for n in range(len(psfs))])
-    observation = Observation(images=psfs, psfs=target_psf, bg_rms=[cutoff]*len(psfs))
-    psf_blend = Blend(sources, observation, config)
-    psf_blend.fit(max_iter, e_rel=1e-3, padding=3)
+    observation = Observation(images=psfs, psfs=target_psf)
+    psf_blend = Blend(scene, sources, observation)
+    psf_blend.fit(max_iter, e_rel)
     diff_kernels = torch.stack([kernel.morph for kernel in psf_blend.components])
     return diff_kernels, psf_blend
 
 
-class PSFDiffKernel(Source):
+class PSFDiffKernel(Component):
     """Create a model of the PSF in a single band
 
     Passing a `PSFDiffKernel` for each band as a list of sources to
@@ -188,7 +174,7 @@ class PSFDiffKernel(Source):
     the difference kernel in each band, which gives more accurate
     results when performing PSF deconvolution.
     """
-    def __init__(self, center, psfs, cutoff, band, constraints=None, config=None):
+    def __init__(self, psfs, band):
         """Initialize the difference kernel in a single band
 
         See :class:`~scarlet.source.Source` for parameter descriptions not listed below.
@@ -216,6 +202,4 @@ class PSFDiffKernel(Source):
         sed[band] = 1
         morph = psfs[band]
 
-        component = Component(sed, morph, center=center, constraints=constraints,
-                              fix_sed=True, fix_morph=False)
-        super(PSFDiffKernel, self).__init__(component)
+        super().__init__(sed, morph, fix_sed=True, fix_morph=False)

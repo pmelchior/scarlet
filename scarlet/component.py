@@ -1,12 +1,32 @@
-import torch
-import numpy as np
+from enum import Flag, auto
 
-from . import constraint as sc
-from .convolution import fft_convolve
-from .utils import BoundingBox, resize
+import torch
 
 import logging
 logger = logging.getLogger("scarlet.component")
+
+
+class BlendFlag(Flag):
+    NONE = 0
+    SED_NOT_CONVERGED = auto()
+    MORPH_NOT_CONVERGED = auto()
+    EDGE_PIXELS = auto()
+    CONVERSION_FAILED = auto()
+    NO_VALID_PIXELS = auto()
+    SATURATED = auto()
+    LOW_FLUX = auto()
+
+
+class Prior():
+    def __init__(self, grad, L):
+        self._grad_func = grad
+        self._L_func = L
+
+    # can be overloaded but needs to set these 4 members
+    # for batch processing: cache results with c as key
+    def compute_grad(self, c):
+        self.grad_morph, self.grad_sed = self._grad_func(c.morph, c.sed)
+        self.L_morph, self.L_sed = self._L_func(c.morph, c.sed)
 
 
 class Component(object):
@@ -14,8 +34,8 @@ class Component(object):
 
     This class acts as base for building complex :class:`scarlet.source.Source`.
     """
-    def __init__(self, sed, morph, constraints=None, fix_sed=False, fix_morph=False, config=None,
-                 center=None, bbox=None):
+    def __init__(self, sed, morph, priors=None, fix_sed=False, fix_morph=False, bboxes=None,
+                 flags=None):
         """Constructor
 
         Create component from a SED vector and morphology image.
@@ -34,42 +54,35 @@ class Component(object):
             Whether or not the SED is fixed, or can be updated
         fix_morph: bool, default=`False`
             Whether or not the morphology is fixed, or can be updated
-        config: :class:`scarlet.config.Config`
-            The configuration parameters of the entire blend.
         """
         # set sed and morph
         self.B = sed.size()[0]
         self.Ny, self.Nx = morph.shape
         if isinstance(sed, torch.Tensor):
-            self._sed = sed.clone()
+            self._sed = sed.detach().clone()
             self._sed.requires_grad_(not fix_sed)
         else:
             self._sed = torch.tensor(morph, requires_grad=not fix_sed)
         if isinstance(morph, torch.Tensor):
-            self._morph = morph.clone()
+            self._morph = morph.detach().clone()
             self._morph.requires_grad_(not fix_morph)
         else:
             self._morph = torch.tensor(morph, requires_grad=not fix_morph)
 
-        center = np.unravel_index(np.argmax(self.morph), self.morph.shape)
-        self.update_center(center)
+        self.priors = priors
 
-        # updates for frame, sed, morph?
-        self.fix_sed = fix_sed
-        self.fix_morph = fix_morph
-
-        self.set_constraints(constraints)
+        if bboxes is None:
+            bboxes = {}
+        self._bboxes = bboxes
+        if flags is None:
+            flags = BlendFlag.SED_NOT_CONVERGED | BlendFlag.MORPH_NOT_CONVERGED
+        self.flags = flags
+        self._last_sed = torch.zeros_like(sed)
+        self._last_morph = torch.zeros_like(morph)
 
         # for ComponentTree
         self._index = None
         self._parent = None
-
-        self._center = center
-        if bbox is None:
-            bbox = BoundingBox()
-        self._bbox = bbox
-        self._model = None
-        self.model_step = -1
 
     @property
     def shape(self):
@@ -96,34 +109,10 @@ class Component(object):
         return self._morph.data
 
     @property
-    def center(self):
-        return self._center
+    def bboxes(self):
+        return self._bboxes
 
-    @property
-    def bbox(self):
-        return self._bbox
-
-    def set_constraints(self, constraints):
-        """Set constraints for component.
-
-        Parameters
-        ----------
-        constraints: None, constraint or array-like, default=none
-            Constraints can be either `~scarlet.constraints.Constraint` or
-            `~scarlet.constraints.ConstraintList`. If an array is given, it is
-            one constraint per component.
-
-        Returns
-        -------
-        None
-        """
-
-        if constraints is None:
-            constraints = sc.MinimalConstraint()
-
-        self.constraints = sc.ConstraintAdapter(constraints, self)
-
-    def get_model(self, psfs=None, padding=3, trim=True):
+    def get_model(self, bbox=None):
         """Get the model this component.
 
         Parameters
@@ -136,64 +125,31 @@ class Component(object):
             (Bands, Height, Width) image of the model
         """
         model = self._sed[:, None, None] * self._morph[None, :, :]
-        if psfs is not None:
-            model = torch.stack([
-                fft_convolve(model[b], psfs[b], padding=padding)
-                for b in range(self.B)
-            ])
-        if trim:
-            model = model[(slice(None), *self.bbox.slices)]
-        return model
 
-    def update_center(self, center):
-        """Given a (y,x) `center`, update the frame and `Gamma`
-        """
-        assert len(center) == 2
-        self._center = tuple(center)
-
-    def update_bbox(self, bbox=None, min_value=None):
-        """Update the bounding box
-
-        If `bbox` is not `None` then the bounding boxe is set to `bbox`.
-        Otherwise `min_value` must be specified and the component is
-        checked to see if it has any flux on its edge larger than `min_value`.
-        If it does then the bounding box is resized and trimmed.
-
-        Parameters
-        ----------
-        bbox: `BoundingBox`
-            The new bounding box.
-        `min_value`: float
-            Minimum value in the component to avoid being trimmed.
-        """
+        # Optionally extract the model in a given bounding box
         if bbox is not None:
-            self._bbox = bbox
-        elif min_value is not None:
-            self._bbox = resize(self.get_model(trim=False), self.bbox, min_value)
-        else:
-            msg = "Either `bbox` or `min_value` must be set to update the bounding boxes"
-            raise ValueError(msg)
+            if bbox in self.bboxes:
+                bbox = self.bboxes[bbox]
+            model = model[(slice(None), *bbox.slices)]
+        return model
 
     def get_flux(self):
         """Get flux in every band
         """
         return self._morph.sum() * self._sed
 
-    def _normalize(self, normalization):
-        """Apply normalization to SED & Morphology, assuming an initial Smax norm
+    def backward_prior(self):
+        if self.priors is not None:
+            self.priors.compute_grad(self)
+            if self.morph.requires_grad:
+                self.morph.grad += self.priors.grad_morph
+                self.L_morph += self.priors.L_morph
+            if self.sed.requires_grad:
+                self.morph.grad += self.priors.grad_morph
+                self.L_morph += self.priors.L_morph
 
-        Parameters
-        ----------
-        normalization: `~scarlet.constraint.Normalization`
-        """
-        if normalization == sc.Normalization.A:
-            norm = self.sed.sum()
-            self.sed[:] = self.sed / norm
-            self.morph[:] = self.morph / norm
-        elif normalization == sc.Normalization.S:
-            norm = self.morph.sum()
-            self.morph[:] = self.morph / norm
-            self.sed[:] = self.sed / norm
+    def update(self):
+        return self
 
 
 class ComponentTree(object):
@@ -301,36 +257,31 @@ class ComponentTree(object):
             else:
                 return (self._index,)
 
-    def _update(self, update_type):
-        """Recursively update the tree"""
-        for c in self._tree:
-            if hasattr(c, update_type):
-                getattr(c, update_type)()
-
-    def update_center(self):
-        """Update the center location of attached nodes.
-
-        This methods recursively call the same function of all attached tree nodes.
+    def get_model(self):
+        """Get the model this component tree
+         Returns
+        -------
+        model: `~torch.tensor`
+            (Bands, Height, Width) data cube
         """
-        self._update("update_center")
+        for k, component in enumerate(self.components):
+            if k == 0:
+                model = component.get_model()
+            else:
+                model += component.get_model()
+        return model
 
-    def update_sed(self):
-        """Update the SEDs of attached nodes.
+    def get_flux(self):
+        for k, component in enumerate(self.components):
+            if k == 0:
+                model = component.get_flux()
+            else:
+                model += component.get_flux()
+        return model
 
-        This methods recursively call the same function of all attached tree nodes.
-        While the method has complete freedom to perform updates, it is
-        recommended that its behavior mimics a proximal operator in the direct domain.
-        """
-        self._update("update_sed")
-
-    def update_morph(self):
-        """Update the morphologies of attached nodes.
-
-        This methods recursively call the same function of all attached tree nodes.
-        While the method has complete freedom to perform updates, it is
-        recommended that its behavior mimics a proximal operator in the direct domain.
-        """
-        self._update("update_morph")
+    def update(self):
+        for component in self.components:
+            component.update()
 
     def __iadd__(self, c):
         """Add another component or tree.

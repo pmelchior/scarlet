@@ -245,6 +245,28 @@ def lanczos(dx, a=3):
     return y, window.astype(int)
 
 
+def quintic_spline(dx, dtype=np.float64):
+    def inner(x):
+        return 1+x**3/12*(-95+138*x-55*x**2)
+
+    def middle(x):
+        return (x-1)*(x-2)/24*(-138+348*x-249*x**2+55*x**3)
+
+    def outer(x):
+        return (x-2)*(x-3)**2/24*(-54+50*x-11*x**2)
+    window = np.arange(-3, 4)
+    abs_x = np.abs(dx-window)
+    inner_cut = abs_x <= 1
+    middle_cut = (abs_x <= 2) & (abs_x > 1)
+    outer_cut = (abs_x <= 3) & (abs_x > 2)
+
+    result = np.zeros(7, dtype=dtype)
+    result[inner_cut] = inner(abs_x[inner_cut])
+    result[middle_cut] = middle(abs_x[middle_cut])
+    result[outer_cut] = outer(abs_x[outer_cut])
+    return result, window
+
+
 def get_separable_kernel(dy, dx, kernel=lanczos, **kwargs):
     """Create a 2D kernel from a 1D kernel separable in x and y
 

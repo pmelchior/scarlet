@@ -3,38 +3,48 @@ from functools import partial
 
 import numpy as np
 import torch
-from proxmin.operators import prox_plus
+from proxmin.operators import prox_plus, _step_gamma
+from proxmin.utils import MatrixAdapter
+
+from .cache import Cache
 
 import logging
 logger = logging.getLogger("scarlet.operator")
 
 
-def prox_unity(X, step, axis=0):
+def prox_soft(X, step_size, thresh=0):
+    """Soft thresholding proximal operator
+    """
+    thresh_ = _step_gamma(step_size, thresh)
+    return torch.sign(X)*prox_plus(torch.abs(X) - thresh_, step_size)
+
+
+def prox_unity(X, axis=0):
     """Projection onto sum=1 along an axis
     """
     return X / X.sum(dim=axis)
 
 
-def prox_unity_plus(X, step, axis=0):
+def prox_unity_plus(X, step_size, axis=0):
     """Non-negative projection onto sum=1 along an axis
     """
-    return prox_unity(prox_plus(X, step), step, axis=axis)
+    return prox_unity(prox_plus(X, step_size), step_size, axis=axis)
 
 
-def _prox_strict_monotonic(X, step, ref_idx, dist_idx, thresh=0):
+def _prox_strict_monotonic(X, step_size, ref_idx, dist_idx, thresh=0):
     """Force an intensity profile to be monotonic
     """
     from . import operators_pybind11
     _X = X.detach().numpy()
-    operators_pybind11.prox_monotonic(_X.reshape(-1), step, ref_idx, dist_idx, thresh)
+    operators_pybind11.prox_monotonic(_X.reshape(-1), step_size, ref_idx, dist_idx, thresh)
     X[:] = torch.tensor(_X)
     return X
 
 
-def _prox_weighted_monotonic(X, step, weights, didx, offsets, thresh=0):
+def _prox_weighted_monotonic(X, step_size, weights, didx, offsets, thresh=0):
     from . import operators_pybind11
     _X = X.detach().numpy()
-    operators_pybind11.prox_weighted_monotonic(_X.reshape(-1), step, weights, offsets, didx, thresh)
+    operators_pybind11.prox_weighted_monotonic(_X.reshape(-1), step_size, weights, offsets, didx, thresh)
     X[:] = torch.tensor(_X)
     return X
 
@@ -82,8 +92,6 @@ def sort_by_radius(shape, center=None):
 def prox_strict_monotonic(shape, use_nearest=False, thresh=0, center=None):
     """Build the prox_monotonic operator
     """
-    from . import transformation
-
     height, width = shape
     didx = sort_by_radius(shape, center)
 
@@ -93,7 +101,7 @@ def prox_strict_monotonic(shape, use_nearest=False, thresh=0, center=None):
             # thresh and nearest neighbors are not compatible, since this thresholds the
             # central pixel and eventually sets the entire array to zero
             raise ValueError("Thresholding does not work with nearest neighbor monotonicity")
-        monotonicOp = transformation.getRadialMonotonicOp(shape, useNearest=True)
+        monotonicOp = getRadialMonotonicOp(shape, useNearest=True)
         x_idx, ref_idx = sparse.find(monotonicOp.L == 1)[:2]
         ref_idx = ref_idx[np.argsort(x_idx)]
         result = partial(_prox_strict_monotonic, ref_idx=ref_idx.tolist(),
@@ -101,13 +109,13 @@ def prox_strict_monotonic(shape, use_nearest=False, thresh=0, center=None):
     else:
         coords = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
         offsets = np.array([width*y+x for y, x in coords])
-        weights = transformation.getRadialMonotonicWeights(shape, useNearest=False, center=center)
+        weights = getRadialMonotonicWeights(shape, useNearest=False, center=center)
         result = partial(_prox_weighted_monotonic, weights=weights,
                          didx=didx[1:], offsets=offsets, thresh=thresh)
     return result
 
 
-def prox_cone(X, step, G=None):
+def prox_cone(X, step_size, G=None):
     """Exact projection of components of X onto cone defined by Gx >= 0"""
     k, n = X.shape
     for i in range(k):
@@ -131,7 +139,7 @@ def prox_cone(X, step, G=None):
     return X
 
 
-def prox_center_on(X, step, tiny=1e-10):
+def prox_center_on(X, step_size, tiny=1e-10):
     """Ensure that the central pixel has positive flux
 
     Make sure that the center pixel as at least some amount of flux
@@ -192,13 +200,13 @@ def uncentered_operator(X, func, center=None, fill=None, **kwargs):
     return X
 
 
-def prox_sdss_symmetry(X, step):
+def prox_sdss_symmetry(X, step_size):
     Xs = torch.flip(X, (0, 1))
     X[:] = torch.min(torch.stack([X, Xs]), dim=0)[0]
     return X
 
 
-def prox_soft_symmetry(X, step, sigma=1):
+def prox_soft_symmetry(X, step_size, sigma=1):
     """Soft version of symmetry
     Using a `sigma` that varies from 0 to 1,
     with 0 meaning no symmetry enforced at all and
@@ -210,14 +218,14 @@ def prox_soft_symmetry(X, step, sigma=1):
     return X
 
 
-def prox_uncentered_symmetry(X, step, center=None, sigma=.5, use_soft=True):
+def prox_uncentered_symmetry(X, step_size, center=None, strength=.5, use_soft=True):
     """Symmetry with off-center peak
 
     Symmetrize X where it can be made symmetric
     """
     if use_soft:
-        return uncentered_operator(X, prox_soft_symmetry, center, step=step, sigma=sigma)
-    return uncentered_operator(X, prox_sdss_symmetry, center, step=step, fill=0)
+        return uncentered_operator(X, prox_soft_symmetry, center, step_size=step_size, strength=strength)
+    return uncentered_operator(X, prox_sdss_symmetry, center, step_size=step_size, fill=0)
 
 
 def proj(A, B):
@@ -327,3 +335,198 @@ def proximal_disk_sed(X, step, peaks, algorithm=project_disk_sed_mean):
             X[:, disk_k] = algorithm(X[:, bulge_k], X[:, disk_k])
     X = prox_unity_plus(X, step, axis=0)
     return X
+
+
+def getOffsets(width, coords=None):
+    """Get the offset and slices for a sparse band diagonal array
+    For an operator that interacts with its neighbors we want a band diagonal matrix,
+    where each row describes the 8 pixels that are neighbors for the reference pixel
+    (the diagonal). Regardless of the operator, these 8 bands are always the same,
+    so we make a utility function that returns the offsets (passed to scipy.sparse.diags).
+    See `diagonalizeArray` for more on the slices and format of the array used to create
+    NxN operators that act on a data vector.
+    """
+    # Use the neighboring pixels by default
+    if coords is None:
+        coords = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
+    offsets = [width*y+x for y, x in coords]
+    slices = [slice(None, s) if s < 0 else slice(s, None) for s in offsets]
+    slicesInv = [slice(-s, None) if s < 0 else slice(None, -s) for s in offsets]
+    return offsets, slices, slicesInv
+
+
+def diagonalizeArray(arr, shape=None, dtype=np.float64):
+    """Convert an array to a matrix that compares each pixel to its neighbors
+    Given an array with length N, create an 8xN array, where each row will be a
+    diagonal in a diagonalized array. Each column in this matrix is a row in the larger
+    NxN matrix used for an operator, except that this 2D array only contains the values
+    used to create the bands in the band diagonal matrix.
+    Because the off-diagonal bands have less than N elements, ``getOffsets`` is used to
+    create a mask that will set the elements of the array that are outside of the matrix to zero.
+    ``arr`` is the vector to diagonalize, for example the distance from each pixel to the peak,
+    or the angle of the vector to the peak.
+    ``shape`` is the shape of the original image.
+    """
+    if shape is None:
+        height, width = arr.shape
+        data = arr.flatten()
+    elif len(arr.shape) == 1:
+        height, width = shape
+        data = np.copy(arr)
+    else:
+        raise ValueError("Expected either a 2D array or a 1D array and a shape")
+    size = width * height
+
+    # We hard code 8 rows, since each row corresponds to a neighbor
+    # of each pixel.
+    diagonals = np.zeros((8, size), dtype=dtype)
+    mask = np.ones((8, size), dtype=bool)
+    offsets, slices, slicesInv = getOffsets(width)
+    for n, s in enumerate(slices):
+        diagonals[n][slicesInv[n]] = data[s]
+        mask[n][slicesInv[n]] = 0
+
+    # Create a mask to hide false neighbors for pixels on the edge
+    # (for example, a pixel on the left edge should not be connected to the
+    # pixel to its immediate left in the flattened vector, since that pixel
+    # is actual the far right pixel on the row above it).
+    mask[0][np.arange(1, height)*width] = 1
+    mask[2][np.arange(height)*width-1] = 1
+    mask[3][np.arange(1, height)*width] = 1
+    mask[4][np.arange(1, height)*width-1] = 1
+    mask[5][np.arange(height)*width] = 1
+    mask[7][np.arange(1, height-1)*width-1] = 1
+
+    return diagonals, mask
+
+
+def diagonalsToSparse(diagonals, shape, dtype=np.float64):
+    """Convert a diagonalized array into a sparse diagonal matrix
+    ``diagonalizeArray`` creates an 8xN array representing the bands that describe the
+    interactions of a pixel with its neighbors. This function takes that 8xN array and converts
+    it into a sparse diagonal matrix.
+    See `diagonalizeArray` for the details of the 8xN array.
+    """
+    import scipy.sparse
+    height, width = shape
+    offsets, slices, slicesInv = getOffsets(width)
+    diags = [diag[slicesInv[n]] for n, diag in enumerate(diagonals)]
+    diagonalArr = scipy.sparse.diags(diags, offsets, dtype=dtype)
+    return diagonalArr
+
+
+def getRadialMonotonicWeights(shape, useNearest=True, minGradient=1, center=None):
+    """Create the weights used for the Radial Monotonicity Operator
+    This version of the radial monotonicity operator selects all of the pixels closer to the peak
+    for each pixel and weights their flux based on their alignment with a vector from the pixel
+    to the peak. In order to quickly create this using sparse matrices, its construction is a bit opaque.
+    """
+    if center is None:
+        center = ((shape[0]-1) // 2, (shape[1]-1) // 2)
+    name = "RadialMonotonicWeights"
+    key = tuple(shape) + tuple(center) + (useNearest, minGradient)
+    try:
+        cosNorm = Cache.check(name, key)
+    except KeyError:
+
+        # Center on the center pixel
+        py, px = int(center[0]), int(center[1])
+        # Calculate the distance between each pixel and the peak
+        x = np.arange(shape[1])
+        y = np.arange(shape[0])
+        X, Y = np.meshgrid(x, y)
+        X = X - px
+        Y = Y - py
+        distance = np.sqrt(X**2+Y**2)
+
+        # Find each pixels neighbors further from the peak and mark them as invalid
+        # (to be removed later)
+        distArr, mask = diagonalizeArray(distance, dtype=np.float64)
+        relativeDist = (distance.flatten()[:, None]-distArr.T).T
+        invalidPix = relativeDist <= 0
+
+        # Calculate the angle between each pixel and the x axis, relative to the peak position
+        # (also avoid dividing by zero and set the tan(infinity) pixel values to pi/2 manually)
+        inf = X == 0
+        tX = X.copy()
+        tX[inf] = 1
+        angles = np.arctan2(-Y, -tX)
+        angles[inf & (Y != 0)] = 0.5*np.pi*np.sign(angles[inf & (Y != 0)])
+
+        # Calcualte the angle between each pixel and it's neighbors
+        xArr, m = diagonalizeArray(X)
+        yArr, m = diagonalizeArray(Y)
+        dx = (xArr.T-X.flatten()[:, None]).T
+        dy = (yArr.T-Y.flatten()[:, None]).T
+        # Avoid dividing by zero and set the tan(infinity) pixel values to pi/2 manually
+        inf = dx == 0
+        dx[inf] = 1
+        relativeAngles = np.arctan2(dy, dx)
+        relativeAngles[inf & (dy != 0)] = 0.5*np.pi*np.sign(relativeAngles[inf & (dy != 0)])
+
+        # Find the difference between each pixels angle with the peak
+        # and the relative angles to its neighbors, and take the
+        # cos to find its neighbors weight
+        dAngles = (angles.flatten()[:, None]-relativeAngles.T).T
+        cosWeight = np.cos(dAngles)
+        # Mask edge pixels, array elements outside the operator (for offdiagonal bands with < N elements),
+        # and neighbors further from the peak than the reference pixel
+        cosWeight[invalidPix] = 0
+        cosWeight[mask] = 0
+
+        if useNearest:
+            # Only use a single pixel most in line with peak
+            cosNorm = np.zeros_like(cosWeight)
+            columnIndices = np.arange(cosWeight.shape[1])
+            maxIndices = np.argmax(cosWeight, axis=0)
+            indices = maxIndices*cosNorm.shape[1]+columnIndices
+            indices = np.unravel_index(indices, cosNorm.shape)
+            cosNorm[indices] = minGradient
+            # Remove the reference for the peak pixel
+            cosNorm[:, px+py*shape[1]] = 0
+        else:
+            # Normalize the cos weights for each pixel
+            normalize = np.sum(cosWeight, axis=0)
+            normalize[normalize == 0] = 1
+            cosNorm = (cosWeight.T/normalize[:, None]).T
+            cosNorm[mask] = 0
+
+        Cache.set(name, key, cosNorm)
+
+    return cosNorm
+
+
+def getRadialMonotonicOp(shape, useNearest=True, minGradient=1, subtract=True):
+    """Create an operator to constrain radial monotonicity
+    This version of the radial monotonicity operator selects all of the pixels closer to the peak
+    for each pixel and weights their flux based on their alignment with a vector from the pixel
+    to the peak. In order to quickly create this using sparse matrices, its construction is a bit opaque.
+    """
+    import scipy.sparse
+
+    name = "RadialMonotonic"
+    key = tuple(shape) + (useNearest, minGradient, subtract)
+    try:
+        monotonic = Cache.check(name, key)
+    except KeyError:
+
+        cosNorm = getRadialMonotonicWeights(shape, useNearest=useNearest, minGradient=1)
+        cosArr = diagonalsToSparse(cosNorm, shape)
+
+        # The identity with the peak pixel removed represents the reference pixels
+        # Center on the center pixel
+        px = int(shape[1]/2)
+        py = int(shape[0]/2)
+        # Calculate the distance between each pixel and the peak
+        size = shape[0]*shape[1]
+        diagonal = np.ones(size)
+        diagonal[px+py*shape[1]] = -1
+        if subtract:
+            monotonic = cosArr-scipy.sparse.diags(diagonal, offsets=0)
+        else:
+            monotonic = cosArr
+        monotonic = MatrixAdapter(monotonic.tocoo(), axis=1)
+        monotonic.spectral_norm
+        Cache.set(name, key, monotonic)
+
+    return monotonic

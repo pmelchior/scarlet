@@ -2,7 +2,6 @@ import sys
 
 import pytest
 import numpy as np
-import proxmin
 
 import scarlet
 from scarlet.constraint import Normalization
