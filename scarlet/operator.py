@@ -2,8 +2,7 @@ from __future__ import print_function, division
 from functools import partial
 
 import numpy as np
-import torch
-from proxmin.operators import prox_plus, _step_gamma
+from proxmin.operators import prox_unity_plus
 from proxmin.utils import MatrixAdapter
 
 from .cache import Cache
@@ -12,40 +11,26 @@ import logging
 logger = logging.getLogger("scarlet.operator")
 
 
-def prox_soft(X, step_size, thresh=0):
-    """Soft thresholding proximal operator
-    """
-    thresh_ = _step_gamma(step_size, thresh)
-    return torch.sign(X)*prox_plus(torch.abs(X) - thresh_, step_size)
-
-
-def prox_unity(X, axis=0):
-    """Projection onto sum=1 along an axis
-    """
-    return X / X.sum(dim=axis)
-
-
-def prox_unity_plus(X, step_size, axis=0):
-    """Non-negative projection onto sum=1 along an axis
-    """
-    return prox_unity(prox_plus(X, step_size), step_size, axis=axis)
-
-
-def _prox_strict_monotonic(X, step_size, ref_idx, dist_idx, thresh=0):
-    """Force an intensity profile to be monotonic
-    """
-    from . import operators_pybind11
-    _X = X.detach().numpy()
-    operators_pybind11.prox_monotonic(_X.reshape(-1), step_size, ref_idx, dist_idx, thresh)
-    X[:] = torch.tensor(_X)
+def prox_max_unity(X, step):
+    """Normalize X so that it's max value is unity."""
+    norm = X.max()
+    X[:] = X/norm
     return X
 
 
-def _prox_weighted_monotonic(X, step_size, weights, didx, offsets, thresh=0):
+def _prox_strict_monotonic(X, step, ref_idx, dist_idx, thresh=0):
+    """Force an intensity profile to be monotonic based on nearest neighbor
+    """
     from . import operators_pybind11
-    _X = X.detach().numpy()
-    operators_pybind11.prox_weighted_monotonic(_X.reshape(-1), step_size, weights, offsets, didx, thresh)
-    X[:] = torch.tensor(_X)
+    operators_pybind11.prox_monotonic(X.reshape(-1), step, ref_idx, dist_idx, thresh)
+    return X
+
+
+def _prox_weighted_monotonic(X, step, weights, didx, offsets, thresh=0):
+    """Force an intensity profile to be monotonic based on weighting neighbors
+    """
+    from . import operators_pybind11
+    operators_pybind11.prox_weighted_monotonic(X.reshape(-1), step, weights, offsets, didx, thresh)
     return X
 
 
@@ -55,21 +40,22 @@ def sort_by_radius(shape, center=None):
     Given a shape, calculate the distance of each
     pixel from the center and return the indices
     of each pixel, sorted by radial distance from
-    the center.
+    the center, which need not be in the center
+    of the image.
 
     Parameters
     ----------
-    shape: tuple
+    shape: `tuple`
         Shape (y,x) of the source frame.
+
+    center: array-like
+        Location of the center pixel.
 
     Returns
     -------
     didx: `~numpy.array`
         Indices of elements in an image with shape `shape`,
         sorted by distance from the center.
-    ref_idx: `~numpy.array`
-        Indices of the element in the image closest to the
-        center for each pixel in didx.
     """
     # Get the center pixels
     if center is None:
@@ -91,6 +77,24 @@ def sort_by_radius(shape, center=None):
 
 def prox_strict_monotonic(shape, use_nearest=False, thresh=0, center=None):
     """Build the prox_monotonic operator
+
+    Parameters
+    ----------
+    use_nearest: `bool`
+        Whether to use the nearest pixel to the center for comparison
+        (`use_nearest=True`) or use a weighted combination of all
+        neighbors closer to the central pixel (`use_nearest=False`).
+    thresh: `float`
+        Forced gradient. A `thresh` of zero will allow a pixel to be the
+        same value as its reference pixels, while a `thresh` of one
+        will force the pixel to zero.
+    center: tuple
+        Location of the central (highest-value) pixel.
+
+    Returns
+    -------
+    result: `function`
+        The monotonicity function.
     """
     height, width = shape
     didx = sort_by_radius(shape, center)
@@ -115,7 +119,7 @@ def prox_strict_monotonic(shape, use_nearest=False, thresh=0, center=None):
     return result
 
 
-def prox_cone(X, step_size, G=None):
+def prox_cone(X, step, G=None):
     """Exact projection of components of X onto cone defined by Gx >= 0"""
     k, n = X.shape
     for i in range(k):
@@ -139,7 +143,7 @@ def prox_cone(X, step_size, G=None):
     return X
 
 
-def prox_center_on(X, step_size, tiny=1e-10):
+def prox_center_on(X, step, tiny=1e-10):
     """Ensure that the central pixel has positive flux
 
     Make sure that the center pixel as at least some amount of flux
@@ -148,13 +152,6 @@ def prox_center_on(X, step_size, tiny=1e-10):
     cy = X.shape[0] // 2
     cx = X.shape[1] // 2
     X[cy, cx] = max(X[cy, cx], tiny)
-    return X
-
-
-def prox_max(X, step):
-    """Normalize X so that it's max value is unity."""
-    norm = X.max()
-    X[:] = X/norm
     return X
 
 
@@ -173,8 +170,29 @@ def prox_sed_on(X, step, tiny=1e-10):
 
 
 def uncentered_operator(X, func, center=None, fill=None, **kwargs):
+    """Only apply the operator on a centered patch
+
+    In some cases, for example symmetry, an operator might not make
+    sense outside of a centered box. This operator only updates
+    the portion of `X` inside the centered region.
+
+    Parameters
+    ----------
+    X: array
+        The parameter to update.
+    func: `function`
+        The function (or operator) to apply to `X`.
+    center: tuple
+        The location of the center of the sub-region to
+        apply `func` to `X`.
+    `fill`: `float`
+        The value to fill the region outside of centered
+        `sub-region`, for example `0`. If `fill` is `None`
+        then only the subregion is updated and the rest of
+        `X` remains unchanged.
+    """
     if center is None:
-        py, px = np.unravel_index(torch.argmax(X).numpy(), X.shape)
+        py, px = np.unravel_index(np.argmax(X), X.shape)
     else:
         py, px = center
     cy, cx = np.array(X.shape) // 2
@@ -192,7 +210,7 @@ def uncentered_operator(X, func, center=None, fill=None, **kwargs):
     else:
         yslice = slice(dy, None)
     if fill is not None:
-        _X = torch.ones(X.shape) * fill
+        _X = np.ones(X.shape, X.dtype) * fill
         _X[yslice, xslice] = func(X[yslice, xslice], **kwargs)
         X[:] = _X
     else:
@@ -200,32 +218,58 @@ def uncentered_operator(X, func, center=None, fill=None, **kwargs):
     return X
 
 
-def prox_sdss_symmetry(X, step_size):
-    Xs = torch.flip(X, (0, 1))
-    X[:] = torch.min(torch.stack([X, Xs]), dim=0)[0]
+def prox_sdss_symmetry(X, step):
+    """SDSS/HSC symmetry operator
+
+    This function uses the *minimum* of the two
+    symmetric pixels in the update.
+    """
+    Xs = np.fliplr(np.flipud(X))
+    X[:] = np.min([X, Xs], axis=0)
     return X
 
 
-def prox_soft_symmetry(X, step_size, sigma=1):
+def prox_soft_symmetry(X, step, strength=1):
     """Soft version of symmetry
     Using a `sigma` that varies from 0 to 1,
     with 0 meaning no symmetry enforced at all and
     1  being completely symmetric, the user can customize
     the level of symmetry required for a component
     """
-    Xs = torch.flip(X, (0, 1))
-    X[:] = 0.5 * sigma * (X+Xs) + (1-sigma) * X
+    Xs = np.fliplr(np.flipud(X))
+    X[:] = 0.5 * strength * (X+Xs) + (1-strength) * X
     return X
 
 
-def prox_uncentered_symmetry(X, step_size, center=None, strength=.5, use_soft=True):
+def prox_uncentered_symmetry(X, step, center=None, strength=.5, use_soft=True):
     """Symmetry with off-center peak
 
-    Symmetrize X where it can be made symmetric
+    Symmetrize X for all pixels with a symmetric partner.
+
+    Parameters
+    ----------
+    X: array
+        The parameter to update.
+    step: `int`
+        Step size of the gradient step.
+    center: tuple
+        The center pixel coordinates to apply the symmetry operator.
+    strength: `float`
+        The amount that symmetry is enforced. If `strength=0` then no
+        symmetry is enforced, while `strength=1` enforces strict symmetry
+        (ie. the mean of the two symmetric pixels is used for both of them).
+    use_soft: `bool`
+        Whether to use the strict SDSS symmetry `use_soft=False` or
+        the soft proximal operator (`use_soft=True`).
+
+    Returns
+    -------
+    result: `function`
+        The update function based on the specified parameters.
     """
     if use_soft:
-        return uncentered_operator(X, prox_soft_symmetry, center, step_size=step_size, strength=strength)
-    return uncentered_operator(X, prox_sdss_symmetry, center, step_size=step_size, fill=0)
+        return uncentered_operator(X, prox_soft_symmetry, center, step=step, strength=strength)
+    return uncentered_operator(X, prox_sdss_symmetry, center, step=step, fill=0)
 
 
 def proj(A, B):

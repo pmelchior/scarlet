@@ -1,5 +1,4 @@
 import numpy as np
-import torch
 
 from .component import Component
 from .blend import Blend
@@ -67,7 +66,6 @@ def fit_target_psf(psfs, func, init_values=None, extract_values=None):
     """
     from scipy.optimize import curve_fit
 
-    psfs = psfs.detach().numpy()
     X = np.arange(psfs.shape[2])
     Y = np.arange(psfs.shape[1])
     X, Y = np.meshgrid(X, Y)
@@ -119,7 +117,7 @@ def fit_target_psf(psfs, func, init_values=None, extract_values=None):
 
     # normalize the target PSF
     target_psf = target_psf/target_psf.sum()
-    return torch.tensor(target_psf.astype(np.float32)), all_params, params
+    return target_psf, all_params, params
 
 
 def build_diff_kernels(psfs, target_psf, max_iter=100, e_rel=1e-3, padding=3):
@@ -138,14 +136,10 @@ def build_diff_kernels(psfs, target_psf, max_iter=100, e_rel=1e-3, padding=3):
         Maximum number of iterations used to create the difference kernels
     e_rel: float
         Relative error to use when matching the PSFs
-    constraints: `Constraint` or `ConstraintList`
-        Constraints used to match the PSFs.
-        If `constraints` is `None` then `SimpleConstraint` and `L0Constraint`
-        are used.
-    `cutoff`: floats
-        Minimum non-zero value of the difference kernel for each PSF.
-        If `cutoff` is `None`, then each PSF has no minimum value set,
-        which is the recommended value.
+    padding: int
+        Number of pixels to pad each side with, in addition to
+        half the width of the PSF, for FFT's. This is needed to
+        prevent artifacts due to the FFT.
 
     Returns
     -------
@@ -158,11 +152,11 @@ def build_diff_kernels(psfs, target_psf, max_iter=100, e_rel=1e-3, padding=3):
     """
     scene = Scene(psfs.shape)
     sources = [PSFDiffKernel(psfs, band) for band in range(len(psfs))]
-    target_psf = torch.stack([target_psf for n in range(len(psfs))])
+    target_psf = np.array([target_psf for n in range(len(psfs))])
     observation = Observation(images=psfs, psfs=target_psf)
     psf_blend = Blend(scene, sources, observation)
     psf_blend.fit(max_iter, e_rel)
-    diff_kernels = torch.stack([kernel.morph for kernel in psf_blend.components])
+    diff_kernels = np.array([kernel.morph for kernel in psf_blend.components])
     return diff_kernels, psf_blend
 
 
@@ -175,31 +169,9 @@ class PSFDiffKernel(Component):
     results when performing PSF deconvolution.
     """
     def __init__(self, psfs, band):
-        """Initialize the difference kernel in a single band
-
-        See :class:`~scarlet.source.Source` for parameter descriptions not listed below.
-
-        Parameters
-        ----------
-        cutoff: array-like
-            Minimum values of a psf in any given band, used to contrain
-            the initial size of the PSF.
-        target_psf: array-like
-            The target PSF for all of the bands
-        band: int
-            Each `PSFDiffKernel` has a fixed SED with only a single
-            non-zero band, where `band` is the index in the multi-band
-            data corresponding to this `PSFDiffKernel`.
-        config: :class:`scarlet.config.Config` instance, default=`None`
-            Special configuration to overwrite default optimization parameters
-
-        see :class:`scarlet.source.Source` for other parameters.
-        """
-
         # set sed and morph to that of `band`
         B, Ny, Nx = psfs.shape
-        sed = torch.zeros(B)
+        sed = np.zeros(B, dtype=psfs.dtype)
         sed[band] = 1
         morph = psfs[band]
-
         super().__init__(sed, morph, fix_sed=True, fix_morph=False)

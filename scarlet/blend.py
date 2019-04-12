@@ -1,12 +1,13 @@
-import torch
+import numpy as np
 
 from .component import ComponentTree, BlendFlag
+from .observation import Scene
 
 import logging
 logger = logging.getLogger("scarlet.blend")
 
 
-class Blend(ComponentTree):
+class Blend(ComponentTree, Scene):
     """The blended scene.
 
     The class represents a scene as collection of components, internally as a
@@ -34,7 +35,8 @@ class Blend(ComponentTree):
         ----------
         components: list of `~scarlet.component.Component` or `~scarlet.component.ComponentTree`
         """
-        super().__init__(sources)
+        ComponentTree.__init__(self, sources)
+        Scene.__init__(self, scene.shape, wcs=scene.wcs, psfs=scene.psfs, filtercurve=scene.filtercurve)
 
         self.it = 0
         try:
@@ -42,85 +44,101 @@ class Blend(ComponentTree):
         except TypeError:
             observations = (observations,)
         self._observations = observations
-        self._scene = scene
         self.L_morph, self.L_sed = 1, 1
 
     @property
     def sources(self):
-        """Return the list of `~scarlet.Source` used in the blend.
+        """Return the list of sources used in the blend.
+
+        This will be different than `Blend.components` when
+        some sources have multiple components.
         """
         return self.nodes
 
     @property
     def observations(self):
+        """Observations used to constrain the model
+        """
         return self._observations
 
-    @property
-    def scene(self):
-        return self._scene
-
-    def fit(self, steps=200, e_rel=1e-2):
+    def fit(self, max_iter=200, e_rel=1e-2, approximate_L=False):
         """Fit the model for each source to the data
 
         Parameters
         ----------
-        steps: int
+        max_iter: int
             Maximum number of iterations if the algorithm doesn't converge.
-        e_rel: float, default=`None`
-            Relative error for convergence. If `e_rel` is `None`, the default
-            `~scarlet.blend.Blend.e_rel` is used for convergence checks
-
-        Returns
-        -------
-        self: `~scarlet.blend.Blend`
-            This object, which contains the results of the deblender.
-            For investigating the model components, use the source list specified
-            at construction time or `~scarlet.blend.Blend.sources`, which is
-            the internal reference to that list.
+        e_rel: float
+            Relative error for convergence of each component.
+        approximate_L: bool
+            Whether or not to use a rough approximation of the
+            Lipschitz constants
         """
         self.converged = False
         self.mse = []
 
-        for step in range(steps):
+        for step in range(max_iter):
             self.it += 1
-            model = self.get_model()
-            self._update_lipschitz()
+            # Combine all of the components into a single model
+            model = self.get_model(False)
 
+            # Caculate the gradients due to the observation likelihoods
             total_loss = 0
             for observation in self.observations:
-                loss = observation.get_loss(model, self.scene)
+                loss = observation.get_loss(model, self)
                 loss.backward()
                 total_loss += loss.item()
             self.mse.append(total_loss)
 
+            # Calculate the Lipschitz constants,
+            # which are needed to determine the step size for each component
+            self._update_lipschitz(approximate_L)
+
+            # Take the next gradient step for each component
             for c in self.components:
                 c.backward_prior()
                 if c._sed.requires_grad:
-                    c._sed.data = c.sed - c._sed.grad.data / c.L_sed
+                    c._sed.data = c._sed.data - c._sed.grad.data / c.L_sed
                     c._sed.grad.data.zero_()
                 if c._morph.requires_grad:
-                    c._morph.data = c.morph - c._morph.grad.data / c.L_morph
+                    c._morph.data = c._morph.data - c._morph.grad.data / c.L_morph
                     c._morph.grad.data.zero_()
 
+            # Call the update functions for all of the sources
             self.update()
 
             if self._check_convergence(e_rel):
                 break
 
     def _check_convergence(self, e_rel):
+        """Check to see if all of the components have converged
+
+        The `flag` property of each component is updated to reflect
+        whether or not its SED and morphology have converged.
+
+        Parameters
+        ----------
+        e_rel: float
+            Relative error for convergence of each component.
+
+        Returns
+        -------
+        converged: bool
+            Whether or not all of the components have converged.
+        """
         e_rel2 = e_rel**2
         if self.it > 1:
             converged = True
             for component in self.components:
                 # sed convergence
-                diff2 = ((component._last_sed-component._sed)**2).sum()
+                diff2 = ((component._last_sed-component.sed)**2).sum()
                 if diff2 <= e_rel2 * (component.sed**2).sum():
                     component.flags &= ~BlendFlag.SED_NOT_CONVERGED
                 else:
                     component.flags |= BlendFlag.SED_NOT_CONVERGED
                     converged = False
                 # morph convergence
-                diff2 = ((component._last_morph-component._morph)**2).sum()
+                diff2 = ((component._last_morph-component.morph)**2).sum()
                 if diff2 <= e_rel2 * (component.morph**2).sum():
                     component.flags &= ~BlendFlag.MORPH_NOT_CONVERGED
                 else:
@@ -129,26 +147,46 @@ class Blend(ComponentTree):
         else:
             converged = False
 
+        # Store a copy of each SED and morphology for the
+        # convergence check in the next iteration
         for c in self.components:
-            c._last_sed = c._sed.detach().clone()
-            c._last_morph = c._morph.detach().clone()
+            c._last_sed = c.sed.copy()
+            c._last_morph = c.morph.copy()
 
         self.converged = converged
         return converged
 
-    def _update_lipschitz(self):
-        seds = torch.zeros(self.K, self.B).float()
-        morphs = torch.zeros(self.K, self.scene.Ny, self.scene.Nx).float()
-        for k, component in enumerate(self.components):
-            seds[k] = component.sed
-            morphs[k] = component.morph
-        _S = morphs.reshape(morphs.shape[0], -1)
-        _SST = _S.mm(_S.t())
-        _ATA = seds.t().mm(seds)
-        # Lipschitz constant for A
-        LA = torch.eig(_SST, eigenvectors=False)[0][:, 0].max().item()
-        # Lipschitz constant for S
-        LS = torch.eig(_ATA, eigenvectors=False)[0][:, 0].max().item()
+    def _update_lipschitz(self, approximate_L):
+        """Update the Lipschitz constants from the observations
+        """
+        if approximate_L:
+            # spectral norm of S*S^T or A^T*A is of order the mean amplitude
+            # of their elements times the number of components
+            LA, LS = 0, 0
+            for c in self.components:
+                LS += (c.sed**2).sum().item()
+                LA += (c.morph**2).sum().item()
+
+            # if loss has increased from last iteration, increase L
+            # TODO: this is insufficient if the estimation above is miles off!
+            # Then: escalate the increase
+            if self.it > 1 and self.mse[-1] > self.mse[-2]:
+                LS *= 2
+                LA *= 2
+        else:
+            # This is still an approximation, but a less crude (albiet slower) one
+            seds = np.zeros((self.K, self.B), dtype=self.dtype)
+            morphs = np.zeros((self.K, self.Ny, self.Nx), dtype=self.dtype)
+            for k, component in enumerate(self.components):
+                seds[k] = component.sed
+                morphs[k] = component.morph
+            _S = morphs.reshape(morphs.shape[0], -1)
+            _SST = _S.dot(_S.T)
+            _ATA = seds.T.dot(seds)
+            # Lipschitz constant for A
+            LA = np.real(np.linalg.eigvals(_SST).max())
+            # Lipschitz constant for S
+            LS = np.real(np.linalg.eigvals(_ATA).max())
 
         LA *= len(self.observations)
         LS *= len(self.observations)

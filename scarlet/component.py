@@ -1,5 +1,6 @@
 from enum import Flag, auto
 
+import numpy as np
 import torch
 
 import logging
@@ -7,80 +8,95 @@ logger = logging.getLogger("scarlet.component")
 
 
 class BlendFlag(Flag):
+    """Flags that can be set by scarlet
+
+    Attributes
+    ----------
+    NONE:
+        There are no flags for this object.
+    SED_NOT_CONVERGED:
+        The SED has not yet converged.
+    MORPH_NOT_CONVERGED:
+        The morphology has not yet converged.
+    EDGE_PIXELS:
+        There is flux at the edge of the model,
+        meaning the shape and intensity of the source
+        might be incorrect.
+    NO_VALID_PIXELS:
+        All of the pixels of the source were below
+        the detection threshold.
+    """
     NONE = 0
     SED_NOT_CONVERGED = auto()
     MORPH_NOT_CONVERGED = auto()
     EDGE_PIXELS = auto()
-    CONVERSION_FAILED = auto()
     NO_VALID_PIXELS = auto()
-    SATURATED = auto()
-    LOW_FLUX = auto()
 
 
 class Prior():
-    def __init__(self, grad, L):
-        self._grad_func = grad
-        self._L_func = L
+    """Priors that require a gradient
+
+    Attributes
+    ----------
+    grad_func: `function`
+        Function used to create the gradient
+    L_func: `function`
+        Function used to calculate the Lipschitz constant
+        of the gradient.
+    """
+    def __init__(self, grad_func, L_func):
+        self._grad_func = grad_func
+        self._L_func = L_func
 
     # can be overloaded but needs to set these 4 members
     # for batch processing: cache results with c as key
-    def compute_grad(self, c):
-        self.grad_morph, self.grad_sed = self._grad_func(c.morph, c.sed)
-        self.L_morph, self.L_sed = self._L_func(c.morph, c.sed)
+    def compute_grad(self, component):
+        """Calculate the gradient
+
+        This method is called by the `Component` that owns
+        it during fitting to calculate the gradient update
+        for the component due to the prior.
+        """
+        self.grad_morph, self.grad_sed = self._grad_func(component._morph, component._sed)
+        self.L_morph, self.L_sed = self._L_func(component._morph, component._sed)
 
 
 class Component(object):
     """A single component in a blend.
 
     This class acts as base for building complex :class:`scarlet.source.Source`.
+
+    Parameters
+    ----------
+    sed: array
+        1D array (bands) of the initial SED.
+    morph: array
+        Data cube (Height, Width) of the initial morphology.
+    priors: list of `~scarlet.component.Prior`s
+        Priors that generate gradient updates for the component.
+    fix_sed: bool, default=`False`
+        Whether or not the SED is fixed, or can be updated
+    fix_morph: bool, default=`False`
+        Whether or not the morphology is fixed, or can be updated
     """
-    def __init__(self, sed, morph, priors=None, fix_sed=False, fix_morph=False, bboxes=None,
-                 flags=None):
-        """Constructor
-
-        Create component from a SED vector and morphology image.
-
-        Parameters
-        ----------
-        sed: array
-            1D array (bands) of the initial SED.
-        morph: array
-            Data cube (Height, Width) of the initial morphology.
-        constraints: :class:`scarlet.constraint.Constraint` or list thereof
-            Constraints used to constrain the SED and/or morphology.
-            When `constraints` is `None` then
-            :class:`scarlet.constraint.MinimalConstraint` is used.
-        fix_sed: bool, default=`False`
-            Whether or not the SED is fixed, or can be updated
-        fix_morph: bool, default=`False`
-            Whether or not the morphology is fixed, or can be updated
-        """
-        # set sed and morph
-        self.B = sed.size()[0]
+    def __init__(self, sed, morph, priors=None, fix_sed=False, fix_morph=False):
+        self.B = sed.shape[0]
         self.Ny, self.Nx = morph.shape
-        if isinstance(sed, torch.Tensor):
-            self._sed = sed.detach().clone()
-            self._sed.requires_grad_(not fix_sed)
-        else:
-            self._sed = torch.tensor(morph, requires_grad=not fix_sed)
-        if isinstance(morph, torch.Tensor):
-            self._morph = morph.detach().clone()
-            self._morph.requires_grad_(not fix_morph)
-        else:
-            self._morph = torch.tensor(morph, requires_grad=not fix_morph)
-
+        # set sed and morph
+        sed = torch.Tensor(sed)
+        morph = torch.Tensor(morph)
+        self._sed = sed.detach().clone()
+        self._morph = morph.detach().clone()
+        self._sed.requires_grad_(not fix_sed)
+        self._morph.requires_grad_(not fix_morph)
         self.priors = priors
+        # Initially the component has not converged
+        self.flags = BlendFlag.SED_NOT_CONVERGED | BlendFlag.MORPH_NOT_CONVERGED
+        # Store the SED and morphology from the previous iteration
+        self._last_sed = np.zeros_like(sed.detach().numpy())
+        self._last_morph = np.zeros_like(morph.detach().numpy())
 
-        if bboxes is None:
-            bboxes = {}
-        self._bboxes = bboxes
-        if flags is None:
-            flags = BlendFlag.SED_NOT_CONVERGED | BlendFlag.MORPH_NOT_CONVERGED
-        self.flags = flags
-        self._last_sed = torch.zeros_like(sed)
-        self._last_morph = torch.zeros_like(morph)
-
-        # for ComponentTree
+        # Properties used for indexing in the ComponentTree
         self._index = None
         self._parent = None
 
@@ -102,43 +118,42 @@ class Component(object):
 
     @property
     def sed(self):
-        return self._sed.data
+        """Numpy view of the component SED
+        """
+        return self._sed.data.detach().numpy()
 
     @property
     def morph(self):
-        return self._morph.data
+        """Numpy view of the component morphology
+        """
+        return self._morph.data.detach().numpy()
 
-    @property
-    def bboxes(self):
-        return self._bboxes
-
-    def get_model(self, bbox=None):
-        """Get the model this component.
+    def get_model(self, as_array=True):
+        """Get the model for this component.
 
         Parameters
         ----------
-        None
+        as_array: bool
+            Whether to return the model as a numpy array
+            (`as_array=True`) or a `torch.tensor`.
 
         Returns
         -------
-        model: `~numpy.array`
+        model: array or tensor
             (Bands, Height, Width) image of the model
         """
-        model = self._sed[:, None, None] * self._morph[None, :, :]
-
-        # Optionally extract the model in a given bounding box
-        if bbox is not None:
-            if bbox in self.bboxes:
-                bbox = self.bboxes[bbox]
-            model = model[(slice(None), *bbox.slices)]
-        return model
+        if as_array:
+            return self.sed[:, None, None] * self.morph[None, :, :]
+        return self._sed[:, None, None] * self._morph[None, :, :]
 
     def get_flux(self):
         """Get flux in every band
         """
-        return self._morph.sum() * self._sed
+        return self.morph.sum() * self.sed
 
     def backward_prior(self):
+        """Use the priors to update the gradient
+        """
         if self.priors is not None:
             self.priors.compute_grad(self)
             if self.morph.requires_grad:
@@ -149,6 +164,12 @@ class Component(object):
                 self.L_morph += self.priors.L_morph
 
     def update(self):
+        """Update the component
+
+        This method can be overwritten in inherited classes to
+        run proximal operators or other component update functions
+        that will be executed during fitting.
+        """
         return self
 
 
@@ -221,15 +242,6 @@ class ComponentTree(object):
         return self.components[0].B
 
     @property
-    def bbox(self):
-        """Union of all the component bounding boxes
-        """
-        bbox = self.components[0].bbox.copy()
-        for c in self.components[1:]:
-            bbox |= c.bbox
-        return bbox
-
-    @property
     def nodes(self):
         """Initial list that generates the tree.
 
@@ -257,21 +269,30 @@ class ComponentTree(object):
             else:
                 return (self._index,)
 
-    def get_model(self):
+    def get_model(self, as_array=True):
         """Get the model this component tree
-         Returns
+
+        Parameters
+        ----------
+        as_array: bool
+            Whether to return the model as a numpy array
+            (`as_array=True`) or a `torch.tensor`.
+
+        Returns
         -------
         model: `~torch.tensor`
             (Bands, Height, Width) data cube
         """
         for k, component in enumerate(self.components):
             if k == 0:
-                model = component.get_model()
+                model = component.get_model(as_array)
             else:
-                model += component.get_model()
+                model += component.get_model(as_array)
         return model
 
     def get_flux(self):
+        """Get the total flux for all the components in the tree
+        """
         for k, component in enumerate(self.components):
             if k == 0:
                 model = component.get_flux()
@@ -280,6 +301,12 @@ class ComponentTree(object):
         return model
 
     def update(self):
+        """Update each component
+
+        This method may be overwritten in inherited classes to
+        perform updates on multiple components at once
+        (for example separating a buldge and disk).
+        """
         for component in self.components:
             component.update()
 
