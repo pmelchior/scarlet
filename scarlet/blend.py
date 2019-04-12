@@ -16,16 +16,8 @@ class Blend(ComponentTree, Scene):
 
     Attributes
     ----------
-    B: int
-        Number of bands in the image data
-    it: int
-        Number of iterations run in the `fit` method
-    converged: `~numpy.array`
-        Array (K, 2) of convergence flags, one for each components sed and morph
-        in that order
     mse: list
-        Array (it, 2) of mean squared errors in each iteration, for sed and morph
-        in that order
+        Array of mean squared errors in each iteration
     """
 
     def __init__(self, scene, sources, observations):
@@ -38,13 +30,30 @@ class Blend(ComponentTree, Scene):
         ComponentTree.__init__(self, sources)
         Scene.__init__(self, scene.shape, wcs=scene.wcs, psfs=scene.psfs, filtercurve=scene.filtercurve)
 
-        self.it = 0
         try:
             iter(observations)
         except TypeError:
             observations = (observations,)
-        self._observations = observations
-        self.L_morph, self.L_sed = 1, 1
+        self.observations = observations
+
+        self.mse = []
+
+    @property
+    def it(self):
+        """Number of iterations run in the `fit` method
+        """
+        return len(self.mse)
+
+    @property
+    def converged(self):
+        """Whether the full Blend has converged within e_rel.
+
+        For convergence tests of individual components, check its `flags` member.
+        """
+        for c in self.components:
+            if (c.flags & (BlendFlag.SED_NOT_CONVERGED | BlendFlag.MORPH_NOT_CONVERGED)).value > 0:
+                return False
+        return True
 
     @property
     def sources(self):
@@ -54,12 +63,6 @@ class Blend(ComponentTree, Scene):
         some sources have multiple components.
         """
         return self.nodes
-
-    @property
-    def observations(self):
-        """Observations used to constrain the model
-        """
-        return self._observations
 
     def fit(self, max_iter=200, e_rel=1e-2, approximate_L=False):
         """Fit the model for each source to the data
@@ -74,11 +77,9 @@ class Blend(ComponentTree, Scene):
             Whether or not to use a rough approximation of the
             Lipschitz constants
         """
-        self.converged = False
-        self.mse = []
 
         for step in range(max_iter):
-            self.it += 1
+
             # Combine all of the components into a single model
             model = self.get_model(False)
 
@@ -92,10 +93,13 @@ class Blend(ComponentTree, Scene):
 
             # Calculate the Lipschitz constants,
             # which are needed to determine the step size for each component
-            self._update_lipschitz(approximate_L)
+            self._set_lipschitz(approximate_L)
 
             # Take the next gradient step for each component
             for c in self.components:
+                c.L_sed = self.L_sed
+                c.L_morph = self.L_morph
+
                 c.backward_prior()
                 if c._sed.requires_grad:
                     c._sed.data = c._sed.data - c._sed.grad.data / c.L_sed
@@ -153,10 +157,9 @@ class Blend(ComponentTree, Scene):
             c._last_sed = c.sed.copy()
             c._last_morph = c.morph.copy()
 
-        self.converged = converged
         return converged
 
-    def _update_lipschitz(self, approximate_L):
+    def _set_lipschitz(self, approximate_L):
         """Update the Lipschitz constants from the observations
         """
         if approximate_L:
@@ -193,6 +196,3 @@ class Blend(ComponentTree, Scene):
 
         self.L_sed = LA
         self.L_morph = LS
-        for component in self.components:
-            component.L_sed = self.L_sed
-            component.L_morph = self.L_morph
