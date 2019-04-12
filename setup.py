@@ -19,9 +19,9 @@ if "EIGEN_DIR" in os.environ:
 
 # Use the firt 7 digits of the git hash to set the version
 try:
-    __version__ = '0.4.'+subprocess.check_output(['git', 'rev-parse', 'HEAD'])[:7].decode("utf-8")
+    __version__ = '0.5.'+subprocess.check_output(['git', 'rev-parse', 'HEAD'])[:7].decode("utf-8")
 except:
-    __version__ = '0.4.0'
+    __version__ = '0.5.0'
 
 packages = []
 for root, dirs, files in os.walk('.'):

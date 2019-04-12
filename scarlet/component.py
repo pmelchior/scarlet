@@ -1,4 +1,7 @@
-from enum import Flag, auto
+try:
+    from enum import Flag, auto
+except ImportError:
+    from aenum import Flag, auto
 
 import numpy as np
 import torch
@@ -34,7 +37,7 @@ class BlendFlag(Flag):
 
 
 class Prior():
-    """Priors that require a gradient
+    """Differentiable Prior
 
     Attributes
     ----------
@@ -72,14 +75,14 @@ class Component(object):
         1D array (bands) of the initial SED.
     morph: array
         Data cube (Height, Width) of the initial morphology.
-    priors: list of `~scarlet.component.Prior`s
-        Priors that generate gradient updates for the component.
+    prior: list of `~scarlet.component.Prior`s
+        Prior that generates gradients for the component.
     fix_sed: bool, default=`False`
         Whether or not the SED is fixed, or can be updated
     fix_morph: bool, default=`False`
         Whether or not the morphology is fixed, or can be updated
     """
-    def __init__(self, sed, morph, priors=None, fix_sed=False, fix_morph=False):
+    def __init__(self, sed, morph, prior=None, fix_sed=False, fix_morph=False):
         self.B = sed.shape[0]
         self.Ny, self.Nx = morph.shape
         # set sed and morph
@@ -89,7 +92,7 @@ class Component(object):
         self._morph = morph.detach().clone()
         self._sed.requires_grad_(not fix_sed)
         self._morph.requires_grad_(not fix_morph)
-        self.priors = priors
+        self.prior = prior
         # Initially the component has not converged
         self.flags = BlendFlag.SED_NOT_CONVERGED | BlendFlag.MORPH_NOT_CONVERGED
         # Store the SED and morphology from the previous iteration
@@ -152,16 +155,16 @@ class Component(object):
         return self.morph.sum() * self.sed
 
     def backward_prior(self):
-        """Use the priors to update the gradient
+        """Use the prior to update the gradient
         """
-        if self.priors is not None:
-            self.priors.compute_grad(self)
+        if self.prior is not None:
+            self.prior.compute_grad(self)
             if self.morph.requires_grad:
-                self.morph.grad += self.priors.grad_morph
-                self.L_morph += self.priors.L_morph
+                self.morph.grad += self.prior.grad_morph
+                self.L_morph += self.prior.L_morph
             if self.sed.requires_grad:
-                self.morph.grad += self.priors.grad_morph
-                self.L_morph += self.priors.L_morph
+                self.morph.grad += self.prior.grad_morph
+                self.L_morph += self.prior.L_morph
 
     def update(self):
         """Update the component
