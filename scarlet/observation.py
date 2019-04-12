@@ -55,17 +55,16 @@ class Scene():
         Data type of the model.
     """
     #
-    def __init__(self, shape, wcs=None, psfs=None, filtercurve=None, dtype=np.float32):
+    def __init__(self, shape, wcs=None, psfs=None, filtercurve=None):
         self._shape = tuple(shape)
         self.wcs = wcs
 
         assert psfs is None or shape[0] == len(psfs)
         if psfs is not None:
             psfs = torch.Tensor(psfs)
-        self.psfs = psfs
+        self._psfs = psfs
         assert filtercurve is None or shape[0] == len(filtercurve)
         self.filtercurve = filtercurve
-        self.dtype = dtype
 
     @property
     def B(self):
@@ -90,6 +89,12 @@ class Scene():
         """Shape of the model.
         """
         return self._shape
+
+    @property
+    def psfs(self):
+        if self._psfs is None:
+            return None
+        return self._psfs.data.detach().numpy()
 
     def get_pixel(self, sky_coord):
         """Get the pixel coordinate from a world coordinate
@@ -129,21 +134,32 @@ class Observation(Scene):
     def __init__(self, images, psfs=None, weights=None, wcs=None, filtercurve=None, padding=3):
         super().__init__(images.shape, wcs=wcs, psfs=psfs, filtercurve=filtercurve)
 
-        self.images = torch.Tensor(images)
-        self.psfs = torch.Tensor(psfs)
+        self._images = torch.Tensor(images)
         self.padding = padding
 
         if weights is not None:
-            self.weights = torch.Tensor(weights)
+            self._weights = torch.Tensor(weights)
         else:
-            self.weights = 1
+            self._weights = 1
 
         # Calculate and store the PSFs in Fourier space
-        if self.psfs is not None:
+        if self._psfs is not None:
             ipad, ppad = convolution.get_common_padding(images, psfs, padding=padding)
             self.image_padding, self.psf_padding = ipad, ppad
-            _psfs = torch.nn.functional.pad(self.psfs, self.psf_padding)
+            _psfs = torch.nn.functional.pad(self._psfs, self.psf_padding)
             self.psfs_fft = torch.rfft(_psfs, 2)
+
+    @property
+    def images(self):
+        return self._images.data.detach().numpy()
+
+    @property
+    def weights(self):
+        if self._weights is None:
+            return None
+        elif self._weights == 1:
+            return self._weights
+        return self._weights.data.detach().numpy()
 
     def get_model(self, model, scene, as_array=True):
         """Resample and convolve a model to the observation frame
@@ -199,12 +215,12 @@ class Observation(Scene):
             Scalar tensor with the likelihood of the model
             given the image data.
         """
-        if self.psfs is not None:
+        if self._psfs is not None:
             model = self.get_model(model, scene, False)
-        model *= self.weights
-        return 0.5 * torch.nn.MSELoss(reduction='sum')(model, self.images*self.weights)
+        model *= self._weights
+        return 0.5 * torch.nn.MSELoss(reduction='sum')(model, self._images*self._weights)
 
-    def get_scene(self, scene):
+    def get_scene(self, scene, as_array=True):
         """Reproject and resample the image in some other data frame
 
         This is currently only supported to return `images` when the data
@@ -223,4 +239,6 @@ class Observation(Scene):
         if self.wcs is not None or scene.shape != self.shape:
             msg = "get_scene is currently only supported when the observation frame matches the scene"
             raise NotImplementedError(msg)
-        return self.images
+        if as_array:
+            return self.images
+        return self._images

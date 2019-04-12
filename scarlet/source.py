@@ -33,7 +33,7 @@ def get_pixel_sed(sky_coord, scene, observations):
     SED: `~numpy.array`
         SED for a single source
     """
-    sed = np.zeros(scene.B, dtype=scene.dtype)
+    sed = np.zeros(scene.B, dtype=observations[0].images.dtype)
     band = 0
     for obs in observations:
         pixel = obs.get_pixel(sky_coord)
@@ -64,7 +64,7 @@ def get_best_fit_seds(morphs, scene, observations):
         Observations to extract SEDs from.
     """
     K = len(morphs)
-    seds = np.zeros((K, scene.B), dtype=scene.dtype)
+    seds = np.zeros((K, scene.B), dtype=observations[0].images.dtype)
     band = 0
     _morph = morphs.reshape(K, -1)
     for obs in observations:
@@ -181,12 +181,12 @@ class PointSource(Component):
             observations = [observations]
         # this ignores any broadening from the PSFs ...
         B, Ny, Nx = scene.shape
-        morph = np.zeros((Ny, Nx), scene.dtype)
+        morph = np.zeros((Ny, Nx), observations[0].images.dtype)
         pixel = scene.get_pixel(sky_coord)
         morph[pixel] = 1
         self.pixel_center = pixel
 
-        sed = np.zeros((B,), dtype=scene.dtype)
+        sed = np.zeros((B,), observations[0].images.dtype)
         b0 = 0
         for obs in observations:
             pixel = obs.get_pixel(sky_coord)
