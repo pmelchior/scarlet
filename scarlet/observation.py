@@ -161,18 +161,16 @@ class Observation(Scene):
             return self._weights
         return self._weights.data.detach().numpy()
 
-    def get_model(self, model, scene, as_array=True):
+    def get_model(self, model, numpy=True):
         """Resample and convolve a model to the observation frame
 
         Parameters
         ----------
         model: `~torch.Tensor`
             The model in some other data frame.
-        scene: `~scarlet.observation.Scene`
-            The data frame that the model lives in.
-        as_array: bool
+        numpy: bool
             Whether to return the model as a numpy array
-            (`as_array=True`) or a `torch.tensor`.
+            (`numpy=True`) or a `torch.tensor`.
 
         Returns
         -------
@@ -195,19 +193,17 @@ class Observation(Scene):
             result = result[bottom:-top, left:-right]
             return result
         model = torch.stack([_convolve_band(model[b], self.psfs_fft[b]) for b in range(self.B)])
-        if as_array:
+        if numpy:
             model = model.detach().numpy()
         return model
 
-    def get_loss(self, model, scene):
+    def get_loss(self, model):
         """Calculate the loss function for the model
 
         Parameters
         ----------
         model: `~torch.Tensor`
             The model in some other data frame.
-        scene: `~scarlet.observation.Scene`
-            The data frame that the model lives in.
 
         Returns
         -------
@@ -216,11 +212,11 @@ class Observation(Scene):
             given the image data.
         """
         if self._psfs is not None:
-            model = self.get_model(model, scene, False)
+            model = self.get_model(model, False)
         model *= self._weights
         return 0.5 * torch.nn.MSELoss(reduction='sum')(model, self._images*self._weights)
 
-    def get_scene(self, scene, as_array=True):
+    def get_scene(self, scene, numpy=True):
         """Reproject and resample the image in some other data frame
 
         This is currently only supported to return `images` when the data
@@ -239,6 +235,6 @@ class Observation(Scene):
         if self.wcs is not None or scene.shape != self.shape:
             msg = "get_scene is currently only supported when the observation frame matches the scene"
             raise NotImplementedError(msg)
-        if as_array:
+        if numpy:
             return self.images
         return self._images

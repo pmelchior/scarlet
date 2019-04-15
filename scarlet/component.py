@@ -131,21 +131,21 @@ class Component(object):
         """
         return self._morph.data.detach().numpy()
 
-    def get_model(self, as_array=True):
+    def get_model(self, numpy=True):
         """Get the model for this component.
 
         Parameters
         ----------
-        as_array: bool
+        numpy: bool
             Whether to return the model as a numpy array
-            (`as_array=True`) or a `torch.tensor`.
+            (`numpy=True`) or a `torch.tensor`.
 
         Returns
         -------
         model: array or tensor
             (Bands, Height, Width) image of the model
         """
-        if as_array:
+        if numpy:
             return self.sed[:, None, None] * self.morph[None, :, :]
         return self._sed[:, None, None] * self._morph[None, :, :]
 
@@ -272,14 +272,14 @@ class ComponentTree(object):
             else:
                 return (self._index,)
 
-    def get_model(self, as_array=True):
+    def get_model(self, numpy=True):
         """Get the model this component tree
 
         Parameters
         ----------
-        as_array: bool
+        numpy: bool
             Whether to return the model as a numpy array
-            (`as_array=True`) or a `torch.tensor`.
+            (`numpy=True`) or a `torch.tensor`.
 
         Returns
         -------
@@ -288,9 +288,9 @@ class ComponentTree(object):
         """
         for k, component in enumerate(self.components):
             if k == 0:
-                model = component.get_model(as_array)
+                model = component.get_model(numpy)
             else:
-                model += component.get_model(as_array)
+                model += component.get_model(numpy)
         return model
 
     def get_flux(self):
