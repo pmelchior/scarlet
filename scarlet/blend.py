@@ -86,7 +86,7 @@ class Blend(ComponentTree, Scene):
             # Caculate the gradients due to the observation likelihoods
             total_loss = 0
             for observation in self.observations:
-                loss = observation.get_loss(model, self)
+                loss = observation.get_loss(model)
                 loss.backward()
                 total_loss += loss.item()
             self.mse.append(total_loss)
