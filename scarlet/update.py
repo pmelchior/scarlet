@@ -3,7 +3,7 @@ from functools import partial
 import numpy as np
 from proxmin.operators import prox_plus, prox_hard, prox_soft
 
-from . import resample
+from . import interpolation
 from . import operator
 from .cache import Cache
 
@@ -15,8 +15,8 @@ def _quintic_recenter_loss(params, image, center):
     dy, dx = params
     window = np.arange(-3, 4)
 
-    Ly, _ = resample.quintic_spline(-dy)
-    Lx, _ = resample.quintic_spline(-dx)
+    Ly, _ = interpolation.quintic_spline(-dy)
+    Lx, _ = interpolation.quintic_spline(-dx)
     kernel = np.outer(Ly, Lx)
 
     ywin = window + y0
