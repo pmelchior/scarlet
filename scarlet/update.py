@@ -29,45 +29,183 @@ def _quintic_recenter_loss(params, image, center):
     return (left.sum()-right.sum())**2, (top.sum()-bottom.sum())**2
 
 
-def symmetric_fit_center(component, loss_func=_quintic_recenter_loss):
+def _find_xy(coeffs1, coeffs2, signs, center, err=1e-15):
+    """Find the fractional pixels shifts dx and dy
+
+    Given the location of two symmetric pairs of pixels, find the correct
+    dx,dy to cause each symmetric pair to have the same value.
+
+    This function will return `None` if neither of the solutions are valid
+    """
+    cy, cx = center
+    # Equation for pixel pair one
+    a, b, c, d = coeffs1
+    # Equation for pixel pair 2
+    A, B, C, D = coeffs2
+    sign_y, sign_x = signs
+    # Combine the coefficients for each pair to solve for
+    # alpha y**2 + beta * y + gamma = 0
+    alpha = a*C - A*c
+    beta = a*D + b*C - A*d - B*c
+    gamma = b*D - B*d
+
+    # The solution must be real
+    if beta**2 < 4*alpha*gamma:
+        return None
+
+    sqrt = np.sqrt(beta**2 - 4*alpha*gamma)
+
+    y1 = 0.5*(-beta + sqrt)/alpha
+    y2 = 0.5*(-beta - sqrt)/alpha
+
+    x1 = -(C*y1+D)/(A*y1+B)
+    x2 = -(C*y2+D)/(A*y2+B)
+
+    def check(y, x):
+        """Check whether or not the solution is valid
+        """
+        if abs(y) > 1 or abs(x) > 1:
+            return False
+        if (np.sign(y) != sign_y and abs(y) > err) or (np.sign(x) != sign_x and abs(y) > err):
+            return False
+        return True
+
+    if check(y1, x1):
+        return cy-y1, cx-x1
+    elif check(y2, x2):
+        return cy-y2, cx-x2
+    # Neither of the solutions were valid
+    return None
+
+
+class RecenteringError(Exception):
+    pass
+
+
+def _linear_fit_center(morph, pixel_center):
+    """Fit the center using bilinear interpolation
+
+    While this interpolation has larger errors than
+    a Lanczos kernel or polynomial spline, the solution
+    for dx and dy can be determined analytically, making
+    this a very fast algorithm.
+
+    The solution is basically
+        a1*dx*dy + b1*dx + c1*dy + d1 = a2*dx*dy + b2*dx + c2*dy + d1
+    where a1, b1, c1, d1 are the coefficients of one pixels and
+    a2, b2, c2, d2 are the coefficients of it's symmetric partner.
+    So if a = a1-a2, b=b1-2, etc. then the equation for each pair
+    of pixels is
+        a*dx*dy + b*dx + c*dy + d = 0,
+    and with two pairs of pixels (for example the pixels to the left,
+    right, bottom, and top of the central pixel) it is possible to find
+    dx and dy analytically. Unfortunately this equation is quadratic, so
+    there are two possible solutions. A further complication is that the
+    coefficents are different depending on whether dx and dy are positive
+    or negative, so we have to compute at most 8 different solutions.
+    Of the 8 possible solutions, there will only be one with `abs(dx)<1`,
+    `abs(dy)<1`, and the sign of `dx` and `dy` that is the same as the solution.
+
+    Note: in theory we should be able to write down a similar equation for the
+    cubic and quintic equations, but hopefully the bilinear solution is a good
+    enough solution to avoid the trouble.
+    """
+    def pxpy(x):
+        """dx>=0, dy>=0
+        """
+        a = x[4] - x[3] - x[1] + x[0]
+        b = -x[4] + x[3]
+        c = -x[4] + x[1]
+        d = x[4]
+        return np.array([a, b, c, d]), (1, 1)
+
+    def mxpy(x):
+        """dx<0, dy>=0
+        """
+        a = -x[4] + x[5] + x[1] - x[2]
+        b = x[4] - x[5]
+        c = -x[4] + x[1]
+        d = x[4]
+        return np.array([a, b, c, d]), (1, -1)
+
+    def pxmy(x):
+        """dx>=0, dy<0
+        """
+        a = -x[4] + x[3] + x[7] - x[6]
+        b = -x[4] + x[3]
+        c = x[4] - x[7]
+        d = x[4]
+        return np.array([a, b, c, d]), (-1, 1)
+
+    def mxmy(x):
+        """dx<0, dy<0
+        """
+        a = x[4] - x[5] - x[7] + x[8]
+        b = x[4] - x[5]
+        c = x[4] - x[7]
+        d = x[4]
+        return np.array([a, b, c, d]), (-1, -1)
+
+    cy, cx = pixel_center
+    # Get the relevent vectors for each pixel
+    left = morph[cy-1:cy+2, cx-2:cx+1].reshape(-1)
+    right = morph[cy-1:cy+2, cx:cx+3].reshape(-1)
+    bottom = morph[cy-2:cy+1, cx-1:cx+2].reshape(-1)
+    top = morph[cy:cy+3, cx-1:cx+2].reshape(-1)
+
+    # Check all four possible signs for x and y
+    for func in [pxpy, mxpy, pxmy, mxmy]:
+        coeffs_left, signs = func(left)
+        coeffs_right, _ = func(right)
+        coeffs_bottom, _ = func(bottom)
+        coeffs_top, _ = func(top)
+
+        coeffs1 = coeffs_left - coeffs_right
+        coeffs2 = coeffs_bottom - coeffs_top
+
+        result = _find_xy(coeffs1, coeffs2, signs, pixel_center)
+        if result is not None:
+            return result
+    # If none of the solutions are correct raise an error
+    # (that could possibly be caught and disable positon updates
+    # for the gien source).
+    raise RecenteringError("scarlet failed to properly update the center of the source")
+
+
+def symmetric_fit_center(component):
     """Fit the center of an object based on symmetry
 
     This algorithm interpolates the morphology until the pixels on the
     left and right of the central pixel are equal and the top and
     bottom are equal.
-
-    Parameters
-    ----------
-    component: `scarlet.component.Component`
-        The component to make symmetric
-
-    loss_func: `function`
-        Function to use to calculate the loss.
-        This is basically a combination of an interpolation of the four
-        nearest neighbors to the central pixel and a comparison of
-        their values
-
-    Returns
-    -------
-    component: `scarlet.component.Component`
-        The same component with its center udpated.
     """
-    from scipy.optimize import fsolve
-
-    # Set the pixel center to the maximum pixel value of the morphology
     fit_pixel_center(component)
-    center = component.pixel_center
-    # Initally assume there is no fractional shift
-    dyx = [0, 0]
-    dyx = fsolve(loss_func, dyx, (component.morph, center))
-    component.float_center = (center[0] + dyx[0], center[1] + dyx[1])
+    result = _linear_fit_center(component.morph, component.pixel_center)
+    component.float_center = result
     return component
 
 
-def fit_pixel_center(component):
+def fit_pixel_center(component, window=None):
     """Use the pixel with the maximum flux as the center
+
+    In case there is a nearby bright neighbor, we only update
+    the center within the immediate vascinity of the previous center.
+    This allows the center to shift over time, but prevents a large,
+    likely unphysical update.
+
+    Parameters
+    ----------
+    window: tuple of slices
+        Slices in y and x of the central region to include in the fit.
+        If `window` is `None` then only the 3x3 grid of pixels centered
+        on the previous center are used. If it is desired to use the entire
+        morphology just set `window=(slice(None), slice(None))`.
     """
-    component.pixel_center = np.unravel_index(np.argmax(component.morph), component.morph.shape)
+    if window is None:
+        cy, cx = component.pixel_center
+        window = slice(cy-1, cy+2), slice(cx-1, cx+2)
+    _morph = component.morph[window]
+    component.pixel_center = np.unravel_index(np.argmax(_morph), _morph.shape) + np.array([cy-1, cx-1])
     return component
 
 
