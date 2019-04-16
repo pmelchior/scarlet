@@ -2,6 +2,8 @@ import numpy as np
 import torch
 from . import convolution
 
+import logging
+logger = logging.getLogger("scarlet.observation")
 
 def build_detection_coadd(sed, bg_rms, observation, scene, thresh=1):
     """Build a band weighted coadd to use for source detection

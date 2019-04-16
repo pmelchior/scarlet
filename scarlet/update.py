@@ -1,4 +1,7 @@
-from enum import Enum
+try:
+    from enum import Enum
+except ImportError:
+    from aenum import Enum
 from functools import partial
 
 import numpy as np

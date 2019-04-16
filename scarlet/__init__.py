@@ -3,6 +3,4 @@ from .update import *
 from .component import *
 from .source import *
 from .observation import *
-from .resample import *
-from .blend import Blend
-from . import psf_match
+from .blend import *
