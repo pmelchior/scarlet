@@ -1,7 +1,3 @@
-try:
-    from enum import Enum
-except ImportError:
-    from aenum import Enum
 from functools import partial
 
 import numpy as np
@@ -10,28 +6,6 @@ from proxmin.operators import prox_plus, prox_hard, prox_soft
 from . import resample
 from . import operator
 from .cache import Cache
-
-
-class Normalization(Enum):
-    """Type of normalization to use for A and S
-
-    Due to degeneracies in the product AS it is common to
-    normalize one of the two matrices to unity. This
-    enumerator is used to define which normalization is
-    used to break this degeneracy.
-
-    Attributes
-    ----------
-    A: 1
-        Normalize the A (color) matrix to unity
-    S: 2
-        Normalize the S (morphology) matrix to unity
-    Smax: 3
-        Normalize S so that the maximum (peak) value is unity
-    """
-    SED = 1
-    MORPH = 2
-    MORPH_MAX = 3
 
 
 def _quintic_recenter_loss(params, image, center):
@@ -119,47 +93,50 @@ def positive(component):
     return component
 
 
-def normalize(component, normalization=Normalization.MORPH_MAX):
-    """Normalize either the SED or morhology
+def normalized(component, type='morph_max'):
+    """Normalize SED or morphology
 
     In order to break degeneracies, either the SED or
     morphology should have some form of normalization.
-    For consitency this should probably be the same for
-    all components in the blend.
+    For consistency this should normally be the same for
+    all components in a blend.
 
-    For `Normalization.SED` the sed matrix is normalized to
+    For `type='sed'` the sed matrix is normalized to
     sum to unity.
 
-    For `Normalization.MORPH` the morphology matrix is normalized
+    For `type='morph'` the morphology matrix is normalized
     to sum to unity.
 
-    For `Normalization.MORPH_MAX` the morphology matrix is
+    For `type='morph_max'` the morphology matrix is
     normalized so that its maximum value is one.
     """
-    if normalization == Normalization.SED:
+    assert type.lower() in ['sed', 'morph', 'morph_max']
+    t = type.lower()
+
+    if t == 'sed':
         norm = component.sed.sum()
         component.sed[:] = component.sed / norm
         component.morph[:] = component.morph * norm
-    elif normalization == Normalization.MORPH:
+    elif t == 'morph':
         norm = component.morph.sum()
         component.sed[:] = component.sed * norm
         component.morph[:] = component.morph / norm
-    elif normalization == Normalization.MORPH_MAX:
+    elif t == 'morph_max':
         norm = component.morph.max()
         component.sed[:] = component.sed * norm
         component.morph[:] = component.morph / norm
     else:
-        raise ValueError("Unrecognized normalization '{0}'".format(normalization))
+        raise ValueError("Unrecognized normalization '{0}'".format(type))
 
 
-def l0_norm(component, thresh):
+def sparse_l0(component, thresh):
     """L0 norm (sparsity) on morphology
     """
     prox_hard(component.morph, component.step_morph, thresh)
     return component
 
 
-def l1_norm(component, thresh):
+def sparse_l1(component, thresh):
     """L1 norm (sparsity) on morphology
     """
     prox_soft(component.morph, component.step_morph, thresh)

@@ -217,7 +217,7 @@ class PointSource(Component):
             # make the morphology monotonically decreasing
             update.monotonic(self, self.pixel_center)
         update.positive(self)  # Make the SED and morph non-negative
-        update.normalize(self)  # Use MORPH_MAX normalization
+        update.normalized(self, type='morph_max')
         return self
 
 
@@ -304,7 +304,7 @@ class MultiComponentSource(ComponentTree):
                 if self.monotonic:
                     update.monotonic(self, center)  # make the morph monotonically decreasing
                 update.positive(self)  # Make the SED and morph non-negative
-                update.normalize(self)
+                update.normalized(self, type='morph_max')
                 return self
 
         components = [
