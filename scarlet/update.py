@@ -8,27 +8,6 @@ from . import operator
 from .cache import Cache
 
 
-def _quintic_recenter_loss(params, image, center):
-    """Loss function for recentering based on quintic interpolation
-    """
-    y0, x0 = center
-    dy, dx = params
-    window = np.arange(-3, 4)
-
-    Ly, _ = interpolation.quintic_spline(-dy)
-    Lx, _ = interpolation.quintic_spline(-dx)
-    kernel = np.outer(Ly, Lx)
-
-    ywin = window + y0
-    xwin = window + x0
-
-    left = image[ywin[0]: ywin[-1]+1, xwin[0]-1:xwin[-1]] * kernel
-    right = image[ywin[0]: ywin[-1]+1, xwin[0]+1:xwin[-1]+2] * kernel
-    bottom = image[ywin[0]-1: ywin[-1], xwin[0]:xwin[-1]+1] * kernel
-    top = image[ywin[0]+1: ywin[-1]+2, xwin[0]:xwin[-1]+1] * kernel
-    return (left.sum()-right.sum())**2, (top.sum()-bottom.sum())**2
-
-
 def _find_xy(coeffs1, coeffs2, signs, center, err=1e-15):
     """Find the fractional pixels shifts dx and dy
 
