@@ -100,22 +100,22 @@ def fit_pixel_center(component):
 def positive_sed(component):
     """Make the SED non-negative
     """
-    prox_plus(component.sed, 1/component.L_sed)
+    prox_plus(component.sed, component.step_sed)
     return component
 
 
 def positive_morph(component):
     """Make the morphology non-negative
     """
-    prox_plus(component.morph, 1/component.L_morph)
+    prox_plus(component.morph, component.step_morph)
     return component
 
 
 def positive(component):
     """Make both the SED and morpholgy non-negative
     """
-    prox_plus(component.sed, 1/component.L_sed)
-    prox_plus(component.morph, 1/component.L_morph)
+    prox_plus(component.sed, component.step_sed)
+    prox_plus(component.morph, component.step_morph)
     return component
 
 
@@ -155,14 +155,14 @@ def normalize(component, normalization=Normalization.MORPH_MAX):
 def l0_norm(component, thresh):
     """L0 norm (sparsity) on morphology
     """
-    prox_hard(component.morph, 1/component.L_morph, thresh)
+    prox_hard(component.morph, component.step_morph, thresh)
     return component
 
 
 def l1_norm(component, thresh):
     """L1 norm (sparsity) on morphology
     """
-    prox_soft(component.morph, 1/component.L_morph, thresh)
+    prox_soft(component.morph, component.step_morph, thresh)
     return component
 
 
@@ -197,7 +197,7 @@ def monotonic(component, pixel_center, use_nearest=False, thresh=0, exact=False)
             prox = partial(operator.prox_cone, G=G)
         Cache.set(prox_name, key, prox)
 
-    step_size = 1/component.L_morph
+    step_size = component.step_morph
     prox(component.morph, step_size)
     return component
 
@@ -208,6 +208,6 @@ def symmetric(component, center, strength=1, use_prox=True):
     See `~scarlet.operator.prox_uncentered_symmetry`
     for a description of the parameters.
     """
-    step_size = 1/component.L_morph
+    step_size = component.step_morph
     operator.prox_uncentered_symmetry(component.morph, step_size, center, strength, use_prox)
     return component

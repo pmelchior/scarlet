@@ -102,10 +102,10 @@ class Blend(ComponentTree, Scene):
 
                 c.backward_prior()
                 if c._sed.requires_grad:
-                    c._sed.data = c._sed.data - c._sed.grad.data / c.L_sed
+                    c._sed.data = c._sed.data - c.step_sed * c._sed.grad.data
                     c._sed.grad.data.zero_()
                 if c._morph.requires_grad:
-                    c._morph.data = c._morph.data - c._morph.grad.data / c.L_morph
+                    c._morph.data = c._morph.data - c.step_morph * c._morph.grad.data 
                     c._morph.grad.data.zero_()
 
             # Call the update functions for all of the sources

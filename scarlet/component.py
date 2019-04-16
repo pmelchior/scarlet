@@ -64,7 +64,7 @@ class Prior():
         self.L_morph, self.L_sed = self._L_func(component._morph, component._sed)
 
 
-class Component(object):
+class Component():
     """A single component in a blend.
 
     This class acts as base for building complex :class:`scarlet.source.Source`.
@@ -175,8 +175,22 @@ class Component(object):
         """
         return self
 
+    @property
+    def step_morph(self):
+        try:
+            return 1 / self.L_morph
+        except AttributeError:
+            return None
 
-class ComponentTree(object):
+    @property
+    def step_sed(self):
+        try:
+            return 1 / self.L_sed
+        except AttributeError:
+            return None
+
+
+class ComponentTree():
     """Base class for hierarchical collections of `~scarlet.component.Component`s.
     """
     def __init__(self, components):
