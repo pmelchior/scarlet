@@ -5,40 +5,6 @@ from . import convolution
 import logging
 logger = logging.getLogger("scarlet.observation")
 
-def build_detection_coadd(sed, bg_rms, observation, scene, thresh=1):
-    """Build a band weighted coadd to use for source detection
-
-    Parameters
-    ----------
-    sed: array
-        SED at the center of the source.
-    bg_rms: array
-        Background RMS in each band in observation.
-    observation: `~scarlet.observation.Observation`
-        Observation to use for the coadd.
-    scene: `scarlet.observation.Scene`
-        The scene that the model lives in.
-    thresh: `float`
-        Multiple of the backround RMS used as a
-        flux cutoff.
-
-    Returns
-    -------
-    detect: array
-        2D image created by weighting all of the bands by SED
-    bg_cutoff: float
-        The minimum value in `detect` to include in detection.
-    """
-    B = observation.B
-    images = observation.get_scene(scene)
-    weights = np.array([sed[b]/bg_rms[b]**2 for b in range(B)])
-    jacobian = np.array([sed[b]**2/bg_rms[b]**2 for b in range(B)]).sum()
-    detect = np.einsum('i,i...', weights, images) / jacobian
-
-    # thresh is multiple above the rms of detect (weighted variance across bands)
-    bg_cutoff = thresh * np.sqrt((weights**2 * bg_rms**2).sum()) / jacobian
-    return detect, bg_cutoff
-
 
 class Scene():
     """Extent and characteristics of the modeled scence
