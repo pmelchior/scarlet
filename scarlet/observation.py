@@ -1,4 +1,3 @@
-import numpy as np
 import torch
 from . import convolution
 
@@ -145,7 +144,7 @@ class Observation(Scene):
         model: `~torch.Tensor`
             The convolved and resampled `model` in the observation frame.
         """
-        if self.wcs is not None or scene.shape != self.shape:
+        if self.wcs is not None:
             msg = "get_model is currently only supported when the observation frame matches the scene"
             raise NotImplementedError(msg)
 

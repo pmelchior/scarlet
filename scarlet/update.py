@@ -5,11 +5,10 @@ from proxmin.operators import prox_plus, prox_hard, prox_soft
 
 from . import interpolation
 from . import operator
-from . import resample
 from .cache import Cache
 
 
-def _find_xy(coeffs1, coeffs2, signs, center, err=1e-15):
+def _find_yx(coeffs1, coeffs2, signs, center, err=1e-15):
     """Find the fractional pixels shifts dx and dy
 
     Given the location of two symmetric pairs of pixels, find the correct
@@ -143,7 +142,7 @@ def _linear_fit_center(morph, pixel_center):
         coeffs1 = coeffs_left - coeffs_right
         coeffs2 = coeffs_bottom - coeffs_top
 
-        result = _find_dyx(coeffs1, coeffs2, signs, pixel_center)
+        result = _find_yx(coeffs1, coeffs2, signs, pixel_center)
         if result is not None:
             return result
     # If none of the solutions are correct raise an error
@@ -315,29 +314,24 @@ def monotonic(component, pixel_center, use_nearest=False, thresh=0, exact=False)
     return component
 
 
-def translation(component, direction=1, kernel=resample.lanczos, padding=3):
+def translation(component, direction=1, kernel=interpolation.lanczos, padding=3):
     """Shift the morphology by a given amount
     """
     dy, dx = component.shift
     dy *= direction
     dx *= direction
-    _kernel, _, _ = resample.get_separable_kernel(dy, dx, kernel=kernel)
-    component.morph[:] = resample.fft_resample(component.morph, dy, dx)
+    _kernel, _, _ = interpolation.get_separable_kernel(dy, dx, kernel=kernel)
+    component.morph[:] = interpolation.fft_resample(component.morph, dy, dx)
     return component
 
 
-def symmetric(component, center, strength=1, use_prox=True, kernel=resample.lanczos, padding=3):
+def symmetric(component, strength=1, use_prox=True, kernel=interpolation.lanczos, padding=3):
     """Make the source symmetric about its center
 
     See `~scarlet.operator.prox_uncentered_symmetry`
     for a description of the parameters.
     """
-<<<<<<< HEAD
     step_size = component.step_morph
+    center = component.pixel_center
     operator.prox_uncentered_symmetry(component.morph, step_size, center, strength, use_prox)
-=======
-    step_size = 1/component.L_morph
-    center_int = _fit_pixel_center(component.morph, component.pixel_center)
-    operator.prox_uncentered_symmetry(component.morph, step_size, center_int, strength, use_prox)
->>>>>>> Implement shifting and symmetry in sources
     return component

@@ -72,6 +72,7 @@ def get_best_fit_seds(morphs, scene, observations):
         seds[:, band:band+obs.B] = sed
     return seds
 
+
 def build_detection_coadd(sed, bg_rms, observation, scene, thresh=1):
     """Build a band weighted coadd to use for source detection
 
@@ -249,7 +250,7 @@ class PointSource(Component):
             # Translate to the centered frame
             update.translation(self, 1)
             # make the morphology perfectly symmetric
-            update.symmetric(self, self.float_center, strength=1)
+            update.symmetric(self, strength=1)
             # Translate back to the model frame
             update.translation(self, -1)
 
