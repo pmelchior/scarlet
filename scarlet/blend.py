@@ -35,6 +35,8 @@ class Blend(ComponentTree, Scene):
         except TypeError:
             observations = (observations,)
         self.observations = observations
+        for obs in self.observations:
+            obs.match(self)
 
         self.mse = []
 

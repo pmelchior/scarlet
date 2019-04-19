@@ -109,12 +109,22 @@ class Observation(Scene):
         else:
             self._weights = 1
 
-        # Calculate and store the PSFs in Fourier space
+    def match(self, scene):
+
+        # 1) determine shape of scene in obs, set mask
+
+        # 2) compute the interpolation kernel between scene and obs
+
+        # 3) compute obs.psf in the frame of scene, store in Fourier space
         if self._psfs is not None:
             ipad, ppad = convolution.get_common_padding(images, psfs, padding=padding)
             self.image_padding, self.psf_padding = ipad, ppad
             _psfs = torch.nn.functional.pad(self._psfs, self.psf_padding)
             self.psfs_fft = torch.rfft(_psfs, 2)
+
+        # 4) divide obs.psf from scene.psf in Fourier space
+
+        # [ 5) compute sparse representation of interpolation * convolution ]
 
     @property
     def images(self):
