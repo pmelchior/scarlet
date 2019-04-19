@@ -235,20 +235,28 @@ class PointSource(Component):
         This method can be overwritten if a different set of constraints
         or update functions is desired.
         """
+        # update the center position
+        try:
+            update.symmetric_fit_center(self)
+        except update.RecenteringError:
+            it = self._parent.it
+            err = "Failed in recentering for source at {0} in iteration {1}"
+            print(err.format(self.pixel_center, it))
+            if not hasattr(self, "float_center"):
+                self.float_center = self.pixel_center
+
         if self.symmetric:
-            # TODO implement improved symmetry method
-            # update the center position
-            #update.symmetric_fit_center(self)
+            # Translate to the centered frame
+            update.translation(self, 1)
             # make the morphology perfectly symmetric
-            #update.symmetric(self, self.float_center)
-            update.fit_pixel_center(self)
-            update.symmetric(self, self.pixel_center)
-        elif self.monotonic:
-            # update the center position
-            update.fit_pixel_center(self)
+            update.symmetric(self, self.float_center, strength=1)
+            # Translate back to the model frame
+            update.translation(self, -1)
+
         if self.monotonic:
-            # make the morphology monotonically decreasing
-            update.monotonic(self, self.pixel_center)
+                # make the morphology monotonically decreasing
+                update.monotonic(self, self.pixel_center)
+
         update.positive(self)  # Make the SED and morph non-negative
         update.normalized(self, type='morph_max')
         return self
@@ -328,7 +336,7 @@ class MultiComponentSource(ComponentTree):
 
             def update(self):
                 if self.symmetric:
-                    update.symmetric_fit_center(self.morph)  # update the center position
+                    update.symmetric_fit_center(self)  # update the center position
                     center = self.coords
                     update.symmetric(self, center)  # make the morph perfectly symmetric
                 elif self.monotonic:

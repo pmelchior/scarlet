@@ -5,6 +5,7 @@ from proxmin.operators import prox_plus, prox_hard, prox_soft
 
 from . import interpolation
 from . import operator
+from . import resample
 from .cache import Cache
 
 
@@ -142,7 +143,7 @@ def _linear_fit_center(morph, pixel_center):
         coeffs1 = coeffs_left - coeffs_right
         coeffs2 = coeffs_bottom - coeffs_top
 
-        result = _find_xy(coeffs1, coeffs2, signs, pixel_center)
+        result = _find_dyx(coeffs1, coeffs2, signs, pixel_center)
         if result is not None:
             return result
     # If none of the solutions are correct raise an error
@@ -151,17 +152,39 @@ def _linear_fit_center(morph, pixel_center):
     raise RecenteringError("scarlet failed to properly update the center of the source")
 
 
-def symmetric_fit_center(component):
+def symmetric_fit_center(component, update_interval=5, window=None):
     """Fit the center of an object based on symmetry
 
     This algorithm interpolates the morphology until the pixels on the
     left and right of the central pixel are equal and the top and
     bottom are equal.
     """
-    fit_pixel_center(component)
-    result = _linear_fit_center(component.morph, component.pixel_center)
-    component.float_center = result
+    # Only update at specified interval
+    it = component._parent.it
+    if (it-1) % update_interval:
+        return component
+    # Update the center pixel
+    _fit_pixel_center(component.morph, component.pixel_center, window)
+    center = _linear_fit_center(component.morph, component.pixel_center)
+    component.float_center = center
+    center_int = np.array((np.round(center[0]), np.round(center[1]))).astype(int)
+    component.center_int = center_int
+    dy, dx = center[0]-center_int[0], center[1]-center_int[1]
+    if dy < 0:
+        dy = 1+dy
+    if dx < 0:
+        dx = 1+dx
+    component.shift = (-dy, -dx)
     return component
+
+
+def _fit_pixel_center(morph, center, window=None):
+    cy, cx = center
+    if window is None:
+        window = slice(cy-2, cy+3), slice(cx-2, cx+3)
+    _morph = morph[window]
+    yx0 = np.array([window[0].start, window[1].start])
+    return tuple(np.unravel_index(np.argmax(_morph), _morph.shape) + yx0)
 
 
 def fit_pixel_center(component, window=None):
@@ -180,11 +203,7 @@ def fit_pixel_center(component, window=None):
         on the previous center are used. If it is desired to use the entire
         morphology just set `window=(slice(None), slice(None))`.
     """
-    if window is None:
-        cy, cx = component.pixel_center
-        window = slice(cy-1, cy+2), slice(cx-1, cx+2)
-    _morph = component.morph[window]
-    component.pixel_center = np.unravel_index(np.argmax(_morph), _morph.shape) + np.array([cy-1, cx-1])
+    component.pixel_center = _fit_pixel_center(component.morph, component.pixel_center, window)
     return component
 
 
@@ -296,12 +315,29 @@ def monotonic(component, pixel_center, use_nearest=False, thresh=0, exact=False)
     return component
 
 
-def symmetric(component, center, strength=1, use_prox=True):
+def translation(component, direction=1, kernel=resample.lanczos, padding=3):
+    """Shift the morphology by a given amount
+    """
+    dy, dx = component.shift
+    dy *= direction
+    dx *= direction
+    _kernel, _, _ = resample.get_separable_kernel(dy, dx, kernel=kernel)
+    component.morph[:] = resample.fft_resample(component.morph, dy, dx)
+    return component
+
+
+def symmetric(component, center, strength=1, use_prox=True, kernel=resample.lanczos, padding=3):
     """Make the source symmetric about its center
 
     See `~scarlet.operator.prox_uncentered_symmetry`
     for a description of the parameters.
     """
+<<<<<<< HEAD
     step_size = component.step_morph
     operator.prox_uncentered_symmetry(component.morph, step_size, center, strength, use_prox)
+=======
+    step_size = 1/component.L_morph
+    center_int = _fit_pixel_center(component.morph, component.pixel_center)
+    operator.prox_uncentered_symmetry(component.morph, step_size, center_int, strength, use_prox)
+>>>>>>> Implement shifting and symmetry in sources
     return component
