@@ -29,7 +29,9 @@ def _prox_weighted_monotonic(X, step, weights, didx, offsets, thresh=0):
     """Force an intensity profile to be monotonic based on weighting neighbors
     """
     from . import operators_pybind11
-    operators_pybind11.prox_weighted_monotonic(X.reshape(-1), step, weights, offsets, didx, thresh)
+    _x = X.copy()
+    operators_pybind11.prox_weighted_monotonic(_x.reshape(-1), step, weights, offsets, didx, thresh)
+    X[:] = _x
     return X
 
 
@@ -200,6 +202,10 @@ def uncentered_operator(X, func, center=None, fill=None, **kwargs):
 
     dy = int(2*(py-cy))
     dx = int(2*(px-cx))
+    if not X.shape[0] % 2:
+        dy += 1
+    if not X.shape[1] % 2:
+        dx += 1
     if dx < 0:
         xslice = slice(None, dx)
     else:
@@ -240,7 +246,7 @@ def prox_soft_symmetry(X, step, strength=1):
     return X
 
 
-def prox_uncentered_symmetry(X, step, center=None, strength=.5, use_soft=True):
+def prox_uncentered_symmetry(X, step, center=None, strength=.5, use_soft=True, fill=0):
     """Symmetry with off-center peak
 
     Symmetrize X for all pixels with a symmetric partner.
@@ -267,7 +273,7 @@ def prox_uncentered_symmetry(X, step, center=None, strength=.5, use_soft=True):
         The update function based on the specified parameters.
     """
     if use_soft:
-        return uncentered_operator(X, prox_soft_symmetry, center, step=step, strength=strength)
+        return uncentered_operator(X, prox_soft_symmetry, center, step=step, strength=strength, fill=fill)
     return uncentered_operator(X, prox_sdss_symmetry, center, step=step, fill=0)
 
 
