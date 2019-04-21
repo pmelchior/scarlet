@@ -1,9 +1,5 @@
 import numpy as np
 
-from .component import Component
-from .blend import Blend
-from .observation import Scene, Observation
-
 
 def moffat(coords, y0, x0, amplitude, alpha, beta=1.5):
     """Moffat Function
@@ -118,60 +114,3 @@ def fit_target_psf(psfs, func, init_values=None, extract_values=None):
     # normalize the target PSF
     target_psf = target_psf/target_psf.sum()
     return target_psf, all_params, params
-
-
-def build_diff_kernels(psfs, target_psf, max_iter=100, e_rel=1e-3, padding=3):
-    """Build the difference kernel to match a list of `psfs` to a `target_psf`
-
-    This convenience function runs the `Blend` class on a collection of
-    `PSFDiffKernel` objects as sources to match `psfs` to `target_psf`.
-
-    Parameters
-    ----------
-    psfs: array
-        Array of 2D psf images to match to the `target_psf`.
-    target_psf: array
-        Target PSF to use for de-convolving `psfs`.
-    max_iter: int
-        Maximum number of iterations used to create the difference kernels
-    e_rel: float
-        Relative error to use when matching the PSFs
-    padding: int
-        Number of pixels to pad each side with, in addition to
-        half the width of the PSF, for FFT's. This is needed to
-        prevent artifacts due to the FFT.
-
-    Returns
-    -------
-    diff_kernels: array
-        Array of 2D difference kernels for each PSF in `psfs`
-    `psf_blend`: `Blend`
-        `Blend` object that contains the result of matching
-        `psfs` to `target_psf`, where `diff_kernels` is an array
-        of the `Source.morph` for each source in `psf_blend`.
-    """
-    scene = Scene(psfs.shape)
-    sources = [PSFDiffKernel(psfs, band) for band in range(len(psfs))]
-    target_psf = np.array([target_psf for n in range(len(psfs))])
-    observation = Observation(images=psfs, psfs=target_psf)
-    psf_blend = Blend(scene, sources, observation)
-    psf_blend.fit(max_iter, e_rel)
-    diff_kernels = np.array([kernel.morph for kernel in psf_blend.components])
-    return diff_kernels, psf_blend
-
-
-class PSFDiffKernel(Component):
-    """Create a model of the PSF in a single band
-
-    Passing a `PSFDiffKernel` for each band as a list of sources to
-    the :class:`scarlet.blend.Blend` class can be used to model
-    the difference kernel in each band, which gives more accurate
-    results when performing PSF deconvolution.
-    """
-    def __init__(self, psfs, band):
-        # set sed and morph to that of `band`
-        B, Ny, Nx = psfs.shape
-        sed = np.zeros(B, dtype=psfs.dtype)
-        sed[band] = 1
-        morph = psfs[band]
-        super().__init__(sed, morph, fix_sed=True, fix_morph=False)

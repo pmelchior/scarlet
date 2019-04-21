@@ -1,4 +1,6 @@
+import numpy as np
 import torch
+
 from . import convolution
 
 import logging
@@ -26,9 +28,10 @@ class Scene():
         self._shape = tuple(shape)
         self.wcs = wcs
 
-        assert psfs is None or shape[0] == len(psfs)
+        assert psfs is None or shape[0] == len(psfs) or len(psfs.shape) == 2
         if psfs is not None:
             psfs = torch.Tensor(psfs)
+            psfs /= psfs.sum()
         self._psfs = psfs
         assert filtercurve is None or shape[0] == len(filtercurve)
         self.filtercurve = filtercurve
@@ -116,11 +119,45 @@ class Observation(Scene):
         # 2) compute the interpolation kernel between scene and obs
 
         # 3) compute obs.psf in the frame of scene, store in Fourier space
+        # A few notes on this procedure:
+        # a) This assumes that scene.psfs and self.psfs have the same spatial shape,
+        #    which will need to be modified for multi-resolution datasets
+        # b)Currently pytorch does not have complex tensor type
+        #   (see https://github.com/pytorch/pytorch/issues/755),
+        #   so in the meantime we convert the PSFs to numpy, perform the
+        #   deconvolution there, and then convert back to pytorch. Once
+        #   proper support is added by pytorch we can use Tensors all the way through.
         if self._psfs is not None:
-            ipad, ppad = convolution.get_common_padding(images, psfs, padding=padding)
+            ipad, ppad = convolution.get_common_padding(self._images, self._psfs, padding=self.padding)
             self.image_padding, self.psf_padding = ipad, ppad
             _psfs = torch.nn.functional.pad(self._psfs, self.psf_padding)
-            self.psfs_fft = torch.rfft(_psfs, 2)
+            _target = torch.nn.functional.pad(scene._psfs, self.psf_padding)
+
+            new_fft = []
+            # Deconvolve the target PSF
+            target_fft = np.fft.fft2(np.fft.ifftshift(_target.detach().numpy()))
+            target_inv = 1/target_fft
+
+            for _psf in _psfs:
+                _Psf = np.fft.fft2(np.fft.ifftshift(_psf.detach().numpy()))
+                # Avoid dividing by zero
+                # note: this assumes that the target PSF is narrower than the observation PSF,
+                # and both are well sampled
+                _Target = target_inv.copy()
+                _Target[_Psf == 0] = 0
+                # Create the matching kernel
+                Convolved = _Psf * _Target
+                # Take the inverse Fourier transform to normalize the result
+                # Trials without this operation are slow to converge, but in the future
+                # we may be able to come up with a method to normalize in the Fourier Transform
+                # and avoid this step.
+                convolved = np.fft.ifft2(Convolved)
+                convolved = np.fft.fftshift(np.real(convolved))
+                convolved /= convolved.sum()
+                convolved = torch.Tensor(convolved)
+                # Store the Fourier transform of the matching kernel
+                new_fft.append(torch.rfft(convolved, 2))
+            self.psfs_fft = torch.stack(new_fft)
 
         # 4) divide obs.psf from scene.psf in Fourier space
 
