@@ -61,7 +61,7 @@ class RecenteringError(Exception):
     pass
 
 
-def _linear_fit_center(morph, pixel_center):
+def _linear_fit_center(morph, pixel_center, references=4):
     """Fit the center using bilinear interpolation
 
     While this interpolation has larger errors than
@@ -125,26 +125,52 @@ def _linear_fit_center(morph, pixel_center):
         d = x[4]
         return np.array([a, b, c, d]), (-1, -1)
 
+    def fit_coeffs(points, func):
+        coeffs = []
+        for point in points:
+            py, px = point
+            block = morph[cy+py-1:cy+py+2, cx+px-1: cx+px+2].reshape(-1)
+            coeff, signs = func(block)
+            coeffs.append(coeff)
+        coeffs01 = coeffs[0] - coeffs[1]
+        coeffs23 = coeffs[2] - coeffs[3]
+        return _find_yx(coeffs01, coeffs23, signs, pixel_center)
+
     cy, cx = pixel_center
+    sets = (
+        ((0, -1), (0, 1),  # left, right
+         (-1, 0), (1, 0)),  # bottom, top
+        ((-1, -1), (1, 1),
+         (-1, 1), (1, -1)),
+        ((0, -2), (0, 2),
+         (-2, 0), (2, 0)),
+        ((-2, -2), (2, 2),
+         (-2, 2), (2, -2)),
+    )
     # Get the relevent vectors for each pixel
-    left = morph[cy-1:cy+2, cx-2:cx+1].reshape(-1)
-    right = morph[cy-1:cy+2, cx:cx+3].reshape(-1)
-    bottom = morph[cy-2:cy+1, cx-1:cx+2].reshape(-1)
-    top = morph[cy:cy+3, cx-1:cx+2].reshape(-1)
-
     # Check all four possible signs for x and y
+    my_func = None
+    points = sets[0]
+    results = []
+    weights = []
     for func in [pxpy, mxpy, pxmy, mxmy]:
-        coeffs_left, signs = func(left)
-        coeffs_right, _ = func(right)
-        coeffs_bottom, _ = func(bottom)
-        coeffs_top, _ = func(top)
-
-        coeffs1 = coeffs_left - coeffs_right
-        coeffs2 = coeffs_bottom - coeffs_top
-
-        result = _find_yx(coeffs1, coeffs2, signs, pixel_center)
+        result = fit_coeffs(points, func)
         if result is not None:
-            return result
+            weights.append(np.sum(np.array(points)**2))
+            results.append(result)
+            my_func = func
+            break
+    if my_func is not None:
+        for points in sets[1:references]:
+            result = fit_coeffs(points, my_func)
+            if result is not None:
+                weights.append(np.sum(np.array(points)**2))
+                results.append(result)
+        results = np.array(results)
+        weights = 1/np.array(weights)
+        result = np.sum(results * weights[:, None], axis=0)/weights.sum()
+        return tuple(result)
+
     # If none of the solutions are correct raise an error
     # (that could possibly be caught and disable positon updates
     # for the gien source).
