@@ -5,6 +5,7 @@ from proxmin.operators import prox_plus, prox_hard, prox_soft
 
 from . import interpolation
 from . import operator
+from .bbox import trim
 from .cache import Cache
 
 
@@ -304,7 +305,43 @@ def sparse_l1(component, thresh):
     return component
 
 
-def monotonic(component, pixel_center, use_nearest=False, thresh=0, exact=False):
+def _threshold(morph):
+    """Find the threshold value for a given morphology
+    """
+    _morph = morph[morph > 0]
+    _bins = 50
+    # Decrease the bin size for sources with a small number of pixels
+    if _morph.size < 500:
+        _bins = max(np.int(_morph.size/10), 1)
+        if _bins == 1:
+            return 0, _bins
+    hist, bins = np.histogram(np.log10(_morph).reshape(-1), _bins)
+    cutoff = np.where(hist == 0)[0]
+    # If all of the pixels are used there is no need to threshold
+    if len(cutoff) == 0:
+        return 0, _bins
+    return 10**bins[cutoff[-1]], _bins
+
+
+def threshold(component):
+    """Set a cutoff threshold for pixels below the noise
+
+    Use the log histogram of pixel values to determine when the
+    source is fitting noise. This function works well to prevent
+    faint sources from growing large footprints but for large
+    diffuse galaxies with a wide range of pixel values this
+    does not work as well.
+    """
+    thresh, _bins = _threshold(component.morph)
+    component.morph[component.morph < thresh] = 0
+    bbox = trim(component.morph)
+    if not hasattr(component, "bboxes"):
+        component.bboxes = {}
+    component.bboxes["thresh"] = bbox
+    return component
+
+
+def monotonic(component, pixel_center, use_nearest=False, thresh=0, exact=False, bbox=None):
     """Make morphology monotonically decrease from the center
 
     Parameters
@@ -316,9 +353,21 @@ def monotonic(component, pixel_center, use_nearest=False, thresh=0, exact=False)
     See `~scarlet.operator.prox_monotonic`
     for a description of the other parameters.
     """
+    if bbox is not None:
+        # Only apply monotonicity to the pixels inside the bounding box
+        morph = component.morph[bbox.slices]
+        shape = morph.shape
+        if shape[0] <= 1 or shape[1] <= 1:
+            return component
+        center = pixel_center[0]-bbox.bottom, pixel_center[1]-bbox.left
+    else:
+        morph = component.morph
+        shape = component.shape[-2:]
+        center = pixel_center
+    morph = morph.copy()
+
     prox_name = "update.monotonic"
-    shape = component.shape[-2:]
-    key = (shape, pixel_center, use_nearest, thresh, exact)
+    key = (shape, center, use_nearest, thresh, exact)
     # The creation of this operator is expensive,
     # so load it from memory if possible.
     try:
@@ -326,7 +375,7 @@ def monotonic(component, pixel_center, use_nearest=False, thresh=0, exact=False)
     except KeyError:
         if not exact:
             prox = operator.prox_strict_monotonic(shape, use_nearest=use_nearest,
-                                                  thresh=thresh, center=pixel_center)
+                                                  thresh=thresh, center=center)
         else:
             # Exact monotonicy still needs to be tested and implmented with v0.5.
             raise NotImplementedError("Exact monotonicity is not currently supported")
@@ -336,7 +385,8 @@ def monotonic(component, pixel_center, use_nearest=False, thresh=0, exact=False)
         Cache.set(prox_name, key, prox)
 
     step_size = component.step_morph
-    prox(component.morph, step_size)
+    prox(morph, step_size)
+    component.morph[bbox.slices] = morph
     return component
 
 

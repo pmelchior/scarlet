@@ -29,9 +29,7 @@ def _prox_weighted_monotonic(X, step, weights, didx, offsets, thresh=0):
     """Force an intensity profile to be monotonic based on weighting neighbors
     """
     from . import operators_pybind11
-    _x = X.copy()
-    operators_pybind11.prox_weighted_monotonic(_x.reshape(-1), step, weights, offsets, didx, thresh)
-    X[:] = _x
+    operators_pybind11.prox_weighted_monotonic(X.reshape(-1), step, weights, offsets, didx, thresh)
     return X
 
 
