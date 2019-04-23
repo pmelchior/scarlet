@@ -124,7 +124,7 @@ def linorm2D(S, nit):
 
     return 1./xn
 
-def match_patches(x0,y0,WLR, WHR, excess):
+def match_patches(im_hr, im_lr, wcs_hr, wcs_lr):
 
     '''
     :param x0, y0: coordinates of the center of the patch in High Resolutions pixels
@@ -135,34 +135,27 @@ def match_patches(x0,y0,WLR, WHR, excess):
     X_LR, Y_LR: pixel coordinates of the grid for the Low resolution grid
     X_HR, Y_HR: pixel coordinates of the Low resolution grid in units of the High resolution patch
     '''
+    x_hr, y_hr = np.where(im_hr * 0 == 0)
+    X_lr, X_lr = np.where(im_lr * 0 == 0)
 
-    xstart = x0 - excess
-    xstop = x0 + excess
-    ystart = y0 - excess
-    ystop = y0 + excess
+    ra_hr, dec_hr = wcs_hr.wcs_pix2world(y_hr, x_hr, 0)
+    ra_lr, dec_lr = wcs_lr.wcs_pix2world(y_lr, x_lr, 0)
 
-    XX = np.linspace(xstart, xstop, xstop-xstart + 1)
-    YY = np.linspace(ystart, ystop, xstop-xstart + 1)
+    #Corrdinates of the low resolution pixels in the high resolution frame
+    Y_hr, X_hr = wcs_hr.wcs_pix2world(ra_lr, dec_lr,0)
 
-    x, y = np.meshgrid(XX, YY)
-    x_HR = x.flatten().astype(int) + 0.5
-    y_HR = y.flatten().astype(int) + 0.5
+    frame_lim = np.min([x_hr, X_HR]), np.max([x_hr, X_hr]), np.min([y_hr, y_HR], np.max([y_hr, Y_hr]))
 
-    # LR coordinates
+    frame = np.zeros((frame_lim[0]-frame_lim[1], frame_lim[2]-frame_lim[3]))
 
-    Ramin, Decmin = WHR.wcs_pix2world(ystart, xstart, 0)
-    Ramax, Decmax = WHR.wcs_pix2world(ystop, xstop, 0)
-    Ymin, Xmin = WLR.wcs_world2pix(Ramin, Decmin, 0)
-    Ymax, Xmax = WLR.wcs_world2pix(Ramax, Decmax, 0)
+    #mask of overlapping regions
+    mask_lr = frame.copy()
+    mask_hr = frame.copy()
+    mask_lr[X_hr, Y_hr] = 1
+    mask_hr[x_hr, y_hr] = 1
+    mask = mask_lr*mask_hr
 
-    X = np.linspace(np.int(Xmin), np.int(Xmax), np.int(Xmax)-np.int(Xmin)+1)
-    Y = np.linspace(np.int(Ymin), np.int(Ymax), np.int(Ymax)-np.int(Ymin)+1)
-
-    X, Y = np.meshgrid(X, Y)
-    X_LR = X.flatten().astype(int) + 0.5
-    Y_LR = Y.flatten().astype(int) + 0.5
-    Ra_LR, Dec_LR = WLR.wcs_pix2world(Y_LR, X_LR, 0)  # type:
-    Y_HR, X_HR = WHR.wcs_world2pix(Ra_LR, Dec_LR, 0)
+    x_over, y_over = np.where(mask == 1)
 
     return x_HR, y_HR, X_LR, Y_LR, X_HR, Y_HR
 

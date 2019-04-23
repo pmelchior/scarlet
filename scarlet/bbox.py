@@ -1,3 +1,6 @@
+import numpy as np
+
+
 class BoundingBox(object):
     """Bounding Box for an object
 
@@ -118,11 +121,11 @@ def trim(X, min_value=0):
     bbox: `BoundingBox`
         Bounding box for the trimmed `result` (bottom, top, left, right)
     """
-    nonzero = (X > min_value).nonzero()
-    left = nonzero[:, 1].min()
-    right = nonzero[:, 1].max()
-    bottom = nonzero[:, 0].min()
-    top = nonzero[:, 0].max()
+    nonzero = np.where(X > 0)
+    left = nonzero[1].min()
+    right = nonzero[1].max()
+    bottom = nonzero[0].min()
+    top = nonzero[0].max()
     return BoundingBox((bottom, top, left, right))
 
 

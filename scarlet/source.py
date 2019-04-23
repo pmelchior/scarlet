@@ -72,6 +72,7 @@ def get_best_fit_seds(morphs, scene, observations):
         seds[:, band:band+obs.B] = sed
     return seds
 
+
 def build_detection_coadd(sed, bg_rms, observation, scene, thresh=1):
     """Build a band weighted coadd to use for source detection
 
@@ -206,7 +207,8 @@ class PointSource(Component):
     component_kwargs: dict
         Keyword arguments to pass to the component initialization.
     """
-    def __init__(self, sky_coord, scene, observations, symmetric=True, monotonic=True, **component_kwargs):
+    def __init__(self, sky_coord, scene, observations, symmetric=False, monotonic=True,
+                 center_step=5, **component_kwargs):
         try:
             iter(observations)
         except TypeError:
@@ -228,6 +230,7 @@ class PointSource(Component):
         super().__init__(sed, morph, **component_kwargs)
         self.symmetric = symmetric
         self.monotonic = monotonic
+        self.center_step = center_step
 
     def update(self):
         """Default update parameters for an ExtendedSource
@@ -235,22 +238,37 @@ class PointSource(Component):
         This method can be overwritten if a different set of constraints
         or update functions is desired.
         """
+        it = self._parent.it
+        # Update the central pixel location (pixel_center)
+        if self.center_step is not None and (it-1) % self.center_step == 0:
+            # update the fractional center position
+            try:
+                update.fit_pixel_center(self)
+                self.float_center = self.pixel_center
+                update.symmetric_fit_center(self)
+            except update.RecenteringError:
+                err = "Failed in recentering for source at {0} in iteration {1}"
+                print(err.format(self.pixel_center, it))
+                if not hasattr(self, "float_center"):
+                    self.float_center = self.pixel_center
+                    self.shift = (0, 0)
+
+        update.threshold(self)
+
         if self.symmetric:
-            # TODO implement improved symmetry method
-            # update the center position
-            #update.symmetric_fit_center(self)
+            # Translate to the centered frame
+            update.translation(self, 1)
             # make the morphology perfectly symmetric
-            #update.symmetric(self, self.float_center)
-            update.fit_pixel_center(self)
-            update.symmetric(self, self.pixel_center)
-        elif self.monotonic:
-            # update the center position
-            update.fit_pixel_center(self)
+            update.symmetric(self, strength=1)
+            # Translate back to the model frame
+            update.translation(self, -1)
+
         if self.monotonic:
-            # make the morphology monotonically decreasing
-            update.monotonic(self, self.pixel_center)
+                # make the morphology monotonically decreasing
+                update.monotonic(self, self.pixel_center, bbox=self.bboxes["thresh"])
+
         update.positive(self)  # Make the SED and morph non-negative
-        update.normalized(self, type='morph_max')
+        update.normalized(self)  # Use MORPH_MAX normalization
         return self
 
 
@@ -282,15 +300,16 @@ class ExtendedSource(PointSource):
         Keyword arguments to pass to the component initialization.
     """
     def __init__(self, sky_coord, scene, observations, bg_rms, obs_idx=0, thresh=1,
-                 symmetric=True, monotonic=True, **component_kwargs):
+                 symmetric=False, monotonic=True, center_step=5, **component_kwargs):
         self.symmetric = symmetric
         self.monotonic = monotonic
         self.coords = sky_coord
         center = scene.get_pixel(sky_coord)
         self.pixel_center = center
+        self.center_step = center_step
 
         sed, morph = init_extended_source(sky_coord, scene, observations, bg_rms, obs_idx,
-                                          thresh, symmetric, monotonic)
+                                          thresh, True, monotonic)
 
         Component.__init__(self, sed, morph, **component_kwargs)
 
@@ -328,7 +347,7 @@ class MultiComponentSource(ComponentTree):
 
             def update(self):
                 if self.symmetric:
-                    update.symmetric_fit_center(self.morph)  # update the center position
+                    update.symmetric_fit_center(self)  # update the center position
                     center = self.coords
                     update.symmetric(self, center)  # make the morph perfectly symmetric
                 elif self.monotonic:
