@@ -116,14 +116,11 @@ class Observation(Scene):
     def match(self, scene):
 
         # 1) determine shape of scene in obs, set mask
-        N1,N2,N = LR.shape
-        n1, n2, n = LR.shape
+        x_HR, y_HR, X_LR, Y_LR, X_HR, Y_HR = resampling.match_patches(self._images, scene._images, self.wcs, scene.wcs)
 
         # 2) compute the interpolation kernel between scene and obs
         #Get pixel coordinates in each frame
-        x_HR, y_HR, X_LR, Y_LR, X_HR, Y_HR = resampling.match_patches(x0, y0, WLR, WHR, size)
-        assert X_HR.size == n1*n2
-        assert X_LR.size = N1*N2
+
 
         # Computes the resampling/convolution matrix
         mat_HSC = resampling.make_mat2D_fft(x_HR, y_HR, X_HR, Y_HR, psf_LR)
