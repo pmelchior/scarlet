@@ -10,7 +10,7 @@ This package performs source separation (aka "deblending") on multi-band images.
 
 **For the full documentation see [scarlet.readthedocs.io](http://scarlet.readthedocs.io).**
 
-Separation is achieved through a constrained matrix factorization, which models each source with a Spectral Energy Distribution (SED) and a non-parametric morphology, or multiple such components per source. In astronomy jargon, the code performs forced photometry (with PSF matching if needed) using an optimal weight function given by the signal-to-noise weighted morphology across bands. The approach works well if the sources in the scene have different colors and can be further strengthened by imposing various additional constraints/priors on each source. 
+Separation is achieved through a constrained matrix factorization, which models each source with a Spectral Energy Distribution (SED) and a non-parametric morphology, or multiple such components per source. In astronomy jargon, the code performs forced photometry (with PSF matching if needed) using an optimal weight function given by the signal-to-noise weighted morphology across bands. The approach works well if the sources in the scene have different colors and can be further strengthened by imposing various additional constraints/priors on each source.
 
 The minimization itself uses the proximal gradient method (PGM). In short, we iteratively compute gradients of the likelihood (or of the posterior if priors are included), perform a downhill step, and project the outcome on a sub-manifold that satisfies one or multiple non-differentiable constraints for any of the sources.
 
@@ -44,7 +44,6 @@ archivePrefix = "arXiv",
 The code runs on python>=3.5. In addition, you'll need
 
 * numpy
-* scipy
 * pybind11
 * torch
 * [proxmin](https://github.com/pmelchior/proxmin)
