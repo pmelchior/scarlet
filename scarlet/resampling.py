@@ -2,8 +2,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.signal as scp
 from . import interpolation
-import warnings
-warnings.simplefilter("ignore")
 
 
 
@@ -127,37 +125,80 @@ def linorm2D(S, nit):
 def match_patches(im_hr, im_lr, wcs_hr, wcs_lr):
 
     '''
-    :param x0, y0: coordinates of the center of the patch in High Resolutions pixels
-    :param WLR, WHR: WCS of the Low and High resolution fields respectively
-    :param excess: half size of the box
-    :return:
-    x_HR, y_HR: pixel coordinates of the grid for the High resolution patch
-    X_LR, Y_LR: pixel coordinates of the grid for the Low resolution grid
-    X_HR, Y_HR: pixel coordinates of the Low resolution grid in units of the High resolution patch
-    '''
-    x_hr, y_hr = np.where(im_hr * 0 == 0)
-    X_lr, X_lr = np.where(im_lr * 0 == 0)
+    Finds the region of overlap between two datasets and creates a mask for the region as well as the pixel coordinates for the dataset pixels inside the overlap.
+    INPUTS:
+    ------
+        im_hr, im_lr: cube images for the two datasets to match. The pixel grid from im_hr is used as a reference grid for the combination of both sets.
+        wcs_hr, wcs_lr: WCS of the Low and High resolution fields respectively
 
-    ra_hr, dec_hr = wcs_hr.wcs_pix2world(y_hr, x_hr, 0)
-    ra_lr, dec_lr = wcs_lr.wcs_pix2world(y_lr, x_lr, 0)
+    RETURN:
+    ------
+        mask:
+        x_HR, y_HR: pixel coordinates of the grid for the High resolution patch
+        X_LR, Y_LR: pixel coordinates of the grid for the Low resolution grid
+        X_HR, Y_HR: pixel coordinates of the Low resolution grid in units of the High resolution patch
+    '''
+
+    #shapes
+
+    if np.size(im_hr.shape) == 3:
+        b,n1,n2 = im_hr.shape
+    elif np.size(im_hr.shape) == 2:
+        n1, n2 = im_hr.shape
+    else:
+        raise ValueError('Wrong dimensions for reference image')
+
+    if np.size(im_lr.shape) == 3:
+        B,N1,N2 = im_lr.shape
+    elif np.size(im_lr.shape) == 2:
+        N1, N2 = im_lr.shape
+    else:
+        raise ValueError('Wrong dimensions for low resolution image')
+
+    #Coordinates of pixels in both frames
+
+    x_hr, y_hr = np.where(im_hr * 0 == 0)
+    X_lr, Y_lr = np.where(im_lr * 0 == 0)
+
+
+    ra_lr, dec_lr = wcs_lr.wcs_pix2world(Y_lr, X_lr, 0)
 
     #Corrdinates of the low resolution pixels in the high resolution frame
-    Y_hr, X_hr = wcs_hr.wcs_pix2world(ra_lr, dec_lr,0)
+    Y_hr, X_hr = wcs_hr.wcs_world2pix(ra_lr, dec_lr,0)
 
-    frame_lim = np.min([x_hr, X_HR]), np.max([x_hr, X_hr]), np.min([y_hr, y_HR], np.max([y_hr, Y_hr]))
 
-    frame = np.zeros((frame_lim[0]-frame_lim[1], frame_lim[2]-frame_lim[3]))
+    frame_lim = np.array([np.min(np.concatenate((x_hr,X_hr))), np.max(np.concatenate((x_hr, X_hr))),
+                 np.min(np.concatenate((y_hr, y_hr))), np.max(np.concatenate((y_hr, Y_hr)))]).astype(int)
+
+
+    frame = np.zeros((frame_lim[1]-frame_lim[0]+1, frame_lim[3]-frame_lim[2]+1))
+
+    xf = np.linspace(0,frame_lim[1]-frame_lim[0]+1, frame_lim[1]-frame_lim[0]+1)
+    yf = xf.copy()
+    xf, yf = np.meshgrid(xf, yf)
+    xf = xf.flatten()
+    yf = yf.flatten()
+
+    #Ra,Dec positions of the pixels in the frame
+    raf, decf = wcs_hr.wcs_pix2world(yf, xf, 0)
+
+    yf_hr, xf_hr = wcs_hr.wcs_world2pix(raf, decf, 0)
+    yf_lr, xf_lr = wcs_lr.wcs_world2pix(raf, decf, 0)
+
+
+
+    #Location of pixels in the reference frame that are in the overlap (boolean)
+    loc = (yf_hr<n2+1)*(yf_hr>=0)*(xf_hr<n1+1)*(xf_hr>=0)*(yf_lr<N2+1)*(yf_lr>=0)*(xf_lr<N1+1)*(xf_lr>=0)
 
     #mask of overlapping regions
-    mask_lr = frame.copy()
-    mask_hr = frame.copy()
-    mask_lr[X_hr, Y_hr] = 1
-    mask_hr[x_hr, y_hr] = 1
-    mask = mask_lr*mask_hr
+    frame = loc.reshape(frame.shape)
 
-    x_over, y_over = np.where(mask == 1)
+    #pixel coordinates of the overlap in each datasets
+    x_over, y_over = np.where(frame == 1)
+    X_over = X_hr[frame[X_hr.astype(int), Y_hr.astype(int)]==1]
+    Y_over = Y_hr[frame[X_hr.astype(int), Y_hr.astype(int)] == 1]
 
-    return x_HR, y_HR, X_LR, Y_LR, X_HR, Y_HR
+    return frame, x_over, y_over, X_over, Y_over
 
 def make_patches(x_HR, y_HR, X_LR, Y_LR, Im_HR, Im_LR):
     '''

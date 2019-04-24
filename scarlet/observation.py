@@ -116,7 +116,7 @@ class Observation(Scene):
     def match(self, scene):
 
         # 1) determine shape of scene in obs, set mask
-        x_HR, y_HR, X_LR, Y_LR, X_HR, Y_HR = resampling.match_patches(self._images, scene._images, self.wcs, scene.wcs)
+        mask, x_over, y_over, X_over, Y_over = resampling.match_patches(self._images, scene._images, self.wcs, scene.wcs)
 
         # 2) compute the interpolation kernel between scene and obs
         #Get pixel coordinates in each frame
