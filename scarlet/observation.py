@@ -116,14 +116,15 @@ class Observation(Scene):
     def match(self, scene):
 
         # 1) determine shape of scene in obs, set mask
-        mask, x_over, y_over, X_over, Y_over = resampling.match_patches(self._images, scene._images, self.wcs, scene.wcs)
+        shape_hr = np.shape(self.images)
+        shape_lr =np.shape(scene.images)
 
-        # 2) compute the interpolation kernel between scene and obs
         #Get pixel coordinates in each frame
-
+        mask, coord_hr_model, coord_hr, coord_lr, coord_lr_hr = resampling.match_patches(shape_hr, shape_lr,
+                                                                                                   self.wcs, scene.wcs)
 
         # Computes the resampling/convolution matrix
-        mat_HSC = resampling.make_mat2D_fft(x_HR, y_HR, X_HR, Y_HR, psf_LR)
+        mat = resampling.make_mat(mask.shape(), coord_hr, coord_lr_hr, self.psf)
 
         # 3) compute obs.psf in the frame of scene, store in Fourier space
         # A few notes on this procedure:
