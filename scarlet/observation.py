@@ -133,31 +133,25 @@ class Observation(Scene):
             _psfs = torch.nn.functional.pad(self._psfs, self.psf_padding)
             _target = torch.nn.functional.pad(scene._psfs, self.psf_padding)
 
-            new_fft = []
+            new_kernel_fft = []
             # Deconvolve the target PSF
             target_fft = np.fft.fft2(np.fft.ifftshift(_target.detach().numpy()))
-            target_inv = 1/target_fft
 
             for _psf in _psfs:
-                _Psf = np.fft.fft2(np.fft.ifftshift(_psf.detach().numpy()))
-                # Avoid dividing by zero
-                # note: this assumes that the target PSF is narrower than the observation PSF,
-                # and both are well sampled
-                _Target = target_inv.copy()
-                _Target[_Psf == 0] = 0
+                observed_fft = np.fft.fft2(np.fft.ifftshift(_psf.detach().numpy()))
                 # Create the matching kernel
-                Convolved = _Psf * _Target
+                kernel_fft = observed_fft / target_fft
                 # Take the inverse Fourier transform to normalize the result
                 # Trials without this operation are slow to converge, but in the future
                 # we may be able to come up with a method to normalize in the Fourier Transform
                 # and avoid this step.
-                convolved = np.fft.ifft2(Convolved)
-                convolved = np.fft.fftshift(np.real(convolved))
-                convolved /= convolved.sum()
-                convolved = torch.Tensor(convolved)
+                kernel = np.fft.ifft2(kernel_fft)
+                kernel = np.fft.fftshift(np.real(kernel))
+                kernel /= kernel.sum()
+                kernel = torch.Tensor(kernel)
                 # Store the Fourier transform of the matching kernel
-                new_fft.append(torch.rfft(convolved, 2))
-            self.psfs_fft = torch.stack(new_fft)
+                new_kernel_fft.append(torch.rfft(kernel, 2))
+            self.psfs_fft = torch.stack(new_kernel_fft)
 
         # 4) divide obs.psf from scene.psf in Fourier space
 
