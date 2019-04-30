@@ -3,6 +3,7 @@ import torch
 
 from . import convolution
 from . import resampling
+from . import psf_match
 
 import logging
 logger = logging.getLogger("scarlet.observation")
@@ -115,18 +116,29 @@ class Observation(Scene):
 
     def match(self, scene):
 
-        # 1) determine shape of scene in obs, set mask
-        shape_lr = self.shape
-        shape_hr =scene.shape
 
         #Get pixel coordinates in each frame
-        mask, coord_hr_model, coord_hr, coord_lr, coord_lr_hr = resampling.match_patches(shape_hr, shape_lr,
-                                                                                                   self.wcs, scene.wcs)
+        mask,over_lr, over_hr  = resampling.match_patches(scene.shape, self.shape,scene.wcs, self.wcs)
 
         #Compute diff kernel at hr
+        if scene._psfs != None:
+            target_psf = scene._psf[0,:,:]
+            coord_phr = np.where(target_psf*0.==0)
+            coord_plr = np.where(target_psf[0,:,:] * 0. == 0)
+            #This is going to assume that the spatial span of the psf matches. In practice, we actually need their wcs
+            #In which case both previous lines will be replaced by:
+            # mask_p,coord_plr, coord_phr  = resampling.match_patches(np.shape(scene.psf), np.shape(self.psf),scene.pwcs, self.pwcs)
+            interp_diff = []
+            for _psf_self in self._psfs:
+                interp_psf = resampling.interp2D(coord_phr, coord_plr,_psf_self)
+
+            #Here we need to choose a reference PSF I choose the first one for now, but it might be a degraded version of all the high resolution PSFs.
+
+                diff_psf, psf_blend = psf_match.build_diff_kernels(interp_psf,target_psf, l0_thresh=0.000001)
+                interp_diff.appen(diff_psf)
 
         # Computes the resampling/convolution matrix
-        mat = resampling.make_mat(mask.shape(), coord_hr, coord_lr_hr, self.psf)
+        self.resample = resampling.make_mat(mask.shape(), over_lr, diff_psf)
 
         # 3) compute obs.psf in the frame of scene, store in Fourier space
         # A few notes on this procedure:

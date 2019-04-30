@@ -5,6 +5,28 @@ import scipy.signal as scp
 def sinc2D(x,y):
     return np.sinc(x)*np.sinc(y)
 
+def interp2D(coord_hr, coord_lr, Fm):
+    '''
+    INPUTS:
+    ------
+        coord_hr: Coordinates of the high resolution grid
+        coord_lr: Coordinates of the low resolution grid
+        Fm: Sample at positions coord_lr
+    OUTPUTS:
+    -------
+        result:  interpolated  samples at positions coord_hr
+    '''
+    a, b = coord_hr
+    A, B = coord_lr
+    hx = np.abs(A[1]-A[0])
+    hy = np.abs(B[np.int(np.sqrt(B.size))+1] - B[0])
+
+    assert hx != 0
+
+    return np.array([Fm[k] * sinc2D((a-A[k])/(hx),(b-B[k])/(hy)) for k in range(len(A))]).sum(axis=0)
+
+
+
 def conv2D_fft(shape, xm, ym, p, h):
     '''
 
@@ -90,3 +112,83 @@ def linorm2D(S, nit):
         x0 = y / yn
 
     return 1./xn
+
+
+def match_patches2(shape_hr, shape_lr, wcs_hr, wcs_lr):
+
+    '''
+    Finds the region of overlap between two datasets and creates a mask for the region as well as the pixel coordinates for the dataset pixels inside the overlap.
+    INPUTS:
+    ------
+        shape_hr, shape_lr: cube images for the two datasets to match. The pixel grid from im_hr is used as a reference grid for the combination of both sets.
+        wcs_hr, wcs_lr: WCS of the Low and High resolution fields respectively
+
+    RETURN:
+    ------
+        mask:mask of overlapping pixel in the high resolution frame.
+        coordlr_over_lr: coordinates of the overlap in low resolution.
+        coordlr_over_hr: coordinates of the overlaps at low resolution in the high resolution frame.
+    '''
+
+    #shapes
+
+
+    if np.size(shape_hr) == 3:
+        b,n1,n2 = shape_hr
+    elif np.size(shape_hr) == 2:
+        n1, n2 = shape_hr
+    else:
+        raise ValueError('Wrong dimensions for reference image')
+
+    if np.size(shape_lr) == 3:
+        B,N1,N2 = shape_lr
+    elif np.size(shape_lr) == 2:
+        N1, N2 = shape_lr
+    else:
+        raise ValueError('Wrong dimensions for low resolution image')
+
+    assert wcs_hr != None
+    assert wcs_lr != None
+
+    im_hr = np.zeros((n1,n2))
+    im_lr = np.zeros((N1,N2))
+
+    # Coordinates of pixels in both frames
+    x_hr, y_hr = np.where(im_hr * 0 == 0)
+    X_lr, Y_lr = np.where(im_lr * 0 == 0)
+
+
+    ra_lr, dec_lr = wcs_lr.all_pix2world(Y_lr, X_lr, 0, ra_dec_order = True)
+    ra_hr, dec_hr = wcs_hr.all_pix2world(x_hr, y_hr, 0, ra_dec_order=True)
+
+    # Coordinates of the low resolution pixels in the high resolution frame
+    Y_hr, X_hr = wcs_hr.all_world2pix(ra_lr, dec_lr,0, ra_dec_order = True)
+    # Coordinates of the high resolution pixels in the low resolution frame
+    y_lr, x_lr = wcs_lr.all_world2pix(ra_hr, dec_hr,0, ra_dec_order = True)
+
+    # Mask of low resolution pixels in the overlap at low resolution:
+    over_lr = ((Y_hr>0) * (Y_hr<n2) * (X_hr>0) * (X_hr<n1))
+    # Mask of low resolution pixels in the overlap at high resolution:
+    over_hr = ((y_lr>0) * (y_lr<N2) * (x_lr>0) * (x_lr<N1))
+
+
+    mask = over_hr.reshape(n1,n2)#im_hr.copy()*0.
+    #mask[y_hr[over_hr==1], x_hr[over_hr==1]] = 1
+
+    print(np.sum(mask))
+    if np.sum(mask) == 0:
+        raise ValueError('No overlap found between datasets. Check your coordinates and/or WCSs.')
+
+    # Coordinates of low resolution pixels in the overlap at low resolution:
+    xlr_over_lr = Y_lr[(over_lr == 1)]
+    ylr_over_lr = X_lr[(over_lr == 1)]
+    coordlr_over_lr = (ylr_over_lr, xlr_over_lr)
+    # Coordinates of low resolution pixels in the overlap at high resolution:
+    xlr_over_hr = Y_hr[(over_lr == 1)]
+    ylr_over_hr = X_hr[(over_lr == 1)]
+    coordlr_over_hr = (ylr_over_hr, xlr_over_hr)
+
+
+
+    return mask, coordlr_over_lr, coordlr_over_hr
+
