@@ -116,12 +116,14 @@ class Observation(Scene):
     def match(self, scene):
 
         # 1) determine shape of scene in obs, set mask
-        shape_hr = np.shape(self.images)
-        shape_lr =np.shape(scene.images)
+        shape_lr = self.shape
+        shape_hr =scene.shape
 
         #Get pixel coordinates in each frame
         mask, coord_hr_model, coord_hr, coord_lr, coord_lr_hr = resampling.match_patches(shape_hr, shape_lr,
                                                                                                    self.wcs, scene.wcs)
+
+        #Compute diff kernel at hr
 
         # Computes the resampling/convolution matrix
         mat = resampling.make_mat(mask.shape(), coord_hr, coord_lr_hr, self.psf)
