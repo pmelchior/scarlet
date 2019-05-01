@@ -125,7 +125,7 @@ class Observation(Scene):
             target_psf = scene._psf[0,:,:]
             coord_phr = np.where(target_psf*0.==0)
             coord_plr = np.where(target_psf[0,:,:] * 0. == 0)
-            #This is going to assume that the spatial span of the psf matches. In practice, we actually need their wcs
+            #This is going to assume that the spatial span of the psfs matches. In practice, we actually need their wcs
             #In which case both previous lines will be replaced by:
             # mask_p,coord_plr, coord_phr  = resampling.match_patches(np.shape(scene.psf), np.shape(self.psf),scene.pwcs, self.pwcs)
             interp_diff = []
@@ -227,6 +227,17 @@ class Observation(Scene):
             model = model.detach().numpy()
         return model
 
+        def _resample_band(model, M, coord):
+            """applies joint resampling and convolution in a single band (no factorisation)
+            """
+            return np.dot(model.flatten(), M)
+
+
+        model = torch.stack([_convolve_band(model[b], self.psfs_fft[b]) for b in range(self.B)])
+        if numpy:
+            model = model.detach().numpy()
+        return model
+
     def get_loss(self, model):
         """Calculate the loss function for the model
 
@@ -246,8 +257,8 @@ class Observation(Scene):
         model *= self._weights
         return 0.5 * torch.nn.MSELoss(reduction='sum')(model, self._images*self._weights)
 
-    def get_scene(self, scene, numpy=True):
-        """Reproject and resample the image in some other data frame
+    def get_scene(self, scene, M, coord_lr, numpy=True):
+        """Reproject and resample  images in some other data frame
 
         This is currently only supported to return `images` when the data
         scene and target scene are the same.
@@ -262,9 +273,10 @@ class Observation(Scene):
         images: `~torch.Tensor`
             The image cube in the target `scene`.
         """
-        if self.wcs is not None or scene.shape != self.shape:
-            msg = "get_scene is currently only supported when the observation frame matches the scene"
-            raise NotImplementedError(msg)
+        result = torch.zeros((self.shape))
+        for b in range(scene.B):
+            result[b,coord_lr] =  np.dot(scene[b],M)
+
         if numpy:
-            return self.images
-        return self._images
+            return result
+        return result
