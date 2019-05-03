@@ -386,7 +386,10 @@ def monotonic(component, pixel_center, use_nearest=False, thresh=0, exact=False,
 
     step_size = component.step_morph
     prox(morph, step_size)
-    component.morph[bbox.slices] = morph
+    if bbox is not None:
+        component.morph[bbox.slices] = morph
+    else:
+        component.morph[:] = morph
     return component
 
 
