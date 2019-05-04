@@ -8,7 +8,6 @@ from setuptools.command.build_ext import build_ext
 import sys
 import setuptools
 import subprocess
-import warnings
 
 pybind11_path = None
 if "PYBIND11_DIR" in os.environ:
@@ -29,6 +28,7 @@ for root, dirs, files in os.walk('.'):
     if not root.startswith('./build') and '__init__.py' in files:
         packages.append(root[2:])
 
+
 class get_pybind_include(object):
     """Helper class to determine the pybind11 include path
     The purpose of this class is to postpone importing pybind11
@@ -44,6 +44,7 @@ class get_pybind_include(object):
         else:
             import pybind11
             return pybind11.get_include(self.user)
+
 
 class get_eigen_include(object):
     """Helper class to determine the peigen include path
@@ -61,6 +62,7 @@ class get_eigen_include(object):
             import peigen
             return peigen.header_path
 
+
 ext_modules = [
     Extension(
         'scarlet.operators_pybind11',
@@ -73,6 +75,7 @@ ext_modules = [
         language='c++'
     )
 ]
+
 
 # As of Python 3.6, CCompiler has a `has_flag` method.
 # cf http://bugs.python.org/issue26689
@@ -101,6 +104,7 @@ def cpp_flag(compiler):
     else:
         raise RuntimeError('Unsupported compiler -- at least C++11 support '
                            'is needed!')
+
 
 class BuildExt(build_ext):
     """A custom build extension for adding compiler-specific options."""
