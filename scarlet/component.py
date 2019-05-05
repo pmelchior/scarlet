@@ -88,6 +88,26 @@ class Component(object):
         self._index = None
         self._parent = None
 
+    def __repr__(self):
+        repr_str = (
+            "SED-size : {}\n"
+            "Morphology : {}\n"
+            "Center : {}\n"
+            "Fixed-SED : {}\n"
+            "Fixed-Morphology : {}\n"
+            "Fixed-Frame-Dimensions : {}\n"
+            "Shift : {}"
+        ).format(
+            self.sed.size,
+            self.morph,
+            self.center,
+            self.fix_sed,
+            self.fix_morph,
+            self.fix_frame,
+            self.shift_center,
+        )
+        return repr_str
+
     @property
     def Nx(self):
         """Width of the frame
