@@ -120,8 +120,12 @@ class Observation(Scene):
         #Get pixel coordinates in each frame
         mask,over_lr, over_hr  = resampling.match_patches(scene.shape, self.shape,scene.wcs, self.wcs)
 
+
         #Compute diff kernel at hr
         if scene._psfs != None:
+            whr = scene.wcs
+            wlr = self.wcs
+
             target_psf = scene._psf[0,:,:]
             coord_phr = np.where(target_psf*0.==0)
             coord_plr = np.where(target_psf[0,:,:] * 0. == 0)
@@ -133,6 +137,7 @@ class Observation(Scene):
                 interp_psf = resampling.interp2D(coord_phr, coord_plr,_psf_self)
 
             #Here we need to choose a reference PSF I choose the first one for now, but it might be a degraded version of all the high resolution PSFs.
+                psf_hr, psf_lr = resampling.match_psfs(psf_hr, psf_lr, whr, wlr)
 
                 diff_psf, psf_blend = psf_match.build_diff_kernels(interp_psf,target_psf, l0_thresh=0.000001)
                 interp_diff.appen(diff_psf)

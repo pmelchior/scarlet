@@ -114,7 +114,7 @@ def linorm2D(S, nit):
     return 1./xn
 
 
-def match_patches2(shape_hr, shape_lr, wcs_hr, wcs_lr):
+def match_patches(shape_hr, shape_lr, wcs_hr, wcs_lr):
 
     '''
     Finds the region of overlap between two datasets and creates a mask for the region as well as the pixel coordinates for the dataset pixels inside the overlap.
@@ -192,3 +192,35 @@ def match_patches2(shape_hr, shape_lr, wcs_hr, wcs_lr):
 
     return mask, coordlr_over_lr, coordlr_over_hr
 
+
+def match_psfs(psf_hr, psf_lr, wcs_hr, wcs_lr):
+    '''
+    INPUTS:
+    ------
+        psf_hr: centered psf of the high resolution scene
+        psf_lr: centered psf of the low resolution scene
+        wcs_hr: wcs of the high resolution scene
+        wcs_lr: wcs of the low resolution scene
+    OUTPUTS:
+    -------
+        psf_match_hr: high rresolution psf at mactching size
+        psf_match_lr: low resolution psf at matching size and resolution
+    '''
+
+    nhr1, nhr2 = psf_hr.shape
+    nlr1, nlr2 = psf_lr.shape
+
+    wcs_hr.wcs.crval = 0., 0.
+    wcs_lr.wcs.crval = 0., 0.
+
+    wcs_hr.wcs.crpix = nhr1/2., nhr2/2.
+    wcs_lr.wcs.crpix = nlr1/2., nlr2/2.
+
+    mask, p_lr, p_hr = match_patches(psf_hr.shape, psf_lr.data.shape, wcs_hr, wcs_lr)
+
+    cmask = np.where(mask == 1)
+    n_p = np.int((np.size(cmask[0]))**0.5)
+    psf_match_lr = interp2D(cmask, p_hr[::-1], (psf_lr).flatten()).reshape(n_p, n_p)
+
+    psf_match_hr = psf_hr[np.int((nhr1-n_p)/2):np.int((nhr1+n_p)/2),np.int((nhr2-n_p)/2):np.int((nhr2+n_p)/2)]
+    return psf_match_hr, psf_match_lr
