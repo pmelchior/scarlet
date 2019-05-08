@@ -1,6 +1,6 @@
 from functools import partial
 
-import numpy as np
+import autograd.numpy as np
 from proxmin.operators import prox_unity_plus
 from proxmin.utils import MatrixAdapter
 
