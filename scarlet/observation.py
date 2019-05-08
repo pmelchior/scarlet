@@ -1,17 +1,14 @@
-import numpy as np
+import autograd.numpy as np
 import torch
 
-from . import convolution
 from . import resampling
-from . import psf_match
+from . import interpolation
 
 import logging
 logger = logging.getLogger("scarlet.observation")
 
-
 class Scene():
     """Extent and characteristics of the modeled scence
-
     Attributes
     ----------
     shape: tuple
@@ -32,7 +29,7 @@ class Scene():
 
         assert psfs is None or shape[0] == len(psfs) or len(psfs.shape) == 2
         if psfs is not None:
-            psfs = torch.Tensor(psfs)
+            psfs = np.array(psfs)
             psfs /= psfs.sum()
         self._psfs = psfs
         assert filtercurve is None or shape[0] == len(filtercurve)
@@ -66,11 +63,10 @@ class Scene():
     def psfs(self):
         if self._psfs is None:
             return None
-        return self._psfs.data.detach().numpy()
+        return self._psfs
 
     def get_pixel(self, sky_coord):
         """Get the pixel coordinate from a world coordinate
-
         If there is no WCS associated with the `Scene`,
         meaning the data frame and model frame are the same,
         then this just returns the `sky_coord`
@@ -82,7 +78,6 @@ class Scene():
 
 class Observation(Scene):
     """Data and metadata for a single set of observations
-
     Attributes
     ----------
     images: array or tensor
@@ -106,37 +101,36 @@ class Observation(Scene):
     def __init__(self, images, psfs=None, weights=None, wcs=None, filtercurve=None, padding=3):
         super().__init__(images.shape, wcs=wcs, psfs=psfs, filtercurve=filtercurve)
 
-        self._images = torch.Tensor(images)
+        self._images = np.array(images)
         self.padding = padding
 
         if weights is not None:
-            self._weights = torch.Tensor(weights)
+            self._weights = np.array(weights)
         else:
             self._weights = 1
 
     def match(self, scene):
 
+        # 1) determine shape of scene in obs, set mask
+
+        # 2) compute the interpolation kernel between scene and obs
+
         # 3) compute obs.psf in the frame of scene, store in Fourier space
         # A few notes on this procedure:
         # a) This assumes that scene.psfs and self.psfs have the same spatial shape,
         #    which will need to be modified for multi-resolution datasets
-        # b)Currently pytorch does not have complex tensor type
-        #   (see https://github.com/pytorch/pytorch/issues/755),
-        #   so in the meantime we convert the PSFs to numpy, perform the
-        #   deconvolution there, and then convert back to pytorch. Once
-        #   proper support is added by pytorch we can use Tensors all the way through.
         if self._psfs is not None:
-            ipad, ppad = convolution.get_common_padding(self._images, self._psfs, padding=self.padding)
+            ipad, ppad = interpolation.get_common_padding(self._images, self._psfs, padding=self.padding)
             self.image_padding, self.psf_padding = ipad, ppad
-            _psfs = torch.nn.functional.pad(self._psfs, self.psf_padding)
-            _target = torch.nn.functional.pad(scene._psfs, self.psf_padding)
+            _psfs = np.pad(self._psfs, ((0, 0), *self.psf_padding), 'constant')
+            _target = np.pad(scene._psfs, self.psf_padding, 'constant')
 
             new_kernel_fft = []
             # Deconvolve the target PSF
-            target_fft = np.fft.fft2(np.fft.ifftshift(_target.detach().numpy()))
+            target_fft = np.fft.fft2(np.fft.ifftshift(_target))
 
             for _psf in _psfs:
-                observed_fft = np.fft.fft2(np.fft.ifftshift(_psf.detach().numpy()))
+                observed_fft = np.fft.fft2(np.fft.ifftshift(_psf))
                 # Create the matching kernel
                 kernel_fft = observed_fft / target_fft
                 # Take the inverse Fourier transform to normalize the result
@@ -146,18 +140,17 @@ class Observation(Scene):
                 kernel = np.fft.ifft2(kernel_fft)
                 kernel = np.fft.fftshift(np.real(kernel))
                 kernel /= kernel.sum()
-                kernel = torch.Tensor(kernel)
                 # Store the Fourier transform of the matching kernel
-                new_kernel_fft.append(torch.rfft(kernel, 2))
-            self.psfs_fft = torch.stack(new_kernel_fft)
+                new_kernel_fft.append(np.fft.fft2(np.fft.ifftshift(kernel)))
+            self.psfs_fft = np.array(new_kernel_fft)
 
         # 4) divide obs.psf from scene.psf in Fourier space
 
-
+        # [ 5) compute sparse representation of interpolation * convolution ]
 
     @property
     def images(self):
-        return self._images.data.detach().numpy()
+        return self._images
 
     @property
     def weights(self):
@@ -165,116 +158,89 @@ class Observation(Scene):
             return None
         elif self._weights == 1:
             return self._weights
-        return self._weights.data.detach().numpy()
+        return self._weights
 
-    def get_model(self, model, numpy=True):
+    def get_model(self, model):
         """Resample and convolve a model to the observation frame
-
         Parameters
         ----------
-        model: `~torch.Tensor`
+        model: array
             The model in some other data frame.
-        numpy: bool
-            Whether to return the model as a numpy array
-            (`numpy=True`) or a `torch.tensor`.
-
         Returns
         -------
-        model: `~torch.Tensor`
+        model: array
             The convolved and resampled `model` in the observation frame.
         """
         if self.wcs is not None:
             msg = "get_model is currently only supported when the observation frame matches the scene"
             raise NotImplementedError(msg)
 
-        def _convolve_band(model, psf):
+        def _convolve_band(model, psf_fft):
             """Convolve the model in a single band
             """
-            _model = torch.nn.functional.pad(model, self.image_padding)
-            Image = torch.rfft(_model, 2)
-            Convolved = convolution.complex_mul(Image, psf)
-            convolved = torch.irfft(Convolved, 2, signal_sizes=_model.shape)
-            result = convolution.ifftshift(convolved)
-            bottom, top, left, right = self.image_padding
+            _model = np.pad(model, self.image_padding, 'constant')
+            model_fft = np.fft.fft2(np.fft.ifftshift(_model))
+            convolved_fft = model_fft * psf_fft
+            convolved = np.fft.ifft2(convolved_fft)
+            result = np.fft.fftshift(np.real(convolved))
+            (bottom, top), (left, right) = self.image_padding
             result = result[bottom:-top, left:-right]
             return result
-        model = torch.stack([_convolve_band(model[b], self.psfs_fft[b]) for b in range(self.B)])
-        if numpy:
-            model = model.detach().numpy()
-        return model
-
-
-        model = torch.stack([_convolve_band(model[b], self.psfs_fft[b]) for b in range(self.B)])
-        if numpy:
-            model = model.detach().numpy()
+        model = np.array([_convolve_band(model[b], self.psfs_fft[b]) for b in range(self.B)])
         return model
 
     def get_loss(self, model):
         """Calculate the loss function for the model
-
         Parameters
         ----------
-        model: `~torch.Tensor`
+        model: array
             The model in some other data frame.
-
         Returns
         -------
-        result: `~torch.Tensor`
+        result: array
             Scalar tensor with the likelihood of the model
             given the image data.
         """
         if self._psfs is not None:
-            model = self.get_model(model, False)
-        model *= self._weights
-        return 0.5 * torch.nn.MSELoss(reduction='sum')(model, self._images*self._weights)
+            model = self.get_model(model)
+        return np.sum(0.5 * (self._weights * (model - self._images))**2)
 
-    def get_scene(self, scene, M, coord_lr, numpy=True):
-        """Reproject and resample  images in some other data frame
-
+    def get_scene(self, scene):
+        """Reproject and resample the image in some other data frame
         This is currently only supported to return `images` when the data
         scene and target scene are the same.
-
         Parameters
         ----------
         scene: `~scarlet.observation.Scene`
             The target data frame.
-
         Returns
         -------
-        images: `~torch.Tensor`
+        images: array
             The image cube in the target `scene`.
         """
-        result = torch.zeros((self.shape))
-        for b in range(scene.B):
-            result[b,coord_lr] =  np.dot(scene[b],M)
-
-        if numpy:
-            return result
-        return result
+        if self.wcs is not None or scene.shape != self.shape:
+            msg = "get_scene is currently only supported when the observation frame matches the scene"
+            raise NotImplementedError(msg)
+        return self.images
 
 
-class get_fit(Observation):
+
+class Combination(Observation):
     #Temporary name. getting fit is a new (year's) resolution... badum tssss
 
-    def __init__(self, images, scene, wcs, psfs=None, weights=None,  filtercurve=None, padding=3):
+    def __init__(self, images, scene, wcs, psfs=None, weights=None,  filtercurve=None, padding=3, target_psf = None):
         super().__init__(self, images, psfs=psfs, weights=weights, wcs=wcs, filtercurve=filtercurve, padding=padding)
         self.scene = scene
-
-    @property
-    def images(self):
-        super().images(self)
-
-    @property
-    def weights(self):
-        super().weights(self)
 
     def match(self, scene):
 
 
         if self.psfs is not None:
-            #Get pixel coordinates in each frame
-            mask,over_lr, over_hr  = resampling.match_patches(scene.shape, self.shape,scene.wcs, self.wcs)
-
+            #Get pixel coordinates in each frame.
+            mask, over_lr, over_hr  = resampling.match_patches(scene.shape, self.shape,scene.wcs, self.wcs)
+            self._over_lr = over_lr
+            self._over_hr = over_hr
+            self._mask = mask
 
             #Compute diff kernel at hr
 
@@ -282,40 +248,74 @@ class get_fit(Observation):
             wlr = self.wcs
 
             #Reference PSF
-            if np.shape(scene.psfs) ==2:
-                target_psf = scene._psf
-            elif np.shape(scene.psfs) ==3:
-                target_psf = scene._psf[0,:,:]
+            if self.target_psf is None:
+                if np.shape(scene.psfs) ==2:
+                    _target = scene._psf
+                elif np.shape(scene.psfs) ==3:
+                    _target = scene._psf[0,:,:]
+                else:
+                    raise ValueError('Wrong dimensions for psfs. psfs should be of dimensions n1xn2 or nbxn1xn2')
             else:
-                raise ValueError('Wrong dimensions for psfs. psfs shoud be of dimensions n1xn2 or nbxn1xn2')
-
+                _target = self.target_psf
             # 3) compute obs.psf in the frame of scene
-            # a) This assumes that scene.psfs and self.psfs have the same spatial shape,
-            #    which will need to be modified for multi-resolution datasets
 
-            interp_diff = []
+
+            reconv_op = []
             for _psf in self.psfs:
 
-                psf_hr, psf_lr = resampling.match_psfs(target_psf, _psf, whr, wlr)
+                #Computes spatially matching observation and target psfs. The observation psf is also resampled to the scene's resolution
+                new_target, observed_psf = resampling.match_psfs(_target, _psf, whr, wlr)
+                #Computes the diff kernel in Fourier
+                target_fft = np.fft.fft2(np.fft.ifftshift(new_target))
+                observed_fft = np.fft.fft2(np.fft.ifftshift(_psf))
+                kernel_fft = observed_fft / target_fft
+                kernel = np.fft.ifft2(kernel_fft)
+                kernel = np.fft.fftshift(np.real(kernel))
+                diff_psf = kernel/kernel.sum()
 
-                diff_psf, psf_blend = psf_match.build_diff_kernels(psf_lr,psf_hr, l0_thresh=0.000001)
-                interp_diff = torch.stack(interp_diff,diff_psf)
+                # Computes the resampling/convolution matrix
+                resconv_op = torch.stack(reconv_op, resampling.make_mat(mask.shape(), over_lr, diff_psf))
+            self.resconv_op = resconv_op
 
-        # Computes the resampling/convolution matrix
-        self.resample = resampling.make_mat(mask.shape(), over_lr, diff_psf)
-
+        else:
+            raise ValueError('Observation PSF needed: unless you are not dealing with astronomical data, you are doing something wrong')
         # [ 5) compute sparse representation of interpolation * convolution ]
 
-        def get_model(self, model, numpy=True):
+    @property
+    def matching_mask(self):
 
-            def _resample_band(model, M, coord):
-                """applies joint resampling and convolution in a single band (no factorisation)
-                """
-                return np.dot(model.flatten(), M)
-            return
+        return self._mask
 
-        def get_loss(self, model):
-            return
+    def get_obs(self, model):
+        """Resample and convolve a model to the observation frame
+        Parameters
+        ----------
+        model: array
+            The model in some other data frame.
+        Returns
+        -------
+        model: array
+            The convolved and resampled `model` in the observation frame.
+        """
+        obs = np.array([np.dot(model.flatten(),self.reconv_op[b,:,:]) for b in range(self.B)])
+        return obs
 
-        def get_scene(self, scene, M, coord_lr, numpy=True):
-            return
+    def get_loss(self, model):
+        if self._psfs is not None:
+            model = self.get_model(model)
+        return np.sum(0.5 * (self._weights * (model - self._images[self.over_lr]))**2)
+
+    def get_scene(self, obs, numpy=True):
+        """Reproject and resample the image in some other data frame
+        Parameters
+        ----------
+        scene: `~scarlet.observation.Scene`
+            The target data frame.
+        Returns
+        -------
+        images: array
+            The image cube in the target `scene`.
+        """
+        rec_scene = np.array([np.dot(obs[b, self.over_lr], self.reconv_op[b, :, :].T) for b in range(self.B)])
+        return rec_scene
+

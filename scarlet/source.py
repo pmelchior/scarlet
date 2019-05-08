@@ -1,8 +1,9 @@
-import numpy as np
+import autograd.numpy as np
 
 from .component import Component, ComponentTree
 from . import operator
 from . import update
+from .interpolation import get_projection_slices
 
 import logging
 logger = logging.getLogger("scarlet.source")
@@ -66,7 +67,7 @@ def get_best_fit_seds(morphs, scene, observations):
     band = 0
     _morph = morphs.reshape(K, -1)
     for obs in observations:
-        images = obs.get_scene(scene).detach().numpy()
+        images = obs.get_scene(scene)
         data = images.reshape(obs.B, -1)
         sed = np.dot(np.linalg.inv(np.dot(_morph, _morph.T)), np.dot(_morph, data.T))
         seds[:, band:band+obs.B] = sed
@@ -204,11 +205,21 @@ class PointSource(Component):
         The scene that the model lives in.
     observations: list of `~scarlet.observation.Observation`
         Observations to extract SED from.
+    symmetric: bool
+        Whether or not the object is forced to be symmetric
+    monotonic: bool
+        Whether or not the object is forced to be monotonically decreasing
+    center_step: int
+        Number of steps to skip between centering routines
+    delay_thresh: int
+        Number of steps to skip before turning on thresholding.
+        This is useful for point sources because it allows them to grow
+        slightly before removing pixels with low significance.
     component_kwargs: dict
         Keyword arguments to pass to the component initialization.
     """
     def __init__(self, sky_coord, scene, observations, symmetric=False, monotonic=True,
-                 center_step=5, **component_kwargs):
+                 center_step=5, delay_thresh=10, **component_kwargs):
         try:
             iter(observations)
         except TypeError:
@@ -217,7 +228,19 @@ class PointSource(Component):
         B, Ny, Nx = scene.shape
         morph = np.zeros((Ny, Nx), observations[0].images.dtype)
         pixel = scene.get_pixel(sky_coord)
-        morph[pixel] = 1
+        if scene.psfs is None:
+            # Use a single pixel if there is no target PSF
+            morph[pixel] = 1
+        else:
+            # A point source is a function of the target PSF
+            assert len(scene.psfs.shape) == 2
+            py, px = pixel
+            sy, sx = (np.array(scene.psfs.shape) - 1) // 2
+            cy, cx = (np.array(morph.shape) - 1) // 2
+            yx0 = py-cy-sy, px-cx-sx
+            bb, ibb, _ = get_projection_slices(scene.psfs, morph.shape, yx0)
+            morph[bb] = scene.psfs[ibb]
+
         self.pixel_center = pixel
 
         sed = np.zeros((B,), observations[0].images.dtype)
@@ -227,10 +250,11 @@ class PointSource(Component):
             sed[b0:b0+obs.B] = obs.images[:, pixel[0], pixel[1]]
             b0 += obs.B
 
-        super().__init__(sed, morph, **component_kwargs)
+        super().__init__(self, sed, morph, **component_kwargs)
         self.symmetric = symmetric
         self.monotonic = monotonic
         self.center_step = center_step
+        self.delay_thresh = delay_thresh
 
     def update(self):
         """Default update parameters for an ExtendedSource
@@ -253,7 +277,8 @@ class PointSource(Component):
                     self.float_center = self.pixel_center
                     self.shift = (0, 0)
 
-        update.threshold(self)
+        if it > self.delay_thresh:
+            update.threshold(self)
 
         if self.symmetric:
             # Translate to the centered frame
@@ -264,8 +289,11 @@ class PointSource(Component):
             update.translation(self, -1)
 
         if self.monotonic:
-                # make the morphology monotonically decreasing
+            # make the morphology monotonically decreasing
+            if hasattr(self, "bboxes") and "thresh" in self.bboxes:
                 update.monotonic(self, self.pixel_center, bbox=self.bboxes["thresh"])
+            else:
+                update.monotonic(self, self.pixel_center)
 
         update.positive(self)  # Make the SED and morph non-negative
         update.normalized(self)  # Use MORPH_MAX normalization
@@ -300,13 +328,14 @@ class ExtendedSource(PointSource):
         Keyword arguments to pass to the component initialization.
     """
     def __init__(self, sky_coord, scene, observations, bg_rms, obs_idx=0, thresh=1,
-                 symmetric=False, monotonic=True, center_step=5, **component_kwargs):
+                 symmetric=False, monotonic=True, center_step=5, delay_thresh=0, **component_kwargs):
         self.symmetric = symmetric
         self.monotonic = monotonic
         self.coords = sky_coord
         center = scene.get_pixel(sky_coord)
         self.pixel_center = center
         self.center_step = center_step
+        self.delay_thresh = delay_thresh
 
         sed, morph = init_extended_source(sky_coord, scene, observations, bg_rms, obs_idx,
                                           thresh, True, monotonic)

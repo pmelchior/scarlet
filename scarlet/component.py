@@ -3,8 +3,7 @@ try:
 except ImportError:
     from aenum import Flag, auto
 
-import numpy as np
-import torch
+import autograd.numpy as np
 
 import logging
 logger = logging.getLogger("scarlet.component")
@@ -86,22 +85,23 @@ class Component():
         self.B = sed.shape[0]
         self.Ny, self.Nx = morph.shape
         # set sed and morph
-        sed = torch.Tensor(sed)
-        morph = torch.Tensor(morph)
-        self._sed = sed.detach().clone()
-        self._morph = morph.detach().clone()
-        self._sed.requires_grad_(not fix_sed)
-        self._morph.requires_grad_(not fix_morph)
+        self._sed = np.array(sed)
+        self._morph = np.array(morph)
+        self.sed_grad = 0
+        self.morph_grad = 0
         self.prior = prior
         # Initially the component has not converged
         self.flags = BlendFlag.SED_NOT_CONVERGED | BlendFlag.MORPH_NOT_CONVERGED
         # Store the SED and morphology from the previous iteration
-        self._last_sed = np.zeros_like(sed.detach().numpy())
-        self._last_morph = np.zeros_like(morph.detach().numpy())
+        self._last_sed = np.zeros(sed.shape, dtype=sed.dtype)
+        self._last_morph = np.zeros(morph.shape, dtype=morph.dtype)
 
         # Properties used for indexing in the ComponentTree
         self._index = None
         self._parent = None
+
+        self.fix_sed = fix_sed
+        self.fix_morph = fix_morph
 
     @property
     def shape(self):
@@ -123,31 +123,37 @@ class Component():
     def sed(self):
         """Numpy view of the component SED
         """
-        return self._sed.data.detach().numpy()
+        return self._sed
 
     @property
     def morph(self):
         """Numpy view of the component morphology
         """
-        return self._morph.data.detach().numpy()
+        return self._morph
 
-    def get_model(self, numpy=True):
+    def get_model(self, sed=None, morph=None):
         """Get the model for this component.
 
         Parameters
         ----------
-        numpy: bool
-            Whether to return the model as a numpy array
-            (`numpy=True`) or a `torch.tensor`.
+        sed: array
+            An sed to use in the model. If `sed` is `None`
+            then `self.sed` is used.
+        morph: array
+            A morphology to use in the model.
+            If `morph` is `None` then `self.morph`
+            is used.
 
         Returns
         -------
         model: array or tensor
             (Bands, Height, Width) image of the model
         """
-        if numpy:
-            return self.sed[:, None, None] * self.morph[None, :, :]
-        return self._sed[:, None, None] * self._morph[None, :, :]
+        if sed is not None and morph is not None:
+            return sed[:, None, None] * morph[None, :, :]
+        elif sed is None and morph is None:
+            return self._sed[:, None, None] * self._morph[None, :, :]
+        raise ValueError("You need to supply `sed` and `morph` or neither")
 
     def get_flux(self):
         """Get flux in every band
@@ -160,10 +166,10 @@ class Component():
         if self.prior is not None:
             self.prior.compute_grad(self)
             if self.morph.requires_grad:
-                self.morph.grad += self.prior.grad_morph
+                self.morph_grad += self.prior.grad_morph
                 self.L_morph += self.prior.L_morph
             if self.sed.requires_grad:
-                self.morph.grad += self.prior.grad_morph
+                self.morph_grad += self.prior.grad_morph
                 self.L_morph += self.prior.L_morph
 
     def update(self):
@@ -191,7 +197,7 @@ class Component():
 
 
 class ComponentTree():
-    """Base class for hierarchical collections of `~scarlet.component.Component`s.
+    """Base class for hierarchical collections of Components.
     """
     def __init__(self, components):
         """Constructor
@@ -286,25 +292,32 @@ class ComponentTree():
             else:
                 return (self._index,)
 
-    def get_model(self, numpy=True):
+    def get_model(self, seds=None, morphs=None):
         """Get the model this component tree
 
         Parameters
         ----------
-        numpy: bool
-            Whether to return the model as a numpy array
-            (`numpy=True`) or a `torch.tensor`.
+        seds: list of arrays
+            Optional list of seds for each component in the tree.
+            If `seds` is `None` then `self.sed` is used for
+            each component.
+        morphs: list of arrays
+            Optional list of morphologies for each component in
+            the tree. If `morphs` is `None` then `self.morph`
+            is used for each component.
 
         Returns
         -------
-        model: `~torch.tensor`
+        model: array
             (Bands, Height, Width) data cube
         """
-        for k, component in enumerate(self.components):
-            if k == 0:
-                model = component.get_model(numpy)
+        model = np.zeros((self.B, self.Ny, self.Nx))
+        for k in range(self.K):
+            if seds is not None and morphs is not None:
+                _model = self.components[k].get_model(seds[k], morphs[k])
+                model = model + _model
             else:
-                model += component.get_model(numpy)
+                model = model + self.components[k].get_model()
         return model
 
     def get_flux(self):

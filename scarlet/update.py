@@ -1,6 +1,6 @@
 from functools import partial
 
-import numpy as np
+import autograd.numpy as np
 from proxmin.operators import prox_plus, prox_hard, prox_soft
 
 from . import interpolation
