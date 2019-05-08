@@ -116,35 +116,6 @@ class Observation(Scene):
 
     def match(self, scene):
 
-
-        #Get pixel coordinates in each frame
-        mask,over_lr, over_hr  = resampling.match_patches(scene.shape, self.shape,scene.wcs, self.wcs)
-
-
-        #Compute diff kernel at hr
-        if scene._psfs != None:
-            whr = scene.wcs
-            wlr = self.wcs
-
-            target_psf = scene._psf[0,:,:]
-            coord_phr = np.where(target_psf*0.==0)
-            coord_plr = np.where(target_psf[0,:,:] * 0. == 0)
-            #This is going to assume that the spatial span of the psfs matches. In practice, we actually need their wcs
-            #In which case both previous lines will be replaced by:
-            # mask_p,coord_plr, coord_phr  = resampling.match_patches(np.shape(scene.psf), np.shape(self.psf),scene.pwcs, self.pwcs)
-            interp_diff = []
-            for _psf_self in self._psfs:
-                interp_psf = resampling.interp2D(coord_phr, coord_plr,_psf_self)
-
-            #Here we need to choose a reference PSF I choose the first one for now, but it might be a degraded version of all the high resolution PSFs.
-                psf_hr, psf_lr = resampling.match_psfs(psf_hr, psf_lr, whr, wlr)
-
-                diff_psf, psf_blend = psf_match.build_diff_kernels(interp_psf,target_psf, l0_thresh=0.000001)
-                interp_diff.appen(diff_psf)
-
-        # Computes the resampling/convolution matrix
-        self.resample = resampling.make_mat(mask.shape(), over_lr, diff_psf)
-
         # 3) compute obs.psf in the frame of scene, store in Fourier space
         # A few notes on this procedure:
         # a) This assumes that scene.psfs and self.psfs have the same spatial shape,
@@ -182,7 +153,7 @@ class Observation(Scene):
 
         # 4) divide obs.psf from scene.psf in Fourier space
 
-        # [ 5) compute sparse representation of interpolation * convolution ]
+
 
     @property
     def images(self):
@@ -232,11 +203,6 @@ class Observation(Scene):
             model = model.detach().numpy()
         return model
 
-        def _resample_band(model, M, coord):
-            """applies joint resampling and convolution in a single band (no factorisation)
-            """
-            return np.dot(model.flatten(), M)
-
 
         model = torch.stack([_convolve_band(model[b], self.psfs_fft[b]) for b in range(self.B)])
         if numpy:
@@ -285,3 +251,71 @@ class Observation(Scene):
         if numpy:
             return result
         return result
+
+
+class get_fit(Observation):
+    #Temporary name. getting fit is a new (year's) resolution... badum tssss
+
+    def __init__(self, images, scene, wcs, psfs=None, weights=None,  filtercurve=None, padding=3):
+        super().__init__(self, images, psfs=psfs, weights=weights, wcs=wcs, filtercurve=filtercurve, padding=padding)
+        self.scene = scene
+
+    @property
+    def images(self):
+        super().images(self)
+
+    @property
+    def weights(self):
+        super().weights(self)
+
+    def match(self, scene):
+
+
+        if self.psfs is not None:
+            #Get pixel coordinates in each frame
+            mask,over_lr, over_hr  = resampling.match_patches(scene.shape, self.shape,scene.wcs, self.wcs)
+
+
+            #Compute diff kernel at hr
+
+            whr = scene.wcs
+            wlr = self.wcs
+
+            #Reference PSF
+            if np.shape(scene.psfs) ==2:
+                target_psf = scene._psf
+            elif np.shape(scene.psfs) ==3:
+                target_psf = scene._psf[0,:,:]
+            else:
+                raise ValueError('Wrong dimensions for psfs. psfs shoud be of dimensions n1xn2 or nbxn1xn2')
+
+            # 3) compute obs.psf in the frame of scene
+            # a) This assumes that scene.psfs and self.psfs have the same spatial shape,
+            #    which will need to be modified for multi-resolution datasets
+
+            interp_diff = []
+            for _psf in self.psfs:
+
+                psf_hr, psf_lr = resampling.match_psfs(target_psf, _psf, whr, wlr)
+
+                diff_psf, psf_blend = psf_match.build_diff_kernels(psf_lr,psf_hr, l0_thresh=0.000001)
+                interp_diff = torch.stack(interp_diff,diff_psf)
+
+        # Computes the resampling/convolution matrix
+        self.resample = resampling.make_mat(mask.shape(), over_lr, diff_psf)
+
+        # [ 5) compute sparse representation of interpolation * convolution ]
+
+        def get_model(self, model, numpy=True):
+
+            def _resample_band(model, M, coord):
+                """applies joint resampling and convolution in a single band (no factorisation)
+                """
+                return np.dot(model.flatten(), M)
+            return
+
+        def get_loss(self, model):
+            return
+
+        def get_scene(self, scene, M, coord_lr, numpy=True):
+            return

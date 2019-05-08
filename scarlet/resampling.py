@@ -1,9 +1,23 @@
 import numpy as np
 import scipy.signal as scp
+import torch
 
+from . import convolution
+
+
+def sinc(x):
+    if torch.size>1:
+        S = torch.sin(x)/x
+        S[x==0] = 1
+    else:
+        if x == 0:
+            return 1
+        else:
+            return torch.sin(x)/x
+    return S
 
 def sinc2D(x,y):
-    return np.sinc(x)*np.sinc(y)
+    return sinc(x)*sinc(y)
 
 def interp2D(coord_hr, coord_lr, Fm):
     '''
@@ -18,16 +32,16 @@ def interp2D(coord_hr, coord_lr, Fm):
     '''
     a, b = coord_hr
     A, B = coord_lr
-    hx = np.abs(A[1]-A[0])
-    hy = np.abs(B[np.int(np.sqrt(B.size))+1] - B[0])
+    hx = torch.abs(A[1]-A[0])
+    hy = torch.abs(B[torch.int(torch.sqrt(B.size))+1] - B[0])
 
     assert hx != 0
 
-    return np.array([Fm[k] * sinc2D((a-A[k])/(hx),(b-B[k])/(hy)) for k in range(len(A))]).sum(axis=0)
+    return torch.tensor([Fm[k] * sinc2D((a-A[k])/(hx),(b-B[k])/(hy)) for k in range(len(A))]).sum(axis=0)
 
 
 
-def conv2D_fft(shape, xm, ym, p, h):
+def conv2D_fft(shape, xm, ym, p, h, padding = 3):
     '''
 
     shape:
@@ -40,12 +54,12 @@ def conv2D_fft(shape, xm, ym, p, h):
     '''
 
 
-    ker = np.zeros((shape[0], shape[1]))
-    x,y = np.where(ker == 0)
+    ker = torch.zeros((shape[0], shape[1]))
+    x,y = torch.where(ker == 0)
 
     ker[x,y] = sinc2D((xm-x)/h,(ym-y)/h)
 
-    return scp.fftconvolve(ker, p, mode = 'same')*h/np.pi
+    return convolution.fftconvolve(ker, p, padding = padding)*h/np.pi
 
 def make_mat2D_fft(shape, coord_lr, p):
     '''
@@ -62,18 +76,18 @@ def make_mat2D_fft(shape, coord_lr, p):
         mat: the convolution-resampling matrix
     '''
     n1,n2 = shape
-    a, b = np.where(np.zeros((n1,n2))==0)
+    a, b = torch.where(torch.zeros((n1,n2))==0)
     A, B = coord_lr
-    mat = np.zeros((n1*n2, B.size))
+    mat = torch.zeros((n1*n2, B.size))
 
     h = a[1]-a[0]
     if h == 0:
         h = b[1]-b[0]
     assert h !=0
 
-    for m in range(np.size(B)):
+    for m in range(B.neement()):
             mat[:, m] = conv2D_fft(shape, A[m], B[m], p, h)[a,b]#.flatten()
-            mat[:, m] /= np.sum(mat[:,m])
+            mat[:, m] /= torch.sum(mat[:,m])
 
     return mat
 
@@ -97,17 +111,17 @@ def linorm2D(S, nit):
     """
 
     n1, n2 = np.shape(S)
-    x0 = np.random.rand(1, n1)
-    x0 = x0 / np.sqrt(np.sum(x0 ** 2))
+    x0 = torch.rand(1, n1)
+    x0 = x0 / torch.sqrt(torch.sum(x0 ** 2))
 
     for i in range(nit):
-        x = np.dot(x0, S)
-        xn = np.sqrt(np.sum(x ** 2))
+        x = torch.dot(x0, S)
+        xn = torch.sqrt(np.sum(x ** 2))
         xp = x / xn
-        y = np.dot(xp, S.T)
-        yn = np.sqrt(np.sum(y ** 2))
+        y = torch.dot(xp, S.T)
+        yn = torch.sqrt(torch.sum(y ** 2))
 
-        if yn < np.dot(y, x0.T):
+        if yn < torch.dot(y, torch.t(x0)):
             break
         x0 = y / yn
 
@@ -133,14 +147,14 @@ def match_patches(shape_hr, shape_lr, wcs_hr, wcs_lr):
     #shapes
 
 
-    if np.size(shape_hr) == 3:
+    if shape_hr.nelement() == 3:
         b,n1,n2 = shape_hr
-    elif np.size(shape_hr) == 2:
+    elif shape_hr.nelement() == 2:
         n1, n2 = shape_hr
     else:
         raise ValueError('Wrong dimensions for reference image')
 
-    if np.size(shape_lr) == 3:
+    if shape_lr.nelement() == 3:
         B,N1,N2 = shape_lr
     elif np.size(shape_lr) == 2:
         N1, N2 = shape_lr
@@ -150,12 +164,12 @@ def match_patches(shape_hr, shape_lr, wcs_hr, wcs_lr):
     assert wcs_hr != None
     assert wcs_lr != None
 
-    im_hr = np.zeros((n1,n2))
-    im_lr = np.zeros((N1,N2))
+    im_hr = torch.zeros((n1,n2))
+    im_lr = torch.zeros((N1,N2))
 
     # Coordinates of pixels in both frames
-    x_hr, y_hr = np.where(im_hr * 0 == 0)
-    X_lr, Y_lr = np.where(im_lr * 0 == 0)
+    x_hr, y_hr = torch.where(im_hr * 0 == 0)
+    X_lr, Y_lr = torch.where(im_lr * 0 == 0)
 
 
     ra_lr, dec_lr = wcs_lr.all_pix2world(Y_lr, X_lr, 0, ra_dec_order = True)
@@ -172,11 +186,9 @@ def match_patches(shape_hr, shape_lr, wcs_hr, wcs_lr):
     over_hr = ((y_lr>0) * (y_lr<N2) * (x_lr>0) * (x_lr<N1))
 
 
-    mask = over_hr.reshape(n1,n2)#im_hr.copy()*0.
-    #mask[y_hr[over_hr==1], x_hr[over_hr==1]] = 1
+    mask = over_hr.reshape(n1,n2)
 
-    print(np.sum(mask))
-    if np.sum(mask) == 0:
+    if torch.sum(mask) == 0:
         raise ValueError('No overlap found between datasets. Check your coordinates and/or WCSs.')
 
     # Coordinates of low resolution pixels in the overlap at low resolution:
@@ -219,8 +231,8 @@ def match_psfs(psf_hr, psf_lr, wcs_hr, wcs_lr):
     mask, p_lr, p_hr = match_patches(psf_hr.shape, psf_lr.data.shape, wcs_hr, wcs_lr)
 
     cmask = np.where(mask == 1)
-    n_p = np.int((np.size(cmask[0]))**0.5)
+    n_p = np.int((cmask[0].nelements)**0.5)
     psf_match_lr = interp2D(cmask, p_hr[::-1], (psf_lr).flatten()).reshape(n_p, n_p)
 
-    psf_match_hr = psf_hr[np.int((nhr1-n_p)/2):np.int((nhr1+n_p)/2),np.int((nhr2-n_p)/2):np.int((nhr2+n_p)/2)]
+    psf_match_hr = psf_hr[torch.int((nhr1-n_p)/2):torch.int((nhr1+n_p)/2),torch.int((nhr2-n_p)/2):torch.int((nhr2+n_p)/2)]
     return psf_match_hr, psf_match_lr
