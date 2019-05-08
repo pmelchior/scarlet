@@ -8,7 +8,7 @@ import logging
 logger = logging.getLogger("scarlet.blend")
 
 
-class Blend(ComponentTree, Scene):
+class Blend(ComponentTree):
     """The blended scene.
 
     The class represents a scene as collection of components, internally as a

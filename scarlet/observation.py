@@ -228,13 +228,16 @@ class Observation(Scene):
 class Combination(Observation):
     #Temporary name. getting fit is a new (year's) resolution... badum tssss
 
-    def __init__(self, images, scene, wcs, psfs=None, weights=None,  filtercurve=None, padding=3, target_psf = None):
+    def __init__(self, images, scene, psfs=None, weights=None, wcs = None, filtercurve=None, padding=3, target_psf = None):
         super().__init__(self, images, psfs=psfs, weights=weights, wcs=wcs, filtercurve=filtercurve, padding=padding)
         self.scene = scene
 
+
+
     def match(self, scene):
 
-
+        if self.wcs == None:
+            raise TypeError('WCS is actually mandatory, please provide one (tbdiscussed)')
         if self.psfs is not None:
             #Get pixel coordinates in each frame.
             mask, over_lr, over_hr  = resampling.match_patches(scene.shape, self.shape,scene.wcs, self.wcs)
@@ -283,10 +286,9 @@ class Combination(Observation):
 
     @property
     def matching_mask(self):
-
         return self._mask
 
-    def get_obs(self, model):
+    def get_model(self, model):
         """Resample and convolve a model to the observation frame
         Parameters
         ----------
@@ -309,7 +311,7 @@ class Combination(Observation):
         """Reproject and resample the image in some other data frame
         Parameters
         ----------
-        scene: `~scarlet.observation.Scene`
+        obs: `~scarlet.observation.Scene`
             The target data frame.
         Returns
         -------
