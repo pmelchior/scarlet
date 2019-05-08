@@ -45,5 +45,5 @@ The code runs on python>=3.5. In addition, you'll need
 
 * numpy
 * pybind11
-* torch
+* autograd
 * [proxmin](https://github.com/pmelchior/proxmin)
