@@ -122,8 +122,14 @@ def fft_convolve(*images):
     result: array
         The convolution in pixel space of `img` with `kernel`.
     """
+    from autograd.numpy.numpy_boxes import ArrayBox
     Images = [np.fft.fft2(np.fft.ifftshift(img)) for img in images]
-    Convolved = np.prod(Images, 0)
+    if np.any([isinstance(img, ArrayBox) for img in images]):
+        Convolved = Images[0]
+        for img in Images[1:]:
+            Convolved = Convolved * img
+    else:
+        Convolved = np.prod(Images, 0)
     convolved = np.fft.ifft2(Convolved)
     return np.fft.fftshift(np.real(convolved))
 
