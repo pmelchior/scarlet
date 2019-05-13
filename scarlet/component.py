@@ -87,8 +87,8 @@ class Component():
         # set sed and morph
         self._sed = np.array(sed)
         self._morph = np.array(morph)
-        self.sed_grad = 0
-        self.morph_grad = 0
+        self._grad_sed = 0
+        self._grad_morph = 0
         self.prior = prior
         # Initially the component has not converged
         self.flags = BlendFlag.SED_NOT_CONVERGED | BlendFlag.MORPH_NOT_CONVERGED
@@ -131,6 +131,18 @@ class Component():
         """
         return self._morph
 
+    @property
+    def parameters(self):
+        return self.sed, self.morph
+
+    @property
+    def grad_sed(self):
+        return self._grad_sed
+
+    @property
+    def grad_morph(self):
+        return self._grad_morph
+
     def get_model(self, sed=None, morph=None):
         """Get the model for this component.
 
@@ -155,6 +167,10 @@ class Component():
             return self._sed[:, None, None] * self._morph[None, :, :]
         raise ValueError("You need to supply `sed` and `morph` or neither")
 
+    def update_gradients(self, grad_sed, grad_morph):
+        self._grad_sed = grad_sed
+        self._grad_morph = grad_morph
+
     def get_flux(self):
         """Get flux in every band
         """
@@ -166,11 +182,19 @@ class Component():
         if self.prior is not None:
             self.prior.compute_grad(self)
             if self.morph.requires_grad:
-                self.morph_grad += self.prior.grad_morph
+                self.grad_morph += self.prior.grad_morph
                 self.L_morph += self.prior.L_morph
             if self.sed.requires_grad:
-                self.morph_grad += self.prior.grad_morph
+                self.grad_morph += self.prior.grad_morph
                 self.L_morph += self.prior.L_morph
+
+    def gradient_step(self):
+        if not self.fix_sed:
+            self._sed = self._sed - self.step_sed * self.grad_sed
+            self.sed_grad = 0
+        if not self.fix_morph:
+            self._morph = self._morph - self.step_morph * self.grad_morph
+            self.morph_grad = 0
 
     def update(self):
         """Update the component
@@ -179,6 +203,7 @@ class Component():
         run proximal operators or other component update functions
         that will be executed during fitting.
         """
+        self.gradient_step()
         return self
 
     @property
@@ -292,19 +317,23 @@ class ComponentTree():
             else:
                 return (self._index,)
 
-    def get_model(self, seds=None, morphs=None):
+    @property
+    def parameters(self):
+        parameters = []
+        for c in self.components:
+            parameters += c.parameters
+        return parameters
+
+    def get_model(self, *parameters):
         """Get the model this component tree
 
         Parameters
         ----------
-        seds: list of arrays
-            Optional list of seds for each component in the tree.
-            If `seds` is `None` then `self.sed` is used for
-            each component.
-        morphs: list of arrays
-            Optional list of morphologies for each component in
-            the tree. If `morphs` is `None` then `self.morph`
-            is used for each component.
+        parameters: list of arrays
+            Optional list of parameters for each component in the tree,
+            for example an `sed` and `morph` for each component.
+            If `parameters` is `None` then each component uses its
+            stored value for each parameter.
 
         Returns
         -------
@@ -312,11 +341,15 @@ class ComponentTree():
             (Bands, Height, Width) data cube
         """
         model = np.zeros((self.B, self.Ny, self.Nx))
-        for k in range(self.K):
-            if seds is not None and morphs is not None:
-                _model = self.components[k].get_model(seds[k], morphs[k])
+        pidx = 0
+        if len(parameters) > 0:
+            for k in range(self.K):
+                p = len(self.components[k].parameters)
+                _model = self.components[k].get_model(*parameters[pidx:pidx+p])
+                pidx += p
                 model = model + _model
-            else:
+        else:
+            for k in range(self.K):
                 model = model + self.components[k].get_model()
         return model
 
@@ -339,6 +372,13 @@ class ComponentTree():
         """
         for component in self.components:
             component.update()
+
+    def update_gradients(self, *gradients):
+        gidx = 0
+        for k in range(self.K):
+            g = len(self.components[k].parameters)
+            self.components[k].update_gradients(*gradients[gidx:gidx+g])
+            gidx += g
 
     def __iadd__(self, c):
         """Add another component or tree.

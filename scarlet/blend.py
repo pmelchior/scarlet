@@ -89,20 +89,15 @@ class Blend(ComponentTree, Scene):
             # which are needed to determine the step size for each component
             self._set_lipschitz(approximate_L)
 
-            # Take the next gradient step for each component
+            # Update the gradient steps and priors
             for c in self.components:
                 c.L_sed = self.L_sed
                 c.L_morph = self.L_morph
-
                 c.backward_prior()
-                if not c.fix_sed:
-                    c._sed = c._sed - c.step_sed * c.sed_grad
-                    c.sed_grad = 0
-                if not c.fix_morph:
-                    c._morph = c._morph - c.step_morph * c.morph_grad
-                    c.morph_grad = 0
 
             # Call the update functions for all of the sources
+            # to take the next gradient step for each component
+            # and apply any constraints
             self.update()
 
             if self._check_convergence(e_rel):
@@ -111,19 +106,11 @@ class Blend(ComponentTree, Scene):
     def _backward(self):
         """Backpropagate the gradients for the seds and morphs
         """
-        seds = [src.sed for src in self.sources]
-        morphs = [src.morph for src in self.sources]
-        parameters = seds + morphs
         # This calculates the partial derivatives wrt
         # all the seds and morphologies
+        parameters = self.parameters
         gradients = grad(self._loss, tuple(range(len(parameters))))(*parameters)
-        sed_gradients = gradients[:self.K]
-        morph_gradients = gradients[self.K:]
-        # set the sed and morphology gradients for each source
-        for k in range(self.K):
-            src = self.sources[k]
-            src.sed_grad = sed_gradients[k]
-            src.morph_grad = morph_gradients[k]
+        self.update_gradients(*gradients)
 
     def _loss(self, *parameters):
         """Loss function for autograd
@@ -134,10 +121,7 @@ class Blend(ComponentTree, Scene):
         parameter
         """
         # Unpack the seds and morphologies
-        seds = parameters[:self.K]
-        morphs = parameters[self.K:]
-
-        model = self.get_model(seds, morphs)
+        model = self.get_model(*parameters)
         # Caculate the total loss function from all of the observations
         total_loss = 0
         for observation in self.observations:
