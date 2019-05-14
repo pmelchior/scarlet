@@ -8,6 +8,7 @@ from .interpolation import get_projection_slices
 import logging
 logger = logging.getLogger("scarlet.source")
 
+import matplotlib.pyplot as plt
 
 class SourceInitError(Exception):
     """Error during source initialization
@@ -35,7 +36,7 @@ def get_pixel_sed(sky_coord, scene, observations):
     sed = np.zeros(scene.B, dtype=observations[0].images.dtype)
     band = 0
     for obs in observations:
-        pixel = obs.get_pixel(sky_coord)
+        pixel = obs.get_pixel(scene, sky_coord)
         sed[band:band+obs.B] = obs.images[:, pixel[0], pixel[1]]
         band += obs.B
     if np.all(sed <= 0):
@@ -99,7 +100,9 @@ def build_detection_coadd(sed, bg_rms, observation, scene, thresh=1):
         The minimum value in `detect` to include in detection.
     """
     B = observation.B
-    images = observation.get_scene(scene)
+    images = (scene.images)#+observation.get_scene(scene))/2
+
+
     weights = np.array([sed[b]/bg_rms[b]**2 for b in range(B)])
     jacobian = np.array([sed[b]**2/bg_rms[b]**2 for b in range(B)]).sum()
     detect = np.einsum('i,i...', weights, images) / jacobian
@@ -142,6 +145,48 @@ def init_extended_source(sky_coord, scene, observations, bg_rms, obs_idx=0,
     # normalize to unity at peak pixel
     cy, cx = center
     center_morph = morph[cy, cx]
+    morph /= center_morph
+    return sed, morph
+
+
+def init_combined_extended_source(sky_coord, scene, observations, bg_rms, obs_idx=0,
+                         thresh=1., symmetric=True, monotonic=True):
+    """Initialize the source that is symmetric and monotonic
+    See `ExtendedSource` for a description of the parameters
+    """
+    try:
+        iter(observations)
+    except TypeError:
+        observations = [observations]
+    # determine initial SED from peak position
+    sed = get_pixel_sed(sky_coord, scene, observations)  # amplitude is in sed
+    morph, bg_cutoff = build_detection_coadd(sed, bg_rms, observations[obs_idx], scene, thresh)
+    center = scene.get_pixel(sky_coord)
+
+
+    # Apply the necessary constraints
+    if symmetric:
+        morph = operator.prox_uncentered_symmetry(morph, 0, center=center, use_soft=False)
+
+    if monotonic:
+        # use finite thresh to remove flat bridges
+        prox_monotonic = operator.prox_strict_monotonic(morph.shape, use_nearest=False,
+                                                        center=center, thresh=.1)
+        morph = prox_monotonic(morph, 0).reshape(morph.shape)
+
+    # trim morph to pixels above threshold
+    mask = morph > bg_cutoff
+    if mask.sum() == 0:
+        msg = "No flux above threshold={2} for source at y={0} x={1}"
+        raise SourceInitError(msg.format(*sky_coord, bg_cutoff))
+    morph[~mask] = 0
+
+
+
+    # normalize to unity at peak pixel
+    cy, cx = center
+
+    center_morph = morph[np.int(cy), np.int(cx)]
     morph /= center_morph
     return sed, morph
 
@@ -338,6 +383,51 @@ class ExtendedSource(PointSource):
         self.delay_thresh = delay_thresh
 
         sed, morph = init_extended_source(sky_coord, scene, observations, bg_rms, obs_idx,
+                                          thresh, True, monotonic)
+
+        Component.__init__(self, sed, morph, **component_kwargs)
+
+
+class Extended_CombinedSource(PointSource):
+    """Extended source intialized to match a set of observations
+
+    Parameters
+    ----------
+    sky_coord: tuple
+        Center of the source
+    scene: `scarlet.observation.Scene`
+        The scene that the model lives in.
+    observations: list of `~scarlet.observation.Observation`
+        Observations to extract SED from.
+    bg_rms: array
+        Background RMS in each band in observation.
+    obs_idx: int
+        Index of the observation in `observations` to use for
+        initializing the morphology.
+    thresh: `float`
+        Multiple of the backround RMS used as a
+        flux cutoff for morphology initialization.
+    symmetric: `bool`
+        Whether or not to enforce symmetry.
+    monotonic: `bool`
+        Whether or not to make the object monotonically decrease
+        in flux from the center.
+    component_kwargs: dict
+        Keyword arguments to pass to the component initialization.
+    """
+    def __init__(self, sky_coord, scene, observations, bg_rms, obs_idx=0, thresh=1,
+                 symmetric=False, monotonic=True, center_step=5, delay_thresh=0, **component_kwargs):
+        self.symmetric = symmetric
+        self.monotonic = monotonic
+        self.coords = sky_coord
+        center = scene.get_pixel(sky_coord)
+        self.pixel_center = center
+        self.center_step = center_step
+        self.delay_thresh = delay_thresh
+
+        #obs = observations.match(scene)
+
+        sed, morph = init_combined_extended_source(sky_coord, scene, observations, bg_rms, obs_idx,
                                           thresh, True, monotonic)
 
         Component.__init__(self, sed, morph, **component_kwargs)

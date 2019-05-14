@@ -1,7 +1,9 @@
-import numpy as np
+import autograd.numpy as np
+from . import interpolation
 
+import scipy.signal as scp
 
-
+import matplotlib.pyplot as plt
 
 def convolve_band(model, psf, padding = 3):
     """Convolve the model in a single band
@@ -12,36 +14,13 @@ def convolve_band(model, psf, padding = 3):
     convolved_fft = model_fft * psf_fft
     convolved = np.fft.ifft2(convolved_fft)
     result = np.fft.fftshift(np.real(convolved))
-    (bottom, top), (left, right) = padding
-    result = result[bottom:-top, left:-right]
+  #  (bottom, top), (left, right) = padding
+    result = result#[bottom:-top, left:-right]
     return result
 
-def sinc2D(x,y):
-    return np.sinc(x)*np.sinc(y)
-
-def interp2D(coord_hr, coord_lr, Fm):
-    '''
-    INPUTS:
-    ------
-        coord_hr: Coordinates of the high resolution grid
-        coord_lr: Coordinates of the low resolution grid
-        Fm: Sample at positions coord_lr
-    OUTPUTS:
-    -------
-        result:  interpolated  samples at positions coord_hr
-    '''
-    a, b = coord_hr
-    A, B = coord_lr
-    hx = np.abs(A[1]-A[0])
-    hy = np.abs(B[np.int(np.sqrt(np.size(B)))+1] - B[0])
-
-    assert hx != 0
-
-    return np.array([Fm[k] * sinc2D((a-A[k])/(hx),(b-B[k])/(hy)) for k in range(len(A))]).sum(axis=0)
 
 
-
-def conv2D_fft(shape, xm, ym, p, h, padding = 0):
+def conv2D_fft(shape, xm, ym, p, h):
     '''
 
     shape:
@@ -54,14 +33,28 @@ def conv2D_fft(shape, xm, ym, p, h, padding = 0):
     '''
 
 
-    ker = np.zeros((shape[0], shape[1]))
+    ker = np.zeros((shape))
     x,y = np.where(ker == 0)
 
-    ker[x,y] = sinc2D((xm-x)/h,(ym-y)/h)
+    ker[x,y] = interpolation.sinc2D((xm-x)/h,(ym-y)/h)
+ #   pad = (np.array(ker.shape)-np.array(p.shape))
 
-    return convolve_band(ker, p, padding = padding)*h/np.pi
+    #That's if we really don't want to use scipy
+ #   if np.int(pad[0]/2) != pad[0]/2:
+ #       pd1 = np.int((pad[0]+1)/2)
+ #   else:
+ #       pd1 = np.int(pad[0]/2)
+ #   if np.int(pad[1]/2) != pad[1]/2:
+ #       pd3 = np.int((pad[1]+1)/2)
+ #   else:
+ #       pd3 = np.int(pad[1]/2)
 
-def make_mat2D_fft(shape, coord_lr, p):
+ #   pd2 = np.int(pad[0]/2)
+ #   pd4 = np.int(pad[1] / 2)
+
+    return scp.fftconvolve(ker, p, mode = 'same')*h/np.pi#convolve_band(p, ker,padding = ((pd1,pd2),(pd3,pd4)))*h/np.pi
+
+def make_operator(shape, coord_lr, p):
     '''
     INPUTS:
     ------
@@ -85,7 +78,7 @@ def make_mat2D_fft(shape, coord_lr, p):
         h = b[1]-b[0]
     assert h !=0
 
-    for m in range(B.neement()):
+    for m in range(np.size(B)):
             mat[:, m] = conv2D_fft(shape, A[m], B[m], p, h)[a,b]#.flatten()
             mat[:, m] /= np.sum(mat[:,m])
 
@@ -144,7 +137,6 @@ def match_patches(shape_hr, shape_lr, wcs_hr, wcs_lr):
         coordlr_over_hr: coordinates of the overlaps at low resolution in the high resolution frame.
     '''
 
-    #shapes
 
 
     if np.size(shape_hr) == 3:
@@ -231,8 +223,12 @@ def match_psfs(psf_hr, psf_lr, wcs_hr, wcs_lr):
     mask, p_lr, p_hr = match_patches(psf_hr.shape, psf_lr.data.shape, wcs_hr, wcs_lr)
 
     cmask = np.where(mask == 1)
+
     n_p = np.int((np.size(cmask[0]))**0.5)
-    psf_match_lr = interp2D(cmask, p_hr[::-1], (psf_lr).flatten()).reshape(n_p, n_p)
+    psf_match_lr = interpolation.sinc_interp(cmask, p_hr[::-1], (psf_lr).flatten()).reshape(n_p, n_p)
 
     psf_match_hr = psf_hr[np.int((nhr1-n_p)/2):np.int((nhr1+n_p)/2),np.int((nhr2-n_p)/2):np.int((nhr2+n_p)/2)]
+
+    psf_match_hr /= np.sum(psf_match_hr)
+    psf_match_lr /= np.sum(psf_match_lr)
     return psf_match_hr, psf_match_lr

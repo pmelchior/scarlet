@@ -5,6 +5,7 @@ from proxmin.operators import prox_unity_plus
 from proxmin.utils import MatrixAdapter
 
 from .cache import Cache
+import matplotlib.pyplot as plt
 
 import logging
 logger = logging.getLogger("scarlet.operator")
@@ -212,12 +213,14 @@ def uncentered_operator(X, func, center=None, fill=None, **kwargs):
         yslice = slice(None, dy)
     else:
         yslice = slice(dy, None)
+
     if fill is not None:
         _X = np.ones(X.shape, X.dtype) * fill
         _X[yslice, xslice] = func(X[yslice, xslice], **kwargs)
         X[:] = _X
     else:
         X[yslice, xslice] = func(X[yslice, xslice], **kwargs)
+
     return X
 
 
@@ -471,8 +474,11 @@ def getRadialMonotonicWeights(shape, useNearest=True, minGradient=1, center=None
     if center is None:
         center = ((shape[0]-1) // 2, (shape[1]-1) // 2)
     name = "RadialMonotonicWeights"
+
+
     key = tuple(shape) + tuple(center) + (useNearest, minGradient)
     try:
+
         cosNorm = Cache.check(name, key)
     except KeyError:
 

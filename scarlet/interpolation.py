@@ -1,6 +1,5 @@
 import autograd.numpy as np
 
-
 def get_projection_slices(image, shape, yx0=None):
     """Get slices needed to project an image
 
@@ -205,22 +204,6 @@ def cubic_spline(dx, a=1, b=0):
     result[inner_cut] = inner(_x[inner_cut], a, b)
     return result, np.array(window).astype(int)
 
-def sinc2D(x,y):
-    '''2-D sinc as a product of 1-D sincs
-
-    Parameters:
-    ----------
-    x,y: numpy 1-D arrays
-        coordinate where to evalutate the sinc
-
-    Returns:
-    -------
-    Sinc: numpy 1-D array of the same size as x and y
-        Evaluation of sinc at positions (x,y)
-    '''
-    assert x.size == y.size
-    return np.sinc(x)*np.sinc(y)
-
 def catmull_rom(dx):
     """Cubic spline with a=0.5, b=0
 
@@ -310,33 +293,25 @@ def get_separable_kernel(dy, dx, kernel=lanczos, **kwargs):
     kyx = np.outer(ky, kx)
     return kyx, y_window, x_window
 
-def sinc_interp(a, b, A, B, Fm):
-    '''interpolates a surface from samples Fm at positions (A,B) to a grid (a,b)
-
-     Parameters:
-     ----------
-     a, b: 1-D numpy arrays
-        positions in 2-D where to interpolate Fm
-     A, B: numpy 1-D arrays of the same size as Fm
-        positions in 2-D of the known samples Fm
-     Fm: numpy 1-D arrray of the same size as a and b
-        known samples at positions (A,B)
-
-     Returns:
-     -------
-     Result: 1-D numpy array of the size of a and b
-        interpolated samples of Fm at positions (a,b)
-
-     '''
-    assert a.size == b.size
-    assert A.size == B.size
-    assert A.size == Fm.size
-
+def sinc_interp(coord_hr, coord_lr, Fm):
+    '''
+    INPUTS:
+    ------
+        coord_hr: Coordinates of the high resolution grid
+        coord_lr: Coordinates of the low resolution grid
+        Fm: Sample at positions coord_lr
+    OUTPUTS:
+    -------
+        result:  interpolated  samples at positions coord_hr
+    '''
+    a, b = coord_hr
+    A, B = coord_lr
     hx = np.abs(A[1]-A[0])
-    hy = np.abs(B[np.int(np.sqrt(B.size))+1] - B[0])
+    hy = np.abs(B[np.int(np.sqrt(np.size(B)))+1] - B[0])
+
+    assert hx != 0
 
     return np.array([Fm[k] * sinc2D((a-A[k])/(hx),(b-B[k])/(hy)) for k in range(len(A))]).sum(axis=0)
-
 
 
 def fft_resample(img, dy, dx, kernel=lanczos, **kwargs):
@@ -419,3 +394,6 @@ def get_common_padding(img1, img2, padding=None):
         return ((bottom, top), (left, right))
 
     return get_padding(img1, h1, w1), get_padding(img2, h2, w2)
+
+def sinc2D(x,y):
+    return np.sinc(x)*np.sinc(y)
