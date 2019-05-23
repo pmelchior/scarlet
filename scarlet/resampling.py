@@ -3,7 +3,6 @@ from . import interpolation
 
 import scipy.signal as scp
 
-import matplotlib.pyplot as plt
 
 def convolve_band(model, psf, padding = 3):
     """Convolve the model in a single band
@@ -32,27 +31,13 @@ def conv2D_fft(shape, xm, ym, p, h):
         result: vector for convolution and resampling of the high resolution plane into pixel (xm,ym) at low resolution
     '''
 
-
-    ker = np.zeros((shape))
+    nl, n1, n2 = shape
+    ker = np.zeros((n1,n2))
     x,y = np.where(ker == 0)
 
     ker[x,y] = interpolation.sinc2D((xm-x)/h,(ym-y)/h)
- #   pad = (np.array(ker.shape)-np.array(p.shape))
 
-    #That's if we really don't want to use scipy
- #   if np.int(pad[0]/2) != pad[0]/2:
- #       pd1 = np.int((pad[0]+1)/2)
- #   else:
- #       pd1 = np.int(pad[0]/2)
- #   if np.int(pad[1]/2) != pad[1]/2:
- #       pd3 = np.int((pad[1]+1)/2)
- #   else:
- #       pd3 = np.int(pad[1]/2)
-
- #   pd2 = np.int(pad[0]/2)
- #   pd4 = np.int(pad[1] / 2)
-
-    return scp.fftconvolve(ker, p, mode = 'same')*h/np.pi#convolve_band(p, ker,padding = ((pd1,pd2),(pd3,pd4)))*h/np.pi
+    return scp.fftconvolve(ker, p, mode = 'same')*h/np.pi
 
 def make_operator(shape, coord_lr, p):
     '''
@@ -68,7 +53,7 @@ def make_operator(shape, coord_lr, p):
     -------
         mat: the convolution-resampling matrix
     '''
-    n1,n2 = shape
+    nl,n1,n2 = shape
     a, b = np.where(np.zeros((n1,n2))==0)
     A, B = coord_lr
     mat = np.zeros((n1*n2, B.size))
@@ -79,8 +64,8 @@ def make_operator(shape, coord_lr, p):
     assert h !=0
 
     for m in range(np.size(B)):
-            mat[:, m] = conv2D_fft(shape, A[m], B[m], p, h)[a,b]#.flatten()
-            mat[:, m] /= np.sum(mat[:,m])
+            mat[:, m] = conv2D_fft(shape, A[m], B[m], p, h).flatten()*A.size/a.size
+            #mat[:, m] /= np.sum(mat[:,m])
 
     return mat
 
@@ -163,14 +148,27 @@ def match_patches(shape_hr, shape_lr, wcs_hr, wcs_lr):
     x_hr, y_hr = np.where(im_hr * 0 == 0)
     X_lr, Y_lr = np.where(im_lr * 0 == 0)
 
-
-    ra_lr, dec_lr = wcs_lr.all_pix2world(Y_lr, X_lr, 0, ra_dec_order = True)
-    ra_hr, dec_hr = wcs_hr.all_pix2world(x_hr, y_hr, 0, ra_dec_order=True)
+    if np.size(wcs_lr.array_shape) == 2:
+        ra_lr, dec_lr = wcs_lr.all_pix2world(Y_lr, X_lr, 0, ra_dec_order = True)
+    elif np.size(wcs_lr.array_shape) == 3:
+        ra_lr, dec_lr = wcs_lr.all_pix2world(Y_lr, X_lr, 0, 0, ra_dec_order = True)
+    if np.size(wcs_hr.array_shape) == 2:
+        ra_hr, dec_hr = wcs_hr.all_pix2world(x_hr, y_hr, 0, ra_dec_order=True)
+    elif np.size(wcs_hr.array_shape) == 3:
+        ra_hr, dec_hr = wcs_hr.all_pix2world(x_hr, y_hr, 0, 0, ra_dec_order=True)
 
     # Coordinates of the low resolution pixels in the high resolution frame
-    Y_hr, X_hr = wcs_hr.all_world2pix(ra_lr, dec_lr,0, ra_dec_order = True)
+    if np.size(wcs_hr.array_shape) == 2:
+        Y_hr, X_hr = wcs_hr.all_world2pix(ra_lr, dec_lr, 0, ra_dec_order = True)
+    elif np.size(wcs_hr.array_shape) == 3:
+        Y_hr, X_hr = wcs_hr.all_world2pix(ra_lr, dec_lr, 0, 0, ra_dec_order = True)
+
     # Coordinates of the high resolution pixels in the low resolution frame
-    y_lr, x_lr = wcs_lr.all_world2pix(ra_hr, dec_hr,0, ra_dec_order = True)
+    if np.size(wcs_lr.array_shape) == 2:
+        y_lr, x_lr = wcs_lr.all_world2pix(ra_hr, dec_hr, 0, ra_dec_order = True)
+    # Coordinates of the high resolution pixels in the low resolution frame
+    elif np.size(wcs_lr.array_shape) == 3:
+        y_lr, x_lr, l = wcs_lr.all_world2pix(ra_hr, dec_hr, 0, 0, ra_dec_order = True)
 
     # Mask of low resolution pixels in the overlap at low resolution:
     over_lr = ((Y_hr>0) * (Y_hr<n2) * (X_hr>0) * (X_hr<n1))
@@ -213,12 +211,19 @@ def match_psfs(psf_hr, psf_lr, wcs_hr, wcs_lr):
 
     nhr1, nhr2 = psf_hr.shape
     nlr1, nlr2 = psf_lr.shape
+    if np.size(wcs_hr.array_shape) == 2:
+        wcs_hr.wcs.crval = 0., 0.
+        wcs_hr.wcs.crpix = nhr1 / 2., nhr2 / 2.
+    elif np.size(wcs_hr.array_shape) == 3:
+        wcs_hr.wcs.crval = 0., 0., 0.
+        wcs_hr.wcs.crpix = nhr1 / 2., nhr2 / 2., 0.
+    if np.size(wcs_lr.array_shape) == 2:
+        wcs_lr.wcs.crval = 0., 0.
+        wcs_lr.wcs.crpix = nlr1 / 2., nlr2 / 2.
+    elif np.size(wcs_lr.array_shape) == 3:
+        wcs_lr.wcs.crval = 0., 0., 0.
+        wcs_lr.wcs.crpix = nlr1 / 2., nlr2 / 2., 0
 
-    wcs_hr.wcs.crval = 0., 0.
-    wcs_lr.wcs.crval = 0., 0.
-
-    wcs_hr.wcs.crpix = nhr1/2., nhr2/2.
-    wcs_lr.wcs.crpix = nlr1/2., nlr2/2.
 
     mask, p_lr, p_hr = match_patches(psf_hr.shape, psf_lr.data.shape, wcs_hr, wcs_lr)
 
@@ -229,6 +234,6 @@ def match_psfs(psf_hr, psf_lr, wcs_hr, wcs_lr):
 
     psf_match_hr = psf_hr[np.int((nhr1-n_p)/2):np.int((nhr1+n_p)/2),np.int((nhr2-n_p)/2):np.int((nhr2+n_p)/2)]
 
-    psf_match_hr /= np.sum(psf_match_hr)
-    psf_match_lr /= np.sum(psf_match_lr)
+    psf_match_hr /= np.max(psf_match_hr)
+    psf_match_lr /= np.max(psf_match_lr)
     return psf_match_hr, psf_match_lr

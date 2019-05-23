@@ -327,6 +327,7 @@ class ComponentTree():
                 model = model + _model
             else:
                 model = model + self.components[k].get_model()
+
         return model
 
     def get_flux(self):

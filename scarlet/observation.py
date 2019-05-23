@@ -3,7 +3,6 @@ import autograd.numpy as np
 from . import resampling
 from . import interpolation
 
-import matplotlib.pyplot as plt
 
 import logging
 logger = logging.getLogger("scarlet.observation")
@@ -72,9 +71,13 @@ class Scene():
         meaning the data frame and model frame are the same,
         then this just returns the `sky_coord`
         """
-        #if self.wcs is not None:
-        #    return self.wcs.wcs_world2pix(sky_coord[0], sky_coord[1], 0)
-        return ((sky_coord[0]), (sky_coord[1]))
+        if self.wcs is not None:
+            if np.size(self.wcs.array_shape) == 3:
+                coord = self.wcs.wcs_world2pix(sky_coord[0], sky_coord[1], 0, 0)
+            elif np.size(self.wcs.array_shape) == 2:
+                coord = self.wcs.wcs_world2pix(sky_coord[0], sky_coord[1], 0)
+
+        return (coord[0].item(), coord[1].item())
 
 
 
@@ -100,16 +103,18 @@ class Observation(Scene):
         half the width of the PSF, for FFT's. This is needed to
         prevent artifacts due to the FFT.
     """
-    def __init__(self, images, psfs=None, weights=None, wcs=None, filtercurve=None, padding=3):
+    def __init__(self, images, psfs=None, weights=None, wcs=None, filtercurve=None, padding=3, structure = None):
         super().__init__(images.shape, wcs=wcs, psfs=psfs, filtercurve=filtercurve)
 
         self._images = np.array(images)
         self.padding = padding
-
         if weights is not None:
             self._weights = np.array(weights)
         else:
             self._weights = 1
+
+        self.structure = structure
+
 
 
     def match(self, scene):
@@ -147,8 +152,31 @@ class Observation(Scene):
                 new_kernel_fft.append(np.fft.fft2(np.fft.ifftshift(kernel)))
             self.psfs_fft = np.array(new_kernel_fft)
 
-        ##Should it not return self?
+        return self
 
+    @property
+    def B(self):
+        """Number of bands in the model
+        """
+        return self.shape[0]
+
+    @property
+    def Ny(self):
+        """Number of pixel in the y-direction
+        """
+        return self.shape[1]
+
+    @property
+    def Nx(self):
+        """Number of pixels in the x-direction
+        """
+        return self.shape[2]
+
+    @property
+    def shape(self):
+        """Shape of the model.
+        """
+        return self._shape
     @property
     def images(self):
         return self._images
@@ -172,22 +200,23 @@ class Observation(Scene):
         model: array
             The convolved and resampled `model` in the observation frame.
         """
-        if self.wcs is not None:
-            msg = "get_model is currently only supported when the observation frame matches the scene"
-            raise NotImplementedError(msg)
+        if self.structure is not None:
+            assert self.structure.size == model.shape[0]
+            model = model[self.structure==1]
+        if self.psfs is not None:
+            def _convolve_band(model, psf_fft):
+                """Convolve the model in a single band
+                """
+                _model = np.pad(model, self.image_padding, 'constant')
+                model_fft = np.fft.fft2(np.fft.ifftshift(_model))
+                convolved_fft = model_fft * psf_fft
+                convolved = np.fft.ifft2(convolved_fft)
+                result = np.fft.fftshift(np.real(convolved))
+                (bottom, top), (left, right) = self.image_padding
+                result = result[bottom:-top, left:-right]
+                return result
+            model = np.array([_convolve_band(model[b], self.psfs_fft[b]) for b in range(self.structure.sum())])
 
-        def _convolve_band(model, psf_fft):
-            """Convolve the model in a single band
-            """
-            _model = np.pad(model, self.image_padding, 'constant')
-            model_fft = np.fft.fft2(np.fft.ifftshift(_model))
-            convolved_fft = model_fft * psf_fft
-            convolved = np.fft.ifft2(convolved_fft)
-            result = np.fft.fftshift(np.real(convolved))
-            (bottom, top), (left, right) = self.image_padding
-            result = result[bottom:-top, left:-right]
-            return result
-        model = np.array([_convolve_band(model[b], self.psfs_fft[b]) for b in range(self.B)])
         return model
 
     def get_loss(self, model):
@@ -202,11 +231,12 @@ class Observation(Scene):
             Scalar tensor with the likelihood of the model
             given the image data.
         """
-        if self._psfs is not None:
-            model = self.get_model(model)
+
+        model = self.get_model(model)
+
         return np.sum(0.5 * (self._weights * (model - self._images))**2)
 
-    def get_scene(self, scene):#Why do we need scene here?
+    def get_scene(self, scene):
         """Reproject and resample the image in some other data frame
         This is currently only supported to return `images` when the data
         scene and target scene are the same.
@@ -227,9 +257,9 @@ class Observation(Scene):
 
 
 class Combination(Scene):
-    #Temporary name. getting fit is a new (year's) resolution... badum tssss
 
-    def __init__(self, images, psfs=None, weights=None, wcs = None, filtercurve=None, padding=3, target_psf = None):
+
+    def __init__(self, images, psfs=None, weights=None, wcs = None, filtercurve=None, padding=3, target_psf = None, structure = None):
         super().__init__(images.shape, wcs=wcs, psfs=psfs, filtercurve=filtercurve)
 
         self.images = np.array(images)
@@ -244,7 +274,7 @@ class Combination(Scene):
             self.target_psf = target_psf
         else:
             self.target_psf = target_psf
-
+        self.structure = structure
 
 
     def match(self, scene):
@@ -278,8 +308,6 @@ class Combination(Scene):
             else:
                 _target = self.target_psf
             # 3) compute obs.psf in the frame of scene
-
-
             resconv_op = []
 
             for _psf in self.psfs:
@@ -291,10 +319,11 @@ class Combination(Scene):
                 #Computes the diff kernel in Fourier
                 target_fft = np.fft.fft2(np.fft.ifftshift(new_target))
                 observed_fft = np.fft.fft2(np.fft.ifftshift(observed_psf))
-                kernel_fft = observed_fft / target_fft
+                kernel_fft = np.zeros(target_fft.shape)
+                kernel_fft[target_fft != 0] = observed_fft[target_fft != 0] / target_fft[target_fft != 0]
                 kernel = np.fft.ifft2(kernel_fft)
                 kernel = np.fft.fftshift(np.real(kernel))
-                diff_psf = kernel/kernel.sum()
+                diff_psf = kernel/kernel.max()
 
                 # Computes the resampling/convolution matrix
                 resconv_op.append(resampling.make_operator(_shape, over_hr, diff_psf))
@@ -305,21 +334,13 @@ class Combination(Scene):
             raise ValueError('Observation PSF needed: unless you are not dealing with astronomical data, you are doing something wrong')
         # [ 5) compute sparse representation of interpolation * convolution ]
 
+
         return self
 
     @property
     def matching_mask(self):
         return self._mask
 
-
-    def get_pixel(self, scene, coord):
-        """Get the pixel coordinate from a pixel in scene to a pixel in observation frame
-        """
-
-        if self.wcs is not None:
-            ra, dec = scene.wcs.wcs_pix2world(coord[0], coord[1],0)
-            coord = self.wcs.wcs_world2pix(ra, dec, 0)
-        return (int(coord[0]), int(coord[1]))
 
     def get_model(self, model):
         """Resample and convolve a model to the observation frame
@@ -332,26 +353,46 @@ class Combination(Scene):
         model: array
             The convolved and resampled `model` in the observation frame.
         """
+        if self.structure is not None:
+            assert self.structure.size == model.shape[0]
+            model = model[self.structure==1]
         obs = np.array([np.dot(model[b].flatten(),self.resconv_op[b]) for b in range(self.B)])
+
         return obs
+
+    def get_model_image(self, model):
+        """Resample and convolve a model to the observation frame
+        Parameters
+        ----------
+        model: array
+            The model in some other data frame.
+        Returns
+        -------
+        model: array
+            The convolved and resampled `model` in the observation frame.
+        """
+        img = np.zeros(self.shape)
+        img[:, self._over_lr[0], self._over_lr[1]] = self.get_model(model)
+        return img
 
     def get_loss(self, model):
         if self._psfs is not None:
             model = self.get_model(model)
+
         return np.sum(0.5 * (self._weights * (model - self.images[:,self._over_lr[0].astype(int),self._over_lr[1].astype(int)]))**2)
 
-    def get_scene(self, scene):
+    def get_scene(self, image):
         """Reproject and resample the image in some other data frame
         Parameters
         ----------
-        obs: `~scarlet.observation.Scene`
+        obs: scarlet.observation.Scene
             The target data frame.
         Returns
         -------
         images: array
-            The image cube in the target `scene`.
+            The image cube in the target scene.
         """
-
-        rec_scene = np.array([np.dot(self.images[b, self._over_lr[0], self._over_lr[1]], self.resconv_op[b, :, :].T).reshape(scene.shape[1], scene.shape[2]) for b in range(self.B)])
+        n,n1,n2 = np.shape(image)
+        rec_scene = np.array([np.dot(image[b, self._over_lr[0], self._over_lr[1]], self.resconv_op[b, :, :].T).reshape(n1,n2) for b in range(self.B)])
         return rec_scene
 

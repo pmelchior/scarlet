@@ -5,7 +5,7 @@ from proxmin.operators import prox_unity_plus
 from proxmin.utils import MatrixAdapter
 
 from .cache import Cache
-import matplotlib.pyplot as plt
+
 
 import logging
 logger = logging.getLogger("scarlet.operator")
@@ -196,6 +196,7 @@ def uncentered_operator(X, func, center=None, fill=None, **kwargs):
     else:
         py, px = center
     cy, cx = np.array(X.shape) // 2
+
     if py == cy and px == cx:
         return func(X, **kwargs)
 

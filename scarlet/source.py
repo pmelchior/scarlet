@@ -8,7 +8,6 @@ from .interpolation import get_projection_slices
 import logging
 logger = logging.getLogger("scarlet.source")
 
-import matplotlib.pyplot as plt
 
 class SourceInitError(Exception):
     """Error during source initialization
@@ -16,7 +15,7 @@ class SourceInitError(Exception):
     pass
 
 
-def get_pixel_sed(sky_coord, scene, observations):
+def get_pixel_sed(sky_coord, observations):
     """Get the SED at `position` in `img`
 
     Parameters
@@ -33,19 +32,61 @@ def get_pixel_sed(sky_coord, scene, observations):
     SED: `~numpy.array`
         SED for a single source
     """
-    sed = np.zeros(scene.B, dtype=observations[0].images.dtype)
+
+    sed = []#np.zeros(scene.B, dtype=observations[0].images.dtype)
     band = 0
     for obs in observations:
-        pixel = obs.get_pixel(scene, sky_coord)
-        sed[band:band+obs.B] = obs.images[:, pixel[0], pixel[1]]
+        pixel = obs.get_pixel(sky_coord)
+
+        sed = np.concatenate((sed,obs.images[:, np.int(pixel[0]), np.int(pixel[1])]))
+
         band += obs.B
+
+        if np.all(sed[-1] <= 0):
+            # If the flux in all bands is  <=0,
+            # the new sed will be filled with NaN values,
+            # which will cause the code to crash later
+            msg = "Zero or negative flux at y={0}, x={1}"
+            raise SourceInitError(msg.format(*sky_coord))
+
+    sed = np.array(sed)
+
+    return sed.reshape(sed.size)
+
+def get_scene_sed(sky_coord, observations):
+    """Get the SED at `position` in `img` in the scene. Function made for combined resolution images.
+
+
+    Parameters
+    ----------
+    sky_coord: tuple
+        Center of the source
+    scene: `scarlet.observation.Scene`
+        The scene that the model lives in.
+    observations: list of `~scarlet.observation.Observation`
+        Observations to extract SED from.
+
+    Returns
+    -------
+    SED: `~numpy.array`
+        SED for a single source
+    """
+
+    sed = []#np.zeros(scene.B, dtype=observations[0].images.dtype)
+    band = 0
+    for obs in observations:
+
+        pixel = obs.get_pixel(sky_coord)
+        sed.append(obs.images[:, np.int(pixel[0]), np.int(pixel[1])])
+        band += obs.B
+    sed = np.array(sed)
     if np.all(sed <= 0):
         # If the flux in all bands is  <=0,
         # the new sed will be filled with NaN values,
         # which will cause the code to crash later
         msg = "Zero or negative flux at y={0}, x={1}"
         raise SourceInitError(msg.format(*sky_coord))
-    return sed
+    return sed.reshape(sed.size)
 
 
 def get_best_fit_seds(morphs, scene, observations):
@@ -75,7 +116,7 @@ def get_best_fit_seds(morphs, scene, observations):
     return seds
 
 
-def build_detection_coadd(sed, bg_rms, observation, scene, thresh=1):
+def build_detection_coadd(sed, bg_rms, observations, scene, thresh=1):
     """Build a band weighted coadd to use for source detection
 
     Parameters
@@ -99,16 +140,54 @@ def build_detection_coadd(sed, bg_rms, observation, scene, thresh=1):
     bg_cutoff: float
         The minimum value in `detect` to include in detection.
     """
-    B = observation.B
-    images = (scene.images)#+observation.get_scene(scene))/2
-
+    B = scene.B
 
     weights = np.array([sed[b]/bg_rms[b]**2 for b in range(B)])
     jacobian = np.array([sed[b]**2/bg_rms[b]**2 for b in range(B)]).sum()
-    detect = np.einsum('i,i...', weights, images) / jacobian
+    detect = np.einsum('i,i...', weights, observations.images) / jacobian
 
     # thresh is multiple above the rms of detect (weighted variance across bands)
     bg_cutoff = thresh * np.sqrt((weights**2 * bg_rms**2).sum()) / jacobian
+    return detect, bg_cutoff
+
+
+def detection_combination(sed, bg_rms, observations, scene, thresh=1):
+    """Build a band weighted coadd to use for source detection
+
+    Parameters
+    ----------
+    sed: array
+        SED at the center of the source.
+    bg_rms: array
+        Background RMS in each band in observation.
+    observation: `~scarlet.observation.Observation`
+        Observation to use for the coadd.
+    scene: `scarlet.observation.Scene`
+        The scene that the model lives in.
+    thresh: `float`
+        Multiple of the backround RMS used as a
+        flux cutoff.
+
+    Returns
+    -------
+    detect: array
+        2D image created by weighting all of the bands by SED
+    bg_cutoff: float
+        The minimum value in `detect` to include in detection.
+    """
+
+    for c, obs in enumerate(observations):
+        if type(obs).__name__ is not 'Combination':
+            observation = obs
+            sed = sed[c].reshape(sed[c].size)
+            bg_rms = bg_rms[c].reshape(bg_rms[c].size)
+
+    weights = np.array([sed[b] / bg_rms[b] ** 2 for b in range(sed.size)])
+    jacobian = np.array([sed[b] ** 2 / bg_rms[b] ** 2 for b in range(sed.size)]).sum()
+    detect = np.einsum('i,i...', weights, observation.images) / jacobian
+
+    # thresh is multiple above the rms of detect (weighted variance across bands)
+    bg_cutoff = thresh * np.sqrt((weights ** 2 * bg_rms ** 2).sum()) / jacobian
     return detect, bg_cutoff
 
 
@@ -122,7 +201,8 @@ def init_extended_source(sky_coord, scene, observations, bg_rms, obs_idx=0,
     except TypeError:
         observations = [observations]
     # determine initial SED from peak position
-    sed = get_pixel_sed(sky_coord, scene, observations)  # amplitude is in sed
+    sed = get_pixel_sed(sky_coord, observations)  # amplitude is in sed
+
     morph, bg_cutoff = build_detection_coadd(sed, bg_rms, observations[obs_idx], scene, thresh)
     center = scene.get_pixel(sky_coord)
 
@@ -158,11 +238,15 @@ def init_combined_extended_source(sky_coord, scene, observations, bg_rms, obs_id
         iter(observations)
     except TypeError:
         observations = [observations]
-    # determine initial SED from peak position
-    sed = get_pixel_sed(sky_coord, scene, observations)  # amplitude is in sed
-    morph, bg_cutoff = build_detection_coadd(sed, bg_rms, observations[obs_idx], scene, thresh)
-    center = scene.get_pixel(sky_coord)
 
+    # determine initial SED from peak position
+        #SED in the scene for source detection
+
+    sed = get_pixel_sed(sky_coord, observations)
+
+    morph, bg_cutoff = detection_combination(sed, bg_rms, observations, scene, thresh)  # amplitude is in sed
+
+    center = scene.get_pixel(sky_coord)
 
     # Apply the necessary constraints
     if symmetric:
@@ -178,7 +262,7 @@ def init_combined_extended_source(sky_coord, scene, observations, bg_rms, obs_id
     mask = morph > bg_cutoff
     if mask.sum() == 0:
         msg = "No flux above threshold={2} for source at y={0} x={1}"
-        raise SourceInitError(msg.format(*sky_coord, bg_cutoff))
+        raise SourceInitError(msg.format(*center, bg_cutoff))
     morph[~mask] = 0
 
 
@@ -425,7 +509,6 @@ class Extended_CombinedSource(PointSource):
         self.center_step = center_step
         self.delay_thresh = delay_thresh
 
-        #obs = observations.match(scene)
 
         sed, morph = init_combined_extended_source(sky_coord, scene, observations, bg_rms, obs_idx,
                                           thresh, True, monotonic)

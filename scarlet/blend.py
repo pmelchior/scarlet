@@ -37,7 +37,10 @@ class Blend(ComponentTree):
             observations = (observations,)
         self.observations = observations
         self.scene = scene
+
+
         for obs in self.observations:
+
             obs.match(self.scene)
 
         self.mse = []
@@ -92,6 +95,7 @@ class Blend(ComponentTree):
 
             # Take the next gradient step for each component
             for c in self.components:
+
                 c.L_sed = self.L_sed
                 c.L_morph = self.L_morph
 
