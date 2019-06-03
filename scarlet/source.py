@@ -250,7 +250,7 @@ class PointSource(Component):
             sed[b0:b0+obs.B] = obs.images[:, pixel[0], pixel[1]]
             b0 += obs.B
 
-        super().__init__(self, sed, morph, **component_kwargs)
+        super().__init__(sed, morph, **component_kwargs)
         self.symmetric = symmetric
         self.monotonic = monotonic
         self.center_step = center_step
