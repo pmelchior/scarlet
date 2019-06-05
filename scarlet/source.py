@@ -67,7 +67,7 @@ def get_best_fit_seds(morphs, scene, observations):
     band = 0
     _morph = morphs.reshape(K, -1)
     for obs in observations:
-        images = obs.get_scene(scene)
+        images = obs.images
         data = images.reshape(obs.B, -1)
         sed = np.dot(np.linalg.inv(np.dot(_morph, _morph.T)), np.dot(_morph, data.T))
         seds[:, band:band+obs.B] = sed
@@ -99,7 +99,7 @@ def build_detection_coadd(sed, bg_rms, observation, scene, thresh=1):
         The minimum value in `detect` to include in detection.
     """
     B = observation.B
-    images = observation.get_scene(scene)
+    images = observation.images
     weights = np.array([sed[b]/bg_rms[b]**2 for b in range(B)])
     jacobian = np.array([sed[b]**2/bg_rms[b]**2 for b in range(B)]).sum()
     detect = np.einsum('i,i...', weights, images) / jacobian
