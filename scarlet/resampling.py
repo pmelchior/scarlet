@@ -1,7 +1,7 @@
 import autograd.numpy as np
 from . import interpolation
 
-import scipy.signal as scp
+
 
 
 def convolve_band(model, psf, padding = 3):
@@ -19,7 +19,7 @@ def convolve_band(model, psf, padding = 3):
 
 
 
-def conv2D_fft(shape, xm, ym, p, h):
+def conv2D_fft(shape, xm, ym, p, h, scp):
     '''
 
     shape:
@@ -62,9 +62,9 @@ def make_operator(shape, coord_lr, p):
     if h == 0:
         h = b[1]-b[0]
     assert h !=0
-
+    import scipy.signal as scp
     for m in range(np.size(B)):
-            mat[:, m] = conv2D_fft(shape, A[m], B[m], p, h).flatten()*A.size/a.size
+            mat[:, m] = conv2D_fft(shape, A[m], B[m], p, h, scp).flatten()*A.size/a.size
             #mat[:, m] /= np.sum(mat[:,m])
 
     return mat
