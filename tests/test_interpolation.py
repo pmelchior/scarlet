@@ -14,7 +14,7 @@ class TestProjections(object):
     four different cases (odd-odd, even-even, odd-even, even-odd).
     """
     def test_odd2odd(self):
-        project_image = scarlet.resample.project_image
+        project_image = scarlet.interpolation.project_image
         img = np.arange(35).reshape(5, 7)
 
         # samller to bigger
@@ -59,7 +59,7 @@ class TestProjections(object):
         assert_array_equal(result, truth)
 
     def test_even2even(self):
-        project_image = scarlet.resample.project_image
+        project_image = scarlet.interpolation.project_image
         img = np.arange(48).reshape(8, 6)
 
         # samller to bigger
@@ -104,7 +104,7 @@ class TestProjections(object):
         assert_array_equal(result, truth)
 
     def test_odd2even(self):
-        project_image = scarlet.resample.project_image
+        project_image = scarlet.interpolation.project_image
         img = np.arange(35).reshape(5, 7)
 
         # samller to bigger
@@ -148,7 +148,7 @@ class TestProjections(object):
         assert_array_equal(result, truth)
 
     def test_even2odd(self):
-        project_image = scarlet.resample.project_image
+        project_image = scarlet.interpolation.project_image
         img = np.arange(48).reshape(8, 6)
 
         # samller to bigger
@@ -195,10 +195,10 @@ class TestProjections(object):
     def test_zoom(self):
         # Test that zomming out and in keeps a consistent center
         kernel = np.arange(4).reshape(2, 2) + 1
-        p3 = scarlet.resample.project_image(kernel, (3, 3))
-        p6 = scarlet.resample.project_image(p3, (6, 6))
-        p5 = scarlet.resample.project_image(p6, (5, 5))
-        p2 = scarlet.resample.project_image(p3, (2, 2))
+        p3 = scarlet.interpolation.project_image(kernel, (3, 3))
+        p6 = scarlet.interpolation.project_image(p3, (6, 6))
+        p5 = scarlet.interpolation.project_image(p6, (5, 5))
+        p2 = scarlet.interpolation.project_image(p3, (2, 2))
         assert_array_equal(p2, kernel)
         truth = [[1.0, 2.0, 0.0],
                  [3.0, 4.0, 0.0],
@@ -239,9 +239,9 @@ def interpolate_comparison(func, zero_truth, positive_truth, **kwargs):
     assert_array_equal(result[1], truth[1])
 
     with pytest.raises(ValueError):
-        scarlet.resample.lanczos(1.1)
+        scarlet.interpolation.lanczos(1.1)
     with pytest.raises(ValueError):
-        scarlet.resample.lanczos(-1.1)
+        scarlet.interpolation.lanczos(-1.1)
 
 
 class TestConvolutions:
@@ -249,26 +249,29 @@ class TestConvolutions:
     """
     def test_fft_convolve(self):
         shape = (11, 11)
-        img = np.zeros(shape)
+        img = np.zeros(shape, dtype=np.float32)
         img[3, 3] = 2
         img[2, 3] = .5
         img[3, 4] = .75
         img[3, 2] = .1
-        kernel = np.arange(25).reshape(5, 5)
-        _img = _img = scarlet.resample.project_image(img, shape)
-        _kernel = scarlet.resample.project_image(kernel, shape)
-        result = scarlet.resample.fft_convolve(_kernel, _img)
+        kernel = np.arange(25, dtype=np.float32).reshape(5, 5)
+        pad1, pad2 = scarlet.interpolation.get_common_padding(img, kernel, padding=3)
+        _img = np.pad(img, pad1, 'constant')
+        _kernel = np.pad(kernel, pad2, 'constant')
+        result = scarlet.interpolation.fft_convolve(_img, _kernel)
+        (bottom, top), (left, right) = pad1
+        result = result[bottom:-top, left:-right]
         truth = np.zeros(shape)
         truth[1:6, 1:6] += 2 * kernel
         truth[:5, 1:6] += .5 * kernel
         truth[1:6, 2:7] += .75 * kernel
         truth[1:6, :5] += .1 * kernel
-        assert_almost_equal(result, truth)
+        assert_almost_equal(result, truth, decimal=5)
 
     def test_bilinear(self):
         zero_truth = (np.array([1, 0]), np.array([0, 1]))
         positive_truth = (np.array([1-.103, .103]), np.array([0, 1]))
-        interpolate_comparison(scarlet.resample.bilinear, zero_truth, positive_truth)
+        interpolate_comparison(scarlet.interpolation.bilinear, zero_truth, positive_truth)
 
     def test_cubic_spline(self):
         zero_truth = (np.array([0., 1., 0., 0.]), np.array([-1, 0, 1, 2]))
@@ -276,21 +279,21 @@ class TestConvolutions:
             np.array([-0.08287473, 0.97987473, 0.11251627, -0.00951627]),
             np.array([-1, 0, 1, 2])
         )
-        interpolate_comparison(scarlet.resample.cubic_spline, zero_truth, positive_truth)
+        interpolate_comparison(scarlet.interpolation.cubic_spline, zero_truth, positive_truth)
 
     def test_catmull_rom(self):
         # Catmull Rom should be the same as the cubic spline
         # with a=0.5 and b=0
-        zero_truth = scarlet.resample.cubic_spline(0, a=.5)
-        positive_truth = scarlet.resample.cubic_spline(0.103, a=.5)
-        interpolate_comparison(scarlet.resample.catmull_rom, zero_truth, positive_truth)
+        zero_truth = scarlet.interpolation.cubic_spline(0, a=.5)
+        positive_truth = scarlet.interpolation.cubic_spline(0.103, a=.5)
+        interpolate_comparison(scarlet.interpolation.catmull_rom, zero_truth, positive_truth)
 
     def test_mitchel_netravali(self):
         # Mitchel Netravali should be the same as the cubic spline
         # with a=1/3 and b=1/3
-        zero_truth = scarlet.resample.cubic_spline(0, a=1/3, b=1/3)
-        positive_truth = scarlet.resample.cubic_spline(0.103, a=1/3, b=1/3)
-        interpolate_comparison(scarlet.resample.mitchel_netravali, zero_truth, positive_truth)
+        zero_truth = scarlet.interpolation.cubic_spline(0, a=1/3, b=1/3)
+        positive_truth = scarlet.interpolation.cubic_spline(0.103, a=1/3, b=1/3)
+        interpolate_comparison(scarlet.interpolation.mitchel_netravali, zero_truth, positive_truth)
 
     def test_lanczos(self):
         # test Lanczos 3
@@ -299,7 +302,7 @@ class TestConvolutions:
             np.array([0.01763955, -0.07267534, 0.98073579, 0.09695747, -0.0245699, 0.00123974]),
             np.array([-2, -1, 0, 1, 2, 3])
         )
-        interpolate_comparison(scarlet.resample.lanczos, zero_truth, positive_truth)
+        interpolate_comparison(scarlet.interpolation.lanczos, zero_truth, positive_truth)
 
         # test Lanczos 5
         _truth = np.zeros((10,))
@@ -311,10 +314,10 @@ class TestConvolutions:
                       -6.77652513e-03, 4.34415682e-04]),
             np.array([-4, -3, -2, -1, 0, 1, 2, 3, 4, 5])
         )
-        interpolate_comparison(scarlet.resample.lanczos, zero_truth, positive_truth, a=5)
+        interpolate_comparison(scarlet.interpolation.lanczos, zero_truth, positive_truth, a=5)
 
     def test_separable(self):
-        result = scarlet.resample.get_separable_kernel(.103, .42)
+        result = scarlet.interpolation.get_separable_kernel(.103, .42)
         truth = [
             [0.000506097, -0.002566513, 0.012535221, 0.008810656, -0.002073032, 0.000332194],
             [-0.002085129, 0.010574090, -0.051645379, -0.036300092, 0.008540937, -0.001368644],
@@ -326,14 +329,14 @@ class TestConvolutions:
         assert_array_equal(result[1], [-2, -1, 0, 1, 2, 3])
         assert_array_equal(result[2], [-2, -1, 0, 1, 2, 3])
 
-        result = scarlet.resample.get_separable_kernel(.103, -.42, kernel=scarlet.resample.bilinear)
+        result = scarlet.interpolation.get_separable_kernel(.103, -.42, kernel=scarlet.interpolation.bilinear)
         truth = [[0.376740000, 0.520260000],
                  [0.043260000, 0.059740000]]
         assert_almost_equal(result[0], truth)
         assert_array_equal(result[1], [0, 1])
         assert_array_equal(result[2], [-1, 0])
 
-        result = scarlet.resample.get_separable_kernel(.103, .42, a=5)
+        result = scarlet.interpolation.get_separable_kernel(.103, .42, a=5)
         truth = [
             [0.0000458, -0.0001796, 0.0004278, -0.0009684, 0.0037091,
              0.0026576, -0.0008415, 0.0003764, -0.0001524, 0.0000312],
@@ -368,7 +371,7 @@ class TestConvolutions:
         dy = .217
         Dx = np.abs(dx)
         Dy = np.abs(dy)
-        result = scarlet.resample.fft_resample(img, dy, dx, kernel=scarlet.resample.bilinear)
+        result = scarlet.interpolation.fft_resample(img, dy, dx, kernel=scarlet.interpolation.bilinear)
         truth = np.zeros(img.shape)
         truth[2:2+Ny, 2:2+Nx] += _img*(1-Dx)*(1-Dy)
         truth[2:2+Ny, 1:1+Nx] += _img*Dx*(1-Dy)
@@ -380,7 +383,7 @@ class TestConvolutions:
         dy = -.691
         Dx = np.abs(dx)
         Dy = np.abs(dy)
-        result = scarlet.resample.fft_resample(img, dy, dx, kernel=scarlet.resample.bilinear)
+        result = scarlet.interpolation.fft_resample(img, dy, dx, kernel=scarlet.interpolation.bilinear)
         truth = np.zeros(img.shape)
         truth[2:2+Ny, 2:2+Nx] += _img*(1-Dx)*(1-Dy)
         truth[2:2+Ny, 3:3+Nx] += _img*Dx*(1-Dy)

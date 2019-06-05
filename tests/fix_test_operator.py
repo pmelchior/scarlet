@@ -1,7 +1,14 @@
+import sys
+
 import pytest
 import numpy as np
 
 import scarlet
+
+try:
+    import torch
+except ImportError:
+    pass
 
 
 class TestProx(object):
@@ -87,18 +94,19 @@ class TestProx(object):
         result = np.ones_like(X) * .1
         np.testing.assert_array_equal(_X, result)
 
+    @pytest.mark.skipif('torch' not in sys.modules, reason="pytorch is not installed")
     def test_soft_symmetry(self):
-        X = np.arange(25, dtype=float).reshape(5, 5)
-        _X = X.copy()
+        X = torch.arange(25, dtype=torch.float32).reshape(5, 5)
+        _X = X.clone()
         scarlet.operator.prox_soft_symmetry(_X, 0)
-        result = np.ones_like(X) * 12
+        result = torch.ones_like(X) * 12
         np.testing.assert_array_equal(_X, result)
 
-        _X = X.copy()
+        _X = X.clone()
         scarlet.operator.prox_soft_symmetry(_X, 0, 0)
         np.testing.assert_array_equal(_X, X)
 
-        _X = X.copy()
+        _X = X.clone()
         scarlet.operator.prox_soft_symmetry(_X, 0, .5)
         result = [[6.0, 6.5, 7.0, 7.5, 8.0],
                   [8.5, 9.0, 9.5, 10.0, 10.5],

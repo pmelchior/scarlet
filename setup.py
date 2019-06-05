@@ -8,7 +8,6 @@ from setuptools.command.build_ext import build_ext
 import sys
 import setuptools
 import subprocess
-import warnings
 
 pybind11_path = None
 if "PYBIND11_DIR" in os.environ:
@@ -18,15 +17,17 @@ if "EIGEN_DIR" in os.environ:
     eigen_path = os.environ["EIGEN_DIR"]
 
 # Use the firt 7 digits of the git hash to set the version
+version_root = '0.5'
 try:
-    __version__ = '0.4.'+subprocess.check_output(['git', 'rev-parse', 'HEAD'])[:7].decode("utf-8")
+    __version__ = version_root + subprocess.check_output(['git', 'rev-parse', 'HEAD'])[:7].decode("utf-8")
 except:
-    __version__ = '0.4.0'
+    __version__ = version_root
 
 packages = []
 for root, dirs, files in os.walk('.'):
     if not root.startswith('./build') and '__init__.py' in files:
         packages.append(root[2:])
+
 
 class get_pybind_include(object):
     """Helper class to determine the pybind11 include path
@@ -44,6 +45,7 @@ class get_pybind_include(object):
             import pybind11
             return pybind11.get_include(self.user)
 
+
 class get_eigen_include(object):
     """Helper class to determine the peigen include path
     The purpose of this class is to postpone importing peigen
@@ -60,6 +62,7 @@ class get_eigen_include(object):
             import peigen
             return peigen.header_path
 
+
 ext_modules = [
     Extension(
         'scarlet.operators_pybind11',
@@ -72,6 +75,7 @@ ext_modules = [
         language='c++'
     )
 ]
+
 
 # As of Python 3.6, CCompiler has a `has_flag` method.
 # cf http://bugs.python.org/issue26689
@@ -101,6 +105,7 @@ def cpp_flag(compiler):
         raise RuntimeError('Unsupported compiler -- at least C++11 support '
                            'is needed!')
 
+
 class BuildExt(build_ext):
     """A custom build extension for adding compiler-specific options."""
     c_opts = {
@@ -125,7 +130,8 @@ class BuildExt(build_ext):
             ext.extra_compile_args = opts
         build_ext.build_extensions(self)
 
-install_requires = ['numpy', 'scipy', 'proxmin>=0.5.3']
+
+install_requires = ['numpy', 'proxmin>=0.5.3', 'autograd']
 # Only require the pybind11 and peigen packages if
 # the C++ headers are not already installed
 if pybind11_path is None:
@@ -135,16 +141,16 @@ if eigen_path is None:
 
 
 setup(
-  name = 'scarlet',
-  packages = packages,
-  version = __version__,
-  description = 'Blind Source Separation using proximal matrix factorization',
-  author = 'Fred Moolekamp and Peter Melchior',
-  author_email = 'fred.moolekamp@gmail.com',
-  url = 'https://github.com/fred3m/scarlet',
-  keywords = ['astro', 'deblending', 'photometry', 'nmf'],
-  ext_modules=ext_modules,
-  install_requires=install_requires,
-  cmdclass={'build_ext': BuildExt},
-  zip_safe=False,
+    name='scarlet',
+    packages=packages,
+    version=__version__,
+    description='Blind Source Separation using proximal matrix factorization',
+    author='Fred Moolekamp and Peter Melchior',
+    author_email='fred.moolekamp@gmail.com',
+    url='https://github.com/fred3m/scarlet',
+    keywords=['astro', 'deblending', 'photometry', 'nmf'],
+    ext_modules=ext_modules,
+    install_requires=install_requires,
+    cmdclass={'build_ext': BuildExt},
+    zip_safe=False,
 )

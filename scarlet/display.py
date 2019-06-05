@@ -3,6 +3,7 @@ from collections import Iterable
 import numpy as np
 from matplotlib.colors import Normalize
 
+
 class Asinh(Normalize):
     """Use arcsinh to map image intensities in matplotlib
     """
@@ -58,7 +59,7 @@ class Asinh(Normalize):
         """Have vmax and vmin been set?
         """
         return (self.vmin is not None and self.vmax is not None)
-    
+
     def get_range(self):
         """Get the possible range for a given vmin and vmax
         """
@@ -67,7 +68,7 @@ class Asinh(Normalize):
         xmin = self.asinh(self.vmin)
         xmax = self.asinh(self.vmax)
         return xmin, xmax
-    
+
     def asinh(self, value):
         """Calculate asinh with the appropriate stretching
         """
@@ -89,6 +90,7 @@ class Asinh(Normalize):
         xmin, xmax = self.get_range()
         result = (result-xmin)/(xmax-xmin)
         return result
+
 
 class Linear(Normalize):
     """Use a linear interpolation to map image intensities in matplotlib
@@ -140,10 +142,11 @@ class Linear(Normalize):
             vmin, vmax = self.vmin, self.vmax
         result = np.zeros_like(value)
         result[:] = value
-        result[result<vmin] = vmin
-        result[result>vmax] = vmax
+        result[result < vmin] = vmin
+        result[result > vmax] = vmax
         result = (result-vmin)/(vmax-vmin)
         return np.ma.array(result)
+
 
 def img_to_rgb(img, norm=None, fill_value=0, filter_indices=None):
     """Convert an image array into an RGB image array
@@ -172,8 +175,8 @@ def img_to_rgb(img, norm=None, fill_value=0, filter_indices=None):
         RGB image
     """
     if filter_indices is None:
-        filter_indices = [2,1,0]
-    if len(filter_indices)!=3:
+        filter_indices = [2, 1, 0]
+    if len(filter_indices) != 3:
         raise ValueError("filter_indices must be a list with 3 entries, not {0}".format(filter_indices))
 
     if norm is None:
@@ -185,17 +188,18 @@ def img_to_rgb(img, norm=None, fill_value=0, filter_indices=None):
             rgb[b] = norm[b](img[b])
     else:
         rgb = norm(img)
-    if hasattr(rgb,"mask"):
+    if hasattr(rgb, "mask"):
         rgb = rgb.filled(fill_value)
     # The result of calling Asinh is an array mapped to [0,1]
     # We need to map this to a uint8 in the range [0,255]
     rgb *= 255
-    rgb[rgb<0] = 0
-    rgb[rgb>255] = 255
+    rgb[rgb < 0] = 0
+    rgb[rgb > 255] = 255
     rgb = rgb.astype(np.uint8)
     # Now we move the SED to the outer axis and use only the selected colors
-    rgb = np.transpose(rgb[filter_indices], axes=(1,2,0))
+    rgb = np.transpose(rgb[filter_indices], axes=(1, 2, 0))
     return rgb
+
 
 def zscale(img, contrast=0.25, samples=500, fraction=.75):
     """Calculate minimum and maximum pixel values based on the image

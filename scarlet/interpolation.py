@@ -1,4 +1,4 @@
-import numpy as np
+import autograd.numpy as np
 
 
 def get_projection_slices(image, shape, yx0=None):
@@ -122,8 +122,14 @@ def fft_convolve(*images):
     result: array
         The convolution in pixel space of `img` with `kernel`.
     """
+    from autograd.numpy.numpy_boxes import ArrayBox
     Images = [np.fft.fft2(np.fft.ifftshift(img)) for img in images]
-    Convolved = np.prod(Images, 0)
+    if np.any([isinstance(img, ArrayBox) for img in images]):
+        Convolved = Images[0]
+        for img in Images[1:]:
+            Convolved = Convolved * img
+    else:
+        Convolved = np.prod(Images, 0)
     convolved = np.fft.ifft2(Convolved)
     return np.fft.fftshift(np.real(convolved))
 
@@ -245,6 +251,28 @@ def lanczos(dx, a=3):
     return y, window.astype(int)
 
 
+def quintic_spline(dx, dtype=np.float64):
+    def inner(x):
+        return 1+x**3/12*(-95+138*x-55*x**2)
+
+    def middle(x):
+        return (x-1)*(x-2)/24*(-138+348*x-249*x**2+55*x**3)
+
+    def outer(x):
+        return (x-2)*(x-3)**2/24*(-54+50*x-11*x**2)
+    window = np.arange(-3, 4)
+    abs_x = np.abs(dx-window)
+    inner_cut = abs_x <= 1
+    middle_cut = (abs_x <= 2) & (abs_x > 1)
+    outer_cut = (abs_x <= 3) & (abs_x > 2)
+
+    result = np.zeros(7, dtype=dtype)
+    result[inner_cut] = inner(abs_x[inner_cut])
+    result[middle_cut] = middle(abs_x[middle_cut])
+    result[outer_cut] = outer(abs_x[outer_cut])
+    return result, window
+
+
 def get_separable_kernel(dy, dx, kernel=lanczos, **kwargs):
     """Create a 2D kernel from a 1D kernel separable in x and y
 
@@ -315,3 +343,42 @@ def fft_resample(img, dy, dx, kernel=lanczos, **kwargs):
     _img = project_image(img, shape)
     result = fft_convolve(_img, _kernel)
     return project_image(result, img.shape)
+
+
+def get_common_padding(img1, img2, padding=None):
+    """Project two images to a common frame
+
+    It is assumed that the two images have the same center.
+    This is mainly used for FFT convolutions of source components,
+    where the convolution kernel is a different size than the morphology.
+
+    Parameters
+    ----------
+    img1: array
+        1st 2D or 3D image to project
+    img2: array
+        2nd 2D or 3D image to project
+
+    Returns
+    -------
+    img1: array
+        Projection of 1st image
+    img2: array
+        Projection of 2nd image
+    """
+    h1, w1 = img1.shape[-2:]
+    h2, w2 = img2.shape[-2:]
+    height = h1 + h2
+    width = w1 + w2
+    if padding is not None:
+        height += padding
+        width += padding
+
+    def get_padding(img, h, w):
+        bottom = (height-h) // 2
+        top = height-h-bottom
+        left = (width-w) // 2
+        right = width-w-left
+        return ((bottom, top), (left, right))
+
+    return get_padding(img1, h1, w1), get_padding(img2, h2, w2)

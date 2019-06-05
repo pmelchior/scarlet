@@ -1,10 +1,17 @@
+import sys
+
 import pytest
 import numpy as np
-import proxmin
 
 import scarlet
 from scarlet.constraint import Normalization
 from scarlet.cache import Cache
+
+
+try:
+    import torch
+except ImportError:
+    pass
 
 
 class TestConstraint(object):
@@ -53,59 +60,6 @@ class TestConstraint(object):
                       [0.809523810, 0.857142857, 0.904761905, 0.952380952, 1.000000000]]
         np.testing.assert_array_equal(new_sed, [0, 6, 8, 6, 0])
         np.testing.assert_almost_equal(new_morph, true_morph)
-
-    def test_simple(self):
-        sed = np.array([-1, 6, 8, 6, -2])
-        morph = np.arange(25, dtype=float).reshape(5, 5) - 3
-        morph[2, 2] = 0
-
-        # A normalization
-        constraint = scarlet.constraint.MinimalConstraint()
-        _sed = sed.copy()
-        _morph = morph.copy()
-        new_sed = constraint.prox_sed((5, 5))(_sed, 0)
-        new_morph = constraint.prox_morph((5, 5,))(_morph, 0)
-        true_morph = [[0.0, 0.0, 0.0, 0.0, 1.0],
-                      [2.0, 3.0, 4.0, 5.0, 6.0],
-                      [7.0, 8.0, 1e-10, 10.0, 11.0],
-                      [12.0, 13.0, 14.0, 15.0, 16.0],
-                      [17.0, 18.0, 19.0, 20.0, 21.0]]
-        np.testing.assert_array_equal(new_sed, [0, .3, .4, .3, 0])
-        np.testing.assert_almost_equal(new_morph, true_morph)
-
-        # S normalization
-        constraint = scarlet.constraint.SimpleConstraint(normalization=Normalization.S)
-        _sed = sed.copy()
-        _morph = morph.copy()
-        new_sed = constraint.prox_sed((5, 5))(_sed, 0)
-        new_morph = constraint.prox_morph((5, 5,))(_morph, 0)
-        true_morph = [[0.000000000, 0.000000000, 0.000000000, 0.000000000, 0.004504505],
-                      [0.009009009, 0.013513514, 0.018018018, 0.022522523, 0.027027027],
-                      [0.031531532, 0.036036036, 0.000000000, 0.045045045, 0.049549550],
-                      [0.054054054, 0.058558559, 0.063063063, 0.067567568, 0.072072072],
-                      [0.076576577, 0.081081081, 0.085585586, 0.090090090, 0.094594595]]
-        np.testing.assert_array_equal(new_sed, [0, 6, 8, 6, 0])
-        np.testing.assert_almost_equal(new_morph, true_morph)
-        # Make sure that prox center on is working
-        assert new_morph[2, 2] > 0
-
-        assert np.sum(new_morph) == 1
-
-        # Smax Normalization
-        constraint = scarlet.constraint.SimpleConstraint(normalization=Normalization.Smax)
-        _sed = sed.copy()
-        _morph = morph.copy()
-        new_sed = constraint.prox_sed((5, 5))(_sed, 0)
-        new_morph = constraint.prox_morph((5, 5,))(_morph, 0)
-        true_morph = [[0.000000000, 0.000000000, 0.000000000, 0.000000000, 0.047619048],
-                      [0.095238095, 0.142857143, 0.190476190, 0.238095238, 0.285714286],
-                      [0.333333333, 0.380952381, 0.000000000, 0.476190476, 0.523809524],
-                      [0.571428571, 0.619047619, 0.666666667, 0.714285714, 0.761904762],
-                      [0.809523810, 0.857142857, 0.904761905, 0.952380952, 1.000000000]]
-        np.testing.assert_array_equal(new_sed, [0, 6, 8, 6, 0])
-        np.testing.assert_almost_equal(new_morph, true_morph)
-        assert new_morph[2, 2] > 0
-        assert np.max(new_morph) == 1
 
     def test_norms(self):
         x = np.hstack([np.arange(4), np.arange(3)[::-1]])
@@ -182,47 +136,22 @@ class TestConstraint(object):
                  [4.988519641, 5.949655012, 6.170941546, 5.949655012, 4.997301087]]
         np.testing.assert_almost_equal(_X, new_X)
 
-    def test_monotonic_operator(self):
-        Cache._cache = {}
-        X = np.arange(25, dtype=float).reshape(5, 5)
-        # Nearest neighbor
-        constraint = scarlet.constraint.MonotonicityConstraint(use_nearest=True)
-        assert constraint.prox_g_morph((5, 5)) == proxmin.operators.prox_plus
-        LX = constraint.L_morph((5, 5)).L.dot(X.flatten())
-        LX = constraint.prox_g_morph((5, 5))(LX, 0).reshape(X.shape)
-        true_LX = [[6, 6, 5, 4, 4],
-                   [6, 6, 5, 4, 4],
-                   [1, 1, 12, 0, 0],
-                   [0, 0, 0, 0, 0],
-                   [0, 0, 0, 0, 0]]
-        np.testing.assert_almost_equal(LX, true_LX)
-
-        constraint = scarlet.constraint.MonotonicityConstraint(use_nearest=False)
-        assert constraint.prox_g_morph((5, 5)) == proxmin.operators.prox_plus
-        LX = constraint.L_morph((5, 5)).L.dot(X.flatten())
-        LX = constraint.prox_g_morph((5, 5))(LX, 0).reshape(X.shape)
-        true_LX = [[4.242640687, 4.633164979, 5.000000000, 3.414213562, 2.828427125],
-                   [3.852116395, 4.242640687, 5.000000000, 2.828427125, 2.242640687],
-                   [1.000000000, 1.000000000, 12.000000000, 0.000000000, 0.000000000],
-                   [0.000000000, 0.000000000, 0.000000000, 0.000000000, 0.000000000],
-                   [0.000000000, 0.000000000, 0.000000000, 0.000000000, 0.000000000]]
-        np.testing.assert_almost_equal(LX, true_LX)
-
+    @pytest.mark.skipif('torch' not in sys.modules, reason="pytorch is not installed")
     def test_symmetry(self):
         Cache._cache = {}
-        X = np.arange(25, dtype=float).reshape(5, 5)
-        _X = X.copy()
+        X = torch.arange(25, dtype=torch.float32).reshape(5, 5)
+        _X = X.clone()
         constraint = scarlet.constraint.DirectSymmetryConstraint()
         constraint.prox_morph(X.shape)(_X, 0)
-        result = np.ones_like(X) * 12
+        result = torch.ones_like(X) * 12
         np.testing.assert_array_equal(_X, result)
 
-        _X = X.copy()
+        _X = X.clone()
         constraint = scarlet.constraint.DirectSymmetryConstraint(sigma=0)
         constraint.prox_morph(X.shape)(_X, 0)
         np.testing.assert_array_equal(_X, X)
 
-        _X = X.copy()
+        _X = X.clone()
         constraint = scarlet.constraint.DirectSymmetryConstraint(sigma=0.5)
         constraint.prox_morph(X.shape)(_X, 0)
         result = [[6.0, 6.5, 7.0, 7.5, 8.0],
@@ -231,17 +160,3 @@ class TestConstraint(object):
                   [13.5, 14.0, 14.5, 15.0, 15.5],
                   [16.0, 16.5, 17.0, 17.5, 18.0]]
         np.testing.assert_array_equal(_X, result)
-
-    def test_symmetry_op(self):
-        Cache._cache = {}
-        X = np.arange(25, dtype=float).reshape(5, 5)
-        # Nearest neighbor
-        constraint = scarlet.constraint.SymmetryConstraint()
-        assert constraint.prox_g_morph(X.shape) == proxmin.operators.prox_zero
-        LX = constraint.L_morph(X.shape).L.dot(X.flatten()).reshape(X.shape)
-        true_LX = [[-24, -22, -20, -18, -16],
-                   [-14, -12, -10, -8, -6],
-                   [-4, -2, 0, 2, 4],
-                   [6, 8, 10, 12, 14],
-                   [16, 18, 20, 22, 24]]
-        np.testing.assert_almost_equal(LX, true_LX)
