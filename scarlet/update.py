@@ -94,6 +94,7 @@ def normalized(component, type='morph_max'):
         component.morph[:] = component.morph / norm
     else:
         raise ValueError("Unrecognized normalization '{0}'".format(type))
+    return component
 
 
 def sparse_l0(component, thresh):
