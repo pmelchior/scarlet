@@ -1,5 +1,6 @@
 import autograd.numpy as np
 
+
 def get_projection_slices(image, shape, yx0=None):
     """Get slices needed to project an image
 
@@ -43,11 +44,11 @@ def get_projection_slices(image, shape, yx0=None):
 
     top = bottom + iNy
     yslice = slice(max(0, bottom), min(Ny, top))
-    iyslice = slice(max(0, -bottom), max(Ny-bottom, -top))
+    iyslice = slice(max(0, -bottom), max(Ny - bottom, -top))
 
     right = left + iNx
     xslice = slice(max(0, left), min(Nx, right))
-    ixslice = slice(max(0, -left), max(Nx-left, -right))
+    ixslice = slice(max(0, -left), max(Nx - left, -right))
     return (yslice, xslice), (iyslice, ixslice), (bottom, top, left, right)
 
 
@@ -149,10 +150,10 @@ def bilinear(dx):
         raise ValueError("The fractional shift dx must be between -1 and 1")
     if dx >= 0:
         window = np.arange(2)
-        y = np.array([1-dx, dx])
+        y = np.array([1 - dx, dx])
     else:
         window = np.array([-1, 0])
-        y = np.array([-dx, 1+dx])
+        y = np.array([-dx, 1 + dx])
     return y, window
 
 
@@ -181,28 +182,29 @@ def cubic_spline(dx, a=1, b=0):
     def inner(x, a, b):
         """Cubic from 0<=abs(x)<=1
         """
-        third = (-6*a - 9*b + 12) * x**3
-        second = (6*a + 12*b - 18) * x**2
-        zero = -2*b + 6
-        return (zero + second + third)/6
+        third = (-6 * a - 9 * b + 12) * x ** 3
+        second = (6 * a + 12 * b - 18) * x ** 2
+        zero = -2 * b + 6
+        return (zero + second + third) / 6
 
     def outer(x, a, b):
         """Cubic from 1<=abs(x)<=2
         """
-        third = (-6*a-b) * x**3
-        second = (30*a + 6*b) * x**2
-        first = (-48*a-12*b) * x
-        zero = 24*a + 8*b
-        return (zero + first + second + third)/6
+        third = (-6 * a - b) * x ** 3
+        second = (30 * a + 6 * b) * x ** 2
+        first = (-48 * a - 12 * b) * x
+        zero = 24 * a + 8 * b
+        return (zero + first + second + third) / 6
 
     window = np.arange(-1, 3) + np.floor(dx)
     result = np.zeros(window.shape)
-    _x = np.abs(dx-window)
+    _x = np.abs(dx - window)
     outer_cut = (_x > 1) & (_x < 2)
     inner_cut = _x <= 1
     result[outer_cut] = outer(_x[outer_cut], a, b)
     result[inner_cut] = inner(_x[inner_cut], a, b)
     return result, np.array(window).astype(int)
+
 
 def catmull_rom(dx):
     """Cubic spline with a=0.5, b=0
@@ -217,7 +219,7 @@ def mitchel_netravali(dx):
 
     See `cubic_spline` for details.
     """
-    ab = 1/3
+    ab = 1 / 3
     return cubic_spline(dx, a=ab, b=ab)
 
 
@@ -245,15 +247,16 @@ def lanczos(dx, a=3):
 
 def quintic_spline(dx, dtype=np.float64):
     def inner(x):
-        return 1+x**3/12*(-95+138*x-55*x**2)
+        return 1 + x ** 3 / 12 * (-95 + 138 * x - 55 * x ** 2)
 
     def middle(x):
-        return (x-1)*(x-2)/24*(-138+348*x-249*x**2+55*x**3)
+        return (x - 1) * (x - 2) / 24 * (-138 + 348 * x - 249 * x ** 2 + 55 * x ** 3)
 
     def outer(x):
-        return (x-2)*(x-3)**2/24*(-54+50*x-11*x**2)
+        return (x - 2) * (x - 3) ** 2 / 24 * (-54 + 50 * x - 11 * x ** 2)
+
     window = np.arange(-3, 4)
-    abs_x = np.abs(dx-window)
+    abs_x = np.abs(dx - window)
     inner_cut = abs_x <= 1
     middle_cut = (abs_x <= 2) & (abs_x > 1)
     outer_cut = (abs_x <= 3) & (abs_x > 2)
@@ -293,6 +296,7 @@ def get_separable_kernel(dy, dx, kernel=lanczos, **kwargs):
     kyx = np.outer(ky, kx)
     return kyx, y_window, x_window
 
+
 def sinc_interp(coord_hr, coord_lr, Fm):
     '''
     Parameters
@@ -307,13 +311,14 @@ def sinc_interp(coord_hr, coord_lr, Fm):
     -------
         result:  interpolated  samples at positions coord_hr
     '''
-    a, b = coord_hr
-    A, B = coord_lr
-    hx = np.abs(A[1]-A[0])
-    hy = np.abs(B[np.int(np.sqrt(np.size(B)))+1] - B[0])
+    y_hr, x_hr = coord_hr
+    y_lr, x_lr = coord_lr
+    hy = np.abs(y_lr[1] - y_lr[0])
+    hx = np.abs(x_lr[np.int(np.sqrt(np.size(x_lr))) + 1] - x_lr[0])
 
-    assert hx != 0
-    return np.array([Fm * sinc2D((a[:,np.newaxis]-A)/(hx),(b[:,np.newaxis]-B)/(hy)) ]).sum(axis=2)
+    assert hy != 0
+    return np.array([Fm * sinc2D((y_hr[:, np.newaxis] - y_lr) / (hy), (x_hr[:, np.newaxis] - x_lr) / (hx))]).sum(axis=2)
+
 
 def fft_resample(img, dy, dx, kernel=lanczos, **kwargs):
     """Translate the image by a fraction of a pixel
@@ -388,15 +393,16 @@ def get_common_padding(img1, img2, padding=None):
         width += padding
 
     def get_padding(img, h, w):
-        bottom = (height-h) // 2
-        top = height-h-bottom
-        left = (width-w) // 2
-        right = width-w-left
+        bottom = (height - h) // 2
+        top = height - h - bottom
+        left = (width - w) // 2
+        right = width - w - left
         return ((bottom, top), (left, right))
 
     return get_padding(img1, h1, w1), get_padding(img2, h2, w2)
 
-def sinc2D(x,y):
+
+def sinc2D(y, x):
     '''
     2-D sinc function based on the product of 2 1-D sincs
     Parameters
@@ -408,4 +414,4 @@ def sinc2D(x,y):
     result: array
         2-D sinc evaluated in x and y
     '''
-    return np.sinc(x)*np.sinc(y)
+    return np.sinc(y) * np.sinc(x)

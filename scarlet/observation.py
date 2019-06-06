@@ -3,9 +3,10 @@ import autograd.numpy as np
 from . import resampling
 from . import interpolation
 
-
 import logging
+
 logger = logging.getLogger("scarlet.observation")
+
 
 class Scene():
     """Extent and characteristics of the modeled scence
@@ -22,6 +23,7 @@ class Scene():
     dtype: `~numpy.dtype`
         Data type of the model.
     """
+
     #
     def __init__(self, shape, wcs=None, psfs=None, filtercurve=None):
         self._shape = tuple(shape)
@@ -80,7 +82,6 @@ class Scene():
         return (coord[0].item(), coord[1].item())
 
 
-
 class Observation(Scene):
     """Data and metadata for a single set of observations
     Attributes
@@ -103,7 +104,8 @@ class Observation(Scene):
         half the width of the PSF, for FFT's. This is needed to
         prevent artifacts due to the FFT.
     """
-    def __init__(self, images, psfs=None, weights=None, wcs=None, filtercurve=None, padding=3, structure = None):
+
+    def __init__(self, images, psfs=None, weights=None, wcs=None, filtercurve=None, padding=3, structure=None):
         super().__init__(images.shape, wcs=wcs, psfs=psfs, filtercurve=filtercurve)
 
         self._images = np.array(images)
@@ -114,8 +116,6 @@ class Observation(Scene):
             self._weights = 1
 
         self.structure = structure
-
-
 
     def match(self, scene):
 
@@ -175,7 +175,7 @@ class Observation(Scene):
         """
         if self.structure is not None:
             assert self.structure.size == model.shape[0]
-            model = model[self.structure==1]
+            model = model[self.structure == 1]
         if self.psfs is not None:
             def _convolve_band(model, psf_fft):
                 """Convolve the model in a single band
@@ -188,6 +188,7 @@ class Observation(Scene):
                 (bottom, top), (left, right) = self.image_padding
                 result = result[bottom:-top, left:-right]
                 return result
+
             model = np.array([_convolve_band(model[b], self.psfs_fft[b]) for b in range(self.structure.sum())])
 
         return model
@@ -207,7 +208,7 @@ class Observation(Scene):
 
         model = self.get_model(model)
 
-        return np.sum(0.5 * (self._weights * (model - self._images))**2)
+        return np.sum(0.5 * (self._weights * (model - self._images)) ** 2)
 
     def get_scene(self, scene):
         """Reproject and resample the image in some other data frame
@@ -228,12 +229,11 @@ class Observation(Scene):
         return self.images
 
 
+class ObservationToResample(Scene):
 
-class Combination(Scene):
-
-
-    def __init__(self, images, psfs=None, weights=None, wcs = None, filtercurve=None, padding=3, target_psf = None, structure = None):
-        super().__init__(images.shape, wcs=wcs, psfs=psfs, filtercurve=filtercurve)
+    def __init__(self, images, psfs=None, weights=None, wcs=None, filtercurve=None, padding=3, target_psf=None,
+                 structure=None):
+        super().__init__(images.shape, wcs, psfs, filtercurve=filtercurve)
 
         self.images = np.array(images)
         self.padding = padding
@@ -243,77 +243,65 @@ class Combination(Scene):
         else:
             self._weights = 1
 
-        if target_psf is not None:
-            self.target_psf = target_psf
-        else:
-            self.target_psf = target_psf
-        self.structure = structure
+        self.target_psf = target_psf
 
+        self.structure = structure
 
     def match(self, scene):
 
         if self.wcs == None:
             raise TypeError('WCS is actually mandatory, please provide one (tbdiscussed)')
         if self.psfs is not None:
-            #Get pixel coordinates in each frame.
-            mask, over_lr, over_hr  = resampling.match_patches(scene.shape, self.shape,scene.wcs, self.wcs)
-            self._over_lr = over_lr
-            self._over_hr = over_hr
+            # Get pixel coordinates in each frame.
+            mask, coord_lr, coord_hr = resampling.match_patches(scene.shape, self.shape, scene.wcs, self.wcs)
+            self._coord_lr = coord_lr
+            self._coord_hr = coord_hr
             self._mask = mask
 
-
-            #Compute diff kernel at hr
+            # Compute diff kernel at hr
 
             whr = scene.wcs
             wlr = self.wcs
 
-            #Reference PSF
+            # Reference PSF
             if self.target_psf is None:
 
-                if np.size(np.shape(scene.psfs)) ==2:
-                    _target = scene.psfs
-                    _shape = scene.shape
-                elif np.size(np.shape(scene.psfs)) ==3:
-                    _target = scene.psfs[0,:,:]
-                    _shape = scene.shape[1:]
-                else:
-                    raise ValueError('Wrong dimensions for psfs. psfs should be of dimensions n1xn2 or nbxn1xn2')
+                _target = scene.psfs[0, :, :]
+                _shape = scene.shape[1:]
+
             else:
                 _target = self.target_psf
             # 3) compute obs.psf in the frame of scene
             resconv_op = []
 
             for _psf in self.psfs:
-
-
-                #Computes spatially matching observation and target psfs. The observation psf is also resampled to the scene's resolution
+                # Computes spatially matching observation and target psfs. The observation psf is also resampled to the scene's resolution
 
                 new_target, observed_psf = resampling.match_psfs(_target, _psf, whr, wlr)
-                #Computes the diff kernel in Fourier
+                # Computes the diff kernel in Fourier
                 target_fft = np.fft.fft2(np.fft.ifftshift(new_target))
                 observed_fft = np.fft.fft2(np.fft.ifftshift(observed_psf))
                 kernel_fft = np.zeros(target_fft.shape)
                 kernel_fft[target_fft != 0] = observed_fft[target_fft != 0] / target_fft[target_fft != 0]
                 kernel = np.fft.ifft2(kernel_fft)
                 kernel = np.fft.fftshift(np.real(kernel))
-                diff_psf = kernel/kernel.max()
+                diff_psf = kernel / kernel.sum()
 
                 # Computes the resampling/convolution matrix
-                resconv_op.append(resampling.make_operator(_shape, over_hr, diff_psf))
+                resconv_op.append(resampling.make_operator(_shape, coord_hr, diff_psf))
 
             self.resconv_op = np.array(resconv_op)
 
         else:
-            raise ValueError('Observation PSF needed: unless you are not dealing with astronomical data, you are doing something wrong')
+            raise ValueError(
+                'Observation PSF needed: unless you are not dealing with astronomical data, you are doing something wrong')
         # [ 5) compute sparse representation of interpolation * convolution ]
-
 
         return self
 
     @property
     def matching_mask(self):
         return self._mask
-
 
     def get_model(self, model):
         """Resample and convolve a model to the observation frame
@@ -328,8 +316,8 @@ class Combination(Scene):
         """
         if self.structure is not None:
             assert self.structure.size == model.shape[0]
-            model = model[self.structure==1]
-        obs = np.array([np.dot(model[b].flatten(),self.resconv_op[b]) for b in range(self.B)])
+            model = model[self.structure == 1]
+        obs = np.array([np.dot(model[b].flatten(), self.resconv_op[b]) for b in range(self.B)])
 
         return obs
 
@@ -345,27 +333,34 @@ class Combination(Scene):
             The convolved and resampled `model` in the observation frame.
         """
         img = np.zeros(self.shape)
-        img[:, self._over_lr[0], self._over_lr[1]] = self.get_model(model)
+        img[:, self._coord_lr[0], self._coord_lr[1]] = self.get_model(model)
         return img
 
     def get_loss(self, model):
         if self._psfs is not None:
             model = self.get_model(model)
 
-        return np.sum(0.5 * (self._weights * (model - self.images[:,self._over_lr[0].astype(int),self._over_lr[1].astype(int)]))**2)
+        return 0.5 * np.sum((self._weights * (
+                model - self.images[:, self._coord_lr[0].astype(int), self._coord_lr[1].astype(int)])) ** 2)
 
     def get_scene(self, image):
-        """Reproject and resample the image in some other data frame
+        """Reprojects and resamples the image in some other data frame.
+
+        Takes an image in the data frame and projects it to the model frame
+
         Parameters
         ----------
         obs: scarlet.observation.Scene
             The target data frame.
+        image: array
+            An image in the data frame.
         Returns
         -------
-        images: array
+        rec_scene: array
             The image cube in the target scene.
         """
-        n,n1,n2 = np.shape(image)
-        rec_scene = np.array([np.dot(image[b, self._over_lr[0], self._over_lr[1]], self.resconv_op[b, :, :].T).reshape(n1,n2) for b in range(self.B)])
+        B, Ny, Nx = np.shape(image)
+        rec_scene = np.array(
+            [np.dot(image[b, self._coord_lr[0], self._coord_lr[1]], self.resconv_op[b, :, :].T).reshape(Ny, Nx) for b in
+             range(B)])
         return rec_scene
-

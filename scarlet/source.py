@@ -6,6 +6,7 @@ from . import update
 from .interpolation import get_projection_slices
 
 import logging
+
 logger = logging.getLogger("scarlet.source")
 
 
@@ -33,12 +34,12 @@ def get_pixel_sed(sky_coord, observations):
         SED for a single source
     """
 
-    sed = []#np.zeros(scene.B, dtype=observations[0].images.dtype)
+    sed = []
     band = 0
     for obs in observations:
         pixel = obs.get_pixel(sky_coord)
 
-        sed = np.concatenate((sed,obs.images[:, np.int(pixel[0]), np.int(pixel[1])]))
+        sed = np.concatenate((sed, obs.images[:, np.int(pixel[0]), np.int(pixel[1])]))
 
         band += obs.B
 
@@ -51,7 +52,8 @@ def get_pixel_sed(sky_coord, observations):
 
     sed = np.array(sed)
 
-    return sed.reshape(sed.size)
+    return sed.reshape(-1)
+
 
 def get_scene_sed(sky_coord, observations):
     """Get the SED at `position` in `img` in the scene. Function made for combined resolution images.
@@ -72,10 +74,9 @@ def get_scene_sed(sky_coord, observations):
         SED for a single source
     """
 
-    sed = []#np.zeros(scene.B, dtype=observations[0].images.dtype)
+    sed = []
     band = 0
     for obs in observations:
-
         pixel = obs.get_pixel(sky_coord)
         sed.append(obs.images[:, np.int(pixel[0]), np.int(pixel[1])])
         band += obs.B
@@ -86,7 +87,7 @@ def get_scene_sed(sky_coord, observations):
         # which will cause the code to crash later
         msg = "Zero or negative flux at y={0}, x={1}"
         raise SourceInitError(msg.format(*sky_coord))
-    return sed.reshape(sed.size)
+    return sed.reshape(-1)
 
 
 def get_best_fit_seds(morphs, scene, observations):
@@ -112,7 +113,7 @@ def get_best_fit_seds(morphs, scene, observations):
         images = obs.get_scene(scene)
         data = images.reshape(obs.B, -1)
         sed = np.dot(np.linalg.inv(np.dot(_morph, _morph.T)), np.dot(_morph, data.T))
-        seds[:, band:band+obs.B] = sed
+        seds[:, band:band + obs.B] = sed
     return seds
 
 
@@ -142,12 +143,12 @@ def build_detection_coadd(sed, bg_rms, observations, scene, thresh=1):
     """
     B = scene.B
 
-    weights = np.array([sed[b]/bg_rms[b]**2 for b in range(B)])
-    jacobian = np.array([sed[b]**2/bg_rms[b]**2 for b in range(B)]).sum()
+    weights = np.array([sed[b] / bg_rms[b] ** 2 for b in range(B)])
+    jacobian = np.array([sed[b] ** 2 / bg_rms[b] ** 2 for b in range(B)]).sum()
     detect = np.einsum('i,i...', weights, observations.images) / jacobian
 
     # thresh is multiple above the rms of detect (weighted variance across bands)
-    bg_cutoff = thresh * np.sqrt((weights**2 * bg_rms**2).sum()) / jacobian
+    bg_cutoff = thresh * np.sqrt((weights ** 2 * bg_rms ** 2).sum()) / jacobian
     return detect, bg_cutoff
 
 
@@ -230,7 +231,7 @@ def init_extended_source(sky_coord, scene, observations, bg_rms, obs_idx=0,
 
 
 def init_combined_extended_source(sky_coord, scene, observations, bg_rms, obs_idx=0,
-                         thresh=1., symmetric=True, monotonic=True):
+                                  thresh=1., symmetric=True, monotonic=True):
     """Initialize the source that is symmetric and monotonic
     See `ExtendedSource` for a description of the parameters
     """
@@ -240,7 +241,7 @@ def init_combined_extended_source(sky_coord, scene, observations, bg_rms, obs_id
         observations = [observations]
 
     # determine initial SED from peak position
-        #SED in the scene for source detection
+    # SED in the scene for source detection
 
     sed = get_pixel_sed(sky_coord, observations)
 
@@ -264,8 +265,6 @@ def init_combined_extended_source(sky_coord, scene, observations, bg_rms, obs_id
         msg = "No flux above threshold={2} for source at y={0} x={1}"
         raise SourceInitError(msg.format(*center, bg_cutoff))
     morph[~mask] = 0
-
-
 
     # normalize to unity at peak pixel
     cy, cx = center
@@ -301,10 +300,10 @@ def init_multicomponent_source(sky_coord, scene, observations, bg_rms, flux_perc
     percentiles_ = np.sort(flux_percentiles)
     last_thresh = 0
     for k in range(1, K):
-        perc = percentiles_[k-1]
-        flux_thresh = perc*max_flux/100
+        perc = percentiles_[k - 1]
+        flux_thresh = perc * max_flux / 100
         mask_ = morph > flux_thresh
-        morphs[k-1][mask_] = flux_thresh - last_thresh
+        morphs[k - 1][mask_] = flux_thresh - last_thresh
         morphs[k][mask_] = morph[mask_] - flux_thresh
         last_thresh = flux_thresh
 
@@ -347,6 +346,7 @@ class PointSource(Component):
     component_kwargs: dict
         Keyword arguments to pass to the component initialization.
     """
+
     def __init__(self, sky_coord, scene, observations, symmetric=False, monotonic=True,
                  center_step=5, delay_thresh=10, **component_kwargs):
         try:
@@ -366,7 +366,7 @@ class PointSource(Component):
             py, px = pixel
             sy, sx = (np.array(scene.psfs.shape) - 1) // 2
             cy, cx = (np.array(morph.shape) - 1) // 2
-            yx0 = py-cy-sy, px-cx-sx
+            yx0 = py - cy - sy, px - cx - sx
             bb, ibb, _ = get_projection_slices(scene.psfs, morph.shape, yx0)
             morph[bb] = scene.psfs[ibb]
 
@@ -376,7 +376,7 @@ class PointSource(Component):
         b0 = 0
         for obs in observations:
             pixel = obs.get_pixel(sky_coord)
-            sed[b0:b0+obs.B] = obs.images[:, pixel[0], pixel[1]]
+            sed[b0:b0 + obs.B] = obs.images[:, pixel[0], pixel[1]]
             b0 += obs.B
 
         super().__init__(self, sed, morph, **component_kwargs)
@@ -393,7 +393,7 @@ class PointSource(Component):
         """
         it = self._parent.it
         # Update the central pixel location (pixel_center)
-        if self.center_step is not None and (it-1) % self.center_step == 0:
+        if self.center_step is not None and (it - 1) % self.center_step == 0:
             # update the fractional center position
             try:
                 update.fit_pixel_center(self)
@@ -456,6 +456,7 @@ class ExtendedSource(PointSource):
     component_kwargs: dict
         Keyword arguments to pass to the component initialization.
     """
+
     def __init__(self, sky_coord, scene, observations, bg_rms, obs_idx=0, thresh=1,
                  symmetric=False, monotonic=True, center_step=5, delay_thresh=0, **component_kwargs):
         self.symmetric = symmetric
@@ -472,7 +473,7 @@ class ExtendedSource(PointSource):
         Component.__init__(self, sed, morph, **component_kwargs)
 
 
-class Extended_CombinedSource(PointSource):
+class CombinedExtendedSource(PointSource):
     """Extended source intialized to match a set of observations
 
     Parameters
@@ -499,6 +500,7 @@ class Extended_CombinedSource(PointSource):
     component_kwargs: dict
         Keyword arguments to pass to the component initialization.
     """
+
     def __init__(self, sky_coord, scene, observations, bg_rms, obs_idx=0, thresh=1,
                  symmetric=False, monotonic=True, center_step=5, delay_thresh=0, **component_kwargs):
         self.symmetric = symmetric
@@ -509,9 +511,8 @@ class Extended_CombinedSource(PointSource):
         self.center_step = center_step
         self.delay_thresh = delay_thresh
 
-
         sed, morph = init_combined_extended_source(sky_coord, scene, observations, bg_rms, obs_idx,
-                                          thresh, True, monotonic)
+                                                   thresh, True, monotonic)
 
         Component.__init__(self, sed, morph, **component_kwargs)
 
@@ -536,6 +537,7 @@ class MultiComponentSource(ComponentTree):
 
     See `ExtendedSource` for a description of the parameters
     """
+
     def __init__(self, sky_coord, scene, observations, bg_rms, flux_percentiles=None, obs_idx=0, thresh=1,
                  symmetric=True, monotonic=True, **component_kwargs):
         seds, morphs = init_multicomponent_source(sky_coord, scene, observations, bg_rms, flux_percentiles,

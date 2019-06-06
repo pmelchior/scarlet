@@ -6,6 +6,7 @@ except ImportError:
 import autograd.numpy as np
 
 import logging
+
 logger = logging.getLogger("scarlet.component")
 
 
@@ -46,6 +47,7 @@ class Prior():
         Function used to calculate the Lipschitz constant
         of the gradient.
     """
+
     def __init__(self, grad_func, L_func):
         self._grad_func = grad_func
         self._L_func = L_func
@@ -81,6 +83,7 @@ class Component():
     fix_morph: bool, default=`False`
         Whether or not the morphology is fixed, or can be updated
     """
+
     def __init__(self, sed, morph, prior=None, fix_sed=False, fix_morph=False):
         self.B = sed.shape[0]
         self.Ny, self.Nx = morph.shape
@@ -199,6 +202,7 @@ class Component():
 class ComponentTree():
     """Base class for hierarchical collections of Components.
     """
+
     def __init__(self, components):
         """Constructor
 
