@@ -8,7 +8,7 @@ import logging
 logger = logging.getLogger("scarlet.blend")
 
 
-class Blend(ComponentTree):
+class Blend(ComponentTree, Scene):
     """The blended scene.
 
     The class represents a scene as collection of components, internally as a
@@ -36,12 +36,11 @@ class Blend(ComponentTree):
         except TypeError:
             observations = (observations,)
         self.observations = observations
-        self.scene = scene
+
 
 
         for obs in self.observations:
-
-            obs.match(self.scene)
+            obs.match(self)
 
         self.mse = []
 
@@ -95,7 +94,6 @@ class Blend(ComponentTree):
 
             # Take the next gradient step for each component
             for c in self.components:
-
                 c.L_sed = self.L_sed
                 c.L_morph = self.L_morph
 

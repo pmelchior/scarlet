@@ -155,33 +155,6 @@ class Observation(Scene):
         return self
 
     @property
-    def B(self):
-        """Number of bands in the model
-        """
-        return self.shape[0]
-
-    @property
-    def Ny(self):
-        """Number of pixel in the y-direction
-        """
-        return self.shape[1]
-
-    @property
-    def Nx(self):
-        """Number of pixels in the x-direction
-        """
-        return self.shape[2]
-
-    @property
-    def shape(self):
-        """Shape of the model.
-        """
-        return self._shape
-    @property
-    def images(self):
-        return self._images
-
-    @property
     def weights(self):
         if self._weights is None:
             return None

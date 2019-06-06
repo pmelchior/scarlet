@@ -263,16 +263,7 @@ class ComponentTree():
         """Number of bands
         """
         return self.components[0].B
-    @property
-    def Nx(self):
-        """Number of bands
-        """
-        return self.components[0].Nx
-    @property
-    def Ny(self):
-        """Number of bands
-        """
-        return self.components[0].Ny
+
     @property
     def nodes(self):
         """Initial list that generates the tree.

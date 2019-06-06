@@ -295,12 +295,15 @@ def get_separable_kernel(dy, dx, kernel=lanczos, **kwargs):
 
 def sinc_interp(coord_hr, coord_lr, Fm):
     '''
-    INPUTS:
+    Parameters
     ------
-        coord_hr: Coordinates of the high resolution grid
-        coord_lr: Coordinates of the low resolution grid
-        Fm: Sample at positions coord_lr
-    OUTPUTS:
+    coord_hr: array (2xN)
+        Coordinates of the high resolution grid
+    coord_lr: array (2xM)
+        Coordinates of the low resolution grid
+    Fm: array (N)
+        Sample at positions coord_hr
+    Returns
     -------
         result:  interpolated  samples at positions coord_hr
     '''
@@ -310,9 +313,7 @@ def sinc_interp(coord_hr, coord_lr, Fm):
     hy = np.abs(B[np.int(np.sqrt(np.size(B)))+1] - B[0])
 
     assert hx != 0
-
-    return np.array([Fm[k] * sinc2D((a-A[k])/(hx),(b-B[k])/(hy)) for k in range(len(A))]).sum(axis=0)
-
+    return np.array([Fm * sinc2D((a[:,np.newaxis]-A)/(hx),(b[:,np.newaxis]-B)/(hy)) ]).sum(axis=2)
 
 def fft_resample(img, dy, dx, kernel=lanczos, **kwargs):
     """Translate the image by a fraction of a pixel
@@ -396,4 +397,15 @@ def get_common_padding(img1, img2, padding=None):
     return get_padding(img1, h1, w1), get_padding(img2, h2, w2)
 
 def sinc2D(x,y):
+    '''
+    2-D sinc function based on the product of 2 1-D sincs
+    Parameters
+    ------
+        x, y: arrays
+            Coordinates where to evaluate the 2-D sinc
+    Returns
+    -------
+    result: array
+        2-D sinc evaluated in x and y
+    '''
     return np.sinc(x)*np.sinc(y)
