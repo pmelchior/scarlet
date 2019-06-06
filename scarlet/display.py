@@ -61,7 +61,7 @@ class LinearNorm(Norm):
         """
         return (img-self.vmin)/self.vrange
 
-class LinearPercentileNorm(Linear):
+class LinearPercentileNorm(LinearNorm):
     def __init__(self, img, percentiles=[1,99]):
         """Create norm that is linear between lower and upper percentile of img
 
@@ -92,6 +92,7 @@ class AsinhNorm(Norm):
         """
         self.vmin = vmin
         self.beta = beta
+        self.vmax = beta * np.sinh(1) + vmin
 
     def __call__(self, img):
         """Apply the norm to RGB channels
@@ -109,7 +110,7 @@ class AsinhNorm(Norm):
         I = img.sum(axis=0)/3
         return np.ma.array(img*np.arcsinh(I/self.beta)/I)
 
-class AsinhPercentileNorm(Asinh):
+class AsinhPercentileNorm(AsinhNorm):
     def __init__(self, img, percentiles=[1,99]):
         """Create norm that is linear between lower and upper percentile of img
 
