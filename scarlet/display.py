@@ -106,9 +106,9 @@ class AsinhNorm(Norm):
         -------
         normalized img
         """
-        img -= self.vmin
-        I = img.sum(axis=0)/3
-        return np.ma.array(img*np.arcsinh(I/self.beta)/I)
+        _img = img - self.vmin
+        I = _img.sum(axis=0)/3
+        return np.ma.array(_img*np.arcsinh(I/self.beta)/I)
 
 class AsinhPercentileNorm(AsinhNorm):
     def __init__(self, img, percentiles=[1,99]):
@@ -158,7 +158,7 @@ def img_to_channel(img, filter_weights=None, fill_value=0):
 
     # filterWeights: channel x band
     if filter_weights is None:
-        filter_weights = np.array([np.zeros(B) for _ in range(C)])
+        filter_weights = np.zeros((C, B))
         if B == 1:
             filter_weights[0,0] = filter_weights[1,0] = filter_weights[2,0] = 1
         if B == 2:
@@ -240,7 +240,7 @@ def channel_to_rgb(channels, norm):
     maxRGB = 255
     return np.dstack((rgb * maxRGB)).astype(np.uint8)
 
-def rgb(img, filter_weights=None, fill_value=0, norm=None):
+def img_to_rgb(img, filter_weights=None, fill_value=0, norm=None):
     """Convert images to normalized RGB.
 
     If normalized values are outside of the range [0..255], they will be
