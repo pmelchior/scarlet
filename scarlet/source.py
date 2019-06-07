@@ -496,6 +496,7 @@ class MultiComponentSource(ComponentTree):
             def __init__(self, sed, morph, symmetric, monotonic, **kwargs):
                 self.symmetric = symmetric
                 self.monotonic = monotonic
+                self.pixel_center = scene.get_pixel(sky_coord)
                 super().__init__(sed, morph, **kwargs)
 
             def update(self):
