@@ -77,8 +77,9 @@ class Scene():
                 coord = self.wcs.wcs_world2pix(sky_coord[0], sky_coord[1], 0, 0)
             elif np.size(self.wcs.array_shape) == 2:
                 coord = self.wcs.wcs_world2pix(sky_coord[0], sky_coord[1], 0)
+            return (coord[0].item(), coord[1].item())
 
-        return (coord[0].item(), coord[1].item())
+        return sky_coord
 
 
 class Observation(Scene):
@@ -127,7 +128,7 @@ class Observation(Scene):
         # a) This assumes that scene.psfs and self.psfs have the same spatial shape,
         #    which will need to be modified for multi-resolution datasets
         if self._psfs is not None:
-            ipad, ppad = interpolation.get_common_padding(self._images, self._psfs, padding=self.padding)
+            ipad, ppad = interpolation.get_common_padding(self.images, self._psfs, padding=self.padding)
             self.image_padding, self.psf_padding = ipad, ppad
             _psfs = np.pad(self._psfs, ((0, 0), *self.psf_padding), 'constant')
             _target = np.pad(scene._psfs, self.psf_padding, 'constant')
