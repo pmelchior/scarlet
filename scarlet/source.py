@@ -393,19 +393,6 @@ class PointSource(Component):
         """
         it = self._parent.it
         # Update the central pixel location (pixel_center)
-        if self.center_step is not None and (it - 1) % self.center_step == 0:
-            # update the fractional center position
-            try:
-                update.fit_pixel_center(self)
-                self.float_center = self.pixel_center
-                update.symmetric_fit_center(self)
-            except update.RecenteringError:
-                err = "Failed in recentering for source at {0} in iteration {1}"
-                print(err.format(self.pixel_center, it))
-                if not hasattr(self, "float_center"):
-                    self.float_center = self.pixel_center
-                    self.shift = (0, 0)
-
         update.fit_pixel_center(self)
         if it > self.delay_thresh:
             update.threshold(self)
