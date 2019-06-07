@@ -228,7 +228,7 @@ class Observation(Scene):
         return self.images
 
 
-class ObservationToResample(Scene):
+class LowResObservation(Scene):
     """Data and metadata for a set of observations to resample on a different grid
 
     Attributes
@@ -320,7 +320,8 @@ class ObservationToResample(Scene):
                 target_fft = np.fft.fft2(np.fft.ifftshift(new_target))
                 observed_fft = np.fft.fft2(np.fft.ifftshift(observed_psf))
                 kernel_fft = np.zeros(target_fft.shape)
-                kernel_fft[target_fft != 0] = observed_fft[target_fft != 0] / target_fft[target_fft != 0]
+                sel = target_fft != 0
+                kernel_fft[sel] = observed_fft[sel] / target_fft[sel]
                 kernel = np.fft.ifft2(kernel_fft)
                 kernel = np.fft.fftshift(np.real(kernel))
                 diff_psf = kernel / kernel.max()
@@ -397,24 +398,3 @@ class ObservationToResample(Scene):
         return 0.5 * np.sum((self._weights * (
                 model - self.images[:, self._coord_lr[0].astype(int), self._coord_lr[1].astype(int)])) ** 2)
 
-    def get_scene(self, image):
-        """Reprojects and resamples the image in some other data frame.
-
-        Takes an image in the data frame and projects it to the model frame
-
-        Parameters
-        ----------
-        obs: scarlet.observation.Scene
-            The target data frame.
-        image: array
-            An image in the data frame.
-        Returns
-        -------
-        rec_scene: array
-            The image cube in the target scene.
-        """
-        B, Ny, Nx = np.shape(image)
-        rec_scene = np.array(
-            [np.dot(image[b, self._coord_lr[0], self._coord_lr[1]], self.resconv_op[b, :, :].T).reshape(Ny, Nx) for b in
-             range(B)])
-        return rec_scene
