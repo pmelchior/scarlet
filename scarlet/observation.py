@@ -161,6 +161,18 @@ class Observation(Scene):
             return self._weights
         return self._weights
 
+    def _convolve_band(self, model, psf_fft):
+        """Convolve the model in a single band
+        """
+        _model = np.pad(model, self.image_padding, 'constant')
+        model_fft = np.fft.fft2(np.fft.ifftshift(_model))
+        convolved_fft = model_fft * psf_fft
+        convolved = np.fft.ifft2(convolved_fft)
+        result = np.fft.fftshift(np.real(convolved))
+        (bottom, top), (left, right) = self.image_padding
+        result = result[bottom:-top, left:-right]
+        return result
+
     def get_model(self, model):
         """Resample and convolve a model to the observation frame
         Parameters
@@ -176,19 +188,7 @@ class Observation(Scene):
             assert self.structure.size == model.shape[0]
             model = model[self.structure == 1]
         if self.psfs is not None:
-            def _convolve_band(model, psf_fft):
-                """Convolve the model in a single band
-                """
-                _model = np.pad(model, self.image_padding, 'constant')
-                model_fft = np.fft.fft2(np.fft.ifftshift(_model))
-                convolved_fft = model_fft * psf_fft
-                convolved = np.fft.ifft2(convolved_fft)
-                result = np.fft.fftshift(np.real(convolved))
-                (bottom, top), (left, right) = self.image_padding
-                result = result[bottom:-top, left:-right]
-                return result
-
-            model = np.array([_convolve_band(model[b], self.psfs_fft[b]) for b in range(self.structure.sum())])
+            model = np.array([self._convolve_band(model[b], self.psfs_fft[b]) for b in range(self.B)])
 
         return model
 
@@ -207,7 +207,7 @@ class Observation(Scene):
 
         model = self.get_model(model)
 
-        return np.sum(0.5 * (self._weights * (model - self.images)) ** 2)
+        return 0.5 * np.sum((self._weights * (model - self.images)) ** 2)
 
     def get_scene(self, scene):
         """Reproject and resample the image in some other data frame
@@ -397,4 +397,3 @@ class LowResObservation(Scene):
 
         return 0.5 * np.sum((self._weights * (
                 model - self.images[:, self._coord_lr[0].astype(int), self._coord_lr[1].astype(int)])) ** 2)
-
