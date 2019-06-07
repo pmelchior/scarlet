@@ -4,6 +4,7 @@ from .component import Component, ComponentTree
 from . import operator
 from . import update
 from .interpolation import get_projection_slices
+from .observation import LowResObservation
 
 import logging
 
@@ -152,46 +153,6 @@ def build_detection_coadd(sed, bg_rms, observations, scene, thresh=1):
     return detect, bg_cutoff
 
 
-def detection_combination(sed, bg_rms, observations, scene, thresh=1):
-    """Build a band weighted coadd to use for source detection
-
-    Parameters
-    ----------
-    sed: array
-        SED at the center of the source.
-    bg_rms: array
-        Background RMS in each band in observation.
-    observation: `~scarlet.observation.Observation`
-        Observation to use for the coadd.
-    scene: `scarlet.observation.Scene`
-        The scene that the model lives in.
-    thresh: `float`
-        Multiple of the backround RMS used as a
-        flux cutoff.
-
-    Returns
-    -------
-    detect: array
-        2D image created by weighting all of the bands by SED
-    bg_cutoff: float
-        The minimum value in `detect` to include in detection.
-    """
-
-    for c, obs in enumerate(observations):
-        if type(obs).__name__ is not 'LowResObservation':
-            observation = obs
-            sed = sed[c].reshape(sed[c].size)
-            bg_rms = bg_rms[c].reshape(bg_rms[c].size)
-
-    weights = np.array([sed[b] / bg_rms[b] ** 2 for b in range(sed.size)])
-    jacobian = np.array([sed[b] ** 2 / bg_rms[b] ** 2 for b in range(sed.size)]).sum()
-    detect = np.einsum('i,i...', weights, observation.images) / jacobian
-
-    # thresh is multiple above the rms of detect (weighted variance across bands)
-    bg_cutoff = thresh * np.sqrt((weights ** 2 * bg_rms ** 2).sum()) / jacobian
-    return detect, bg_cutoff
-
-
 def init_extended_source(sky_coord, scene, observations, bg_rms, obs_idx=0,
                          thresh=1., symmetric=True, monotonic=True):
     """Initialize the source that is symmetric and monotonic
@@ -245,7 +206,7 @@ def init_combined_extended_source(sky_coord, scene, observations, bg_rms, obs_id
 
     sed = get_pixel_sed(sky_coord, observations)
 
-    morph, bg_cutoff = detection_combination(sed, bg_rms, observations, scene, thresh)  # amplitude is in sed
+    morph, bg_cutoff = build_detection_coadd(sed, bg_rms, observations[obs_idx], scene, thresh)  # amplitude is in sed
 
     center = scene.get_pixel(sky_coord)
 
