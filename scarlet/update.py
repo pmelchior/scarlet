@@ -10,9 +10,11 @@ from .cache import Cache
 
 
 def _fit_pixel_center(morph, center, window=None):
-    cy, cx = center
+    cy, cx = np.int(center[0]), np.int(center[1])
+
     if window is None:
         window = slice(cy-2, cy+3), slice(cx-2, cx+3)
+
     _morph = morph[window]
     yx0 = np.array([window[0].start, window[1].start])
     return tuple(np.unravel_index(np.argmax(_morph), _morph.shape) + yx0)

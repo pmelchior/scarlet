@@ -5,6 +5,7 @@ from .component import ComponentTree, BlendFlag
 from .observation import Scene
 
 import logging
+
 logger = logging.getLogger("scarlet.blend")
 
 
@@ -36,6 +37,7 @@ class Blend(ComponentTree, Scene):
         except TypeError:
             observations = (observations,)
         self.observations = observations
+
         for obs in self.observations:
             obs.match(self)
 
@@ -161,20 +163,20 @@ class Blend(ComponentTree, Scene):
         converged: bool
             Whether or not all of the components have converged.
         """
-        e_rel2 = e_rel**2
+        e_rel2 = e_rel ** 2
         if self.it > 1:
             converged = True
             for component in self.components:
                 # sed convergence
-                diff2 = ((component._last_sed-component.sed)**2).sum()
-                if diff2 <= e_rel2 * (component.sed**2).sum():
+                diff2 = ((component._last_sed - component.sed) ** 2).sum()
+                if diff2 <= e_rel2 * (component.sed ** 2).sum():
                     component.flags &= ~BlendFlag.SED_NOT_CONVERGED
                 else:
                     component.flags |= BlendFlag.SED_NOT_CONVERGED
                     converged = False
                 # morph convergence
-                diff2 = ((component._last_morph-component.morph)**2).sum()
-                if diff2 <= e_rel2 * (component.morph**2).sum():
+                diff2 = ((component._last_morph - component.morph) ** 2).sum()
+                if diff2 <= e_rel2 * (component.morph ** 2).sum():
                     component.flags &= ~BlendFlag.MORPH_NOT_CONVERGED
                 else:
                     component.flags |= BlendFlag.MORPH_NOT_CONVERGED
@@ -198,8 +200,8 @@ class Blend(ComponentTree, Scene):
             # of their elements times the number of components
             LA, LS = 0, 0
             for c in self.components:
-                LS += (c.sed**2).sum().item()
-                LA += (c.morph**2).sum().item()
+                LS += (c.sed ** 2).sum().item()
+                LA += (c.morph ** 2).sum().item()
 
             # if loss has increased from last iteration, increase L
             # TODO: this is insufficient if the estimation above is miles off!
