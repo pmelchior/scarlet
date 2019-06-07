@@ -74,13 +74,15 @@ def linorm2D(S, nit):
 
     Estimates the inverse of the Lipschitz constant of a matrix SS.T
 
-    Parameters:
+    Parameters
+    ----------
     A: array
         operator for which we seek the lipschitz constant
     nit: int
         maximum number of iterations
 
     Returns
+    -------
     xn: float
         inverse of the Lipschitz constant of SS.T
 
@@ -111,14 +113,14 @@ def match_patches(shape_hr, shape_lr, wcs_hr, wcs_lr):
     for the dataset pixels inside the overlap.
 
     Parameters
-    ------
+    ----------
     shape_hr, shape_lr: tuples
         shapes of the two datasets
     wcs_hr, wcs_lr: WCS objects
         WCS of the Low and High resolution fields respectively
 
     Returns
-    ------
+    -------
     mask: array
         mask of overlapping pixel in the high resolution frame.
     coordlr_over_lr: array
@@ -207,7 +209,7 @@ def match_psfs(psf_hr, psf_lr, wcs_hr, wcs_lr):
     Matches PSFS at different resolutions by interpolating psf_lr on the same grid as psf_hr
 
     Parameters
-    ------
+    ----------
     psf_hr: array
         centered psf of the high resolution scene
     psf_lr: array

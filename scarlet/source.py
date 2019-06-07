@@ -178,7 +178,7 @@ def detection_combination(sed, bg_rms, observations, scene, thresh=1):
     """
 
     for c, obs in enumerate(observations):
-        if type(obs).__name__ is not 'Combination':
+        if type(obs).__name__ is not 'ObservationToResample':
             observation = obs
             sed = sed[c].reshape(sed[c].size)
             bg_rms = bg_rms[c].reshape(bg_rms[c].size)

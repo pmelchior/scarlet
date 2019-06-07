@@ -297,15 +297,15 @@ def get_separable_kernel(dy, dx, kernel=lanczos, **kwargs):
     return kyx, y_window, x_window
 
 
-def sinc_interp(coord_hr, coord_lr, Fm):
+def sinc_interp(coord_hr, coord_lr, sample_lr):
     '''
     Parameters
-    ------
+    ----------
     coord_hr: array (2xN)
         Coordinates of the high resolution grid
     coord_lr: array (2xM)
         Coordinates of the low resolution grid
-    Fm: array (N)
+    sample_lr: array (N)
         Sample at positions coord_hr
     Returns
     -------
@@ -317,7 +317,7 @@ def sinc_interp(coord_hr, coord_lr, Fm):
     hx = np.abs(x_lr[np.int(np.sqrt(np.size(x_lr))) + 1] - x_lr[0])
 
     assert hy != 0
-    return np.array([Fm * sinc2D((y_hr[:, np.newaxis] - y_lr) / (hy), (x_hr[:, np.newaxis] - x_lr) / (hx))]).sum(axis=2)
+    return np.array([sample_lr * sinc2D((y_hr[:, np.newaxis] - y_lr) / (hy), (x_hr[:, np.newaxis] - x_lr) / (hx))]).sum(axis=2)
 
 
 def fft_resample(img, dy, dx, kernel=lanczos, **kwargs):
@@ -392,21 +392,22 @@ def get_common_padding(img1, img2, padding=None):
         height += padding
         width += padding
 
-    def get_padding(img, h, w):
+    def get_padding(h, w):
         bottom = (height - h) // 2
         top = height - h - bottom
         left = (width - w) // 2
         right = width - w - left
         return ((bottom, top), (left, right))
 
-    return get_padding(img1, h1, w1), get_padding(img2, h2, w2)
+    return get_padding(h1, w1), get_padding(h2, w2)
 
 
 def sinc2D(y, x):
     '''
     2-D sinc function based on the product of 2 1-D sincs
+
     Parameters
-    ------
+    ----------
         x, y: arrays
             Coordinates where to evaluate the 2-D sinc
     Returns

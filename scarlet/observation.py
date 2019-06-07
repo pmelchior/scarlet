@@ -29,7 +29,6 @@ class Scene():
         self._shape = tuple(shape)
         self.wcs = wcs
 
-        assert psfs is None or shape[0] == len(psfs) or len(psfs.shape) == 2
         if psfs is not None:
             psfs = np.array(psfs)
             psfs /= psfs.sum()
@@ -108,7 +107,7 @@ class Observation(Scene):
     def __init__(self, images, psfs=None, weights=None, wcs=None, filtercurve=None, padding=3, structure=None):
         super().__init__(images.shape, wcs=wcs, psfs=psfs, filtercurve=filtercurve)
 
-        self._images = np.array(images)
+        self.images = np.array(images)
         self.padding = padding
         if weights is not None:
             self._weights = np.array(weights)
@@ -208,7 +207,7 @@ class Observation(Scene):
 
         model = self.get_model(model)
 
-        return np.sum(0.5 * (self._weights * (model - self._images)) ** 2)
+        return np.sum(0.5 * (self._weights * (model - self.images)) ** 2)
 
     def get_scene(self, scene):
         """Reproject and resample the image in some other data frame
@@ -230,10 +229,35 @@ class Observation(Scene):
 
 
 class ObservationToResample(Scene):
+    """Data and metadata for a set of observations to resample on a different grid
 
-    def __init__(self, images, psfs=None, weights=None, wcs=None, filtercurve=None, padding=3, target_psf=None,
+    Attributes
+    ----------
+    images: array or tensor
+        3D data cube (bands, Ny, Nx) of the image in each band.
+        These images must be resampled to the same pixel scale and
+        same target WCS (for now).
+        wcs: WCS object
+        World Coordinate System associated with the images.
+    psfs: array or tensor
+        PSF for each band in `images`.
+    weights: array or tensor
+        Weight for each pixel in `images`.
+        If a set of masks exists for the observations then
+        then any masked pixels should have their `weight` set
+        to zero.
+    padding: int
+        Number of pixels to pad each side with, in addition to
+        half the width of the PSF, for FFT's. This is needed to
+        prevent artifacts due to the FFT.
+    structure: array
+        An array that encodes the position of the images of this observation into a high resolution
+        (spatial and spectral) scene.
+    """
+
+    def __init__(self, images, wcs=None, psfs=None, weights=None, filtercurve=None, padding=3, target_psf=None,
                  structure=None):
-        super().__init__(images.shape, wcs, psfs, filtercurve=filtercurve)
+        super().__init__(images.shape, wcs=wcs, psfs=psfs, filtercurve=filtercurve)
 
         self.images = np.array(images)
         self.padding = padding
@@ -248,6 +272,20 @@ class ObservationToResample(Scene):
         self.structure = structure
 
     def match(self, scene):
+        '''Matches the observation with a scene
+
+        Builds the tools to project images of this observation to a scene at a different resolution and psf.
+
+        Parameters
+        ----------
+        scene: Scene object
+            A scene in which to project the images from this observation
+        Returns
+        -------
+        None
+            instanciates new attributes of the object
+
+        '''
 
         if self.wcs == None:
             raise TypeError('WCS is actually mandatory, please provide one (tbdiscussed)')
@@ -267,11 +305,11 @@ class ObservationToResample(Scene):
             if self.target_psf is None:
 
                 _target = scene.psfs[0, :, :]
-                _shape = scene.shape[1:]
+                _shape = scene.shape
 
             else:
                 _target = self.target_psf
-            # 3) compute obs.psf in the frame of scene
+
             resconv_op = []
 
             for _psf in self.psfs:
@@ -285,7 +323,7 @@ class ObservationToResample(Scene):
                 kernel_fft[target_fft != 0] = observed_fft[target_fft != 0] / target_fft[target_fft != 0]
                 kernel = np.fft.ifft2(kernel_fft)
                 kernel = np.fft.fftshift(np.real(kernel))
-                diff_psf = kernel / kernel.sum()
+                diff_psf = kernel / kernel.max()
 
                 # Computes the resampling/convolution matrix
                 resconv_op.append(resampling.make_operator(_shape, coord_hr, diff_psf))
@@ -293,9 +331,13 @@ class ObservationToResample(Scene):
             self.resconv_op = np.array(resconv_op)
 
         else:
-            raise ValueError(
-                'Observation PSF needed: unless you are not dealing with astronomical data, you are doing something wrong')
-        # [ 5) compute sparse representation of interpolation * convolution ]
+            class InitError(Exception):
+                '''
+                'Observation PSF needed: unless you are not dealing with astronomical data, you are doing something wrong'
+                '''
+                pass
+
+            raise InitError
 
         return self
 
@@ -337,6 +379,18 @@ class ObservationToResample(Scene):
         return img
 
     def get_loss(self, model):
+        '''Computes the loss of a given model compared to the object's images
+
+        Parameters
+        ----------
+        model: array
+            A model for the data as computed from get_model method
+        Return
+        loss: float
+            Loss of the model
+        ------
+        '''
+
         if self._psfs is not None:
             model = self.get_model(model)
 
