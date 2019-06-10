@@ -4,7 +4,6 @@ from .component import Component, ComponentTree
 from . import operator
 from . import update
 from .interpolation import get_projection_slices
-from .observation import LowResObservation
 
 import logging
 
