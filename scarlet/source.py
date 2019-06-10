@@ -185,7 +185,7 @@ def init_extended_source(sky_coord, scene, observations, bg_rms, obs_idx=0,
     morph[~mask] = 0
 
     # normalize to unity at peak pixel
-    cy, cx = center
+    cy, cx = np.array(center).astype(int)
     center_morph = morph[cy, cx]
     morph /= center_morph
     return sed, morph
