@@ -248,7 +248,7 @@ def prox_soft_symmetry(X, step, strength=1):
     return X
 
 
-def prox_uncentered_symmetry(X, step, center=None, strength=.5, use_soft=True, fill=0):
+def prox_uncentered_symmetry(X, step, center=None, strength=.5, use_soft=True, fill=None):
     """Symmetry with off-center peak
 
     Symmetrize X for all pixels with a symmetric partner.
@@ -276,7 +276,7 @@ def prox_uncentered_symmetry(X, step, center=None, strength=.5, use_soft=True, f
     """
     if use_soft:
         return uncentered_operator(X, prox_soft_symmetry, center, step=step, strength=strength, fill=fill)
-    return uncentered_operator(X, prox_sdss_symmetry, center, step=step, fill=0)
+    return uncentered_operator(X, prox_sdss_symmetry, center, step=step, fill=fill)
 
 
 def proj(A, B):
