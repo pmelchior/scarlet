@@ -326,7 +326,7 @@ class PointSource(Component):
             py, px = pixel
             sy, sx = (np.array(scene.psfs.shape) - 1) // 2
             cy, cx = (np.array(morph.shape) - 1) // 2
-            yx0 = py - cy - sy, px - cx - sx
+            yx0 = int(py - cy - sy), int(px - cx - sx)
             bb, ibb, _ = get_projection_slices(scene.psfs, morph.shape, yx0)
             morph[bb] = scene.psfs[ibb]
 
