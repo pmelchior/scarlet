@@ -14,7 +14,7 @@ Installation
 Optional Dependencies (required to build docs)
 
 #. matplotlib_ (required to use the plotting functionality in `scarlet.display`)
-#. astropy_ (required for some of the tutorials and sample data)
+#. astropy_ (required for visualization, some of the tutorials, and sample data)
 #. scipy_ (required for nearest neighbor monotonicity and estimating a target PSF kernel)
 #. sphinx_ (required to build the docs)
 #. sphinx_rtd_theme_ (required to use the Read the Docs theme)
