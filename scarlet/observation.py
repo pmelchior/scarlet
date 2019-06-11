@@ -79,7 +79,7 @@ class Scene():
                 coord = self.wcs.wcs_world2pix(sky_coord[0], sky_coord[1], 0)
             return (coord[0].item(), coord[1].item())
 
-        return sky_coord
+        return [int(coord) for coord in sky_coord]
 
 
 class Observation(Scene):
