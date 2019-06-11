@@ -139,6 +139,9 @@ def threshold(component):
     faint sources from growing large footprints but for large
     diffuse galaxies with a wide range of pixel values this
     does not work as well.
+
+    The region that contains flux above the threshold is contained
+    in `component.bboxes["thresh"]`.
     """
     thresh, _bins = _threshold(component.morph)
     component.morph[component.morph < thresh] = 0
