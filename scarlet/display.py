@@ -2,6 +2,54 @@ import numpy as np
 from astropy.visualization.lupton_rgb import LinearMapping, AsinhMapping
 
 
+def get_default_filter_weight(bands, channels=3):
+    filter_weights = np.zeros((channels, bands))
+    if bands == 1:
+        filter_weights[0, 0] = filter_weights[1, 0] = filter_weights[2, 0] = 1
+    elif bands == 2:
+        filter_weights[0, 1] = 0.667
+        filter_weights[1, 1] = 0.333
+        filter_weights[1, 0] = 0.333
+        filter_weights[2, 0] = 0.667
+        filter_weights /= 0.667
+    elif bands == 3:
+        filter_weights[0, 2] = 1
+        filter_weights[1, 1] = 1
+        filter_weights[2, 0] = 1
+    elif bands == 4:
+        filter_weights[0, 3] = 1
+        filter_weights[0, 2] = 0.333
+        filter_weights[1, 2] = 0.667
+        filter_weights[1, 1] = 0.667
+        filter_weights[2, 1] = 0.333
+        filter_weights[2, 0] = 1
+        filter_weights /= 1.333
+    elif bands == 5:
+        filter_weights[0, 4] = 1
+        filter_weights[0, 3] = 0.667
+        filter_weights[1, 3] = 0.333
+        filter_weights[1, 2] = 1
+        filter_weights[1, 1] = 0.333
+        filter_weights[2, 1] = 0.667
+        filter_weights[2, 0] = 1
+        filter_weights /= 1.667
+    elif bands == 6:
+        filter_weights[0, 5] = 1
+        filter_weights[0, 4] = 0.667
+        filter_weights[0, 3] = 0.333
+        filter_weights[1, 4] = 0.333
+        filter_weights[1, 3] = 0.667
+        filter_weights[1, 2] = 0.667
+        filter_weights[1, 1] = 0.333
+        filter_weights[2, 2] = 0.333
+        filter_weights[2, 1] = 0.667
+        filter_weights[2, 0] = 1
+        filter_weights /= 2
+    else:
+        raise NotImplementedError("No default filter weights have been implemented for more than 6 bands")
+    return filter_weights
+
+
 class LinearPercentileNorm(LinearMapping):
     def __init__(self, img, percentiles=[1, 99]):
         """Create norm that is linear between lower and upper percentile of img
@@ -65,48 +113,7 @@ def img_to_channel(img, filter_weights=None, fill_value=0):
 
     # filterWeights: channel x band
     if filter_weights is None:
-        filter_weights = np.zeros((C, B))
-        if B == 1:
-            filter_weights[0, 0] = filter_weights[1, 0] = filter_weights[2, 0] = 1
-        if B == 2:
-            filter_weights[0, 1] = 0.667
-            filter_weights[1, 1] = 0.333
-            filter_weights[1, 0] = 0.333
-            filter_weights[2, 0] = 0.667
-            filter_weights /= 0.667
-        if B == 3:
-            filter_weights[0, 2] = 1
-            filter_weights[1, 1] = 1
-            filter_weights[2, 0] = 1
-        if B == 4:
-            filter_weights[0, 3] = 1
-            filter_weights[0, 2] = 0.333
-            filter_weights[1, 2] = 0.667
-            filter_weights[1, 1] = 0.667
-            filter_weights[2, 1] = 0.333
-            filter_weights[2, 0] = 1
-            filter_weights /= 1.333
-        if B == 5:
-            filter_weights[0, 4] = 1
-            filter_weights[0, 3] = 0.667
-            filter_weights[1, 3] = 0.333
-            filter_weights[1, 2] = 1
-            filter_weights[1, 1] = 0.333
-            filter_weights[2, 1] = 0.667
-            filter_weights[2, 0] = 1
-            filter_weights /= 1.667
-        if B == 6:
-            filter_weights[0, 5] = 1
-            filter_weights[0, 4] = 0.667
-            filter_weights[0, 3] = 0.333
-            filter_weights[1, 4] = 0.333
-            filter_weights[1, 3] = 0.667
-            filter_weights[1, 2] = 0.667
-            filter_weights[1, 1] = 0.333
-            filter_weights[2, 2] = 0.333
-            filter_weights[2, 1] = 0.667
-            filter_weights[2, 0] = 1
-            filter_weights /= 2
+        filter_weights = get_default_filter_weight(B, C)
     else:
         assert filter_weights.shape == (3, len(img))
 
