@@ -1,0 +1,330 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>PSF matching (scarlet.psf) &mdash; scarlet  documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Resampling (scarlet.resampling)" href="resampling.html" />
+    <link rel="prev" title="Proximal Operators (scarlet.operator)" href="operator.html" /> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> scarlet
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="install.html#building-the-docs">Building the Docs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="user_docs.html">User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="diagnostics.html">Diagnostics</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="api_docs.html">API Documentation</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="bbox.html">Bounding Boxes (<code class="docutils literal notranslate"><span class="pre">scarlet.bbox</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="blend.html">Blend (<code class="docutils literal notranslate"><span class="pre">scarlet.blend</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cache.html">Cache (<code class="docutils literal notranslate"><span class="pre">scarlet.cache</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="component.html">Components (<code class="docutils literal notranslate"><span class="pre">scarlet.component</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="display.html">Visualization (<code class="docutils literal notranslate"><span class="pre">scarlet.display</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="interpolation.html">Interpolation (<code class="docutils literal notranslate"><span class="pre">scarlet.interpolation</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="observation.html">Observations and Scenes (<code class="docutils literal notranslate"><span class="pre">scarlet.observation</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operator.html">Proximal Operators (<code class="docutils literal notranslate"><span class="pre">scarlet.operator</span></code>)</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">PSF matching (<code class="docutils literal notranslate"><span class="pre">scarlet.psf</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#module-scarlet.psf">Reference/API</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="resampling.html">Resampling (<code class="docutils literal notranslate"><span class="pre">scarlet.resampling</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="source.html">Sources (<code class="docutils literal notranslate"><span class="pre">scarlet.source</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="update.html">Update (<code class="docutils literal notranslate"><span class="pre">scarlet.update</span></code>)</a></li>
+</ul>
+</li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">scarlet</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="api_docs.html">API Documentation</a> &raquo;</li>
+        
+      <li>PSF matching (<code class="docutils literal notranslate"><span class="pre">scarlet.psf</span></code>)</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/psf.ipynb.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  
+<style>
+/* CSS overrides for sphinx_rtd_theme */
+
+/* 24px margin */
+.nbinput.nblast,
+.nboutput.nblast {
+    margin-bottom: 19px;  /* padding has already 5px */
+}
+
+/* ... except between code cells! */
+.nblast + .nbinput {
+    margin-top: -19px;
+}
+
+.admonition > p:before {
+    margin-right: 4px;  /* make room for the exclamation icon */
+}
+
+/* Fix math alignment, see https://github.com/rtfd/sphinx_rtd_theme/pull/686 */
+.math {
+    text-align: unset;
+}
+</style>
+<div class="section" id="PSF-matching-(scarlet.psf)">
+<h1>PSF matching (<a class="reference internal" href="#"><span class="doc">scarlet.psf</span></a>)<a class="headerlink" href="#PSF-matching-(scarlet.psf)" title="Permalink to this headline">¶</a></h1>
+<p>Methods for fitting model PSFs and generating a target PSF for a blend model.</p>
+<div class="section" id="module-scarlet.psf">
+<span id="Reference/API"></span><h2>Reference/API<a class="headerlink" href="#module-scarlet.psf" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="scarlet.psf.double_gaussian">
+<code class="descclassname">scarlet.psf.</code><code class="descname">double_gaussian</code><span class="sig-paren">(</span><em>coords</em>, <em>y0</em>, <em>x0</em>, <em>A1</em>, <em>sigma1</em>, <em>A2</em>, <em>sigma2</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/psf.html#double_gaussian"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.psf.double_gaussian" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sum of two Gaussian Functions</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="scarlet.psf.fit_target_psf">
+<code class="descclassname">scarlet.psf.</code><code class="descname">fit_target_psf</code><span class="sig-paren">(</span><em>psfs</em>, <em>func</em>, <em>init_values=None</em>, <em>extract_values=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/psf.html#fit_target_psf"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.psf.fit_target_psf" title="Permalink to this definition">¶</a></dt>
+<dd><p>Build a target PSF from a collection of psfs</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first last docutils">
+<dt><strong>psfs: array</strong></dt>
+<dd><p class="first last">Array of 2D psf images.</p>
+</dd>
+<dt><strong>func: function</strong></dt>
+<dd><p class="first last">Function to fit each <cite>psfs</cite>.
+If <cite>func</cite> is not <cite>moffat</cite>, <cite>gaussian</cite>, or <cite>double_gaussian</cite>,
+then <cite>init_values</cite> and <cite>extract_values</cite> must be specified.</p>
+</dd>
+<dt><strong>init_values: list</strong></dt>
+<dd><p class="first last">Initial values of <cite>func</cite> to use in the fit.
+If <cite>init_values</cite> is <cite>None</cite> then the following default values are used:
+* <cite>moffat</cite>: <cite>amplitude=1</cite>, <cite>alpha=3</cite>, <cite>beta=1.5</cite>
+* <cite>gaussian</cite>: <cite>amplitude=1</cite>, <cite>sigma=3</cite>
+* <cite>double_gaussian</cite>: <cite>A1=1</cite>, <cite>sigma1=3</cite>, <cite>A2=.5</cite>, <cite>sigma2=6</cite>
+* custom function: <cite>ValueError</cite></p>
+</dd>
+<dt><strong>extract_values: func</strong></dt>
+<dd><p class="first last">Function to use to extract the parameters for the <cite>target_psf</cite>.
+<cite>extract_values</cite> should take a single argument <cite>all_params</cite>, an array
+that contains the list of parameters for each PSF.
+If <cite>extract_values</cite> is <cite>None</cite> then the following schemes are used:
+* <cite>moffat</cite>: <cite>alpha=min(alpha)*0.6</cite>, <cite>beta=max(beta)*1.4</cite>
+* <cite>gaussian</cite>: <cite>sigma=min(sigma)*0.6</cite>
+* <cite>double_gaussian</cite>: <cite>sigma1=min(sigma1)*0.6</cite>, <cite>sigma2=min(sigma2)*0.6</cite>
+* custom function: <cite>ValueError</cite></p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="scarlet.psf.gaussian">
+<code class="descclassname">scarlet.psf.</code><code class="descname">gaussian</code><span class="sig-paren">(</span><em>coords</em>, <em>y0</em>, <em>x0</em>, <em>amplitude</em>, <em>sigma</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/psf.html#gaussian"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.psf.gaussian" title="Permalink to this definition">¶</a></dt>
+<dd><p>Circular Gaussian Function</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="scarlet.psf.moffat">
+<code class="descclassname">scarlet.psf.</code><code class="descname">moffat</code><span class="sig-paren">(</span><em>coords</em>, <em>y0</em>, <em>x0</em>, <em>amplitude</em>, <em>alpha</em>, <em>beta=1.5</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/psf.html#moffat"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.psf.moffat" title="Permalink to this definition">¶</a></dt>
+<dd><p>Moffat Function</p>
+<blockquote>
+<div><p>Symmetric 2D Moffat function:</p>
+<div class="math notranslate nohighlight">
+\[A (1+\]</div>
+</div></blockquote>
+<p>rac{(x-x0)^2+(y-y0)^2}{lpha^2})^{-eta}</p>
+</dd></dl>
+
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="resampling.html" class="btn btn-neutral float-right" title="Resampling (scarlet.resampling)" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="operator.html" class="btn btn-neutral" title="Proximal Operators (scarlet.operator)" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Fred Moolekamp and Peter Melchior
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+        <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "ignoreClass": "document", "processClass": "math|output_area"}})</script>
+    
+
+  
+
+  <script type="text/javascript" src="_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

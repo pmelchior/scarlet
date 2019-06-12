@@ -1,0 +1,372 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>0.6 (unreleased) &mdash; scarlet  documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> scarlet
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="install.html#building-the-docs">Building the Docs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="user_docs.html">User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="diagnostics.html">Diagnostics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api_docs.html">API Documentation</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">scarlet</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>0.6 (unreleased)</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/changes.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  
+<style>
+/* CSS overrides for sphinx_rtd_theme */
+
+/* 24px margin */
+.nbinput.nblast,
+.nboutput.nblast {
+    margin-bottom: 19px;  /* padding has already 5px */
+}
+
+/* ... except between code cells! */
+.nblast + .nbinput {
+    margin-top: -19px;
+}
+
+.admonition > p:before {
+    margin-right: 4px;  /* make room for the exclamation icon */
+}
+
+/* Fix math alignment, see https://github.com/rtfd/sphinx_rtd_theme/pull/686 */
+.math {
+    text-align: unset;
+}
+</style>
+<div class="section" id="unreleased">
+<h1>0.6 (unreleased)<a class="headerlink" href="#unreleased" title="Permalink to this headline">¶</a></h1>
+</div>
+<div class="section" id="id1">
+<h1>0.5 (2019-6-11)<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="general">
+<h2>General<a class="headerlink" href="#general" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>Completely restructured code, including using <cite>autograd</cite> package to calculate gradients.</li>
+<li>PSF convolutions are now performed on the model of the entire blend as opposed to
+individually for each source.</li>
+<li>It is possible to perform deblending on images with different orientations and resolutions.</li>
+<li>Updates to all of the docs and tutorials to match the new API.</li>
+</ul>
+</div>
+<div class="section" id="new-features">
+<h2>New Features<a class="headerlink" href="#new-features" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>Multi-resolution deblending.</li>
+<li>A <cite>BoundingBox</cite> container to define rectangular regions in the pixel grid, a <cite>trim</cite> function
+to strip away all pixels lower than a cutoff value, and a <cite>flux_at_edge</cite> method to determine if
+a model has flux on the edge of the image.</li>
+<li>A <cite>Scene</cite> class to handle the metadata for the deblended model.</li>
+<li>An <cite>Observation</cite> class to provide mappings from the model scene to a set
+of observations with potentially multiple filter bands.</li>
+<li>A <cite>LowResObservation</cite> class for observations with lower resolution than the blended model,
+requiring resampling and reprojection.</li>
+<li>A <cite>BlendFlag</cite> has been introduced to keep track of things that might have gone wrong
+while debending.</li>
+<li>A gradient <cite>Prior</cite> class has been created to allow users to update the gradient of a parameter
+in a source or <cite>Component</cite>.</li>
+<li>Color normalization imports from <cite>astropy.visualization</cite>, with the addition of <cite>img_to_channels</cite> to
+map any number of filter bands to an RGB that can be displayed.</li>
+<li>A <cite>CombinedExtendedSource</cite> initializes sources with multiple observations at different pixel
+resolutions.</li>
+</ul>
+</div>
+<div class="section" id="api-changes">
+<h2>API Changes<a class="headerlink" href="#api-changes" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><cite>Component</cite> is now the base class for sources and <cite>Source</cite> has been removed
+<cite>PointSource</cite>, <cite>ExtendedSource</cite>, and <cite>MultiComponentSource</cite> are now inherited from <cite>Component</cite>.</li>
+<li>The <cite>Constraint</cite> class and module were removed in place of an update method that
+has been added to <cite>Component`s (and thus sources). User defined constraints should now inherit
+from `Component</cite> or one of its subclasses and overwrite the <cite>update</cite> method. Constraints are
+now applied using functions from the <cite>scarlet.update</cite> module or similar user defined update
+functions.</li>
+<li><cite>get_model</cite> has been simplified for <cite>ComponentTree</cite> and <cite>Components</cite> to always return the
+entire scene with the component added in place, using the <cite>Scene</cite> target <cite>PSF</cite>. To get a
+model in the same space as observations requires calling <cite>Observation.get_model</cite> and passing
+the high resolution/best seeing model.</li>
+<li><cite>Blend</cite> no longer fits for source positions. Instead it is up to the user to implement a
+centering algorithm, such as centroiding or the <cite>scarlet.update.fix_pixel_center</cite>.</li>
+<li>The old <cite>resampling.py</cite> module has been renamed <cite>interpolation.py</cite> and a new <cite>resampling.py</cite>
+used for multi-resolution resampling/reprojection.</li>
+<li>Sources and components are no longer centered in a small patch that is reprojected
+into the model frame. Instead components can exist anywhere on an image and constraints that
+require a center, such as symmetry and monotonicity, can use the new <cite>uncentered_operator</cite> method.</li>
+</ul>
+</div>
+</div>
+<div class="section" id="id2">
+<h1>0.45 (2019-3-27)<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="id3">
+<h2>General<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>Tests have been added for the <cite>operator</cite>, <cite>constraint</cite>, <cite>resample</cite>, and <cite>transformation</cite>
+modules. Tests are run on Travis CI with each new build.</li>
+</ul>
+</div>
+<div class="section" id="id4">
+<h2>New Features<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>Convolutions can now be done in Fourier space and/or real
+space by setting the <cite>use_fft</cite> option in <cite>config.Config</cite>.</li>
+<li>A new internal function was added to project images into larger or
+smaller images by slicing and/or padding.</li>
+<li>Interpolation kernels have been implemented for fractional pixel shifts using
+bilinear, cubic spline, and Lanczos algorithms.</li>
+</ul>
+</div>
+</div>
+<div class="section" id="id5">
+<h1>0.4 (2019-2-15)<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="id6">
+<h2>General<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>Dropped python 2 support</li>
+</ul>
+</div>
+<div class="section" id="id7">
+<h2>New Features<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>Initialization of <cite>PointSource</cite>, <cite>ExtendedSource</cite>, and
+<cite>MultiComponentSource</cite> now take <cite>normalization</cite> as an
+input parameter, which selects the normalization used
+to break the color/morphology degeneracy. The default is to
+use <cite>constraint.Normalization.Smax</cite>, which normalizes
+<cite>S</cite> (morphology) so that the peak pixel always has a value
+of one.</li>
+<li>The <cite>exact_lipschitz</cite> option has been added to <cite>Config</cite>.
+This allows the user to recalculate the <cite>Lipschitz</cite> constant
+(used for calculating step sizing) in each iteration as opposed
+to an approximation (the default) used for speed.</li>
+</ul>
+</div>
+<div class="section" id="id8">
+<h2>API Changes<a class="headerlink" href="#id8" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>The default value of the <cite>Config</cite> parameter <cite>accelerated</cite>
+is now <cite>False</cite>. This was done because in some cases
+acceleration caused the optimization to diverge, and because
+the new S matrix normalization causes the code to run faster
+than the old accelerated version for most blends.</li>
+<li>Due to the additional normalization parameters, a <cite>get_flux</cite>
+method has been added to properly get the flux of an object
+in each band.</li>
+</ul>
+</div>
+<div class="section" id="bug-fixes">
+<h2>Bug Fixes<a class="headerlink" href="#bug-fixes" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>Monotonicity would break if the bounding box for a <cite>Source</cite> was not odd.
+The shape is now forced to be odd when the <cite>Source</cite> is initialized.</li>
+<li><cite>fix_sed</cite> and <cite>fix_morph</cite> were not correctly passing the SED and morphology
+though correctly, but this behavior has been corrected.</li>
+<li>Installations that do not have access to get the current commit using git
+will now truncate the release number to the subversion. This was needed for
+binary installs (like the LSST-DM stack).</li>
+</ul>
+</div>
+<div class="section" id="other-changes-and-additions">
+<h2>Other Changes and Additions<a class="headerlink" href="#other-changes-and-additions" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>The names of the sub modules <cite>operators</cite>, <cite>constraints</cite>, <cite>transformations</cite>,
+have been changed to the singular <cite>operator</cite>, <cite>constraint</cite>, <cite>transformation</cite>.</li>
+<li>Internally the logic that separates <cite>Component</cite>, <cite>Source</cite>, and <cite>Blend</cite> objects
+has been clarified. A <cite>Source</cite> is just a collection of components with relatively
+no internal logic other than initialization. <cite>ComponentTree</cite> is a hierarchical
+list of components that replaces the old <cite>ComponentList</cite> class, making it easier
+to have more complicated objects and improving the internal interface to them.</li>
+<li>The internal resizing and re-centering algorithms have been updated.</li>
+</ul>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Fred Moolekamp and Peter Melchior
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+        <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "ignoreClass": "document", "processClass": "math|output_area"}})</script>
+    
+
+  
+
+  <script type="text/javascript" src="_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

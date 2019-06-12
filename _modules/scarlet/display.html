@@ -1,0 +1,358 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>scarlet.display &mdash; scarlet  documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> scarlet
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../install.html#building-the-docs">Building the Docs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../quickstart.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_docs.html">User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorials.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../diagnostics.html">Diagnostics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_docs.html">API Documentation</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">scarlet</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+      <li>scarlet.display</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for scarlet.display</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">astropy.visualization.lupton_rgb</span> <span class="k">import</span> <span class="n">LinearMapping</span><span class="p">,</span> <span class="n">AsinhMapping</span>
+
+
+<span class="k">def</span> <span class="nf">get_default_filter_weight</span><span class="p">(</span><span class="n">bands</span><span class="p">,</span> <span class="n">channels</span><span class="o">=</span><span class="mi">3</span><span class="p">):</span>
+    <span class="n">filter_weights</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">channels</span><span class="p">,</span> <span class="n">bands</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">bands</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">filter_weights</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">filter_weights</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">filter_weights</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="k">elif</span> <span class="n">bands</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="n">filter_weights</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.667</span>
+        <span class="n">filter_weights</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.333</span>
+        <span class="n">filter_weights</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.333</span>
+        <span class="n">filter_weights</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.667</span>
+        <span class="n">filter_weights</span> <span class="o">/=</span> <span class="mf">0.667</span>
+    <span class="k">elif</span> <span class="n">bands</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+        <span class="n">filter_weights</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">filter_weights</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">filter_weights</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="k">elif</span> <span class="n">bands</span> <span class="o">==</span> <span class="mi">4</span><span class="p">:</span>
+        <span class="n">filter_weights</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">filter_weights</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.333</span>
+        <span class="n">filter_weights</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.667</span>
+        <span class="n">filter_weights</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.667</span>
+        <span class="n">filter_weights</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.333</span>
+        <span class="n">filter_weights</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">filter_weights</span> <span class="o">/=</span> <span class="mf">1.333</span>
+    <span class="k">elif</span> <span class="n">bands</span> <span class="o">==</span> <span class="mi">5</span><span class="p">:</span>
+        <span class="n">filter_weights</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">4</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">filter_weights</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.667</span>
+        <span class="n">filter_weights</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.333</span>
+        <span class="n">filter_weights</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">filter_weights</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.333</span>
+        <span class="n">filter_weights</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.667</span>
+        <span class="n">filter_weights</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">filter_weights</span> <span class="o">/=</span> <span class="mf">1.667</span>
+    <span class="k">elif</span> <span class="n">bands</span> <span class="o">==</span> <span class="mi">6</span><span class="p">:</span>
+        <span class="n">filter_weights</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">5</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">filter_weights</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">4</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.667</span>
+        <span class="n">filter_weights</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.333</span>
+        <span class="n">filter_weights</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.333</span>
+        <span class="n">filter_weights</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.667</span>
+        <span class="n">filter_weights</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.667</span>
+        <span class="n">filter_weights</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.333</span>
+        <span class="n">filter_weights</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.333</span>
+        <span class="n">filter_weights</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.667</span>
+        <span class="n">filter_weights</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">filter_weights</span> <span class="o">/=</span> <span class="mi">2</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;No default filter weights have been implemented for more than 6 bands&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">filter_weights</span>
+
+
+<div class="viewcode-block" id="LinearPercentileNorm"><a class="viewcode-back" href="../../display.html#scarlet.display.LinearPercentileNorm">[docs]</a><span class="k">class</span> <span class="nc">LinearPercentileNorm</span><span class="p">(</span><span class="n">LinearMapping</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">img</span><span class="p">,</span> <span class="n">percentiles</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">99</span><span class="p">]):</span>
+        <span class="sd">&quot;&quot;&quot;Create norm that is linear between lower and upper percentile of img</span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        img: array_like</span>
+<span class="sd">            Image to normalize</span>
+<span class="sd">        percentile: array_like, default=[1,99]</span>
+<span class="sd">            Lower and upper percentile to consider. Pixel values below will be</span>
+<span class="sd">            set to zero, above to saturated.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">percentiles</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span>
+        <span class="n">vmin</span><span class="p">,</span> <span class="n">vmax</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">percentiles</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">minimum</span><span class="o">=</span><span class="n">vmin</span><span class="p">,</span> <span class="n">maximum</span><span class="o">=</span><span class="n">vmax</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="AsinhPercentileNorm"><a class="viewcode-back" href="../../display.html#scarlet.display.AsinhPercentileNorm">[docs]</a><span class="k">class</span> <span class="nc">AsinhPercentileNorm</span><span class="p">(</span><span class="n">AsinhMapping</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">img</span><span class="p">,</span> <span class="n">percentiles</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">99</span><span class="p">]):</span>
+        <span class="sd">&quot;&quot;&quot;Create norm that is linear between lower and upper percentile of img</span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        img: array_like</span>
+<span class="sd">            Image to normalize</span>
+<span class="sd">        percentile: array_like, default=[1,99]</span>
+<span class="sd">            Lower and upper percentile to consider. Pixel values below will be</span>
+<span class="sd">            set to zero, above to saturated.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">percentiles</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span>
+        <span class="n">vmin</span><span class="p">,</span> <span class="n">vmax</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">percentiles</span><span class="p">)</span>
+        <span class="c1"># solution for beta assumes flat spectrum at vmax</span>
+        <span class="n">stretch</span> <span class="o">=</span> <span class="n">vmax</span> <span class="o">-</span> <span class="n">vmin</span>
+        <span class="n">beta</span> <span class="o">=</span> <span class="n">stretch</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sinh</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">minimum</span><span class="o">=</span><span class="n">vmin</span><span class="p">,</span> <span class="n">stretch</span><span class="o">=</span><span class="n">stretch</span><span class="p">,</span> <span class="n">Q</span><span class="o">=</span><span class="n">beta</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="img_to_channel"><a class="viewcode-back" href="../../display.html#scarlet.display.img_to_channel">[docs]</a><span class="k">def</span> <span class="nf">img_to_channel</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">filter_weights</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">fill_value</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Convert multi-band image cube into 3 RGB channels</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    img: array_like</span>
+<span class="sd">        This should be an array with dimensions (bands, height, width).</span>
+<span class="sd">    filter_weights: array_like</span>
+<span class="sd">        Linear mapping with dimensions (channels, bands)</span>
+<span class="sd">    fill_value: float, default=`0`</span>
+<span class="sd">        Value to use for any masked pixels.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    RGB: numpy array with dtype float</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># expand single img into cube</span>
+    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="n">ny</span><span class="p">,</span> <span class="n">nx</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">shape</span>
+        <span class="n">img_</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">ny</span><span class="p">,</span> <span class="n">nx</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+        <span class="n">img_</span> <span class="o">=</span> <span class="n">img</span>
+    <span class="n">B</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">img_</span><span class="p">)</span>
+    <span class="n">C</span> <span class="o">=</span> <span class="mi">3</span>  <span class="c1"># RGB</span>
+
+    <span class="c1"># filterWeights: channel x band</span>
+    <span class="k">if</span> <span class="n">filter_weights</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">filter_weights</span> <span class="o">=</span> <span class="n">get_default_filter_weight</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="n">C</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">assert</span> <span class="n">filter_weights</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">img</span><span class="p">))</span>
+
+    <span class="c1"># map bands onto RGB channels</span>
+    <span class="n">_</span><span class="p">,</span> <span class="n">ny</span><span class="p">,</span> <span class="n">nx</span> <span class="o">=</span> <span class="n">img_</span><span class="o">.</span><span class="n">shape</span>
+    <span class="n">rgb</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">filter_weights</span><span class="p">,</span> <span class="n">img_</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">ny</span><span class="p">,</span> <span class="n">nx</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">rgb</span><span class="p">,</span> <span class="s2">&quot;mask&quot;</span><span class="p">):</span>
+        <span class="n">rgb</span> <span class="o">=</span> <span class="n">rgb</span><span class="o">.</span><span class="n">filled</span><span class="p">(</span><span class="n">fill_value</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">rgb</span></div>
+
+
+<div class="viewcode-block" id="img_to_rgb"><a class="viewcode-back" href="../../display.html#scarlet.display.img_to_rgb">[docs]</a><span class="k">def</span> <span class="nf">img_to_rgb</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">filter_weights</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">fill_value</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Convert images to normalized RGB.</span>
+
+<span class="sd">    If normalized values are outside of the range [0..255], they will be</span>
+<span class="sd">    truncated such as to preserve the corresponding color.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    img: array_like</span>
+<span class="sd">        This should be an array with dimensions (bands, height, width).</span>
+<span class="sd">    filter_weights: array_like</span>
+<span class="sd">        Linear mapping with dimensions (channels, bands)</span>
+<span class="sd">    fill_value: float, default=`0`</span>
+<span class="sd">        Value to use for any masked pixels.</span>
+<span class="sd">    norm: `scarlet.display.Norm`, default `None`</span>
+<span class="sd">        Norm to use for mapping in the allowed range [0..255]. If `norm=None`,</span>
+<span class="sd">        `scarlet.display.LinearPercentileNorm` will be used.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    rgb: numpy array with dimensions (3, height, width) and dtype uint8</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">RGB</span> <span class="o">=</span> <span class="n">img_to_channel</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">norm</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">norm</span> <span class="o">=</span> <span class="n">LinearMapping</span><span class="p">(</span><span class="n">image</span><span class="o">=</span><span class="n">RGB</span><span class="p">)</span>
+    <span class="n">rgb</span> <span class="o">=</span> <span class="n">norm</span><span class="o">.</span><span class="n">make_rgb_image</span><span class="p">(</span><span class="o">*</span><span class="n">RGB</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">rgb</span></div>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Fred Moolekamp and Peter Melchior
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script type="text/javascript" src="../../_static/jquery.js"></script>
+        <script type="text/javascript" src="../../_static/underscore.js"></script>
+        <script type="text/javascript" src="../../_static/doctools.js"></script>
+        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+        <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "ignoreClass": "document", "processClass": "math|output_area"}})</script>
+    
+
+  
+
+  <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

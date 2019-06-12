@@ -1,0 +1,583 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Proximal Operators (scarlet.operator) &mdash; scarlet  documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="PSF matching (scarlet.psf)" href="psf.html" /> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> scarlet
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="install.html#building-the-docs">Building the Docs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="user_docs.html">User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="diagnostics.html">Diagnostics</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="api_docs.html">API Documentation</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="bbox.html">Bounding Boxes (<code class="docutils literal notranslate"><span class="pre">scarlet.bbox</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="blend.html">Blend (<code class="docutils literal notranslate"><span class="pre">scarlet.blend</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cache.html">Cache (<code class="docutils literal notranslate"><span class="pre">scarlet.cache</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="component.html">Components (<code class="docutils literal notranslate"><span class="pre">scarlet.component</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="display.html">Visualization (<code class="docutils literal notranslate"><span class="pre">scarlet.display</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="interpolation.html">Interpolation (<code class="docutils literal notranslate"><span class="pre">scarlet.interpolation</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="observation.html">Observations and Scenes (<code class="docutils literal notranslate"><span class="pre">scarlet.observation</span></code>)</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Proximal Operators (<code class="docutils literal notranslate"><span class="pre">scarlet.operator</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#module-scarlet.operator">Reference/API</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="psf.html">PSF matching (<code class="docutils literal notranslate"><span class="pre">scarlet.psf</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="resampling.html">Resampling (<code class="docutils literal notranslate"><span class="pre">scarlet.resampling</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="source.html">Sources (<code class="docutils literal notranslate"><span class="pre">scarlet.source</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="update.html">Update (<code class="docutils literal notranslate"><span class="pre">scarlet.update</span></code>)</a></li>
+</ul>
+</li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">scarlet</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="api_docs.html">API Documentation</a> &raquo;</li>
+        
+      <li>Proximal Operators (<code class="docutils literal notranslate"><span class="pre">scarlet.operator</span></code>)</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/operator.ipynb.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  
+<style>
+/* CSS overrides for sphinx_rtd_theme */
+
+/* 24px margin */
+.nbinput.nblast,
+.nboutput.nblast {
+    margin-bottom: 19px;  /* padding has already 5px */
+}
+
+/* ... except between code cells! */
+.nblast + .nbinput {
+    margin-top: -19px;
+}
+
+.admonition > p:before {
+    margin-right: 4px;  /* make room for the exclamation icon */
+}
+
+/* Fix math alignment, see https://github.com/rtfd/sphinx_rtd_theme/pull/686 */
+.math {
+    text-align: unset;
+}
+</style>
+<div class="section" id="Proximal-Operators-(scarlet.operator)">
+<h1>Proximal Operators (<a class="reference internal" href="#"><span class="doc">scarlet.operator</span></a>)<a class="headerlink" href="#Proximal-Operators-(scarlet.operator)" title="Permalink to this headline">¶</a></h1>
+<p>The <a class="reference internal" href="#"><span class="doc">operator</span></a> package includes an additional set of proximal operators beyond the basic set contained in the <a class="reference external" href="https://github.com/pmelchior/proxmin">proxmin</a> package.</p>
+<div class="section" id="module-scarlet.operator">
+<span id="Reference/API"></span><h2>Reference/API<a class="headerlink" href="#module-scarlet.operator" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="scarlet.operator.diagonalizeArray">
+<code class="descclassname">scarlet.operator.</code><code class="descname">diagonalizeArray</code><span class="sig-paren">(</span><em>arr</em>, <em>shape=None</em>, <em>dtype=&lt;class ‘numpy.float64’&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/operator.html#diagonalizeArray"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.diagonalizeArray" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert an array to a matrix that compares each pixel to its neighbors
+Given an array with length N, create an 8xN array, where each row will be a
+diagonal in a diagonalized array. Each column in this matrix is a row in the larger
+NxN matrix used for an operator, except that this 2D array only contains the values
+used to create the bands in the band diagonal matrix.
+Because the off-diagonal bands have less than N elements, <code class="docutils literal notranslate"><span class="pre">getOffsets</span></code> is used to
+create a mask that will set the elements of the array that are outside of the matrix to zero.
+<code class="docutils literal notranslate"><span class="pre">arr</span></code> is the vector to diagonalize, for example the distance from each pixel to the peak,
+or the angle of the vector to the peak.
+<code class="docutils literal notranslate"><span class="pre">shape</span></code> is the shape of the original image.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="scarlet.operator.diagonalsToSparse">
+<code class="descclassname">scarlet.operator.</code><code class="descname">diagonalsToSparse</code><span class="sig-paren">(</span><em>diagonals</em>, <em>shape</em>, <em>dtype=&lt;class ‘numpy.float64’&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/operator.html#diagonalsToSparse"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.diagonalsToSparse" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert a diagonalized array into a sparse diagonal matrix
+<code class="docutils literal notranslate"><span class="pre">diagonalizeArray</span></code> creates an 8xN array representing the bands that describe the
+interactions of a pixel with its neighbors. This function takes that 8xN array and converts
+it into a sparse diagonal matrix.
+See <cite>diagonalizeArray</cite> for the details of the 8xN array.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="scarlet.operator.find_Q">
+<code class="descclassname">scarlet.operator.</code><code class="descname">find_Q</code><span class="sig-paren">(</span><em>Vs</em>, <em>n</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/operator.html#find_Q"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.find_Q" title="Permalink to this definition">¶</a></dt>
+<dd><p>Finds a Q that is within the solution space that can act as an appropriate target
+(could be rigorously constructed later)</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="scarlet.operator.find_relevant_dim">
+<code class="descclassname">scarlet.operator.</code><code class="descname">find_relevant_dim</code><span class="sig-paren">(</span><em>Y</em>, <em>Q</em>, <em>Vs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/operator.html#find_relevant_dim"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.find_relevant_dim" title="Permalink to this definition">¶</a></dt>
+<dd><p>Finds a dimension relevant to the problem by ‘raycasting’ from Y to Q</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="scarlet.operator.getOffsets">
+<code class="descclassname">scarlet.operator.</code><code class="descname">getOffsets</code><span class="sig-paren">(</span><em>width</em>, <em>coords=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/operator.html#getOffsets"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.getOffsets" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the offset and slices for a sparse band diagonal array
+For an operator that interacts with its neighbors we want a band diagonal matrix,
+where each row describes the 8 pixels that are neighbors for the reference pixel
+(the diagonal). Regardless of the operator, these 8 bands are always the same,
+so we make a utility function that returns the offsets (passed to scipy.sparse.diags).
+See <cite>diagonalizeArray</cite> for more on the slices and format of the array used to create
+NxN operators that act on a data vector.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="scarlet.operator.getRadialMonotonicOp">
+<code class="descclassname">scarlet.operator.</code><code class="descname">getRadialMonotonicOp</code><span class="sig-paren">(</span><em>shape</em>, <em>useNearest=True</em>, <em>minGradient=1</em>, <em>subtract=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/operator.html#getRadialMonotonicOp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.getRadialMonotonicOp" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create an operator to constrain radial monotonicity
+This version of the radial monotonicity operator selects all of the pixels closer to the peak
+for each pixel and weights their flux based on their alignment with a vector from the pixel
+to the peak. In order to quickly create this using sparse matrices, its construction is a bit opaque.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="scarlet.operator.getRadialMonotonicWeights">
+<code class="descclassname">scarlet.operator.</code><code class="descname">getRadialMonotonicWeights</code><span class="sig-paren">(</span><em>shape</em>, <em>useNearest=True</em>, <em>minGradient=1</em>, <em>center=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/operator.html#getRadialMonotonicWeights"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.getRadialMonotonicWeights" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create the weights used for the Radial Monotonicity Operator
+This version of the radial monotonicity operator selects all of the pixels closer to the peak
+for each pixel and weights their flux based on their alignment with a vector from the pixel
+to the peak. In order to quickly create this using sparse matrices, its construction is a bit opaque.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="scarlet.operator.proj">
+<code class="descclassname">scarlet.operator.</code><code class="descname">proj</code><span class="sig-paren">(</span><em>A</em>, <em>B</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/operator.html#proj"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.proj" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the projection of A onto the hyper-plane defined by B</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="scarlet.operator.proj_dist">
+<code class="descclassname">scarlet.operator.</code><code class="descname">proj_dist</code><span class="sig-paren">(</span><em>A</em>, <em>B</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/operator.html#proj_dist"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.proj_dist" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns length of projection of A onto B</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="scarlet.operator.project_disk_sed">
+<code class="descclassname">scarlet.operator.</code><code class="descname">project_disk_sed</code><span class="sig-paren">(</span><em>bulge_sed</em>, <em>disk_sed</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/operator.html#project_disk_sed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.project_disk_sed" title="Permalink to this definition">¶</a></dt>
+<dd><p>Project the disk SED onto the space where it is bluer</p>
+<p>For the majority of observed galaxies, it appears that
+the difference between the bulge and the disk SEDs is
+roughly monotonic, making the disk bluer.</p>
+<p>This projection operator projects colors that are redder onto
+the same difference in color as the previous wavelength,
+similar to the way monotonicity works for the morphological
+<cite>S</cite> matrix of the model.</p>
+<p>While a single iteration of this model is unlikely to yield
+results that are as good as those in <cite>project_disk_sed_mean</cite>,
+after many iterations it is expected to converge to a better value.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="scarlet.operator.project_disk_sed_mean">
+<code class="descclassname">scarlet.operator.</code><code class="descname">project_disk_sed_mean</code><span class="sig-paren">(</span><em>bulge_sed</em>, <em>disk_sed</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/operator.html#project_disk_sed_mean"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.project_disk_sed_mean" title="Permalink to this definition">¶</a></dt>
+<dd><p>Project the disk SED onto the space where it is bluer</p>
+<p>For the majority of observed galaxies, it appears that
+the difference between the bulge and the disk SEDs is
+roughly monotonic, making the disk bluer.</p>
+<p>This projection operator projects colors that are redder
+than other colors onto the average SED difference for
+that wavelength. This is a more accurate SED than
+<cite>project_disk_sed</cite> but is more likely to create
+discontinuities in the evaluation of A, and should
+probably be avoided. It is being kept for now to record
+its effect.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="scarlet.operator.prox_center_on">
+<code class="descclassname">scarlet.operator.</code><code class="descname">prox_center_on</code><span class="sig-paren">(</span><em>X</em>, <em>step</em>, <em>tiny=1e-10</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/operator.html#prox_center_on"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.prox_center_on" title="Permalink to this definition">¶</a></dt>
+<dd><p>Ensure that the central pixel has positive flux</p>
+<p>Make sure that the center pixel as at least some amount of flux
+otherwise centering will go off rails</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="scarlet.operator.prox_cone">
+<code class="descclassname">scarlet.operator.</code><code class="descname">prox_cone</code><span class="sig-paren">(</span><em>X</em>, <em>step</em>, <em>G=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/operator.html#prox_cone"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.prox_cone" title="Permalink to this definition">¶</a></dt>
+<dd><p>Exact projection of components of X onto cone defined by Gx &gt;= 0</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="scarlet.operator.prox_max_unity">
+<code class="descclassname">scarlet.operator.</code><code class="descname">prox_max_unity</code><span class="sig-paren">(</span><em>X</em>, <em>step</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/operator.html#prox_max_unity"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.prox_max_unity" title="Permalink to this definition">¶</a></dt>
+<dd><p>Normalize X so that it’s max value is unity.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="scarlet.operator.prox_sdss_symmetry">
+<code class="descclassname">scarlet.operator.</code><code class="descname">prox_sdss_symmetry</code><span class="sig-paren">(</span><em>X</em>, <em>step</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/operator.html#prox_sdss_symmetry"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.prox_sdss_symmetry" title="Permalink to this definition">¶</a></dt>
+<dd><p>SDSS/HSC symmetry operator</p>
+<p>This function uses the <em>minimum</em> of the two
+symmetric pixels in the update.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="scarlet.operator.prox_sed_on">
+<code class="descclassname">scarlet.operator.</code><code class="descname">prox_sed_on</code><span class="sig-paren">(</span><em>X</em>, <em>step</em>, <em>tiny=1e-10</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/operator.html#prox_sed_on"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.prox_sed_on" title="Permalink to this definition">¶</a></dt>
+<dd><p>Ensure that the SED has some flux.</p>
+<p>This is used when S is normalized and A is
+not to prevent a source from having no flux,
+which is known to break the centering algorithm.
+Once we put in a check to ensure that the difference
+image has a dipole this operator will be rendered unecessary</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="scarlet.operator.prox_soft_symmetry">
+<code class="descclassname">scarlet.operator.</code><code class="descname">prox_soft_symmetry</code><span class="sig-paren">(</span><em>X</em>, <em>step</em>, <em>strength=1</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/operator.html#prox_soft_symmetry"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.prox_soft_symmetry" title="Permalink to this definition">¶</a></dt>
+<dd><p>Soft version of symmetry
+Using a <cite>sigma</cite> that varies from 0 to 1,
+with 0 meaning no symmetry enforced at all and
+1  being completely symmetric, the user can customize
+the level of symmetry required for a component</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="scarlet.operator.prox_strict_monotonic">
+<code class="descclassname">scarlet.operator.</code><code class="descname">prox_strict_monotonic</code><span class="sig-paren">(</span><em>shape</em>, <em>use_nearest=False</em>, <em>thresh=0</em>, <em>center=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/operator.html#prox_strict_monotonic"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.prox_strict_monotonic" title="Permalink to this definition">¶</a></dt>
+<dd><p>Build the prox_monotonic operator</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first docutils">
+<dt><strong>use_nearest: `bool`</strong></dt>
+<dd><p class="first last">Whether to use the nearest pixel to the center for comparison
+(<cite>use_nearest=True</cite>) or use a weighted combination of all
+neighbors closer to the central pixel (<cite>use_nearest=False</cite>).</p>
+</dd>
+<dt><strong>thresh: `float`</strong></dt>
+<dd><p class="first last">Forced gradient. A <cite>thresh</cite> of zero will allow a pixel to be the
+same value as its reference pixels, while a <cite>thresh</cite> of one
+will force the pixel to zero.</p>
+</dd>
+<dt><strong>center: tuple</strong></dt>
+<dd><p class="first last">Location of the central (highest-value) pixel.</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first last docutils">
+<dt><strong>result: `function`</strong></dt>
+<dd><p class="first last">The monotonicity function.</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="scarlet.operator.prox_uncentered_symmetry">
+<code class="descclassname">scarlet.operator.</code><code class="descname">prox_uncentered_symmetry</code><span class="sig-paren">(</span><em>X</em>, <em>step</em>, <em>center=None</em>, <em>strength=0.5</em>, <em>use_soft=True</em>, <em>fill=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/operator.html#prox_uncentered_symmetry"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.prox_uncentered_symmetry" title="Permalink to this definition">¶</a></dt>
+<dd><p>Symmetry with off-center peak</p>
+<p>Symmetrize X for all pixels with a symmetric partner.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first docutils">
+<dt><strong>X: array</strong></dt>
+<dd><p class="first last">The parameter to update.</p>
+</dd>
+<dt><strong>step: `int`</strong></dt>
+<dd><p class="first last">Step size of the gradient step.</p>
+</dd>
+<dt><strong>center: tuple</strong></dt>
+<dd><p class="first last">The center pixel coordinates to apply the symmetry operator.</p>
+</dd>
+<dt><strong>strength: `float`</strong></dt>
+<dd><p class="first last">The amount that symmetry is enforced. If <cite>strength=0</cite> then no
+symmetry is enforced, while <cite>strength=1</cite> enforces strict symmetry
+(ie. the mean of the two symmetric pixels is used for both of them).</p>
+</dd>
+<dt><strong>use_soft: `bool`</strong></dt>
+<dd><p class="first last">Whether to use the strict SDSS symmetry <cite>use_soft=False</cite> or
+the soft proximal operator (<cite>use_soft=True</cite>).</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first last docutils">
+<dt><strong>result: `function`</strong></dt>
+<dd><p class="first last">The update function based on the specified parameters.</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="scarlet.operator.proximal_disk_sed">
+<code class="descclassname">scarlet.operator.</code><code class="descname">proximal_disk_sed</code><span class="sig-paren">(</span><em>X</em>, <em>step</em>, <em>peaks</em>, <em>algorithm=&lt;function project_disk_sed_mean&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/operator.html#proximal_disk_sed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.proximal_disk_sed" title="Permalink to this definition">¶</a></dt>
+<dd><p>Ensure that each disk SED is bluer than the bulge SED</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="scarlet.operator.sort_by_radius">
+<code class="descclassname">scarlet.operator.</code><code class="descname">sort_by_radius</code><span class="sig-paren">(</span><em>shape</em>, <em>center=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/operator.html#sort_by_radius"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.sort_by_radius" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sort indices distance from the center</p>
+<p>Given a shape, calculate the distance of each
+pixel from the center and return the indices
+of each pixel, sorted by radial distance from
+the center, which need not be in the center
+of the image.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first docutils">
+<dt><strong>shape: `tuple`</strong></dt>
+<dd><p class="first last">Shape (y,x) of the source frame.</p>
+</dd>
+<dt><strong>center: array-like</strong></dt>
+<dd><p class="first last">Location of the center pixel.</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first last docutils">
+<dt><strong>didx: `~numpy.array`</strong></dt>
+<dd><p class="first last">Indices of elements in an image with shape <cite>shape</cite>,
+sorted by distance from the center.</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="scarlet.operator.uncentered_operator">
+<code class="descclassname">scarlet.operator.</code><code class="descname">uncentered_operator</code><span class="sig-paren">(</span><em>X</em>, <em>func</em>, <em>center=None</em>, <em>fill=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/operator.html#uncentered_operator"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.uncentered_operator" title="Permalink to this definition">¶</a></dt>
+<dd><p>Only apply the operator on a centered patch</p>
+<p>In some cases, for example symmetry, an operator might not make
+sense outside of a centered box. This operator only updates
+the portion of <cite>X</cite> inside the centered region.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first last docutils">
+<dt><strong>X: array</strong></dt>
+<dd><p class="first last">The parameter to update.</p>
+</dd>
+<dt><strong>func: `function`</strong></dt>
+<dd><p class="first last">The function (or operator) to apply to <cite>X</cite>.</p>
+</dd>
+<dt><strong>center: tuple</strong></dt>
+<dd><p class="first last">The location of the center of the sub-region to
+apply <cite>func</cite> to <cite>X</cite>.</p>
+</dd>
+<dt><strong>`fill`: `float`</strong></dt>
+<dd><p class="first last">The value to fill the region outside of centered
+<cite>sub-region</cite>, for example <cite>0</cite>. If <cite>fill</cite> is <cite>None</cite>
+then only the subregion is updated and the rest of
+<cite>X</cite> remains unchanged.</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="scarlet.operator.use_relevant_dim">
+<code class="descclassname">scarlet.operator.</code><code class="descname">use_relevant_dim</code><span class="sig-paren">(</span><em>Y</em>, <em>Q</em>, <em>Vs</em>, <em>index</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/operator.html#use_relevant_dim"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.use_relevant_dim" title="Permalink to this definition">¶</a></dt>
+<dd><p>Uses relevant dimension to reduce problem dimensionality (projects everything onto the
+new hyperplane</p>
+</dd></dl>
+
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="psf.html" class="btn btn-neutral float-right" title="PSF matching (scarlet.psf)" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Fred Moolekamp and Peter Melchior
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+        <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "ignoreClass": "document", "processClass": "math|output_area"}})</script>
+    
+
+  
+
+  <script type="text/javascript" src="_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

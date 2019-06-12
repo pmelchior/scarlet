@@ -1,0 +1,433 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>scarlet.blend &mdash; scarlet  documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> scarlet
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../install.html#building-the-docs">Building the Docs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../quickstart.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_docs.html">User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorials.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../diagnostics.html">Diagnostics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_docs.html">API Documentation</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">scarlet</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+      <li>scarlet.blend</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for scarlet.blend</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">autograd.numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">autograd</span> <span class="k">import</span> <span class="n">grad</span>
+
+<span class="kn">from</span> <span class="nn">.component</span> <span class="k">import</span> <span class="n">ComponentTree</span><span class="p">,</span> <span class="n">BlendFlag</span>
+<span class="kn">from</span> <span class="nn">.observation</span> <span class="k">import</span> <span class="n">Scene</span>
+
+<span class="kn">import</span> <span class="nn">logging</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;scarlet.blend&quot;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="Blend"><a class="viewcode-back" href="../../blend.html#scarlet.blend.Blend">[docs]</a><span class="k">class</span> <span class="nc">Blend</span><span class="p">(</span><span class="n">ComponentTree</span><span class="p">,</span> <span class="n">Scene</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;The blended scene.</span>
+
+<span class="sd">    The class represents a scene as collection of components, internally as a</span>
+<span class="sd">    `~scarlet.component.ComponentTree`, and provides the functions to fit it</span>
+<span class="sd">    to data.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    mse: list</span>
+<span class="sd">        Array of mean squared errors in each iteration</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scene</span><span class="p">,</span> <span class="n">sources</span><span class="p">,</span> <span class="n">observations</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Constructor</span>
+<span class="sd">        Form a blended scene from a collection of `~scarlet.component.Component`s</span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        components: list of `~scarlet.component.Component` or `~scarlet.component.ComponentTree`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">ComponentTree</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sources</span><span class="p">)</span>
+        <span class="n">Scene</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scene</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">wcs</span><span class="o">=</span><span class="n">scene</span><span class="o">.</span><span class="n">wcs</span><span class="p">,</span> <span class="n">psfs</span><span class="o">=</span><span class="n">scene</span><span class="o">.</span><span class="n">psfs</span><span class="p">,</span> <span class="n">filtercurve</span><span class="o">=</span><span class="n">scene</span><span class="o">.</span><span class="n">filtercurve</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="nb">iter</span><span class="p">(</span><span class="n">observations</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
+            <span class="n">observations</span> <span class="o">=</span> <span class="p">(</span><span class="n">observations</span><span class="p">,)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">observations</span> <span class="o">=</span> <span class="n">observations</span>
+
+        <span class="k">for</span> <span class="n">obs</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">observations</span><span class="p">:</span>
+            <span class="n">obs</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">mse</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">it</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Number of iterations run in the `fit` method</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mse</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">converged</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Whether the full Blend has converged within e_rel.</span>
+
+<span class="sd">        For convergence tests of individual components, check its `flags` member.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="p">:</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">flags</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">BlendFlag</span><span class="o">.</span><span class="n">SED_NOT_CONVERGED</span> <span class="o">|</span> <span class="n">BlendFlag</span><span class="o">.</span><span class="n">MORPH_NOT_CONVERGED</span><span class="p">))</span><span class="o">.</span><span class="n">value</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">sources</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return the list of sources used in the blend.</span>
+
+<span class="sd">        This will be different than `Blend.components` when</span>
+<span class="sd">        some sources have multiple components.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span>
+
+<div class="viewcode-block" id="Blend.fit"><a class="viewcode-back" href="../../blend.html#scarlet.blend.Blend.fit">[docs]</a>    <span class="k">def</span> <span class="nf">fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">max_iter</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span> <span class="n">e_rel</span><span class="o">=</span><span class="mf">1e-2</span><span class="p">,</span> <span class="n">approximate_L</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Fit the model for each source to the data</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        max_iter: int</span>
+<span class="sd">            Maximum number of iterations if the algorithm doesn&#39;t converge.</span>
+<span class="sd">        e_rel: float</span>
+<span class="sd">            Relative error for convergence of each component.</span>
+<span class="sd">        approximate_L: bool</span>
+<span class="sd">            Whether or not to use a rough approximation of the</span>
+<span class="sd">            Lipschitz constants</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">for</span> <span class="n">step</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">max_iter</span><span class="p">):</span>
+            <span class="c1"># Back propagate the gradients</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_backward</span><span class="p">()</span>
+
+            <span class="c1"># Calculate the Lipschitz constants,</span>
+            <span class="c1"># which are needed to determine the step size for each component</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_set_lipschitz</span><span class="p">(</span><span class="n">approximate_L</span><span class="p">)</span>
+
+            <span class="c1"># Take the next gradient step for each component</span>
+            <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="p">:</span>
+                <span class="n">c</span><span class="o">.</span><span class="n">L_sed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">L_sed</span>
+                <span class="n">c</span><span class="o">.</span><span class="n">L_morph</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">L_morph</span>
+
+                <span class="n">c</span><span class="o">.</span><span class="n">backward_prior</span><span class="p">()</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">c</span><span class="o">.</span><span class="n">fix_sed</span><span class="p">:</span>
+                    <span class="n">c</span><span class="o">.</span><span class="n">_sed</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="n">_sed</span> <span class="o">-</span> <span class="n">c</span><span class="o">.</span><span class="n">step_sed</span> <span class="o">*</span> <span class="n">c</span><span class="o">.</span><span class="n">sed_grad</span>
+                    <span class="n">c</span><span class="o">.</span><span class="n">sed_grad</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">c</span><span class="o">.</span><span class="n">fix_morph</span><span class="p">:</span>
+                    <span class="n">c</span><span class="o">.</span><span class="n">_morph</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="n">_morph</span> <span class="o">-</span> <span class="n">c</span><span class="o">.</span><span class="n">step_morph</span> <span class="o">*</span> <span class="n">c</span><span class="o">.</span><span class="n">morph_grad</span>
+                    <span class="n">c</span><span class="o">.</span><span class="n">morph_grad</span> <span class="o">=</span> <span class="mi">0</span>
+
+            <span class="c1"># Call the update functions for all of the sources</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_convergence</span><span class="p">(</span><span class="n">e_rel</span><span class="p">):</span>
+                <span class="k">break</span></div>
+
+    <span class="k">def</span> <span class="nf">_backward</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Backpropagate the gradients for the seds and morphs</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">seds</span> <span class="o">=</span> <span class="p">[</span><span class="n">src</span><span class="o">.</span><span class="n">sed</span> <span class="k">for</span> <span class="n">src</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">sources</span><span class="p">]</span>
+        <span class="n">morphs</span> <span class="o">=</span> <span class="p">[</span><span class="n">src</span><span class="o">.</span><span class="n">morph</span> <span class="k">for</span> <span class="n">src</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">sources</span><span class="p">]</span>
+        <span class="n">parameters</span> <span class="o">=</span> <span class="n">seds</span> <span class="o">+</span> <span class="n">morphs</span>
+        <span class="c1"># This calculates the partial derivatives wrt</span>
+        <span class="c1"># all the seds and morphologies</span>
+        <span class="n">gradients</span> <span class="o">=</span> <span class="n">grad</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_loss</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">parameters</span><span class="p">))))(</span><span class="o">*</span><span class="n">parameters</span><span class="p">)</span>
+        <span class="n">sed_gradients</span> <span class="o">=</span> <span class="n">gradients</span><span class="p">[:</span><span class="bp">self</span><span class="o">.</span><span class="n">K</span><span class="p">]</span>
+        <span class="n">morph_gradients</span> <span class="o">=</span> <span class="n">gradients</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">K</span><span class="p">:]</span>
+        <span class="c1"># set the sed and morphology gradients for each source</span>
+        <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">K</span><span class="p">):</span>
+            <span class="n">src</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sources</span><span class="p">[</span><span class="n">k</span><span class="p">]</span>
+            <span class="n">src</span><span class="o">.</span><span class="n">sed_grad</span> <span class="o">=</span> <span class="n">sed_gradients</span><span class="p">[</span><span class="n">k</span><span class="p">]</span>
+            <span class="n">src</span><span class="o">.</span><span class="n">morph_grad</span> <span class="o">=</span> <span class="n">morph_gradients</span><span class="p">[</span><span class="n">k</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">_loss</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">parameters</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Loss function for autograd</span>
+
+<span class="sd">        This method combines the seds and morphologies</span>
+<span class="sd">        into a model that is used to calculate the loss</span>
+<span class="sd">        function and update the gradient for each</span>
+<span class="sd">        parameter</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Unpack the seds and morphologies</span>
+        <span class="n">seds</span> <span class="o">=</span> <span class="n">parameters</span><span class="p">[:</span><span class="bp">self</span><span class="o">.</span><span class="n">K</span><span class="p">]</span>
+        <span class="n">morphs</span> <span class="o">=</span> <span class="n">parameters</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">K</span><span class="p">:]</span>
+
+        <span class="n">model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_model</span><span class="p">(</span><span class="n">seds</span><span class="p">,</span> <span class="n">morphs</span><span class="p">)</span>
+        <span class="c1"># Caculate the total loss function from all of the observations</span>
+        <span class="n">total_loss</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">observation</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">observations</span><span class="p">:</span>
+            <span class="n">total_loss</span> <span class="o">=</span> <span class="n">total_loss</span> <span class="o">+</span> <span class="n">observation</span><span class="o">.</span><span class="n">get_loss</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mse</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">total_loss</span><span class="o">.</span><span class="n">_value</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">total_loss</span>
+
+    <span class="k">def</span> <span class="nf">_check_convergence</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e_rel</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Check to see if all of the components have converged</span>
+
+<span class="sd">        The `flag` property of each component is updated to reflect</span>
+<span class="sd">        whether or not its SED and morphology have converged.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        e_rel: float</span>
+<span class="sd">            Relative error for convergence of each component.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        converged: bool</span>
+<span class="sd">            Whether or not all of the components have converged.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">e_rel2</span> <span class="o">=</span> <span class="n">e_rel</span> <span class="o">**</span> <span class="mi">2</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">it</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">converged</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">for</span> <span class="n">component</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="p">:</span>
+                <span class="c1"># sed convergence</span>
+                <span class="n">diff2</span> <span class="o">=</span> <span class="p">((</span><span class="n">component</span><span class="o">.</span><span class="n">_last_sed</span> <span class="o">-</span> <span class="n">component</span><span class="o">.</span><span class="n">sed</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">diff2</span> <span class="o">&lt;=</span> <span class="n">e_rel2</span> <span class="o">*</span> <span class="p">(</span><span class="n">component</span><span class="o">.</span><span class="n">sed</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">():</span>
+                    <span class="n">component</span><span class="o">.</span><span class="n">flags</span> <span class="o">&amp;=</span> <span class="o">~</span><span class="n">BlendFlag</span><span class="o">.</span><span class="n">SED_NOT_CONVERGED</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">component</span><span class="o">.</span><span class="n">flags</span> <span class="o">|=</span> <span class="n">BlendFlag</span><span class="o">.</span><span class="n">SED_NOT_CONVERGED</span>
+                    <span class="n">converged</span> <span class="o">=</span> <span class="kc">False</span>
+                <span class="c1"># morph convergence</span>
+                <span class="n">diff2</span> <span class="o">=</span> <span class="p">((</span><span class="n">component</span><span class="o">.</span><span class="n">_last_morph</span> <span class="o">-</span> <span class="n">component</span><span class="o">.</span><span class="n">morph</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">diff2</span> <span class="o">&lt;=</span> <span class="n">e_rel2</span> <span class="o">*</span> <span class="p">(</span><span class="n">component</span><span class="o">.</span><span class="n">morph</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">():</span>
+                    <span class="n">component</span><span class="o">.</span><span class="n">flags</span> <span class="o">&amp;=</span> <span class="o">~</span><span class="n">BlendFlag</span><span class="o">.</span><span class="n">MORPH_NOT_CONVERGED</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">component</span><span class="o">.</span><span class="n">flags</span> <span class="o">|=</span> <span class="n">BlendFlag</span><span class="o">.</span><span class="n">MORPH_NOT_CONVERGED</span>
+                    <span class="n">converged</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">converged</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="c1"># Store a copy of each SED and morphology for the</span>
+        <span class="c1"># convergence check in the next iteration</span>
+        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="p">:</span>
+            <span class="n">c</span><span class="o">.</span><span class="n">_last_sed</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="n">sed</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <span class="n">c</span><span class="o">.</span><span class="n">_last_morph</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="n">morph</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">converged</span>
+
+    <span class="k">def</span> <span class="nf">_set_lipschitz</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">approximate_L</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Update the Lipschitz constants from the observations</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">approximate_L</span><span class="p">:</span>
+            <span class="c1"># spectral norm of S*S^T or A^T*A is of order the mean amplitude</span>
+            <span class="c1"># of their elements times the number of components</span>
+            <span class="n">LA</span><span class="p">,</span> <span class="n">LS</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span>
+            <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="p">:</span>
+                <span class="n">LS</span> <span class="o">+=</span> <span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">sed</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+                <span class="n">LA</span> <span class="o">+=</span> <span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">morph</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+
+            <span class="c1"># if loss has increased from last iteration, increase L</span>
+            <span class="c1"># TODO: this is insufficient if the estimation above is miles off!</span>
+            <span class="c1"># Then: escalate the increase</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">it</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">mse</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">mse</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]:</span>
+                <span class="n">LS</span> <span class="o">*=</span> <span class="mi">2</span>
+                <span class="n">LA</span> <span class="o">*=</span> <span class="mi">2</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># This is still an approximation, but a less crude (albiet slower) one</span>
+            <span class="n">seds</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">K</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">B</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">sed</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+            <span class="n">morphs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">K</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Ny</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Nx</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">morph</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">component</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="p">):</span>
+                <span class="n">seds</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">component</span><span class="o">.</span><span class="n">sed</span>
+                <span class="n">morphs</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">component</span><span class="o">.</span><span class="n">morph</span>
+            <span class="n">_S</span> <span class="o">=</span> <span class="n">morphs</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">morphs</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">_SST</span> <span class="o">=</span> <span class="n">_S</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">_S</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
+            <span class="n">_ATA</span> <span class="o">=</span> <span class="n">seds</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">seds</span><span class="p">)</span>
+            <span class="c1"># Lipschitz constant for A</span>
+            <span class="n">LA</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">real</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">eigvals</span><span class="p">(</span><span class="n">_SST</span><span class="p">)</span><span class="o">.</span><span class="n">max</span><span class="p">())</span>
+            <span class="c1"># Lipschitz constant for S</span>
+            <span class="n">LS</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">real</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">eigvals</span><span class="p">(</span><span class="n">_ATA</span><span class="p">)</span><span class="o">.</span><span class="n">max</span><span class="p">())</span>
+
+        <span class="n">LA</span> <span class="o">*=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">observations</span><span class="p">)</span>
+        <span class="n">LS</span> <span class="o">*=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">observations</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">L_sed</span> <span class="o">=</span> <span class="n">LA</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">L_morph</span> <span class="o">=</span> <span class="n">LS</span></div>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Fred Moolekamp and Peter Melchior
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script type="text/javascript" src="../../_static/jquery.js"></script>
+        <script type="text/javascript" src="../../_static/underscore.js"></script>
+        <script type="text/javascript" src="../../_static/doctools.js"></script>
+        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+        <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "ignoreClass": "document", "processClass": "math|output_area"}})</script>
+    
+
+  
+
+  <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

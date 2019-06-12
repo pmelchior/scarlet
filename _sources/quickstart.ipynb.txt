@@ -1,0 +1,325 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# Quick Start Guide\n",
+    "This tutorial shows how to quickly get started using scarlet to reduce a sample image cube.\n",
+    "In order to run this tutorial you will need either `astropy` (http://www.astropy.org) or `sep` (https://github.com/kbarbary/sep) installed to open/create the source catalog and `matplotlib` (https://matplotlib.org) to display the images"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Import Packages and setup\n",
+    "import logging\n",
+    "\n",
+    "import numpy as np\n",
+    "\n",
+    "import scarlet\n",
+    "import scarlet.display\n",
+    "\n",
+    "%matplotlib inline\n",
+    "import matplotlib\n",
+    "import matplotlib.pyplot as plt\n",
+    "# use a better colormap and don't interpolate the pixels\n",
+    "matplotlib.rc('image', cmap='inferno')\n",
+    "matplotlib.rc('image', interpolation='none')"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Load and display the sample data\n",
+    "\n",
+    "### Load the sample data and source catalog"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Load the sample images\n",
+    "data = np.load(\"../data/hsc_cosmos_35.npz\")\n",
+    "images = data[\"images\"]\n",
+    "filters = data[\"filters\"]\n",
+    "psfs = data[\"psfs\"]\n",
+    "catalog = data[\"catalog\"]\n",
+    "bg_rms = np.ones((len(psfs),), dtype=images.dtype) * .1"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Display a raw image cube\n",
+    "This is an example of how to display an RGB image from an image cube of multiband data. In this case the image uses a $sin^{-1}$ function to normalize the flux and maps i,r,g (filters 3,2,1) $\\rightarrow$ RGB."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from astropy.visualization.lupton_rgb import AsinhMapping, LinearMapping\n",
+    "\n",
+    "stretch = 1\n",
+    "Q = 10\n",
+    "norm = AsinhMapping(minimum=0, stretch=stretch, Q=Q)\n",
+    "img_rgb = scarlet.display.img_to_rgb(images, norm=norm)\n",
+    "plt.imshow(img_rgb)\n",
+    "\n",
+    "# Mark all of the sources from the detection cataog\n",
+    "for k, src in enumerate(catalog):\n",
+    "    plt.text(src[\"x\"], src[\"y\"], str(k), color=\"red\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Create a target PSF\n",
+    "\n",
+    "While it is possible to estimate a target PSF, we just choose\n",
+    "a minimal PSF that is barely well sampled and use it as our\n",
+    "target kernel."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "X = np.arange(psfs.shape[2])\n",
+    "Y = np.arange(psfs.shape[1])\n",
+    "X, Y = np.meshgrid(X, Y)\n",
+    "coords = np.stack([Y, X])\n",
+    "y0, x0 = (psfs.shape[1]-1) // 2, (psfs.shape[2]-1) // 2\n",
+    "target_psf = scarlet.psf.gaussian(coords, y0, x0, 1, .9)\n",
+    "target_psf /= target_psf.sum()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Initialize the observation and the model\n",
+    "\n",
+    "A `Scene` in scarlet is the scene that the model lives in, including information about the number of bands, size of the image in Y and X, (optional) WCS info to translate from pixel to sky coordinates, and (optionally) a filter curve used to map from the model filter bands to a more continuous spectrum (not yet supported).\n",
+    "\n",
+    "Each `Observation` corresponds to a a set of observed data, which contains a data cube with an image in each filter, a list of filter names, and (optionally) WCS info to translate from pixel coordinates to sky coordinates. It also internally matches the PSF in each filter to the target PSF of the scene once a blend is initialized."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "observations = scarlet.Observation(images, psfs)\n",
+    "scene = scarlet.Scene(images.shape, psfs=target_psf)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Initialize the sources\n",
+    "Each source is a list of fundamental `scarlet.Component` instances and must be based on `scarlet.Source` or a derived class, in this case `ExtendedSource`, which initializes a source as monotonic and symmetric (for those familiar with the SDSS/HSC deblender, the initialized model is essentially the SDSS/HSC model template).\n",
+    "\n",
+    "Occasionally a source might not have flux in any band above the noise threshold, which means that it cannot be initialzed and will return a `SourceInitError`. The code below shows one way of handling sources with low/no flux, although it is up to users to implement their own strategies based on their science needs."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "sources = []\n",
+    "for src in catalog:\n",
+    "    try:\n",
+    "        new_source = scarlet.ExtendedSource((src['y'], src['x']), scene, observations, bg_rms)\n",
+    "    except scarlet.SourceInitError:\n",
+    "        try:\n",
+    "            new_source = scarlet.PointSource((src['y'], src['x']), scene, observations)\n",
+    "        except scarlet.SourceInitError:\n",
+    "            print(\"Could not initialze source at {0}\".format((src['y'], src['x'])))\n",
+    "            continue\n",
+    "    sources.append(new_source)"
+   ]
+  },
+  {
+   "cell_type": "raw",
+   "metadata": {
+    "raw_mimetype": "text/restructuredtext"
+   },
+   "source": [
+    ".. warning::\n",
+    "\n",
+    "    Note in the code above that coordinates in *scarlet* use the traditional C/numpy notation (y,x) as opposed to the mathematical (x,y) ordering. A common error when first starting out with *scarlet* is to mix the order of x and y in your catalog or source list, which can have adverse affects on the results of the deblender."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Create and fit the model\n",
+    "The `scarlet.Blend` class represent the sources as a tree and has the machinery to fit all of the sources to the given images. In this example the code is set to run for a maximum of 200 iterations, but will end early if the likelihood and all of the constraints converge."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "blend = scarlet.Blend(scene, sources, observations)\n",
+    "blend.fit(200, e_rel=1e-3)\n",
+    "print(\"scarlet ran for {0} iterations\".format(blend.it))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## View the results"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### View the full model\n",
+    "First we load the model for the entire blend and its residual. Then we display the model using the same $sinh^{-1}$ stretch as the full image and a linear stretch for the residual."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Load the model and calculate the residual\n",
+    "_model = blend.get_model()\n",
+    "model = observations.get_model(_model)\n",
+    "residual = images-model\n",
+    "# Create RGB images\n",
+    "model_rgb = scarlet.display.img_to_rgb(model, norm=norm)\n",
+    "residual_rgb = scarlet.display.img_to_rgb(residual)\n",
+    "\n",
+    "# Show the data, model, and residual\n",
+    "fig = plt.figure(figsize=(15,5))\n",
+    "ax = [fig.add_subplot(1,3,n+1) for n in range(3)]\n",
+    "ax[0].imshow(img_rgb)\n",
+    "ax[0].set_title(\"Data\")\n",
+    "ax[1].imshow(model_rgb)\n",
+    "ax[1].set_title(\"Model\")\n",
+    "ax[2].imshow(residual_rgb)\n",
+    "ax[2].set_title(\"Residual\")\n",
+    "\n",
+    "for k,component in enumerate(blend.components):\n",
+    "    y,x = component.pixel_center\n",
+    "    ax[0].text(x, y, k, color=\"b\")\n",
+    "    ax[1].text(x, y, k, color=\"b\")\n",
+    "plt.show()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### View the source models\n",
+    "It can also be useful to view the model for each source. For each source we extract the portion of the image contained in the sources bounding box, the true simulated source flux, and the model of the source, scaled so that all of the images have roughly the same pixel scale."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "scrolled": false
+   },
+   "outputs": [],
+   "source": [
+    "def get_true_image(m, catalog, filters):\n",
+    "    \"\"\"Create the true multiband image for a source\n",
+    "    \"\"\"\n",
+    "    img = np.array([np.sum(catalog[catalog[\"index\"]==m][\"intensity_\"+f], axis=0) for f in filters])\n",
+    "    return img\n",
+    "\n",
+    "# We can only show the true values if the input catalog has the true intensity data for the sources\n",
+    "# in other words, if you used SEP to build your catalog you do not have the true data.\n",
+    "if \"intensity_\"+filters[0] in catalog.dtype.names:\n",
+    "    has_truth = True\n",
+    "    axes = 3\n",
+    "else:\n",
+    "    has_truth = False\n",
+    "    axes = 2\n",
+    "\n",
+    "for k,src in enumerate(blend.components):\n",
+    "    # Get the model for a single source\n",
+    "    _model = src.get_model()\n",
+    "    model = observations.get_model(_model)\n",
+    "    # Set the stretch based on the model\n",
+    "    stretch = model.max() * .05\n",
+    "    Q = 10\n",
+    "    norm = AsinhMapping(minimum=0, stretch=stretch, Q=Q)\n",
+    "    model_rgb = scarlet.display.img_to_rgb(model, norm=norm)\n",
+    "    # Get the patch from the original image\n",
+    "    img_rgb = scarlet.display.img_to_rgb(images, norm=norm)\n",
+    "    # Set the figure size\n",
+    "    ratio = src.shape[2]/src.shape[1]\n",
+    "    fig_height = 3*src.shape[1]/20\n",
+    "    fig_width = max(2*fig_height*ratio,2)\n",
+    "    fig = plt.figure(figsize=(fig_width, fig_height))\n",
+    "    # Generate and show the figure\n",
+    "    ax = [fig.add_subplot(1,2,n+1) for n in range(2)]\n",
+    "    ax[0].imshow(img_rgb)\n",
+    "    ax[0].set_title(\"Data\")\n",
+    "    ax[1].imshow(model_rgb)\n",
+    "    ax[1].set_title(\"model {0}\".format(k))\n",
+    "    # Mark the source in the data image\n",
+    "    ax[0].plot(src.pixel_center[1], src.pixel_center[0], \"rx\", mew=2, ms=10)\n",
+    "    plt.show()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+  "celltoolbar": "Raw Cell Format",
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.7.2"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 2
+}

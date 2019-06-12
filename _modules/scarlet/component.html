@@ -1,0 +1,600 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>scarlet.component &mdash; scarlet  documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> scarlet
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../install.html#building-the-docs">Building the Docs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../quickstart.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_docs.html">User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorials.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../diagnostics.html">Diagnostics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_docs.html">API Documentation</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">scarlet</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+      <li>scarlet.component</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for scarlet.component</h1><div class="highlight"><pre>
+<span></span><span class="k">try</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">enum</span> <span class="k">import</span> <span class="n">Flag</span><span class="p">,</span> <span class="n">auto</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">aenum</span> <span class="k">import</span> <span class="n">Flag</span><span class="p">,</span> <span class="n">auto</span>
+
+<span class="kn">import</span> <span class="nn">autograd.numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="kn">import</span> <span class="nn">logging</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;scarlet.component&quot;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="BlendFlag"><a class="viewcode-back" href="../../component.html#scarlet.component.BlendFlag">[docs]</a><span class="k">class</span> <span class="nc">BlendFlag</span><span class="p">(</span><span class="n">Flag</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Flags that can be set by scarlet</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    NONE:</span>
+<span class="sd">        There are no flags for this object.</span>
+<span class="sd">    SED_NOT_CONVERGED:</span>
+<span class="sd">        The SED has not yet converged.</span>
+<span class="sd">    MORPH_NOT_CONVERGED:</span>
+<span class="sd">        The morphology has not yet converged.</span>
+<span class="sd">    EDGE_PIXELS:</span>
+<span class="sd">        There is flux at the edge of the model,</span>
+<span class="sd">        meaning the shape and intensity of the source</span>
+<span class="sd">        might be incorrect.</span>
+<span class="sd">    NO_VALID_PIXELS:</span>
+<span class="sd">        All of the pixels of the source were below</span>
+<span class="sd">        the detection threshold.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">NONE</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">SED_NOT_CONVERGED</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">MORPH_NOT_CONVERGED</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">EDGE_PIXELS</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">NO_VALID_PIXELS</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="Prior"><a class="viewcode-back" href="../../component.html#scarlet.component.Prior">[docs]</a><span class="k">class</span> <span class="nc">Prior</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;Differentiable Prior</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    grad_func: `function`</span>
+<span class="sd">        Function used to create the gradient</span>
+<span class="sd">    L_func: `function`</span>
+<span class="sd">        Function used to calculate the Lipschitz constant</span>
+<span class="sd">        of the gradient.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">grad_func</span><span class="p">,</span> <span class="n">L_func</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_grad_func</span> <span class="o">=</span> <span class="n">grad_func</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_L_func</span> <span class="o">=</span> <span class="n">L_func</span>
+
+    <span class="c1"># can be overloaded but needs to set these 4 members</span>
+    <span class="c1"># for batch processing: cache results with c as key</span>
+<div class="viewcode-block" id="Prior.compute_grad"><a class="viewcode-back" href="../../component.html#scarlet.component.Prior.compute_grad">[docs]</a>    <span class="k">def</span> <span class="nf">compute_grad</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">component</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Calculate the gradient</span>
+
+<span class="sd">        This method is called by the `Component` that owns</span>
+<span class="sd">        it during fitting to calculate the gradient update</span>
+<span class="sd">        for the component due to the prior.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">grad_morph</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">grad_sed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_grad_func</span><span class="p">(</span><span class="n">component</span><span class="o">.</span><span class="n">_morph</span><span class="p">,</span> <span class="n">component</span><span class="o">.</span><span class="n">_sed</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">L_morph</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">L_sed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_L_func</span><span class="p">(</span><span class="n">component</span><span class="o">.</span><span class="n">_morph</span><span class="p">,</span> <span class="n">component</span><span class="o">.</span><span class="n">_sed</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="Component"><a class="viewcode-back" href="../../component.html#scarlet.component.Component">[docs]</a><span class="k">class</span> <span class="nc">Component</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;A single component in a blend.</span>
+
+<span class="sd">    This class acts as base for building complex :class:`scarlet.source.Source`.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    sed: array</span>
+<span class="sd">        1D array (bands) of the initial SED.</span>
+<span class="sd">    morph: array</span>
+<span class="sd">        Data cube (Height, Width) of the initial morphology.</span>
+<span class="sd">    prior: list of `~scarlet.component.Prior`s</span>
+<span class="sd">        Prior that generates gradients for the component.</span>
+<span class="sd">    fix_sed: bool, default=`False`</span>
+<span class="sd">        Whether or not the SED is fixed, or can be updated</span>
+<span class="sd">    fix_morph: bool, default=`False`</span>
+<span class="sd">        Whether or not the morphology is fixed, or can be updated</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sed</span><span class="p">,</span> <span class="n">morph</span><span class="p">,</span> <span class="n">prior</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">fix_sed</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">fix_morph</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">B</span> <span class="o">=</span> <span class="n">sed</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Ny</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Nx</span> <span class="o">=</span> <span class="n">morph</span><span class="o">.</span><span class="n">shape</span>
+        <span class="c1"># set sed and morph</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_sed</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">sed</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_morph</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">morph</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sed_grad</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">morph_grad</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">prior</span> <span class="o">=</span> <span class="n">prior</span>
+        <span class="c1"># Initially the component has not converged</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">flags</span> <span class="o">=</span> <span class="n">BlendFlag</span><span class="o">.</span><span class="n">SED_NOT_CONVERGED</span> <span class="o">|</span> <span class="n">BlendFlag</span><span class="o">.</span><span class="n">MORPH_NOT_CONVERGED</span>
+        <span class="c1"># Store the SED and morphology from the previous iteration</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_last_sed</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">sed</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">sed</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_last_morph</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">morph</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">morph</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+
+        <span class="c1"># Properties used for indexing in the ComponentTree</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_index</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_parent</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">fix_sed</span> <span class="o">=</span> <span class="n">fix_sed</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fix_morph</span> <span class="o">=</span> <span class="n">fix_morph</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">shape</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Shape of the image (Band, Height, Width)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">B</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Ny</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Nx</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">coord</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;The coordinate in a `~scarlet.component.ComponentTree`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_index</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parent</span><span class="o">.</span><span class="n">_index</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_parent</span><span class="o">.</span><span class="n">coord</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_index</span><span class="p">,)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_index</span><span class="p">,)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">sed</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Numpy view of the component SED</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sed</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">morph</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Numpy view of the component morphology</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_morph</span>
+
+<div class="viewcode-block" id="Component.get_model"><a class="viewcode-back" href="../../component.html#scarlet.component.Component.get_model">[docs]</a>    <span class="k">def</span> <span class="nf">get_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sed</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">morph</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Get the model for this component.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        sed: array</span>
+<span class="sd">            An sed to use in the model. If `sed` is `None`</span>
+<span class="sd">            then `self.sed` is used.</span>
+<span class="sd">        morph: array</span>
+<span class="sd">            A morphology to use in the model.</span>
+<span class="sd">            If `morph` is `None` then `self.morph`</span>
+<span class="sd">            is used.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        model: array or tensor</span>
+<span class="sd">            (Bands, Height, Width) image of the model</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">sed</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">morph</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">sed</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">morph</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span>
+        <span class="k">elif</span> <span class="n">sed</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">morph</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sed</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_morph</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;You need to supply `sed` and `morph` or neither&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Component.get_flux"><a class="viewcode-back" href="../../component.html#scarlet.component.Component.get_flux">[docs]</a>    <span class="k">def</span> <span class="nf">get_flux</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Get flux in every band</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">morph</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">sed</span></div>
+
+<div class="viewcode-block" id="Component.backward_prior"><a class="viewcode-back" href="../../component.html#scarlet.component.Component.backward_prior">[docs]</a>    <span class="k">def</span> <span class="nf">backward_prior</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Use the prior to update the gradient</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">prior</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">prior</span><span class="o">.</span><span class="n">compute_grad</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">morph</span><span class="o">.</span><span class="n">requires_grad</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">morph_grad</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prior</span><span class="o">.</span><span class="n">grad_morph</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">L_morph</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prior</span><span class="o">.</span><span class="n">L_morph</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">sed</span><span class="o">.</span><span class="n">requires_grad</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">morph_grad</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prior</span><span class="o">.</span><span class="n">grad_morph</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">L_morph</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prior</span><span class="o">.</span><span class="n">L_morph</span></div>
+
+<div class="viewcode-block" id="Component.update"><a class="viewcode-back" href="../../component.html#scarlet.component.Component.update">[docs]</a>    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Update the component</span>
+
+<span class="sd">        This method can be overwritten in inherited classes to</span>
+<span class="sd">        run proximal operators or other component update functions</span>
+<span class="sd">        that will be executed during fitting.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">step_morph</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mi">1</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">L_morph</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">step_sed</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mi">1</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">L_sed</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="ComponentTree"><a class="viewcode-back" href="../../component.html#scarlet.component.ComponentTree">[docs]</a><span class="k">class</span> <span class="nc">ComponentTree</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;Base class for hierarchical collections of Components.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">components</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Constructor</span>
+
+<span class="sd">        Group a list of `~scarlet.component.Component`s in a hierarchy.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        components: list of `~scarlet.component.Component` or `~scarlet.component.ComponentTree`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">components</span><span class="p">,</span> <span class="s2">&quot;__iter__&quot;</span><span class="p">):</span>
+            <span class="n">components</span> <span class="o">=</span> <span class="p">(</span><span class="n">components</span><span class="p">,)</span>
+
+        <span class="c1"># check type and set coords of subordinate nodes in tree</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_tree</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">components</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_index</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_parent</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_tree</span><span class="p">):</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">ComponentTree</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">Component</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;argument needs to be list of Components or ComponentTrees&quot;</span><span class="p">)</span>
+            <span class="n">c</span><span class="o">.</span><span class="n">_index</span> <span class="o">=</span> <span class="n">i</span>
+            <span class="n">c</span><span class="o">.</span><span class="n">_parent</span> <span class="o">=</span> <span class="bp">self</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_components</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">components</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Flattened tuple of all components in the tree.</span>
+
+<span class="sd">        CAUTION: Each component in a tree can only be a leaf of a single node.</span>
+<span class="sd">        While one can construct trees that hold the same component multiple</span>
+<span class="sd">        times, this method will only return that component at its first</span>
+<span class="sd">        encountered location</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_components</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">components</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tree</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">ComponentTree</span><span class="p">):</span>
+                    <span class="n">_c</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="n">components</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">_c</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span><span class="p">]</span>
+                <span class="c1"># check uniqueness</span>
+                <span class="k">for</span> <span class="n">__c</span> <span class="ow">in</span> <span class="n">_c</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">__c</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">components</span><span class="p">:</span>
+                        <span class="n">components</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">__c</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_components</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">components</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_components</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">n_components</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Number of components.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">K</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Number of components.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_components</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">B</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Number of bands</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">B</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">Ny</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Number of pixels in the y-direction</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">([</span><span class="n">comp</span><span class="o">.</span><span class="n">Ny</span> <span class="k">for</span> <span class="n">comp</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="p">])</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">Nx</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Number of pixels in the y-direction</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">([</span><span class="n">comp</span><span class="o">.</span><span class="n">Nx</span> <span class="k">for</span> <span class="n">comp</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="p">])</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">nodes</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Initial list that generates the tree.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        The arguments of `__init__`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tree</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">n_nodes</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Number of direct attached nodes.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_tree</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">coord</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;The coordinate in tree.</span>
+
+<span class="sd">        The coordinate can be used to traverse the tree and for `__getitem__`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_index</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parent</span><span class="o">.</span><span class="n">_index</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_parent</span><span class="o">.</span><span class="n">coord</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_index</span><span class="p">,)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_index</span><span class="p">,)</span>
+
+<div class="viewcode-block" id="ComponentTree.get_model"><a class="viewcode-back" href="../../component.html#scarlet.component.ComponentTree.get_model">[docs]</a>    <span class="k">def</span> <span class="nf">get_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">seds</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">morphs</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Get the model this component tree</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        seds: list of arrays</span>
+<span class="sd">            Optional list of seds for each component in the tree.</span>
+<span class="sd">            If `seds` is `None` then `self.sed` is used for</span>
+<span class="sd">            each component.</span>
+<span class="sd">        morphs: list of arrays</span>
+<span class="sd">            Optional list of morphologies for each component in</span>
+<span class="sd">            the tree. If `morphs` is `None` then `self.morph`</span>
+<span class="sd">            is used for each component.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        model: array</span>
+<span class="sd">            (Bands, Height, Width) data cube</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">model</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">B</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Ny</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Nx</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">K</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">seds</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">morphs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">_model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="p">[</span><span class="n">k</span><span class="p">]</span><span class="o">.</span><span class="n">get_model</span><span class="p">(</span><span class="n">seds</span><span class="p">[</span><span class="n">k</span><span class="p">],</span> <span class="n">morphs</span><span class="p">[</span><span class="n">k</span><span class="p">])</span>
+                <span class="n">model</span> <span class="o">=</span> <span class="n">model</span> <span class="o">+</span> <span class="n">_model</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">model</span> <span class="o">=</span> <span class="n">model</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="p">[</span><span class="n">k</span><span class="p">]</span><span class="o">.</span><span class="n">get_model</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">model</span></div>
+
+<div class="viewcode-block" id="ComponentTree.get_flux"><a class="viewcode-back" href="../../component.html#scarlet.component.ComponentTree.get_flux">[docs]</a>    <span class="k">def</span> <span class="nf">get_flux</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Get the total flux for all the components in the tree</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">component</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">k</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">model</span> <span class="o">=</span> <span class="n">component</span><span class="o">.</span><span class="n">get_flux</span><span class="p">()</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">model</span> <span class="o">+=</span> <span class="n">component</span><span class="o">.</span><span class="n">get_flux</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">model</span></div>
+
+<div class="viewcode-block" id="ComponentTree.update"><a class="viewcode-back" href="../../component.html#scarlet.component.ComponentTree.update">[docs]</a>    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Update each component</span>
+
+<span class="sd">        This method may be overwritten in inherited classes to</span>
+<span class="sd">        perform updates on multiple components at once</span>
+<span class="sd">        (for example separating a buldge and disk).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">component</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="p">:</span>
+            <span class="n">component</span><span class="o">.</span><span class="n">update</span><span class="p">()</span></div>
+
+    <span class="k">def</span> <span class="nf">__iadd__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">c</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Add another component or tree.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        c: `~scarlet.component.Component` or `~scarlet.component.ComponentTree`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">c_index</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_nodes</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">ComponentTree</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_tree</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tree</span> <span class="o">+</span> <span class="n">c</span><span class="o">.</span><span class="n">_tree</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">Component</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_tree</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tree</span> <span class="o">+</span> <span class="p">(</span><span class="n">c</span><span class="p">,)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;argument needs to be Component or ComponentTree&quot;</span><span class="p">)</span>
+        <span class="n">c</span><span class="o">.</span><span class="n">_index</span> <span class="o">=</span> <span class="n">c_index</span>
+        <span class="n">c</span><span class="o">.</span><span class="n">_parent</span> <span class="o">=</span> <span class="bp">self</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_components</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">coord</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Access node in the tree.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        coords: int or tuple of ints</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        `~scarlet.component.Component` or `~scarlet.component.ComponentTree`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">coord</span><span class="p">,</span> <span class="p">(</span><span class="nb">tuple</span><span class="p">,</span> <span class="nb">list</span><span class="p">)):</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">coord</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tree</span><span class="p">[</span><span class="n">coord</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span><span class="o">.</span><span class="fm">__getitem__</span><span class="p">(</span><span class="n">coord</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tree</span><span class="p">[</span><span class="n">coord</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">coord</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tree</span><span class="p">[</span><span class="n">coord</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;coord needs to be index or list of indices&quot;</span><span class="p">)</span></div>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Fred Moolekamp and Peter Melchior
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script type="text/javascript" src="../../_static/jquery.js"></script>
+        <script type="text/javascript" src="../../_static/underscore.js"></script>
+        <script type="text/javascript" src="../../_static/doctools.js"></script>
+        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+        <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "ignoreClass": "document", "processClass": "math|output_area"}})</script>
+    
+
+  
+
+  <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
