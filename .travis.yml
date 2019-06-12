@@ -1,0 +1,32 @@
+language: python
+python:
+  - 3.6
+notifications:
+  email: false
+
+# Setup anaconda
+before_install:
+  - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
+  - chmod +x miniconda.sh
+  - ./miniconda.sh -b -p $HOME/miniconda
+  - export PATH=/$HOME/miniconda/bin:$PATH
+  - conda update --yes conda
+  # The next couple lines fix a crash with multiprocessing on Travis and are not specific to using Miniconda
+  - sudo rm -rf /dev/shm
+  - sudo ln -s /run/shm /dev/shm
+# Install packages
+install:
+  # Useful for debugging any issues with conda
+  - conda info -a
+  # Coverage packages
+  - conda install --yes python=$TRAVIS_PYTHON_VERSION numpy scipy astropy pybind11 numpydoc jupyter
+  - pip install -r docs/rtd-pip-requirements
+  - python setup.py install
+
+# Run test
+script:
+  - pytest tests
+
+# Calculate coverage
+#after_success:
+#  - coveralls --config_file .coveragerc

@@ -1,3 +1,4 @@
+[![](https://travis-ci.org/fred3m/scarlet.svg?branch=master)](https://travis-ci.org/fred3m/scarlet)
 [![](https://readthedocs.org/projects/scarlet/badge/?version=latest)](https://scarlet.readthedocs.org)
 [![](https://img.shields.io/github/license/fred3m/scarlet.svg)](https://github.com/fred3m/scarlet/blob/master/LICENSE.md)
 [![DOI](https://img.shields.io/badge/DOI-10.1016%2Fj.ascom.2018.07.001-blue.svg)](https://doi.org/10.1016/j.ascom.2018.07.001)
@@ -9,26 +10,29 @@ This package performs source separation (aka "deblending") on multi-band images.
 
 **For the full documentation see [scarlet.readthedocs.io](http://scarlet.readthedocs.io).**
 
-Separation is achieved through a constrained matrix factorization, which models each source with a Spectral Energy Distribution (SED) and a non-parametric morphology, or multiple such components per source. In astronomy jargon, the code performs forced photometry (with PSF matching if needed) using an optimal weight function given by the signal-to-noise weighted morphology across bands. The approach works well if the sources in the scene have different colors and can be further strengthened by imposing various additional constraints/priors on each source. The minimization itself is done using the proximal block-SDMM algorithm described in [Moolekamp & Melchior (2018)](https://doi.org/10.1007/s11081-018-9380-y).
+Separation is achieved through a constrained matrix factorization, which models each source with a Spectral Energy Distribution (SED) and a non-parametric morphology, or multiple such components per source. In astronomy jargon, the code performs forced photometry (with PSF matching if needed) using an optimal weight function given by the signal-to-noise weighted morphology across bands. The approach works well if the sources in the scene have different colors and can be further strengthened by imposing various additional constraints/priors on each source.
 
-Because of its generic utility, this package provides a stand-alone implementation that contains the core components of the source separation algorithm. However, the development of this package is part of the [LSST Science Pipeline](https://pipelines.lsst.io);  the [meas_deblender](https://github.com/lsst/meas_deblender) package contains a wrapper to implement the algorithms here for the LSST stack.
+The minimization itself uses the proximal gradient method (PGM). In short, we iteratively compute gradients of the likelihood (or of the posterior if priors are included), perform a downhill step, and project the outcome on a sub-manifold that satisfies one or multiple non-differentiable constraints for any of the sources.
+
+This package provides a stand-alone implementation that contains the core components of the source separation algorithm. However, the development of this package is part of the [LSST Science Pipeline](https://pipelines.lsst.io);  the [meas_deblender](https://github.com/lsst/meas_deblender) package contains a wrapper to implement the algorithms here for the LSST stack.
 
 The API is reasonably stable, but feel free to contact the authors [fred3m](https://github.com/fred3m) and [pmelchior](https://github.com/pmelchior) for guidance. For bug reports and feature request, open an issue.
 
-If you make use of scarlet, please acknowledge [Melchior et al. (2018)](https://doi.org/10.1016/j.ascom.2018.07.001), which describe in detail the concepts and algorithms used in this package:
+If you make use of scarlet, please acknowledge [Melchior et al. (2018)](https://doi.org/10.1016/j.ascom.2018.07.001), which describes in detail the concepts and algorithms used in this package:
 ```
 @ARTICLE{scarlet,
-   author = {{Melchior}, Peter and {Moolekamp}, Fred and {Jerdee}, Maximilian and {Armstrong}, Robsert and 
+   author = {{Melchior}, Peter and {Moolekamp}, Fred and {Jerdee}, Maximilian and {Armstrong}, Robert and
 	{Sun}, Ai-Lei and {Bosch}, James and {Lupton}, Robert},
     title = "{SCARLET: Source separation in multi-band images by Constrained Matrix Factorization}",
-  journal = "Astronomy and Computing",
+  journal = {Astronomy and Computing},
    volume = "24",
-    pages = "129 - 142",
+    pages = {129 - 142},
      year = "2018",
-     issn = "2213-1337",
-      doi = "https://doi.org/10.1016/j.ascom.2018.07.001",
-      url = "http://www.sciencedirect.com/science/article/pii/S2213133718300301",
- keywords = "Methods, Data analysis, Techniques, Image processing, Galaxies, Non-negative matrix factorization"
+     month = jul,
+     issn = {2213-1337},
+      doi = {10.1016/j.ascom.2018.07.001},
+      url = {http://www.sciencedirect.com/science/article/pii/S2213133718300301},
+ keywords = {Methods, Data analysis, Techniques, Image processing, Galaxies, Non-negative matrix factorization}
 archivePrefix = "arXiv",
    eprint = {1802.10157},
  primaryClass = "astro-ph.IM"
@@ -37,9 +41,9 @@ archivePrefix = "arXiv",
 
 ## Prerequisites
 
-The code runs on python>=2.7. In addition, you'll need
+The code runs on python>=3.5. In addition, you'll need
 
 * numpy
-* scipy
 * pybind11
+* autograd
 * [proxmin](https://github.com/pmelchior/proxmin)

@@ -1,8 +1,9 @@
 # convenience: get vanilla NMF and deblend wrapper directly within scarlet
-from proxmin import nmf as nmf
-from .constraint import *
+from . import operator
+from .bbox import *
+from .update import *
 from .component import *
 from .source import *
-from .blend import Blend
-from .config import Config
-from . import psf_match
+from .observation import *
+from .blend import *
+from . import psf
