@@ -227,6 +227,23 @@ Then navigate to the <cite>docs</cite> directory and type</p>
 </div>
 <p>and a local copy of the current docs will be available in the <cite>docs/_build/html</cite> folder.
 The home page is available at <cite>docs/_build/html/index.html</cite>.</p>
+<div class="section" id="updating-the-docs-scarlet-developers-only">
+<h2>Updating the Docs (<em>scarlet</em> developers only)<a class="headerlink" href="#updating-the-docs-scarlet-developers-only" title="Permalink to this headline">¶</a></h2>
+<p>This section is for updating the public docs hosted on github pages.
+First, MAKE SURE THAT YOU HAVE COMMITTED ALL OF YOUR CHANGES.
+The build process has to checkout the <cite>gh-pages</cite> branch behind the scenes and
+might fail if you have uncommitted changes.</p>
+<p>Navigate to the <cite>docs</cite> folder and execute <cite>make gh-pages</cite>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="o">&lt;</span><span class="n">pathToScarlet</span><span class="o">&gt;/</span><span class="n">docs</span>
+<span class="n">make</span> <span class="n">gh</span><span class="o">-</span><span class="n">pages</span>
+</pre></div>
+</div>
+<p>This will first build the docs in your <em>current</em> branch,
+which should usually be master unless the docs are broken and require a fix from another branch.
+Next it switches to the <cite>gh-pages</cite> branch and copies the html files into the base directory.
+The <cite>gh-pages</cite> branch has a special <cite>.gitignore</cite> to ignore all of the source files and only commits the
+changes to the docs, then pushes them to github.</p>
+</div>
 </div>
 
 
