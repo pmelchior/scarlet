@@ -46,6 +46,18 @@ If you already have a local version of Eigen_ and don't want to download the hea
     `build_ext` does not accept relative paths, so `<full path to your Eigen header files>`
     must be a full path.
 
+Building the Docs
+=================
+
+If you wish to build the docs you will need all of the optional dependencies installed.
+Then navigate to the `docs` directory and type
+::
+
+    make html
+
+and a local copy of the current docs will be available in the `docs/_build/html` folder.
+The home page is available at `docs/_build/html/index.html`.
+
 .. _numpy: http://www.numpy.org
 .. _proxmin: https://github.com/pmelchior/proxmin/tree/master/proxmin
 .. _pybind11: https://pybind11.readthedocs.io/en/stable/
