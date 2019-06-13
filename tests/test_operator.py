@@ -1,5 +1,7 @@
 import pytest
 import numpy as np
+import proxmin
+
 
 import scarlet
 
@@ -112,3 +114,93 @@ class TestProx(object):
         bulge_sed = np.arange(5)[::-1]
         new_sed = scarlet.operator.project_disk_sed(bulge_sed, disk_sed)
         np.testing.assert_array_equal(new_sed, [0, 5, 6, 7, 4])
+
+    def test_uncentered(self):
+        x = np.arange(35).reshape(5, 7) - 5
+        shape = x.shape
+
+        # Use a centered positivity function
+        truth = x.copy()
+        truth[x < 0] = 0
+        _x = x.copy()
+        scarlet.operator.uncentered_operator(_x, proxmin.operators.prox_plus, (2, 3), step=1)
+        np.testing.assert_array_equal(_x, truth)
+
+        # lower left positivity
+        truth = x.copy()
+        region = (slice(0, 3), slice(0, 5))
+        truth[region][x[region] < 0] = 0
+        _x = x.copy()
+        scarlet.operator.uncentered_operator(_x, proxmin.operators.prox_plus, (1, 2), step=1)
+        np.testing.assert_array_equal(_x, truth)
+
+        # lower right positivity
+        truth = x.copy()
+        region = (slice(0, 3), slice(-5, shape[1]))
+        truth[region][x[region] < 0] = 0
+        _x = x.copy()
+        scarlet.operator.uncentered_operator(_x, proxmin.operators.prox_plus, (1, shape[1]-3), step=1)
+        np.testing.assert_array_equal(_x, truth)
+
+        x = np.arange(35).reshape(5, 7)[::-1] - 5
+        # upper left positivity
+        truth = x.copy()
+        region = (slice(-3, shape[0]), slice(0, 5))
+        truth[region][x[region] < 0] = 0
+        _x = x.copy()
+        scarlet.operator.uncentered_operator(_x, proxmin.operators.prox_plus, (shape[0]-2, 2), step=1)
+        np.testing.assert_array_equal(_x, truth)
+
+        # upper right positivity
+        truth = x.copy()
+        region = (slice(-3, shape[0]), slice(-5, shape[1]))
+        truth[region][x[region] < 0] = 0
+        _x = x.copy()
+        scarlet.operator.uncentered_operator(_x, proxmin.operators.prox_plus,
+                                             (shape[0]-2, shape[1]-3), step=1)
+        np.testing.assert_array_equal(_x, truth)
+
+    def test_uncentered_fill(self):
+        x = np.arange(35).reshape(5, 7) - 5
+        shape = x.shape
+
+        # Use a centered positivity function
+        truth = np.zeros_like(x)
+        truth[x > 0] = x[x > 0]
+        _x = x.copy()
+        scarlet.operator.uncentered_operator(_x, proxmin.operators.prox_plus, (2, 3), step=1, fill=0)
+        np.testing.assert_array_equal(_x, truth)
+
+        # lower left positivity
+        truth = np.zeros_like(x)
+        region = (slice(0, 3), slice(0, 5))
+        truth[region][x[region] > 0] = x[region][x[region] > 0]
+        _x = x.copy()
+        scarlet.operator.uncentered_operator(_x, proxmin.operators.prox_plus, (1, 2), step=1, fill=0)
+        np.testing.assert_array_equal(_x, truth)
+
+        # lower right positivity
+        truth = np.zeros_like(x)
+        region = (slice(0, 3), slice(-5, shape[1]))
+        truth[region][x[region] > 0] = x[region][x[region] > 0]
+        _x = x.copy()
+        scarlet.operator.uncentered_operator(_x, proxmin.operators.prox_plus, (1, shape[1]-3), step=1, fill=0)
+        np.testing.assert_array_equal(_x, truth)
+
+        x = np.arange(35).reshape(5, 7)[::-1] - 5
+        # upper left positivity
+        truth = np.zeros_like(x)
+        region = (slice(-3, shape[0]), slice(0, 5))
+        truth[region][x[region] > 0] = x[region][x[region] > 0]
+        _x = x.copy()
+        scarlet.operator.uncentered_operator(_x, proxmin.operators.prox_plus, (shape[0]-2, 2), step=1, fill=0)
+        np.testing.assert_array_equal(_x, truth)
+
+        # upper right positivity
+        truth = np.zeros_like(x)
+        region = (slice(-3, shape[0]), slice(-5, shape[1]))
+        truth[region][x[region] > 0] = x[region][x[region] > 0]
+        _x = x.copy()
+        scarlet.operator.uncentered_operator(_x, proxmin.operators.prox_plus,
+                                             (shape[0]-2, shape[1]-3), step=1, fill=0)
+        np.testing.assert_array_equal(_x, truth)
