@@ -103,6 +103,14 @@ class BoundingBox(object):
     def copy(self):
         return BoundingBox((self.bottom, self.top, self.left, self.right))
 
+    def __eq__(self, other):
+        return all([
+            self.left == other.left,
+            self.right == other.right,
+            self.top == other.top,
+            self.bottom == other.bottom,
+        ])
+
 
 def trim(X, min_value=0):
     """Trim a tensor or array
