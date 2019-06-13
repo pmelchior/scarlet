@@ -79,7 +79,6 @@ def normalized(component, type='morph_max'):
     For `type='morph_max'` the morphology matrix is
     normalized so that its maximum value is one.
     """
-    assert type.lower() in ['sed', 'morph', 'morph_max']
     t = type.lower()
 
     if t == 'sed':

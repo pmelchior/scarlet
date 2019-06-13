@@ -5,11 +5,6 @@ import numpy as np
 
 import scarlet
 
-try:
-    import torch
-except ImportError:
-    pass
-
 
 class TestProx(object):
     def test_prox_monotonic(self):
@@ -75,10 +70,10 @@ class TestProx(object):
         result[2, 2] = .1
         np.testing.assert_array_equal(_X, result)
 
-    def test_prox_max(self):
+    def test_prox_max_unity(self):
         X = np.arange(11, dtype=float)
         _X = X.copy()
-        print(scarlet.operator.prox_max(_X, 0))
+        print(scarlet.operator.prox_max_unity(_X, 0))
         result = X/10
         np.testing.assert_array_equal(_X, result)
 
@@ -94,19 +89,18 @@ class TestProx(object):
         result = np.ones_like(X) * .1
         np.testing.assert_array_equal(_X, result)
 
-    @pytest.mark.skipif('torch' not in sys.modules, reason="pytorch is not installed")
     def test_soft_symmetry(self):
-        X = torch.arange(25, dtype=torch.float32).reshape(5, 5)
-        _X = X.clone()
+        X = np.arange(25, dtype=float).reshape(5, 5)
+        _X = X.copy()
         scarlet.operator.prox_soft_symmetry(_X, 0)
-        result = torch.ones_like(X) * 12
+        result = np.ones_like(X) * 12
         np.testing.assert_array_equal(_X, result)
 
-        _X = X.clone()
+        _X = X.copy()
         scarlet.operator.prox_soft_symmetry(_X, 0, 0)
         np.testing.assert_array_equal(_X, X)
 
-        _X = X.clone()
+        _X = X.copy()
         scarlet.operator.prox_soft_symmetry(_X, 0, .5)
         result = [[6.0, 6.5, 7.0, 7.5, 8.0],
                   [8.5, 9.0, 9.5, 10.0, 10.5],
