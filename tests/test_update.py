@@ -124,7 +124,7 @@ class TestUpdate(object):
         update.threshold(src)
         np.testing.assert_array_equal(src.sed, sed)
         np.testing.assert_array_almost_equal(src.morph, true_morph)
-        assert src.bboxes["thresh"] == scarlet.bbox.BoundingBox((7, 13, 7, 13))
+        assert src.bboxes["thresh"] == scarlet.bbox.Box((7, 7), 7, 7)
 
     def test_monotonic(self):
         morph = np.arange(25, dtype=float).reshape(5, 5)
