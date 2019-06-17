@@ -27,6 +27,18 @@ def double_gaussian(coords, y0, x0, A1, sigma1, A2, sigma2):
     return gaussian(coords, y0, x0, A1, sigma1) + gaussian(coords, y0, x0, A2, sigma2)
 
 
+def generate_psf_image(func, shape, center=None, *args, **kwargs):
+    """Generate a PSF image based on a function and shape
+    """
+    X = np.arange(shape[1])
+    Y = np.arange(shape[0])
+    X, Y = np.meshgrid(X, Y)
+    coords = np.stack([Y, X])
+    if center is None:
+        center = (shape[0]-1) // 2, (shape[1]-1) // 2
+    return func(coords, center[0], center[1], *args, **kwargs)
+
+
 def fit_target_psf(psfs, func, init_values=None, extract_values=None):
     """Build a target PSF from a collection of psfs
 

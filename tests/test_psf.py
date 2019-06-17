@@ -1,6 +1,6 @@
 import numpy as np
 import scarlet
-from numpy.testing import assert_array_equal, assert_almost_equal
+from numpy.testing import assert_almost_equal
 
 
 class TestPsf(object):
@@ -92,6 +92,24 @@ class TestPsf(object):
                   1.4230484212789571, 1.4872678517124784, 1.4230484212789571]]
 
         assert_almost_equal(result, truth)
+
+    def test_generate_psf_image(self):
+        # Gaussian
+        psf = scarlet.psf.generate_psf_image(scarlet.psf.gaussian, (5, 5), amplitude=1, sigma=.5)
+        truth = [[0.0000001125, 0.0000453999, 0.0003354626, 0.0000453999, 0.0000001125],
+                 [0.0000453999, 0.0183156389, 0.1353352832, 0.0183156389, 0.0000453999],
+                 [0.0003354626, 0.1353352832, 1.0000000000, 0.1353352832, 0.0003354626],
+                 [0.0000453999, 0.0183156389, 0.1353352832, 0.0183156389, 0.0000453999],
+                 [0.0000001125, 0.0000453999, 0.0003354626, 0.0000453999, 0.0000001125]]
+        assert_almost_equal(psf, truth)
+        # Moffat, with center
+        psf = scarlet.psf.generate_psf_image(scarlet.psf.moffat, (5, 5), (1, 2), 1, 2.3)
+        truth = [[0.3686043413, 0.6181476401, 0.7712719551, 0.6181476401, 0.3686043413],
+                 [0.4296946407, 0.7712719551, 1.0000000000, 0.7712719551, 0.4296946407],
+                 [0.3686043413, 0.6181476401, 0.7712719551, 0.6181476401, 0.3686043413],
+                 [0.2511285197, 0.3686043413, 0.4296946407, 0.3686043413, 0.2511285197],
+                 [0.1555474694, 0.2035036860, 0.2252346302, 0.2035036860, 0.1555474694]]
+        assert_almost_equal(psf, truth)
 
     def test_fit_target_psf(self):
         shape = 21, 21

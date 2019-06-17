@@ -7,15 +7,6 @@ from scarlet.cache import Cache
 
 
 class TestUpdate(object):
-    def generate_gaussian(self, shape, center=None, amplitude=1, sigma=.5):
-        X = np.arange(shape[1])
-        Y = np.arange(shape[0])
-        X, Y = np.meshgrid(X, Y)
-        coords = np.stack([Y, X])
-        if center is None:
-            center = (shape[0]-1) // 2, (shape[1]-1) // 2
-        return scarlet.psf.gaussian(coords, center[0], center[1], amplitude, sigma)
-
     def test_pixel_center(self):
         morph = np.zeros((15, 15))
         morph[4, 7] = 1
@@ -114,7 +105,8 @@ class TestUpdate(object):
         np.random.seed(0)
         noise = np.random.rand(21, 21)*2  # noise background to eliminate
         signal = np.zeros(noise.shape)
-        signal[7:14, 7:14] = self.generate_gaussian((21, 21), amplitude=10, sigma=3)[7:14, 7:14]
+        func = scarlet.psf.gaussian
+        signal[7:14, 7:14] = scarlet.psf.generate_psf_image(func, (21, 21), amplitude=10, sigma=3)[7:14, 7:14]
         morph = signal + noise
         sed = np.arange(5)
         src = scarlet.Component(sed.copy(), morph.copy())
