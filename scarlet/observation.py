@@ -1,11 +1,25 @@
 import autograd.numpy as np
+from scipy import fftpack
 
 from . import resampling
-from . import interpolation
 
 import logging
 
 logger = logging.getLogger("scarlet.observation")
+
+
+def _centered(arr, newshape):
+    """Return the center newshape portion of the array.
+
+    This function is used by `fft_convolve` to remove
+    the zero padded region of the convolution.
+    """
+    newshape = np.asarray(newshape)
+    currshape = np.array(arr.shape)
+    startind = (currshape - newshape) // 2
+    endind = startind + newshape
+    myslice = [slice(startind[k], endind[k]) for k in range(len(endind))]
+    return arr[tuple(myslice)]
 
 
 class Scene():
@@ -31,7 +45,10 @@ class Scene():
 
         if psfs is not None:
             psfs = np.array(psfs)
-            psfs /= psfs.sum()
+            # Make sure that psf is always 3D
+            if len(psfs.shape) == 2:
+                psfs = psfs[None]
+            psfs = psfs / psfs.sum(axis=(1, 2))[:, None, None]
         self._psfs = psfs
         assert filtercurve is None or shape[0] == len(filtercurve)
         self.filtercurve = filtercurve
@@ -73,10 +90,12 @@ class Scene():
         then this just returns the `sky_coord`
         """
         if self.wcs is not None:
-            if np.size(self.wcs.array_shape) == 3:
+            if self.wcs.naxis == 3:
                 coord = self.wcs.wcs_world2pix(sky_coord[0], sky_coord[1], 0, 0)
-            elif np.size(self.wcs.array_shape) == 2:
+            elif self.wcs.naxis == 2:
                 coord = self.wcs.wcs_world2pix(sky_coord[0], sky_coord[1], 0)
+            else:
+                raise ValueError("Invalid number of wcs dimensions: {0}".format(self.wcs.naxis))
             return (coord[0].item(), coord[1].item())
 
         return [int(coord) for coord in sky_coord]
@@ -105,74 +124,60 @@ class Observation(Scene):
         prevent artifacts due to the FFT.
     """
 
-    def __init__(self, images, psfs=None, weights=None, wcs=None, filtercurve=None, padding=3, structure=None):
+    def __init__(self, images, psfs=None, weights=None, wcs=None, filtercurve=None, structure=None):
         super().__init__(images.shape, wcs=wcs, psfs=psfs, filtercurve=filtercurve)
 
         self.images = np.array(images)
-        self.padding = padding
         if weights is not None:
-            self._weights = np.array(weights)
+            self.weights = np.array(weights)
         else:
-            self._weights = 1
+            self.weights = 1
 
         self.structure = structure
 
     def match(self, scene):
+        """Match the psf in each observed band to the target PSF
+        """
+        if self.psfs is not None:
+            # First we setup the parameters for the model -> observation FFTs
+            # Make the PSF stamp wider due to errors when matching PSFs
+            psf_shape = np.array(self.psfs[0].shape) + 10
+            shape = np.array(scene.shape[1:]) + psf_shape - 1
+            # Choose the optimal shape for FFTPack DFT
+            self.fftpack_shape = [fftpack.helper.next_fast_len(d) for d in shape]
+            # Store the pre-fftpack optimization slices
+            self.slices = tuple([slice(s) for s in shape])
 
-        # 1) determine shape of scene in obs, set mask
-
-        # 2) compute the interpolation kernel between scene and obs
-
-        # 3) compute obs.psf in the frame of scene, store in Fourier space
-        # A few notes on this procedure:
-        # a) This assumes that scene.psfs and self.psfs have the same spatial shape,
-        #    which will need to be modified for multi-resolution datasets
-        if self._psfs is not None:
-            ipad, ppad = interpolation.get_common_padding(self.images, self._psfs, padding=self.padding)
-            self.image_padding, self.psf_padding = ipad, ppad
-            _psfs = np.pad(self._psfs, ((0, 0), *self.psf_padding), 'constant')
-            _target = np.pad(scene._psfs, self.psf_padding, 'constant')
-
-            new_kernel_fft = []
+            # Now we setup the parameters for the psf -> kernel FFTs
+            shape = np.array(scene.psfs[0].shape) + np.array(self.psfs[0].shape) - 1
+            fftpack_shape = [fftpack.helper.next_fast_len(d) for d in shape]
             # Deconvolve the target PSF
-            target_fft = np.fft.fft2(np.fft.ifftshift(_target))
+            target_fft = np.fft.rfftn(scene.psfs[0], fftpack_shape)
 
-            for _psf in _psfs:
-                observed_fft = np.fft.fft2(np.fft.ifftshift(_psf))
-                # Create the matching kernel
-                kernel_fft = observed_fft / target_fft
-                # Take the inverse Fourier transform to normalize the result
-                # Trials without this operation are slow to converge, but in the future
-                # we may be able to come up with a method to normalize in the Fourier Transform
-                # and avoid this step.
-                kernel = np.fft.ifft2(kernel_fft)
-                kernel = np.fft.fftshift(np.real(kernel))
-                kernel /= kernel.sum()
-                # Store the Fourier transform of the matching kernel
-                new_kernel_fft.append(np.fft.fft2(np.fft.ifftshift(kernel)))
+            # Match the PSF in each band
+            new_kernel_fft = []
+            kernels = []
+            for psf in self.psfs:
+                _psf_fft = np.fft.rfftn(psf, fftpack_shape)
+                kernel = np.fft.ifftshift(np.fft.irfftn(_psf_fft / target_fft, fftpack_shape))
+                kernel *= scene.psfs[0].sum()
+                if kernel.shape[0] % 2 == 0:
+                    kernel = kernel[1:, 1:]
+                kernel = _centered(kernel, psf_shape)
+                kernels.append(kernel)
+                new_kernel_fft.append(np.fft.rfftn(kernel, self.fftpack_shape))
+
             self.psfs_fft = np.array(new_kernel_fft)
+            self.kernels = np.array(kernels)
 
         return self
-
-    @property
-    def weights(self):
-        if self._weights is None:
-            return None
-        elif self._weights == 1:
-            return self._weights
-        return self._weights
 
     def _convolve_band(self, model, psf_fft):
         """Convolve the model in a single band
         """
-        _model = np.pad(model, self.image_padding, 'constant')
-        model_fft = np.fft.fft2(np.fft.ifftshift(_model))
-        convolved_fft = model_fft * psf_fft
-        convolved = np.fft.ifft2(convolved_fft)
-        result = np.fft.fftshift(np.real(convolved))
-        (bottom, top), (left, right) = self.image_padding
-        result = result[bottom:-top, left:-right]
-        return result
+        model_fft = np.fft.rfftn(model, self.fftpack_shape)
+        convolved = np.fft.irfftn(model_fft * psf_fft, self.fftpack_shape)[self.slices]
+        return _centered(convolved, model.shape)
 
     def get_model(self, model):
         """Resample and convolve a model to the observation frame
@@ -208,25 +213,7 @@ class Observation(Scene):
 
         model = self.get_model(model)
 
-        return 0.5 * np.sum((self._weights * (model - self.images)) ** 2)
-
-    def get_scene(self, scene):
-        """Reproject and resample the image in some other data frame
-        This is currently only supported to return `images` when the data
-        scene and target scene are the same.
-        Parameters
-        ----------
-        scene: `~scarlet.observation.Scene`
-            The target data frame.
-        Returns
-        -------
-        images: array
-            The image cube in the target `scene`.
-        """
-        if self.wcs is not None or scene.shape != self.shape:
-            msg = "get_scene is currently only supported when the observation frame matches the scene"
-            raise NotImplementedError(msg)
-        return self.images
+        return 0.5 * np.sum((self.weights * (model - self.images)) ** 2)
 
 
 class LowResObservation(Scene):
@@ -264,9 +251,9 @@ class LowResObservation(Scene):
         self.padding = padding
 
         if weights is not None:
-            self._weights = np.array(weights)
+            self.weights = np.array(weights)
         else:
-            self._weights = 1
+            self.weights = 1
 
         self.target_psf = target_psf
 
@@ -396,5 +383,5 @@ class LowResObservation(Scene):
         if self._psfs is not None:
             model = self.get_model(model)
 
-        return 0.5 * np.sum((self._weights * (
+        return 0.5 * np.sum((self.weights * (
                 model - self.images[:, self._coord_lr[0].astype(int), self._coord_lr[1].astype(int)])) ** 2)

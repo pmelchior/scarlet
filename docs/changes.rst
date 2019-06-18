@@ -2,6 +2,21 @@
 0.6 (unreleased)
 ----------------
 
+General
+^^^^^^^
+
+- Use real Fast Fourier Transforms for convolutions to save time and mimmick scipy.signal.convolve,
+  with the benefit that we cache `psf_fft`.
+
+New Features
+^^^^^^^^^^^^
+None
+
+API Changes
+^^^^^^^^^^^
+
+- `Scene.psfs` is now always `3D`, even for the target PSF, to make the API more uniform.
+
 0.5 (2019-6-11)
 ---------------
 
