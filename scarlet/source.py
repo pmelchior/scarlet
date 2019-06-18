@@ -322,13 +322,13 @@ class PointSource(Component):
             morph[pixel] = 1
         else:
             # A point source is a function of the target PSF
-            assert len(scene.psfs.shape) == 2
+            assert len(scene.psfs[0].shape) == 2
             py, px = pixel
-            sy, sx = (np.array(scene.psfs.shape) - 1) // 2
+            sy, sx = (np.array(scene.psfs[0].shape) - 1) // 2
             cy, cx = (np.array(morph.shape) - 1) // 2
             yx0 = int(py - cy - sy), int(px - cx - sx)
-            bb, ibb, _ = get_projection_slices(scene.psfs, morph.shape, yx0)
-            morph[bb] = scene.psfs[ibb]
+            bb, ibb, _ = get_projection_slices(scene.psfs[0], morph.shape, yx0)
+            morph[bb] = scene.psfs[0][ibb]
 
         self.pixel_center = pixel
 
