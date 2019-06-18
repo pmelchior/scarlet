@@ -51,6 +51,8 @@ class Prior():
     def __init__(self, grad_func, L_func):
         self._grad_func = grad_func
         self._L_func = L_func
+        self.sed_grad = 0
+        self.morph_grad = 0
 
     # can be overloaded but needs to set these 4 members
     # for batch processing: cache results with c as key
@@ -61,8 +63,8 @@ class Prior():
         it during fitting to calculate the gradient update
         for the component due to the prior.
         """
-        self.grad_morph, self.grad_sed = self._grad_func(component._morph, component._sed)
-        self.L_morph, self.L_sed = self._L_func(component._morph, component._sed)
+        self.sed_grad, self.morph_grad = self._grad_func(component._sed, component._morph)
+        self.L_sed, self.L_morph = self._L_func(component._sed, component._morph)
 
 
 class Component():
@@ -93,6 +95,8 @@ class Component():
         self.sed_grad = 0
         self.morph_grad = 0
         self.prior = prior
+        self.L_sed = 1
+        self.L_morph = 1
         # Initially the component has not converged
         self.flags = BlendFlag.SED_NOT_CONVERGED | BlendFlag.MORPH_NOT_CONVERGED
         # Store the SED and morphology from the previous iteration
@@ -168,12 +172,12 @@ class Component():
         """
         if self.prior is not None:
             self.prior.compute_grad(self)
-            if self.morph.requires_grad:
-                self.morph_grad += self.prior.grad_morph
+            if not self.fix_morph:
+                self.morph_grad += self.prior.morph_grad
                 self.L_morph += self.prior.L_morph
-            if self.sed.requires_grad:
-                self.morph_grad += self.prior.grad_morph
-                self.L_morph += self.prior.L_morph
+            if not self.fix_sed:
+                self.sed_grad += self.prior.sed_grad
+                self.L_sed += self.prior.L_sed
 
     def update(self):
         """Update the component
