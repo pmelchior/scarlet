@@ -80,7 +80,6 @@
             
               <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="install.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="install.html#building-the-docs">Building the Docs</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Quick Start Guide</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#Load-and-display-the-sample-data">Load and display the sample data</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#Load-the-sample-data-and-source-catalog">Load the sample data and source catalog</a></li>
@@ -100,7 +99,6 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="user_docs.html">User Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tutorials.html">Tutorials</a></li>
-<li class="toctree-l1"><a class="reference internal" href="diagnostics.html">Diagnostics</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api_docs.html">API Documentation</a></li>
 </ul>
 
@@ -625,14 +623,15 @@ scarlet ran for 200 iterations
     <span class="n">has_truth</span> <span class="o">=</span> <span class="bp">False</span>
     <span class="n">axes</span> <span class="o">=</span> <span class="mi">2</span>
 
+<span class="c1"># Set the stretch based on the model</span>
+<span class="n">stretch</span> <span class="o">=</span> <span class="o">.</span><span class="mi">3</span>
+<span class="n">Q</span> <span class="o">=</span> <span class="mi">10</span>
+<span class="n">norm</span> <span class="o">=</span> <span class="n">AsinhMapping</span><span class="p">(</span><span class="n">minimum</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">stretch</span><span class="o">=</span><span class="n">stretch</span><span class="p">,</span> <span class="n">Q</span><span class="o">=</span><span class="n">Q</span><span class="p">)</span>
+
 <span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">src</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">blend</span><span class="o">.</span><span class="n">components</span><span class="p">):</span>
     <span class="c1"># Get the model for a single source</span>
     <span class="n">_model</span> <span class="o">=</span> <span class="n">src</span><span class="o">.</span><span class="n">get_model</span><span class="p">()</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">observations</span><span class="o">.</span><span class="n">get_model</span><span class="p">(</span><span class="n">_model</span><span class="p">)</span>
-    <span class="c1"># Set the stretch based on the model</span>
-    <span class="n">stretch</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">*</span> <span class="o">.</span><span class="mo">05</span>
-    <span class="n">Q</span> <span class="o">=</span> <span class="mi">10</span>
-    <span class="n">norm</span> <span class="o">=</span> <span class="n">AsinhMapping</span><span class="p">(</span><span class="n">minimum</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">stretch</span><span class="o">=</span><span class="n">stretch</span><span class="p">,</span> <span class="n">Q</span><span class="o">=</span><span class="n">Q</span><span class="p">)</span>
     <span class="n">model_rgb</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">display</span><span class="o">.</span><span class="n">img_to_rgb</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">)</span>
     <span class="c1"># Get the patch from the original image</span>
     <span class="n">img_rgb</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">display</span><span class="o">.</span><span class="n">img_to_rgb</span><span class="p">(</span><span class="n">images</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">)</span>

@@ -80,7 +80,6 @@
             
               <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../install.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../install.html#building-the-docs">Building the Docs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quick Start Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../user_docs.html">User Guide</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="../tutorials.html">Tutorials</a><ul class="current">
@@ -95,7 +94,6 @@
 <li class="toctree-l2"><a class="reference internal" href="multiresolution.html">Multi-resolution Deblending</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="../diagnostics.html">Diagnostics</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_docs.html">API Documentation</a></li>
 </ul>
 
@@ -592,8 +590,8 @@ extended sources are partially deconvolved. It also means that we have to be car
 <div class="output_area docutils container">
 <div class="highlight"><pre>
 Fit for 167 iterations
-CPU times: user 13.8 s, sys: 76.7 ms, total: 13.9 s
-Wall time: 3.47 s
+CPU times: user 13.3 s, sys: 211 ms, total: 13.6 s
+Wall time: 3.39 s
 </pre></div></div>
 </div>
 <div class="nbinput docutils container">
@@ -692,7 +690,7 @@ Wall time: 3.47 s
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-Total residual 138374.54674747944
+Total residual 138374.54026429704
 </pre></div></div>
 </div>
 <p>The dipoles we see at the center of the stellar sources is because the catalog offset the centers of all the sources by a random amount and by fixing the morphology we also cannot adjust the position, which also caused the code to require a greater number of iterations for convergence. A future version of <em>scarlet</em> will hopefully address this unfortunate side effect of fitting PSF stars.</p>
