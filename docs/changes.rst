@@ -1,4 +1,61 @@
-0.5 (unreleased)
+
+0.6 (unreleased)
+----------------
+
+0.5 (2019-6-11)
+---------------
+
+General
+^^^^^^^
+
+- Completely restructured code, including using `autograd` package to calculate gradients.
+- PSF convolutions are now performed on the model of the entire blend as opposed to
+  individually for each source.
+- It is possible to perform deblending on images with different orientations and resolutions.
+- Updates to all of the docs and tutorials to match the new API.
+
+New Features
+^^^^^^^^^^^^
+- Multi-resolution deblending.
+- A `BoundingBox` container to define rectangular regions in the pixel grid, a `trim` function
+  to strip away all pixels lower than a cutoff value, and a `flux_at_edge` method to determine if
+  a model has flux on the edge of the image.
+- A `Scene` class to handle the metadata for the deblended model.
+- An `Observation` class to provide mappings from the model scene to a set
+  of observations with potentially multiple filter bands.
+- A `LowResObservation` class for observations with lower resolution than the blended model,
+  requiring resampling and reprojection.
+- A `BlendFlag` has been introduced to keep track of things that might have gone wrong
+  while debending.
+- A gradient `Prior` class has been created to allow users to update the gradient of a parameter
+  in a source or `Component`.
+- Color normalization imports from `astropy.visualization`, with the addition of `img_to_channels` to
+  map any number of filter bands to an RGB that can be displayed.
+- A `CombinedExtendedSource` initializes sources with multiple observations at different pixel
+  resolutions.
+
+API Changes
+^^^^^^^^^^^
+- `Component` is now the base class for sources and `Source` has been removed
+  `PointSource`, `ExtendedSource`, and `MultiComponentSource` are now inherited from `Component`.
+- The `Constraint` class and module were removed in place of an update method that
+  has been added to `Component`s (and thus sources). User defined constraints should now inherit
+  from `Component` or one of its subclasses and overwrite the `update` method. Constraints are
+  now applied using functions from the `scarlet.update` module or similar user defined update
+  functions.
+- `get_model` has been simplified for `ComponentTree` and `Components` to always return the
+  entire scene with the component added in place, using the `Scene` target `PSF`. To get a
+  model in the same space as observations requires calling `Observation.get_model` and passing
+  the high resolution/best seeing model.
+- `Blend` no longer fits for source positions. Instead it is up to the user to implement a
+  centering algorithm, such as centroiding or the `scarlet.update.fix_pixel_center`.
+- The old `resampling.py` module has been renamed `interpolation.py` and a new `resampling.py`
+  used for multi-resolution resampling/reprojection.
+- Sources and components are no longer centered in a small patch that is reprojected
+  into the model frame. Instead components can exist anywhere on an image and constraints that
+  require a center, such as symmetry and monotonicity, can use the new `uncentered_operator` method.
+
+0.45 (2019-3-27)
 ----------------
 
 General

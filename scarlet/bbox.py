@@ -121,7 +121,7 @@ def trim(X, min_value=0):
     bbox: `BoundingBox`
         Bounding box for the trimmed `result` (bottom, top, left, right)
     """
-    nonzero = np.where(X > 0)
+    nonzero = np.where(X > min_value)
     left = nonzero[1].min()
     right = nonzero[1].max()
     bottom = nonzero[0].min()

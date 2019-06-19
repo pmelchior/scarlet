@@ -269,6 +269,18 @@ class ComponentTree():
         return self.components[0].B
 
     @property
+    def Ny(self):
+        """Number of pixels in the y-direction
+        """
+        return np.max([comp.Ny for comp in self.components])
+
+    @property
+    def Nx(self):
+        """Number of pixels in the y-direction
+        """
+        return np.max([comp.Nx for comp in self.components])
+
+    @property
     def nodes(self):
         """Initial list that generates the tree.
 

@@ -30,7 +30,6 @@ Getting Started
    quickstart
    user_docs
    tutorials
-   diagnostics
    api_docs
 
 Change Log

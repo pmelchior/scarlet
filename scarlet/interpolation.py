@@ -185,7 +185,7 @@ def cubic_spline(dx, a=1, b=0):
     if np.abs(dx) > 1:
         raise ValueError("The fractional shift dx must be between -1 and 1")
 
-    def inner(x, a, b):
+    def inner(x):
         """Cubic from 0<=abs(x)<=1
         """
         third = (-6 * a - 9 * b + 12) * x ** 3
@@ -193,7 +193,7 @@ def cubic_spline(dx, a=1, b=0):
         zero = -2 * b + 6
         return (zero + second + third) / 6
 
-    def outer(x, a, b):
+    def outer(x):
         """Cubic from 1<=abs(x)<=2
         """
         third = (-6 * a - b) * x ** 3
@@ -203,12 +203,11 @@ def cubic_spline(dx, a=1, b=0):
         return (zero + first + second + third) / 6
 
     window = np.arange(-1, 3) + np.floor(dx)
-    result = np.zeros(window.shape)
-    _x = np.abs(dx - window)
-    outer_cut = (_x > 1) & (_x < 2)
-    inner_cut = _x <= 1
-    result[outer_cut] = outer(_x[outer_cut], a, b)
-    result[inner_cut] = inner(_x[inner_cut], a, b)
+    x = np.abs(dx - window)
+    result = np.piecewise(x,
+                          [x <= 1, (x > 1) & (x < 2)],
+                          [lambda x:inner(x), lambda x:outer(x)])
+
     return result, np.array(window).astype(int)
 
 
@@ -262,15 +261,10 @@ def quintic_spline(dx, dtype=np.float64):
         return (x - 2) * (x - 3) ** 2 / 24 * (-54 + 50 * x - 11 * x ** 2)
 
     window = np.arange(-3, 4)
-    abs_x = np.abs(dx - window)
-    inner_cut = abs_x <= 1
-    middle_cut = (abs_x <= 2) & (abs_x > 1)
-    outer_cut = (abs_x <= 3) & (abs_x > 2)
-
-    result = np.zeros(7, dtype=dtype)
-    result[inner_cut] = inner(abs_x[inner_cut])
-    result[middle_cut] = middle(abs_x[middle_cut])
-    result[outer_cut] = outer(abs_x[outer_cut])
+    x = np.abs(dx - window)
+    result = np.piecewise(x,
+                          [x <= 1, (x > 1) & (x <= 2), (x > 2) & (x <= 3)],
+                          [lambda x:inner(x), lambda x:middle(x), lambda x:outer(x)])
     return result, window
 
 

@@ -4,7 +4,6 @@ from .component import Component, ComponentTree
 from . import operator
 from . import update
 from .interpolation import get_projection_slices
-from .observation import LowResObservation
 
 import logging
 
@@ -185,7 +184,7 @@ def init_extended_source(sky_coord, scene, observations, bg_rms, obs_idx=0,
     morph[~mask] = 0
 
     # normalize to unity at peak pixel
-    cy, cx = center
+    cy, cx = np.array(center).astype(int)
     center_morph = morph[cy, cx]
     morph /= center_morph
     return sed, morph
@@ -327,7 +326,7 @@ class PointSource(Component):
             py, px = pixel
             sy, sx = (np.array(scene.psfs.shape) - 1) // 2
             cy, cx = (np.array(morph.shape) - 1) // 2
-            yx0 = py - cy - sy, px - cx - sx
+            yx0 = int(py - cy - sy), int(px - cx - sx)
             bb, ibb, _ = get_projection_slices(scene.psfs, morph.shape, yx0)
             morph[bb] = scene.psfs[ibb]
 
@@ -496,6 +495,7 @@ class MultiComponentSource(ComponentTree):
             def __init__(self, sed, morph, symmetric, monotonic, **kwargs):
                 self.symmetric = symmetric
                 self.monotonic = monotonic
+                self.pixel_center = scene.get_pixel(sky_coord)
                 super().__init__(sed, morph, **kwargs)
 
             def update(self):
