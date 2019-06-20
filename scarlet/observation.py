@@ -98,7 +98,7 @@ class Scene():
                 raise ValueError("Invalid number of wcs dimensions: {0}".format(self.wcs.naxis))
             return (coord[0].item(), coord[1].item())
 
-        return [int(coord) for coord in sky_coord]
+        return tuple(int(coord) for coord in sky_coord)
 
 
 class Observation(Scene):
