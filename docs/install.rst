@@ -47,7 +47,7 @@ If you already have a local version of Eigen_ and don't want to download the hea
     must be a full path.
 
 Building the Docs
-=================
+-----------------
 
 If you wish to build the docs you will need all of the optional dependencies installed.
 Then navigate to the `docs` directory and type
@@ -59,7 +59,7 @@ and a local copy of the current docs will be available in the `docs/_build/html`
 The home page is available at `docs/_build/html/index.html`.
 
 Updating the Docs (*scarlet* developers only)
----------------------------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 This section is for updating the public docs hosted on github pages.
 First, MAKE SURE THAT YOU HAVE COMMITTED ALL OF YOUR CHANGES.
 The build process has to checkout the `gh-pages` branch behind the scenes and
