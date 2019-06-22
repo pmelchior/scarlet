@@ -96,7 +96,7 @@ class Scene():
                 coord = self.wcs.wcs_world2pix(sky_coord[0], sky_coord[1], 0)
             else:
                 raise ValueError("Invalid number of wcs dimensions: {0}".format(self.wcs.naxis))
-            return (coord[0].item(), coord[1].item())
+            return (int(coord[0].item()), int(coord[1].item()))
 
         return tuple(int(coord) for coord in sky_coord)
 
