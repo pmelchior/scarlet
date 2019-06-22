@@ -28,7 +28,6 @@
   <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Blend (scarlet.blend)" href="blend.html" />
     <link rel="prev" title="API Documentation" href="api_docs.html" /> 
 
   
@@ -80,12 +79,16 @@
             
               <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="install.html#building-the-docs">Building the Docs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="user_docs.html">User Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tutorials.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="diagnostics.html">Diagnostics</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="api_docs.html">API Documentation</a><ul class="current">
 <li class="toctree-l2 current"><a class="current reference internal" href="#">Bounding Boxes (<code class="docutils literal notranslate"><span class="pre">scarlet.bbox</span></code>)</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#module-scarlet.bbox">Reference/API</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#module-scarlet.bbox">Reference/API</a><ul class="simple">
+</ul>
+</li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="blend.html">Blend (<code class="docutils literal notranslate"><span class="pre">scarlet.blend</span></code>)</a></li>
@@ -193,13 +196,13 @@
 </style>
 <div class="section" id="Bounding-Boxes-(scarlet.bbox)">
 <h1>Bounding Boxes (<a class="reference internal" href="#"><span class="doc">scarlet.bbox</span></a>)<a class="headerlink" href="#Bounding-Boxes-(scarlet.bbox)" title="Permalink to this headline">¶</a></h1>
-<p><a class="reference internal" href="#"><span class="doc">scarlet.bbox</span></a> contains the <a class="reference internal" href="#scarlet.bbox.BoundingBox"><span class="std std-ref">scarlet.bbox.BoundingBox</span></a> class, which defines a rectangular pixel region in an image. Components and sources that require a bounding box are advised to create or add a new entry into the <code class="docutils literal notranslate"><span class="pre">Component.bboxes</span></code> dictionary, allowing different updates to use different bounding boxes for different purposes. For example, the soon to be released code that fits sources to existing galaxy profiles always uses a
+<p><a class="reference internal" href="#"><span class="doc">scarlet.bbox</span></a> contains the scarlet.bbox.BoundingBox class, which defines a rectangular pixel region in an image. Components and sources that require a bounding box are advised to create or add a new entry into the <code class="docutils literal notranslate"><span class="pre">Component.bboxes</span></code> dictionary, allowing different updates to use different bounding boxes for different purposes. For example, the soon to be released code that fits sources to existing galaxy profiles always uses a
 <span class="math notranslate nohighlight">\(60\times60\)</span> pixel bounding box whereas symmetry and monotonicity should be used in the smallest bounding box allowed, which is defined as <code class="docutils literal notranslate"><span class="pre">component.bboxes[&quot;thresh&quot;]</span></code> if the <a class="reference internal" href="update.html#scarlet.update.threshold"><span class="std std-ref">threshold</span></a> update method is executed.</p>
 <div class="section" id="module-scarlet.bbox">
 <span id="Reference/API"></span><h2>Reference/API<a class="headerlink" href="#module-scarlet.bbox" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
-<dt id="scarlet.bbox.BoundingBox">
-<em class="property">class </em><code class="descclassname">scarlet.bbox.</code><code class="descname">BoundingBox</code><span class="sig-paren">(</span><em>bounds=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/bbox.html#BoundingBox"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.bbox.BoundingBox" title="Permalink to this definition">¶</a></dt>
+<dt id="scarlet.bbox.Box">
+<em class="property">class </em><code class="descclassname">scarlet.bbox.</code><code class="descname">Box</code><span class="sig-paren">(</span><em>yx0</em>, <em>height</em>, <em>width</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/bbox.html#Box"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.bbox.Box" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bounding Box for an object</p>
 <p>This is just a container with convenience methods to generate
 slices and properties for the portion of an array/tensor
@@ -209,25 +212,39 @@ contained in the bounding box.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first docutils">
-<dt><strong>bounds: tuple of int</strong></dt>
-<dd><p class="first last">Tuple of integers for the <cite>(bottom, top, left, right)</cite> sides
-of the box. If <cite>bounds</cite> is none then the <cite>BoundingBox</cite> is unbounded.</p>
+<dt><strong>yx0: tuple</strong></dt>
+<dd><p class="first last">Minimum (y,x) value of the box (lower left corner).</p>
+</dd>
+<dt><strong>height: int</strong></dt>
+<dd><p class="first last">Height of the box.</p>
+</dd>
+<dt><strong>width: int</strong></dt>
+<dd><p class="first last">Width of the box</p>
 </dd>
 </dl>
 </td>
 </tr>
 <tr class="field-even field"><th class="field-name">Attributes:</th><td class="field-body"><dl class="first last docutils">
-<dt><a class="reference internal" href="#scarlet.bbox.BoundingBox.height" title="scarlet.bbox.BoundingBox.height"><code class="xref py py-obj docutils literal notranslate"><span class="pre">height</span></code></a></dt>
-<dd><p class="first last">Height of the bounding box</p>
+<dt><a class="reference internal" href="#scarlet.bbox.Box.bottom" title="scarlet.bbox.Box.bottom"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bottom</span></code></a></dt>
+<dd><p class="first last">Minimum y value</p>
 </dd>
-<dt><a class="reference internal" href="#scarlet.bbox.BoundingBox.shape" title="scarlet.bbox.BoundingBox.shape"><code class="xref py py-obj docutils literal notranslate"><span class="pre">shape</span></code></a></dt>
+<dt><a class="reference internal" href="#scarlet.bbox.Box.is_empty" title="scarlet.bbox.Box.is_empty"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_empty</span></code></a></dt>
+<dd><p class="first last">Whether the box has a width and height</p>
+</dd>
+<dt><a class="reference internal" href="#scarlet.bbox.Box.left" title="scarlet.bbox.Box.left"><code class="xref py py-obj docutils literal notranslate"><span class="pre">left</span></code></a></dt>
+<dd><p class="first last">Minimum x value</p>
+</dd>
+<dt><a class="reference internal" href="#scarlet.bbox.Box.right" title="scarlet.bbox.Box.right"><code class="xref py py-obj docutils literal notranslate"><span class="pre">right</span></code></a></dt>
+<dd><p class="first last">Maximum x value</p>
+</dd>
+<dt><a class="reference internal" href="#scarlet.bbox.Box.shape" title="scarlet.bbox.Box.shape"><code class="xref py py-obj docutils literal notranslate"><span class="pre">shape</span></code></a></dt>
 <dd><p class="first last">Shape of the image contained in this bounding box</p>
 </dd>
-<dt><a class="reference internal" href="#scarlet.bbox.BoundingBox.slices" title="scarlet.bbox.BoundingBox.slices"><code class="xref py py-obj docutils literal notranslate"><span class="pre">slices</span></code></a></dt>
+<dt><a class="reference internal" href="#scarlet.bbox.Box.slices" title="scarlet.bbox.Box.slices"><code class="xref py py-obj docutils literal notranslate"><span class="pre">slices</span></code></a></dt>
 <dd><p class="first last">Slices for this bounding box</p>
 </dd>
-<dt><a class="reference internal" href="#scarlet.bbox.BoundingBox.width" title="scarlet.bbox.BoundingBox.width"><code class="xref py py-obj docutils literal notranslate"><span class="pre">width</span></code></a></dt>
-<dd><p class="first last">Width of the bounding box</p>
+<dt><a class="reference internal" href="#scarlet.bbox.Box.top" title="scarlet.bbox.Box.top"><code class="xref py py-obj docutils literal notranslate"><span class="pre">top</span></code></a></dt>
+<dd><p class="first last">Maximum y value</p>
 </dd>
 </dl>
 </td>
@@ -235,6 +252,17 @@ of the box. If <cite>bounds</cite> is none then the <cite>BoundingBox</cite> is 
 </tbody>
 </table>
 <p class="rubric">Methods</p>
+<table border="1" class="longtable docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td><a class="reference internal" href="#scarlet.bbox.Box.from_bounds" title="scarlet.bbox.Box.from_bounds"><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_bounds</span></code></a>(bottom,&nbsp;top,&nbsp;left,&nbsp;right)</td>
+<td>Initialize a box from its bounds</td>
+</tr>
+</tbody>
+</table>
 <table border="1" class="docutils">
 <colgroup>
 <col width="44%" />
@@ -247,35 +275,88 @@ of the box. If <cite>bounds</cite> is none then the <cite>BoundingBox</cite> is 
 </tbody>
 </table>
 <dl class="attribute">
-<dt id="scarlet.bbox.BoundingBox.height">
-<code class="descname">height</code><a class="headerlink" href="#scarlet.bbox.BoundingBox.height" title="Permalink to this definition">¶</a></dt>
-<dd><p>Height of the bounding box</p>
+<dt id="scarlet.bbox.Box.bottom">
+<code class="descname">bottom</code><a class="headerlink" href="#scarlet.bbox.Box.bottom" title="Permalink to this definition">¶</a></dt>
+<dd><p>Minimum y value</p>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="scarlet.bbox.Box.from_bounds">
+<em class="property">static </em><code class="descname">from_bounds</code><span class="sig-paren">(</span><em>bottom</em>, <em>top</em>, <em>left</em>, <em>right</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/bbox.html#Box.from_bounds"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.bbox.Box.from_bounds" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize a box from its bounds</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first docutils">
+<dt><strong>bottom: int</strong></dt>
+<dd><p class="first last">Minimum in the y direction.</p>
+</dd>
+<dt><strong>top: int</strong></dt>
+<dd><p class="first last">Maximum in the y direction.</p>
+</dd>
+<dt><strong>left: int</strong></dt>
+<dd><p class="first last">Minimum in the x direction.</p>
+</dd>
+<dt><strong>right: int</strong></dt>
+<dd><p class="first last">Maximum in the x direction.</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first last docutils">
+<dt><strong>result: `Box`</strong></dt>
+<dd><p class="first last">A new box bounded by the input bounds.</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="attribute">
-<dt id="scarlet.bbox.BoundingBox.shape">
-<code class="descname">shape</code><a class="headerlink" href="#scarlet.bbox.BoundingBox.shape" title="Permalink to this definition">¶</a></dt>
+<dt id="scarlet.bbox.Box.is_empty">
+<code class="descname">is_empty</code><a class="headerlink" href="#scarlet.bbox.Box.is_empty" title="Permalink to this definition">¶</a></dt>
+<dd><p>Whether the box has a width and height</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="scarlet.bbox.Box.left">
+<code class="descname">left</code><a class="headerlink" href="#scarlet.bbox.Box.left" title="Permalink to this definition">¶</a></dt>
+<dd><p>Minimum x value</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="scarlet.bbox.Box.right">
+<code class="descname">right</code><a class="headerlink" href="#scarlet.bbox.Box.right" title="Permalink to this definition">¶</a></dt>
+<dd><p>Maximum x value</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="scarlet.bbox.Box.shape">
+<code class="descname">shape</code><a class="headerlink" href="#scarlet.bbox.Box.shape" title="Permalink to this definition">¶</a></dt>
 <dd><p>Shape of the image contained in this bounding box</p>
 <p>This is really just (height, width).</p>
 </dd></dl>
 
 <dl class="attribute">
-<dt id="scarlet.bbox.BoundingBox.slices">
-<code class="descname">slices</code><a class="headerlink" href="#scarlet.bbox.BoundingBox.slices" title="Permalink to this definition">¶</a></dt>
+<dt id="scarlet.bbox.Box.slices">
+<code class="descname">slices</code><a class="headerlink" href="#scarlet.bbox.Box.slices" title="Permalink to this definition">¶</a></dt>
 <dd><p>Slices for this bounding box</p>
 </dd></dl>
 
 <dl class="attribute">
-<dt id="scarlet.bbox.BoundingBox.width">
-<code class="descname">width</code><a class="headerlink" href="#scarlet.bbox.BoundingBox.width" title="Permalink to this definition">¶</a></dt>
-<dd><p>Width of the bounding box</p>
+<dt id="scarlet.bbox.Box.top">
+<code class="descname">top</code><a class="headerlink" href="#scarlet.bbox.Box.top" title="Permalink to this definition">¶</a></dt>
+<dd><p>Maximum y value</p>
 </dd></dl>
 
 </dd></dl>
 
 <dl class="function">
 <dt id="scarlet.bbox.flux_at_edge">
-<code class="descclassname">scarlet.bbox.</code><code class="descname">flux_at_edge</code><span class="sig-paren">(</span><em>X</em>, <em>min_value</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/bbox.html#flux_at_edge"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.bbox.flux_at_edge" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">scarlet.bbox.</code><code class="descname">flux_at_edge</code><span class="sig-paren">(</span><em>X</em>, <em>min_value=0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/bbox.html#flux_at_edge"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.bbox.flux_at_edge" title="Permalink to this definition">¶</a></dt>
 <dd><p>Determine if an edge of the input has flux above min_value</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -294,40 +375,6 @@ of the box. If <cite>bounds</cite> is none then the <cite>BoundingBox</cite> is 
 <tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first last docutils">
 <dt><strong>result: bool</strong></dt>
 <dd><p class="first last">Whether or not any edge pixels are above the minimum_value</p>
-</dd>
-</dl>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="function">
-<dt id="scarlet.bbox.resize">
-<code class="descclassname">scarlet.bbox.</code><code class="descname">resize</code><span class="sig-paren">(</span><em>X</em>, <em>bbox</em>, <em>min_value</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/bbox.html#resize"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.bbox.resize" title="Permalink to this definition">¶</a></dt>
-<dd><p>Check if enough flux at the bounding box warrants a resize</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first docutils">
-<dt><strong>X: tensor or array</strong></dt>
-<dd><p class="first last">2D matrix to evaluate</p>
-</dd>
-<dt><strong>bbox: `BoundingBox`</strong></dt>
-<dd><p class="first last">The current bounding box of <cite>X</cite>.</p>
-</dd>
-<dt><strong>min_value: float</strong></dt>
-<dd><p class="first last">Minimum value to trigger a resize.</p>
-</dd>
-</dl>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first last docutils">
-<dt><strong>result: `BoundingBox`</strong></dt>
-<dd><p class="first last">The bounding box for the trimmed version of <cite>X</cite>.
-If <cite>result</cite> is <cite>None</cite> then the source does not need to
-be trimmed.</p>
 </dd>
 </dl>
 </td>
@@ -357,7 +404,7 @@ over <cite>min_value</cite> are contained in the result.</p>
 </td>
 </tr>
 <tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first last docutils">
-<dt><strong>bbox: `BoundingBox`</strong></dt>
+<dt><strong>bbox: `Box`</strong></dt>
 <dd><p class="first last">Bounding box for the trimmed <cite>result</cite> (bottom, top, left, right)</p>
 </dd>
 </dl>
@@ -377,8 +424,6 @@ over <cite>min_value</cite> are contained in the result.</p>
           <footer>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
-      
-        <a href="blend.html" class="btn btn-neutral float-right" title="Blend (scarlet.blend)" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
         <a href="api_docs.html" class="btn btn-neutral" title="API Documentation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>

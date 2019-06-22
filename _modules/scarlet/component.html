@@ -78,9 +78,11 @@
             
               <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../install.html#building-the-docs">Building the Docs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../quickstart.html">Quick Start Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_docs.html">User Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../tutorials.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../diagnostics.html">Diagnostics</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../api_docs.html">API Documentation</a></li>
 </ul>
 
@@ -198,6 +200,8 @@
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">grad_func</span><span class="p">,</span> <span class="n">L_func</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_grad_func</span> <span class="o">=</span> <span class="n">grad_func</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_L_func</span> <span class="o">=</span> <span class="n">L_func</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sed_grad</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">morph_grad</span> <span class="o">=</span> <span class="mi">0</span>
 
     <span class="c1"># can be overloaded but needs to set these 4 members</span>
     <span class="c1"># for batch processing: cache results with c as key</span>
@@ -208,8 +212,8 @@
 <span class="sd">        it during fitting to calculate the gradient update</span>
 <span class="sd">        for the component due to the prior.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">grad_morph</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">grad_sed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_grad_func</span><span class="p">(</span><span class="n">component</span><span class="o">.</span><span class="n">_morph</span><span class="p">,</span> <span class="n">component</span><span class="o">.</span><span class="n">_sed</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">L_morph</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">L_sed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_L_func</span><span class="p">(</span><span class="n">component</span><span class="o">.</span><span class="n">_morph</span><span class="p">,</span> <span class="n">component</span><span class="o">.</span><span class="n">_sed</span><span class="p">)</span></div></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sed_grad</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">morph_grad</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_grad_func</span><span class="p">(</span><span class="n">component</span><span class="o">.</span><span class="n">_sed</span><span class="p">,</span> <span class="n">component</span><span class="o">.</span><span class="n">_morph</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">L_sed</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">L_morph</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_L_func</span><span class="p">(</span><span class="n">component</span><span class="o">.</span><span class="n">_sed</span><span class="p">,</span> <span class="n">component</span><span class="o">.</span><span class="n">_morph</span><span class="p">)</span></div></div>
 
 
 <div class="viewcode-block" id="Component"><a class="viewcode-back" href="../../component.html#scarlet.component.Component">[docs]</a><span class="k">class</span> <span class="nc">Component</span><span class="p">():</span>
@@ -240,6 +244,8 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">sed_grad</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">morph_grad</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">prior</span> <span class="o">=</span> <span class="n">prior</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">L_sed</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">L_morph</span> <span class="o">=</span> <span class="mi">1</span>
         <span class="c1"># Initially the component has not converged</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">flags</span> <span class="o">=</span> <span class="n">BlendFlag</span><span class="o">.</span><span class="n">SED_NOT_CONVERGED</span> <span class="o">|</span> <span class="n">BlendFlag</span><span class="o">.</span><span class="n">MORPH_NOT_CONVERGED</span>
         <span class="c1"># Store the SED and morphology from the previous iteration</span>
@@ -315,12 +321,12 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">prior</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">prior</span><span class="o">.</span><span class="n">compute_grad</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">morph</span><span class="o">.</span><span class="n">requires_grad</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">morph_grad</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prior</span><span class="o">.</span><span class="n">grad_morph</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">fix_morph</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">morph_grad</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prior</span><span class="o">.</span><span class="n">morph_grad</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">L_morph</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prior</span><span class="o">.</span><span class="n">L_morph</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">sed</span><span class="o">.</span><span class="n">requires_grad</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">morph_grad</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prior</span><span class="o">.</span><span class="n">grad_morph</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">L_morph</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prior</span><span class="o">.</span><span class="n">L_morph</span></div>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">fix_sed</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">sed_grad</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prior</span><span class="o">.</span><span class="n">sed_grad</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">L_sed</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prior</span><span class="o">.</span><span class="n">L_sed</span></div>
 
 <div class="viewcode-block" id="Component.update"><a class="viewcode-back" href="../../component.html#scarlet.component.Component.update">[docs]</a>    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Update the component</span>

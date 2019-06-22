@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>0.6 (unreleased) &mdash; scarlet  documentation</title>
+  <title>0.5 (unreleased) &mdash; scarlet  documentation</title>
   
 
   
@@ -78,9 +78,11 @@
             
               <ul>
 <li class="toctree-l1"><a class="reference internal" href="install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="install.html#building-the-docs">Building the Docs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="user_docs.html">User Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tutorials.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="diagnostics.html">Diagnostics</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api_docs.html">API Documentation</a></li>
 </ul>
 
@@ -127,7 +129,7 @@
     
       <li><a href="index.html">Docs</a> &raquo;</li>
         
-      <li>0.6 (unreleased)</li>
+      <li>0.5 (unreleased)</li>
     
     
       <li class="wy-breadcrumbs-aside">
@@ -171,10 +173,7 @@
 }
 </style>
 <div class="section" id="unreleased">
-<h1>0.6 (unreleased)<a class="headerlink" href="#unreleased" title="Permalink to this headline">¶</a></h1>
-</div>
-<div class="section" id="id1">
-<h1>0.5 (2019-6-11)<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h1>
+<h1>0.5 (unreleased)<a class="headerlink" href="#unreleased" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="general">
 <h2>General<a class="headerlink" href="#general" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
@@ -231,17 +230,17 @@ require a center, such as symmetry and monotonicity, can use the new <cite>uncen
 </ul>
 </div>
 </div>
+<div class="section" id="id1">
+<h1>0.45 (2019-3-27)<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="id2">
-<h1>0.45 (2019-3-27)<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="id3">
-<h2>General<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h2>
+<h2>General<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
 <li>Tests have been added for the <cite>operator</cite>, <cite>constraint</cite>, <cite>resample</cite>, and <cite>transformation</cite>
 modules. Tests are run on Travis CI with each new build.</li>
 </ul>
 </div>
-<div class="section" id="id4">
-<h2>New Features<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id3">
+<h2>New Features<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
 <li>Convolutions can now be done in Fourier space and/or real
 space by setting the <cite>use_fft</cite> option in <cite>config.Config</cite>.</li>
@@ -252,16 +251,16 @@ bilinear, cubic spline, and Lanczos algorithms.</li>
 </ul>
 </div>
 </div>
+<div class="section" id="id4">
+<h1>0.4 (2019-2-15)<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="id5">
-<h1>0.4 (2019-2-15)<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="id6">
-<h2>General<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h2>
+<h2>General<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
 <li>Dropped python 2 support</li>
 </ul>
 </div>
-<div class="section" id="id7">
-<h2>New Features<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id6">
+<h2>New Features<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
 <li>Initialization of <cite>PointSource</cite>, <cite>ExtendedSource</cite>, and
 <cite>MultiComponentSource</cite> now take <cite>normalization</cite> as an
@@ -276,8 +275,8 @@ This allows the user to recalculate the <cite>Lipschitz</cite> constant
 to an approximation (the default) used for speed.</li>
 </ul>
 </div>
-<div class="section" id="id8">
-<h2>API Changes<a class="headerlink" href="#id8" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id7">
+<h2>API Changes<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
 <li>The default value of the <cite>Config</cite> parameter <cite>accelerated</cite>
 is now <cite>False</cite>. This was done because in some cases

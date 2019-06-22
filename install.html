@@ -80,9 +80,11 @@
             
               <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#building-the-docs">Building the Docs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="user_docs.html">User Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tutorials.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="diagnostics.html">Diagnostics</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api_docs.html">API Documentation</a></li>
 </ul>
 
@@ -215,8 +217,21 @@ If you already have a local version of <a class="reference external" href="http:
 must be a full path.</p>
 </div>
 </div>
+<div class="section" id="for-os-x-users">
+<h2>For OS X Users<a class="headerlink" href="#for-os-x-users" title="Permalink to this headline">¶</a></h2>
+<p>For some reason on OS X the system attempts to use the debprecated stdlc++ library instead of the
+newer libc++. So you may receive the error
+<cite>clang: warning: libstdc++ is deprecated; move to libc++ with a minimum deployment target of OS X 10.9 [-Wdeprecated]
+ld: library not found for -lstdc++</cite>.
+If this is the case then before you run the setup script you will need to run:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">xcode</span><span class="o">-</span><span class="n">select</span> <span class="o">--</span><span class="n">install</span>
+<span class="n">sudo</span> <span class="n">installer</span> <span class="o">-</span><span class="n">pkg</span> <span class="o">/</span><span class="n">Library</span><span class="o">/</span><span class="n">Developer</span><span class="o">/</span><span class="n">CommandLineTools</span><span class="o">/</span><span class="n">Packages</span><span class="o">/</span><span class="n">macOS_SDK_headers_for_macOS_10</span><span class="o">.</span><span class="mf">14.</span><span class="n">pkg</span> <span class="o">-</span><span class="n">target</span> <span class="o">/</span>
+</pre></div>
+</div>
+</div>
+</div>
 <div class="section" id="building-the-docs">
-<h2>Building the Docs<a class="headerlink" href="#building-the-docs" title="Permalink to this headline">¶</a></h2>
+<h1>Building the Docs<a class="headerlink" href="#building-the-docs" title="Permalink to this headline">¶</a></h1>
 <p>If you wish to build the docs you will need all of the optional dependencies installed.
 Then navigate to the <cite>docs</cite> directory and type</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">make</span> <span class="n">html</span>
@@ -225,7 +240,7 @@ Then navigate to the <cite>docs</cite> directory and type</p>
 <p>and a local copy of the current docs will be available in the <cite>docs/_build/html</cite> folder.
 The home page is available at <cite>docs/_build/html/index.html</cite>.</p>
 <div class="section" id="updating-the-docs-scarlet-developers-only">
-<h3>Updating the Docs (<em>scarlet</em> developers only)<a class="headerlink" href="#updating-the-docs-scarlet-developers-only" title="Permalink to this headline">¶</a></h3>
+<h2>Updating the Docs (<em>scarlet</em> developers only)<a class="headerlink" href="#updating-the-docs-scarlet-developers-only" title="Permalink to this headline">¶</a></h2>
 <p>This section is for updating the public docs hosted on github pages.
 First, MAKE SURE THAT YOU HAVE COMMITTED ALL OF YOUR CHANGES.
 The build process has to checkout the <cite>gh-pages</cite> branch behind the scenes and
@@ -240,7 +255,6 @@ which should usually be master unless the docs are broken and require a fix from
 Next it switches to the <cite>gh-pages</cite> branch and copies the html files into the base directory.
 The <cite>gh-pages</cite> branch has a special <cite>.gitignore</cite> to ignore all of the source files and only commits the
 changes to the docs, then pushes them to github.</p>
-</div>
 </div>
 </div>
 

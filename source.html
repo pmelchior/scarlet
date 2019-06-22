@@ -79,9 +79,11 @@
             
               <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="install.html#building-the-docs">Building the Docs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="user_docs.html">User Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tutorials.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="diagnostics.html">Diagnostics</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="api_docs.html">API Documentation</a><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="bbox.html">Bounding Boxes (<code class="docutils literal notranslate"><span class="pre">scarlet.bbox</span></code>)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="blend.html">Blend (<code class="docutils literal notranslate"><span class="pre">scarlet.blend</span></code>)</a></li>
@@ -287,7 +289,7 @@ in flux from the center.</p>
 
 <dl class="class">
 <dt id="scarlet.source.ExtendedSource">
-<em class="property">class </em><code class="descclassname">scarlet.source.</code><code class="descname">ExtendedSource</code><span class="sig-paren">(</span><em>sky_coord</em>, <em>scene</em>, <em>observations</em>, <em>bg_rms</em>, <em>obs_idx=0</em>, <em>thresh=1</em>, <em>symmetric=False</em>, <em>monotonic=True</em>, <em>center_step=5</em>, <em>delay_thresh=0</em>, <em>**component_kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/source.html#ExtendedSource"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.source.ExtendedSource" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">scarlet.source.</code><code class="descname">ExtendedSource</code><span class="sig-paren">(</span><em>sky_coord</em>, <em>scene</em>, <em>observations</em>, <em>bg_rms</em>, <em>obs_idx=0</em>, <em>thresh=1</em>, <em>symmetric=False</em>, <em>monotonic=True</em>, <em>center_step=5</em>, <em>delay_thresh=10</em>, <em>**component_kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/source.html#ExtendedSource"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.source.ExtendedSource" title="Permalink to this definition">¶</a></dt>
 <dd><p>Extended source intialized to match a set of observations</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -555,7 +557,7 @@ or update functions is desired.</p>
 
 <dl class="function">
 <dt id="scarlet.source.build_detection_coadd">
-<code class="descclassname">scarlet.source.</code><code class="descname">build_detection_coadd</code><span class="sig-paren">(</span><em>sed</em>, <em>bg_rms</em>, <em>observations</em>, <em>scene</em>, <em>thresh=1</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/source.html#build_detection_coadd"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.source.build_detection_coadd" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">scarlet.source.</code><code class="descname">build_detection_coadd</code><span class="sig-paren">(</span><em>sed</em>, <em>bg_rms</em>, <em>observation</em>, <em>scene</em>, <em>thresh=1</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/source.html#build_detection_coadd"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.source.build_detection_coadd" title="Permalink to this definition">¶</a></dt>
 <dd><p>Build a band weighted coadd to use for source detection</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -626,38 +628,6 @@ assuming that the images only contain a single source.</p>
 <dt id="scarlet.source.get_pixel_sed">
 <code class="descclassname">scarlet.source.</code><code class="descname">get_pixel_sed</code><span class="sig-paren">(</span><em>sky_coord</em>, <em>observations</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/source.html#get_pixel_sed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.source.get_pixel_sed" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get the SED at <cite>position</cite> in <cite>img</cite></p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first docutils">
-<dt><strong>sky_coord: tuple</strong></dt>
-<dd><p class="first last">Center of the source</p>
-</dd>
-<dt><strong>scene: `scarlet.observation.Scene`</strong></dt>
-<dd><p class="first last">The scene that the model lives in.</p>
-</dd>
-<dt><strong>observations: list of `~scarlet.observation.Observation`</strong></dt>
-<dd><p class="first last">Observations to extract SED from.</p>
-</dd>
-</dl>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first last docutils">
-<dt><strong>SED: `~numpy.array`</strong></dt>
-<dd><p class="first last">SED for a single source</p>
-</dd>
-</dl>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="function">
-<dt id="scarlet.source.get_scene_sed">
-<code class="descclassname">scarlet.source.</code><code class="descname">get_scene_sed</code><span class="sig-paren">(</span><em>sky_coord</em>, <em>observations</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/source.html#get_scene_sed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.source.get_scene_sed" title="Permalink to this definition">¶</a></dt>
-<dd><p>Get the SED at <cite>position</cite> in <cite>img</cite> in the scene. Function made for combined resolution images.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />

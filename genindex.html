@@ -79,9 +79,11 @@
             
               <ul>
 <li class="toctree-l1"><a class="reference internal" href="install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="install.html#building-the-docs">Building the Docs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="user_docs.html">User Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tutorials.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="diagnostics.html">Diagnostics</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api_docs.html">API Documentation</a></li>
 </ul>
 
@@ -156,7 +158,6 @@
  | <a href="#E"><strong>E</strong></a>
  | <a href="#F"><strong>F</strong></a>
  | <a href="#G"><strong>G</strong></a>
- | <a href="#H"><strong>H</strong></a>
  | <a href="#I"><strong>I</strong></a>
  | <a href="#K"><strong>K</strong></a>
  | <a href="#L"><strong>L</strong></a>
@@ -168,7 +169,6 @@
  | <a href="#S"><strong>S</strong></a>
  | <a href="#T"><strong>T</strong></a>
  | <a href="#U"><strong>U</strong></a>
- | <a href="#W"><strong>W</strong></a>
  
 </div>
 <h2 id="A">A</h2>
@@ -198,7 +198,9 @@
 </li>
       <li><a href="component.html#scarlet.component.BlendFlag">BlendFlag (class in scarlet.component)</a>
 </li>
-      <li><a href="bbox.html#scarlet.bbox.BoundingBox">BoundingBox (class in scarlet.bbox)</a>
+      <li><a href="bbox.html#scarlet.bbox.Box.bottom">bottom (scarlet.bbox.Box attribute)</a>
+</li>
+      <li><a href="bbox.html#scarlet.bbox.Box">Box (class in scarlet.bbox)</a>
 </li>
       <li><a href="source.html#scarlet.source.build_detection_coadd">build_detection_coadd() (in module scarlet.source)</a>
 </li>
@@ -284,6 +286,8 @@
 </li>
       <li><a href="bbox.html#scarlet.bbox.flux_at_edge">flux_at_edge() (in module scarlet.bbox)</a>
 </li>
+      <li><a href="bbox.html#scarlet.bbox.Box.from_bounds">from_bounds() (scarlet.bbox.Box static method)</a>
+</li>
   </ul></td>
 </tr></table>
 
@@ -291,6 +295,8 @@
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="psf.html#scarlet.psf.gaussian">gaussian() (in module scarlet.psf)</a>
+</li>
+      <li><a href="psf.html#scarlet.psf.generate_psf_image">generate_psf_image() (in module scarlet.psf)</a>
 </li>
       <li><a href="source.html#scarlet.source.get_best_fit_seds">get_best_fit_seds() (in module scarlet.source)</a>
 </li>
@@ -328,10 +334,6 @@
 </li>
       <li><a href="interpolation.html#scarlet.interpolation.get_projection_slices">get_projection_slices() (in module scarlet.interpolation)</a>
 </li>
-      <li><a href="observation.html#scarlet.observation.Observation.get_scene">get_scene() (scarlet.observation.Observation method)</a>
-</li>
-      <li><a href="source.html#scarlet.source.get_scene_sed">get_scene_sed() (in module scarlet.source)</a>
-</li>
       <li><a href="interpolation.html#scarlet.interpolation.get_separable_kernel">get_separable_kernel() (in module scarlet.interpolation)</a>
 </li>
       <li><a href="operator.html#scarlet.operator.getOffsets">getOffsets() (in module scarlet.operator)</a>
@@ -339,14 +341,6 @@
       <li><a href="operator.html#scarlet.operator.getRadialMonotonicOp">getRadialMonotonicOp() (in module scarlet.operator)</a>
 </li>
       <li><a href="operator.html#scarlet.operator.getRadialMonotonicWeights">getRadialMonotonicWeights() (in module scarlet.operator)</a>
-</li>
-  </ul></td>
-</tr></table>
-
-<h2 id="H">H</h2>
-<table style="width: 100%" class="indextable genindextable"><tr>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="bbox.html#scarlet.bbox.BoundingBox.height">height (scarlet.bbox.BoundingBox attribute)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -366,6 +360,8 @@
 </li>
       <li><a href="source.html#scarlet.source.init_multicomponent_source">init_multicomponent_source() (in module scarlet.source)</a>
 </li>
+      <li><a href="bbox.html#scarlet.bbox.Box.is_empty">is_empty (scarlet.bbox.Box attribute)</a>
+</li>
       <li><a href="blend.html#scarlet.blend.Blend.it">it (scarlet.blend.Blend attribute)</a>
 </li>
   </ul></td>
@@ -384,10 +380,12 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="interpolation.html#scarlet.interpolation.lanczos">lanczos() (in module scarlet.interpolation)</a>
 </li>
-      <li><a href="display.html#scarlet.display.LinearPercentileNorm">LinearPercentileNorm (class in scarlet.display)</a>
+      <li><a href="bbox.html#scarlet.bbox.Box.left">left (scarlet.bbox.Box attribute)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="display.html#scarlet.display.LinearPercentileNorm">LinearPercentileNorm (class in scarlet.display)</a>
+</li>
       <li><a href="resampling.html#scarlet.resampling.linorm2D">linorm2D() (in module scarlet.resampling)</a>
 </li>
       <li><a href="observation.html#scarlet.observation.LowResObservation">LowResObservation (class in scarlet.observation)</a>
@@ -401,7 +399,11 @@
       <li><a href="resampling.html#scarlet.resampling.make_operator">make_operator() (in module scarlet.resampling)</a>
 </li>
       <li><a href="observation.html#scarlet.observation.LowResObservation.match">match() (scarlet.observation.LowResObservation method)</a>
+
+      <ul>
+        <li><a href="observation.html#scarlet.observation.Observation.match">(scarlet.observation.Observation method)</a>
 </li>
+      </ul></li>
       <li><a href="resampling.html#scarlet.resampling.match_patches">match_patches() (in module scarlet.resampling)</a>
 </li>
       <li><a href="resampling.html#scarlet.resampling.match_psfs">match_psfs() (in module scarlet.resampling)</a>
@@ -506,7 +508,7 @@
 <h2 id="R">R</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="bbox.html#scarlet.bbox.resize">resize() (in module scarlet.bbox)</a>
+      <li><a href="bbox.html#scarlet.bbox.Box.right">right (scarlet.bbox.Box attribute)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -544,7 +546,7 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="component.html#scarlet.component.Component.sed">sed (scarlet.component.Component attribute)</a>
 </li>
-      <li><a href="bbox.html#scarlet.bbox.BoundingBox.shape">shape (scarlet.bbox.BoundingBox attribute)</a>
+      <li><a href="bbox.html#scarlet.bbox.Box.shape">shape (scarlet.bbox.Box attribute)</a>
 
       <ul>
         <li><a href="component.html#scarlet.component.Component.shape">(scarlet.component.Component attribute)</a>
@@ -556,7 +558,7 @@
 </li>
       <li><a href="interpolation.html#scarlet.interpolation.sinc_interp">sinc_interp() (in module scarlet.interpolation)</a>
 </li>
-      <li><a href="bbox.html#scarlet.bbox.BoundingBox.slices">slices (scarlet.bbox.BoundingBox attribute)</a>
+      <li><a href="bbox.html#scarlet.bbox.Box.slices">slices (scarlet.bbox.Box attribute)</a>
 </li>
       <li><a href="operator.html#scarlet.operator.sort_by_radius">sort_by_radius() (in module scarlet.operator)</a>
 </li>
@@ -577,6 +579,8 @@
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="update.html#scarlet.update.threshold">threshold() (in module scarlet.update)</a>
+</li>
+      <li><a href="bbox.html#scarlet.bbox.Box.top">top (scarlet.bbox.Box attribute)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
@@ -603,14 +607,6 @@
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="operator.html#scarlet.operator.use_relevant_dim">use_relevant_dim() (in module scarlet.operator)</a>
-</li>
-  </ul></td>
-</tr></table>
-
-<h2 id="W">W</h2>
-<table style="width: 100%" class="indextable genindextable"><tr>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="bbox.html#scarlet.bbox.BoundingBox.width">width (scarlet.bbox.BoundingBox attribute)</a>
 </li>
   </ul></td>
 </tr></table>

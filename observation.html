@@ -79,9 +79,11 @@
             
               <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="install.html#building-the-docs">Building the Docs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="user_docs.html">User Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tutorials.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="diagnostics.html">Diagnostics</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="api_docs.html">API Documentation</a><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="bbox.html">Bounding Boxes (<code class="docutils literal notranslate"><span class="pre">scarlet.bbox</span></code>)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="blend.html">Blend (<code class="docutils literal notranslate"><span class="pre">scarlet.blend</span></code>)</a></li>
@@ -347,7 +349,7 @@ model: array</p>
 
 <dl class="class">
 <dt id="scarlet.observation.Observation">
-<em class="property">class </em><code class="descclassname">scarlet.observation.</code><code class="descname">Observation</code><span class="sig-paren">(</span><em>images</em>, <em>psfs=None</em>, <em>weights=None</em>, <em>wcs=None</em>, <em>filtercurve=None</em>, <em>padding=3</em>, <em>structure=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/observation.html#Observation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.Observation" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">scarlet.observation.</code><code class="descname">Observation</code><span class="sig-paren">(</span><em>images</em>, <em>psfs=None</em>, <em>weights=None</em>, <em>wcs=None</em>, <em>filtercurve=None</em>, <em>structure=None</em>, <em>padding=10</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/observation.html#Observation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.Observation" title="Permalink to this definition">¶</a></dt>
 <dd><p>Data and metadata for a single set of observations
 Attributes
 ———-
@@ -390,8 +392,6 @@ prevent artifacts due to the FFT.</dd>
 <dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">shape</span></code></dt>
 <dd><p class="first last">Shape of the model.</p>
 </dd>
-<dt><strong>weights</strong></dt>
-<dd></dd>
 </dl>
 </td>
 </tr>
@@ -413,19 +413,8 @@ prevent artifacts due to the FFT.</dd>
 <tr class="row-odd"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_pixel</span></code>(sky_coord)</td>
 <td>Get the pixel coordinate from a world coordinate If there is no WCS associated with the <cite>Scene</cite>, meaning the data frame and model frame are the same, then this just returns the <cite>sky_coord</cite></td>
 </tr>
-<tr class="row-even"><td><a class="reference internal" href="#scarlet.observation.Observation.get_scene" title="scarlet.observation.Observation.get_scene"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_scene</span></code></a>(scene)</td>
-<td>Reproject and resample the image in some other data frame This is currently only supported to return <cite>images</cite> when the data scene and target scene are the same.</td>
-</tr>
-</tbody>
-</table>
-<table border="1" class="docutils">
-<colgroup>
-<col width="47%" />
-<col width="53%" />
-</colgroup>
-<tbody valign="top">
-<tr class="row-odd"><td><strong>match</strong></td>
-<td>&#160;</td>
+<tr class="row-even"><td><a class="reference internal" href="#scarlet.observation.Observation.match" title="scarlet.observation.Observation.match"><code class="xref py py-obj docutils literal notranslate"><span class="pre">match</span></code></a>(scene)</td>
+<td>Match the psf in each observed band to the target PSF</td>
 </tr>
 </tbody>
 </table>
@@ -461,20 +450,9 @@ model: array</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="scarlet.observation.Observation.get_scene">
-<code class="descname">get_scene</code><span class="sig-paren">(</span><em>scene</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/observation.html#Observation.get_scene"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.Observation.get_scene" title="Permalink to this definition">¶</a></dt>
-<dd><p>Reproject and resample the image in some other data frame
-This is currently only supported to return <cite>images</cite> when the data
-scene and target scene are the same.
-Parameters
-———-
-scene: <cite>~scarlet.observation.Scene</cite></p>
-<blockquote>
-<div>The target data frame.</div></blockquote>
-<dl class="docutils">
-<dt>images: array</dt>
-<dd>The image cube in the target <cite>scene</cite>.</dd>
-</dl>
+<dt id="scarlet.observation.Observation.match">
+<code class="descname">match</code><span class="sig-paren">(</span><em>scene</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/observation.html#Observation.match"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.Observation.match" title="Permalink to this definition">¶</a></dt>
+<dd><p>Match the psf in each observed band to the target PSF</p>
 </dd></dl>
 
 </dd></dl>
