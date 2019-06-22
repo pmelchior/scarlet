@@ -124,7 +124,8 @@ class Observation(Scene):
         prevent artifacts due to the FFT.
     """
 
-    def __init__(self, images, psfs=None, weights=None, wcs=None, filtercurve=None, structure=None):
+    def __init__(self, images, psfs=None, weights=None, wcs=None, filtercurve=None, structure=None,
+                 padding=10):
         super().__init__(images.shape, wcs=wcs, psfs=psfs, filtercurve=filtercurve)
 
         self.images = np.array(images)
@@ -134,6 +135,9 @@ class Observation(Scene):
             self.weights = 1
 
         self.structure = structure
+        if structure is not None:
+            self.structure = np.array(self.structure)
+        self.padding = padding
 
     def match(self, scene):
         """Match the psf in each observed band to the target PSF
@@ -141,7 +145,7 @@ class Observation(Scene):
         if self.psfs is not None:
             # First we setup the parameters for the model -> observation FFTs
             # Make the PSF stamp wider due to errors when matching PSFs
-            psf_shape = np.array(self.psfs[0].shape) + 10
+            psf_shape = np.array(self.psfs[0].shape) + self.padding
             shape = np.array(scene.shape[1:]) + psf_shape - 1
             # Choose the optimal shape for FFTPack DFT
             self.fftpack_shape = [fftpack.helper.next_fast_len(d) for d in shape]
@@ -159,7 +163,7 @@ class Observation(Scene):
             kernels = []
             for psf in self.psfs:
                 _psf_fft = np.fft.rfftn(psf, fftpack_shape)
-                kernel = np.fft.ifftshift(np.fft.irfftn(_psf_fft / target_fft, fftpack_shape))
+                kernel = np.fft.fftshift(np.fft.irfftn(_psf_fft / target_fft, fftpack_shape))
                 kernel *= scene.psfs[0].sum()
                 if kernel.shape[0] % 2 == 0:
                     kernel = kernel[1:, 1:]
