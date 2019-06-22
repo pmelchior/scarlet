@@ -80,11 +80,9 @@
             
               <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="#building-the-docs">Building the Docs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="user_docs.html">User Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tutorials.html">Tutorials</a></li>
-<li class="toctree-l1"><a class="reference internal" href="diagnostics.html">Diagnostics</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api_docs.html">API Documentation</a></li>
 </ul>
 
@@ -229,9 +227,8 @@ If this is the case then before you run the setup script you will need to run:</
 </pre></div>
 </div>
 </div>
-</div>
 <div class="section" id="building-the-docs">
-<h1>Building the Docs<a class="headerlink" href="#building-the-docs" title="Permalink to this headline">¶</a></h1>
+<h2>Building the Docs<a class="headerlink" href="#building-the-docs" title="Permalink to this headline">¶</a></h2>
 <p>If you wish to build the docs you will need all of the optional dependencies installed.
 Then navigate to the <cite>docs</cite> directory and type</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">make</span> <span class="n">html</span>
@@ -240,7 +237,7 @@ Then navigate to the <cite>docs</cite> directory and type</p>
 <p>and a local copy of the current docs will be available in the <cite>docs/_build/html</cite> folder.
 The home page is available at <cite>docs/_build/html/index.html</cite>.</p>
 <div class="section" id="updating-the-docs-scarlet-developers-only">
-<h2>Updating the Docs (<em>scarlet</em> developers only)<a class="headerlink" href="#updating-the-docs-scarlet-developers-only" title="Permalink to this headline">¶</a></h2>
+<h3>Updating the Docs (<em>scarlet</em> developers only)<a class="headerlink" href="#updating-the-docs-scarlet-developers-only" title="Permalink to this headline">¶</a></h3>
 <p>This section is for updating the public docs hosted on github pages.
 First, MAKE SURE THAT YOU HAVE COMMITTED ALL OF YOUR CHANGES.
 The build process has to checkout the <cite>gh-pages</cite> branch behind the scenes and
@@ -255,6 +252,7 @@ which should usually be master unless the docs are broken and require a fix from
 Next it switches to the <cite>gh-pages</cite> branch and copies the html files into the base directory.
 The <cite>gh-pages</cite> branch has a special <cite>.gitignore</cite> to ignore all of the source files and only commits the
 changes to the docs, then pushes them to github.</p>
+</div>
 </div>
 </div>
 
