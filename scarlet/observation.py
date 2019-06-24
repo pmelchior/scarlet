@@ -16,9 +16,10 @@ def _centered(arr, newshape):
     """
     newshape = np.asarray(newshape)
     currshape = np.array(arr.shape[1:])
+    print(currshape, newshape, 'shapes')
     startind = (currshape - newshape) // 2
     endind = startind + newshape
-    myslice = [slice(startind[k], endind[k]) for k in range(len(endind))]
+    myslice = np.concatenate(([slice(0,arr.shape[0])],[slice(startind[k], endind[k]) for k in range(len(endind))]))
     return arr[tuple(myslice)]
 
 
@@ -163,7 +164,7 @@ class Observation(Scene):
             if kernels.shape[1] % 2 == 0:
                 kernels = kernels[:, 1:, 1:]
 
-            kernels = [_centered(kernel, psf_shape) for kernel in kernels]
+            kernels = _centered(kernels, psf_shape)
 
             new_kernel_fft = np.fft.rfftn(kernels, self.fftpack_shape, axes=(1, 2))
 
@@ -172,12 +173,12 @@ class Observation(Scene):
 
         return self
 
-    def _convolve_band(self, model, psf_fft):
+    def _convolve_bands(self, model, psf_fft):
         """Convolve the model in a single band
         """
-        model_fft = np.fft.rfftn(model, self.fftpack_shape)
-        convolved = np.fft.irfftn(model_fft * psf_fft, self.fftpack_shape)[self.slices]
-        return _centered(convolved, model.shape)
+        model_fft = np.fft.rfftn(model, self.fftpack_shape, axes=(1, 2))
+        convolved = np.fft.irfftn(model_fft * psf_fft, self.fftpack_shape, axes=(1, 2))[self.slices]
+        return _centered(convolved, model.shape[1:])
 
     def get_model(self, model):
         """Resample and convolve a model to the observation frame
@@ -194,7 +195,7 @@ class Observation(Scene):
             assert self.structure.size == model.shape[0]
             model = model[self.structure == 1]
         if self.psfs is not None:
-            model = np.array([self._convolve_band(model[b], self.psfs_fft[b]) for b in range(self.B)])
+            model = self._convolve_bands(model, self.psfs_fft)
 
         return model
 
@@ -299,23 +300,27 @@ class LowResObservation(Scene):
                 _target = self.target_psf
 
             resconv_op = []
-
+            target_kernels = []
+            observed_kernels = []
             for _psf in self.psfs:
                 # Computes spatially matching observation and target psfs. The observation psf is also resampled to the scene's resolution
-
                 new_target, observed_psf = resampling.match_psfs(_target, _psf, whr, wlr)
-                # Computes the diff kernel in Fourier
-                target_fft = np.fft.fft2(np.fft.ifftshift(new_target))
-                observed_fft = np.fft.fft2(np.fft.ifftshift(observed_psf))
-                kernel_fft = np.zeros(target_fft.shape)
-                sel = target_fft != 0
-                kernel_fft[sel] = observed_fft[sel] / target_fft[sel]
-                kernel = np.fft.ifft2(kernel_fft)
-                kernel = np.fft.fftshift(np.real(kernel))
-                diff_psf = kernel / kernel.max()
+                target_kernels.append(new_target)
+                observed_kernels.append(observed_psf)
 
-                # Computes the resampling/convolution matrix
-                resconv_op.append(resampling.make_operator(_shape, coord_hr, diff_psf))
+
+            # Computes the diff kernel in Fourier
+            target_fft = np.fft.rfftn(np.fft.ifftshift(target_kernels, axes = (1,2)), axes=(1, 2))
+            observed_fft = np.fft.rfftn(np.fft.ifftshift(observed_kernels, axes=(1, 2)), axes=(1, 2))
+            kernel_fft = np.zeros(target_fft.shape)
+            sel = target_fft != 0
+            kernel_fft[sel] = observed_fft[sel] / target_fft[sel]
+            kernel = np.fft.irfftn(kernel_fft, axes=(1, 2))
+            kernel = np.fft.fftshift(kernel, axes=(1, 2))
+            diff_psf = kernel / kernel.max(axis = (1,2))
+
+            # Computes the resampling/convolution matrix
+            resconv_op.append(resampling.make_operator(_shape, coord_hr, diff_psf))
 
             self.resconv_op = np.array(resconv_op)
 
@@ -352,7 +357,7 @@ class LowResObservation(Scene):
 
         return obs
 
-    def get_model_image(self, model):
+    def model_to_frame(self, model):
         """Resample and convolve a model to the observation frame
         Parameters
         ----------

@@ -55,41 +55,6 @@ def get_pixel_sed(sky_coord, observations):
     return sed.reshape(-1)
 
 
-def get_scene_sed(sky_coord, observations):
-    """Get the SED at `position` in `img` in the scene. Function made for combined resolution images.
-
-
-    Parameters
-    ----------
-    sky_coord: tuple
-        Center of the source
-    scene: `scarlet.observation.Scene`
-        The scene that the model lives in.
-    observations: list of `~scarlet.observation.Observation`
-        Observations to extract SED from.
-
-    Returns
-    -------
-    SED: `~numpy.array`
-        SED for a single source
-    """
-
-    sed = []
-    band = 0
-    for obs in observations:
-        pixel = obs.get_pixel(sky_coord)
-        sed.append(obs.images[:, np.int(pixel[0]), np.int(pixel[1])])
-        band += obs.B
-    sed = np.array(sed)
-    if np.all(sed <= 0):
-        # If the flux in all bands is  <=0,
-        # the new sed will be filled with NaN values,
-        # which will cause the code to crash later
-        msg = "Zero or negative flux at y={0}, x={1}"
-        raise SourceInitError(msg.format(*sky_coord))
-    return sed.reshape(-1)
-
-
 def get_best_fit_seds(morphs, scene, observations):
     """Calculate best fitting SED for multiple components.
 
