@@ -37,36 +37,39 @@ class Frame():
         Names/identifiers of spectral bands
     """
     def __init__(self, shape, wcs=None, psfs=None, filtercurves=None):
+        assert len(shape) == 3
         self._shape = tuple(shape)
         self.wcs = wcs
 
-        if psfs is not None:
-            psfs = np.array(psfs)
-            # Make sure that psf is always 3D
-            if len(psfs.shape) == 2:
-                psfs = psfs[None]
-            psfs = psfs / psfs.sum(axis=(1, 2))[:, None, None]
+        if psfs is None:
+            logger.warning('No PSFs specified. Possible, but dangerous!')
+        else:
+            assert len(psfs) == 1 or len(psfs) == shape[0]
+            if not np.allclose(psfs.sum(axis=(1, 2)), 1):
+                logger.warning('PSFs not normalized!')
+
         self._psfs = psfs
-        assert filtercurves is None or shape[0] == len(filtercurves)
+
+        assert filtercurves is None or len(filtercurves) == shape[0]
         self.filtercurves = filtercurves
 
     @property
     def B(self):
         """Number of bands in the model
         """
-        return self.shape[0]
+        return self._shape[0]
 
     @property
     def Ny(self):
         """Number of pixel in the y-direction
         """
-        return self.shape[1]
+        return self._shape[1]
 
     @property
     def Nx(self):
         """Number of pixels in the x-direction
         """
-        return self.shape[2]
+        return self._shape[2]
 
     @property
     def shape(self):
@@ -76,8 +79,6 @@ class Frame():
 
     @property
     def psfs(self):
-        if self._psfs is None:
-            return None
         return self._psfs
 
     def get_pixel(self, sky_coord):
@@ -168,7 +169,8 @@ class Observation():
         -------
         None
         """
-        if self.frame.psfs is not None:
+        self.diff_kernels_fft = None
+        if self.frame.psfs is not model_frame.psfs:
             # First we setup the parameters for the model -> observation FFTs
             # Make the PSF stamp wider due to errors when matching PSFs
             psf_shape = np.array(self.frame.psfs[0].shape) + self.padding
@@ -186,7 +188,6 @@ class Observation():
 
             # Match the PSF in each band
             diff_kernels_fft = []
-            # kernels = []
             for psf in self.frame.psfs:
                 _psf_fft = np.fft.rfftn(psf, fftpack_shape)
                 kernel = np.fft.fftshift(np.fft.irfftn(_psf_fft / target_fft, fftpack_shape))
@@ -194,11 +195,9 @@ class Observation():
                 if kernel.shape[0] % 2 == 0:
                     kernel = kernel[1:, 1:]
                 kernel = _centered(kernel, psf_shape)
-                # kernels.append(kernel)
                 diff_kernels_fft.append(np.fft.rfftn(kernel, self.fftpack_shape))
 
             self.diff_kernels_fft = np.array(diff_kernels_fft)
-            # self.kernels = np.array(kernels)
 
         return self
 
@@ -224,11 +223,13 @@ class Observation():
         """
         if self.frame.filtercurves is not None:
             assert self.frame.filtercurves == model.shape[0]
-            model = model[self.frame.filtercurves == 1]
-        if self.frame.psfs is not None:
-            model = np.array([self._convolve_band(model[b], self.diff_kernels_fft[b]) for b in range(self.frame.B)])
+            model_ = model[self.frame.filtercurves == 1]
 
-        return model
+        if self.diff_kernels_fft is not None:
+            model_ = np.array([self._convolve_band(model[b], self.diff_kernels_fft[b]) for b in range(self.frame.B)])
+        else:
+            model_ = model
+        return model_
 
     def get_loss(self, model):
         """Computes the loss/fidelity of a given model wrt to the observation
