@@ -3,5 +3,6 @@ setupRequired(scipy)
 setupRequired(numpy)
 setupRequired(eigen)
 setupRequired(proxmin)
+setupRequired(autograd)
 
 envPrepend(PYTHONPATH, ${PRODUCT_DIR}/lib/python)
