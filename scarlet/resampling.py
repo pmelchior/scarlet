@@ -228,20 +228,23 @@ def match_psfs(psf_hr, psf_lr, wcs_hr, wcs_lr):
 
     ny_hr, nx_hr = psf_hr.shape
     ny_lr, nx_lr = psf_lr.shape
-    if np.size(wcs_hr.array_shape) == 2:
-        wcs_hr.wcs.crval = 0., 0.
-        wcs_hr.wcs.crpix = ny_hr / 2., nx_hr / 2.
-    elif np.size(wcs_hr.array_shape) == 3:
-        wcs_hr.wcs.crval = 0., 0., 0.
-        wcs_hr.wcs.crpix = ny_hr / 2., nx_hr / 2., 0.
-    if np.size(wcs_lr.array_shape) == 2:
-        wcs_lr.wcs.crval = 0., 0.
-        wcs_lr.wcs.crpix = ny_lr / 2., nx_lr / 2.
-    elif np.size(wcs_lr.array_shape) == 3:
-        wcs_lr.wcs.crval = 0., 0., 0.
-        wcs_lr.wcs.crpix = ny_lr / 2., nx_lr / 2., 0
 
-    mask, p_lr, p_hr = match_patches(psf_hr.shape, psf_lr.data.shape, wcs_hr, wcs_lr)
+    psf_wcs_hr = wcs_hr.deepcopy()
+    psf_wcs_lr = wcs_lr.deepcopy()
+    if np.size(wcs_hr.array_shape) == 2:
+        psf_wcs_hr.wcs.crval = 0., 0.
+        psf_wcs_hr.wcs.crpix = ny_hr / 2., nx_hr / 2.
+    elif np.size(psf_wcs_hr.array_shape) == 3:
+        psf_wcs_hr.wcs.crval = 0., 0., 0.
+        psf_wcs_hr.wcs.crpix = ny_hr / 2., nx_hr / 2., 0.
+    if np.size(psf_wcs_lr.array_shape) == 2:
+        psf_wcs_lr.wcs.crval = 0., 0.
+        psf_wcs_lr.wcs.crpix = ny_lr / 2., nx_lr / 2.
+    elif np.size(psf_wcs_lr.array_shape) == 3:
+        psf_wcs_lr.wcs.crval = 0., 0., 0.
+        psf_wcs_lr.wcs.crpix = ny_lr / 2., nx_lr / 2., 0
+
+    mask, p_lr, p_hr = match_patches(psf_hr.shape, psf_lr.data.shape, psf_wcs_hr, psf_wcs_lr)
 
     cmask = np.where(mask == 1)
 
