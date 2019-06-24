@@ -15,7 +15,7 @@ def _centered(arr, newshape):
     the zero padded region of the convolution.
     """
     newshape = np.asarray(newshape)
-    currshape = np.array(arr.shape)
+    currshape = np.array(arr.shape[1:])
     startind = (currshape - newshape) // 2
     endind = startind + newshape
     myslice = [slice(startind[k], endind[k]) for k in range(len(endind))]
@@ -152,20 +152,20 @@ class Observation(Scene):
             shape = np.array(scene.psfs[0].shape) + np.array(self.psfs[0].shape) - 1
             fftpack_shape = [fftpack.helper.next_fast_len(d) for d in shape]
             # Deconvolve the target PSF
-            target_fft = np.fft.rfftn(scene.psfs[0], fftpack_shape)
+            target_fft = np.fft.rfftn(scene.psfs, fftpack_shape)
 
             # Match the PSF in each band
             new_kernel_fft = []
-            kernels = []
-            for psf in self.psfs:
-                _psf_fft = np.fft.rfftn(psf, fftpack_shape)
-                kernel = np.fft.ifftshift(np.fft.irfftn(_psf_fft / target_fft, fftpack_shape))
-                kernel *= scene.psfs[0].sum()
-                if kernel.shape[0] % 2 == 0:
-                    kernel = kernel[1:, 1:]
-                kernel = _centered(kernel, psf_shape)
-                kernels.append(kernel)
-                new_kernel_fft.append(np.fft.rfftn(kernel, self.fftpack_shape))
+
+            _psf_fft = np.fft.rfftn(self.psfs, fftpack_shape, axes=(1, 2))
+            kernels = np.fft.ifftshift(np.fft.irfftn(_psf_fft / target_fft, fftpack_shape, axes=(1, 2)), axes=(1, 2))
+            kernels *= scene.psfs[0].sum()
+            if kernels.shape[1] % 2 == 0:
+                kernels = kernels[:, 1:, 1:]
+
+            kernels = [_centered(kernel, psf_shape) for kernel in kernels]
+
+            new_kernel_fft = np.fft.rfftn(kernels, self.fftpack_shape, axes=(1, 2))
 
             self.psfs_fft = np.array(new_kernel_fft)
             self.kernels = np.array(kernels)
