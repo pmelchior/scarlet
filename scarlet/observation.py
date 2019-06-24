@@ -183,16 +183,18 @@ class Observation(Scene):
         convolved = np.fft.irfftn(model_fft * psf_fft, self.fftpack_shape)[self.slices]
         return _centered(convolved, model.shape)
 
-    def get_model(self, model):
-        """Resample and convolve a model to the observation frame
+    def render(self, model):
+        """Convolve a model to the observation frame
+
         Parameters
         ----------
         model: array
-            The model in some other data frame.
+            The model from `Blend`
+
         Returns
         -------
-        model: array
-            The convolved and resampled `model` in the observation frame.
+        model_: array
+            The convolved `model` in the observation frame
         """
         if self.structure is not None:
             assert self.structure.size == model.shape[0]
@@ -203,19 +205,21 @@ class Observation(Scene):
         return model
 
     def get_loss(self, model):
-        """Calculate the loss function for the model
+        """Computes the loss/fidelity of a given model wrt to the observation
+
         Parameters
         ----------
         model: array
-            The model in some other data frame.
+            The model from `Blend`
+
         Returns
         -------
         result: array
             Scalar tensor with the likelihood of the model
-            given the image data.
+            given the image data
         """
 
-        model = self.get_model(model)
+        model = self.render(model)
 
         return 0.5 * np.sum((self.weights * (model - self.images)) ** 2)
 
@@ -272,6 +276,7 @@ class LowResObservation(Scene):
         ----------
         scene: Scene object
             A scene in which to project the images from this observation
+
         Returns
         -------
         None
@@ -338,54 +343,59 @@ class LowResObservation(Scene):
     def matching_mask(self):
         return self._mask
 
-    def get_model(self, model):
-        """Resample and convolve a model to the observation frame
+    def _render(self, model):
+        """Resample and convolve a model in the observation frame
+
         Parameters
         ----------
         model: array
             The model in some other data frame.
+
         Returns
         -------
-        model: array
+        model_: array
             The convolved and resampled `model` in the observation frame.
         """
         if self.structure is not None:
             assert self.structure.size == model.shape[0]
             model = model[self.structure == 1]
-        obs = np.array([np.dot(model[b].flatten(), self.resconv_op[b]) for b in range(self.B)])
+        model_ = np.array([np.dot(model[b].flatten(), self.resconv_op[b]) for b in range(self.B)])
 
-        return obs
+        return model_
 
-    def get_model_image(self, model):
-        """Resample and convolve a model to the observation frame
+    def render(self, model):
+        """Resample and convolve a model in the observation frame
+
         Parameters
         ----------
         model: array
             The model in some other data frame.
+
         Returns
         -------
-        model: array
+        model_: array
             The convolved and resampled `model` in the observation frame.
         """
         img = np.zeros(self.shape)
-        img[:, self._coord_lr[0], self._coord_lr[1]] = self.get_model(model)
+        img[:, self._coord_lr[0], self._coord_lr[1]] = self._render(model)
         return img
 
     def get_loss(self, model):
-        '''Computes the loss of a given model compared to the object's images
+        """Computes the loss/fidelity of a given model wrt to the observation
 
         Parameters
         ----------
         model: array
-            A model for the data as computed from get_model method
-        Return
+            A model from `Blend`
+
+        Returns
+        -------
         loss: float
             Loss of the model
-        ------
-        '''
+        """
 
         if self._psfs is not None:
-            model = self.get_model(model)
+            model = self._render(model)
 
         return 0.5 * np.sum((self.weights * (
                 model - self.images[:, self._coord_lr[0].astype(int), self._coord_lr[1].astype(int)])) ** 2)
