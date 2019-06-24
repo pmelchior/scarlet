@@ -33,10 +33,10 @@ class Frame():
         World Coordinates
     psfs: array or tensor
         PSF in each band
-    filtercurves: list of hashable elements
+    bands: list of hashable elements
         Names/identifiers of spectral bands
     """
-    def __init__(self, shape, wcs=None, psfs=None, filtercurves=None):
+    def __init__(self, shape, wcs=None, psfs=None, bands=None):
         assert len(shape) == 3
         self._shape = tuple(shape)
         self.wcs = wcs
@@ -50,8 +50,8 @@ class Frame():
 
         self._psfs = psfs
 
-        assert filtercurves is None or len(filtercurves) == shape[0]
-        self.filtercurves = filtercurves
+        assert bands is None or len(bands) == shape[0]
+        self.bands = bands
 
     @property
     def B(self):
@@ -119,7 +119,7 @@ class Observation():
         prevent artifacts from the FFT.
     """
 
-    def __init__(self, images, psfs=None, weights=None, wcs=None, filtercurves=None,
+    def __init__(self, images, psfs=None, weights=None, wcs=None, bands=None,
                  padding=10):
         """Create an Observation
 
@@ -136,14 +136,14 @@ class Observation():
             to zero.
         wcs: TBD
             World Coordinate System associated with the images.
-        filtercurves: list of hashable elements
+        bands: list of hashable elements
             Names/identifiers of spectral bands
         padding: int
             Number of pixels to pad each side with, in addition to
             half the width of the PSF, for FFTs. This is needed to
             prevent artifacts from the FFT.
         """
-        self.frame = Frame(images.shape, wcs=wcs, psfs=psfs, filtercurves=filtercurves)
+        self.frame = Frame(images.shape, wcs=wcs, psfs=psfs, bands=bands)
 
         self.images = np.array(images)
         if weights is not None:
@@ -169,6 +169,14 @@ class Observation():
         -------
         None
         """
+
+        #  bands of model that are represented in this observation
+        self.band_slice = slice(None)
+        if self.frame.bands is not model_frame.bands:
+            bmin = model_frame.bands.index(self.frame.bands[0])
+            bmax = model_frame.bands.index(self.frame.bands[-1])
+            self.band_slice = slice(bmin, bmax+1)
+
         self.diff_kernels_fft = None
         if self.frame.psfs is not model_frame.psfs:
             # First we setup the parameters for the model -> observation FFTs
@@ -221,14 +229,11 @@ class Observation():
         model_: array
             The convolved `model` in the observation frame
         """
-        if self.frame.filtercurves is not None:
-            assert self.frame.filtercurves == model.shape[0]
-            model_ = model[self.frame.filtercurves == 1]
+        model_ = model[self.band_slice,:,:]
 
         if self.diff_kernels_fft is not None:
-            model_ = np.array([self._convolve_band(model[b], self.diff_kernels_fft[b]) for b in range(self.frame.B)])
-        else:
-            model_ = model
+            model_ = np.array([self._convolve_band(model_[b], self.diff_kernels_fft[b]) for b in range(self.frame.B)])
+
         return model_
 
     def get_loss(self, model):
@@ -253,12 +258,12 @@ class Observation():
 
 class LowResObservation(Observation):
 
-    def __init__(self, images, wcs=None, psfs=None, weights=None, filtercurves=None, padding=3):
+    def __init__(self, images, wcs=None, psfs=None, weights=None, bands=None, padding=3):
 
         assert wcs is not None, "WCS is necessary for LowResObservation"
         assert psfs is not None, "PSFs are necessary for LowResObservation"
 
-        self.frame = Frame(images.shape, wcs=wcs, psfs=psfs, filtercurves=filtercurves)
+        self.frame = Frame(images.shape, wcs=wcs, psfs=psfs, bands=bands)
         self.images = np.array(images)
         self.padding = padding
 
@@ -268,6 +273,13 @@ class LowResObservation(Observation):
             self.weights = 1
 
     def match(self, model_frame):
+
+        #  bands of model that are represented in this observation
+        self.band_slice = slice(None)
+        if self.frame.bands is not model_frame.bands:
+            bmin = model_frame.bands.index(self.frame.bands[0])
+            bmax = model_frame.bands.index(self.frame.bands[-1])
+            self.band_slice = slice(bmin, bmax+1)
 
         # Get pixel coordinates in each frame.
         mask, coord_lr, coord_hr = resampling.match_patches(model_frame.shape, self.frame.shape, model_frame.wcs, self.frame.wcs)
@@ -322,10 +334,8 @@ class LowResObservation(Observation):
         model_: array
             The convolved and resampled `model` in the observation frame.
         """
-        if self.frame.filtercurves is not None:
-            assert self.frame.filtercurves == model.shape[0]
-            model = model[self.frame.filtercurves == 1]
-        model_ = np.array([np.dot(model[b].flatten(), self.resconv_op[b]) for b in range(self.frame.B)])
+        model_ = model[self.band_slice,:,:]
+        model_ = np.array([np.dot(model_[b].flatten(), self.resconv_op[b]) for b in range(self.frame.B)])
 
         return model_
 
