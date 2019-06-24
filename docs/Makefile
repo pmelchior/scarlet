@@ -14,6 +14,14 @@ help:
 
 .PHONY: help Makefile
 
+gh-pages:
+	make html
+	git checkout gh-pages
+	cp -r _build/html/* ../
+	git add -A
+	git ci -m "Generated gh-pages for `git log -1 --pretty=short --abbrev-commit`" && git push origin gh-pages ; git checkout master
+	@echo "gh-pages updated"
+
 # Catch-all target: route all unknown targets to Sphinx using the new
 # "make mode" option.  $(O) is meant as a shortcut for $(SPHINXOPTS).
 %: Makefile

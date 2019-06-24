@@ -1,70 +1,58 @@
 import numpy as np
+from astropy.visualization.lupton_rgb import LinearMapping, AsinhMapping
 
-class Norm:
-    """Base class for RGB normalization
-    """
-    def __init__(self, vmin=0, vmax=1):
-        """Norm
 
-        Parameters
-        ----------
-        vmin: float, default 0
-            Minimum pixel value.
-        vmax: float, default=1
-            Maximum pixel value.
-        """
-        self.vmin = vmin
-        self.vmax = vmax
-    @property
-    def vrange(self):
-        """Returns range `vmax` - `vmin`
-        """
-        return self.vmax - self.vmin
-    def __call__(self, img):
-        """Apply the norm to RGB channels
+def get_default_filter_weight(bands, channels=3):
+    filter_weights = np.zeros((channels, bands))
+    if bands == 1:
+        filter_weights[0, 0] = filter_weights[1, 0] = filter_weights[2, 0] = 1
+    elif bands == 2:
+        filter_weights[0, 1] = 0.667
+        filter_weights[1, 1] = 0.333
+        filter_weights[1, 0] = 0.333
+        filter_weights[2, 0] = 0.667
+        filter_weights /= 0.667
+    elif bands == 3:
+        filter_weights[0, 2] = 1
+        filter_weights[1, 1] = 1
+        filter_weights[2, 0] = 1
+    elif bands == 4:
+        filter_weights[0, 3] = 1
+        filter_weights[0, 2] = 0.333
+        filter_weights[1, 2] = 0.667
+        filter_weights[1, 1] = 0.667
+        filter_weights[2, 1] = 0.333
+        filter_weights[2, 0] = 1
+        filter_weights /= 1.333
+    elif bands == 5:
+        filter_weights[0, 4] = 1
+        filter_weights[0, 3] = 0.667
+        filter_weights[1, 3] = 0.333
+        filter_weights[1, 2] = 1
+        filter_weights[1, 1] = 0.333
+        filter_weights[2, 1] = 0.667
+        filter_weights[2, 0] = 1
+        filter_weights /= 1.667
+    elif bands == 6:
+        filter_weights[0, 5] = 1
+        filter_weights[0, 4] = 0.667
+        filter_weights[0, 3] = 0.333
+        filter_weights[1, 4] = 0.333
+        filter_weights[1, 3] = 0.667
+        filter_weights[1, 2] = 0.667
+        filter_weights[1, 1] = 0.333
+        filter_weights[2, 2] = 0.333
+        filter_weights[2, 1] = 0.667
+        filter_weights[2, 0] = 1
+        filter_weights /= 2
+    else:
+        raise NotImplementedError("No default filter weights have been implemented for more than 6 bands")
+    return filter_weights
 
-        Parameters
-        ----------
-        img: array_like
-            Image to normalize
 
-        Returns
-        -------
-        normalized image
-        """
-        pass
-
-class LinearNorm(Norm):
-    """Linear norm
-
-    Parameters
-    ----------
-    vmin: float, default 0
-        Minimum pixel value.
-    vmax: float, default=1
-        Maximum pixel value.
-    """
-    def __init__(self, vmin=0, vmax=1):
-        super().__init__(vmin=vmin, vmax=vmax)
-
-    def __call__(self, img):
-        """Apply the norm to RGB channels
-
-        Parameters
-        ----------
-        img: array_like
-            Image to normalize
-
-        Returns
-        -------
-        (img - vmin)/(vmax - vmin)
-        """
-        return (img-self.vmin)/self.vrange
-
-class LinearPercentileNorm(LinearNorm):
-    def __init__(self, img, percentiles=[1,99]):
+class LinearPercentileNorm(LinearMapping):
+    def __init__(self, img, percentiles=[1, 99]):
         """Create norm that is linear between lower and upper percentile of img
-
         Parameters
         ----------
         img: array_like
@@ -75,45 +63,12 @@ class LinearPercentileNorm(LinearNorm):
         """
         assert len(percentiles) == 2
         vmin, vmax = np.percentile(img, percentiles)
-        super().__init__(vmin=vmin, vmax=vmax)
+        super().__init__(minimum=vmin, maximum=vmax)
 
-class AsinhNorm(Norm):
-    def __init__(self, vmin=0, beta=1):
-        """Asinh norm
 
-        Arcsinh scaling, see Lupton et al., 2004, PASP 116, 133–137
-
-        Parameters
-        ----------
-        vmin: float, default 0
-            Minimum pixel value.
-        beta: float, default=1
-            Softening parameter
-        """
-        self.vmin = vmin
-        self.beta = beta
-        self.vmax = beta * np.sinh(1) + vmin
-
-    def __call__(self, img):
-        """Apply the norm to RGB channels
-
-        Parameters
-        ----------
-        img: array_like
-            Image to normalize
-
-        Returns
-        -------
-        normalized img
-        """
-        _img = img - self.vmin
-        I = _img.sum(axis=0)/3
-        return np.ma.array(_img*np.arcsinh(I/self.beta)/I)
-
-class AsinhPercentileNorm(AsinhNorm):
-    def __init__(self, img, percentiles=[1,99]):
+class AsinhPercentileNorm(AsinhMapping):
+    def __init__(self, img, percentiles=[1, 99]):
         """Create norm that is linear between lower and upper percentile of img
-
         Parameters
         ----------
         img: array_like
@@ -124,10 +79,10 @@ class AsinhPercentileNorm(AsinhNorm):
         """
         assert len(percentiles) == 2
         vmin, vmax = np.percentile(img, percentiles)
-        # vmin set to zero, vmax set to 1
         # solution for beta assumes flat spectrum at vmax
-        beta = vmax-vmin / np.sinh(1)
-        super().__init__(vmin=vmin, beta=beta)
+        stretch = vmax - vmin
+        beta = stretch / np.sinh(1)
+        super().__init__(minimum=vmin, stretch=stretch, Q=beta)
 
 
 def img_to_channel(img, filter_weights=None, fill_value=0):
@@ -147,98 +102,30 @@ def img_to_channel(img, filter_weights=None, fill_value=0):
     RGB: numpy array with dtype float
     """
     # expand single img into cube
-    assert len(img.shape) in [2,3]
+    assert len(img.shape) in [2, 3]
     if len(img.shape) == 2:
         ny, nx = img.shape
         img_ = img.reshape(1, ny, nx)
     elif len(img.shape) == 3:
         img_ = img
     B = len(img_)
-    C = 3 # RGB
+    C = 3  # RGB
 
     # filterWeights: channel x band
     if filter_weights is None:
-        filter_weights = np.zeros((C, B))
-        if B == 1:
-            filter_weights[0,0] = filter_weights[1,0] = filter_weights[2,0] = 1
-        if B == 2:
-            filter_weights[0,1] = 0.667
-            filter_weights[1,1] = 0.333
-            filter_weights[1,0] = 0.333
-            filter_weights[2,0] = 0.667
-            filter_weights /= 0.667
-        if B == 3:
-            filter_weights[0,2] = 1
-            filter_weights[1,1] = 1
-            filter_weights[2,0] = 1
-        if B == 4:
-            filter_weights[0,3] = 1
-            filter_weights[0,2] = 0.333
-            filter_weights[1,2] = 0.667
-            filter_weights[1,1] = 0.667
-            filter_weights[2,1] = 0.333
-            filter_weights[2,0] = 1
-            filter_weights /= 1.333
-        if B == 5:
-            filter_weights[0,4] = 1
-            filter_weights[0,3] = 0.667
-            filter_weights[1,3] = 0.333
-            filter_weights[1,2] = 1
-            filter_weights[1,1] = 0.333
-            filter_weights[2,1] = 0.667
-            filter_weights[2,0] = 1
-            filter_weights /= 1.667
-        if B == 6:
-            filter_weights[0,5] = 1
-            filter_weights[0,4] = 0.667
-            filter_weights[0,3] = 0.333
-            filter_weights[1,4] = 0.333
-            filter_weights[1,3] = 0.667
-            filter_weights[1,2] = 0.667
-            filter_weights[1,1] = 0.333
-            filter_weights[2,2] = 0.333
-            filter_weights[2,1] = 0.667
-            filter_weights[2,0] = 1
-            filter_weights /= 2
+        filter_weights = get_default_filter_weight(B, C)
     else:
         assert filter_weights.shape == (3, len(img))
 
     # map bands onto RGB channels
-    _,ny,nx = img_.shape
-    rgb = np.dot(filter_weights, img_.reshape(B,-1)).reshape(3,ny,nx)
+    _, ny, nx = img_.shape
+    rgb = np.dot(filter_weights, img_.reshape(B, -1)).reshape(3, ny, nx)
 
     if hasattr(rgb, "mask"):
         rgb = rgb.filled(fill_value)
 
     return rgb
 
-def channel_to_rgb(channels, norm):
-    """Convert RGB channel values to [0..255]
-
-    If normalized values are outside of the range [0..255], they will be
-    truncated such as to preserve the corresponding color.
-
-    Parameters
-    ----------
-    channels: array_like
-        Converted RGB channel values with dimension (3, height, width)
-    norm: `scarlet.display.Norm`
-        Norm to use for mapping in the allowed range [0..255]
-
-    Returns
-    -------
-    rgb: numpy array with dimensions (3, height, width) and dtype uint8
-    """
-    rgb = norm(channels)
-
-    # truncate at 0 and 1
-    rgb[rgb < 0] = 0 # looks better but is inaccurate because colors are not treated the same
-    # normalizing by a uniform maximum is critical for the color of saturated regions
-    rgb_max = rgb.max(axis=0)
-    rgb[:, rgb_max > 1] /= rgb_max[rgb_max > 1]
-
-    maxRGB = 255
-    return np.dstack((rgb * maxRGB)).astype(np.uint8)
 
 def img_to_rgb(img, filter_weights=None, fill_value=0, norm=None):
     """Convert images to normalized RGB.
@@ -264,6 +151,6 @@ def img_to_rgb(img, filter_weights=None, fill_value=0, norm=None):
     """
     RGB = img_to_channel(img)
     if norm is None:
-        norm = LinearPercentileNorm(RGB)
-    rgb = channel_to_rgb(RGB, norm=norm)
+        norm = LinearMapping(image=RGB)
+    rgb = norm.make_rgb_image(*RGB)
     return rgb
