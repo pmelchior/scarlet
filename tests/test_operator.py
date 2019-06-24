@@ -1,14 +1,9 @@
-import sys
-
 import pytest
 import numpy as np
+import proxmin
+
 
 import scarlet
-
-try:
-    import torch
-except ImportError:
-    pass
 
 
 class TestProx(object):
@@ -75,10 +70,10 @@ class TestProx(object):
         result[2, 2] = .1
         np.testing.assert_array_equal(_X, result)
 
-    def test_prox_max(self):
+    def test_prox_max_unity(self):
         X = np.arange(11, dtype=float)
         _X = X.copy()
-        print(scarlet.operator.prox_max(_X, 0))
+        print(scarlet.operator.prox_max_unity(_X, 0))
         result = X/10
         np.testing.assert_array_equal(_X, result)
 
@@ -94,19 +89,18 @@ class TestProx(object):
         result = np.ones_like(X) * .1
         np.testing.assert_array_equal(_X, result)
 
-    @pytest.mark.skipif('torch' not in sys.modules, reason="pytorch is not installed")
     def test_soft_symmetry(self):
-        X = torch.arange(25, dtype=torch.float32).reshape(5, 5)
-        _X = X.clone()
+        X = np.arange(25, dtype=float).reshape(5, 5)
+        _X = X.copy()
         scarlet.operator.prox_soft_symmetry(_X, 0)
-        result = torch.ones_like(X) * 12
+        result = np.ones_like(X) * 12
         np.testing.assert_array_equal(_X, result)
 
-        _X = X.clone()
+        _X = X.copy()
         scarlet.operator.prox_soft_symmetry(_X, 0, 0)
         np.testing.assert_array_equal(_X, X)
 
-        _X = X.clone()
+        _X = X.copy()
         scarlet.operator.prox_soft_symmetry(_X, 0, .5)
         result = [[6.0, 6.5, 7.0, 7.5, 8.0],
                   [8.5, 9.0, 9.5, 10.0, 10.5],
@@ -120,3 +114,93 @@ class TestProx(object):
         bulge_sed = np.arange(5)[::-1]
         new_sed = scarlet.operator.project_disk_sed(bulge_sed, disk_sed)
         np.testing.assert_array_equal(new_sed, [0, 5, 6, 7, 4])
+
+    def test_uncentered(self):
+        x = np.arange(35).reshape(5, 7) - 5
+        shape = x.shape
+
+        # Use a centered positivity function
+        truth = x.copy()
+        truth[x < 0] = 0
+        _x = x.copy()
+        scarlet.operator.uncentered_operator(_x, proxmin.operators.prox_plus, (2, 3), step=1)
+        np.testing.assert_array_equal(_x, truth)
+
+        # lower left positivity
+        truth = x.copy()
+        region = (slice(0, 3), slice(0, 5))
+        truth[region][x[region] < 0] = 0
+        _x = x.copy()
+        scarlet.operator.uncentered_operator(_x, proxmin.operators.prox_plus, (1, 2), step=1)
+        np.testing.assert_array_equal(_x, truth)
+
+        # lower right positivity
+        truth = x.copy()
+        region = (slice(0, 3), slice(-5, shape[1]))
+        truth[region][x[region] < 0] = 0
+        _x = x.copy()
+        scarlet.operator.uncentered_operator(_x, proxmin.operators.prox_plus, (1, shape[1]-3), step=1)
+        np.testing.assert_array_equal(_x, truth)
+
+        x = np.arange(35).reshape(5, 7)[::-1] - 5
+        # upper left positivity
+        truth = x.copy()
+        region = (slice(-3, shape[0]), slice(0, 5))
+        truth[region][x[region] < 0] = 0
+        _x = x.copy()
+        scarlet.operator.uncentered_operator(_x, proxmin.operators.prox_plus, (shape[0]-2, 2), step=1)
+        np.testing.assert_array_equal(_x, truth)
+
+        # upper right positivity
+        truth = x.copy()
+        region = (slice(-3, shape[0]), slice(-5, shape[1]))
+        truth[region][x[region] < 0] = 0
+        _x = x.copy()
+        scarlet.operator.uncentered_operator(_x, proxmin.operators.prox_plus,
+                                             (shape[0]-2, shape[1]-3), step=1)
+        np.testing.assert_array_equal(_x, truth)
+
+    def test_uncentered_fill(self):
+        x = np.arange(35).reshape(5, 7) - 5
+        shape = x.shape
+
+        # Use a centered positivity function
+        truth = np.zeros_like(x)
+        truth[x > 0] = x[x > 0]
+        _x = x.copy()
+        scarlet.operator.uncentered_operator(_x, proxmin.operators.prox_plus, (2, 3), step=1, fill=0)
+        np.testing.assert_array_equal(_x, truth)
+
+        # lower left positivity
+        truth = np.zeros_like(x)
+        region = (slice(0, 3), slice(0, 5))
+        truth[region][x[region] > 0] = x[region][x[region] > 0]
+        _x = x.copy()
+        scarlet.operator.uncentered_operator(_x, proxmin.operators.prox_plus, (1, 2), step=1, fill=0)
+        np.testing.assert_array_equal(_x, truth)
+
+        # lower right positivity
+        truth = np.zeros_like(x)
+        region = (slice(0, 3), slice(-5, shape[1]))
+        truth[region][x[region] > 0] = x[region][x[region] > 0]
+        _x = x.copy()
+        scarlet.operator.uncentered_operator(_x, proxmin.operators.prox_plus, (1, shape[1]-3), step=1, fill=0)
+        np.testing.assert_array_equal(_x, truth)
+
+        x = np.arange(35).reshape(5, 7)[::-1] - 5
+        # upper left positivity
+        truth = np.zeros_like(x)
+        region = (slice(-3, shape[0]), slice(0, 5))
+        truth[region][x[region] > 0] = x[region][x[region] > 0]
+        _x = x.copy()
+        scarlet.operator.uncentered_operator(_x, proxmin.operators.prox_plus, (shape[0]-2, 2), step=1, fill=0)
+        np.testing.assert_array_equal(_x, truth)
+
+        # upper right positivity
+        truth = np.zeros_like(x)
+        region = (slice(-3, shape[0]), slice(-5, shape[1]))
+        truth[region][x[region] > 0] = x[region][x[region] > 0]
+        _x = x.copy()
+        scarlet.operator.uncentered_operator(_x, proxmin.operators.prox_plus,
+                                             (shape[0]-2, shape[1]-3), step=1, fill=0)
+        np.testing.assert_array_equal(_x, truth)
