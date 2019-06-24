@@ -23,8 +23,6 @@ def get_pixel_sed(sky_coord, observations):
     ----------
     sky_coord: tuple
         Center of the source
-    scene: `scarlet.observation.Scene`
-        The scene that the model lives in.
     observations: list of `~scarlet.observation.Observation`
         Observations to extract SED from.
 
@@ -36,11 +34,11 @@ def get_pixel_sed(sky_coord, observations):
 
     sed = []
     for obs in observations:
-        pixel = obs.get_pixel(sky_coord)
+        pixel = obs.frame.get_pixel(sky_coord)
         _sed = obs.images[:, pixel[0], pixel[1]].copy()
-        if obs.psfs is not None:
+        if obs.frame.psfs is not None:
             # Account for the PSF in the intensity
-            _sed /= obs.psfs.max(axis=(1, 2))
+            _sed /= obs.frame.psfs.max(axis=(1, 2))
         sed = np.concatenate((sed, _sed))
 
     if np.all(sed[-1] <= 0):
@@ -53,7 +51,7 @@ def get_pixel_sed(sky_coord, observations):
     return np.array(sed).reshape(-1)
 
 
-def get_best_fit_seds(morphs, scene, observations):
+def get_best_fit_seds(morphs, frame, observations):
     """Calculate best fitting SED for multiple components.
 
     Solves min_A ||img - AS||^2 for the SED matrix A,
@@ -63,25 +61,25 @@ def get_best_fit_seds(morphs, scene, observations):
     ----------
     morphs: list
         Morphology for each component in the source.
-    scene: `scarlet.observation.Scene`
-        The scene that the model lives in.
+    frame: `scarlet.observation.frame`
+        The frame that the model lives in.
     observations: list of `~scarlet.observation.Observation`
         Observations to extract SEDs from.
     """
     K = len(morphs)
-    seds = np.zeros((K, scene.B), dtype=observations[0].images.dtype)
+    seds = np.zeros((K, frame.B), dtype=observations[0].images.dtype)
     band = 0
     _morph = morphs.reshape(K, -1)
     for obs in observations:
         images = obs.images
-        data = images.reshape(obs.B, -1)
+        data = images.reshape(obs.frame.B, -1)
         sed = np.dot(np.linalg.inv(np.dot(_morph, _morph.T)), np.dot(_morph, data.T))
-        seds[:, band:band + obs.B] = sed
-        band += obs.B
+        seds[:, band:band + obs.frame.B] = sed
+        band += obs.frame.B
     return seds
 
 
-def build_detection_coadd(sed, bg_rms, observation, scene, thresh=1):
+def build_detection_coadd(sed, bg_rms, observation, frame, thresh=1):
     """Build a band weighted coadd to use for source detection
 
     Parameters
@@ -92,8 +90,8 @@ def build_detection_coadd(sed, bg_rms, observation, scene, thresh=1):
         Background RMS in each band in observation.
     observation: `~scarlet.observation.Observation`
         Observation to use for the coadd.
-    scene: `scarlet.observation.Scene`
-        The scene that the model lives in.
+    frame: `scarlet.observation.frame`
+        The frame that the model lives in.
     thresh: `float`
         Multiple of the backround RMS used as a
         flux cutoff.
@@ -105,7 +103,7 @@ def build_detection_coadd(sed, bg_rms, observation, scene, thresh=1):
     bg_cutoff: float
         The minimum value in `detect` to include in detection.
     """
-    B = scene.B
+    B = frame.B
     if np.any(bg_rms <= 0):
         raise ValueError("bg_rms must be greater than zero in all bands")
 
@@ -118,7 +116,7 @@ def build_detection_coadd(sed, bg_rms, observation, scene, thresh=1):
     return detect, bg_cutoff
 
 
-def init_extended_source(sky_coord, scene, observations, bg_rms, obs_idx=0,
+def init_extended_source(sky_coord, frame, observations, bg_rms, obs_idx=0,
                          thresh=1., symmetric=True, monotonic=True):
     """Initialize the source that is symmetric and monotonic
     See `ExtendedSource` for a description of the parameters
@@ -129,11 +127,11 @@ def init_extended_source(sky_coord, scene, observations, bg_rms, obs_idx=0,
         observations = [observations]
     # determine initial SED from peak position
     sed = get_pixel_sed(sky_coord, observations)  # amplitude is in sed
-    if scene.psfs is not None:
-        sed = sed * scene.psfs[0].max()
+    if frame.psfs is not None:
+        sed = sed * frame.psfs[0].max()
 
-    morph, bg_cutoff = build_detection_coadd(sed, bg_rms, observations[obs_idx], scene, thresh)
-    center = scene.get_pixel(sky_coord)
+    morph, bg_cutoff = build_detection_coadd(sed, bg_rms, observations[obs_idx], frame, thresh)
+    center = frame.get_pixel(sky_coord)
 
     # Apply the necessary constraints
     if symmetric:
@@ -158,7 +156,7 @@ def init_extended_source(sky_coord, scene, observations, bg_rms, obs_idx=0,
     return sed, morph
 
 
-def init_combined_extended_source(sky_coord, scene, observations, bg_rms, obs_idx=0,
+def init_combined_extended_source(sky_coord, frame, observations, bg_rms, obs_idx=0,
                                   thresh=1., symmetric=True, monotonic=True):
     """Initialize the source that is symmetric and monotonic
     See `ExtendedSource` for a description of the parameters
@@ -169,13 +167,13 @@ def init_combined_extended_source(sky_coord, scene, observations, bg_rms, obs_id
         observations = [observations]
 
     # determine initial SED from peak position
-    # SED in the scene for source detection
+    # SED in the frame for source detection
 
     sed = get_pixel_sed(sky_coord, observations)
 
-    morph, bg_cutoff = build_detection_coadd(sed, bg_rms, observations[obs_idx], scene, thresh)  # amplitude is in sed
+    morph, bg_cutoff = build_detection_coadd(sed, bg_rms, observations[obs_idx], frame, thresh)  # amplitude is in sed
 
-    center = scene.get_pixel(sky_coord)
+    center = frame.get_pixel(sky_coord)
 
     # Apply the necessary constraints
     if symmetric:
@@ -202,7 +200,7 @@ def init_combined_extended_source(sky_coord, scene, observations, bg_rms, obs_id
     return sed, morph
 
 
-def init_multicomponent_source(sky_coord, scene, observations, bg_rms, flux_percentiles=None, obs_idx=0,
+def init_multicomponent_source(sky_coord, frame, observations, bg_rms, flux_percentiles=None, obs_idx=0,
                                thresh=1., symmetric=True, monotonic=True):
     """Initialize multiple components
     See `MultiComponentSource` for a description of the parameters
@@ -215,7 +213,7 @@ def init_multicomponent_source(sky_coord, scene, observations, bg_rms, flux_perc
     if flux_percentiles is None:
         flux_percentiles = [25]
     # Initialize the first component as an extended source
-    sed, morph = init_extended_source(sky_coord, scene, observations, bg_rms, obs_idx,
+    sed, morph = init_extended_source(sky_coord, frame, observations, bg_rms, obs_idx,
                                       thresh, symmetric, monotonic)
     # create a list of components from base morph by layering them on top of
     # each other so that they sum up to morph
@@ -240,7 +238,7 @@ def init_multicomponent_source(sky_coord, scene, observations, bg_rms, flux_perc
         morphs[k] /= morphs[k].max()
 
     # optimal SEDs given the morphologies, assuming img only has that source
-    seds = get_best_fit_seds(morphs, scene, observations)
+    seds = get_best_fit_seds(morphs, frame, observations)
 
     return seds, morphs
 
@@ -257,8 +255,8 @@ class PointSource(Component):
     ----------
     sky_coord: tuple
         Center of the source
-    scene: `scarlet.observation.Scene`
-        The scene that the model lives in.
+    frame: `scarlet.observation.Frame`
+        The frame that the model lives in.
     observations: list of `~scarlet.observation.Observation`
         Observations to extract SED from.
     symmetric: bool
@@ -275,41 +273,41 @@ class PointSource(Component):
         Keyword arguments to pass to the component initialization.
     """
 
-    def __init__(self, sky_coord, scene, observations, symmetric=False, monotonic=True,
+    def __init__(self, sky_coord, frame, observations, symmetric=False, monotonic=True,
                  center_step=5, delay_thresh=10, **component_kwargs):
         try:
             iter(observations)
         except TypeError:
             observations = [observations]
         # this ignores any broadening from the PSFs ...
-        B, Ny, Nx = scene.shape
+        B, Ny, Nx = frame.shape
         morph = np.zeros((Ny, Nx), observations[0].images.dtype)
-        pixel = scene.get_pixel(sky_coord)
-        if scene.psfs is None:
+        pixel = frame.get_pixel(sky_coord)
+        if frame.psfs is None:
             # Use a single pixel if there is no target PSF
             morph[pixel] = 1
         else:
             # A point source is a function of the target PSF
-            assert len(scene.psfs[0].shape) == 2
+            assert len(frame.psfs[0].shape) == 2
             py, px = pixel
-            sy, sx = (np.array(scene.psfs[0].shape) - 1) // 2
+            sy, sx = (np.array(frame.psfs[0].shape) - 1) // 2
             cy, cx = (np.array(morph.shape) - 1) // 2
             yx0 = int(py - cy - sy), int(px - cx - sx)
-            bb, ibb, _ = get_projection_slices(scene.psfs[0], morph.shape, yx0)
-            morph[bb] = scene.psfs[0][ibb]
+            bb, ibb, _ = get_projection_slices(frame.psfs[0], morph.shape, yx0)
+            morph[bb] = frame.psfs[0][ibb]
 
         self.pixel_center = pixel
 
         sed = np.zeros((B,), observations[0].images.dtype)
         b0 = 0
         for obs in observations:
-            pixel = obs.get_pixel(sky_coord)
+            pixel = obs.frame.get_pixel(sky_coord)
             _sed = obs.images[:, pixel[0], pixel[1]].copy()
-            if obs.psfs is not None:
+            if obs.frame.psfs is not None:
                 # Account for the PSF in the intensity
-                _sed /= obs.psfs.max(axis=(1, 2))
-            sed[b0:b0 + obs.B] = _sed
-            b0 += obs.B
+                _sed /= obs.frame.psfs.max(axis=(1, 2))
+            sed[b0:b0 + obs.frame.B] = _sed
+            b0 += obs.frame.B
 
         super().__init__(sed, morph, **component_kwargs)
         self.symmetric = symmetric
@@ -360,8 +358,8 @@ class ExtendedSource(PointSource):
     ----------
     sky_coord: tuple
         Center of the source
-    scene: `scarlet.observation.Scene`
-        The scene that the model lives in.
+    frame: `scarlet.observation.Frame`
+        The frame that the model lives in.
     observations: list of `~scarlet.observation.Observation`
         Observations to extract SED from.
     bg_rms: array
@@ -381,17 +379,17 @@ class ExtendedSource(PointSource):
         Keyword arguments to pass to the component initialization.
     """
 
-    def __init__(self, sky_coord, scene, observations, bg_rms, obs_idx=0, thresh=1,
+    def __init__(self, sky_coord, frame, observations, bg_rms, obs_idx=0, thresh=1,
                  symmetric=False, monotonic=True, center_step=5, delay_thresh=10, **component_kwargs):
         self.symmetric = symmetric
         self.monotonic = monotonic
         self.coords = sky_coord
-        center = scene.get_pixel(sky_coord)
+        center = frame.get_pixel(sky_coord)
         self.pixel_center = center
         self.center_step = center_step
         self.delay_thresh = delay_thresh
 
-        sed, morph = init_extended_source(sky_coord, scene, observations, bg_rms, obs_idx,
+        sed, morph = init_extended_source(sky_coord, frame, observations, bg_rms, obs_idx,
                                           thresh, True, monotonic)
 
         Component.__init__(self, sed, morph, **component_kwargs)
@@ -405,8 +403,8 @@ class CombinedExtendedSource(PointSource):
     ----------
     sky_coord: tuple
         Center of the source
-    scene: `scarlet.observation.Scene`
-        The scene that the model lives in.
+    frame: `scarlet.observation.Frame`
+        The frame that the model lives in.
     observations: list of `~scarlet.observation.Observation`
         Observations to extract SED from.
     bg_rms: array
@@ -426,17 +424,17 @@ class CombinedExtendedSource(PointSource):
         Keyword arguments to pass to the component initialization.
     """
 
-    def __init__(self, sky_coord, scene, observations, bg_rms, obs_idx=0, thresh=1,
+    def __init__(self, sky_coord, frame, observations, bg_rms, obs_idx=0, thresh=1,
                  symmetric=False, monotonic=True, center_step=5, delay_thresh=0, **component_kwargs):
         self.symmetric = symmetric
         self.monotonic = monotonic
         self.coords = sky_coord
-        center = scene.get_pixel(sky_coord)
+        center = frame.get_pixel(sky_coord)
         self.pixel_center = center
         self.center_step = center_step
         self.delay_thresh = delay_thresh
 
-        sed, morph = init_combined_extended_source(sky_coord, scene, observations, bg_rms, obs_idx,
+        sed, morph = init_combined_extended_source(sky_coord, frame, observations, bg_rms, obs_idx,
                                                    thresh, True, monotonic)
 
         Component.__init__(self, sed, morph, **component_kwargs)
@@ -463,16 +461,16 @@ class MultiComponentSource(ComponentTree):
     See `ExtendedSource` for a description of the parameters
     """
 
-    def __init__(self, sky_coord, scene, observations, bg_rms, flux_percentiles=None, obs_idx=0, thresh=1,
+    def __init__(self, sky_coord, frame, observations, bg_rms, flux_percentiles=None, obs_idx=0, thresh=1,
                  symmetric=True, monotonic=True, **component_kwargs):
-        seds, morphs = init_multicomponent_source(sky_coord, scene, observations, bg_rms, flux_percentiles,
+        seds, morphs = init_multicomponent_source(sky_coord, frame, observations, bg_rms, flux_percentiles,
                                                   obs_idx, thresh, symmetric, monotonic)
 
         class MultiComponent(Component):
             def __init__(self, sed, morph, symmetric, monotonic, **kwargs):
                 self.symmetric = symmetric
                 self.monotonic = monotonic
-                self.pixel_center = scene.get_pixel(sky_coord)
+                self.pixel_center = frame.get_pixel(sky_coord)
                 super().__init__(sed, morph, **kwargs)
 
             def update(self):

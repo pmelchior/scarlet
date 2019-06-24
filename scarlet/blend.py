@@ -2,15 +2,15 @@ import autograd.numpy as np
 from autograd import grad
 
 from .component import ComponentTree, BlendFlag
-from .observation import Scene
+from .observation import Frame
 
 import logging
 
 logger = logging.getLogger("scarlet.blend")
 
 
-class Blend(ComponentTree, Scene):
-    """The blended scene.
+class Blend(ComponentTree):
+    """The blended scene
 
     The class represents a scene as collection of components, internally as a
     `~scarlet.component.ComponentTree`, and provides the functions to fit it
@@ -22,24 +22,28 @@ class Blend(ComponentTree, Scene):
         Array of mean squared errors in each iteration
     """
 
-    def __init__(self, scene, sources, observations):
+    def __init__(self, frame, sources, observations):
         """Constructor
+
         Form a blended scene from a collection of `~scarlet.component.Component`s
+
         Parameters
         ----------
-        components: list of `~scarlet.component.Component` or `~scarlet.component.ComponentTree`
+        frame: a `~scarlet.Frame` instance
+            The spectral and spatial characteristics of this model
+        sources: list of `~scarlet.component.Component` or `~scarlet.component.ComponentTree`
+            Intitialized components or sources to fit to the observations
+        observations: a `scarlet.Observation` instance or a list thereof
+            Data package(s) to fit
         """
         ComponentTree.__init__(self, sources)
-        Scene.__init__(self, scene.shape, wcs=scene.wcs, psfs=scene.psfs, filtercurve=scene.filtercurve)
+        self.frame = frame
 
         try:
             iter(observations)
         except TypeError:
             observations = (observations,)
         self.observations = observations
-
-        for obs in self.observations:
-            obs.match(self)
 
         self.mse = []
 

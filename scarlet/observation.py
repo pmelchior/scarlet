@@ -22,24 +22,21 @@ def _centered(arr, newshape):
     return arr[tuple(myslice)]
 
 
-class Scene():
-    """Extent and characteristics of the modeled scence
+class Frame():
+    """Spatial and spectral characteristics of the data
+
     Attributes
     ----------
     shape: tuple
-        (bands, Ny, Nx) shape of the model image.
+        (bands, Ny, Nx) shape of the model image
     wcs: TBD
         World Coordinates
     psfs: array or tensor
         PSF in each band
-    filtercurve: TBD
-        Filter curve used for unpacking spectral information.
-    dtype: `~numpy.dtype`
-        Data type of the model.
+    filtercurves: list of hashable elements
+        Names/identifiers of spectral bands
     """
-
-    #
-    def __init__(self, shape, wcs=None, psfs=None, filtercurve=None):
+    def __init__(self, shape, wcs=None, psfs=None, filtercurves=None):
         self._shape = tuple(shape)
         self.wcs = wcs
 
@@ -50,8 +47,8 @@ class Scene():
                 psfs = psfs[None]
             psfs = psfs / psfs.sum(axis=(1, 2))[:, None, None]
         self._psfs = psfs
-        assert filtercurve is None or shape[0] == len(filtercurve)
-        self.filtercurve = filtercurve
+        assert filtercurves is None or shape[0] == len(filtercurves)
+        self.filtercurves = filtercurves
 
     @property
     def B(self):
@@ -101,32 +98,51 @@ class Scene():
         return tuple(int(coord) for coord in sky_coord)
 
 
-class Observation(Scene):
+class Observation():
     """Data and metadata for a single set of observations
+
     Attributes
     ----------
     images: array or tensor
         3D data cube (bands, Ny, Nx) of the image in each band.
-        These images must be resampled to the same pixel scale and
-        same target WCS (for now).
-    psfs: array or tensor
-        PSF for each band in `images`.
+    frame: a `scarlet.Frame` instance
+        The spectral and spatial characteristics of these data
     weights: array or tensor
         Weight for each pixel in `images`.
         If a set of masks exists for the observations then
         then any masked pixels should have their `weight` set
         to zero.
-    wcs: TBD
-        World Coordinate System associated with the images.
     padding: int
         Number of pixels to pad each side with, in addition to
-        half the width of the PSF, for FFT's. This is needed to
-        prevent artifacts due to the FFT.
+        half the width of the PSF, for FFTs. This is needed to
+        prevent artifacts from the FFT.
     """
 
-    def __init__(self, images, psfs=None, weights=None, wcs=None, filtercurve=None, structure=None,
+    def __init__(self, images, psfs=None, weights=None, wcs=None, filtercurves=None,
                  padding=10):
-        super().__init__(images.shape, wcs=wcs, psfs=psfs, filtercurve=filtercurve)
+        """Create an Observation
+
+        Arguments
+        ---------
+        images: array or tensor
+            3D data cube (bands, Ny, Nx) of the image in each band.
+        psfs: array or tensor
+            PSF for each band in `images`.
+        weights: array or tensor
+            Weight for each pixel in `images`.
+            If a set of masks exists for the observations then
+            then any masked pixels should have their `weight` set
+            to zero.
+        wcs: TBD
+            World Coordinate System associated with the images.
+        filtercurves: list of hashable elements
+            Names/identifiers of spectral bands
+        padding: int
+            Number of pixels to pad each side with, in addition to
+            half the width of the PSF, for FFTs. This is needed to
+            prevent artifacts from the FFT.
+        """
+        self.frame = Frame(images.shape, wcs=wcs, psfs=psfs, filtercurves=filtercurves)
 
         self.images = np.array(images)
         if weights is not None:
@@ -134,53 +150,63 @@ class Observation(Scene):
         else:
             self.weights = 1
 
-        self.structure = structure
-        if structure is not None:
-            self.structure = np.array(self.structure)
         self.padding = padding
 
-    def match(self, scene):
-        """Match the psf in each observed band to the target PSF
+    def match(self, model_frame):
+        """Match the frame of `Blend` to the frame of this observation.
+
+        The method sets up the mappings in spectral and spatial coordinates,
+        which includes a spatial selection, computing PSF difference kernels
+        and filter transformations.
+
+        Arguments
+        ---------
+        model_frame: a `scarlet.Frame` instance
+            The frame of `Blend` to match
+
+        Returns
+        -------
+        None
         """
-        if self.psfs is not None:
+        if self.frame.psfs is not None:
             # First we setup the parameters for the model -> observation FFTs
             # Make the PSF stamp wider due to errors when matching PSFs
-            psf_shape = np.array(self.psfs[0].shape) + self.padding
-            shape = np.array(scene.shape[1:]) + psf_shape - 1
+            psf_shape = np.array(self.frame.psfs[0].shape) + self.padding
+            shape = np.array(model_frame.shape[1:]) + psf_shape - 1
             # Choose the optimal shape for FFTPack DFT
             self.fftpack_shape = [fftpack.helper.next_fast_len(d) for d in shape]
             # Store the pre-fftpack optimization slices
             self.slices = tuple([slice(s) for s in shape])
 
             # Now we setup the parameters for the psf -> kernel FFTs
-            shape = np.array(scene.psfs[0].shape) + np.array(self.psfs[0].shape) - 1
+            shape = np.array(model_frame.psfs[0].shape) + np.array(self.frame.psfs[0].shape) - 1
             fftpack_shape = [fftpack.helper.next_fast_len(d) for d in shape]
             # Deconvolve the target PSF
-            target_fft = np.fft.rfftn(scene.psfs[0], fftpack_shape)
+            target_fft = np.fft.rfftn(model_frame.psfs[0], fftpack_shape)
 
             # Match the PSF in each band
-            new_kernel_fft = []
-            kernels = []
-            for psf in self.psfs:
+            diff_kernels_fft = []
+            # kernels = []
+            for psf in self.frame.psfs:
                 _psf_fft = np.fft.rfftn(psf, fftpack_shape)
                 kernel = np.fft.fftshift(np.fft.irfftn(_psf_fft / target_fft, fftpack_shape))
-                kernel *= scene.psfs[0].sum()
+                kernel *= model_frame.psfs[0].sum()
                 if kernel.shape[0] % 2 == 0:
                     kernel = kernel[1:, 1:]
                 kernel = _centered(kernel, psf_shape)
-                kernels.append(kernel)
-                new_kernel_fft.append(np.fft.rfftn(kernel, self.fftpack_shape))
+                # kernels.append(kernel)
+                diff_kernels_fft.append(np.fft.rfftn(kernel, self.fftpack_shape))
 
-            self.psfs_fft = np.array(new_kernel_fft)
-            self.kernels = np.array(kernels)
+            self.diff_kernels_fft = np.array(diff_kernels_fft)
+            # self.kernels = np.array(kernels)
 
         return self
 
-    def _convolve_band(self, model, psf_fft):
+    def _convolve_band(self, model, diff_kernel_fft):
         """Convolve the model in a single band
         """
         model_fft = np.fft.rfftn(model, self.fftpack_shape)
-        convolved = np.fft.irfftn(model_fft * psf_fft, self.fftpack_shape)[self.slices]
+        convolved = np.fft.irfftn(model_fft * diff_kernel_fft, self.fftpack_shape)[self.slices]
         return _centered(convolved, model.shape)
 
     def render(self, model):
@@ -196,11 +222,11 @@ class Observation(Scene):
         model_: array
             The convolved `model` in the observation frame
         """
-        if self.structure is not None:
-            assert self.structure.size == model.shape[0]
-            model = model[self.structure == 1]
-        if self.psfs is not None:
-            model = np.array([self._convolve_band(model[b], self.psfs_fft[b]) for b in range(self.B)])
+        if self.frame.filtercurves is not None:
+            assert self.frame.filtercurves == model.shape[0]
+            model = model[self.frame.filtercurves == 1]
+        if self.frame.psfs is not None:
+            model = np.array([self._convolve_band(model[b], self.diff_kernels_fft[b]) for b in range(self.frame.B)])
 
         return model
 
@@ -224,37 +250,14 @@ class Observation(Scene):
         return 0.5 * np.sum((self.weights * (model - self.images)) ** 2)
 
 
-class LowResObservation(Scene):
-    """Data and metadata for a set of observations to resample on a different grid
+class LowResObservation(Observation):
 
-    Attributes
-    ----------
-    images: array or tensor
-        3D data cube (bands, Ny, Nx) of the image in each band.
-        These images must be resampled to the same pixel scale and
-        same target WCS (for now).
-        wcs: WCS object
-        World Coordinate System associated with the images.
-    psfs: array or tensor
-        PSF for each band in `images`.
-    weights: array or tensor
-        Weight for each pixel in `images`.
-        If a set of masks exists for the observations then
-        then any masked pixels should have their `weight` set
-        to zero.
-    padding: int
-        Number of pixels to pad each side with, in addition to
-        half the width of the PSF, for FFT's. This is needed to
-        prevent artifacts due to the FFT.
-    structure: array
-        An array that encodes the position of the images of this observation into a high resolution
-        (spatial and spectral) scene.
-    """
+    def __init__(self, images, wcs=None, psfs=None, weights=None, filtercurves=None, padding=3):
 
-    def __init__(self, images, wcs=None, psfs=None, weights=None, filtercurve=None, padding=3, target_psf=None,
-                 structure=None):
-        super().__init__(images.shape, wcs=wcs, psfs=psfs, filtercurve=filtercurve)
+        assert wcs is not None, "WCS is necessary for LowResObservation"
+        assert psfs is not None, "PSFs are necessary for LowResObservation"
 
+        self.frame = Frame(images.shape, wcs=wcs, psfs=psfs, filtercurves=filtercurves)
         self.images = np.array(images)
         self.padding = padding
 
@@ -263,79 +266,41 @@ class LowResObservation(Scene):
         else:
             self.weights = 1
 
-        self.target_psf = target_psf
+    def match(self, model_frame):
 
-        self.structure = structure
+        # Get pixel coordinates in each frame.
+        mask, coord_lr, coord_hr = resampling.match_patches(model_frame.shape, self.frame.shape, model_frame.wcs, self.frame.wcs)
+        self._coord_lr = coord_lr
+        self._coord_hr = coord_hr
+        self._mask = mask
 
-    def match(self, scene):
-        '''Matches the observation with a scene
+        # Compute diff kernel at hr
 
-        Builds the tools to project images of this observation to a scene at a different resolution and psf.
+        whr = model_frame.wcs
+        wlr = self.frame.wcs
 
-        Parameters
-        ----------
-        scene: Scene object
-            A scene in which to project the images from this observation
+        # Reference PSF
+        _target = model_frame.psfs[0, :, :]
+        _shape = model_frame.shape
 
-        Returns
-        -------
-        None
-            instanciates new attributes of the object
+        resconv_op = []
+        for _psf in self.frame.psfs:
+            # Computes spatially matching observation and target psfs. The observation psf is also resampled to the model frame resolution
+            new_target, observed_psf = resampling.match_psfs(_target, _psf, whr, wlr)
+            # Computes the diff kernel in Fourier
+            target_fft = np.fft.fft2(np.fft.ifftshift(new_target))
+            observed_fft = np.fft.fft2(np.fft.ifftshift(observed_psf))
+            kernel_fft = np.zeros(target_fft.shape)
+            sel = target_fft != 0
+            kernel_fft[sel] = observed_fft[sel] / target_fft[sel]
+            kernel = np.fft.ifft2(kernel_fft)
+            kernel = np.fft.fftshift(np.real(kernel))
+            diff_psf = kernel / kernel.max()
 
-        '''
+            # Computes the resampling/convolution matrix
+            resconv_op.append(resampling.make_operator(_shape, coord_hr, diff_psf))
 
-        if self.wcs == None:
-            raise TypeError('WCS is actually mandatory, please provide one (tbdiscussed)')
-        if self.psfs is not None:
-            # Get pixel coordinates in each frame.
-            mask, coord_lr, coord_hr = resampling.match_patches(scene.shape, self.shape, scene.wcs, self.wcs)
-            self._coord_lr = coord_lr
-            self._coord_hr = coord_hr
-            self._mask = mask
-
-            # Compute diff kernel at hr
-
-            whr = scene.wcs
-            wlr = self.wcs
-
-            # Reference PSF
-            if self.target_psf is None:
-
-                _target = scene.psfs[0, :, :]
-                _shape = scene.shape
-
-            else:
-                _target = self.target_psf
-
-            resconv_op = []
-
-            for _psf in self.psfs:
-                # Computes spatially matching observation and target psfs. The observation psf is also resampled to the scene's resolution
-
-                new_target, observed_psf = resampling.match_psfs(_target, _psf, whr, wlr)
-                # Computes the diff kernel in Fourier
-                target_fft = np.fft.fft2(np.fft.ifftshift(new_target))
-                observed_fft = np.fft.fft2(np.fft.ifftshift(observed_psf))
-                kernel_fft = np.zeros(target_fft.shape)
-                sel = target_fft != 0
-                kernel_fft[sel] = observed_fft[sel] / target_fft[sel]
-                kernel = np.fft.ifft2(kernel_fft)
-                kernel = np.fft.fftshift(np.real(kernel))
-                diff_psf = kernel / kernel.max()
-
-                # Computes the resampling/convolution matrix
-                resconv_op.append(resampling.make_operator(_shape, coord_hr, diff_psf))
-
-            self.resconv_op = np.array(resconv_op)
-
-        else:
-            class InitError(Exception):
-                '''
-                'Observation PSF needed: unless you are not dealing with astronomical data, you are doing something wrong'
-                '''
-                pass
-
-            raise InitError
+        self.resconv_op = np.array(resconv_op)
 
         return self
 
@@ -356,10 +321,10 @@ class LowResObservation(Scene):
         model_: array
             The convolved and resampled `model` in the observation frame.
         """
-        if self.structure is not None:
-            assert self.structure.size == model.shape[0]
-            model = model[self.structure == 1]
-        model_ = np.array([np.dot(model[b].flatten(), self.resconv_op[b]) for b in range(self.B)])
+        if self.frame.filtercurves is not None:
+            assert self.frame.filtercurves == model.shape[0]
+            model = model[self.frame.filtercurves == 1]
+        model_ = np.array([np.dot(model[b].flatten(), self.resconv_op[b]) for b in range(self.frame.B)])
 
         return model_
 
@@ -376,7 +341,7 @@ class LowResObservation(Scene):
         model_: array
             The convolved and resampled `model` in the observation frame.
         """
-        img = np.zeros(self.shape)
+        img = np.zeros(self.frame.shape)
         img[:, self._coord_lr[0], self._coord_lr[1]] = self._render(model)
         return img
 
@@ -394,8 +359,7 @@ class LowResObservation(Scene):
             Loss of the model
         """
 
-        if self._psfs is not None:
-            model = self._render(model)
+        model_ = self._render(model)
 
         return 0.5 * np.sum((self.weights * (
-                model - self.images[:, self._coord_lr[0].astype(int), self._coord_lr[1].astype(int)])) ** 2)
+                model_ - self.images[:, self._coord_lr[0].astype(int), self._coord_lr[1].astype(int)])) ** 2)
