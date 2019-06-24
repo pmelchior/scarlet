@@ -1,0 +1,4 @@
+operator.py
+- Skipped tests for `prox_cone`, since it is not implemented and I am not 100% sure how it works
+- Skipped tests for `project_disk_sed_mean` since it is deprecated and does not work as expected
+- Skipped `proximal_disk_sed` since it is unused and possibly broken

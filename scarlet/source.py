@@ -1,71 +1,13 @@
-from __future__ import print_function, division
-import numpy as np
+import autograd.numpy as np
 
-import proxmin
-from . import constraint as sc
-from .config import Config
 from .component import Component, ComponentTree
+from . import operator
+from . import update
+from .interpolation import get_projection_slices
 
 import logging
+
 logger = logging.getLogger("scarlet.source")
-
-
-class Source(ComponentTree):
-    """Base class for co-centered `~scarlet.component.Component`s.
-
-    The class implements `update_center` to set all components with `shift_center > 0`
-    to the flux-weighted mean center position of all components.
-    """
-    def __init__(self, components):
-        """Constructor.
-
-        Parameters
-        ----------
-        components: list of `~scarlet.component.Component` or `~scarlet.component.ComponentTree`
-        """
-        super(Source, self).__init__(components)
-
-    def get_model(self):
-        """Compute the model for this source.
-
-        NOTE: If individual components have different shapes, the resulting
-        model will be set in a box that can contain all of them.
-
-        Returns
-        -------
-        `~numpy.array` with shape (B, Ny, Nx)
-        """
-        models = [c.get_model() for c in self.components]
-        # model may have different boxes, need to put into box that fits all
-        maxNy, maxNx = 0,0
-        for model in models:
-            Ny, Nx = model.shape[1:]
-            if Ny > maxNy:
-                maxNy = Ny
-            if Nx > maxNx:
-                maxNx = Nx
-        for k in range(len(models)):
-            Ny, Nx = models[k].shape[1:]
-            if (Ny, Nx) != (maxNy, maxNx):
-                _model = np.zeros((models[k].shape[0], maxNy, maxNx))
-                _model[:, (maxNy-Ny)//2:maxNy-(maxNy-Ny)//2 , (maxNx-Nx)//2:maxNx-(maxNx-Nx)//2] = models[k][:,:,:]
-                models[k] = _model
-        return np.sum(models, axis=0)
-
-    def update_center(self):
-        """Center update to set all component centers to flux-weighted mean position.
-
-        NOTE: Only components with `shift_center > 0` will be moved.
-        """
-        if len(self.components) > 1:
-            _flux = np.array([c.morph.sum() for c in self.components])
-            _center = np.sum([_flux[k]*self.components[k].center for k in range(self.K)], axis=0)
-            _center /= _flux.sum()
-            for c in self.components:
-                if c.shift_center:
-                    c.set_center(_center)
-                    msg = "updating component {0} center to ({1:.3f}/{2:.3f})"
-                    logger.debug(msg.format(c.coord, c.center[0], c.center[1]))
 
 
 class SourceInitError(Exception):
@@ -74,281 +16,433 @@ class SourceInitError(Exception):
     pass
 
 
-def get_pixel_sed(img, position):
+def get_pixel_sed(sky_coord, observations):
     """Get the SED at `position` in `img`
 
     Parameters
     ----------
-    img: `~numpy.array`
-        (Bands, Height, Width) data array that contains a 2D image for each band
-    position: array-like
-        (y,x) coordinates of the source in the larger image
+    sky_coord: tuple
+        Center of the source
+    scene: `scarlet.observation.Scene`
+        The scene that the model lives in.
+    observations: list of `~scarlet.observation.Observation`
+        Observations to extract SED from.
 
     Returns
     -------
     SED: `~numpy.array`
         SED for a single source
     """
-    _y, _x = position
-    sed = np.zeros((img.shape[0],))
-    sed[:] = img[:,_y,_x]
-    if np.all(sed<=0):
+
+    sed = []
+    for obs in observations:
+        pixel = obs.get_pixel(sky_coord)
+        _sed = obs.images[:, pixel[0], pixel[1]].copy()
+        if obs.psfs is not None:
+            # Account for the PSF in the intensity
+            _sed /= obs.psfs.max(axis=(1, 2))
+        sed = np.concatenate((sed, _sed))
+
+    if np.all(sed[-1] <= 0):
         # If the flux in all bands is  <=0,
         # the new sed will be filled with NaN values,
         # which will cause the code to crash later
         msg = "Zero or negative flux at y={0}, x={1}"
-        raise SourceInitError(msg.format(_y, _x))
+        raise SourceInitError(msg.format(*sky_coord))
 
-    # ensure proper normalization
-    return proxmin.operators.prox_unity_plus(sed, 0)
+    return np.array(sed).reshape(-1)
 
-def get_integrated_sed(img, weight):
-    """Calculate SED from weighted sum of the image in each band
-    """
-    B, Ny, Nx = img.shape
-    sed = (img * weight).reshape(B, -1).sum(axis=1)
-    if np.all(sed<=0):
-        # If the flux in all bands is  <=0,
-        # the new sed will be filled with NaN values,
-        # which will cause the code to crash later
-        msg = "Zero or negative flux under weight function"
-        raise SourceInitError(msg)
 
-    # ensure proper normalization
-    return proxmin.operators.prox_unity_plus(sed, 0)
-
-def get_best_fit_sed(img, S):
+def get_best_fit_seds(morphs, scene, observations):
     """Calculate best fitting SED for multiple components.
 
-    Solves min_A ||img - AS||^2 for the SED matrix A, assuming that img only
-    contains a single source.
+    Solves min_A ||img - AS||^2 for the SED matrix A,
+    assuming that the images only contain a single source.
+
+    Parameters
+    ----------
+    morphs: list
+        Morphology for each component in the source.
+    scene: `scarlet.observation.Scene`
+        The scene that the model lives in.
+    observations: list of `~scarlet.observation.Observation`
+        Observations to extract SEDs from.
     """
-    B = len(img)
-    Y = img.reshape(B,-1)
-    return np.dot(np.linalg.inv(np.dot(S,S.T)), np.dot(S, Y.T))
+    K = len(morphs)
+    seds = np.zeros((K, scene.B), dtype=observations[0].images.dtype)
+    band = 0
+    _morph = morphs.reshape(K, -1)
+    for obs in observations:
+        images = obs.images
+        data = images.reshape(obs.B, -1)
+        sed = np.dot(np.linalg.inv(np.dot(_morph, _morph.T)), np.dot(_morph, data.T))
+        seds[:, band:band + obs.B] = sed
+        band += obs.B
+    return seds
 
 
-class PointSource(Source):
-    """Create a point source.
+def build_detection_coadd(sed, bg_rms, observation, scene, thresh=1):
+    """Build a band weighted coadd to use for source detection
+
+    Parameters
+    ----------
+    sed: array
+        SED at the center of the source.
+    bg_rms: array
+        Background RMS in each band in observation.
+    observation: `~scarlet.observation.Observation`
+        Observation to use for the coadd.
+    scene: `scarlet.observation.Scene`
+        The scene that the model lives in.
+    thresh: `float`
+        Multiple of the backround RMS used as a
+        flux cutoff.
+
+    Returns
+    -------
+    detect: array
+        2D image created by weighting all of the bands by SED
+    bg_cutoff: float
+        The minimum value in `detect` to include in detection.
+    """
+    B = scene.B
+    if np.any(bg_rms <= 0):
+        raise ValueError("bg_rms must be greater than zero in all bands")
+
+    weights = np.array([sed[b] / bg_rms[b] ** 2 for b in range(B)])
+    jacobian = np.array([sed[b] ** 2 / bg_rms[b] ** 2 for b in range(B)]).sum()
+    detect = np.einsum('i,i...', weights, observation.images) / jacobian
+
+    # thresh is multiple above the rms of detect (weighted variance across bands)
+    bg_cutoff = thresh * np.sqrt((weights ** 2 * bg_rms ** 2).sum()) / jacobian
+    return detect, bg_cutoff
+
+
+def init_extended_source(sky_coord, scene, observations, bg_rms, obs_idx=0,
+                         thresh=1., symmetric=True, monotonic=True):
+    """Initialize the source that is symmetric and monotonic
+    See `ExtendedSource` for a description of the parameters
+    """
+    try:
+        iter(observations)
+    except TypeError:
+        observations = [observations]
+    # determine initial SED from peak position
+    sed = get_pixel_sed(sky_coord, observations)  # amplitude is in sed
+    if scene.psfs is not None:
+        sed = sed * scene.psfs[0].max()
+
+    morph, bg_cutoff = build_detection_coadd(sed, bg_rms, observations[obs_idx], scene, thresh)
+    center = scene.get_pixel(sky_coord)
+
+    # Apply the necessary constraints
+    if symmetric:
+        morph = operator.prox_uncentered_symmetry(morph, 0, center=center, use_soft=False)
+    if monotonic:
+        # use finite thresh to remove flat bridges
+        prox_monotonic = operator.prox_strict_monotonic(morph.shape, use_nearest=False,
+                                                        center=center, thresh=.1)
+        morph = prox_monotonic(morph, 0).reshape(morph.shape)
+
+    # trim morph to pixels above threshold
+    mask = morph > bg_cutoff
+    if mask.sum() == 0:
+        msg = "No flux above threshold={2} for source at y={0} x={1}"
+        raise SourceInitError(msg.format(*sky_coord, bg_cutoff))
+    morph[~mask] = 0
+
+    # normalize to unity at peak pixel
+    cy, cx = np.array(center).astype(int)
+    center_morph = morph[cy, cx]
+    morph /= center_morph
+    return sed, morph
+
+
+def init_combined_extended_source(sky_coord, scene, observations, bg_rms, obs_idx=0,
+                                  thresh=1., symmetric=True, monotonic=True):
+    """Initialize the source that is symmetric and monotonic
+    See `ExtendedSource` for a description of the parameters
+    """
+    try:
+        iter(observations)
+    except TypeError:
+        observations = [observations]
+
+    # determine initial SED from peak position
+    # SED in the scene for source detection
+
+    sed = get_pixel_sed(sky_coord, observations)
+
+    morph, bg_cutoff = build_detection_coadd(sed, bg_rms, observations[obs_idx], scene, thresh)  # amplitude is in sed
+
+    center = scene.get_pixel(sky_coord)
+
+    # Apply the necessary constraints
+    if symmetric:
+        morph = operator.prox_uncentered_symmetry(morph, 0, center=center, use_soft=False)
+
+    if monotonic:
+        # use finite thresh to remove flat bridges
+        prox_monotonic = operator.prox_strict_monotonic(morph.shape, use_nearest=False,
+                                                        center=center, thresh=.1)
+        morph = prox_monotonic(morph, 0).reshape(morph.shape)
+
+    # trim morph to pixels above threshold
+    mask = morph > bg_cutoff
+    if mask.sum() == 0:
+        msg = "No flux above threshold={2} for source at y={0} x={1}"
+        raise SourceInitError(msg.format(*center, bg_cutoff))
+    morph[~mask] = 0
+
+    # normalize to unity at peak pixel
+    cy, cx = center
+
+    center_morph = morph[np.int(cy), np.int(cx)]
+    morph /= center_morph
+    return sed, morph
+
+
+def init_multicomponent_source(sky_coord, scene, observations, bg_rms, flux_percentiles=None, obs_idx=0,
+                               thresh=1., symmetric=True, monotonic=True):
+    """Initialize multiple components
+    See `MultiComponentSource` for a description of the parameters
+    """
+    try:
+        iter(observations)
+    except TypeError:
+        observations = [observations]
+
+    if flux_percentiles is None:
+        flux_percentiles = [25]
+    # Initialize the first component as an extended source
+    sed, morph = init_extended_source(sky_coord, scene, observations, bg_rms, obs_idx,
+                                      thresh, symmetric, monotonic)
+    # create a list of components from base morph by layering them on top of
+    # each other so that they sum up to morph
+    K = len(flux_percentiles) + 1
+
+    Ny, Nx = morph.shape
+    morphs = np.zeros((K, Ny, Nx), dtype=morph.dtype)
+    morphs[0, :, :] = morph[:, :]
+    max_flux = morph.max()
+    percentiles_ = np.sort(flux_percentiles)
+    last_thresh = 0
+    for k in range(1, K):
+        perc = percentiles_[k - 1]
+        flux_thresh = perc * max_flux / 100
+        mask_ = morph > flux_thresh
+        morphs[k - 1][mask_] = flux_thresh - last_thresh
+        morphs[k][mask_] = morph[mask_] - flux_thresh
+        last_thresh = flux_thresh
+
+    # renormalize morphs: initially Smax
+    for k in range(K):
+        morphs[k] /= morphs[k].max()
+
+    # optimal SEDs given the morphologies, assuming img only has that source
+    seds = get_best_fit_seds(morphs, scene, observations)
+
+    return seds, morphs
+
+
+class PointSource(Component):
+    """Extended source intialized with a single pixel
 
     Point sources are initialized with the SED of the center pixel,
     and the morphology of a single pixel (the center) turned on.
     While the source can have any `constraints`, the default constraints are
     symmetry and monotonicity.
+
+    Parameters
+    ----------
+    sky_coord: tuple
+        Center of the source
+    scene: `scarlet.observation.Scene`
+        The scene that the model lives in.
+    observations: list of `~scarlet.observation.Observation`
+        Observations to extract SED from.
+    symmetric: bool
+        Whether or not the object is forced to be symmetric
+    monotonic: bool
+        Whether or not the object is forced to be monotonically decreasing
+    center_step: int
+        Number of steps to skip between centering routines
+    delay_thresh: int
+        Number of steps to skip before turning on thresholding.
+        This is useful for point sources because it allows them to grow
+        slightly before removing pixels with low significance.
+    component_kwargs: dict
+        Keyword arguments to pass to the component initialization.
     """
-    def __init__(self, center, img, shape=None, constraints=None, psf=None, config=None, fix_sed=False, fix_morph=False, fix_frame=False, shift_center=0.1):
-        """Initialize
 
-        This implementation initializes the sed from the pixel in
-        the center of the frame and sets morphology to only comprise that pixel,
-        which works well for point sources and poorly resolved galaxies.
-
-        See :class:`~scarlet.source.Source` for parameter descriptions not listed below.
-
-        Parameters
-        ----------
-        center: array-like
-            (y,x) coordinates of the component in the larger image
-        img: :class:`~numpy.array`
-            (Bands, Height, Width) data array that contains a 2D image for each band
-        shape: tuple
-            Shape of the initial morphology.
-            If `shape` is `None` then the smallest shape specified by `config.source_sizes`
-            is used.
-        """
-        if config is None:
-            config = Config()
-        if shape is None:
-            shape = (config.source_sizes[0],) * 2
-        sed, morph = self._make_initial(center, img, shape)
-
-        if constraints is None:
-            constraints = (sc.SimpleConstraint(),
-                           sc.DirectMonotonicityConstraint(use_nearest=False),
-                           sc.DirectSymmetryConstraint())
-
-        component = Component(sed, morph, center=center, constraints=constraints, psf=psf, fix_sed=fix_sed, fix_morph=fix_morph, fix_frame=fix_frame, shift_center=shift_center)
-        super(PointSource, self).__init__(component)
-
-    def _make_initial(self, center, img, shape, tiny=1e-10):
-        """Initialize the source using only the peak pixel
-
-        See `self.__init__` for parameters not listed below
-
-        Parameters
-        ----------
-        tiny: float
-            Minimal non-zero value allowed for a source.
-            This ensures that the source is initialized with
-            some non-zero flux.
-        """
-        # determine initial SED from peak position
-        B, Ny, Nx = img.shape
-        _y, _x = center_int = np.round(center).astype('int')
+    def __init__(self, sky_coord, scene, observations, symmetric=False, monotonic=True,
+                 center_step=5, delay_thresh=10, **component_kwargs):
         try:
-            sed = get_pixel_sed(img, center_int)
-        except SourceInitError:
-            # flat weights as fall-back
-            sed = np.ones(B) / B
-        morph = np.zeros(shape)
-        # Turn on a single pixel at the peak
-        cy, cx = (shape[0] // 2, shape[1] //2)
-        morph[cy, cx] = max(img[:,_y,_x].sum(axis=0), tiny)
-        return sed, morph
-
-class ExtendedSource(Source):
-    """Create an extended source.
-
-    Extended sources are initialized to have a morphology given by the pixels in the
-    multi-band image that are detectable above the background noise.
-    The initial morphology can be constrained to be symmetric and monotonically
-    decreasing from the center pixel, and will be enclosed in a frame with the
-    minimal box size, as specied by `~scarlet.config.Config`.
-
-    By default the model for the source will continue to be monotonic and symmetric,
-    but other `constraints` can be used.
-    """
-    def __init__(self, center, img, bg_rms, constraints=None, psf=None, symmetric=True, monotonic=True,
-                 thresh=1., config=None, fix_sed=False, fix_morph=False, fix_frame=False, shift_center=0.2):
-        """Initialize
-
-        See :class:`~scarlet.source.Source` for parameter descriptions not listed below.
-
-        Parameters
-        ----------
-        center: array-like
-            (y,x) coordinates of the component in the larger image
-        img: :class:`~numpy.array`
-            (Bands, Height, Width) data array that contains a 2D image for each band
-        bg_rms: array_like
-            RMS value of the background in each band.
-        symmetric: `bool`
-            Whether or not to make the initial morphology symmetric about the peak.
-        monotonic: `bool`
-            Whether or not to make the initial morphology monotonically decreasing from the peak.
-        thresh: float
-            Multiple of the RMS used to set the minimum non-zero flux.
-            Use `thresh=1` to just use `bg_rms` to set the flux floor.
-        """
-        # Use a default configuration if config is not specified
-        if config is None:
-            config = Config()
-
-        sed, morph = self._make_initial(center, img, bg_rms, thresh=thresh, symmetric=symmetric, monotonic=monotonic, config=config)
-
-        if constraints is None:
-            constraints = (sc.SimpleConstraint(),
-                           sc.DirectMonotonicityConstraint(use_nearest=False),
-                           sc.DirectSymmetryConstraint())
-
-        component = Component(sed, morph, center=center, constraints=constraints, psf=psf, fix_sed=fix_sed, fix_morph=fix_morph, fix_frame=fix_frame, shift_center=shift_center)
-        super(ExtendedSource, self).__init__(component)
-
-    def _make_initial(self, center, img, bg_rms, thresh=1., symmetric=True, monotonic=True, config=None):
-        """Initialize the source that is symmetric and monotonic
-
-        See `self.__init__` for a description of the parameters
-        """
-        # determine initial SED from peak position
-        B = img.shape[0]
-        center_int = np.round(center).astype('int')
-        sed = np.empty(B)
-        try:
-            sed = get_pixel_sed(img, center_int)
-        except SourceInitError:
-            # flat weights as fall-back
-            sed = np.ones(B) / B
-
-        # build optimal detection coadd given the sed
-        if np.all([bg_rms > 0]):
-            bg_rms = np.array(bg_rms)
-            weights = np.array([sed[b]/bg_rms[b]**2 for b in range(B)])
-            jacobian = np.array([sed[b]**2/bg_rms[b]**2 for b in range(B)]).sum()
-            detect = np.einsum('i,i...', weights, img) / jacobian
-
-            # thresh is multiple above the rms of detect (weighted variance across bands)
-            bg_cutoff = thresh * np.sqrt((weights**2 * bg_rms**2).sum()) / jacobian
+            iter(observations)
+        except TypeError:
+            observations = [observations]
+        # this ignores any broadening from the PSFs ...
+        B, Ny, Nx = scene.shape
+        morph = np.zeros((Ny, Nx), observations[0].images.dtype)
+        pixel = scene.get_pixel(sky_coord)
+        if scene.psfs is None:
+            # Use a single pixel if there is no target PSF
+            morph[pixel] = 1
         else:
-            detect = np.sum(img, axis=0)
-            bg_cutoff = 0
-        morph = self._init_morph(detect, center, bg_cutoff, symmetric, monotonic, config)
+            # A point source is a function of the target PSF
+            assert len(scene.psfs[0].shape) == 2
+            py, px = pixel
+            sy, sx = (np.array(scene.psfs[0].shape) - 1) // 2
+            cy, cx = (np.array(morph.shape) - 1) // 2
+            yx0 = int(py - cy - sy), int(px - cx - sx)
+            bb, ibb, _ = get_projection_slices(scene.psfs[0], morph.shape, yx0)
+            morph[bb] = scene.psfs[0][ibb]
 
-        # use mean sed from image, weighted with the morphology of each component
-        try:
-            im_slice, morph_slice = Component.get_frame(detect.shape, center, morph.shape)
-            sed = get_integrated_sed(img[slice(None), im_slice[0], im_slice[1]], morph[morph_slice])
-        except SourceInitError:
-            # keep the peak sed
-            logger.INFO("Using peak SED for source at {0}".format(center_int))
-        return sed, morph
+        self.pixel_center = pixel
 
-    def _init_morph(self, detect, center, bg_cutoff=0, symmetric=True, monotonic=True, config=None):
-        """Initialize the morphology
+        sed = np.zeros((B,), observations[0].images.dtype)
+        b0 = 0
+        for obs in observations:
+            pixel = obs.get_pixel(sky_coord)
+            _sed = obs.images[:, pixel[0], pixel[1]].copy()
+            if obs.psfs is not None:
+                # Account for the PSF in the intensity
+                _sed /= obs.psfs.max(axis=(1, 2))
+            sed[b0:b0 + obs.B] = _sed
+            b0 += obs.B
 
-        Parameters
-        ----------
-        center: array-like
-            (y,x) coordinates of the component in the larger image
-        detect: `~numpy.array` (Ny, Nx)
-        bg_cutoff: float
-            Minimum non-zero flux value allowed before truncating the morphology
+        super().__init__(sed, morph, **component_kwargs)
+        self.symmetric = symmetric
+        self.monotonic = monotonic
+        self.center_step = center_step
+        self.delay_thresh = delay_thresh
+        self.update()
+
+    def update(self):
+        """Default update parameters for an ExtendedSource
+
+        This method can be overwritten if a different set of constraints
+        or update functions is desired.
         """
-        # take morph from detect, same frame but shifted to center
-        Ny, Nx = detect.shape
-        # for monotonicity, we need an odd shape
-        if Ny % 2 == 0:
-            Ny += 1
-        if Nx % 2 ==0:
-            Nx += 1
-        morph = np.zeros((Ny,Nx))
-        im_slice, morph_slice = Component.get_frame(detect.shape, center, (Ny,Nx))
-        morph[morph_slice] = detect[im_slice]
+        if self._parent is None:
+            it = 0
+        else:
+            it = self._parent.it
+        # Update the central pixel location (pixel_center)
+        update.fit_pixel_center(self)
+        if it > self.delay_thresh:
+            update.threshold(self)
 
-        # check if morph_slice is covering the whole of morph:
-        # if not, extend morph by coping last row/column from detect
-        if morph_slice[0].stop - morph_slice[0].start < Ny:
-            morph[0:morph_slice[0].start,:] = morph[morph_slice[0].start,:]
-            morph[morph_slice[0].stop:,:] = morph[morph_slice[0].stop-1,:]
-        if morph_slice[1].stop - morph_slice[1].start < Nx:
-            morph[:,0:morph_slice[1].start] = morph[:,morph_slice[1].start][:,None]
-            morph[:,morph_slice[1].stop:] = morph[:,morph_slice[1].stop-1][:,None]
+        if self.symmetric:
+            # Translate to the centered frame
+            update.translation(self, 1)
+            # make the morphology perfectly symmetric
+            update.symmetric(self, strength=1)
+            # Translate back to the model frame
+            update.translation(self, -1)
 
-        # symmetric, monotonic
-        if symmetric:
-            symm = np.fliplr(np.flipud(morph))
-            morph = np.min([morph, symm], axis=0)
-        if monotonic:
-            # use finite thresh to remove flat bridges
-            from . import operator
-            prox_monotonic = operator.prox_strict_monotonic((Ny, Nx), thresh=0.1, use_nearest=False)
-            morph = prox_monotonic(morph, 0).reshape(Ny, Nx)
+        if self.monotonic:
+            # make the morphology monotonically decreasing
+            if hasattr(self, "bboxes") and "thresh" in self.bboxes:
+                update.monotonic(self, self.pixel_center, bbox=self.bboxes["thresh"])
+            else:
+                update.monotonic(self, self.pixel_center)
 
-        # trim morph to pixels above threshold
-        mask = morph > bg_cutoff
-        if mask.sum() == 0:
-            msg = "No flux above threshold={2} for source at y={0} x={1}"
-            raise SourceInitError(msg.format(center[0], center[1], bg_cutoff))
-        morph[~mask] = 0
-        ypix, xpix = np.where(mask)
-        _Ny = np.max(ypix)-np.min(ypix)
-        _Nx = np.max(xpix)-np.min(xpix)
+        update.positive(self)  # Make the SED and morph non-negative
+        update.normalized(self)  # Use MORPH_MAX normalization
+        return self
 
-        # make sure source has odd pixel numbers and is from config.source_sizes
-        _Ny = config.find_next_source_size(_Ny)
-        _Nx = config.find_next_source_size(_Nx)
 
-        # need to reshape morph?
-        _center = (morph.shape[0] // 2, morph.shape[1] // 2)
-        old_slice, new_slice = Component.get_frame((Ny, Nx), _center, (_Ny, _Nx))
+class ExtendedSource(PointSource):
+    """Extended source intialized to match a set of observations
 
-        # update morph
-        if new_slice != old_slice:
-            _morph = np.zeros((_Ny, _Nx))
-            _morph[new_slice] = morph[old_slice]
-            morph = _morph
-        return morph
+    Parameters
+    ----------
+    sky_coord: tuple
+        Center of the source
+    scene: `scarlet.observation.Scene`
+        The scene that the model lives in.
+    observations: list of `~scarlet.observation.Observation`
+        Observations to extract SED from.
+    bg_rms: array
+        Background RMS in each band in observation.
+    obs_idx: int
+        Index of the observation in `observations` to use for
+        initializing the morphology.
+    thresh: `float`
+        Multiple of the backround RMS used as a
+        flux cutoff for morphology initialization.
+    symmetric: `bool`
+        Whether or not to enforce symmetry.
+    monotonic: `bool`
+        Whether or not to make the object monotonically decrease
+        in flux from the center.
+    component_kwargs: dict
+        Keyword arguments to pass to the component initialization.
+    """
 
-class MultiComponentSource(ExtendedSource):
+    def __init__(self, sky_coord, scene, observations, bg_rms, obs_idx=0, thresh=1,
+                 symmetric=False, monotonic=True, center_step=5, delay_thresh=10, **component_kwargs):
+        self.symmetric = symmetric
+        self.monotonic = monotonic
+        self.coords = sky_coord
+        center = scene.get_pixel(sky_coord)
+        self.pixel_center = center
+        self.center_step = center_step
+        self.delay_thresh = delay_thresh
+
+        sed, morph = init_extended_source(sky_coord, scene, observations, bg_rms, obs_idx,
+                                          thresh, True, monotonic)
+
+        Component.__init__(self, sed, morph, **component_kwargs)
+        self.update()
+
+
+class CombinedExtendedSource(PointSource):
+    """Extended source intialized to match a set of observations
+
+    Parameters
+    ----------
+    sky_coord: tuple
+        Center of the source
+    scene: `scarlet.observation.Scene`
+        The scene that the model lives in.
+    observations: list of `~scarlet.observation.Observation`
+        Observations to extract SED from.
+    bg_rms: array
+        Background RMS in each band in observation.
+    obs_idx: int
+        Index of the observation in `observations` to use for
+        initializing the morphology.
+    thresh: `float`
+        Multiple of the backround RMS used as a
+        flux cutoff for morphology initialization.
+    symmetric: `bool`
+        Whether or not to enforce symmetry.
+    monotonic: `bool`
+        Whether or not to make the object monotonically decrease
+        in flux from the center.
+    component_kwargs: dict
+        Keyword arguments to pass to the component initialization.
+    """
+
+    def __init__(self, sky_coord, scene, observations, bg_rms, obs_idx=0, thresh=1,
+                 symmetric=False, monotonic=True, center_step=5, delay_thresh=0, **component_kwargs):
+        self.symmetric = symmetric
+        self.monotonic = monotonic
+        self.coords = sky_coord
+        center = scene.get_pixel(sky_coord)
+        self.pixel_center = center
+        self.center_step = center_step
+        self.delay_thresh = delay_thresh
+
+        sed, morph = init_combined_extended_source(sky_coord, scene, observations, bg_rms, obs_idx,
+                                                   thresh, True, monotonic)
+
+        Component.__init__(self, sed, morph, **component_kwargs)
+
+
+class MultiComponentSource(ComponentTree):
     """Create an extended source with multiple components layered vertically.
     Uses `~scarlet.source.ExtendedSource` to define the overall morphology,
     then erodes the outer footprint until it reaches the specified size percentile.
@@ -358,81 +452,45 @@ class MultiComponentSource(ExtendedSource):
     and the overall morphology.
     The SED for all components is calculated as the best fit of the multi-component
     morphology to the multi-band image in the region of the source.
+
+    Parameters
+    ----------
+    flux_percentiles: list
+        The flux percentile of each component. If `flux_percentiles` is `None`
+        then `flux_percentiles=[25]`, a single component with 25% of the flux
+        as the primary source.
+
+    See `ExtendedSource` for a description of the parameters
     """
-    def __init__(self, center, img, bg_rms, size_percentiles=[50], constraints=None, psf=None, symmetric=True, monotonic=True,
-                 thresh=1., config=None, fix_sed=False, fix_morph=False, fix_frame=False, shift_center=0.2):
-        """Initialize multi-component source, where the inner components begin
-        at the given size_percentiles.
-        See `~scarlet.source.ExtendedSource` for details.
-        """
-        # Use a default configuration if config is not specified
-        if config is None:
-            config = Config()
 
-        if constraints is None:
-            constraints = (sc.SimpleConstraint(),
-                           sc.DirectMonotonicityConstraint(use_nearest=False),
-                           sc.DirectSymmetryConstraint())
+    def __init__(self, sky_coord, scene, observations, bg_rms, flux_percentiles=None, obs_idx=0, thresh=1,
+                 symmetric=True, monotonic=True, **component_kwargs):
+        seds, morphs = init_multicomponent_source(sky_coord, scene, observations, bg_rms, flux_percentiles,
+                                                  obs_idx, thresh, symmetric, monotonic)
 
-        # start from ExtendedSource for single-component morphology and sed
-        super(MultiComponentSource, self).__init__(center, img, bg_rms, constraints=constraints, psf=psf, symmetric=symmetric, monotonic=monotonic, thresh=thresh, config=config, fix_sed=fix_sed, fix_morph=fix_morph, fix_frame=fix_frame, shift_center=shift_center)
+        class MultiComponent(Component):
+            def __init__(self, sed, morph, symmetric, monotonic, **kwargs):
+                self.symmetric = symmetric
+                self.monotonic = monotonic
+                self.pixel_center = scene.get_pixel(sky_coord)
+                super().__init__(sed, morph, **kwargs)
 
-        # create a list of components from base morph by layering them on top of
-        # each other so that they sum up to morph
-        from scipy.ndimage.morphology import binary_erosion
-        K = len(size_percentiles) + 1
+            def update(self):
+                if self.symmetric:
+                    update.symmetric_fit_center(self)  # update the center position
+                    center = self.coords
+                    update.symmetric(self, center)  # make the morph perfectly symmetric
+                elif self.monotonic:
+                    update.fit_pixel_center(self)
+                    center = self.pixel_center
+                if self.monotonic:
+                    update.monotonic(self, center)  # make the morph monotonically decreasing
+                update.positive(self)  # Make the SED and morph non-negative
+                update.normalized(self, type='morph_max')
+                return self
 
-        morph = self.components[0].morph
-        Ny, Nx = morph.shape
-        morphs = [np.zeros((Ny, Nx)) for k in range(K)]
-        morphs[0][:,:] = morph[:,:]
-        mask = morph > 0
-        radius = np.sqrt(mask.sum()/np.pi)
-        percentiles_ = np.sort(size_percentiles)[::-1] # decending order
-        for k in range(1,K):
-            perc = percentiles_[k-1]
-            while True:
-                # erode footprint from the outside
-                mask_ = binary_erosion(mask)
-                # keep central pixel on
-                mask_[Ny//2,Nx//2] = True
-                if np.sqrt(mask_.sum()/np.pi) < perc*radius/100 or mask_.sum() == 1:
-                    # set inside of prior component to value at perimeter
-                    perimeter = mask & (~mask_)
-                    perimeter_val = morph[perimeter].mean()
-                    morphs[k-1][mask_] = perimeter_val
-                    # set this component to morph - perimeter_val, bounded by 0
-                    morph -= perimeter_val
-                    morphs[k][mask_] = np.maximum(morph[mask_], 0)
-                    # correct for negative pixels by putting them into k-1 component
-                    below = mask_ & (morph < 0)
-                    if below.sum():
-                        morphs[k-1][below] += morph[below]
-                    mask = mask_
-                    break
-                mask = mask_
-
-        # optimal SEDs given the morphologies, assuming img only has that source
-        c = self.components[0]
-        component_slice = c.get_slice_for(img.shape)
-        S = np.array(morphs)[:,component_slice[1], component_slice[2]].reshape(K, -1)
-        seds = get_best_fit_sed(img[c.bb], S)
-
-        for k in range(K):
-            if k == 0:
-                self.components[0].morph = morphs[0]
-                self.components[0].sed = seds[0]
-            else:
-                component = Component(seds[k], morphs[k], center=center, constraints=constraints, psf=psf, fix_sed=fix_sed, fix_morph=fix_morph, fix_frame=fix_frame, shift_center=shift_center)
-
-                # reduce the shape of the additional components as much as possible
-                mask = morphs[k] > 0
-                ypix, xpix = np.where(mask)
-                _Ny = np.max(ypix)-np.min(ypix)
-                _Nx = np.max(xpix)-np.min(xpix)
-                # make sure source has odd pixel numbers and is from config.source_sizes
-                _Ny = config.find_next_source_size(_Ny)
-                _Nx = config.find_next_source_size(_Nx)
-                component.resize((_Ny, _Nx))
-
-                self += component
+        components = [
+            MultiComponent(seds[k], morphs[k], symmetric, monotonic, **component_kwargs)
+            for k in range(len(seds))
+        ]
+        super().__init__(components)

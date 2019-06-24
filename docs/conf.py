@@ -44,6 +44,8 @@ extensions = [
     'numpydoc',
 ]
 
+nbsphinx_timeout = 180
+
 class_members_toctree = False
 
 # Add any paths that contain templates here, relative to this directory.

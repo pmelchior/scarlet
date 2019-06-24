@@ -3,5 +3,6 @@ Tutorials
 
 .. toctree::
    :maxdepth: 2
-   
-   psf_matching
+
+   tutorials/point_source
+   tutorials/multiresolution
