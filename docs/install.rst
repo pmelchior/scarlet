@@ -50,7 +50,7 @@ If you already have a local version of Eigen_ and don't want to download the hea
 For OS X Users
 --------------
 
-For some reason on OS X the system attempts to use the debprecated stdlc++ library instead of the
+For some reason the default XCode build system attempts to use the debprecated stdlc++ library instead of the
 newer libc++. So you may receive the error
 `clang: warning: libstdc++ is deprecated; move to libc++ with a minimum deployment target of OS X 10.9 [-Wdeprecated]
 ld: library not found for -lstdc++`.
