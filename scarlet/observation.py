@@ -157,6 +157,7 @@ class Observation(Scene):
             # Match the PSF in each band
 
             _psf_fft = np.fft.rfftn(self.psfs, fftpack_shape, axes=(1, 2))
+            print(fftpack_shape, self.psfs.shape,_psf_fft.shape, 'zizi')
             kernels = np.fft.ifftshift(np.fft.irfftn(_psf_fft / target_fft, fftpack_shape, axes=(1, 2)), axes=(1, 2))
             kernels *= scene.psfs[0].sum()
             if kernels.shape[1] % 2 == 0:
