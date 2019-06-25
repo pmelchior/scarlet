@@ -153,6 +153,7 @@ class Observation(Scene):
             # Make the PSF stamp wider due to errors when matching PSFs
             psf_shape = np.array(self.psfs[0].shape) + self.padding
             shape = np.array(scene.shape[1:]) + psf_shape - 1
+
             # Choose the optimal shape for FFTPack DFT
             self.fftpack_shape = [fftpack.helper.next_fast_len(d) for d in shape]
             # Store the pre-fftpack optimization slices
@@ -165,11 +166,13 @@ class Observation(Scene):
             target_fft = np.fft.rfftn(scene.psfs[0], fftpack_shape)
 
             # Match the PSF in each band
-
             _psf_fft = np.fft.rfftn(self.psfs, fftpack_shape, axes=(1, 2))
+            print(_psf_fft.shape, self.psfs.shape)
 
 
             kernels = np.fft.ifftshift(np.fft.irfftn(_psf_fft / target_fft, fftpack_shape, axes=(1, 2)), axes=(1, 2))
+            import matplotlib.pyplot as plt
+            plt.imshow(kernels[0], cmap = 'gist_stern'); plt.show()
             kernels *= scene.psfs[0].sum()
             if kernels.shape[1] % 2 == 0:
                 kernels = kernels[:, 1:, 1:]
