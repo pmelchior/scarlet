@@ -294,6 +294,7 @@ class LowResObservation(Scene):
             the convolution-resampling matrix
         '''
         B, Ny, Nx = shape
+        Bpsf = p.shape[0]
 
         y_hr, x_hr = np.where(np.zeros((Ny, Nx)) == 0)
         y_lr, x_lr = self._coord_lr
@@ -309,13 +310,15 @@ class LowResObservation(Scene):
         ker = interpolation.sinc2D((y_lr[:, np.newaxis] - y_hr[np.newaxis, :]) / h,
                                    (x_lr[:, np.newaxis] - x_hr[np.newaxis, :]) / h).reshape(Nlr, Ny, Nx)
         _shape = ker.shape
-
         # FFTs of the psf and sinc
         ker_fft = np.fft.rfftn(ker, self.fftpack_shape, axes=(1, 2))
+        operator_fft = ker_fft[:,np.newaxis,:,:] * p[np.newaxis,:,:,:]
+        operator = np.fft.irfftn(operator_fft, axes=(2, 3)) * Nlr / (Nx * Ny) / np.pi
 
-        operator = np.fft.irfftn(ker_fft[:,np.newaxis,:,:] * p[np.newaxis,:,:,:], axes=(1, 2)) * Nlr / (Nx * Ny) / np.pi
-        print('did the newaxis thing work?', operator.shape)
-        return operator.reshape(B,Nx * Ny, Nlr)
+        #A little trimming
+        operator = _centered(operator, (Bpsf, Ny, Nx))
+
+        return operator.reshape(Bpsf, Nlr, Nx * Ny)
 
     def match(self, scene):
         '''Matches the observation with a scene
@@ -382,7 +385,7 @@ class LowResObservation(Scene):
             sel = target_fft != 0
             diff_fft = observed_fft / target_fft
             diff_fft[sel] = 0
-            diff_fft = (diff_fft.T / diff_fft.max(axis = (1, 2))[np.newaxis,:]).T
+            diff_fft = diff_fft / diff_fft.max(axis = (1, 2))[:, np.newaxis,np.newaxis]
 
             # Computes the resampling/convolution matrix
             resconv_op = self.make_operator(_shape, diff_fft)

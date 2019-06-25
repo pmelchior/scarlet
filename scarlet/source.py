@@ -81,7 +81,7 @@ def get_best_fit_seds(morphs, scene, observations):
     return seds
 
 
-def build_detection_coadd(sed, bg_rms, observation, scene, thresh=1):
+def build_detection_coadd(sed, bg_rms, observation, scene, thresh=0.001):
     """Build a band weighted coadd to use for source detection
 
     Parameters
