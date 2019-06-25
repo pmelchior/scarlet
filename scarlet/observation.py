@@ -157,7 +157,7 @@ class Observation(Scene):
             # Choose the optimal shape for FFTPack DFT
             self.fftpack_shape = [fftpack.helper.next_fast_len(d) for d in shape]
             # Store the pre-fftpack optimization slices
-            self.slices = tuple([slice(s) for s in shape])
+            self.slices = tuple(np.concatenate(([slice(self.B)],[slice(s) for s in shape])))
 
             # Now we setup the parameters for the psf -> kernel FFTs
             shape = np.array(scene.psfs[0].shape) + np.array(self.psfs[0].shape) - 1
@@ -188,6 +188,7 @@ class Observation(Scene):
         """Convolve the model in a single band
         """
         model_fft = np.fft.rfftn(model, self.fftpack_shape, axes=(1, 2))
+       
         convolved = np.fft.irfftn(model_fft * psf_fft, self.fftpack_shape, axes=(1, 2))[self.slices]
 
         return _centered(convolved, model[0].shape)
