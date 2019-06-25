@@ -44,10 +44,10 @@ class Frame():
         if psfs is None:
             logger.warning('No PSFs specified. Possible, but dangerous!')
         else:
-            assert len(psfs) == 1 or len(psfs) == shape[0]
+            assert len(psfs) == 1 or len(psfs) == shape[0], 'PSFs need to have shape (1,Ny,Nx) for Blend and (B,Ny,Nx) for Observation'
             if not np.allclose(psfs.sum(axis=(1, 2)), 1):
-                logger.warning('PSFs not normalized!')
-
+                logger.warning('PSFs not normalized. Normalizing now..')
+                psfs /= psfs.sum(axis=(1, 2))[:,None,None]
         self._psfs = psfs
 
         assert bands is None or len(bands) == shape[0]
@@ -123,7 +123,7 @@ class Observation():
                  padding=10):
         """Create an Observation
 
-        Arguments
+        Parameters
         ---------
         images: array or tensor
             3D data cube (bands, Ny, Nx) of the image in each band.
@@ -151,7 +151,7 @@ class Observation():
         else:
             self.weights = 1
 
-        self.padding = padding
+        self._padding = padding
 
     def match(self, model_frame):
         """Match the frame of `Blend` to the frame of this observation.
@@ -160,7 +160,7 @@ class Observation():
         which includes a spatial selection, computing PSF difference kernels
         and filter transformations.
 
-        Arguments
+        Parameters
         ---------
         model_frame: a `scarlet.Frame` instance
             The frame of `Blend` to match
@@ -171,49 +171,51 @@ class Observation():
         """
 
         #  bands of model that are represented in this observation
-        self.band_slice = slice(None)
+        self._band_slice = slice(None)
         if self.frame.bands is not model_frame.bands:
+            assert self.frame.bands is not None and model_frame.bands is not None
             bmin = model_frame.bands.index(self.frame.bands[0])
             bmax = model_frame.bands.index(self.frame.bands[-1])
-            self.band_slice = slice(bmin, bmax+1)
+            self._band_slice = slice(bmin, bmax+1)
 
-        self.diff_kernels_fft = None
+        self._diff_kernels_fft = None
         if self.frame.psfs is not model_frame.psfs:
+            assert self.frame.psfs is not None and model_frame.psfs is not None
             # First we setup the parameters for the model -> observation FFTs
             # Make the PSF stamp wider due to errors when matching PSFs
-            psf_shape = np.array(self.frame.psfs[0].shape) + self.padding
+            psf_shape = np.array(self.frame.psfs[0].shape) + self._padding
             shape = np.array(model_frame.shape[1:]) + psf_shape - 1
             # Choose the optimal shape for FFTPack DFT
-            self.fftpack_shape = [fftpack.helper.next_fast_len(d) for d in shape]
+            self._fftpack_shape = [fftpack.helper.next_fast_len(d) for d in shape]
             # Store the pre-fftpack optimization slices
-            self.slices = tuple([slice(s) for s in shape])
+            self._slices = tuple([slice(s) for s in shape])
 
             # Now we setup the parameters for the psf -> kernel FFTs
             shape = np.array(model_frame.psfs[0].shape) + np.array(self.frame.psfs[0].shape) - 1
-            fftpack_shape = [fftpack.helper.next_fast_len(d) for d in shape]
+            _fftpack_shape = [fftpack.helper.next_fast_len(d) for d in shape]
             # Deconvolve the target PSF
-            target_fft = np.fft.rfftn(model_frame.psfs[0], fftpack_shape)
+            target_fft = np.fft.rfftn(model_frame.psfs[0], _fftpack_shape)
 
             # Match the PSF in each band
-            diff_kernels_fft = []
+            _diff_kernels_fft = []
             for psf in self.frame.psfs:
-                _psf_fft = np.fft.rfftn(psf, fftpack_shape)
-                kernel = np.fft.fftshift(np.fft.irfftn(_psf_fft / target_fft, fftpack_shape))
+                _psf_fft = np.fft.rfftn(psf, _fftpack_shape)
+                kernel = np.fft.fftshift(np.fft.irfftn(_psf_fft / target_fft, _fftpack_shape))
                 kernel *= model_frame.psfs[0].sum()
                 if kernel.shape[0] % 2 == 0:
                     kernel = kernel[1:, 1:]
                 kernel = _centered(kernel, psf_shape)
-                diff_kernels_fft.append(np.fft.rfftn(kernel, self.fftpack_shape))
+                _diff_kernels_fft.append(np.fft.rfftn(kernel, self._fftpack_shape))
 
-            self.diff_kernels_fft = np.array(diff_kernels_fft)
+            self._diff_kernels_fft = np.array(_diff_kernels_fft)
 
         return self
 
     def _convolve_band(self, model, diff_kernel_fft):
         """Convolve the model in a single band
         """
-        model_fft = np.fft.rfftn(model, self.fftpack_shape)
-        convolved = np.fft.irfftn(model_fft * diff_kernel_fft, self.fftpack_shape)[self.slices]
+        model_fft = np.fft.rfftn(model, self._fftpack_shape)
+        convolved = np.fft.irfftn(model_fft * diff_kernel_fft, self._fftpack_shape)[self._slices]
         return _centered(convolved, model.shape)
 
     def render(self, model):
@@ -229,10 +231,10 @@ class Observation():
         model_: array
             The convolved `model` in the observation frame
         """
-        model_ = model[self.band_slice,:,:]
+        model_ = model[self._band_slice,:,:]
 
-        if self.diff_kernels_fft is not None:
-            model_ = np.array([self._convolve_band(model_[b], self.diff_kernels_fft[b]) for b in range(self.frame.B)])
+        if self._diff_kernels_fft is not None:
+            model_ = np.array([self._convolve_band(model_[b], self._diff_kernels_fft[b]) for b in range(self.frame.B)])
 
         return model_
 
@@ -265,7 +267,7 @@ class LowResObservation(Observation):
 
         self.frame = Frame(images.shape, wcs=wcs, psfs=psfs, bands=bands)
         self.images = np.array(images)
-        self.padding = padding
+        self._padding = padding
 
         if weights is not None:
             self.weights = np.array(weights)
@@ -275,11 +277,11 @@ class LowResObservation(Observation):
     def match(self, model_frame):
 
         #  bands of model that are represented in this observation
-        self.band_slice = slice(None)
+        self._band_slice = slice(None)
         if self.frame.bands is not model_frame.bands:
             bmin = model_frame.bands.index(self.frame.bands[0])
             bmax = model_frame.bands.index(self.frame.bands[-1])
-            self.band_slice = slice(bmin, bmax+1)
+            self._band_slice = slice(bmin, bmax+1)
 
         # Get pixel coordinates in each frame.
         mask, coord_lr, coord_hr = resampling.match_patches(model_frame.shape, self.frame.shape, model_frame.wcs, self.frame.wcs)
@@ -313,7 +315,7 @@ class LowResObservation(Observation):
             # Computes the resampling/convolution matrix
             resconv_op.append(resampling.make_operator(_shape, coord_hr, diff_psf))
 
-        self.resconv_op = np.array(resconv_op)
+        self._resconv_op = np.array(resconv_op)
 
         return self
 
@@ -334,8 +336,8 @@ class LowResObservation(Observation):
         model_: array
             The convolved and resampled `model` in the observation frame.
         """
-        model_ = model[self.band_slice,:,:]
-        model_ = np.array([np.dot(model_[b].flatten(), self.resconv_op[b]) for b in range(self.frame.B)])
+        model_ = model[self._band_slice,:,:]
+        model_ = np.array([np.dot(model_[b].flatten(), self._resconv_op[b]) for b in range(self.frame.B)])
 
         return model_
 

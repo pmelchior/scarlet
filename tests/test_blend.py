@@ -37,8 +37,6 @@ def init_data(shape, coords, amplitudes=None, convolve=True):
 
         psfs = np.array([scarlet.psf.generate_psf_image(scarlet.psf.gaussian, psf_shape, psf_center,
                                                         amplitude=1, sigma=1+.2*b) for b in range(B)])
-        psfs /= psfs.sum(axis=(1,2))[:,None,None]
-        
         # Convolve the image with the psf in each band
         # Use scipy.signal.convolve without using FFTs as a sanity check
         images = np.array([scipy.signal.convolve(img, psf, method="direct", mode="same")
@@ -48,6 +46,9 @@ def init_data(shape, coords, amplitudes=None, convolve=True):
         morphs = np.array([scipy.signal.convolve(m, target_psf, method="direct", mode="same")
                            for m in morphs])
         morphs /= morphs.max()
+        psfs /= psfs.sum(axis=(1,2))[:,None,None]
+
+
     bands = range(len(images))
     return target_psf, psfs, images, bands, seds, morphs
 
@@ -78,7 +79,6 @@ class TestBlend(object):
         assert blend.frame.psfs == frame.psfs
 
         # Test init with psfs
-
         frame = scarlet.Frame(images.shape, psfs=target_psf[None], bands=bands)
         obs1 = scarlet.Observation(images1, psfs=psfs1, bands=bands1).match(frame)
         obs2 = scarlet.Observation(images2, psfs=psfs2, bands=bands2).match(frame)
@@ -95,8 +95,8 @@ class TestBlend(object):
         assert blend.mse == []
         assert blend.frame == frame
         assert_array_equal(blend.frame.psfs, frame.psfs)
-        assert_array_equal(obs1.diff_kernels_fft.shape, (4, 81, 55))
-        assert_array_equal(obs2.diff_kernels_fft.shape, (2, 81, 55))
+        assert_array_equal(obs1._diff_kernels_fft.shape, (4, 81, 55))
+        assert_array_equal(obs2._diff_kernels_fft.shape, (2, 81, 55))
 
         model = np.vstack([obs1.render(blend.get_model()), obs2.render(blend.get_model())])
         assert_almost_equal(images, model)
@@ -121,6 +121,7 @@ class TestBlend(object):
         # Since the model is already near exact, it should converge
         # on the 2nd iteration (since it doesn't calculate the initial loss)
         blend.fit(10)
+
         assert blend.it == 2
         assert_almost_equal(blend.L_sed, 2.5481250470053265)
         assert_almost_equal(blend.L_morph, 9024.538938935855)

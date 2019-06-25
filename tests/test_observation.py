@@ -91,15 +91,14 @@ class TestObservation(object):
 
     def test_psf_match(self):
         shape = (43, 43)
-        target_psf = self.get_psfs(shape, [.9])[1][0]
-        target_psf = target_psf[None]
+        target_psf = self.get_psfs(shape, [.9])[1]
         psfs, truth = self.get_psfs(shape, [2.1, 1.1, 3.5])
         psfs /= psfs.sum(axis=(1,2))[:,None,None]
 
         frame = scarlet.Frame(psfs.shape, psfs=target_psf)
         observation = scarlet.Observation(psfs, psfs)
         observation.match(frame)
-        result = observation.render(np.array([target_psf]*len(psfs)))
+        result = observation.render(np.array([target_psf[0]]*len(psfs)))
 
         assert_almost_equal(result, truth)
 
