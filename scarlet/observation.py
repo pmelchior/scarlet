@@ -141,7 +141,7 @@ class Observation(Scene):
         if self.psfs is not None:
             # First we setup the parameters for the model -> observation FFTs
             # Make the PSF stamp wider due to errors when matching PSFs
-            psf_shape = np.array(self.psfs[1].shape) + 10
+            psf_shape = np.array(self.psfs[0].shape) + self.padding
             shape = np.array(scene.shape[1:]) + psf_shape - 1
             # Choose the optimal shape for FFTPack DFT
             self.fftpack_shape = [fftpack.helper.next_fast_len(d) for d in shape]
@@ -152,12 +152,14 @@ class Observation(Scene):
             shape = np.array(scene.psfs[0].shape) + np.array(self.psfs[0].shape) - 1
             fftpack_shape = [fftpack.helper.next_fast_len(d) for d in shape]
             # Deconvolve the target PSF
-            target_fft = np.fft.rfftn(scene.psfs, fftpack_shape)
+            target_fft = np.fft.rfftn(scene.psfs[0], fftpack_shape)
+
 
             # Match the PSF in each band
 
             _psf_fft = np.fft.rfftn(self.psfs, fftpack_shape, axes=(1, 2))
-            print(fftpack_shape, self.psfs.shape,_psf_fft.shape, 'zizi')
+
+
             kernels = np.fft.ifftshift(np.fft.irfftn(_psf_fft / target_fft, fftpack_shape, axes=(1, 2)), axes=(1, 2))
             kernels *= scene.psfs[0].sum()
             if kernels.shape[1] % 2 == 0:
