@@ -188,7 +188,7 @@ class Observation(Scene):
         """Convolve the model in a single band
         """
         model_fft = np.fft.rfftn(model, self.fftpack_shape, axes=(1, 2))
-       
+
         convolved = np.fft.irfftn(model_fft * psf_fft, self.fftpack_shape, axes=(1, 2))[self.slices]
 
         return _centered(convolved, model[0].shape)
@@ -308,11 +308,12 @@ class LowResObservation(Scene):
         # sinc interpolant:
         ker = interpolation.sinc2D((y_lr[:, np.newaxis] - y_hr[np.newaxis, :]) / h,
                                    (x_lr[:, np.newaxis] - x_hr[np.newaxis, :]) / h).reshape(Nlr, Ny, Nx)
+        _shape = ker.shape
 
         # FFTs of the psf and sinc
-        ker_fft = np.fft.rfftn(ker, axes=(1, 2))
+        ker_fft = np.fft.rfftn(ker, self.fftpack_shape, axes=(1, 2))
 
-        operator = np.fft.irfftn(ker_fft[:,np.newaxis, :,:] * p, axes=(1, 2)) * Nlr / (Nx * Ny) / np.pi
+        operator = np.fft.irfftn(ker_fft[:,np.newaxis,:,:] * p[np.newaxis,:,:,:], axes=(1, 2)) * Nlr / (Nx * Ny) / np.pi
         print('did the newaxis thing work?', operator.shape)
         return operator.reshape(B,Nx * Ny, Nlr)
 
@@ -367,23 +368,20 @@ class LowResObservation(Scene):
 
             # First we setup the parameters for the model -> observation FFTs
             # Make the PSF stamp wider due to errors when matching PSFs
-            psf_shape = np.array(self.newtarget[1].shape) + 10
+            psf_shape = np.array(new_target[1].shape) + 10
             shape = np.array(scene.shape[1:]) + psf_shape - 1
             # Choose the optimal shape for FFTPack DFT
             self.fftpack_shape = [fftpack.helper.next_fast_len(d) for d in shape]
             # Store the pre-fftpack optimization slices
             self.slices = tuple([slice(s) for s in shape])
 
-            # Now we setup the parameters for the psf -> kernel FFTs
-            shape = np.array(scene.new_target[0].shape) + np.array(scene.psfs[0].shape) - 1
-            fftpack_shape = [fftpack.helper.next_fast_len(d) for d in shape]
-
             # Computes the diff kernel in Fourier
-            target_fft = np.fft.rfftn(np.fft.ifftshift(target_kernels, axes = (1, 2)), axes=(1, 2))
-            observed_fft = np.fft.rfftn(np.fft.ifftshift(observed_kernels, axes=(1, 2)), axes=(1, 2))
-            diff_fft = np.zeros(target_fft.shape)
+            target_fft = np.fft.rfftn(np.fft.ifftshift(target_kernels, axes = (1, 2)), self.fftpack_shape, axes=(1, 2))
+            observed_fft = np.fft.rfftn(np.fft.ifftshift(observed_kernels, axes=(1, 2)), self.fftpack_shape, axes=(1, 2))
+
             sel = target_fft != 0
-            diff_fft[sel] = observed_fft[sel] / target_fft[sel]
+            diff_fft = observed_fft / target_fft
+            diff_fft[sel] = 0
             diff_fft = (diff_fft.T / diff_fft.max(axis = (1, 2))[np.newaxis,:]).T
 
             # Computes the resampling/convolution matrix
