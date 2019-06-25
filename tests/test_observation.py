@@ -55,7 +55,9 @@ class TestObservation(object):
         assert_almost_equal(scene.psfs.sum(axis=(1, 2)), [1]*5)
 
         skycoord = [210.945, -73.1]
-        assert_almost_equal(scene.get_pixel(skycoord), [-110.21862958, -202.03498081])
+
+        assert_array_equal(scene.get_pixel(skycoord), [-110, -202])
+
 
     def test_init(self):
         images = np.arange(1, 430).reshape(3, 11, 13)
@@ -88,7 +90,9 @@ class TestObservation(object):
         assert_array_equal(obs.structure, structure)
 
         skycoord = [210.945, -73.1]
-        assert_almost_equal(obs.get_pixel(skycoord), [-110.21862958, -202.03498081])
+
+        assert_array_equal(obs.get_pixel(skycoord), [-110, -202])
+
 
     def test_psf_match(self):
         shape = (43, 43)

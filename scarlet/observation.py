@@ -1,6 +1,8 @@
 import autograd.numpy as np
 from scipy import fftpack
+
 from . import interpolation
+
 from . import resampling
 
 import logging
@@ -96,9 +98,11 @@ class Scene():
                 coord = self.wcs.wcs_world2pix(sky_coord[0], sky_coord[1], 0)
             else:
                 raise ValueError("Invalid number of wcs dimensions: {0}".format(self.wcs.naxis))
-            return (coord[0].item(), coord[1].item())
 
-        return [int(coord) for coord in sky_coord]
+            return (int(coord[0].item()), int(coord[1].item()))
+
+
+        return tuple(int(coord) for coord in sky_coord)
 
 
 class Observation(Scene):
@@ -124,7 +128,10 @@ class Observation(Scene):
         prevent artifacts due to the FFT.
     """
 
-    def __init__(self, images, psfs=None, weights=None, wcs=None, filtercurve=None, structure=None):
+
+    def __init__(self, images, psfs=None, weights=None, wcs=None, filtercurve=None, structure=None,
+                 padding=10):
+
         super().__init__(images.shape, wcs=wcs, psfs=psfs, filtercurve=filtercurve)
 
         self.images = np.array(images)
@@ -134,6 +141,9 @@ class Observation(Scene):
             self.weights = 1
 
         self.structure = structure
+        if structure is not None:
+            self.structure = np.array(self.structure)
+        self.padding = padding
 
     def match(self, scene):
         """Match the psf in each observed band to the target PSF
@@ -154,7 +164,6 @@ class Observation(Scene):
             # Deconvolve the target PSF
             target_fft = np.fft.rfftn(scene.psfs[0], fftpack_shape)
 
-
             # Match the PSF in each band
 
             _psf_fft = np.fft.rfftn(self.psfs, fftpack_shape, axes=(1, 2))
@@ -169,6 +178,7 @@ class Observation(Scene):
 
             new_kernel_fft = np.fft.rfftn(kernels, self.fftpack_shape, axes=(1, 2))
 
+
             self.psfs_fft = np.array(new_kernel_fft)
             self.kernels = np.array(kernels)
 
@@ -180,6 +190,7 @@ class Observation(Scene):
         model_fft = np.fft.rfftn(model, self.fftpack_shape, axes=(1, 2))
         convolved = np.fft.irfftn(model_fft * psf_fft, self.fftpack_shape, axes=(1, 2))[self.slices]
         return _centered(convolved, model.shape[1:])
+
 
     def get_model(self, model):
         """Resample and convolve a model to the observation frame

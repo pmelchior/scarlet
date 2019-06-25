@@ -35,24 +35,22 @@ def get_pixel_sed(sky_coord, observations):
     """
 
     sed = []
-    band = 0
     for obs in observations:
         pixel = obs.get_pixel(sky_coord)
+        _sed = obs.images[:, pixel[0], pixel[1]].copy()
+        if obs.psfs is not None:
+            # Account for the PSF in the intensity
+            _sed /= obs.psfs.max(axis=(1, 2))
+        sed = np.concatenate((sed, _sed))
 
-        sed = np.concatenate((sed, obs.images[:, np.int(pixel[0]), np.int(pixel[1])]))
+    if np.all(sed[-1] <= 0):
+        # If the flux in all bands is  <=0,
+        # the new sed will be filled with NaN values,
+        # which will cause the code to crash later
+        msg = "Zero or negative flux at y={0}, x={1}"
+        raise SourceInitError(msg.format(*sky_coord))
 
-        band += obs.B
-
-        if np.all(sed[-1] <= 0):
-            # If the flux in all bands is  <=0,
-            # the new sed will be filled with NaN values,
-            # which will cause the code to crash later
-            msg = "Zero or negative flux at y={0}, x={1}"
-            raise SourceInitError(msg.format(*sky_coord))
-
-    sed = np.array(sed)
-
-    return sed.reshape(-1)
+    return np.array(sed).reshape(-1)
 
 
 def get_best_fit_seds(morphs, scene, observations):
@@ -79,10 +77,11 @@ def get_best_fit_seds(morphs, scene, observations):
         data = images.reshape(obs.B, -1)
         sed = np.dot(np.linalg.inv(np.dot(_morph, _morph.T)), np.dot(_morph, data.T))
         seds[:, band:band + obs.B] = sed
+        band += obs.B
     return seds
 
 
-def build_detection_coadd(sed, bg_rms, observations, scene, thresh=1):
+def build_detection_coadd(sed, bg_rms, observation, scene, thresh=1):
     """Build a band weighted coadd to use for source detection
 
     Parameters
@@ -107,10 +106,12 @@ def build_detection_coadd(sed, bg_rms, observations, scene, thresh=1):
         The minimum value in `detect` to include in detection.
     """
     B = scene.B
+    if np.any(bg_rms <= 0):
+        raise ValueError("bg_rms must be greater than zero in all bands")
 
     weights = np.array([sed[b] / bg_rms[b] ** 2 for b in range(B)])
     jacobian = np.array([sed[b] ** 2 / bg_rms[b] ** 2 for b in range(B)]).sum()
-    detect = np.einsum('i,i...', weights, observations.images) / jacobian
+    detect = np.einsum('i,i...', weights, observation.images) / jacobian
 
     # thresh is multiple above the rms of detect (weighted variance across bands)
     bg_cutoff = thresh * np.sqrt((weights ** 2 * bg_rms ** 2).sum()) / jacobian
@@ -128,6 +129,8 @@ def init_extended_source(sky_coord, scene, observations, bg_rms, obs_idx=0,
         observations = [observations]
     # determine initial SED from peak position
     sed = get_pixel_sed(sky_coord, observations)  # amplitude is in sed
+    if scene.psfs is not None:
+        sed = sed * scene.psfs[0].max()
 
     morph, bg_cutoff = build_detection_coadd(sed, bg_rms, observations[obs_idx], scene, thresh)
     center = scene.get_pixel(sky_coord)
@@ -301,7 +304,11 @@ class PointSource(Component):
         b0 = 0
         for obs in observations:
             pixel = obs.get_pixel(sky_coord)
-            sed[b0:b0 + obs.B] = obs.images[:, pixel[0], pixel[1]]
+            _sed = obs.images[:, pixel[0], pixel[1]].copy()
+            if obs.psfs is not None:
+                # Account for the PSF in the intensity
+                _sed /= obs.psfs.max(axis=(1, 2))
+            sed[b0:b0 + obs.B] = _sed
             b0 += obs.B
 
         super().__init__(sed, morph, **component_kwargs)
@@ -309,6 +316,7 @@ class PointSource(Component):
         self.monotonic = monotonic
         self.center_step = center_step
         self.delay_thresh = delay_thresh
+        self.update()
 
     def update(self):
         """Default update parameters for an ExtendedSource
@@ -316,7 +324,10 @@ class PointSource(Component):
         This method can be overwritten if a different set of constraints
         or update functions is desired.
         """
-        it = self._parent.it
+        if self._parent is None:
+            it = 0
+        else:
+            it = self._parent.it
         # Update the central pixel location (pixel_center)
         update.fit_pixel_center(self)
         if it > self.delay_thresh:
@@ -371,7 +382,7 @@ class ExtendedSource(PointSource):
     """
 
     def __init__(self, sky_coord, scene, observations, bg_rms, obs_idx=0, thresh=1,
-                 symmetric=False, monotonic=True, center_step=5, delay_thresh=0, **component_kwargs):
+                 symmetric=False, monotonic=True, center_step=5, delay_thresh=10, **component_kwargs):
         self.symmetric = symmetric
         self.monotonic = monotonic
         self.coords = sky_coord
@@ -384,6 +395,7 @@ class ExtendedSource(PointSource):
                                           thresh, True, monotonic)
 
         Component.__init__(self, sed, morph, **component_kwargs)
+        self.update()
 
 
 class CombinedExtendedSource(PointSource):
