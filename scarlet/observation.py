@@ -167,20 +167,17 @@ class Observation(Scene):
 
             # Match the PSF in each band
             _psf_fft = np.fft.rfftn(self.psfs, fftpack_shape, axes=(1, 2))
-            print(_psf_fft.shape, self.psfs.shape)
 
 
             kernels = np.fft.ifftshift(np.fft.irfftn(_psf_fft / target_fft, fftpack_shape, axes=(1, 2)), axes=(1, 2))
-            import matplotlib.pyplot as plt
-            plt.imshow(kernels[0], cmap = 'gist_stern'); plt.show()
-            kernels *= scene.psfs[0].sum()
+
+
+            #kernels *= scene.psfs[0].sum()
             if kernels.shape[1] % 2 == 0:
                 kernels = kernels[:, 1:, 1:]
 
             kernels = _centered(kernels, psf_shape)
-
             new_kernel_fft = np.fft.rfftn(kernels, self.fftpack_shape, axes=(1, 2))
-
 
             self.psfs_fft = np.array(new_kernel_fft)
             self.kernels = np.array(kernels)
@@ -192,7 +189,8 @@ class Observation(Scene):
         """
         model_fft = np.fft.rfftn(model, self.fftpack_shape, axes=(1, 2))
         convolved = np.fft.irfftn(model_fft * psf_fft, self.fftpack_shape, axes=(1, 2))[self.slices]
-        return _centered(convolved, model.shape[1:])
+
+        return _centered(convolved, model[0].shape)
 
 
     def get_model(self, model):
