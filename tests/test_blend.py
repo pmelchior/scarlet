@@ -37,7 +37,7 @@ def init_data(shape, coords, amplitudes=None, convolve=True):
 
         psfs = np.array([scarlet.psf.generate_psf_image(scarlet.psf.gaussian, psf_shape, psf_center,
                                                         amplitude=1, sigma=1+.2*b) for b in range(B)])
-        # Convolve the image with the psf in each band
+        # Convolve the image with the psf in each channel
         # Use scipy.signal.convolve without using FFTs as a sanity check
         images = np.array([scipy.signal.convolve(img, psf, method="direct", mode="same")
                            for img, psf in zip(images, psfs)])
@@ -49,22 +49,22 @@ def init_data(shape, coords, amplitudes=None, convolve=True):
         psfs /= psfs.sum(axis=(1,2))[:,None,None]
 
 
-    bands = range(len(images))
-    return target_psf, psfs, images, bands, seds, morphs
+    channels = range(len(images))
+    return target_psf, psfs, images, channels, seds, morphs
 
 
 class TestBlend(object):
     def test_init(self):
         shape = (6, 31, 55)
         coords = [(20, 10), (10, 30), (17, 42)]
-        target_psf, psfs, images, bands, seds, morphs = init_data(shape, coords, [3, 2, 1])
+        target_psf, psfs, images, channels, seds, morphs = init_data(shape, coords, [3, 2, 1])
 
         images1 = images[:4]
         images2 = images[4:]
         psfs1 = psfs[:4]
         psfs2 = psfs[4:]
-        bands1 = bands[:4]
-        bands2 = bands[4:]
+        channels1 = channels[:4]
+        channels2 = channels[4:]
 
         # Test vanilla init
         frame = scarlet.Frame(images.shape)
@@ -79,9 +79,9 @@ class TestBlend(object):
         assert blend.frame.psfs == frame.psfs
 
         # Test init with psfs
-        frame = scarlet.Frame(images.shape, psfs=target_psf[None], bands=bands)
-        obs1 = scarlet.Observation(images1, psfs=psfs1, bands=bands1).match(frame)
-        obs2 = scarlet.Observation(images2, psfs=psfs2, bands=bands2).match(frame)
+        frame = scarlet.Frame(images.shape, psfs=target_psf[None], channels=channels)
+        obs1 = scarlet.Observation(images1, psfs=psfs1, channels=channels1).match(frame)
+        obs2 = scarlet.Observation(images2, psfs=psfs2, channels=channels2).match(frame)
         observations = [obs1, obs2]
         sources = [scarlet.PointSource(coord, frame, observations) for coord in coords]
 
@@ -109,7 +109,7 @@ class TestBlend(object):
         shape = (6, 31, 55)
         coords = [(20, 10), (10, 30), (17, 42)]
         amplitudes = [3, 2, 1]
-        target_psf, psfs, images, bands, seds, morphs = init_data(shape, coords, amplitudes)
+        target_psf, psfs, images, channels, seds, morphs = init_data(shape, coords, amplitudes)
         B, Ny, Nx = shape
         K = len(coords)
 
@@ -132,7 +132,7 @@ class TestBlend(object):
         shape = (6, 31, 55)
         coords = [(20, 10), (10, 30), (17, 42)]
         amplitudes = [3, 2, 1]
-        target_psf, psfs, images, bands, seds, morphs = init_data(shape, coords, amplitudes)
+        target_psf, psfs, images, channels, seds, morphs = init_data(shape, coords, amplitudes)
         B, Ny, Nx = shape
 
         frame = scarlet.Frame(images.shape, psfs=target_psf[None])

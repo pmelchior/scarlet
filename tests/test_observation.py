@@ -38,7 +38,7 @@ class TestObservation(object):
         psfs = np.arange(1, 716).reshape(5, 11, 13)
         norm_psfs = psfs / psfs.sum(axis=(1,2))[:, None, None]
 
-        assert frame.B == 5
+        assert frame.C == 5
         assert frame.Ny == 11
         assert frame.Nx == 13
         assert frame.shape == shape
@@ -47,7 +47,7 @@ class TestObservation(object):
 
         # Full initialization
         frame = scarlet.Frame(shape, wcs=wcs, psfs=norm_psfs)
-        assert frame.B == 5
+        assert frame.C == 5
         assert frame.Ny == 11
         assert frame.Nx == 13
         assert frame.shape == shape
@@ -62,29 +62,29 @@ class TestObservation(object):
         psfs = np.arange(1, 76).reshape(3, 5, 5)
         norm_psfs = psfs / psfs.sum(axis=(1,2))[:, None, None]
         wcs = get_airy_wcs()
-        bands = np.arange(len(images))
+        channels = np.arange(len(images))
 
         # Minimal init
         obs = scarlet.Observation(images)
-        assert obs.frame.B == 3
+        assert obs.frame.C == 3
         assert obs.frame.Ny == 11
         assert obs.frame.Nx == 13
         assert obs.frame.shape == images.shape
         assert obs.frame.psfs is None
         assert_array_equal(obs.frame.get_pixel((5.1, 1.3)), (5, 1))
         assert obs.weights == 1
-        assert obs.frame.bands is None
+        assert obs.frame.channels is None
 
         # Full init
-        obs = scarlet.Observation(images, psfs=norm_psfs, weights=weights, wcs=wcs, bands=bands)
-        assert obs.frame.B == 3
+        obs = scarlet.Observation(images, psfs=norm_psfs, weights=weights, wcs=wcs, channels=channels)
+        assert obs.frame.C == 3
         assert obs.frame.Ny == 11
         assert obs.frame.Nx == 13
         assert obs.frame.shape == images.shape
         assert_almost_equal(obs.frame.psfs, norm_psfs)
         assert_almost_equal(obs.frame.psfs.sum(axis=(1, 2)), [1]*3)
         assert_array_equal(obs.weights, weights)
-        assert_array_equal(obs.frame.bands, bands)
+        assert_array_equal(obs.frame.channels, channels)
 
         skycoord = [210.945, -73.1]
         assert_array_equal(obs.frame.get_pixel(skycoord), [-110, -202])

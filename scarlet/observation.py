@@ -28,15 +28,15 @@ class Frame():
     Attributes
     ----------
     shape: tuple
-        (bands, Ny, Nx) shape of the model image
+        (channels, Ny, Nx) shape of the model image
     wcs: TBD
         World Coordinates
     psfs: array or tensor
         PSF in each band
-    bands: list of hashable elements
-        Names/identifiers of spectral bands
+    channels: list of hashable elements
+        Names/identifiers of spectral channels
     """
-    def __init__(self, shape, wcs=None, psfs=None, bands=None):
+    def __init__(self, shape, wcs=None, psfs=None, channels=None):
         assert len(shape) == 3
         self._shape = tuple(shape)
         self.wcs = wcs
@@ -50,12 +50,12 @@ class Frame():
                 psfs /= psfs.sum(axis=(1, 2))[:,None,None]
         self._psfs = psfs
 
-        assert bands is None or len(bands) == shape[0]
-        self.bands = bands
+        assert channels is None or len(channels) == shape[0]
+        self.channels = channels
 
     @property
-    def B(self):
-        """Number of bands in the model
+    def C(self):
+        """Number of channels in the model
         """
         return self._shape[0]
 
@@ -105,7 +105,7 @@ class Observation():
     Attributes
     ----------
     images: array or tensor
-        3D data cube (bands, Ny, Nx) of the image in each band.
+        3D data cube (channels, Ny, Nx) of the image in each band.
     frame: a `scarlet.Frame` instance
         The spectral and spatial characteristics of these data
     weights: array or tensor
@@ -119,14 +119,14 @@ class Observation():
         prevent artifacts from the FFT.
     """
 
-    def __init__(self, images, psfs=None, weights=None, wcs=None, bands=None,
+    def __init__(self, images, psfs=None, weights=None, wcs=None, channels=None,
                  padding=10):
         """Create an Observation
 
         Parameters
         ---------
         images: array or tensor
-            3D data cube (bands, Ny, Nx) of the image in each band.
+            3D data cube (channels, Ny, Nx) of the image in each band.
         psfs: array or tensor
             PSF for each band in `images`.
         weights: array or tensor
@@ -136,14 +136,14 @@ class Observation():
             to zero.
         wcs: TBD
             World Coordinate System associated with the images.
-        bands: list of hashable elements
-            Names/identifiers of spectral bands
+        channels: list of hashable elements
+            Names/identifiers of spectral channels
         padding: int
             Number of pixels to pad each side with, in addition to
             half the width of the PSF, for FFTs. This is needed to
             prevent artifacts from the FFT.
         """
-        self.frame = Frame(images.shape, wcs=wcs, psfs=psfs, bands=bands)
+        self.frame = Frame(images.shape, wcs=wcs, psfs=psfs, channels=channels)
 
         self.images = np.array(images)
         if weights is not None:
@@ -170,12 +170,12 @@ class Observation():
         None
         """
 
-        #  bands of model that are represented in this observation
+        #  channels of model that are represented in this observation
         self._band_slice = slice(None)
-        if self.frame.bands is not model_frame.bands:
-            assert self.frame.bands is not None and model_frame.bands is not None
-            bmin = model_frame.bands.index(self.frame.bands[0])
-            bmax = model_frame.bands.index(self.frame.bands[-1])
+        if self.frame.channels is not model_frame.channels:
+            assert self.frame.channels is not None and model_frame.channels is not None
+            bmin = model_frame.channels.index(self.frame.channels[0])
+            bmax = model_frame.channels.index(self.frame.channels[-1])
             self._band_slice = slice(bmin, bmax+1)
 
         self._diff_kernels_fft = None
@@ -234,7 +234,7 @@ class Observation():
         model_ = model[self._band_slice,:,:]
 
         if self._diff_kernels_fft is not None:
-            model_ = np.array([self._convolve_band(model_[b], self._diff_kernels_fft[b]) for b in range(self.frame.B)])
+            model_ = np.array([self._convolve_band(model_[c], self._diff_kernels_fft[c]) for c in range(self.frame.C)])
 
         return model_
 
@@ -260,12 +260,12 @@ class Observation():
 
 class LowResObservation(Observation):
 
-    def __init__(self, images, wcs=None, psfs=None, weights=None, bands=None, padding=3):
+    def __init__(self, images, wcs=None, psfs=None, weights=None, channels=None, padding=3):
 
         assert wcs is not None, "WCS is necessary for LowResObservation"
         assert psfs is not None, "PSFs are necessary for LowResObservation"
 
-        self.frame = Frame(images.shape, wcs=wcs, psfs=psfs, bands=bands)
+        self.frame = Frame(images.shape, wcs=wcs, psfs=psfs, channels=channels)
         self.images = np.array(images)
         self._padding = padding
 
@@ -276,11 +276,11 @@ class LowResObservation(Observation):
 
     def match(self, model_frame):
 
-        #  bands of model that are represented in this observation
+        #  channels of model that are represented in this observation
         self._band_slice = slice(None)
-        if self.frame.bands is not model_frame.bands:
-            bmin = model_frame.bands.index(self.frame.bands[0])
-            bmax = model_frame.bands.index(self.frame.bands[-1])
+        if self.frame.channels is not model_frame.channels:
+            bmin = model_frame.channels.index(self.frame.channels[0])
+            bmax = model_frame.channels.index(self.frame.channels[-1])
             self._band_slice = slice(bmin, bmax+1)
 
         # Get pixel coordinates in each frame.
@@ -337,7 +337,7 @@ class LowResObservation(Observation):
             The convolved and resampled `model` in the observation frame.
         """
         model_ = model[self._band_slice,:,:]
-        model_ = np.array([np.dot(model_[b].flatten(), self._resconv_op[b]) for b in range(self.frame.B)])
+        model_ = np.array([np.dot(model_[c].flatten(), self._resconv_op[c]) for c in range(self.frame.C)])
 
         return model_
 

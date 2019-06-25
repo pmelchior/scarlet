@@ -56,17 +56,17 @@ class TestPointSource(object):
 
         B, Ny, Nx = shape
         seds, morphs, images = create_sources(shape, coords, [2, 3, .1])
-        bands = range(len(images))
+        channels = range(len(images))
         psfs = np.array([[[.25, .5, .25], [.5, 1, .5], [.25, .5, .25]]])
         psfs /= psfs.sum(axis=(1,2))[:,None,None]
         images1 = images[:4]
         images2 = images[4:]
-        bands1 = bands[:4]
-        bands2 = bands[4:]
+        channels1 = channels[:4]
+        channels2 = channels[4:]
 
-        frame = scarlet.Frame(images.shape, bands=bands)
-        obs1 = scarlet.Observation(images1, bands=bands1).match(frame)
-        obs2 = scarlet.Observation(images2, bands=bands2).match(frame)
+        frame = scarlet.Frame(images.shape, channels=channels)
+        obs1 = scarlet.Observation(images1, channels=channels1).match(frame)
+        obs2 = scarlet.Observation(images2, channels=channels2).match(frame)
         observations = [obs1, obs2]
 
         src = scarlet.PointSource(coords[0], frame, observations)
@@ -82,7 +82,7 @@ class TestPointSource(object):
         assert src.delay_thresh == 10
 
         # frame PSF same as source
-        frame = scarlet.Frame(images.shape, bands=bands, psfs=psfs)
+        frame = scarlet.Frame(images.shape, channels=channels, psfs=psfs)
         src = scarlet.PointSource(coords[0], frame, observations)
 
         # We need to multiply by 4 because of psf normalization
@@ -96,15 +96,15 @@ class TestExtendedSource(object):
         shape = (7, 11, 21)
         coords = [(4, 8), (8, 11), (5, 16)]
         seds, morphs, images = create_sources(shape, coords)
-        bands = range(len(images))
+        channels = range(len(images))
         images1 = images[:4]
         images2 = images[4:]
-        bands1 = bands[:4]
-        bands2 = bands[4:]
+        channels1 = channels[:4]
+        channels2 = channels[4:]
 
-        frame = scarlet.Frame(images.shape, bands=bands)
-        obs1 = scarlet.Observation(images1, bands=bands1).match(frame)
-        obs2 = scarlet.Observation(images2, bands=bands2).match(frame)
+        frame = scarlet.Frame(images.shape, channels=channels)
+        obs1 = scarlet.Observation(images1, channels=channels1).match(frame)
+        obs2 = scarlet.Observation(images2, channels=channels2).match(frame)
         observations = [obs1, obs2]
 
         _seds = scarlet.source.get_best_fit_seds(morphs, frame, observations)

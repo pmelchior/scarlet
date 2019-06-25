@@ -42,7 +42,7 @@ def get_pixel_sed(sky_coord, observations):
         sed = np.concatenate((sed, _sed))
 
     if np.all(sed[-1] <= 0):
-        # If the flux in all bands is  <=0,
+        # If the flux in all channels is  <=0,
         # the new sed will be filled with NaN values,
         # which will cause the code to crash later
         msg = "Zero or negative flux at y={0}, x={1}"
@@ -67,27 +67,27 @@ def get_best_fit_seds(morphs, frame, observations):
         Observations to extract SEDs from.
     """
     K = len(morphs)
-    seds = np.zeros((K, frame.B), dtype=observations[0].images.dtype)
-    band = 0
+    seds = np.zeros((K, frame.C), dtype=observations[0].images.dtype)
+    channel = 0
     _morph = morphs.reshape(K, -1)
     for obs in observations:
         images = obs.images
-        data = images.reshape(obs.frame.B, -1)
+        data = images.reshape(obs.frame.C, -1)
         sed = np.dot(np.linalg.inv(np.dot(_morph, _morph.T)), np.dot(_morph, data.T))
-        seds[:, band:band + obs.frame.B] = sed
-        band += obs.frame.B
+        seds[:, channel:channel + obs.frame.C] = sed
+        channel += obs.frame.C
     return seds
 
 
 def build_detection_coadd(sed, bg_rms, observation, frame, thresh=1):
-    """Build a band weighted coadd to use for source detection
+    """Build a channel weighted coadd to use for source detection
 
     Parameters
     ----------
     sed: array
         SED at the center of the source.
     bg_rms: array
-        Background RMS in each band in observation.
+        Background RMS in each channel in observation.
     observation: `~scarlet.observation.Observation`
         Observation to use for the coadd.
     frame: `scarlet.observation.frame`
@@ -99,19 +99,19 @@ def build_detection_coadd(sed, bg_rms, observation, frame, thresh=1):
     Returns
     -------
     detect: array
-        2D image created by weighting all of the bands by SED
+        2D image created by weighting all of the channels by SED
     bg_cutoff: float
         The minimum value in `detect` to include in detection.
     """
-    B = frame.B
+    C = frame.C
     if np.any(bg_rms <= 0):
-        raise ValueError("bg_rms must be greater than zero in all bands")
+        raise ValueError("bg_rms must be greater than zero in all channels")
 
-    weights = np.array([sed[b] / bg_rms[b] ** 2 for b in range(B)])
-    jacobian = np.array([sed[b] ** 2 / bg_rms[b] ** 2 for b in range(B)]).sum()
+    weights = np.array([sed[c] / bg_rms[c] ** 2 for c in range(C)])
+    jacobian = np.array([sed[c] ** 2 / bg_rms[c] ** 2 for c in range(C)]).sum()
     detect = np.einsum('i,i...', weights, observation.images) / jacobian
 
-    # thresh is multiple above the rms of detect (weighted variance across bands)
+    # thresh is multiple above the rms of detect (weighted variance across channels)
     bg_cutoff = thresh * np.sqrt((weights ** 2 * bg_rms ** 2).sum()) / jacobian
     return detect, bg_cutoff
 
@@ -306,8 +306,8 @@ class PointSource(Component):
             if obs.frame.psfs is not None:
                 # Account for the PSF in the intensity
                 _sed /= obs.frame.psfs.max(axis=(1, 2))
-            sed[b0:b0 + obs.frame.B] = _sed
-            b0 += obs.frame.B
+            sed[b0:b0 + obs.frame.C] = _sed
+            b0 += obs.frame.C
 
         super().__init__(sed, morph, **component_kwargs)
         self.symmetric = symmetric
@@ -363,7 +363,7 @@ class ExtendedSource(PointSource):
     observations: list of `~scarlet.observation.Observation`
         Observations to extract SED from.
     bg_rms: array
-        Background RMS in each band in observation.
+        Background RMS in each channel in observation.
     obs_idx: int
         Index of the observation in `observations` to use for
         initializing the morphology.
@@ -408,7 +408,7 @@ class CombinedExtendedSource(PointSource):
     observations: list of `~scarlet.observation.Observation`
         Observations to extract SED from.
     bg_rms: array
-        Background RMS in each band in observation.
+        Background RMS in each channel in observation.
     obs_idx: int
         Index of the observation in `observations` to use for
         initializing the morphology.
@@ -449,7 +449,7 @@ class MultiComponentSource(ComponentTree):
     The subsequent component(s) is/are set to the difference between the flattened
     and the overall morphology.
     The SED for all components is calculated as the best fit of the multi-component
-    morphology to the multi-band image in the region of the source.
+    morphology to the multi-channel image in the region of the source.
 
     Parameters
     ----------
