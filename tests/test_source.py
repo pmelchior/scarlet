@@ -56,7 +56,7 @@ class TestPointSource(object):
 
         B, Ny, Nx = shape
         seds, morphs, images = create_sources(shape, coords, [2, 3, .1])
-        bands = np.arange(len(images))
+        bands = range(len(images))
         psfs = np.array([[[.25, .5, .25], [.5, 1, .5], [.25, .5, .25]]])
         images1 = images[:4]
         images2 = images[4:]
@@ -95,9 +95,9 @@ class TestExtendedSource(object):
         shape = (7, 11, 21)
         coords = [(4, 8), (8, 11), (5, 16)]
         seds, morphs, images = create_sources(shape, coords)
-        bands = np.arange(len(images))
-        image1 = images[:4]
-        image2 = images[4:]
+        bands = range(len(images))
+        images1 = images[:4]
+        images2 = images[4:]
         bands1 = bands[:4]
         bands2 = bands[4:]
 
@@ -141,8 +141,8 @@ class TestExtendedSource(object):
         noise = np.random.rand(*shape) * bg_rms[:, None, None]
         images += noise
 
+        frame = scarlet.Frame(shape)
         for k in range(K):
-            frame = scarlet.Frame(shape)
             observation = scarlet.Observation(images).match(frame)
             coadd, cutoff = scarlet.source.build_detection_coadd(seds[k], bg_rms, observation, frame)
             cy, cx = coords[k]
@@ -151,7 +151,7 @@ class TestExtendedSource(object):
             assert_almost_equal(cutoff, true_cutoff[k])
 
         with pytest.raises(ValueError):
-            scarlet.source.build_detection_coadd(seds[0], np.zeros_like(bg_rms), observation, scene)
+            scarlet.source.build_detection_coadd(seds[0], np.zeros_like(bg_rms), observation, frame)
 
     def test_init_extended(self):
         shape = (5, 11, 15)
@@ -217,7 +217,7 @@ class TestExtendedSource(object):
         frame = scarlet.Frame(shape)
         observation = scarlet.Observation(images).match(frame)
         bg_rms = np.ones_like(true_sed) * 1e-3
-        sed, morph = scarlet.source.init_extended_source(skycoord, scene, observation, bg_rms,
+        sed, morph = scarlet.source.init_extended_source(skycoord, frame, observation, bg_rms,
                                                          monotonic=False)
 
         assert_array_equal(sed/3, true_sed)

@@ -46,7 +46,7 @@ def init_data(shape, coords, amplitudes=None, convolve=True):
         morphs = np.array([scipy.signal.convolve(m, target_psf, method="direct", mode="same")
                            for m in morphs])
         morphs /= morphs.max()
-    bands = np.arange(len(images))
+    bands = range(len(images))
     return target_psf, psfs, images, bands, seds, morphs
 
 
@@ -67,7 +67,7 @@ class TestBlend(object):
         frame = scarlet.Frame(images.shape)
         observation = scarlet.Observation(images1).match(frame)
         sources = [scarlet.PointSource(coord, frame, observation) for coord in coords]
-        blend = scarlet.Blend(frame, sources, observations)
+        blend = scarlet.Blend(frame, sources, observation)
 
         assert len(blend.observations) == 1
         assert blend.observations[0] == observation
@@ -107,7 +107,7 @@ class TestBlend(object):
         shape = (6, 31, 55)
         coords = [(20, 10), (10, 30), (17, 42)]
         amplitudes = [3, 2, 1]
-        target_psf, psfs, images, seds, morphs = init_data(shape, coords, amplitudes)
+        target_psf, psfs, images, bands, seds, morphs = init_data(shape, coords, amplitudes)
         B, Ny, Nx = shape
         K = len(coords)
 
@@ -129,7 +129,7 @@ class TestBlend(object):
         shape = (6, 31, 55)
         coords = [(20, 10), (10, 30), (17, 42)]
         amplitudes = [3, 2, 1]
-        target_psf, psfs, images, seds, morphs = init_data(shape, coords, amplitudes)
+        target_psf, psfs, images, bands, seds, morphs = init_data(shape, coords, amplitudes)
         B, Ny, Nx = shape
 
         frame = scarlet.Frame(images.shape, psfs=target_psf[None])
