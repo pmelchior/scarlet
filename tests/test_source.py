@@ -58,6 +58,7 @@ class TestPointSource(object):
         seds, morphs, images = create_sources(shape, coords, [2, 3, .1])
         bands = range(len(images))
         psfs = np.array([[[.25, .5, .25], [.5, 1, .5], [.25, .5, .25]]])
+        psfs /= psfs.sum(axis=(1,2))[:,None,None]
         images1 = images[:4]
         images2 = images[4:]
         bands1 = bands[:4]
@@ -80,7 +81,7 @@ class TestPointSource(object):
         assert src.center_step == 5
         assert src.delay_thresh == 10
 
-        # Scene PSF same as source
+        # frame PSF same as source
         frame = scarlet.Frame(images.shape, bands=bands, psfs=psfs)
         src = scarlet.PointSource(coords[0], frame, observations)
 
@@ -106,7 +107,7 @@ class TestExtendedSource(object):
         obs2 = scarlet.Observation(images2, bands=bands2).match(frame)
         observations = [obs1, obs2]
 
-        _seds = scarlet.source.get_best_fit_seds(morphs, scene, observations)
+        _seds = scarlet.source.get_best_fit_seds(morphs, frame, observations)
 
         assert_array_equal(_seds, seds)
 

@@ -37,6 +37,8 @@ def init_data(shape, coords, amplitudes=None, convolve=True):
 
         psfs = np.array([scarlet.psf.generate_psf_image(scarlet.psf.gaussian, psf_shape, psf_center,
                                                         amplitude=1, sigma=1+.2*b) for b in range(B)])
+        psfs /= psfs.sum(axis=(1,2))[:,None,None]
+        
         # Convolve the image with the psf in each band
         # Use scipy.signal.convolve without using FFTs as a sanity check
         images = np.array([scipy.signal.convolve(img, psf, method="direct", mode="same")
@@ -72,8 +74,8 @@ class TestBlend(object):
         assert len(blend.observations) == 1
         assert blend.observations[0] == observation
         assert blend.mse == []
-        assert blend.shape == scene.shape
-        assert blend.psfs == scene.psfs
+        assert blend.frame.shape == frame.shape
+        assert blend.frame.psfs == frame.psfs
 
         # Test init with psfs
 
@@ -87,12 +89,12 @@ class TestBlend(object):
             obs1.psfs_fft
         with pytest.raises(AttributeError):
             obs2.psfs_fft
-        blend = scarlet.Blend(scene, sources, observations)
+        blend = scarlet.Blend(frame, sources, observations)
 
         assert blend.observations == [obs1, obs2]
         assert blend.mse == []
         assert blend.frame == frame
-        assert_array_equal(blend.psfs, frame.psfs)
+        assert_array_equal(blend.frame.psfs, frame.psfs)
         assert_array_equal(obs1.diff_kernels_fft.shape, (4, 81, 55))
         assert_array_equal(obs2.diff_kernels_fft.shape, (2, 81, 55))
 
@@ -113,8 +115,8 @@ class TestBlend(object):
 
         frame = scarlet.Frame(images.shape, psfs=target_psf[None])
         observation = scarlet.Observation(images, psfs=psfs).match(frame)
-        sources = [scarlet.PointSource(coord, frame, observations) for coord in coords]
-        blend = scarlet.Blend(frame, sources, observations)
+        sources = [scarlet.PointSource(coord, frame, observation) for coord in coords]
+        blend = scarlet.Blend(frame, sources, observation)
         # Try to run for 10 iterations
         # Since the model is already near exact, it should converge
         # on the 2nd iteration (since it doesn't calculate the initial loss)
@@ -135,8 +137,8 @@ class TestBlend(object):
         frame = scarlet.Frame(images.shape, psfs=target_psf[None])
         observation = scarlet.Observation(images, psfs=psfs).match(frame)
         bg_rms = np.ones((B,))
-        sources = [scarlet.ExtendedSource(coord, frame, observations, bg_rms) for coord in coords]
-        blend = scarlet.Blend(frame, sources, observations)
+        sources = [scarlet.ExtendedSource(coord, frame, observation, bg_rms) for coord in coords]
+        blend = scarlet.Blend(frame, sources, observation)
 
         # Scale the input psfs by the observation and model psfs to ensure
         # the sources were initialized correctly

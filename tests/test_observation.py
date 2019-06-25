@@ -36,7 +36,7 @@ class TestObservation(object):
         frame = scarlet.Frame(shape)
         wcs = get_airy_wcs()
         psfs = np.arange(1, 716).reshape(5, 11, 13)
-        norm_psfs = psfs / np.array([10296, 30745, 51194, 71643, 92092])[:, None, None]
+        norm_psfs = psfs / psfs.sum(axis=(1,2))[:, None, None]
 
         assert frame.B == 5
         assert frame.Ny == 11
@@ -46,7 +46,7 @@ class TestObservation(object):
         assert_array_equal(frame.get_pixel((5.1, 1.3)), (5, 1))
 
         # Full initialization
-        frame = scarlet.Frame(shape, wcs=wcs, psfs=psfs)
+        frame = scarlet.Frame(shape, wcs=wcs, psfs=norm_psfs)
         assert frame.B == 5
         assert frame.Ny == 11
         assert frame.Nx == 13
@@ -60,7 +60,7 @@ class TestObservation(object):
         images = np.arange(1, 430).reshape(3, 11, 13)
         weights = np.ones_like(images)
         psfs = np.arange(1, 76).reshape(3, 5, 5)
-        norm_psfs = psfs / np.array([325, 950, 1575])[:, None, None]
+        norm_psfs = psfs / psfs.sum(axis=(1,2))[:, None, None]
         wcs = get_airy_wcs()
         bands = np.arange(len(images))
 
@@ -76,23 +76,25 @@ class TestObservation(object):
         assert obs.frame.bands is None
 
         # Full init
-        obs = scarlet.Observation(images, psfs=psfs, weights=weights, wcs=wcs, bands=bands)
+        obs = scarlet.Observation(images, psfs=norm_psfs, weights=weights, wcs=wcs, bands=bands)
         assert obs.frame.B == 3
         assert obs.frame.Ny == 11
         assert obs.frame.Nx == 13
         assert obs.frame.shape == images.shape
-        assert_almost_equal(obs.psfs, norm_psfs)
-        assert_almost_equal(obs.psfs.sum(axis=(1, 2)), [1]*3)
+        assert_almost_equal(obs.frame.psfs, norm_psfs)
+        assert_almost_equal(obs.frame.psfs.sum(axis=(1, 2)), [1]*3)
         assert_array_equal(obs.weights, weights)
         assert_array_equal(obs.frame.bands, bands)
 
         skycoord = [210.945, -73.1]
-        assert_array_equal(obs.get_pixel(skycoord), [-110, -202])
+        assert_array_equal(obs.frame.get_pixel(skycoord), [-110, -202])
 
     def test_psf_match(self):
         shape = (43, 43)
         target_psf = self.get_psfs(shape, [.9])[1][0]
+        target_psf = target_psf[None]
         psfs, truth = self.get_psfs(shape, [2.1, 1.1, 3.5])
+        psfs /= psfs.sum(axis=(1,2))[:,None,None]
 
         frame = scarlet.Frame(psfs.shape, psfs=target_psf)
         observation = scarlet.Observation(psfs, psfs)
@@ -104,7 +106,9 @@ class TestObservation(object):
     def test_get_model(self):
         shape = (43, 43)
         target_psf = self.get_psfs(shape, [.9])[1][0]
+        target_psf = target_psf[None]
         psfs, normalized = self.get_psfs(shape, [2.1, 1.1, 3.5])
+        psfs /= psfs.sum(axis=(1,2))[:,None,None]
 
         ry = rx = 21
         coords = [[33, 31], [43, 33], [54, 26], [68, 72]]
@@ -116,10 +120,10 @@ class TestObservation(object):
         model = np.zeros_like(images)
         for coord in coords:
             py, px = coord
-            model[:, py-ry:py+ry+1, px-rx:px+rx+1] += target_psf[None]
+            model[:, py-ry:py+ry+1, px-rx:px+rx+1] += target_psf
 
         frame = scarlet.Frame(images.shape, psfs=target_psf)
-        observation = scarlet.Observation(images, psfs)
+        observation = scarlet.Observation(images, psfs=psfs)
         observation.match(frame)
         result = observation.render(model)
         assert_almost_equal(result, images)
