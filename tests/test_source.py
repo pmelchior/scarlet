@@ -56,16 +56,19 @@ class TestPointSource(object):
 
         B, Ny, Nx = shape
         seds, morphs, images = create_sources(shape, coords, [2, 3, .1])
+        bands = np.arange(len(images))
         psfs = np.array([[[.25, .5, .25], [.5, 1, .5], [.25, .5, .25]]])
         images1 = images[:4]
         images2 = images[4:]
-        obs1 = scarlet.Observation(images1)
-        obs2 = scarlet.Observation(images2)
+        bands1 = bands[:4]
+        bands2 = bands[4:]
+
+        frame = scarlet.Frame(images.shape, bands=bands)
+        obs1 = scarlet.Observation(images1, bands=bands1).match(frame)
+        obs2 = scarlet.Observation(images2, bands=bands2).match(frame)
         observations = [obs1, obs2]
 
-        # No Scene PSF
-        scene = scarlet.Scene(images.shape)
-        src = scarlet.PointSource(coords[0], scene, observations)
+        src = scarlet.PointSource(coords[0], frame, observations)
         truth = np.zeros_like(src.morph)
         truth[coords[0]] = 1
 
@@ -78,8 +81,8 @@ class TestPointSource(object):
         assert src.delay_thresh == 10
 
         # Scene PSF same as source
-        scene = scarlet.Scene(images.shape, psfs=psfs)
-        src = scarlet.PointSource(coords[0], scene, observations)
+        frame = scarlet.Frame(images.shape, bands=bands, psfs=psfs)
+        src = scarlet.PointSource(coords[0], frame, observations)
 
         # We need to multiply by 4 because of psf normalization
         assert_array_equal(src.sed*4, seds[0])
@@ -92,13 +95,16 @@ class TestExtendedSource(object):
         shape = (7, 11, 21)
         coords = [(4, 8), (8, 11), (5, 16)]
         seds, morphs, images = create_sources(shape, coords)
+        bands = np.arange(len(images))
         image1 = images[:4]
         image2 = images[4:]
+        bands1 = bands[:4]
+        bands2 = bands[4:]
 
-        obs1 = scarlet.Observation(image1)
-        obs2 = scarlet.Observation(image2)
+        frame = scarlet.Frame(images.shape, bands=bands)
+        obs1 = scarlet.Observation(images1, bands=bands1).match(frame)
+        obs2 = scarlet.Observation(images2, bands=bands2).match(frame)
         observations = [obs1, obs2]
-        scene = scarlet.Scene(images.shape)
 
         _seds = scarlet.source.get_best_fit_seds(morphs, scene, observations)
 
@@ -136,9 +142,9 @@ class TestExtendedSource(object):
         images += noise
 
         for k in range(K):
-            scene = scarlet.Scene(shape)
-            observation = scarlet.Observation(images)
-            coadd, cutoff = scarlet.source.build_detection_coadd(seds[k], bg_rms, observation, scene)
+            frame = scarlet.Frame(shape)
+            observation = scarlet.Observation(images).match(frame)
+            coadd, cutoff = scarlet.source.build_detection_coadd(seds[k], bg_rms, observation, frame)
             cy, cx = coords[k]
             window = slice(cy-2, cy+3), slice(cx-2, cx+3)
             assert_almost_equal(coadd[window], truth[k])
@@ -168,16 +174,16 @@ class TestExtendedSource(object):
 
         # Test function
         images = true_sed[:, None, None] * morph[None, :, :]
-        scene = scarlet.Scene(shape)
-        observation = scarlet.Observation(images)
+        frame = scarlet.Frame(shape)
+        observation = scarlet.Observation(images).match(frame)
         bg_rms = np.ones_like(true_sed) * 1e-3
-        sed, morph = scarlet.source.init_extended_source(skycoord, scene, observation, bg_rms)
+        sed, morph = scarlet.source.init_extended_source(skycoord, frame, observation, bg_rms)
 
         assert_array_equal(sed/3, true_sed)
         assert_almost_equal(morph*3, true_morph)
 
         # Test ExtendedSource.__init__
-        src = scarlet.ExtendedSource(skycoord, scene, observation, bg_rms)
+        src = scarlet.ExtendedSource(skycoord, frame, observation, bg_rms)
         assert_array_equal(src.pixel_center, skycoord)
         assert src.symmetric is False
         assert src.monotonic is True
@@ -192,10 +198,10 @@ class TestExtendedSource(object):
         morph[5, 5] = 2
 
         images = true_sed[:, None, None] * morph[None, :, :]
-        scene = scarlet.Scene(shape)
-        observation = scarlet.Observation(images)
+        frame = scarlet.Frame(shape)
+        observation = scarlet.Observation(images).match(frame)
         bg_rms = np.ones_like(true_sed) * 1e-3
-        sed, morph = scarlet.source.init_extended_source(skycoord, scene, observation, bg_rms,
+        sed, morph = scarlet.source.init_extended_source(skycoord, frame, observation, bg_rms,
                                                          symmetric=False)
 
         _morph = true_morph.copy()
@@ -208,8 +214,8 @@ class TestExtendedSource(object):
         morph[5, 5] = 2
 
         images = true_sed[:, None, None] * morph[None, :, :]
-        scene = scarlet.Scene(shape)
-        observation = scarlet.Observation(images)
+        frame = scarlet.Frame(shape)
+        observation = scarlet.Observation(images).match(frame)
         bg_rms = np.ones_like(true_sed) * 1e-3
         sed, morph = scarlet.source.init_extended_source(skycoord, scene, observation, bg_rms,
                                                          monotonic=False)
