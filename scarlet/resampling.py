@@ -1,72 +1,7 @@
 import autograd.numpy as np
 from . import interpolation
 
-def conv2D_fft(shape, ym, xm, p, h):
-    '''performs a convolution of a coordinate kernel by a psf
 
-    This function is used in the making of the resampling convolution operator.
-    It create a kernel based on the sinc of the difference between coordinates in a high resolution frame and reference
-    coordinate (ym,xm)
-
-    Parameters
-    ----------
-    shape: tuple
-        shape of the high resolution frame
-    ym, xm: arrays
-        coordinate of the low resolution location where to compute mapping
-    p: array
-        PSF kernel
-    h: float
-        pixel size
-    Returns
-    -------
-    result: array
-        vector for convolution and resampling of the high resolution plane into pixel (xm,ym) at low resolution
-    '''
-
-    B, Ny, Nx = shape
-    ker = np.zeros((Ny, Nx))
-    y, x = np.where(ker == 0)
-
-    ker[y, x] = interpolation.sinc2D((ym - y) / h, (xm - x) / h)
-
-    import scipy.signal as scp
-    return scp.fftconvolve(ker, p, mode='same') * h / np.pi
-
-
-def make_operator(shape, coord_lr, p):
-    '''Builds the resampling and convolution operator
-
-    Builds the matrix that expresses the linear operation of resampling a function evaluated on a grid with coordinates
-    'coord_lr' to a grid with shape 'shape', and convolving by a kernel p
-
-    Parameters
-    ------
-    shape: tuple
-        shape of the high resolution scene
-    coord_lr: array
-        coordinates of the overlapping pixels from the low resolution grid in the high resolution grid frame.
-    p: array
-        convolution kernel (PSF)
-    Returns
-    -------
-    mat: array
-        the convolution-resampling matrix
-    '''
-    B, Ny, Nx = shape
-    y_hr, x_hr = np.where(np.zeros((Ny, Nx)) == 0)
-    y_lr, x_lr = coord_lr
-    mat = np.zeros((Ny * Nx, x_lr.size))
-
-    h = y_hr[1] - y_hr[0]
-    if h == 0:
-        h = x_hr[1] - x_hr[0]
-    assert h != 0
-
-    for m in range(np.size(x_lr)):
-        mat[:, m] = conv2D_fft(shape, y_lr[m], x_lr[m], p, h).flatten() * y_lr.size / y_hr.size
-
-    return mat
 
 
 def linorm2D(S, nit):
