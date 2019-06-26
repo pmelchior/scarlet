@@ -62,7 +62,7 @@ class TestBlend(object):
         frame = scarlet.Frame(images.shape)
         observation = scarlet.Observation(images).match(frame)
         sources = [scarlet.PointSource(frame, coord, observation) for coord in coords]
-        blend = scarlet.Blend(frame, sources, observation)
+        blend = scarlet.Blend(sources, observation)
 
         assert len(blend.observations) == 1
         assert blend.observations[0] == observation
@@ -75,7 +75,7 @@ class TestBlend(object):
         observation = scarlet.Observation(images, psfs=psfs).match(frame)
         sources = [scarlet.PointSource(frame, coord, observation) for coord in coords]
 
-        blend = scarlet.Blend(frame, sources, observation)
+        blend = scarlet.Blend(sources, observation)
         assert blend.observations[0] == observation
         assert blend.mse == []
         assert blend.frame == frame
@@ -100,7 +100,7 @@ class TestBlend(object):
         frame = scarlet.Frame(images.shape, psfs=target_psf[None])
         observation = scarlet.Observation(images, psfs=psfs).match(frame)
         sources = [scarlet.PointSource(frame, coord, observation) for coord in coords]
-        blend = scarlet.Blend(frame, sources, observation)
+        blend = scarlet.Blend(sources, observation)
         # Try to run for 10 iterations
         # Since the model is already near exact, it should converge
         # on the 2nd iteration (since it doesn't calculate the initial loss)
@@ -123,7 +123,7 @@ class TestBlend(object):
         observation = scarlet.Observation(images, psfs=psfs).match(frame)
         bg_rms = np.ones((B,))
         sources = [scarlet.ExtendedSource(frame, coord, observation, bg_rms) for coord in coords]
-        blend = scarlet.Blend(frame, sources, observation)
+        blend = scarlet.Blend(sources, observation)
 
         # Scale the input psfs by the observation and model psfs to ensure
         # the sources were initialized correctly

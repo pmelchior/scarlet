@@ -22,22 +22,19 @@ class Blend(ComponentTree):
         Array of mean squared errors in each iteration
     """
 
-    def __init__(self, frame, sources, observations):
+    def __init__(self, sources, observations):
         """Constructor
 
         Form a blended scene from a collection of `~scarlet.component.Component`s
 
         Parameters
         ----------
-        frame: a `~scarlet.Frame` instance
-            The spectral and spatial characteristics of this model
         sources: list of `~scarlet.component.Component` or `~scarlet.component.ComponentTree`
             Intitialized components or sources to fit to the observations
         observations: a `scarlet.Observation` instance or a list thereof
             Data package(s) to fit
         """
         ComponentTree.__init__(self, sources)
-        self._frame = frame
 
         try:
             iter(observations)

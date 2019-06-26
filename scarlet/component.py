@@ -233,6 +233,7 @@ class ComponentTree():
         for i, c in enumerate(self._tree):
             if not isinstance(c, ComponentTree) and not isinstance(c, Component):
                 raise NotImplementedError("argument needs to be list of Components or ComponentTrees")
+            assert c.frame is self.frame, "All components need to share the same Frame"
             c._index = i
             c._parent = self
 
@@ -277,10 +278,7 @@ class ComponentTree():
     def frame(self):
         """Frame of the components.
         """
-        try:
-            return self._frame
-        except AttributeError:
-            return self.components[0].frame
+        return self._tree[0].frame
 
     @property
     def nodes(self):
