@@ -194,42 +194,29 @@
 </style>
 <div class="section" id="Observations-and-Scenes-(scarlet.observation)">
 <h1>Observations and Scenes (<a class="reference internal" href="#"><span class="doc">scarlet.observation</span></a>)<a class="headerlink" href="#Observations-and-Scenes-(scarlet.observation)" title="Permalink to this headline">¶</a></h1>
-<p>The <a class="reference internal" href="#"><span class="doc">observation</span></a> module defines the <a class="reference internal" href="#scarlet.observation.Scene"><span class="std std-ref">Scene</span></a>, the meta data associated with a <em>scarlet</em> source, and the <a class="reference internal" href="#scarlet.observation.Observation"><span class="std std-ref">Observation</span></a> class, which contains all of the necessary information to transform a model into an observed frame.</p>
+<p>The <a class="reference internal" href="#"><span class="doc">observation</span></a> module defines the Scene, the meta data associated with a <em>scarlet</em> source, and the <a class="reference internal" href="#scarlet.observation.Observation"><span class="std std-ref">Observation</span></a> class, which contains all of the necessary information to transform a model into an observed frame.</p>
 <div class="section" id="module-scarlet.observation">
 <span id="Reference/API"></span><h2>Reference/API<a class="headerlink" href="#module-scarlet.observation" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
-<dt id="scarlet.observation.LowResObservation">
-<em class="property">class </em><code class="descclassname">scarlet.observation.</code><code class="descname">LowResObservation</code><span class="sig-paren">(</span><em>images</em>, <em>wcs=None</em>, <em>psfs=None</em>, <em>weights=None</em>, <em>filtercurve=None</em>, <em>padding=3</em>, <em>target_psf=None</em>, <em>structure=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/observation.html#LowResObservation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.LowResObservation" title="Permalink to this definition">¶</a></dt>
-<dd><p>Data and metadata for a set of observations to resample on a different grid</p>
+<dt id="scarlet.observation.Frame">
+<em class="property">class </em><code class="descclassname">scarlet.observation.</code><code class="descname">Frame</code><span class="sig-paren">(</span><em>shape</em>, <em>wcs=None</em>, <em>psfs=None</em>, <em>channels=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/observation.html#Frame"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.Frame" title="Permalink to this definition">¶</a></dt>
+<dd><p>Spatial and spectral characteristics of the data</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Attributes:</th><td class="field-body"><dl class="first last docutils">
-<dt><strong>images: array or tensor</strong></dt>
-<dd><p class="first last">3D data cube (bands, Ny, Nx) of the image in each band.
-These images must be resampled to the same pixel scale and
-same target WCS (for now).
-wcs: WCS object
-World Coordinate System associated with the images.</p>
+<dt><strong>shape: tuple</strong></dt>
+<dd><p class="first last">(channels, Ny, Nx) shape of the model image</p>
+</dd>
+<dt><strong>wcs: TBD</strong></dt>
+<dd><p class="first last">World Coordinates</p>
 </dd>
 <dt><strong>psfs: array or tensor</strong></dt>
-<dd><p class="first last">PSF for each band in <cite>images</cite>.</p>
+<dd><p class="first last">PSF in each band</p>
 </dd>
-<dt><strong>weights: array or tensor</strong></dt>
-<dd><p class="first last">Weight for each pixel in <cite>images</cite>.
-If a set of masks exists for the observations then
-then any masked pixels should have their <cite>weight</cite> set
-to zero.</p>
-</dd>
-<dt><strong>padding: int</strong></dt>
-<dd><p class="first last">Number of pixels to pad each side with, in addition to
-half the width of the PSF, for FFT’s. This is needed to
-prevent artifacts due to the FFT.</p>
-</dd>
-<dt><strong>structure: array</strong></dt>
-<dd><p class="first last">An array that encodes the position of the images of this observation into a high resolution
-(spatial and spectral) scene.</p>
+<dt><strong>channels: list of hashable elements</strong></dt>
+<dd><p class="first last">Names/identifiers of spectral channels</p>
 </dd>
 </dl>
 </td>
@@ -243,41 +230,122 @@ prevent artifacts due to the FFT.</p>
 <col width="90%" />
 </colgroup>
 <tbody valign="top">
-<tr class="row-odd"><td><a class="reference internal" href="#scarlet.observation.LowResObservation.get_loss" title="scarlet.observation.LowResObservation.get_loss"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_loss</span></code></a>(model)</td>
-<td>Computes the loss of a given model compared to the object’s images</td>
-</tr>
-<tr class="row-even"><td><a class="reference internal" href="#scarlet.observation.LowResObservation.get_model" title="scarlet.observation.LowResObservation.get_model"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code></a>(model)</td>
-<td>Resample and convolve a model to the observation frame Parameters ———- model: array     The model in some other data frame.</td>
-</tr>
-<tr class="row-odd"><td><a class="reference internal" href="#scarlet.observation.LowResObservation.get_model_image" title="scarlet.observation.LowResObservation.get_model_image"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model_image</span></code></a>(model)</td>
-<td>Resample and convolve a model to the observation frame Parameters ———- model: array     The model in some other data frame.</td>
-</tr>
-<tr class="row-even"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_pixel</span></code>(sky_coord)</td>
+<tr class="row-odd"><td><a class="reference internal" href="#scarlet.observation.Frame.get_pixel" title="scarlet.observation.Frame.get_pixel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_pixel</span></code></a>(sky_coord)</td>
 <td>Get the pixel coordinate from a world coordinate If there is no WCS associated with the <cite>Scene</cite>, meaning the data frame and model frame are the same, then this just returns the <cite>sky_coord</cite></td>
 </tr>
-<tr class="row-odd"><td><a class="reference internal" href="#scarlet.observation.LowResObservation.match" title="scarlet.observation.LowResObservation.match"><code class="xref py py-obj docutils literal notranslate"><span class="pre">match</span></code></a>(scene)</td>
-<td>Matches the observation with a scene</td>
+</tbody>
+</table>
+<dl class="attribute">
+<dt id="scarlet.observation.Frame.C">
+<code class="descname">C</code><a class="headerlink" href="#scarlet.observation.Frame.C" title="Permalink to this definition">¶</a></dt>
+<dd><p>Number of channels in the model</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="scarlet.observation.Frame.Nx">
+<code class="descname">Nx</code><a class="headerlink" href="#scarlet.observation.Frame.Nx" title="Permalink to this definition">¶</a></dt>
+<dd><p>Number of pixels in the x-direction</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="scarlet.observation.Frame.Ny">
+<code class="descname">Ny</code><a class="headerlink" href="#scarlet.observation.Frame.Ny" title="Permalink to this definition">¶</a></dt>
+<dd><p>Number of pixel in the y-direction</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.observation.Frame.get_pixel">
+<code class="descname">get_pixel</code><span class="sig-paren">(</span><em>sky_coord</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/observation.html#Frame.get_pixel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.Frame.get_pixel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the pixel coordinate from a world coordinate
+If there is no WCS associated with the <cite>Scene</cite>,
+meaning the data frame and model frame are the same,
+then this just returns the <cite>sky_coord</cite></p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="scarlet.observation.Frame.shape">
+<code class="descname">shape</code><a class="headerlink" href="#scarlet.observation.Frame.shape" title="Permalink to this definition">¶</a></dt>
+<dd><p>Shape of the model.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="scarlet.observation.LowResObservation">
+<em class="property">class </em><code class="descclassname">scarlet.observation.</code><code class="descname">LowResObservation</code><span class="sig-paren">(</span><em>images</em>, <em>wcs=None</em>, <em>psfs=None</em>, <em>weights=None</em>, <em>channels=None</em>, <em>padding=3</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/observation.html#LowResObservation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.LowResObservation" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Attributes:</th><td class="field-body"><dl class="first last docutils">
+<dt><strong>matching_mask</strong></dt>
+<dd></dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Methods</p>
+<table border="1" class="longtable docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td><a class="reference internal" href="#scarlet.observation.LowResObservation.get_loss" title="scarlet.observation.LowResObservation.get_loss"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_loss</span></code></a>(model)</td>
+<td>Computes the loss/fidelity of a given model wrt to the observation</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="#scarlet.observation.LowResObservation.match" title="scarlet.observation.LowResObservation.match"><code class="xref py py-obj docutils literal notranslate"><span class="pre">match</span></code></a>(model_frame)</td>
+<td>Match the frame of <cite>Blend</cite> to the frame of this observation.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="#scarlet.observation.LowResObservation.render" title="scarlet.observation.LowResObservation.render"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render</span></code></a>(model)</td>
+<td>Resample and convolve a model in the observation frame</td>
 </tr>
 </tbody>
 </table>
 <dl class="method">
 <dt id="scarlet.observation.LowResObservation.get_loss">
 <code class="descname">get_loss</code><span class="sig-paren">(</span><em>model</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/observation.html#LowResObservation.get_loss"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.LowResObservation.get_loss" title="Permalink to this definition">¶</a></dt>
-<dd><p>Computes the loss of a given model compared to the object’s images</p>
+<dd><p>Computes the loss/fidelity of a given model wrt to the observation</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first last docutils">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first docutils">
 <dt><strong>model: array</strong></dt>
-<dd><p class="first last">A model for the data as computed from get_model method</p>
+<dd><p class="first last">A model from <cite>Blend</cite></p>
 </dd>
-<dt><strong>Return</strong></dt>
-<dd></dd>
+</dl>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first last docutils">
 <dt><strong>loss: float</strong></dt>
 <dd><p class="first last">Loss of the model</p>
 </dd>
-<dt><strong>——</strong></dt>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.observation.LowResObservation.match">
+<code class="descname">match</code><span class="sig-paren">(</span><em>model_frame</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/observation.html#LowResObservation.match"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.LowResObservation.match" title="Permalink to this definition">¶</a></dt>
+<dd><p>Match the frame of <cite>Blend</cite> to the frame of this observation.</p>
+<p>The method sets up the mappings in spectral and spatial coordinates,
+which includes a spatial selection, computing PSF difference kernels
+and filter transformations.</p>
+<dl class="docutils">
+<dt>model_frame: a <cite>scarlet.Frame</cite> instance</dt>
+<dd>The frame of <cite>Blend</cite> to match</dd>
+</dl>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first last docutils">
+<dt><strong>None</strong></dt>
 <dd></dd>
 </dl>
 </td>
@@ -287,54 +355,23 @@ prevent artifacts due to the FFT.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="scarlet.observation.LowResObservation.get_model">
-<code class="descname">get_model</code><span class="sig-paren">(</span><em>model</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/observation.html#LowResObservation.get_model"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.LowResObservation.get_model" title="Permalink to this definition">¶</a></dt>
-<dd><p>Resample and convolve a model to the observation frame
-Parameters
-———-
-model: array</p>
-<blockquote>
-<div>The model in some other data frame.</div></blockquote>
-<dl class="docutils">
-<dt>model: array</dt>
-<dd>The convolved and resampled <cite>model</cite> in the observation frame.</dd>
-</dl>
-</dd></dl>
-
-<dl class="method">
-<dt id="scarlet.observation.LowResObservation.get_model_image">
-<code class="descname">get_model_image</code><span class="sig-paren">(</span><em>model</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/observation.html#LowResObservation.get_model_image"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.LowResObservation.get_model_image" title="Permalink to this definition">¶</a></dt>
-<dd><p>Resample and convolve a model to the observation frame
-Parameters
-———-
-model: array</p>
-<blockquote>
-<div>The model in some other data frame.</div></blockquote>
-<dl class="docutils">
-<dt>model: array</dt>
-<dd>The convolved and resampled <cite>model</cite> in the observation frame.</dd>
-</dl>
-</dd></dl>
-
-<dl class="method">
-<dt id="scarlet.observation.LowResObservation.match">
-<code class="descname">match</code><span class="sig-paren">(</span><em>scene</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/observation.html#LowResObservation.match"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.LowResObservation.match" title="Permalink to this definition">¶</a></dt>
-<dd><p>Matches the observation with a scene</p>
-<p>Builds the tools to project images of this observation to a scene at a different resolution and psf.</p>
+<dt id="scarlet.observation.LowResObservation.render">
+<code class="descname">render</code><span class="sig-paren">(</span><em>model</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/observation.html#LowResObservation.render"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.LowResObservation.render" title="Permalink to this definition">¶</a></dt>
+<dd><p>Resample and convolve a model in the observation frame</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first last docutils">
-<dt><strong>scene: Scene object</strong></dt>
-<dd><p class="first last">A scene in which to project the images from this observation</p>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first docutils">
+<dt><strong>model: array</strong></dt>
+<dd><p class="first last">The model in some other data frame.</p>
 </dd>
-<dt><strong>Returns</strong></dt>
-<dd></dd>
-<dt><strong>——-</strong></dt>
-<dd></dd>
-<dt><strong>None</strong></dt>
-<dd><p class="first last">instanciates new attributes of the object</p>
+</dl>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first last docutils">
+<dt><strong>model_: array</strong></dt>
+<dd><p class="first last">The convolved and resampled <cite>model</cite> in the observation frame.</p>
 </dd>
 </dl>
 </td>
@@ -347,48 +384,29 @@ model: array</p>
 
 <dl class="class">
 <dt id="scarlet.observation.Observation">
-<em class="property">class </em><code class="descclassname">scarlet.observation.</code><code class="descname">Observation</code><span class="sig-paren">(</span><em>images</em>, <em>psfs=None</em>, <em>weights=None</em>, <em>wcs=None</em>, <em>filtercurve=None</em>, <em>structure=None</em>, <em>padding=10</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/observation.html#Observation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.Observation" title="Permalink to this definition">¶</a></dt>
-<dd><p>Data and metadata for a single set of observations
-Attributes
-———-
-images: array or tensor</p>
-<blockquote>
-<div>3D data cube (bands, Ny, Nx) of the image in each band.
-These images must be resampled to the same pixel scale and
-same target WCS (for now).</div></blockquote>
-<dl class="docutils">
-<dt>psfs: array or tensor</dt>
-<dd>PSF for each band in <cite>images</cite>.</dd>
-<dt>weights: array or tensor</dt>
-<dd>Weight for each pixel in <cite>images</cite>.
-If a set of masks exists for the observations then
-then any masked pixels should have their <cite>weight</cite> set
-to zero.</dd>
-<dt>wcs: TBD</dt>
-<dd>World Coordinate System associated with the images.</dd>
-<dt>padding: int</dt>
-<dd>Number of pixels to pad each side with, in addition to
-half the width of the PSF, for FFT’s. This is needed to
-prevent artifacts due to the FFT.</dd>
-</dl>
+<em class="property">class </em><code class="descclassname">scarlet.observation.</code><code class="descname">Observation</code><span class="sig-paren">(</span><em>images</em>, <em>psfs=None</em>, <em>weights=None</em>, <em>wcs=None</em>, <em>channels=None</em>, <em>padding=10</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/observation.html#Observation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.Observation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Data and metadata for a single set of observations</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Attributes:</th><td class="field-body"><dl class="first last docutils">
-<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">B</span></code></dt>
-<dd><p class="first last">Number of bands in the model</p>
+<dt><strong>images: array or tensor</strong></dt>
+<dd><p class="first last">3D data cube (channels, Ny, Nx) of the image in each band.</p>
 </dd>
-<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">Nx</span></code></dt>
-<dd><p class="first last">Number of pixels in the x-direction</p>
+<dt><strong>frame: a `scarlet.Frame` instance</strong></dt>
+<dd><p class="first last">The spectral and spatial characteristics of these data</p>
 </dd>
-<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">Ny</span></code></dt>
-<dd><p class="first last">Number of pixel in the y-direction</p>
+<dt><strong>weights: array or tensor</strong></dt>
+<dd><p class="first last">Weight for each pixel in <cite>images</cite>.
+If a set of masks exists for the observations then
+then any masked pixels should have their <cite>weight</cite> set
+to zero.</p>
 </dd>
-<dt><strong>psfs</strong></dt>
-<dd></dd>
-<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">shape</span></code></dt>
-<dd><p class="first last">Shape of the model.</p>
+<dt><strong>padding: int</strong></dt>
+<dd><p class="first last">Number of pixels to pad each side with, in addition to
+half the width of the PSF, for FFTs. This is needed to
+prevent artifacts from the FFT.</p>
 </dd>
 </dl>
 </td>
@@ -403,144 +421,92 @@ prevent artifacts due to the FFT.</dd>
 </colgroup>
 <tbody valign="top">
 <tr class="row-odd"><td><a class="reference internal" href="#scarlet.observation.Observation.get_loss" title="scarlet.observation.Observation.get_loss"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_loss</span></code></a>(model)</td>
-<td>Calculate the loss function for the model Parameters ———- model: array     The model in some other data frame.</td>
+<td>Computes the loss/fidelity of a given model wrt to the observation</td>
 </tr>
-<tr class="row-even"><td><a class="reference internal" href="#scarlet.observation.Observation.get_model" title="scarlet.observation.Observation.get_model"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code></a>(model)</td>
-<td>Resample and convolve a model to the observation frame Parameters ———- model: array     The model in some other data frame.</td>
+<tr class="row-even"><td><a class="reference internal" href="#scarlet.observation.Observation.match" title="scarlet.observation.Observation.match"><code class="xref py py-obj docutils literal notranslate"><span class="pre">match</span></code></a>(model_frame)</td>
+<td>Match the frame of <cite>Blend</cite> to the frame of this observation.</td>
 </tr>
-<tr class="row-odd"><td><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_pixel</span></code>(sky_coord)</td>
-<td>Get the pixel coordinate from a world coordinate If there is no WCS associated with the <cite>Scene</cite>, meaning the data frame and model frame are the same, then this just returns the <cite>sky_coord</cite></td>
-</tr>
-<tr class="row-even"><td><a class="reference internal" href="#scarlet.observation.Observation.match" title="scarlet.observation.Observation.match"><code class="xref py py-obj docutils literal notranslate"><span class="pre">match</span></code></a>(scene)</td>
-<td>Match the psf in each observed band to the target PSF</td>
+<tr class="row-odd"><td><a class="reference internal" href="#scarlet.observation.Observation.render" title="scarlet.observation.Observation.render"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render</span></code></a>(model)</td>
+<td>Convolve a model to the observation frame</td>
 </tr>
 </tbody>
 </table>
 <dl class="method">
 <dt id="scarlet.observation.Observation.get_loss">
 <code class="descname">get_loss</code><span class="sig-paren">(</span><em>model</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/observation.html#Observation.get_loss"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.Observation.get_loss" title="Permalink to this definition">¶</a></dt>
-<dd><p>Calculate the loss function for the model
-Parameters
-———-
-model: array</p>
-<blockquote>
-<div>The model in some other data frame.</div></blockquote>
-<dl class="docutils">
-<dt>result: array</dt>
-<dd>Scalar tensor with the likelihood of the model
-given the image data.</dd>
-</dl>
-</dd></dl>
-
-<dl class="method">
-<dt id="scarlet.observation.Observation.get_model">
-<code class="descname">get_model</code><span class="sig-paren">(</span><em>model</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/observation.html#Observation.get_model"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.Observation.get_model" title="Permalink to this definition">¶</a></dt>
-<dd><p>Resample and convolve a model to the observation frame
-Parameters
-———-
-model: array</p>
-<blockquote>
-<div>The model in some other data frame.</div></blockquote>
-<dl class="docutils">
-<dt>model: array</dt>
-<dd>The convolved and resampled <cite>model</cite> in the observation frame.</dd>
-</dl>
-</dd></dl>
-
-<dl class="method">
-<dt id="scarlet.observation.Observation.match">
-<code class="descname">match</code><span class="sig-paren">(</span><em>scene</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/observation.html#Observation.match"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.Observation.match" title="Permalink to this definition">¶</a></dt>
-<dd><p>Match the psf in each observed band to the target PSF</p>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="class">
-<dt id="scarlet.observation.Scene">
-<em class="property">class </em><code class="descclassname">scarlet.observation.</code><code class="descname">Scene</code><span class="sig-paren">(</span><em>shape</em>, <em>wcs=None</em>, <em>psfs=None</em>, <em>filtercurve=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/observation.html#Scene"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.Scene" title="Permalink to this definition">¶</a></dt>
-<dd><p>Extent and characteristics of the modeled scence
-Attributes
-———-
-shape: tuple</p>
-<blockquote>
-<div>(bands, Ny, Nx) shape of the model image.</div></blockquote>
-<dl class="docutils">
-<dt>wcs: TBD</dt>
-<dd>World Coordinates</dd>
-<dt>psfs: array or tensor</dt>
-<dd>PSF in each band</dd>
-<dt>filtercurve: TBD</dt>
-<dd>Filter curve used for unpacking spectral information.</dd>
-<dt>dtype: <cite>~numpy.dtype</cite></dt>
-<dd>Data type of the model.</dd>
-</dl>
+<dd><p>Computes the loss/fidelity of a given model wrt to the observation</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Attributes:</th><td class="field-body"><dl class="first last docutils">
-<dt><a class="reference internal" href="#scarlet.observation.Scene.B" title="scarlet.observation.Scene.B"><code class="xref py py-obj docutils literal notranslate"><span class="pre">B</span></code></a></dt>
-<dd><p class="first last">Number of bands in the model</p>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first docutils">
+<dt><strong>model: array</strong></dt>
+<dd><p class="first last">The model from <cite>Blend</cite></p>
 </dd>
-<dt><a class="reference internal" href="#scarlet.observation.Scene.Nx" title="scarlet.observation.Scene.Nx"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Nx</span></code></a></dt>
-<dd><p class="first last">Number of pixels in the x-direction</p>
-</dd>
-<dt><a class="reference internal" href="#scarlet.observation.Scene.Ny" title="scarlet.observation.Scene.Ny"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Ny</span></code></a></dt>
-<dd><p class="first last">Number of pixel in the y-direction</p>
-</dd>
-<dt><strong>psfs</strong></dt>
-<dd></dd>
-<dt><a class="reference internal" href="#scarlet.observation.Scene.shape" title="scarlet.observation.Scene.shape"><code class="xref py py-obj docutils literal notranslate"><span class="pre">shape</span></code></a></dt>
-<dd><p class="first last">Shape of the model.</p>
+</dl>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first last docutils">
+<dt><strong>result: array</strong></dt>
+<dd><p class="first last">Scalar tensor with the likelihood of the model
+given the image data</p>
 </dd>
 </dl>
 </td>
 </tr>
 </tbody>
 </table>
-<p class="rubric">Methods</p>
-<table border="1" class="longtable docutils">
-<colgroup>
-<col width="10%" />
-<col width="90%" />
-</colgroup>
-<tbody valign="top">
-<tr class="row-odd"><td><a class="reference internal" href="#scarlet.observation.Scene.get_pixel" title="scarlet.observation.Scene.get_pixel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_pixel</span></code></a>(sky_coord)</td>
-<td>Get the pixel coordinate from a world coordinate If there is no WCS associated with the <cite>Scene</cite>, meaning the data frame and model frame are the same, then this just returns the <cite>sky_coord</cite></td>
-</tr>
-</tbody>
-</table>
-<dl class="attribute">
-<dt id="scarlet.observation.Scene.B">
-<code class="descname">B</code><a class="headerlink" href="#scarlet.observation.Scene.B" title="Permalink to this definition">¶</a></dt>
-<dd><p>Number of bands in the model</p>
-</dd></dl>
-
-<dl class="attribute">
-<dt id="scarlet.observation.Scene.Nx">
-<code class="descname">Nx</code><a class="headerlink" href="#scarlet.observation.Scene.Nx" title="Permalink to this definition">¶</a></dt>
-<dd><p>Number of pixels in the x-direction</p>
-</dd></dl>
-
-<dl class="attribute">
-<dt id="scarlet.observation.Scene.Ny">
-<code class="descname">Ny</code><a class="headerlink" href="#scarlet.observation.Scene.Ny" title="Permalink to this definition">¶</a></dt>
-<dd><p>Number of pixel in the y-direction</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="scarlet.observation.Scene.get_pixel">
-<code class="descname">get_pixel</code><span class="sig-paren">(</span><em>sky_coord</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/observation.html#Scene.get_pixel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.Scene.get_pixel" title="Permalink to this definition">¶</a></dt>
-<dd><p>Get the pixel coordinate from a world coordinate
-If there is no WCS associated with the <cite>Scene</cite>,
-meaning the data frame and model frame are the same,
-then this just returns the <cite>sky_coord</cite></p>
+<dt id="scarlet.observation.Observation.match">
+<code class="descname">match</code><span class="sig-paren">(</span><em>model_frame</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/observation.html#Observation.match"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.Observation.match" title="Permalink to this definition">¶</a></dt>
+<dd><p>Match the frame of <cite>Blend</cite> to the frame of this observation.</p>
+<p>The method sets up the mappings in spectral and spatial coordinates,
+which includes a spatial selection, computing PSF difference kernels
+and filter transformations.</p>
+<dl class="docutils">
+<dt>model_frame: a <cite>scarlet.Frame</cite> instance</dt>
+<dd>The frame of <cite>Blend</cite> to match</dd>
+</dl>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first last docutils">
+<dt><strong>None</strong></dt>
+<dd></dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
-<dl class="attribute">
-<dt id="scarlet.observation.Scene.shape">
-<code class="descname">shape</code><a class="headerlink" href="#scarlet.observation.Scene.shape" title="Permalink to this definition">¶</a></dt>
-<dd><p>Shape of the model.</p>
+<dl class="method">
+<dt id="scarlet.observation.Observation.render">
+<code class="descname">render</code><span class="sig-paren">(</span><em>model</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/observation.html#Observation.render"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.Observation.render" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convolve a model to the observation frame</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first docutils">
+<dt><strong>model: array</strong></dt>
+<dd><p class="first last">The model from <cite>Blend</cite></p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first last docutils">
+<dt><strong>model_: array</strong></dt>
+<dd><p class="first last">The convolved <cite>model</cite> in the observation frame</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 </dd></dl>

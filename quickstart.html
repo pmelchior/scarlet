@@ -82,12 +82,10 @@
 <li class="toctree-l1"><a class="reference internal" href="install.html">Installation</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Quick Start Guide</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#Load-and-display-the-sample-data">Load and display the sample data</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#Load-the-sample-data-and-source-catalog">Load the sample data and source catalog</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#Display-a-raw-image-cube">Display a raw image cube</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="#Create-a-target-PSF">Create a target PSF</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#Initialize-the-observation-and-the-model">Initialize the observation and the model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#Define-the-model-frame-and-the-observation">Define the model frame and the observation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#Initialize-the-sources">Initialize the sources</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#Create-and-fit-the-model">Create and fit the model</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#View-the-results">View the results</a><ul>
@@ -388,7 +386,8 @@ div.rendered_html tbody tr:hover {
 </style>
 <div class="section" id="Quick-Start-Guide">
 <h1>Quick Start Guide<a class="headerlink" href="#Quick-Start-Guide" title="Permalink to this headline">¶</a></h1>
-<p>This tutorial shows how to quickly get started using scarlet to reduce a sample image cube. In order to run this tutorial you will need either <code class="docutils literal notranslate"><span class="pre">astropy</span></code> (<a class="reference external" href="http://www.astropy.org">http://www.astropy.org</a>) or <code class="docutils literal notranslate"><span class="pre">sep</span></code> (<a class="reference external" href="https://github.com/kbarbary/sep">https://github.com/kbarbary/sep</a>) installed to open/create the source catalog and <code class="docutils literal notranslate"><span class="pre">matplotlib</span></code> (<a class="reference external" href="https://matplotlib.org">https://matplotlib.org</a>) to display the images</p>
+<p>This tutorial shows how to quickly get started using <em>scarlet</em> to model an hyperspectral image cube. For a more in-depth introduction to <em>scarlet</em>, read our <a class="reference internal" href="user_docs.html"><span class="doc">User Guide</span></a>.</p>
+<p>In order to run this tutorial you will need either <code class="docutils literal notranslate"><span class="pre">astropy</span></code> (<a class="reference external" href="http://www.astropy.org">http://www.astropy.org</a>) or <code class="docutils literal notranslate"><span class="pre">sep</span></code> (<a class="reference external" href="https://github.com/kbarbary/sep">https://github.com/kbarbary/sep</a>) installed to open/create the source catalog and <code class="docutils literal notranslate"><span class="pre">matplotlib</span></code> (<a class="reference external" href="https://matplotlib.org">https://matplotlib.org</a>) to display the images</p>
 <div class="nbinput nblast docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
 </pre></div>
@@ -396,9 +395,7 @@ div.rendered_html tbody tr:hover {
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
 <span></span><span class="c1"># Import Packages and setup</span>
 <span class="kn">import</span> <span class="nn">logging</span>
-
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
-
 <span class="kn">import</span> <span class="nn">scarlet</span>
 <span class="kn">import</span> <span class="nn">scarlet.display</span>
 
@@ -413,8 +410,6 @@ div.rendered_html tbody tr:hover {
 </div>
 <div class="section" id="Load-and-display-the-sample-data">
 <h2>Load and display the sample data<a class="headerlink" href="#Load-and-display-the-sample-data" title="Permalink to this headline">¶</a></h2>
-<div class="section" id="Load-the-sample-data-and-source-catalog">
-<h3>Load the sample data and source catalog<a class="headerlink" href="#Load-the-sample-data-and-source-catalog" title="Permalink to this headline">¶</a></h3>
 <div class="nbinput nblast docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
 </pre></div>
@@ -425,15 +420,17 @@ div.rendered_html tbody tr:hover {
 <span class="n">images</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;images&quot;</span><span class="p">]</span>
 <span class="n">filters</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;filters&quot;</span><span class="p">]</span>
 <span class="n">psfs</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;psfs&quot;</span><span class="p">]</span>
+<span class="c1"># normalize to unity</span>
+<span class="n">psfs</span> <span class="o">/=</span> <span class="n">psfs</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">))[:,</span><span class="bp">None</span><span class="p">,</span><span class="bp">None</span><span class="p">]</span>
+
 <span class="n">catalog</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;catalog&quot;</span><span class="p">]</span>
 <span class="n">bg_rms</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">psfs</span><span class="p">),),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">images</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span> <span class="o">*</span> <span class="o">.</span><span class="mi">1</span>
 </pre></div>
 </div>
 </div>
-</div>
 <div class="section" id="Display-a-raw-image-cube">
 <h3>Display a raw image cube<a class="headerlink" href="#Display-a-raw-image-cube" title="Permalink to this headline">¶</a></h3>
-<p>This is an example of how to display an RGB image from an image cube of multiband data. In this case the image uses a <span class="math notranslate nohighlight">\(sin^{-1}\)</span> function to normalize the flux and maps i,r,g (filters 3,2,1) <span class="math notranslate nohighlight">\(\rightarrow\)</span> RGB.</p>
+<p>This is an example of how to display an RGB image from an image cube of multiband data. In this case the image uses a <span class="math notranslate nohighlight">\(sin^{-1}\)</span> function to normalize the flux in each filter consistently to create an RGB image.</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
 </pre></div>
@@ -462,9 +459,11 @@ div.rendered_html tbody tr:hover {
 </div>
 </div>
 </div>
-<div class="section" id="Create-a-target-PSF">
-<h2>Create a target PSF<a class="headerlink" href="#Create-a-target-PSF" title="Permalink to this headline">¶</a></h2>
-<p>While it is possible to estimate a target PSF, we just choose a minimal PSF that is barely well sampled and use it as our target kernel.</p>
+<div class="section" id="Define-the-model-frame-and-the-observation">
+<h2>Define the model frame and the observation<a class="headerlink" href="#Define-the-model-frame-and-the-observation" title="Permalink to this headline">¶</a></h2>
+<p>A <code class="docutils literal notranslate"><span class="pre">Frame</span></code> in <em>scarlet</em> is a description of the hyperspectral cube of the model or the observations. At its core, it is the <code class="docutils literal notranslate"><span class="pre">shape</span></code> of the cube, for which we use the convention <code class="docutils literal notranslate"><span class="pre">(C,</span> <span class="pre">Ny,</span> <span class="pre">Nx)</span></code> for the number of elements in 3 dimensions: <code class="docutils literal notranslate"><span class="pre">C</span></code> for the number of bands/channels and <code class="docutils literal notranslate"><span class="pre">Ny,</span> <span class="pre">Nx</span></code> for the number of pixels at every channel.</p>
+<p>Additionally, you can and often must provide an image cube of the PSF model (one image per channel), an <code class="docutils literal notranslate"><span class="pre">astropy.WCS</span></code> structure to translate from pixel to sky coordinates, and labels for all channels. The reason for specifying them is to enable the code to internally map from the model frame, in which you seek to fit a model, to the observed data frame.</p>
+<p>In this example, we assume that bands and pixel locations are identical between the model and the observation. But we have ground-based images with different PSFs in each band, so we need to provide a reference PSF for the model. We simply choose a minimal PSF that is barely well sampled and use it as our reference kernel:</p>
 <div class="nbinput nblast docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
 </pre></div>
@@ -475,31 +474,30 @@ div.rendered_html tbody tr:hover {
 <span class="n">X</span><span class="p">,</span> <span class="n">Y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">Y</span><span class="p">)</span>
 <span class="n">coords</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">Y</span><span class="p">,</span> <span class="n">X</span><span class="p">])</span>
 <span class="n">y0</span><span class="p">,</span> <span class="n">x0</span> <span class="o">=</span> <span class="p">(</span><span class="n">psfs</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">//</span> <span class="mi">2</span><span class="p">,</span> <span class="p">(</span><span class="n">psfs</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">//</span> <span class="mi">2</span>
-<span class="n">target_psf</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">psf</span><span class="o">.</span><span class="n">gaussian</span><span class="p">(</span><span class="n">coords</span><span class="p">,</span> <span class="n">y0</span><span class="p">,</span> <span class="n">x0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="o">.</span><span class="mi">9</span><span class="p">)</span>
-<span class="n">target_psf</span> <span class="o">/=</span> <span class="n">target_psf</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+<span class="n">model_psf</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">psf</span><span class="o">.</span><span class="n">gaussian</span><span class="p">(</span><span class="n">coords</span><span class="p">,</span> <span class="n">y0</span><span class="p">,</span> <span class="n">x0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="o">.</span><span class="mi">9</span><span class="p">)</span>
+<span class="n">model_psf</span> <span class="o">/=</span> <span class="n">model_psf</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+<span class="n">model_psf</span> <span class="o">=</span> <span class="n">model_psf</span><span class="p">[</span><span class="bp">None</span><span class="p">,:,:]</span>
 </pre></div>
 </div>
 </div>
-</div>
-<div class="section" id="Initialize-the-observation-and-the-model">
-<h2>Initialize the observation and the model<a class="headerlink" href="#Initialize-the-observation-and-the-model" title="Permalink to this headline">¶</a></h2>
-<p>A <code class="docutils literal notranslate"><span class="pre">Scene</span></code> in scarlet is the scene that the model lives in, including information about the number of bands, size of the image in Y and X, (optional) WCS info to translate from pixel to sky coordinates, and (optionally) a filter curve used to map from the model filter bands to a more continuous spectrum (not yet supported).</p>
-<p>Each <code class="docutils literal notranslate"><span class="pre">Observation</span></code> corresponds to a a set of observed data, which contains a data cube with an image in each filter, a list of filter names, and (optionally) WCS info to translate from pixel coordinates to sky coordinates. It also internally matches the PSF in each filter to the target PSF of the scene once a blend is initialized.</p>
+<p>With this we can fully specify the <code class="docutils literal notranslate"><span class="pre">Frame</span></code> and the <code class="docutils literal notranslate"><span class="pre">Observation</span></code>, which is essentially a <code class="docutils literal notranslate"><span class="pre">Frame</span></code> with a data portion.</p>
 <div class="nbinput nblast docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
-<span></span><span class="n">observations</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">Observation</span><span class="p">(</span><span class="n">images</span><span class="p">,</span> <span class="n">psfs</span><span class="p">)</span>
-<span class="n">scene</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">Scene</span><span class="p">(</span><span class="n">images</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">psfs</span><span class="o">=</span><span class="n">target_psf</span><span class="p">)</span>
+<span></span><span class="n">frame</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">Frame</span><span class="p">(</span><span class="n">images</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">psfs</span><span class="o">=</span><span class="n">model_psf</span><span class="p">)</span>
+<span class="n">observation</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">Observation</span><span class="p">(</span><span class="n">images</span><span class="p">,</span> <span class="n">psfs</span><span class="o">=</span><span class="n">psfs</span><span class="p">)</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
+<p>The previous command calls the <code class="docutils literal notranslate"><span class="pre">match</span></code> method to compute e.g.&nbsp;PSF difference kernel and filter transformations.</p>
 </div>
 <div class="section" id="Initialize-the-sources">
 <h2>Initialize the sources<a class="headerlink" href="#Initialize-the-sources" title="Permalink to this headline">¶</a></h2>
-<p>Each source is a list of fundamental <code class="docutils literal notranslate"><span class="pre">scarlet.Component</span></code> instances and must be based on <code class="docutils literal notranslate"><span class="pre">scarlet.Source</span></code> or a derived class, in this case <code class="docutils literal notranslate"><span class="pre">ExtendedSource</span></code>, which initializes a source as monotonic and symmetric (for those familiar with the SDSS/HSC deblender, the initialized model is essentially the SDSS/HSC model template).</p>
-<p>Occasionally a source might not have flux in any band above the noise threshold, which means that it cannot be initialzed and will return a <code class="docutils literal notranslate"><span class="pre">SourceInitError</span></code>. The code below shows one way of handling sources with low/no flux, although it is up to users to implement their own strategies based on their science needs.</p>
+<p>You now need to define sources that are going to be fit. The full model, which we call <code class="docutils literal notranslate"><span class="pre">Blend</span></code> is a collection of those sources.</p>
+<p>Each source is derived from <code class="docutils literal notranslate"><span class="pre">scarlet.Component</span></code> or from <code class="docutils literal notranslate"><span class="pre">scarlet.ComponentTree</span></code> in case of a multi-component source. Here we use <code class="docutils literal notranslate"><span class="pre">scarlet.ExtendedSource</span></code>, which initializes a source as single component that is monotonic and symmetric (for those familiar with the SDSS/HSC deblender, the initialized model is essentially the SDSS/HSC model template).</p>
+<p>Occasionally a source might not have flux in any channel above the noise threshold, which means that it cannot be initialzed and will return a <code class="docutils literal notranslate"><span class="pre">SourceInitError</span></code>. The code below shows one way of handling sources with low/no flux, although it is up to users to implement their own strategies based on their science needs.</p>
 <div class="nbinput nblast docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
 </pre></div>
@@ -508,10 +506,10 @@ div.rendered_html tbody tr:hover {
 <span></span><span class="n">sources</span> <span class="o">=</span> <span class="p">[]</span>
 <span class="k">for</span> <span class="n">src</span> <span class="ow">in</span> <span class="n">catalog</span><span class="p">:</span>
     <span class="k">try</span><span class="p">:</span>
-        <span class="n">new_source</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">ExtendedSource</span><span class="p">((</span><span class="n">src</span><span class="p">[</span><span class="s1">&#39;y&#39;</span><span class="p">],</span> <span class="n">src</span><span class="p">[</span><span class="s1">&#39;x&#39;</span><span class="p">]),</span> <span class="n">scene</span><span class="p">,</span> <span class="n">observations</span><span class="p">,</span> <span class="n">bg_rms</span><span class="p">)</span>
+        <span class="n">new_source</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">ExtendedSource</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="p">(</span><span class="n">src</span><span class="p">[</span><span class="s1">&#39;y&#39;</span><span class="p">],</span> <span class="n">src</span><span class="p">[</span><span class="s1">&#39;x&#39;</span><span class="p">]),</span> <span class="n">observation</span><span class="p">,</span> <span class="n">bg_rms</span><span class="p">)</span>
     <span class="k">except</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">SourceInitError</span><span class="p">:</span>
         <span class="k">try</span><span class="p">:</span>
-            <span class="n">new_source</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">PointSource</span><span class="p">((</span><span class="n">src</span><span class="p">[</span><span class="s1">&#39;y&#39;</span><span class="p">],</span> <span class="n">src</span><span class="p">[</span><span class="s1">&#39;x&#39;</span><span class="p">]),</span> <span class="n">scene</span><span class="p">,</span> <span class="n">observations</span><span class="p">)</span>
+            <span class="n">new_source</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">PointSource</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="p">(</span><span class="n">src</span><span class="p">[</span><span class="s1">&#39;y&#39;</span><span class="p">],</span> <span class="n">src</span><span class="p">[</span><span class="s1">&#39;x&#39;</span><span class="p">]),</span> <span class="n">observation</span><span class="p">)</span>
         <span class="k">except</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">SourceInitError</span><span class="p">:</span>
             <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Could not initialze source at {0}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">((</span><span class="n">src</span><span class="p">[</span><span class="s1">&#39;y&#39;</span><span class="p">],</span> <span class="n">src</span><span class="p">[</span><span class="s1">&#39;x&#39;</span><span class="p">])))</span>
             <span class="k">continue</span>
@@ -532,7 +530,7 @@ div.rendered_html tbody tr:hover {
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
-<span></span><span class="n">blend</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">Blend</span><span class="p">(</span><span class="n">scene</span><span class="p">,</span> <span class="n">sources</span><span class="p">,</span> <span class="n">observations</span><span class="p">)</span>
+<span></span><span class="n">blend</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">Blend</span><span class="p">(</span><span class="n">sources</span><span class="p">,</span> <span class="n">observation</span><span class="p">)</span>
 <span class="n">blend</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="mi">200</span><span class="p">,</span> <span class="n">e_rel</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">)</span>
 <span class="k">print</span><span class="p">(</span><span class="s2">&quot;scarlet ran for {0} iterations&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">blend</span><span class="o">.</span><span class="n">it</span><span class="p">))</span>
 </pre></div>
@@ -558,11 +556,11 @@ scarlet ran for 169 iterations
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
 <span></span><span class="c1"># Load the model and calculate the residual</span>
-<span class="n">_model</span> <span class="o">=</span> <span class="n">blend</span><span class="o">.</span><span class="n">get_model</span><span class="p">()</span>
-<span class="n">model</span> <span class="o">=</span> <span class="n">observations</span><span class="o">.</span><span class="n">get_model</span><span class="p">(</span><span class="n">_model</span><span class="p">)</span>
-<span class="n">residual</span> <span class="o">=</span> <span class="n">images</span><span class="o">-</span><span class="n">model</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">blend</span><span class="o">.</span><span class="n">get_model</span><span class="p">()</span>
+<span class="n">model_</span> <span class="o">=</span> <span class="n">observation</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+<span class="n">residual</span> <span class="o">=</span> <span class="n">images</span><span class="o">-</span><span class="n">model_</span>
 <span class="c1"># Create RGB images</span>
-<span class="n">model_rgb</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">display</span><span class="o">.</span><span class="n">img_to_rgb</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">)</span>
+<span class="n">model_rgb</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">display</span><span class="o">.</span><span class="n">img_to_rgb</span><span class="p">(</span><span class="n">model_</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">)</span>
 <span class="n">residual_rgb</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">display</span><span class="o">.</span><span class="n">img_to_rgb</span><span class="p">(</span><span class="n">residual</span><span class="p">)</span>
 
 <span class="c1"># Show the data, model, and residual</span>
@@ -621,9 +619,9 @@ scarlet ran for 169 iterations
 
 <span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">src</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">blend</span><span class="o">.</span><span class="n">components</span><span class="p">):</span>
     <span class="c1"># Get the model for a single source</span>
-    <span class="n">_model</span> <span class="o">=</span> <span class="n">src</span><span class="o">.</span><span class="n">get_model</span><span class="p">()</span>
-    <span class="n">model</span> <span class="o">=</span> <span class="n">observations</span><span class="o">.</span><span class="n">get_model</span><span class="p">(</span><span class="n">_model</span><span class="p">)</span>
-    <span class="n">model_rgb</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">display</span><span class="o">.</span><span class="n">img_to_rgb</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">)</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">src</span><span class="o">.</span><span class="n">get_model</span><span class="p">()</span>
+    <span class="n">model_</span> <span class="o">=</span> <span class="n">observation</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+    <span class="n">model_rgb</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">display</span><span class="o">.</span><span class="n">img_to_rgb</span><span class="p">(</span><span class="n">model_</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">)</span>
     <span class="c1"># Get the patch from the original image</span>
     <span class="n">img_rgb</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">display</span><span class="o">.</span><span class="n">img_to_rgb</span><span class="p">(</span><span class="n">images</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">)</span>
     <span class="c1"># Set the figure size</span>
@@ -690,15 +688,6 @@ scarlet ran for 169 iterations
 </div>
 <div class="output_area docutils container">
 <img alt="_images/quickstart_19_6.png" src="_images/quickstart_19_6.png" />
-</div>
-</div>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
-<span></span>
-</pre></div>
 </div>
 </div>
 </div>

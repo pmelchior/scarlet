@@ -163,17 +163,15 @@
     <span class="k">pass</span></div>
 
 
-<div class="viewcode-block" id="get_pixel_sed"><a class="viewcode-back" href="../../source.html#scarlet.source.get_pixel_sed">[docs]</a><span class="k">def</span> <span class="nf">get_pixel_sed</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">,</span> <span class="n">observations</span><span class="p">):</span>
+<div class="viewcode-block" id="get_pixel_sed"><a class="viewcode-back" href="../../source.html#scarlet.source.get_pixel_sed">[docs]</a><span class="k">def</span> <span class="nf">get_pixel_sed</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">,</span> <span class="n">observation</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Get the SED at `position` in `img`</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
 <span class="sd">    sky_coord: tuple</span>
 <span class="sd">        Center of the source</span>
-<span class="sd">    scene: `scarlet.observation.Scene`</span>
-<span class="sd">        The scene that the model lives in.</span>
-<span class="sd">    observations: list of `~scarlet.observation.Observation`</span>
-<span class="sd">        Observations to extract SED from.</span>
+<span class="sd">    observation: `~scarlet.Observation`</span>
+<span class="sd">        Observation to extract SED from.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
@@ -181,26 +179,23 @@
 <span class="sd">        SED for a single source</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="n">sed</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="k">for</span> <span class="n">obs</span> <span class="ow">in</span> <span class="n">observations</span><span class="p">:</span>
-        <span class="n">pixel</span> <span class="o">=</span> <span class="n">obs</span><span class="o">.</span><span class="n">get_pixel</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">)</span>
-        <span class="n">_sed</span> <span class="o">=</span> <span class="n">obs</span><span class="o">.</span><span class="n">images</span><span class="p">[:,</span> <span class="n">pixel</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">pixel</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-        <span class="k">if</span> <span class="n">obs</span><span class="o">.</span><span class="n">psfs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="c1"># Account for the PSF in the intensity</span>
-            <span class="n">_sed</span> <span class="o">/=</span> <span class="n">obs</span><span class="o">.</span><span class="n">psfs</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
-        <span class="n">sed</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">((</span><span class="n">sed</span><span class="p">,</span> <span class="n">_sed</span><span class="p">))</span>
+    <span class="n">pixel</span> <span class="o">=</span> <span class="n">observation</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">get_pixel</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">)</span>
+    <span class="n">sed</span> <span class="o">=</span> <span class="n">observation</span><span class="o">.</span><span class="n">images</span><span class="p">[:,</span> <span class="n">pixel</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">pixel</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">observation</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">psfs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># Account for the PSF in the intensity</span>
+        <span class="n">sed</span> <span class="o">/=</span> <span class="n">observation</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">psfs</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
 
     <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">sed</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">):</span>
-        <span class="c1"># If the flux in all bands is  &lt;=0,</span>
+        <span class="c1"># If the flux in all channels is  &lt;=0,</span>
         <span class="c1"># the new sed will be filled with NaN values,</span>
         <span class="c1"># which will cause the code to crash later</span>
         <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;Zero or negative flux at y=</span><span class="si">{0}</span><span class="s2">, x=</span><span class="si">{1}</span><span class="s2">&quot;</span>
         <span class="k">raise</span> <span class="n">SourceInitError</span><span class="p">(</span><span class="n">msg</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="o">*</span><span class="n">sky_coord</span><span class="p">))</span>
 
-    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">sed</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span></div>
+    <span class="k">return</span> <span class="n">sed</span></div>
 
 
-<div class="viewcode-block" id="get_best_fit_seds"><a class="viewcode-back" href="../../source.html#scarlet.source.get_best_fit_seds">[docs]</a><span class="k">def</span> <span class="nf">get_best_fit_seds</span><span class="p">(</span><span class="n">morphs</span><span class="p">,</span> <span class="n">scene</span><span class="p">,</span> <span class="n">observations</span><span class="p">):</span>
+<div class="viewcode-block" id="get_best_fit_seds"><a class="viewcode-back" href="../../source.html#scarlet.source.get_best_fit_seds">[docs]</a><span class="k">def</span> <span class="nf">get_best_fit_seds</span><span class="p">(</span><span class="n">morphs</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">observation</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Calculate best fitting SED for multiple components.</span>
 
 <span class="sd">    Solves min_A ||img - AS||^2 for the SED matrix A,</span>
@@ -210,37 +205,29 @@
 <span class="sd">    ----------</span>
 <span class="sd">    morphs: list</span>
 <span class="sd">        Morphology for each component in the source.</span>
-<span class="sd">    scene: `scarlet.observation.Scene`</span>
-<span class="sd">        The scene that the model lives in.</span>
-<span class="sd">    observations: list of `~scarlet.observation.Observation`</span>
-<span class="sd">        Observations to extract SEDs from.</span>
+<span class="sd">    frame: `scarlet.observation.frame`</span>
+<span class="sd">        The frame that the model lives in.</span>
+<span class="sd">    observation: `~scarlet.Observation`</span>
+<span class="sd">        Observation to extract SEDs from.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">K</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">morphs</span><span class="p">)</span>
-    <span class="n">seds</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">K</span><span class="p">,</span> <span class="n">scene</span><span class="o">.</span><span class="n">B</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">observations</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">images</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
-    <span class="n">band</span> <span class="o">=</span> <span class="mi">0</span>
     <span class="n">_morph</span> <span class="o">=</span> <span class="n">morphs</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">K</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
-    <span class="k">for</span> <span class="n">obs</span> <span class="ow">in</span> <span class="n">observations</span><span class="p">:</span>
-        <span class="n">images</span> <span class="o">=</span> <span class="n">obs</span><span class="o">.</span><span class="n">images</span>
-        <span class="n">data</span> <span class="o">=</span> <span class="n">images</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">obs</span><span class="o">.</span><span class="n">B</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
-        <span class="n">sed</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">_morph</span><span class="p">,</span> <span class="n">_morph</span><span class="o">.</span><span class="n">T</span><span class="p">)),</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">_morph</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">T</span><span class="p">))</span>
-        <span class="n">seds</span><span class="p">[:,</span> <span class="n">band</span><span class="p">:</span><span class="n">band</span> <span class="o">+</span> <span class="n">obs</span><span class="o">.</span><span class="n">B</span><span class="p">]</span> <span class="o">=</span> <span class="n">sed</span>
-        <span class="n">band</span> <span class="o">+=</span> <span class="n">obs</span><span class="o">.</span><span class="n">B</span>
+    <span class="n">images</span> <span class="o">=</span> <span class="n">observation</span><span class="o">.</span><span class="n">images</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">images</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">observation</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">C</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">seds</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">_morph</span><span class="p">,</span> <span class="n">_morph</span><span class="o">.</span><span class="n">T</span><span class="p">)),</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">_morph</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">T</span><span class="p">))</span>
     <span class="k">return</span> <span class="n">seds</span></div>
 
-
-<div class="viewcode-block" id="build_detection_coadd"><a class="viewcode-back" href="../../source.html#scarlet.source.build_detection_coadd">[docs]</a><span class="k">def</span> <span class="nf">build_detection_coadd</span><span class="p">(</span><span class="n">sed</span><span class="p">,</span> <span class="n">bg_rms</span><span class="p">,</span> <span class="n">observation</span><span class="p">,</span> <span class="n">scene</span><span class="p">,</span> <span class="n">thresh</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Build a band weighted coadd to use for source detection</span>
+<div class="viewcode-block" id="build_detection_coadd"><a class="viewcode-back" href="../../source.html#scarlet.source.build_detection_coadd">[docs]</a><span class="k">def</span> <span class="nf">build_detection_coadd</span><span class="p">(</span><span class="n">sed</span><span class="p">,</span> <span class="n">bg_rms</span><span class="p">,</span> <span class="n">observation</span><span class="p">,</span> <span class="n">thresh</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Build a channel weighted coadd to use for source detection</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
 <span class="sd">    sed: array</span>
 <span class="sd">        SED at the center of the source.</span>
 <span class="sd">    bg_rms: array</span>
-<span class="sd">        Background RMS in each band in observation.</span>
+<span class="sd">        Background RMS in each channel in observation.</span>
 <span class="sd">    observation: `~scarlet.observation.Observation`</span>
 <span class="sd">        Observation to use for the coadd.</span>
-<span class="sd">    scene: `scarlet.observation.Scene`</span>
-<span class="sd">        The scene that the model lives in.</span>
 <span class="sd">    thresh: `float`</span>
 <span class="sd">        Multiple of the backround RMS used as a</span>
 <span class="sd">        flux cutoff.</span>
@@ -248,39 +235,35 @@
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
 <span class="sd">    detect: array</span>
-<span class="sd">        2D image created by weighting all of the bands by SED</span>
+<span class="sd">        2D image created by weighting all of the channels by SED</span>
 <span class="sd">    bg_cutoff: float</span>
 <span class="sd">        The minimum value in `detect` to include in detection.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">B</span> <span class="o">=</span> <span class="n">scene</span><span class="o">.</span><span class="n">B</span>
+    <span class="n">C</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">sed</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">bg_rms</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">):</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;bg_rms must be greater than zero in all bands&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;bg_rms must be greater than zero in all channels&quot;</span><span class="p">)</span>
 
-    <span class="n">weights</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">sed</span><span class="p">[</span><span class="n">b</span><span class="p">]</span> <span class="o">/</span> <span class="n">bg_rms</span><span class="p">[</span><span class="n">b</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">B</span><span class="p">)])</span>
-    <span class="n">jacobian</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">sed</span><span class="p">[</span><span class="n">b</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">/</span> <span class="n">bg_rms</span><span class="p">[</span><span class="n">b</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">B</span><span class="p">)])</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+    <span class="n">weights</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">sed</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">/</span> <span class="n">bg_rms</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">C</span><span class="p">)])</span>
+    <span class="n">jacobian</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">sed</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">/</span> <span class="n">bg_rms</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">C</span><span class="p">)])</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
     <span class="n">detect</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s1">&#39;i,i...&#39;</span><span class="p">,</span> <span class="n">weights</span><span class="p">,</span> <span class="n">observation</span><span class="o">.</span><span class="n">images</span><span class="p">)</span> <span class="o">/</span> <span class="n">jacobian</span>
 
-    <span class="c1"># thresh is multiple above the rms of detect (weighted variance across bands)</span>
+    <span class="c1"># thresh is multiple above the rms of detect (weighted variance across channels)</span>
     <span class="n">bg_cutoff</span> <span class="o">=</span> <span class="n">thresh</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">weights</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">bg_rms</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span> <span class="o">/</span> <span class="n">jacobian</span>
     <span class="k">return</span> <span class="n">detect</span><span class="p">,</span> <span class="n">bg_cutoff</span></div>
 
 
-<div class="viewcode-block" id="init_extended_source"><a class="viewcode-back" href="../../source.html#scarlet.source.init_extended_source">[docs]</a><span class="k">def</span> <span class="nf">init_extended_source</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">,</span> <span class="n">scene</span><span class="p">,</span> <span class="n">observations</span><span class="p">,</span> <span class="n">bg_rms</span><span class="p">,</span> <span class="n">obs_idx</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+<div class="viewcode-block" id="init_extended_source"><a class="viewcode-back" href="../../source.html#scarlet.source.init_extended_source">[docs]</a><span class="k">def</span> <span class="nf">init_extended_source</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">observation</span><span class="p">,</span> <span class="n">bg_rms</span><span class="p">,</span>
                          <span class="n">thresh</span><span class="o">=</span><span class="mf">1.</span><span class="p">,</span> <span class="n">symmetric</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">monotonic</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Initialize the source that is symmetric and monotonic</span>
 <span class="sd">    See `ExtendedSource` for a description of the parameters</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">try</span><span class="p">:</span>
-        <span class="nb">iter</span><span class="p">(</span><span class="n">observations</span><span class="p">)</span>
-    <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
-        <span class="n">observations</span> <span class="o">=</span> <span class="p">[</span><span class="n">observations</span><span class="p">]</span>
     <span class="c1"># determine initial SED from peak position</span>
-    <span class="n">sed</span> <span class="o">=</span> <span class="n">get_pixel_sed</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">,</span> <span class="n">observations</span><span class="p">)</span>  <span class="c1"># amplitude is in sed</span>
-    <span class="k">if</span> <span class="n">scene</span><span class="o">.</span><span class="n">psfs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">sed</span> <span class="o">=</span> <span class="n">sed</span> <span class="o">*</span> <span class="n">scene</span><span class="o">.</span><span class="n">psfs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+    <span class="n">sed</span> <span class="o">=</span> <span class="n">get_pixel_sed</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">,</span> <span class="n">observation</span><span class="p">)</span>  <span class="c1"># amplitude is in sed</span>
+    <span class="k">if</span> <span class="n">frame</span><span class="o">.</span><span class="n">psfs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">sed</span> <span class="o">=</span> <span class="n">sed</span> <span class="o">*</span> <span class="n">frame</span><span class="o">.</span><span class="n">psfs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
 
-    <span class="n">morph</span><span class="p">,</span> <span class="n">bg_cutoff</span> <span class="o">=</span> <span class="n">build_detection_coadd</span><span class="p">(</span><span class="n">sed</span><span class="p">,</span> <span class="n">bg_rms</span><span class="p">,</span> <span class="n">observations</span><span class="p">[</span><span class="n">obs_idx</span><span class="p">],</span> <span class="n">scene</span><span class="p">,</span> <span class="n">thresh</span><span class="p">)</span>
-    <span class="n">center</span> <span class="o">=</span> <span class="n">scene</span><span class="o">.</span><span class="n">get_pixel</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">)</span>
+    <span class="n">morph</span><span class="p">,</span> <span class="n">bg_cutoff</span> <span class="o">=</span> <span class="n">build_detection_coadd</span><span class="p">(</span><span class="n">sed</span><span class="p">,</span> <span class="n">bg_rms</span><span class="p">,</span> <span class="n">observation</span><span class="p">,</span> <span class="n">thresh</span><span class="p">)</span>
+    <span class="n">center</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">get_pixel</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">)</span>
 
     <span class="c1"># Apply the necessary constraints</span>
     <span class="k">if</span> <span class="n">symmetric</span><span class="p">:</span>
@@ -305,7 +288,7 @@
     <span class="k">return</span> <span class="n">sed</span><span class="p">,</span> <span class="n">morph</span></div>
 
 
-<div class="viewcode-block" id="init_combined_extended_source"><a class="viewcode-back" href="../../source.html#scarlet.source.init_combined_extended_source">[docs]</a><span class="k">def</span> <span class="nf">init_combined_extended_source</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">,</span> <span class="n">scene</span><span class="p">,</span> <span class="n">observations</span><span class="p">,</span> <span class="n">bg_rms</span><span class="p">,</span> <span class="n">obs_idx</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+<div class="viewcode-block" id="init_combined_extended_source"><a class="viewcode-back" href="../../source.html#scarlet.source.init_combined_extended_source">[docs]</a><span class="k">def</span> <span class="nf">init_combined_extended_source</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">observations</span><span class="p">,</span> <span class="n">bg_rms</span><span class="p">,</span> <span class="n">obs_idx</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
                                   <span class="n">thresh</span><span class="o">=</span><span class="mf">1.</span><span class="p">,</span> <span class="n">symmetric</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">monotonic</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Initialize the source that is symmetric and monotonic</span>
 <span class="sd">    See `ExtendedSource` for a description of the parameters</span>
@@ -316,13 +299,17 @@
         <span class="n">observations</span> <span class="o">=</span> <span class="p">[</span><span class="n">observations</span><span class="p">]</span>
 
     <span class="c1"># determine initial SED from peak position</span>
-    <span class="c1"># SED in the scene for source detection</span>
+    <span class="c1"># SED in the frame for source detection</span>
 
-    <span class="n">sed</span> <span class="o">=</span> <span class="n">get_pixel_sed</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">,</span> <span class="n">observations</span><span class="p">)</span>
+    <span class="n">seds</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">obs</span> <span class="ow">in</span> <span class="n">observations</span><span class="p">:</span>
+        <span class="n">_sed</span> <span class="o">=</span> <span class="n">get_pixel_sed</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">,</span> <span class="n">obs</span><span class="p">)</span>
+        <span class="n">seds</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_sed</span><span class="p">)</span>
+    <span class="n">sed</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">seds</span><span class="p">)</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
 
-    <span class="n">morph</span><span class="p">,</span> <span class="n">bg_cutoff</span> <span class="o">=</span> <span class="n">build_detection_coadd</span><span class="p">(</span><span class="n">sed</span><span class="p">,</span> <span class="n">bg_rms</span><span class="p">,</span> <span class="n">observations</span><span class="p">[</span><span class="n">obs_idx</span><span class="p">],</span> <span class="n">scene</span><span class="p">,</span> <span class="n">thresh</span><span class="p">)</span>  <span class="c1"># amplitude is in sed</span>
+    <span class="n">morph</span><span class="p">,</span> <span class="n">bg_cutoff</span> <span class="o">=</span> <span class="n">build_detection_coadd</span><span class="p">(</span><span class="n">seds</span><span class="p">[</span><span class="n">obs_idx</span><span class="p">],</span> <span class="n">bg_rms</span><span class="p">[</span><span class="n">obs_idx</span><span class="p">],</span> <span class="n">observations</span><span class="p">[</span><span class="n">obs_idx</span><span class="p">],</span> <span class="n">thresh</span><span class="p">)</span>  <span class="c1"># amplitude is in sed</span>
 
-    <span class="n">center</span> <span class="o">=</span> <span class="n">scene</span><span class="o">.</span><span class="n">get_pixel</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">)</span>
+    <span class="n">center</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">get_pixel</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">)</span>
 
     <span class="c1"># Apply the necessary constraints</span>
     <span class="k">if</span> <span class="n">symmetric</span><span class="p">:</span>
@@ -349,20 +336,15 @@
     <span class="k">return</span> <span class="n">sed</span><span class="p">,</span> <span class="n">morph</span></div>
 
 
-<div class="viewcode-block" id="init_multicomponent_source"><a class="viewcode-back" href="../../source.html#scarlet.source.init_multicomponent_source">[docs]</a><span class="k">def</span> <span class="nf">init_multicomponent_source</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">,</span> <span class="n">scene</span><span class="p">,</span> <span class="n">observations</span><span class="p">,</span> <span class="n">bg_rms</span><span class="p">,</span> <span class="n">flux_percentiles</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">obs_idx</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+<div class="viewcode-block" id="init_multicomponent_source"><a class="viewcode-back" href="../../source.html#scarlet.source.init_multicomponent_source">[docs]</a><span class="k">def</span> <span class="nf">init_multicomponent_source</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">observation</span><span class="p">,</span> <span class="n">bg_rms</span><span class="p">,</span> <span class="n">flux_percentiles</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                                <span class="n">thresh</span><span class="o">=</span><span class="mf">1.</span><span class="p">,</span> <span class="n">symmetric</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">monotonic</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Initialize multiple components</span>
 <span class="sd">    See `MultiComponentSource` for a description of the parameters</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">try</span><span class="p">:</span>
-        <span class="nb">iter</span><span class="p">(</span><span class="n">observations</span><span class="p">)</span>
-    <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
-        <span class="n">observations</span> <span class="o">=</span> <span class="p">[</span><span class="n">observations</span><span class="p">]</span>
-
     <span class="k">if</span> <span class="n">flux_percentiles</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">flux_percentiles</span> <span class="o">=</span> <span class="p">[</span><span class="mi">25</span><span class="p">]</span>
     <span class="c1"># Initialize the first component as an extended source</span>
-    <span class="n">sed</span><span class="p">,</span> <span class="n">morph</span> <span class="o">=</span> <span class="n">init_extended_source</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">,</span> <span class="n">scene</span><span class="p">,</span> <span class="n">observations</span><span class="p">,</span> <span class="n">bg_rms</span><span class="p">,</span> <span class="n">obs_idx</span><span class="p">,</span>
+    <span class="n">sed</span><span class="p">,</span> <span class="n">morph</span> <span class="o">=</span> <span class="n">init_extended_source</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">observation</span><span class="p">,</span> <span class="n">bg_rms</span><span class="p">,</span>
                                       <span class="n">thresh</span><span class="p">,</span> <span class="n">symmetric</span><span class="p">,</span> <span class="n">monotonic</span><span class="p">)</span>
     <span class="c1"># create a list of components from base morph by layering them on top of</span>
     <span class="c1"># each other so that they sum up to morph</span>
@@ -387,78 +369,69 @@
         <span class="n">morphs</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">/=</span> <span class="n">morphs</span><span class="p">[</span><span class="n">k</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
 
     <span class="c1"># optimal SEDs given the morphologies, assuming img only has that source</span>
-    <span class="n">seds</span> <span class="o">=</span> <span class="n">get_best_fit_seds</span><span class="p">(</span><span class="n">morphs</span><span class="p">,</span> <span class="n">scene</span><span class="p">,</span> <span class="n">observations</span><span class="p">)</span>
+    <span class="n">seds</span> <span class="o">=</span> <span class="n">get_best_fit_seds</span><span class="p">(</span><span class="n">morphs</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">observation</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">seds</span><span class="p">,</span> <span class="n">morphs</span></div>
 
 
 <div class="viewcode-block" id="PointSource"><a class="viewcode-back" href="../../source.html#scarlet.source.PointSource">[docs]</a><span class="k">class</span> <span class="nc">PointSource</span><span class="p">(</span><span class="n">Component</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Extended source intialized with a single pixel</span>
+    <span class="sd">&quot;&quot;&quot;Source intialized with a single pixel</span>
 
 <span class="sd">    Point sources are initialized with the SED of the center pixel,</span>
 <span class="sd">    and the morphology of a single pixel (the center) turned on.</span>
 <span class="sd">    While the source can have any `constraints`, the default constraints are</span>
 <span class="sd">    symmetry and monotonicity.</span>
-
-<span class="sd">    Parameters</span>
-<span class="sd">    ----------</span>
-<span class="sd">    sky_coord: tuple</span>
-<span class="sd">        Center of the source</span>
-<span class="sd">    scene: `scarlet.observation.Scene`</span>
-<span class="sd">        The scene that the model lives in.</span>
-<span class="sd">    observations: list of `~scarlet.observation.Observation`</span>
-<span class="sd">        Observations to extract SED from.</span>
-<span class="sd">    symmetric: bool</span>
-<span class="sd">        Whether or not the object is forced to be symmetric</span>
-<span class="sd">    monotonic: bool</span>
-<span class="sd">        Whether or not the object is forced to be monotonically decreasing</span>
-<span class="sd">    center_step: int</span>
-<span class="sd">        Number of steps to skip between centering routines</span>
-<span class="sd">    delay_thresh: int</span>
-<span class="sd">        Number of steps to skip before turning on thresholding.</span>
-<span class="sd">        This is useful for point sources because it allows them to grow</span>
-<span class="sd">        slightly before removing pixels with low significance.</span>
-<span class="sd">    component_kwargs: dict</span>
-<span class="sd">        Keyword arguments to pass to the component initialization.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sky_coord</span><span class="p">,</span> <span class="n">scene</span><span class="p">,</span> <span class="n">observations</span><span class="p">,</span> <span class="n">symmetric</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">monotonic</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">sky_coord</span><span class="p">,</span> <span class="n">observation</span><span class="p">,</span> <span class="n">symmetric</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">monotonic</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
                  <span class="n">center_step</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">delay_thresh</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="o">**</span><span class="n">component_kwargs</span><span class="p">):</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="nb">iter</span><span class="p">(</span><span class="n">observations</span><span class="p">)</span>
-        <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
-            <span class="n">observations</span> <span class="o">=</span> <span class="p">[</span><span class="n">observations</span><span class="p">]</span>
+        <span class="sd">&quot;&quot;&quot;Source intialized with a single pixel</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        frame: `~scarlet.Frame`</span>
+<span class="sd">            The frame that the model lives in.</span>
+<span class="sd">        sky_coord: tuple</span>
+<span class="sd">            Center of the source</span>
+<span class="sd">        observation: list of `~scarlet.Observation`</span>
+<span class="sd">            Observation to initialize this source</span>
+<span class="sd">        symmetric: bool</span>
+<span class="sd">            Whether or not the object is forced to be symmetric</span>
+<span class="sd">        monotonic: bool</span>
+<span class="sd">            Whether or not the object is forced to be monotonically decreasing</span>
+<span class="sd">        center_step: int</span>
+<span class="sd">            Number of steps to skip between centering routines</span>
+<span class="sd">        delay_thresh: int</span>
+<span class="sd">            Number of steps to skip before turning on thresholding.</span>
+<span class="sd">            This is useful for point sources because it allows them to grow</span>
+<span class="sd">            slightly before removing pixels with low significance.</span>
+<span class="sd">        component_kwargs: dict</span>
+<span class="sd">            Keyword arguments to pass to the component initialization.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># this ignores any broadening from the PSFs ...</span>
-        <span class="n">B</span><span class="p">,</span> <span class="n">Ny</span><span class="p">,</span> <span class="n">Nx</span> <span class="o">=</span> <span class="n">scene</span><span class="o">.</span><span class="n">shape</span>
-        <span class="n">morph</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">Ny</span><span class="p">,</span> <span class="n">Nx</span><span class="p">),</span> <span class="n">observations</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">images</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
-        <span class="n">pixel</span> <span class="o">=</span> <span class="n">scene</span><span class="o">.</span><span class="n">get_pixel</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">scene</span><span class="o">.</span><span class="n">psfs</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">C</span><span class="p">,</span> <span class="n">Ny</span><span class="p">,</span> <span class="n">Nx</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">shape</span>
+        <span class="n">morph</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">Ny</span><span class="p">,</span> <span class="n">Nx</span><span class="p">),</span> <span class="n">observation</span><span class="o">.</span><span class="n">images</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+        <span class="n">pixel</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">get_pixel</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">frame</span><span class="o">.</span><span class="n">psfs</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="c1"># Use a single pixel if there is no target PSF</span>
             <span class="n">morph</span><span class="p">[</span><span class="n">pixel</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="c1"># A point source is a function of the target PSF</span>
-            <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">scene</span><span class="o">.</span><span class="n">psfs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span>
+            <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">frame</span><span class="o">.</span><span class="n">psfs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span>
             <span class="n">py</span><span class="p">,</span> <span class="n">px</span> <span class="o">=</span> <span class="n">pixel</span>
-            <span class="n">sy</span><span class="p">,</span> <span class="n">sx</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">scene</span><span class="o">.</span><span class="n">psfs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">//</span> <span class="mi">2</span>
+            <span class="n">sy</span><span class="p">,</span> <span class="n">sx</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">frame</span><span class="o">.</span><span class="n">psfs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">//</span> <span class="mi">2</span>
             <span class="n">cy</span><span class="p">,</span> <span class="n">cx</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">morph</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">//</span> <span class="mi">2</span>
             <span class="n">yx0</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">py</span> <span class="o">-</span> <span class="n">cy</span> <span class="o">-</span> <span class="n">sy</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">px</span> <span class="o">-</span> <span class="n">cx</span> <span class="o">-</span> <span class="n">sx</span><span class="p">)</span>
-            <span class="n">bb</span><span class="p">,</span> <span class="n">ibb</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">get_projection_slices</span><span class="p">(</span><span class="n">scene</span><span class="o">.</span><span class="n">psfs</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">morph</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">yx0</span><span class="p">)</span>
-            <span class="n">morph</span><span class="p">[</span><span class="n">bb</span><span class="p">]</span> <span class="o">=</span> <span class="n">scene</span><span class="o">.</span><span class="n">psfs</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">ibb</span><span class="p">]</span>
+            <span class="n">bb</span><span class="p">,</span> <span class="n">ibb</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">get_projection_slices</span><span class="p">(</span><span class="n">frame</span><span class="o">.</span><span class="n">psfs</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">morph</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">yx0</span><span class="p">)</span>
+            <span class="n">morph</span><span class="p">[</span><span class="n">bb</span><span class="p">]</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">psfs</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">ibb</span><span class="p">]</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">pixel_center</span> <span class="o">=</span> <span class="n">pixel</span>
+        <span class="n">pixel</span> <span class="o">=</span> <span class="n">observation</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">get_pixel</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">)</span>
+        <span class="n">sed</span> <span class="o">=</span> <span class="n">observation</span><span class="o">.</span><span class="n">images</span><span class="p">[:,</span> <span class="n">pixel</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">pixel</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">observation</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">psfs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># Account for the PSF in the intensity</span>
+            <span class="n">sed</span> <span class="o">/=</span> <span class="n">observation</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">psfs</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
 
-        <span class="n">sed</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">B</span><span class="p">,),</span> <span class="n">observations</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">images</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
-        <span class="n">b0</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="k">for</span> <span class="n">obs</span> <span class="ow">in</span> <span class="n">observations</span><span class="p">:</span>
-            <span class="n">pixel</span> <span class="o">=</span> <span class="n">obs</span><span class="o">.</span><span class="n">get_pixel</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">)</span>
-            <span class="n">_sed</span> <span class="o">=</span> <span class="n">obs</span><span class="o">.</span><span class="n">images</span><span class="p">[:,</span> <span class="n">pixel</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">pixel</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-            <span class="k">if</span> <span class="n">obs</span><span class="o">.</span><span class="n">psfs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="c1"># Account for the PSF in the intensity</span>
-                <span class="n">_sed</span> <span class="o">/=</span> <span class="n">obs</span><span class="o">.</span><span class="n">psfs</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
-            <span class="n">sed</span><span class="p">[</span><span class="n">b0</span><span class="p">:</span><span class="n">b0</span> <span class="o">+</span> <span class="n">obs</span><span class="o">.</span><span class="n">B</span><span class="p">]</span> <span class="o">=</span> <span class="n">_sed</span>
-            <span class="n">b0</span> <span class="o">+=</span> <span class="n">obs</span><span class="o">.</span><span class="n">B</span>
-
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">sed</span><span class="p">,</span> <span class="n">morph</span><span class="p">,</span> <span class="o">**</span><span class="n">component_kwargs</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">sed</span><span class="p">,</span> <span class="n">morph</span><span class="p">,</span> <span class="o">**</span><span class="n">component_kwargs</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">symmetric</span> <span class="o">=</span> <span class="n">symmetric</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">monotonic</span> <span class="o">=</span> <span class="n">monotonic</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">center_step</span> <span class="o">=</span> <span class="n">center_step</span>
@@ -501,96 +474,92 @@
 
 
 <div class="viewcode-block" id="ExtendedSource"><a class="viewcode-back" href="../../source.html#scarlet.source.ExtendedSource">[docs]</a><span class="k">class</span> <span class="nc">ExtendedSource</span><span class="p">(</span><span class="n">PointSource</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Extended source intialized to match a set of observations</span>
-
-<span class="sd">    Parameters</span>
-<span class="sd">    ----------</span>
-<span class="sd">    sky_coord: tuple</span>
-<span class="sd">        Center of the source</span>
-<span class="sd">    scene: `scarlet.observation.Scene`</span>
-<span class="sd">        The scene that the model lives in.</span>
-<span class="sd">    observations: list of `~scarlet.observation.Observation`</span>
-<span class="sd">        Observations to extract SED from.</span>
-<span class="sd">    bg_rms: array</span>
-<span class="sd">        Background RMS in each band in observation.</span>
-<span class="sd">    obs_idx: int</span>
-<span class="sd">        Index of the observation in `observations` to use for</span>
-<span class="sd">        initializing the morphology.</span>
-<span class="sd">    thresh: `float`</span>
-<span class="sd">        Multiple of the backround RMS used as a</span>
-<span class="sd">        flux cutoff for morphology initialization.</span>
-<span class="sd">    symmetric: `bool`</span>
-<span class="sd">        Whether or not to enforce symmetry.</span>
-<span class="sd">    monotonic: `bool`</span>
-<span class="sd">        Whether or not to make the object monotonically decrease</span>
-<span class="sd">        in flux from the center.</span>
-<span class="sd">    component_kwargs: dict</span>
-<span class="sd">        Keyword arguments to pass to the component initialization.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sky_coord</span><span class="p">,</span> <span class="n">scene</span><span class="p">,</span> <span class="n">observations</span><span class="p">,</span> <span class="n">bg_rms</span><span class="p">,</span> <span class="n">obs_idx</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">thresh</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">sky_coord</span><span class="p">,</span> <span class="n">observation</span><span class="p">,</span> <span class="n">bg_rms</span><span class="p">,</span> <span class="n">thresh</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
                  <span class="n">symmetric</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">monotonic</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">center_step</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">delay_thresh</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="o">**</span><span class="n">component_kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Extended source intialized to match a set of observations</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        frame: `~scarlet.Frame`</span>
+<span class="sd">            The frame that the model lives in.</span>
+<span class="sd">        sky_coord: tuple</span>
+<span class="sd">            Center of the source</span>
+<span class="sd">        observation: `~scarlet.observation.Observation`</span>
+<span class="sd">            Observation to initialize this source.</span>
+<span class="sd">        bg_rms: array</span>
+<span class="sd">            Background RMS in each channel in observation.</span>
+<span class="sd">        thresh: `float`</span>
+<span class="sd">            Multiple of the backround RMS used as a</span>
+<span class="sd">            flux cutoff for morphology initialization.</span>
+<span class="sd">        symmetric: `bool`</span>
+<span class="sd">            Whether or not to enforce symmetry.</span>
+<span class="sd">        monotonic: `bool`</span>
+<span class="sd">            Whether or not to make the object monotonically decrease</span>
+<span class="sd">            in flux from the center.</span>
+<span class="sd">        component_kwargs: dict</span>
+<span class="sd">            Keyword arguments to pass to the component initialization.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">symmetric</span> <span class="o">=</span> <span class="n">symmetric</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">monotonic</span> <span class="o">=</span> <span class="n">monotonic</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">coords</span> <span class="o">=</span> <span class="n">sky_coord</span>
-        <span class="n">center</span> <span class="o">=</span> <span class="n">scene</span><span class="o">.</span><span class="n">get_pixel</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">)</span>
+        <span class="n">center</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">get_pixel</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">pixel_center</span> <span class="o">=</span> <span class="n">center</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">center_step</span> <span class="o">=</span> <span class="n">center_step</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">delay_thresh</span> <span class="o">=</span> <span class="n">delay_thresh</span>
 
-        <span class="n">sed</span><span class="p">,</span> <span class="n">morph</span> <span class="o">=</span> <span class="n">init_extended_source</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">,</span> <span class="n">scene</span><span class="p">,</span> <span class="n">observations</span><span class="p">,</span> <span class="n">bg_rms</span><span class="p">,</span> <span class="n">obs_idx</span><span class="p">,</span>
+        <span class="n">sed</span><span class="p">,</span> <span class="n">morph</span> <span class="o">=</span> <span class="n">init_extended_source</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">observation</span><span class="p">,</span> <span class="n">bg_rms</span><span class="p">,</span>
                                           <span class="n">thresh</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="n">monotonic</span><span class="p">)</span>
 
-        <span class="n">Component</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sed</span><span class="p">,</span> <span class="n">morph</span><span class="p">,</span> <span class="o">**</span><span class="n">component_kwargs</span><span class="p">)</span>
+        <span class="n">Component</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">sed</span><span class="p">,</span> <span class="n">morph</span><span class="p">,</span> <span class="o">**</span><span class="n">component_kwargs</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">()</span></div>
 
 
 <div class="viewcode-block" id="CombinedExtendedSource"><a class="viewcode-back" href="../../source.html#scarlet.source.CombinedExtendedSource">[docs]</a><span class="k">class</span> <span class="nc">CombinedExtendedSource</span><span class="p">(</span><span class="n">PointSource</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Extended source intialized to match a set of observations</span>
-
-<span class="sd">    Parameters</span>
-<span class="sd">    ----------</span>
-<span class="sd">    sky_coord: tuple</span>
-<span class="sd">        Center of the source</span>
-<span class="sd">    scene: `scarlet.observation.Scene`</span>
-<span class="sd">        The scene that the model lives in.</span>
-<span class="sd">    observations: list of `~scarlet.observation.Observation`</span>
-<span class="sd">        Observations to extract SED from.</span>
-<span class="sd">    bg_rms: array</span>
-<span class="sd">        Background RMS in each band in observation.</span>
-<span class="sd">    obs_idx: int</span>
-<span class="sd">        Index of the observation in `observations` to use for</span>
-<span class="sd">        initializing the morphology.</span>
-<span class="sd">    thresh: `float`</span>
-<span class="sd">        Multiple of the backround RMS used as a</span>
-<span class="sd">        flux cutoff for morphology initialization.</span>
-<span class="sd">    symmetric: `bool`</span>
-<span class="sd">        Whether or not to enforce symmetry.</span>
-<span class="sd">    monotonic: `bool`</span>
-<span class="sd">        Whether or not to make the object monotonically decrease</span>
-<span class="sd">        in flux from the center.</span>
-<span class="sd">    component_kwargs: dict</span>
-<span class="sd">        Keyword arguments to pass to the component initialization.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sky_coord</span><span class="p">,</span> <span class="n">scene</span><span class="p">,</span> <span class="n">observations</span><span class="p">,</span> <span class="n">bg_rms</span><span class="p">,</span> <span class="n">obs_idx</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">thresh</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">sky_coord</span><span class="p">,</span> <span class="n">observations</span><span class="p">,</span> <span class="n">bg_rms</span><span class="p">,</span> <span class="n">obs_idx</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">thresh</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
                  <span class="n">symmetric</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">monotonic</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">center_step</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">delay_thresh</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="o">**</span><span class="n">component_kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Extended source intialized to match a set of observations</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        frame: `~scarlet.Frame`</span>
+<span class="sd">            The frame that the model lives in.</span>
+<span class="sd">        sky_coord: tuple</span>
+<span class="sd">            Center of the source</span>
+<span class="sd">        observations: list of `~scarlet.Observation`</span>
+<span class="sd">            Observations to initialize this source.</span>
+<span class="sd">        bg_rms: array</span>
+<span class="sd">            Background RMS in each channel in observation.</span>
+<span class="sd">        obs_idx: int</span>
+<span class="sd">            Index of the observation in `observations` to use for</span>
+<span class="sd">            initializing the morphology.</span>
+<span class="sd">        thresh: `float`</span>
+<span class="sd">            Multiple of the backround RMS used as a</span>
+<span class="sd">            flux cutoff for morphology initialization.</span>
+<span class="sd">        symmetric: `bool`</span>
+<span class="sd">            Whether or not to enforce symmetry.</span>
+<span class="sd">        monotonic: `bool`</span>
+<span class="sd">            Whether or not to make the object monotonically decrease</span>
+<span class="sd">            in flux from the center.</span>
+<span class="sd">        component_kwargs: dict</span>
+<span class="sd">            Keyword arguments to pass to the component initialization.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">symmetric</span> <span class="o">=</span> <span class="n">symmetric</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">monotonic</span> <span class="o">=</span> <span class="n">monotonic</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">coords</span> <span class="o">=</span> <span class="n">sky_coord</span>
-        <span class="n">center</span> <span class="o">=</span> <span class="n">scene</span><span class="o">.</span><span class="n">get_pixel</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">)</span>
+        <span class="n">center</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">get_pixel</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">pixel_center</span> <span class="o">=</span> <span class="n">center</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">center_step</span> <span class="o">=</span> <span class="n">center_step</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">delay_thresh</span> <span class="o">=</span> <span class="n">delay_thresh</span>
 
-        <span class="n">sed</span><span class="p">,</span> <span class="n">morph</span> <span class="o">=</span> <span class="n">init_combined_extended_source</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">,</span> <span class="n">scene</span><span class="p">,</span> <span class="n">observations</span><span class="p">,</span> <span class="n">bg_rms</span><span class="p">,</span> <span class="n">obs_idx</span><span class="p">,</span>
+        <span class="n">sed</span><span class="p">,</span> <span class="n">morph</span> <span class="o">=</span> <span class="n">init_combined_extended_source</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">observations</span><span class="p">,</span> <span class="n">bg_rms</span><span class="p">,</span> <span class="n">obs_idx</span><span class="p">,</span>
                                                    <span class="n">thresh</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="n">monotonic</span><span class="p">)</span>
 
-        <span class="n">Component</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sed</span><span class="p">,</span> <span class="n">morph</span><span class="p">,</span> <span class="o">**</span><span class="n">component_kwargs</span><span class="p">)</span></div>
+        <span class="n">Component</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">sed</span><span class="p">,</span> <span class="n">morph</span><span class="p">,</span> <span class="o">**</span><span class="n">component_kwargs</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="MultiComponentSource"><a class="viewcode-back" href="../../source.html#scarlet.source.MultiComponentSource">[docs]</a><span class="k">class</span> <span class="nc">MultiComponentSource</span><span class="p">(</span><span class="n">ComponentTree</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Create an extended source with multiple components layered vertically.</span>
+    <span class="sd">&quot;&quot;&quot;Extended source with multiple components layered vertically.</span>
+
 <span class="sd">    Uses `~scarlet.source.ExtendedSource` to define the overall morphology,</span>
 <span class="sd">    then erodes the outer footprint until it reaches the specified size percentile.</span>
 <span class="sd">    For the narrower footprint, it evaluates the mean value at the perimeter and</span>
@@ -598,29 +567,46 @@
 <span class="sd">    The subsequent component(s) is/are set to the difference between the flattened</span>
 <span class="sd">    and the overall morphology.</span>
 <span class="sd">    The SED for all components is calculated as the best fit of the multi-component</span>
-<span class="sd">    morphology to the multi-band image in the region of the source.</span>
-
-<span class="sd">    Parameters</span>
-<span class="sd">    ----------</span>
-<span class="sd">    flux_percentiles: list</span>
-<span class="sd">        The flux percentile of each component. If `flux_percentiles` is `None`</span>
-<span class="sd">        then `flux_percentiles=[25]`, a single component with 25% of the flux</span>
-<span class="sd">        as the primary source.</span>
-
-<span class="sd">    See `ExtendedSource` for a description of the parameters</span>
+<span class="sd">    morphology to the multi-channel image in the region of the source.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sky_coord</span><span class="p">,</span> <span class="n">scene</span><span class="p">,</span> <span class="n">observations</span><span class="p">,</span> <span class="n">bg_rms</span><span class="p">,</span> <span class="n">flux_percentiles</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">obs_idx</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">thresh</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">sky_coord</span><span class="p">,</span> <span class="n">observation</span><span class="p">,</span> <span class="n">bg_rms</span><span class="p">,</span> <span class="n">thresh</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">flux_percentiles</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                  <span class="n">symmetric</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">monotonic</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">component_kwargs</span><span class="p">):</span>
-        <span class="n">seds</span><span class="p">,</span> <span class="n">morphs</span> <span class="o">=</span> <span class="n">init_multicomponent_source</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">,</span> <span class="n">scene</span><span class="p">,</span> <span class="n">observations</span><span class="p">,</span> <span class="n">bg_rms</span><span class="p">,</span> <span class="n">flux_percentiles</span><span class="p">,</span>
-                                                  <span class="n">obs_idx</span><span class="p">,</span> <span class="n">thresh</span><span class="p">,</span> <span class="n">symmetric</span><span class="p">,</span> <span class="n">monotonic</span><span class="p">)</span>
+        <span class="sd">&quot;&quot;&quot;Create multi-component extended source.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        frame: `~scarlet.Frame`</span>
+<span class="sd">            The frame that the model lives in.</span>
+<span class="sd">        sky_coord: tuple</span>
+<span class="sd">            Center of the source</span>
+<span class="sd">        observation: `~scarlet.Observation`</span>
+<span class="sd">            Observation to initialize this source.</span>
+<span class="sd">        bg_rms: array</span>
+<span class="sd">            Background RMS in each channel in observation.</span>
+<span class="sd">        thresh: `float`</span>
+<span class="sd">            Multiple of the backround RMS used as a</span>
+<span class="sd">            flux cutoff for morphology initialization.</span>
+<span class="sd">        flux_percentiles: list</span>
+<span class="sd">            The flux percentile of each component. If `flux_percentiles` is `None`</span>
+<span class="sd">            then `flux_percentiles=[25]`, a single component with 25% of the flux</span>
+<span class="sd">            as the primary source.</span>
+<span class="sd">        symmetric: `bool`</span>
+<span class="sd">            Whether or not to enforce symmetry.</span>
+<span class="sd">        monotonic: `bool`</span>
+<span class="sd">            Whether or not to make the object monotonically decrease</span>
+<span class="sd">            in flux from the center.</span>
+<span class="sd">        component_kwargs: dict</span>
+<span class="sd">            Keyword arguments to pass to the component initialization.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">seds</span><span class="p">,</span> <span class="n">morphs</span> <span class="o">=</span> <span class="n">init_multicomponent_source</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">observation</span><span class="p">,</span> <span class="n">bg_rms</span><span class="p">,</span> <span class="n">flux_percentiles</span><span class="p">,</span>
+                                                  <span class="n">thresh</span><span class="p">,</span> <span class="n">symmetric</span><span class="p">,</span> <span class="n">monotonic</span><span class="p">)</span>
 
         <span class="k">class</span> <span class="nc">MultiComponent</span><span class="p">(</span><span class="n">Component</span><span class="p">):</span>
-            <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sed</span><span class="p">,</span> <span class="n">morph</span><span class="p">,</span> <span class="n">symmetric</span><span class="p">,</span> <span class="n">monotonic</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+            <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">sed</span><span class="p">,</span> <span class="n">morph</span><span class="p">,</span> <span class="n">symmetric</span><span class="p">,</span> <span class="n">monotonic</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">symmetric</span> <span class="o">=</span> <span class="n">symmetric</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">monotonic</span> <span class="o">=</span> <span class="n">monotonic</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">pixel_center</span> <span class="o">=</span> <span class="n">scene</span><span class="o">.</span><span class="n">get_pixel</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">)</span>
-                <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">sed</span><span class="p">,</span> <span class="n">morph</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">pixel_center</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">get_pixel</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">)</span>
+                <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">sed</span><span class="p">,</span> <span class="n">morph</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
             <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
                 <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">symmetric</span><span class="p">:</span>
@@ -637,7 +623,7 @@
                 <span class="k">return</span> <span class="bp">self</span>
 
         <span class="n">components</span> <span class="o">=</span> <span class="p">[</span>
-            <span class="n">MultiComponent</span><span class="p">(</span><span class="n">seds</span><span class="p">[</span><span class="n">k</span><span class="p">],</span> <span class="n">morphs</span><span class="p">[</span><span class="n">k</span><span class="p">],</span> <span class="n">symmetric</span><span class="p">,</span> <span class="n">monotonic</span><span class="p">,</span> <span class="o">**</span><span class="n">component_kwargs</span><span class="p">)</span>
+            <span class="n">MultiComponent</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">seds</span><span class="p">[</span><span class="n">k</span><span class="p">],</span> <span class="n">morphs</span><span class="p">[</span><span class="n">k</span><span class="p">],</span> <span class="n">symmetric</span><span class="p">,</span> <span class="n">monotonic</span><span class="p">,</span> <span class="o">**</span><span class="n">component_kwargs</span><span class="p">)</span>
             <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">seds</span><span class="p">))</span>
         <span class="p">]</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">components</span><span class="p">)</span></div>

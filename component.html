@@ -234,7 +234,7 @@ the detection threshold.</p>
 
 <dl class="class">
 <dt id="scarlet.component.Component">
-<em class="property">class </em><code class="descclassname">scarlet.component.</code><code class="descname">Component</code><span class="sig-paren">(</span><em>sed</em>, <em>morph</em>, <em>prior=None</em>, <em>fix_sed=False</em>, <em>fix_morph=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/component.html#Component"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.component.Component" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">scarlet.component.</code><code class="descname">Component</code><span class="sig-paren">(</span><em>frame</em>, <em>sed</em>, <em>morph</em>, <em>prior=None</em>, <em>fix_sed=False</em>, <em>fix_morph=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/component.html#Component"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.component.Component" title="Permalink to this definition">¶</a></dt>
 <dd><p>A single component in a blend.</p>
 <p>This class acts as base for building complex <code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.source.Source</span></code>.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -242,6 +242,9 @@ the detection threshold.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first docutils">
+<dt><strong>frame: a `~scarlet.Frame` instance</strong></dt>
+<dd><p class="first last">The spectral and spatial characteristics of this component.</p>
+</dd>
 <dt><strong>sed: array</strong></dt>
 <dd><p class="first last">1D array (bands) of the initial SED.</p>
 </dd>
@@ -264,6 +267,9 @@ the detection threshold.</p>
 <dt><a class="reference internal" href="#scarlet.component.Component.coord" title="scarlet.component.Component.coord"><code class="xref py py-obj docutils literal notranslate"><span class="pre">coord</span></code></a></dt>
 <dd><p class="first last">The coordinate in a <cite>~scarlet.component.ComponentTree</cite>.</p>
 </dd>
+<dt><a class="reference internal" href="#scarlet.component.Component.frame" title="scarlet.component.Component.frame"><code class="xref py py-obj docutils literal notranslate"><span class="pre">frame</span></code></a></dt>
+<dd><p class="first last">The frame of this component</p>
+</dd>
 <dt><a class="reference internal" href="#scarlet.component.Component.morph" title="scarlet.component.Component.morph"><code class="xref py py-obj docutils literal notranslate"><span class="pre">morph</span></code></a></dt>
 <dd><p class="first last">Numpy view of the component morphology</p>
 </dd>
@@ -271,7 +277,7 @@ the detection threshold.</p>
 <dd><p class="first last">Numpy view of the component SED</p>
 </dd>
 <dt><a class="reference internal" href="#scarlet.component.Component.shape" title="scarlet.component.Component.shape"><code class="xref py py-obj docutils literal notranslate"><span class="pre">shape</span></code></a></dt>
-<dd><p class="first last">Shape of the image (Band, Height, Width)</p>
+<dd><p class="first last">Shape of the image (Channel, Height, Width)</p>
 </dd>
 <dt><strong>step_morph</strong></dt>
 <dd></dd>
@@ -313,6 +319,12 @@ the detection threshold.</p>
 <dt id="scarlet.component.Component.coord">
 <code class="descname">coord</code><a class="headerlink" href="#scarlet.component.Component.coord" title="Permalink to this definition">¶</a></dt>
 <dd><p>The coordinate in a <cite>~scarlet.component.ComponentTree</cite>.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="scarlet.component.Component.frame">
+<code class="descname">frame</code><a class="headerlink" href="#scarlet.component.Component.frame" title="Permalink to this definition">¶</a></dt>
+<dd><p>The frame of this component</p>
 </dd></dl>
 
 <dl class="method">
@@ -368,7 +380,7 @@ is used.</p>
 <dl class="attribute">
 <dt id="scarlet.component.Component.shape">
 <code class="descname">shape</code><a class="headerlink" href="#scarlet.component.Component.shape" title="Permalink to this definition">¶</a></dt>
-<dd><p>Shape of the image (Band, Height, Width)</p>
+<dd><p>Shape of the image (Channel, Height, Width)</p>
 </dd></dl>
 
 <dl class="method">
@@ -391,23 +403,17 @@ that will be executed during fitting.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Attributes:</th><td class="field-body"><dl class="first last docutils">
-<dt><a class="reference internal" href="#scarlet.component.ComponentTree.B" title="scarlet.component.ComponentTree.B"><code class="xref py py-obj docutils literal notranslate"><span class="pre">B</span></code></a></dt>
-<dd><p class="first last">Number of bands</p>
-</dd>
 <dt><a class="reference internal" href="#scarlet.component.ComponentTree.K" title="scarlet.component.ComponentTree.K"><code class="xref py py-obj docutils literal notranslate"><span class="pre">K</span></code></a></dt>
 <dd><p class="first last">Number of components.</p>
-</dd>
-<dt><a class="reference internal" href="#scarlet.component.ComponentTree.Nx" title="scarlet.component.ComponentTree.Nx"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Nx</span></code></a></dt>
-<dd><p class="first last">Number of pixels in the y-direction</p>
-</dd>
-<dt><a class="reference internal" href="#scarlet.component.ComponentTree.Ny" title="scarlet.component.ComponentTree.Ny"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Ny</span></code></a></dt>
-<dd><p class="first last">Number of pixels in the y-direction</p>
 </dd>
 <dt><a class="reference internal" href="#scarlet.component.ComponentTree.components" title="scarlet.component.ComponentTree.components"><code class="xref py py-obj docutils literal notranslate"><span class="pre">components</span></code></a></dt>
 <dd><p class="first last">Flattened tuple of all components in the tree.</p>
 </dd>
 <dt><a class="reference internal" href="#scarlet.component.ComponentTree.coord" title="scarlet.component.ComponentTree.coord"><code class="xref py py-obj docutils literal notranslate"><span class="pre">coord</span></code></a></dt>
 <dd><p class="first last">The coordinate in tree.</p>
+</dd>
+<dt><a class="reference internal" href="#scarlet.component.ComponentTree.frame" title="scarlet.component.ComponentTree.frame"><code class="xref py py-obj docutils literal notranslate"><span class="pre">frame</span></code></a></dt>
+<dd><p class="first last">Frame of the components.</p>
 </dd>
 <dt><a class="reference internal" href="#scarlet.component.ComponentTree.n_components" title="scarlet.component.ComponentTree.n_components"><code class="xref py py-obj docutils literal notranslate"><span class="pre">n_components</span></code></a></dt>
 <dd><p class="first last">Number of components.</p>
@@ -442,27 +448,9 @@ that will be executed during fitting.</p>
 </tbody>
 </table>
 <dl class="attribute">
-<dt id="scarlet.component.ComponentTree.B">
-<code class="descname">B</code><a class="headerlink" href="#scarlet.component.ComponentTree.B" title="Permalink to this definition">¶</a></dt>
-<dd><p>Number of bands</p>
-</dd></dl>
-
-<dl class="attribute">
 <dt id="scarlet.component.ComponentTree.K">
 <code class="descname">K</code><a class="headerlink" href="#scarlet.component.ComponentTree.K" title="Permalink to this definition">¶</a></dt>
 <dd><p>Number of components.</p>
-</dd></dl>
-
-<dl class="attribute">
-<dt id="scarlet.component.ComponentTree.Nx">
-<code class="descname">Nx</code><a class="headerlink" href="#scarlet.component.ComponentTree.Nx" title="Permalink to this definition">¶</a></dt>
-<dd><p>Number of pixels in the y-direction</p>
-</dd></dl>
-
-<dl class="attribute">
-<dt id="scarlet.component.ComponentTree.Ny">
-<code class="descname">Ny</code><a class="headerlink" href="#scarlet.component.ComponentTree.Ny" title="Permalink to this definition">¶</a></dt>
-<dd><p>Number of pixels in the y-direction</p>
 </dd></dl>
 
 <dl class="attribute">
@@ -480,6 +468,12 @@ encountered location</p>
 <code class="descname">coord</code><a class="headerlink" href="#scarlet.component.ComponentTree.coord" title="Permalink to this definition">¶</a></dt>
 <dd><p>The coordinate in tree.</p>
 <p>The coordinate can be used to traverse the tree and for <cite>__getitem__</cite>.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="scarlet.component.ComponentTree.frame">
+<code class="descname">frame</code><a class="headerlink" href="#scarlet.component.ComponentTree.frame" title="Permalink to this definition">¶</a></dt>
+<dd><p>Frame of the components.</p>
 </dd></dl>
 
 <dl class="method">
