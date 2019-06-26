@@ -274,7 +274,7 @@ class LowResObservation(Scene):
 
         self.structure = structure
 
-    def make_operator(self, shape, p):
+    def make_operator(self, shape, psfs):
         '''Builds the resampling and convolution operator
 
         Builds the matrix that expresses the linear operation of resampling a function evaluated on a grid with coordinates
@@ -294,7 +294,7 @@ class LowResObservation(Scene):
             the convolution-resampling matrix
         '''
         B, Ny, Nx = shape
-        Bpsf = p.shape[0]
+        Bpsf = psfs.shape[0]
 
         y_hr, x_hr = np.where(np.zeros((Ny, Nx)) == 0)
         y_lr, x_lr = self._coord_lr
@@ -309,16 +309,37 @@ class LowResObservation(Scene):
         # sinc interpolant:
         ker = interpolation.sinc2D((y_lr[:, np.newaxis] - y_hr[np.newaxis, :]) / h,
                                    (x_lr[:, np.newaxis] - x_hr[np.newaxis, :]) / h).reshape(Nlr, Ny, Nx)
-        _shape = ker.shape
+        #import matplotlib.pyplot as plt
+        print(self.fftpack_shape[0])
+        operator_fft = []
+        for m in range(Nlr):
+            ker = interpolation.sinc2D((y_lr[m] - y_hr) / h,
+                                       (x_lr[m] - x_hr) / h).reshape(Ny, Nx)
+            ker_fft = np.fft.rfftn(ker, self.fftpack_shape)
+            operator_fft.append(ker_fft[np.newaxis, :, :] * psfs)
+        print(np.shape(operator_fft))
+        operator_fft = np.reshape(operator_fft, (Bpsf*Nlr,self.fftpack_shape[0],self.fftpack_shape[1]))
+
+        operator = np.fft.ifftshift(np.fft.irfftn(operator_fft, axes=(1, 2)), axes=(1, 2))
+        del operator_fft
+
+        operator = _centered(operator, (Bpsf*Nlr, Ny,Nx))
+
+#        import scipy.signal as scp
+#        operator = scp.fftconvolve(psfs[None,:,:,:], ker[:,None,:,:], mode = 'same', axes = (2,3))
+        #    print(np.shape(operator))
+        #    plt.imshow(np.array(operator)[0, 1, :, :], cmap = 'gist_stern'); plt.show()
+        print(np.shape(operator))
+
         # FFTs of the psf and sinc
-        ker_fft = np.fft.rfftn(ker, self.fftpack_shape, axes=(1, 2))
-        operator_fft = ker_fft[:,np.newaxis,:,:] * p[np.newaxis,:,:,:]
-        operator = np.fft.irfftn(operator_fft, axes=(2, 3)) * Nlr / (Nx * Ny) / np.pi
+        #ker_fft = np.fft.rfftn(ker, self.fftpack_shape, axes=(1, 2))
+        #
+        #operator = np.fft.irfftn(operator_fft, axes=(2,3)) * Nlr / (Nx * Ny) / np.pi
 
         #A little trimming
-        operator = _centered(operator, (Bpsf, Ny, Nx))
+        #operator = _centered(operator, (Bpsf, Ny, Nx)).reshape(Bpsf, Nlr, Nx * Ny)
 
-        return operator.reshape(Bpsf, Nlr, Nx * Ny)
+        return np.array(operator).reshape(Bpsf, Nx*Ny, Nlr)*Nlr/(Nx*Ny*np.pi)
 
     def match(self, scene):
         '''Matches the observation with a scene
@@ -382,10 +403,13 @@ class LowResObservation(Scene):
             target_fft = np.fft.rfftn(np.fft.ifftshift(target_kernels, axes = (1, 2)), self.fftpack_shape, axes=(1, 2))
             observed_fft = np.fft.rfftn(np.fft.ifftshift(observed_kernels, axes=(1, 2)), self.fftpack_shape, axes=(1, 2))
 
-            sel = target_fft != 0
+            sel = (target_fft == 0)
             diff_fft = observed_fft / target_fft
             diff_fft[sel] = 0
-            diff_fft = diff_fft / diff_fft.max(axis = (1, 2))[:, np.newaxis,np.newaxis]
+            diff_fft = diff_fft / diff_fft.sum(axis = (1, 2))[:, np.newaxis,np.newaxis]
+
+            #diff_psf = np.fft.ifftshift(np.fft.irfftn(diff_fft, self.fftpack_shape, axes=(1, 2)), axes=(1, 2))
+            #diff_psf = _centered(diff_psf, _shape[1:])
 
             # Computes the resampling/convolution matrix
             resconv_op = self.make_operator(_shape, diff_fft)
