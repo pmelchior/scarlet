@@ -1,4 +1,3 @@
-import pytest
 import numpy as np
 from numpy.testing import assert_almost_equal, assert_array_equal
 
@@ -73,20 +72,17 @@ class TestBlend(object):
 
         # Test init with psfs
         frame = scarlet.Frame(images.shape, psfs=target_psf[None])
-        obs = scarlet.Observation(images, psfs=psfs).match(frame)
+        observation = scarlet.Observation(images, psfs=psfs).match(frame)
         sources = [scarlet.PointSource(frame, coord, observation) for coord in coords]
 
-        with pytest.raises(AttributeError):
-            obs.psfs_fft
-        blend = scarlet.Blend(frame, sources, obs)
-
-        assert blend.observations[0] == obs
+        blend = scarlet.Blend(frame, sources, observation)
+        assert blend.observations[0] == observation
         assert blend.mse == []
         assert blend.frame == frame
         assert_array_equal(blend.frame.psfs, frame.psfs)
-        assert_array_equal(obs._diff_kernels_fft.shape, (6, 81, 55))
+        assert_array_equal(observation._diff_kernels_fft.shape, (6, 81, 55))
 
-        model = obs.render(blend.get_model())
+        model = observation.render(blend.get_model())
         assert_almost_equal(images, model)
         assert blend.converged is False
 

@@ -228,14 +228,16 @@ def init_multicomponent_source(sky_coord, frame, observation, bg_rms, flux_perce
 
 
 class PointSource(Component):
+    """Source intialized with a single pixel
+
+    Point sources are initialized with the SED of the center pixel,
+    and the morphology of a single pixel (the center) turned on.
+    While the source can have any `constraints`, the default constraints are
+    symmetry and monotonicity.
+    """
     def __init__(self, frame, sky_coord, observation, symmetric=False, monotonic=True,
                  center_step=5, delay_thresh=10, **component_kwargs):
-        """Extended source intialized with a single pixel
-
-        Point sources are initialized with the SED of the center pixel,
-        and the morphology of a single pixel (the center) turned on.
-        While the source can have any `constraints`, the default constraints are
-        symmetry and monotonicity.
+        """Source intialized with a single pixel
 
         Parameters
         ----------
