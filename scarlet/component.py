@@ -74,6 +74,8 @@ class Component():
 
     Parameters
     ----------
+    frame: a `~scarlet.Frame` instance
+        The spectral and spatial characteristics of this component.
     sed: array
         1D array (bands) of the initial SED.
     morph: array
@@ -86,9 +88,8 @@ class Component():
         Whether or not the morphology is fixed, or can be updated
     """
 
-    def __init__(self, sed, morph, prior=None, fix_sed=False, fix_morph=False):
-        self.B = sed.shape[0]
-        self.Ny, self.Nx = morph.shape
+    def __init__(self, frame, sed, morph, prior=None, fix_sed=False, fix_morph=False):
+        self._frame = frame
         # set sed and morph
         self._sed = np.array(sed)
         self._morph = np.array(morph)
@@ -112,9 +113,9 @@ class Component():
 
     @property
     def shape(self):
-        """Shape of the image (Band, Height, Width)
+        """Shape of the image (Channel, Height, Width)
         """
-        return (self.B, self.Ny, self.Nx)
+        return self._frame.shape
 
     @property
     def coord(self):
@@ -125,6 +126,12 @@ class Component():
                 return tuple(self._parent.coord) + (self._index,)
             else:
                 return (self._index,)
+
+    @property
+    def frame(self):
+        """The frame of this component
+        """
+        return self._frame
 
     @property
     def sed(self):
@@ -267,22 +274,13 @@ class ComponentTree():
         return self.n_components
 
     @property
-    def B(self):
-        """Number of bands
+    def frame(self):
+        """Frame of the components.
         """
-        return self.components[0].B
-
-    @property
-    def Ny(self):
-        """Number of pixels in the y-direction
-        """
-        return np.max([comp.Ny for comp in self.components])
-
-    @property
-    def Nx(self):
-        """Number of pixels in the y-direction
-        """
-        return np.max([comp.Nx for comp in self.components])
+        try:
+            return self._frame
+        except AttributeError:
+            return self.components[0].frame
 
     @property
     def nodes(self):
@@ -331,7 +329,7 @@ class ComponentTree():
         model: array
             (Bands, Height, Width) data cube
         """
-        model = np.zeros((self.B, self.Ny, self.Nx))
+        model = np.zeros(self.frame.shape)
         for k in range(self.K):
             if seds is not None and morphs is not None:
                 _model = self.components[k].get_model(seds[k], morphs[k])

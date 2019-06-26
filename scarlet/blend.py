@@ -37,7 +37,7 @@ class Blend(ComponentTree):
             Data package(s) to fit
         """
         ComponentTree.__init__(self, sources)
-        self.frame = frame
+        self._frame = frame
 
         try:
             iter(observations)
@@ -214,9 +214,10 @@ class Blend(ComponentTree):
                 LS *= 2
                 LA *= 2
         else:
-            # This is still an approximation, but a less crude (albiet slower) one
-            seds = np.zeros((self.K, self.B), dtype=self.components[0].sed.dtype)
-            morphs = np.zeros((self.K, self.Ny, self.Nx), dtype=self.components[0].morph.dtype)
+            # This is still an approximation, but a less crude (albeit slower) one
+            C, Ny, Nx = self.frame.shape
+            seds = np.zeros((self.K, C), dtype=self.components[0].sed.dtype)
+            morphs = np.zeros((self.K, Ny, Nx), dtype=self.components[0].morph.dtype)
             for k, component in enumerate(self.components):
                 seds[k] = component.sed
                 morphs[k] = component.morph

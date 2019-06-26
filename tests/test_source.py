@@ -42,13 +42,13 @@ class TestPointSource(object):
         true_sed1 = images1[:, skycoord[0], skycoord[1]]
         true_sed2 = images2[:, skycoord[0], skycoord[1]]
         true_sed = np.concatenate((true_sed1, true_sed2))
-        sed = scarlet.source.get_pixel_sed(skycoord, observations)
+        sed = np.concatenate([scarlet.source.get_pixel_sed(skycoord, obs) for obs in observations])
         assert_array_equal(sed, true_sed)
 
         with pytest.raises(SourceInitError):
             images = images1 - 200
             obs = scarlet.Observation(images)
-            sed = scarlet.source.get_pixel_sed(skycoord, [obs])
+            sed = scarlet.source.get_pixel_sed(skycoord, obs)
 
     def test_point_source(self):
         shape = (5, 11, 21)
@@ -56,20 +56,13 @@ class TestPointSource(object):
 
         B, Ny, Nx = shape
         seds, morphs, images = create_sources(shape, coords, [2, 3, .1])
-        channels = range(len(images))
         psfs = np.array([[[.25, .5, .25], [.5, 1, .5], [.25, .5, .25]]])
         psfs /= psfs.sum(axis=(1,2))[:,None,None]
-        images1 = images[:4]
-        images2 = images[4:]
-        channels1 = channels[:4]
-        channels2 = channels[4:]
 
-        frame = scarlet.Frame(images.shape, channels=channels)
-        obs1 = scarlet.Observation(images1, channels=channels1).match(frame)
-        obs2 = scarlet.Observation(images2, channels=channels2).match(frame)
-        observations = [obs1, obs2]
+        frame = scarlet.Frame(images.shape)
+        obs = scarlet.Observation(images).match(frame)
 
-        src = scarlet.PointSource(coords[0], frame, observations)
+        src = scarlet.PointSource(frame, coords[0], obs)
         truth = np.zeros_like(src.morph)
         truth[coords[0]] = 1
 
@@ -82,8 +75,8 @@ class TestPointSource(object):
         assert src.delay_thresh == 10
 
         # frame PSF same as source
-        frame = scarlet.Frame(images.shape, channels=channels, psfs=psfs)
-        src = scarlet.PointSource(coords[0], frame, observations)
+        frame = scarlet.Frame(images.shape, psfs=psfs)
+        src = scarlet.PointSource(frame, coords[0], obs)
 
         # We need to multiply by 4 because of psf normalization
         assert_array_equal(src.sed*4, seds[0])
@@ -96,18 +89,11 @@ class TestExtendedSource(object):
         shape = (7, 11, 21)
         coords = [(4, 8), (8, 11), (5, 16)]
         seds, morphs, images = create_sources(shape, coords)
-        channels = range(len(images))
-        images1 = images[:4]
-        images2 = images[4:]
-        channels1 = channels[:4]
-        channels2 = channels[4:]
 
-        frame = scarlet.Frame(images.shape, channels=channels)
-        obs1 = scarlet.Observation(images1, channels=channels1).match(frame)
-        obs2 = scarlet.Observation(images2, channels=channels2).match(frame)
-        observations = [obs1, obs2]
+        frame = scarlet.Frame(images.shape)
+        obs = scarlet.Observation(images).match(frame)
 
-        _seds = scarlet.source.get_best_fit_seds(morphs, frame, observations)
+        _seds = scarlet.source.get_best_fit_seds(morphs, frame, obs)
 
         assert_array_equal(_seds, seds)
 
@@ -145,7 +131,7 @@ class TestExtendedSource(object):
         frame = scarlet.Frame(shape)
         for k in range(K):
             observation = scarlet.Observation(images).match(frame)
-            coadd, cutoff = scarlet.source.build_detection_coadd(seds[k], bg_rms, observation, frame)
+            coadd, cutoff = scarlet.source.build_detection_coadd(seds[k], bg_rms, observation)
             cy, cx = coords[k]
             window = slice(cy-2, cy+3), slice(cx-2, cx+3)
             assert_almost_equal(coadd[window], truth[k])
@@ -184,7 +170,7 @@ class TestExtendedSource(object):
         assert_almost_equal(morph*3, true_morph)
 
         # Test ExtendedSource.__init__
-        src = scarlet.ExtendedSource(skycoord, frame, observation, bg_rms)
+        src = scarlet.ExtendedSource(frame, skycoord, observation, bg_rms)
         assert_array_equal(src.pixel_center, skycoord)
         assert src.symmetric is False
         assert src.monotonic is True
