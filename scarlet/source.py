@@ -59,7 +59,7 @@ def get_best_fit_seds(morphs, frame, observation):
     morphs: list
         Morphology for each component in the source.
     frame: `scarlet.observation.frame`
-        The frame that the model lives in.
+        The frame of the model
     observation: `~scarlet.Observation`
         Observation to extract SEDs from.
     """
@@ -227,6 +227,36 @@ def init_multicomponent_source(sky_coord, frame, observation, bg_rms, flux_perce
     return seds, morphs
 
 
+class RandomSource(Component):
+    """Sources with uniform random morphology.
+
+    For cases with no well-defined spatial shape, this source initializes
+    a uniform random field and (optionally) matches the SED to match a given
+    observation.
+    """
+    def __init__(self, frame, observation=None, **component_kwargs):
+        """Source intialized with a single pixel
+
+        Parameters
+        ----------
+        frame: `~scarlet.Frame`
+            The frame of the model
+        observation: list of `~scarlet.Observation`
+            Observation to initialize the SED of the source
+        component_kwargs: dict
+            Keyword arguments to pass to the component initialization.
+        """
+        C, Ny, Nx = frame.shape
+        morph = np.random.rand(Ny, Nx)
+
+        if observation is None:
+            sed = np.random.rand(C)
+        else:
+            sed = get_best_fit_seds(morph[None], frame, observation)[0]
+
+        super().__init__(frame, sed, morph, **component_kwargs)
+
+
 class PointSource(Component):
     """Source intialized with a single pixel
 
@@ -242,7 +272,7 @@ class PointSource(Component):
         Parameters
         ----------
         frame: `~scarlet.Frame`
-            The frame that the model lives in.
+            The frame of the model
         sky_coord: tuple
             Center of the source
         observation: list of `~scarlet.Observation`
@@ -334,7 +364,7 @@ class ExtendedSource(PointSource):
         Parameters
         ----------
         frame: `~scarlet.Frame`
-            The frame that the model lives in.
+            The frame of the model
         sky_coord: tuple
             Center of the source
         observation: `~scarlet.observation.Observation`
@@ -375,7 +405,7 @@ class CombinedExtendedSource(PointSource):
         Parameters
         ----------
         frame: `~scarlet.Frame`
-            The frame that the model lives in.
+            The frame of the model
         sky_coord: tuple
             Center of the source
         observations: list of `~scarlet.Observation`
@@ -429,7 +459,7 @@ class MultiComponentSource(ComponentTree):
         Parameters
         ----------
         frame: `~scarlet.Frame`
-            The frame that the model lives in.
+            The frame of the model
         sky_coord: tuple
             Center of the source
         observation: `~scarlet.Observation`
