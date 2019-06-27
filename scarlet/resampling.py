@@ -2,45 +2,6 @@ import autograd.numpy as np
 from . import interpolation
 
 
-
-
-def linorm2D(S, nit):
-    """Power iteration
-
-    Estimates the inverse of the Lipschitz constant of a matrix SS.T
-
-    Parameters
-    ----------
-    A: array
-        operator for which we seek the lipschitz constant
-    nit: int
-        maximum number of iterations
-
-    Returns
-    -------
-    xn: float
-        inverse of the Lipschitz constant of SS.T
-
-    """
-
-    n1, n2 = np.shape(S)
-    x0 = np.random.rand(1, n1)
-    x0 = x0 / np.sqrt(np.sum(x0 ** 2))
-
-    for i in range(nit):
-        x = np.dot(x0, S)
-        xn = np.sqrt(np.sum(x ** 2))
-        xp = x / xn
-        y = np.dot(xp, S.T)
-        yn = np.sqrt(np.sum(y ** 2))
-
-        if yn < np.dot(y, np.t(x0)):
-            break
-        x0 = y / yn
-
-    return 1. / xn
-
-
 def match_patches(shape_hr, shape_lr, wcs_hr, wcs_lr):
     '''Matches datasets at different resolutions
 

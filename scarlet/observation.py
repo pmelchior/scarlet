@@ -307,21 +307,24 @@ class LowResObservation(Scene):
         assert h != 0
 
         # sinc interpolant:
-        ker = interpolation.sinc2D((y_lr[:, np.newaxis] - y_hr[np.newaxis, :]) / h,
+        ker_mat = interpolation.sinc2D((y_lr[:, np.newaxis] - y_hr[np.newaxis, :]) / h,
                                    (x_lr[:, np.newaxis] - x_hr[np.newaxis, :]) / h).reshape(Nlr, Ny, Nx)
         #import matplotlib.pyplot as plt
         print(self.fftpack_shape[0])
-        operator_fft = []
+        operator = []
         for m in range(Nlr):
-            ker = interpolation.sinc2D((y_lr[m] - y_hr) / h,
-                                       (x_lr[m] - x_hr) / h).reshape(Ny, Nx)
-            ker_fft = np.fft.rfftn(ker, self.fftpack_shape)
-            operator_fft.append(ker_fft[np.newaxis, :, :] * psfs)
-        print(np.shape(operator_fft))
-        operator_fft = np.reshape(operator_fft, (Bpsf*Nlr,self.fftpack_shape[0],self.fftpack_shape[1]))
+            ker = ker_mat[m]#interpolation.sinc2D((y_lr[m] - y_hr) / h,
+                                       #(x_lr[m] - x_hr) / h).reshape(Ny, Nx)
 
-        operator = np.fft.ifftshift(np.fft.irfftn(operator_fft, axes=(1, 2)), axes=(1, 2))
-        del operator_fft
+            import matplotlib.pyplot as plt
+            plt.imshow(np.log(ker), cmap = 'gist_sttern')
+            plt.show()
+            ker_fft = np.fft.rfftn(ker, self.fftpack_shape)
+            operator_fft = ker_fft[np.newaxis, :, :] * psfs
+            op_ifft = np.fft.ifftshift(np.fft.irfftn(operator_fft, axes=(1, 2)), axes=(1, 2))
+            operator.append(_centered(op_ifft, (Bpsf, Ny,Nx)))
+        print(np.shape(operator_fft))
+        #operator_fft = np.reshape(operator_fft, (Bpsf*Nlr,self.fftpack_shape[0],self.fftpack_shape[1]))
 
         operator = _centered(operator, (Bpsf*Nlr, Ny,Nx))
 
