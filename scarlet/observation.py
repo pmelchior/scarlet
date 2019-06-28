@@ -96,9 +96,7 @@ class Frame():
                 coord = self.wcs.wcs_world2pix(sky_coord[0], sky_coord[1], 0)
             else:
                 raise ValueError("Invalid number of wcs dimensions: {0}".format(self.wcs.naxis))
-
             return (int(coord[0].item()), int(coord[1].item()))
-
 
         return tuple(int(coord) for coord in sky_coord)
 
@@ -123,13 +121,6 @@ class Observation():
         prevent artifacts from the FFT.
     """
 
-<<<<<<< HEAD
-
-    def __init__(self, images, psfs=None, weights=None, wcs=None, filtercurve=None, structure=None,
-                 padding=10):
-
-        super().__init__(images.shape, wcs=wcs, psfs=psfs, filtercurve=filtercurve)
-=======
     def __init__(self, images, psfs=None, weights=None, wcs=None, channels=None,
                  padding=10):
         """Create an Observation
@@ -155,7 +146,6 @@ class Observation():
             prevent artifacts from the FFT.
         """
         self.frame = Frame(images.shape, wcs=wcs, psfs=psfs, channels=channels)
->>>>>>> 482aef746e6478b350f5d2ca24be7c9eda706289
 
         self.images = np.array(images)
         if weights is not None:
@@ -195,22 +185,12 @@ class Observation():
             assert self.frame.psfs is not None and model_frame.psfs is not None
             # First we setup the parameters for the model -> observation FFTs
             # Make the PSF stamp wider due to errors when matching PSFs
-<<<<<<< HEAD
-            psf_shape = np.array(self.psfs[0].shape) + self.padding
-            shape = np.array(scene.shape[1:]) + psf_shape - 1
-
-=======
             psf_shape = np.array(self.frame.psfs[0].shape) + self._padding
             shape = np.array(model_frame.shape[1:]) + psf_shape - 1
->>>>>>> 482aef746e6478b350f5d2ca24be7c9eda706289
             # Choose the optimal shape for FFTPack DFT
             self._fftpack_shape = [fftpack.helper.next_fast_len(d) for d in shape]
             # Store the pre-fftpack optimization slices
-<<<<<<< HEAD
-            self.slices = tuple(np.concatenate(([slice(self.B)],[slice(s) for s in shape])))
-=======
-            self._slices = tuple([slice(s) for s in shape])
->>>>>>> 482aef746e6478b350f5d2ca24be7c9eda706289
+            self.slices = tuple(np.concatenate(([slice(self.C)],[slice(s) for s in shape])))
 
             # Now we setup the parameters for the psf -> kernel FFTs
             shape = np.array(model_frame.psfs[0].shape) + np.array(self.frame.psfs[0].shape) - 1
@@ -219,53 +199,27 @@ class Observation():
             target_fft = np.fft.rfftn(model_frame.psfs[0], _fftpack_shape)
 
             # Match the PSF in each band
-<<<<<<< HEAD
-            _psf_fft = np.fft.rfftn(self.psfs, fftpack_shape, axes=(1, 2))
+            _psf_fft = np.fft.rfftn(self.psfs, _fftpack_shape, axes=(1, 2))
 
 
-            kernels = np.fft.ifftshift(np.fft.irfftn(_psf_fft / target_fft, fftpack_shape, axes=(1, 2)), axes=(1, 2))
+            kernels = np.fft.ifftshift(np.fft.irfftn(_psf_fft / target_fft, _fftpack_shape, axes=(1, 2)), axes=(1, 2))
 
-
-            #kernels *= scene.psfs[0].sum()
             if kernels.shape[1] % 2 == 0:
                 kernels = kernels[:, 1:, 1:]
 
             kernels = _centered(kernels, psf_shape)
-            new_kernel_fft = np.fft.rfftn(kernels, self.fftpack_shape, axes=(1, 2))
-=======
-            _diff_kernels_fft = []
-            for psf in self.frame.psfs:
-                _psf_fft = np.fft.rfftn(psf, _fftpack_shape)
-                kernel = np.fft.fftshift(np.fft.irfftn(_psf_fft / target_fft, _fftpack_shape))
-                kernel *= model_frame.psfs[0].sum()
-                if kernel.shape[0] % 2 == 0:
-                    kernel = kernel[1:, 1:]
-                kernel = _centered(kernel, psf_shape)
-                _diff_kernels_fft.append(np.fft.rfftn(kernel, self._fftpack_shape))
->>>>>>> 482aef746e6478b350f5d2ca24be7c9eda706289
+            _diff_kernels_fft = np.fft.rfftn(kernels, self.fftpack_shape, axes=(1, 2))
 
             self._diff_kernels_fft = np.array(_diff_kernels_fft)
 
         return self
 
-<<<<<<< HEAD
-    def _convolve_bands(self, model, psf_fft):
-        """Convolve the model in a single band
-        """
-        model_fft = np.fft.rfftn(model, self.fftpack_shape, axes=(1, 2))
-
-        convolved = np.fft.irfftn(model_fft * psf_fft, self.fftpack_shape, axes=(1, 2))[self.slices]
-
-        return _centered(convolved, model[0].shape)
-
-=======
     def _convolve_band(self, model, diff_kernel_fft):
         """Convolve the model in a single band
         """
         model_fft = np.fft.rfftn(model, self._fftpack_shape)
         convolved = np.fft.irfftn(model_fft * diff_kernel_fft, self._fftpack_shape)[self._slices]
         return _centered(convolved, model.shape)
->>>>>>> 482aef746e6478b350f5d2ca24be7c9eda706289
 
     def render(self, model):
         """Convolve a model to the observation frame
@@ -280,18 +234,10 @@ class Observation():
         model_: array
             The convolved `model` in the observation frame
         """
-<<<<<<< HEAD
-        if self.structure is not None:
-            assert self.structure.size == model.shape[0]
-            model = model[self.structure == 1]
-        if self.psfs is not None:
-            model = self._convolve_bands(model, self.psfs_fft)
-=======
         model_ = model[self._band_slice,:,:]
 
         if self._diff_kernels_fft is not None:
             model_ = np.array([self._convolve_band(model_[c], self._diff_kernels_fft[c]) for c in range(self.frame.C)])
->>>>>>> 482aef746e6478b350f5d2ca24be7c9eda706289
 
         return model_
 
@@ -330,11 +276,6 @@ class LowResObservation(Observation):
             self.weights = np.array(weights)
         else:
             self.weights = 1
-
-<<<<<<< HEAD
-        self.target_psf = target_psf
-
-        self.structure = structure
 
     def make_operator(self, shape, psfs):
         '''Builds the resampling and convolution operator
@@ -409,7 +350,7 @@ class LowResObservation(Observation):
 
         return np.array(operator).reshape(Bpsf, Nx*Ny, Nlr)*Nlr/(Nx*Ny*np.pi)
 
-    def match(self, scene):
+    def match(self, model_frame):
         '''Matches the observation with a scene
 
         Builds the tools to project images of this observation to a scene at a different resolution and psf.
@@ -424,84 +365,12 @@ class LowResObservation(Observation):
             instanciates new attributes of the object
 
         '''
-
-        if self.wcs == None:
-            raise TypeError('WCS is actually mandatory, please provide one (tbdiscussed)')
-        if self.psfs is not None:
-            # Get pixel coordinates in each frame.
-            mask, coord_lr, coord_hr = resampling.match_patches(scene.shape, self.shape, scene.wcs, self.wcs)
-            self._coord_lr = coord_lr
-            self._coord_hr = coord_hr
-            self._mask = mask
-
-            # Compute diff kernel at hr
-
-            whr = scene.wcs
-            wlr = self.wcs
-
-            # Reference PSF
-            if self.target_psf is None:
-
-                _target = scene.psfs[0, :, :]
-                _shape = scene.shape
-
-            else:
-                _target = self.target_psf
-
-            resconv_op = []
-            target_kernels = []
-            observed_kernels = []
-            for _psf in self.psfs:
-                # Computes spatially matching observation and target psfs. The observation psf is also resampled to the scene's resolution
-                new_target, observed_psf = resampling.match_psfs(_target, _psf, whr, wlr)
-                target_kernels.append(new_target)
-                observed_kernels.append(observed_psf)
-
-
-            # First we setup the parameters for the model -> observation FFTs
-            # Make the PSF stamp wider due to errors when matching PSFs
-            psf_shape = np.array(new_target[1].shape) + 10
-            shape = np.array(scene.shape[1:]) + psf_shape - 1
-            # Choose the optimal shape for FFTPack DFT
-            self.fftpack_shape = [fftpack.helper.next_fast_len(d) for d in shape]
-            # Store the pre-fftpack optimization slices
-            self.slices = tuple([slice(s) for s in shape])
-
-            # Computes the diff kernel in Fourier
-            target_fft = np.fft.rfftn(np.fft.ifftshift(target_kernels, axes = (1, 2)), self.fftpack_shape, axes=(1, 2))
-            observed_fft = np.fft.rfftn(np.fft.ifftshift(observed_kernels, axes=(1, 2)), self.fftpack_shape, axes=(1, 2))
-
-            sel = (target_fft == 0)
-            diff_fft = observed_fft / target_fft
-            diff_fft[sel] = 0
-            diff_fft = diff_fft / diff_fft.sum(axis = (1, 2))[:, np.newaxis,np.newaxis]
-
-            #diff_psf = np.fft.ifftshift(np.fft.irfftn(diff_fft, self.fftpack_shape, axes=(1, 2)), axes=(1, 2))
-            #diff_psf = _centered(diff_psf, _shape[1:])
-
-            # Computes the resampling/convolution matrix
-            resconv_op = self.make_operator(_shape, diff_fft)
-
-            self.resconv_op = np.array(resconv_op)
-
-        else:
-            class InitError(Exception):
-                '''
-                'Observation PSF needed: unless you are not dealing with astronomical data, you are doing something wrong'
-                '''
-                pass
-
-            raise InitError
-=======
-    def match(self, model_frame):
-
         #  channels of model that are represented in this observation
         self._band_slice = slice(None)
         if self.frame.channels is not model_frame.channels:
             bmin = model_frame.channels.index(self.frame.channels[0])
             bmax = model_frame.channels.index(self.frame.channels[-1])
             self._band_slice = slice(bmin, bmax+1)
-
         # Get pixel coordinates in each frame.
         mask, coord_lr, coord_hr = resampling.match_patches(model_frame.shape, self.frame.shape, model_frame.wcs, self.frame.wcs)
         self._coord_lr = coord_lr
@@ -514,28 +383,45 @@ class LowResObservation(Observation):
         wlr = self.frame.wcs
 
         # Reference PSF
+        #This definition of a target is a little arbitrary
+        # I will probably be the job of `band to point the taget psf
         _target = model_frame.psfs[0, :, :]
         _shape = model_frame.shape
 
         resconv_op = []
-        for _psf in self.frame.psfs:
-            # Computes spatially matching observation and target psfs. The observation psf is also resampled to the model frame resolution
+        target_kernels = []
+        observed_kernels = []
+        for _psf in self.psfs:
+            # Computes spatially matching observation and target psfs. The observation psf is also resampled to the scene's resolution
             new_target, observed_psf = resampling.match_psfs(_target, _psf, whr, wlr)
-            # Computes the diff kernel in Fourier
-            target_fft = np.fft.fft2(np.fft.ifftshift(new_target))
-            observed_fft = np.fft.fft2(np.fft.ifftshift(observed_psf))
-            kernel_fft = np.zeros(target_fft.shape)
-            sel = target_fft != 0
-            kernel_fft[sel] = observed_fft[sel] / target_fft[sel]
-            kernel = np.fft.ifft2(kernel_fft)
-            kernel = np.fft.fftshift(np.real(kernel))
-            diff_psf = kernel / kernel.max()
+            target_kernels.append(new_target)
+            observed_kernels.append(observed_psf)
 
-            # Computes the resampling/convolution matrix
-            resconv_op.append(resampling.make_operator(_shape, coord_hr, diff_psf))
+
+        # First we setup the parameters for the model -> observation FFTs
+        # Make the PSF stamp wider due to errors when matching PSFs
+        psf_shape = np.array(new_target[1].shape) + 10
+        shape = np.array(model_frame.shape[1:]) + psf_shape - 1
+        # Choose the optimal shape for FFTPack DFT
+        self.fftpack_shape = [fftpack.helper.next_fast_len(d) for d in shape]
+        # Store the pre-fftpack optimization slices
+        self.slices = tuple([slice(s) for s in shape])
+
+        # Computes the diff kernel in Fourier
+        target_fft = np.fft.rfftn(np.fft.ifftshift(target_kernels, axes = (1, 2)), self.fftpack_shape, axes=(1, 2))
+        observed_fft = np.fft.rfftn(np.fft.ifftshift(observed_kernels, axes=(1, 2)), self.fftpack_shape, axes=(1, 2))
+
+        sel = (target_fft == 0)
+        diff_fft = observed_fft / target_fft
+        diff_fft[sel] = 0
+        diff_fft = diff_fft / diff_fft.sum(axis = (1, 2))[:, np.newaxis,np.newaxis]
+        #diff_psf = np.fft.ifftshift(np.fft.irfftn(diff_fft, self.fftpack_shape, axes=(1, 2)), axes=(1, 2))
+        #diff_psf = _centered(diff_psf, _shape[1:])
+
+        # Computes the resampling/convolution matrix
+        resconv_op = self.make_operator(_shape, diff_fft)
 
         self._resconv_op = np.array(resconv_op)
->>>>>>> 482aef746e6478b350f5d2ca24be7c9eda706289
 
         return self
 
@@ -564,11 +450,6 @@ class LowResObservation(Observation):
     def render(self, model):
         """Resample and convolve a model in the observation frame
 
-<<<<<<< HEAD
-    def model_to_frame(self, model):
-        """Resample and convolve a model to the observation frame
-=======
->>>>>>> 482aef746e6478b350f5d2ca24be7c9eda706289
         Parameters
         ----------
         model: array
