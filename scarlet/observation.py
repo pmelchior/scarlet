@@ -296,7 +296,8 @@ class LowResObservation(Scene):
         B, Ny, Nx = shape
         Bpsf = psfs.shape[0]
 
-        y_hr, x_hr = np.where(np.zeros((Ny, Nx)) == 0)
+        ker = np.zeros((Ny,Nx))
+        y_hr, x_hr = np.where(ker == 0)
         y_lr, x_lr = self._coord_lr
 
         Nlr = x_lr.size
@@ -307,17 +308,19 @@ class LowResObservation(Scene):
         assert h != 0
 
         # sinc interpolant:
-        ker_mat = interpolation.sinc2D((y_lr[:, np.newaxis] - y_hr[np.newaxis, :]) / h,
-                                   (x_lr[:, np.newaxis] - x_hr[np.newaxis, :]) / h).reshape(Nlr, Ny, Nx)
-        #import matplotlib.pyplot as plt
+        #ker_mat = interpolation.sinc2D((y_lr[:, np.newaxis] - y_hr[np.newaxis, :]) / h,
+        #                           (x_lr[:, np.newaxis] - x_hr[np.newaxis, :]) / h)#.reshape(Nlr, Ny, Nx)
+        #print(ker_mat.shape)
+        import matplotlib.pyplot as plt
+
         print(self.fftpack_shape[0])
         operator = []
         for m in range(Nlr):
-            ker = ker_mat[m]#interpolation.sinc2D((y_lr[m] - y_hr) / h,
-                                       #(x_lr[m] - x_hr) / h).reshape(Ny, Nx)
+            ker[y_hr,x_hr] = interpolation.sinc2D((y_lr[m] - y_hr) / h,
+                                       (x_lr[m] - x_hr) / h)#.reshape(Ny, Nx)
+            print(x_lr, x_hr)
 
-            import matplotlib.pyplot as plt
-            plt.imshow(np.log(ker), cmap = 'gist_sttern')
+            plt.imshow(np.log(ker), cmap = 'gist_stern')
             plt.show()
             ker_fft = np.fft.rfftn(ker, self.fftpack_shape)
             operator_fft = ker_fft[np.newaxis, :, :] * psfs
