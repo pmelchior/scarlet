@@ -20,7 +20,9 @@ class TestComponent(object):
         # Minimal init
         sed = np.arange(5)
         morph = np.arange(20).reshape(4, 5)
-        component = scarlet.Component(sed, morph)
+        shape = (len(sed), morph.shape[0], morph.shape[1])
+        frame = scarlet.Frame(shape)
+        component = scarlet.Component(frame, sed, morph)
 
         assert_array_equal(component.sed, sed)
         assert_array_equal(component.morph, morph)
@@ -37,20 +39,22 @@ class TestComponent(object):
         assert component.fix_sed is False
 
         # Fix sed and morph
-        component = scarlet.Component(sed, morph, fix_sed=True, fix_morph=True)
+        component = scarlet.Component(frame, sed, morph, fix_sed=True, fix_morph=True)
         assert component.fix_sed is True
         assert component.fix_morph is True
 
     def test_properties(self):
         sed = np.arange(5)
         morph = np.arange(20).reshape(4, 5)
-        component = scarlet.Component(sed, morph)
+        shape = (len(sed), morph.shape[0], morph.shape[1])
+        frame = scarlet.Frame(shape)
+        component = scarlet.Component(frame, sed, morph)
         component.L_sed = .2
         component.L_morph = .5
 
-        assert component.B == 5
-        assert component.Ny == 4
-        assert component.Nx == 5
+        assert component.frame.C == 5
+        assert component.frame.Ny == 4
+        assert component.frame.Nx == 5
         assert component.coord is None
         assert component.step_sed == 5
         assert component.step_morph == 2
@@ -59,7 +63,9 @@ class TestComponent(object):
         # get_model
         sed = np.arange(5)
         morph = np.arange(20).reshape(4, 5)
-        component = scarlet.Component(sed, morph)
+        shape = (len(sed), morph.shape[0], morph.shape[1])
+        frame = scarlet.Frame(shape)
+        component = scarlet.Component(frame, sed, morph)
         model = component.get_model()
         truth = sed[:, None, None] * morph[None, :, :]
         assert_array_equal(model, truth)
@@ -86,9 +92,9 @@ class TestComponent(object):
         test = component.update()
         assert test is component
         # Nothing should be changed
-        assert component.B == 5
-        assert component.Ny == 4
-        assert component.Nx == 5
+        assert component.frame.C == 5
+        assert component.frame.Ny == 4
+        assert component.frame.Nx == 5
         assert component.coord is None
         assert component.step_sed == 1
         assert component.step_morph == 1
@@ -102,8 +108,10 @@ class TestComponent(object):
 
         sed = np.arange(1, 6)
         morph = np.arange(20).reshape(4, 5)
+        shape = (len(sed), morph.shape[0], morph.shape[1])
+        frame = scarlet.Frame(shape)
         prior = scarlet.Prior(test_grad, prior_L)
-        component = scarlet.Component(sed, morph, prior)
+        component = scarlet.Component(frame, sed, morph, prior)
         component.backward_prior()
 
         true_sed_grad = 1/sed
@@ -128,16 +136,18 @@ class TestComponent(object):
 
 class TestComponentTree(object):
     def test_init(self):
-        sed1 = np.arange(5, dtype=float)
+        shape = (5, 5, 5)
+        frame = scarlet.Frame(shape)
+        sed1 = np.arange(shape[0], dtype=float)
         sed2 = np.ones_like(sed1)
-        sed3 = np.arange(5, dtype=float)[::-1]
-        morph1 = np.arange(25, dtype=float).reshape(5, 5)
+        sed3 = np.arange(shape[0], dtype=float)[::-1]
+        morph1 = np.arange(shape[1]*shape[2], dtype=float).reshape(shape[1], shape[2])
         morph2 = np.zeros_like(morph1)
         morph2[1:-1, 1:-1] = [[1, 2, 1], [2, 4, 2], [1, 2, 1]]
         morph3 = np.ones_like(morph1)
-        c1 = scarlet.Component(sed1, morph1)
-        c2 = scarlet.Component(sed2, morph2)
-        c3 = scarlet.Component(sed3, morph3)
+        c1 = scarlet.Component(frame, sed1, morph1)
+        c2 = scarlet.Component(frame, sed2, morph2)
+        c3 = scarlet.Component(frame, sed3, morph3)
         tree1 = scarlet.ComponentTree([c1, c2])
         tree2 = scarlet.ComponentTree([tree1, c3])
 
@@ -168,12 +178,12 @@ class TestComponentTree(object):
         # shapes
         assert tree1.K == 2
         assert tree2.K == 3
-        assert tree1.B == 5
-        assert tree2.B == 5
-        assert tree1.Ny == 5
-        assert tree1.Nx == 5
-        assert tree2.Ny == 5
-        assert tree2.Nx == 5
+        assert tree1.frame.C == 5
+        assert tree2.frame.C == 5
+        assert tree1.frame.Ny == 5
+        assert tree1.frame.Nx == 5
+        assert tree2.frame.Ny == 5
+        assert tree2.frame.Nx == 5
 
         # get_model
         model1 = c1.get_model()
@@ -200,11 +210,13 @@ class TestComponentTree(object):
     def test_items(self):
         sed = np.arange(3, dtype=float)
         morph = np.arange(25, dtype=float).reshape(5, 5)
-        c1 = UpdateComponent(sed=sed, morph=morph)
-        c2 = UpdateComponent(sed=sed, morph=morph)
-        c3 = UpdateComponent(sed=sed, morph=morph)
-        c4 = UpdateComponent(sed=sed, morph=morph)
-        c5 = UpdateComponent("morph", sed, morph)
+        shape = (len(sed), morph.shape[0], morph.shape[1])
+        frame = scarlet.Frame(shape)
+        c1 = UpdateComponent(frame=frame, sed=sed, morph=morph)
+        c2 = UpdateComponent(frame=frame, sed=sed, morph=morph)
+        c3 = UpdateComponent(frame=frame, sed=sed, morph=morph)
+        c4 = UpdateComponent(frame=frame, sed=sed, morph=morph)
+        c5 = UpdateComponent("morph", frame, sed, morph)
         tree1 = scarlet.ComponentTree([c1, c2])
         tree2 = scarlet.ComponentTree([c3, c4])
 
