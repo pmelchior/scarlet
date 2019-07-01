@@ -217,16 +217,25 @@ def translation(component, direction=1, kernel=interpolation.lanczos, padding=3)
 
 
 def psf_weighted_centroid(component):
+    """Calculate the fraction position of a component
+
+    Since our models should be relatively noise free it should be possible
+    to estimate the fractional pixel offset of a `Componet.morph` by
+    calculating the center of flux (centroid).
+    This method uses the frame PSF, if available, otherwise a narrow gaussian
+    is chosen such that that the flux is weighted to give more strength to
+    pixels closer to the `pixel_center`.
+    """
     # Extract the arrays from the component
     morph = component.morph
     if component.frame.psfs is None:
-        if not hasattr(component, "_centroid_psf"):
+        if not hasattr(component, "_centroid_weight"):
             shape = (41, 41)
             psf = generate_psf_image(gaussian, shape, amplitude=1, sigma=.9)
             psf /= psf.max()
-            component._centroid_psf = psf
+            component._centroid_weight = psf
         else:
-            psf = component._centroid_psf
+            psf = component._centroid_weight
     else:
         psf = component.frame.psfs[0]
 

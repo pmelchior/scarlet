@@ -1,6 +1,5 @@
 from functools import partial
 
-from scipy import fftpack
 import autograd.numpy as np
 from proxmin.operators import prox_unity_plus
 from proxmin.utils import MatrixAdapter
@@ -314,7 +313,7 @@ def prox_uncentered_symmetry(X, step, center=None, algorithm="kspace", fill=None
     algorithm: `string`
         The algorithm to use for symmetry.
         * If `algorithm = "kspace" then `X` is shifted by `shift` and
-          symmetry is performed in kspace. This is the only ymmetry algorithm
+          symmetry is performed in kspace. This is the only symmetry algorithm
           in scarlet that works for fractional pixel shifts.
         * If `algorithm = "sdss" then the SDSS symmetry is used,
           namely the source is made symmetric around the `center` pixel
