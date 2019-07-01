@@ -265,7 +265,6 @@ def prox_kspace_symmetry(X, step, shift=None, padding=10):
     edges = ((padding, padding), (padding, padding))
     corner = (padding, padding)
     zeroMask = X <= 0
-    X[zeroMask] = 0
     X = np.pad(X, edges, 'constant')
 
     freq_x = np.fft.fftfreq(X.shape[1])
