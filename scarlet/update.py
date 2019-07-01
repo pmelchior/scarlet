@@ -7,6 +7,7 @@ from . import interpolation
 from . import operator
 from .bbox import trim
 from .cache import Cache
+from .psf import generate_psf_image, gaussian
 
 
 def _fit_pixel_center(morph, center, window=None):
@@ -197,6 +198,7 @@ def monotonic(component, pixel_center, use_nearest=False, thresh=0, exact=False,
     step_size = component.step_morph
     prox(morph, step_size)
     if bbox is not None:
+        component.morph[:] = np.zeros(component.morph.shape, dtype=component.morph.dtype)
         component.morph[bbox.slices] = morph
     else:
         component.morph[:] = morph
@@ -214,13 +216,106 @@ def translation(component, direction=1, kernel=interpolation.lanczos, padding=3)
     return component
 
 
-def symmetric(component, strength=1, use_prox=True, kernel=interpolation.lanczos, padding=3):
+def psf_weighted_centroid(component):
+    # Extract the arrays from the component
+    morph = component.morph
+    if component.frame.psfs is None:
+        if not hasattr(component, "_centroid_psf"):
+            shape = (41, 41)
+            psf = generate_psf_image(gaussian, shape, amplitude=1, sigma=.9)
+            psf /= psf.max()
+            component._centroid_psf = psf
+        else:
+            psf = component._centroid_psf
+    else:
+        psf = component.frame.psfs[0]
+
+    cy, cx = component.pixel_center
+
+    # Determine the width of the psf
+    psf_shape_y, psf_shape_x = psf.shape
+    # These are all the same value because psf are square and odd, but using
+    # multiple variable names to clarify things
+    x_rad = y_rad = psf_peak_y = psf_peak_x = psf_shape_x//2
+
+    # Determine the overlapping coordinates of the morphology image and the psf
+    # this is needed if the psf image, centered at the peak pixel location goes
+    # off the edge of the psf array
+    y_morph_ext = np.arange(morph.shape[0])
+    x_morph_ext = np.arange(morph.shape[1])
+
+    # calculate the offset in the morph frame such that the center pixel aligns
+    # with the psf coordindate frame, where the psf peak is in the center
+    y_morph_ext = y_morph_ext - cy
+    x_morph_ext = x_morph_ext - cx
+
+    # Compare the two end points, and take whichever is the smaller radius
+    # use that to select the entries that are equal to or below that radius
+    # Find the minimum between the end points (if the psf goes off the edge,
+    # and the radius of the psf
+    rad_endpoints_y = np.min((abs(y_morph_ext[0]), abs(y_morph_ext[-1]), y_rad))
+    rad_endpoints_x = np.min((abs(x_morph_ext[0]), abs(x_morph_ext[-1]), x_rad))
+    trimmed_y_range = y_morph_ext[abs(y_morph_ext) <= rad_endpoints_y]
+    trimmed_x_range = x_morph_ext[abs(x_morph_ext) <= rad_endpoints_x]
+
+    psf_y_range = trimmed_y_range + psf_peak_y
+    psf_x_range = trimmed_x_range + psf_peak_x
+
+    morph_y_range = trimmed_y_range + cy
+    morph_x_range = trimmed_x_range + cx
+
+    # Use these arrays to get views of the morphology and psf
+    morph_view = morph[morph_y_range][:, morph_x_range]
+    psf_view = psf[psf_y_range][:, psf_x_range]
+
+    morph_view_weighted = morph_view*psf_view
+    morph_view_weighted_sum = np.sum(morph_view_weighted)
+    # build the indices to use the the centroid calculation
+    indy, indx = np.indices(psf_view.shape)
+    first_moment_y = np.sum(indy*morph_view_weighted) / morph_view_weighted_sum
+    first_moment_x = np.sum(indx*morph_view_weighted) / morph_view_weighted_sum
+    # build the offset to go from psf_view frame to psf frame to morph frame
+    # aka move the peak back by the radius of the psf width adusted for the
+    # minimum point in the view
+    offset = (morph_y_range[0], morph_x_range[0])
+
+    whole_pixel_center = np.round((first_moment_y, first_moment_x))
+    dy, dx = whole_pixel_center - (first_moment_y, first_moment_x)
+    morph_pixel_center = tuple((whole_pixel_center + offset).astype(int))
+    component.pixel_center = morph_pixel_center
+    component.shift = (dy, dx)
+    return component
+
+
+def symmetric(component, algorithm="kspace", bbox=None, fill=None, strength=.5):
     """Make the source symmetric about its center
 
     See `~scarlet.operator.prox_uncentered_symmetry`
     for a description of the parameters.
     """
+    pixel_center = component.pixel_center
+    if bbox is not None:
+        # Only apply monotonicity to the pixels inside the bounding box
+        morph = component.morph[bbox.slices]
+        shape = morph.shape
+        if shape[0] <= 1 or shape[1] <= 1:
+            return component
+        center = pixel_center[0]-bbox.bottom, pixel_center[1]-bbox.left
+    else:
+        morph = component.morph
+        shape = component.shape[-2:]
+        center = pixel_center
+    morph = morph.copy()
+
     step_size = component.step_morph
-    center = component.pixel_center
-    operator.prox_uncentered_symmetry(component.morph, step_size, center, strength, use_prox)
+    try:
+        shift = component.shift
+    except AttributeError:
+        shift = None
+    operator.prox_uncentered_symmetry(morph, step_size, center, algorithm, fill, shift, strength)
+    if bbox is not None:
+        component.morph[:] = np.zeros(component.morph.shape, dtype=component.morph.dtype)
+        component.morph[bbox.slices] = morph
+    else:
+        component.morph[:] = morph
     return component

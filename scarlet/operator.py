@@ -1,5 +1,6 @@
 from functools import partial
 
+from scipy import fftpack
 import autograd.numpy as np
 from proxmin.operators import prox_unity_plus
 from proxmin.utils import MatrixAdapter
@@ -238,7 +239,7 @@ def prox_sdss_symmetry(X, step):
 
 def prox_soft_symmetry(X, step, strength=1):
     """Soft version of symmetry
-    Using a `sigma` that varies from 0 to 1,
+    Using a `strength` that varies from 0 to 1,
     with 0 meaning no symmetry enforced at all and
     1  being completely symmetric, the user can customize
     the level of symmetry required for a component
@@ -248,7 +249,56 @@ def prox_soft_symmetry(X, step, strength=1):
     return X
 
 
-def prox_uncentered_symmetry(X, step, center=None, strength=.5, use_soft=True, fill=None):
+def prox_kspace_symmetry(X, step, shift=None, padding=10):
+    """Symmetry in Fourier Space
+
+    This algorithm by Nate Lust uses the fact that throwing
+    away the imaginary part in Fourier space leaves a symmetric
+    soution in real space. So `X` is transformed to Fourier space,
+    shifted by the fractional amount `shift=(dy, dx)`,
+    the imaginary part is discarded, shited back to its original position,
+    then transformed back to real space.
+    """
+    # Record the morph shape
+    shape = X.shape
+    dy, dx = shift
+    padding = np.max(X.shape) + padding // 2
+    edges = ((padding, padding), (padding, padding))
+    corner = (padding, padding)
+    zeroMask = X <= 0
+    X[zeroMask] = 0
+    X = np.pad(X, edges, 'constant')
+
+    freq_x = np.fft.fftfreq(X.shape[1])
+    freq_y = np.fft.fftfreq(X.shape[0])
+
+    # Transform to k space
+    X_fft = np.fft.fftn(np.fft.ifftshift(X))
+
+    # Shift the signal to recenter it, negative because math is opposite from
+    # pixel direction
+    shifter = np.outer(np.exp(-1j*2*np.pi*freq_y*-(dy)),
+                       np.exp(-1j*2*np.pi*freq_x*-(dx)))
+    inv_shifter = np.outer(np.exp(-1j*2*np.pi*freq_y*(dy)),
+                           np.exp(-1j*2*np.pi*freq_x*(dx)))
+    result_fft = X_fft*shifter
+
+    # symmeterize
+    result_fft = result_fft.real
+
+    # Shift back
+    result_fft = result_fft*inv_shifter
+
+    # Transform to real space
+    result = np.fft.fftshift(np.fft.ifftn(result_fft))
+    # Return the unpadded transform
+    result = np.real(result[corner[0]:corner[0]+shape[0], corner[1]:corner[1]+shape[1]])
+    result[zeroMask] = 0
+    assert result.shape == shape
+    return result
+
+
+def prox_uncentered_symmetry(X, step, center=None, algorithm="kspace", fill=None, shift=None, strength=.5):
     """Symmetry with off-center peak
 
     Symmetrize X for all pixels with a symmetric partner.
@@ -259,24 +309,55 @@ def prox_uncentered_symmetry(X, step, center=None, strength=.5, use_soft=True, f
         The parameter to update.
     step: `int`
         Step size of the gradient step.
-    center: tuple
+    center: tuple of `int`
         The center pixel coordinates to apply the symmetry operator.
+    algorithm: `string`
+        The algorithm to use for symmetry.
+        * If `algorithm = "kspace" then `X` is shifted by `shift` and
+          symmetry is performed in kspace. This is the only ymmetry algorithm
+          in scarlet that works for fractional pixel shifts.
+        * If `algorithm = "sdss" then the SDSS symmetry is used,
+          namely the source is made symmetric around the `center` pixel
+          by taking the minimum of each pixel and its symmetric partner.
+          This is the algorithm used when initializing an `ExtendedSource`
+          because it keeps the morphologies small, but during optimization
+          the penalty is much stronger than the gradient
+          and often leads to vanishing sources.
+        * If `algorithm = "soft" then soft symmetry is used,
+          meaning `X` will be allowed to differ from symmetry by the fraction
+          `strength` from a perfectly symmetric solution. It is advised against
+          using this algorithm because it does not work in general for sources
+          shifted by a fractional amount, however it is used internally if
+          a source is centered perfectly on a pixel.
+    fill: `float`
+        The value to fill the region that cannot be made symmetric.
+        When `fill` is `None` then the region of `X` that is not symmetric
+        is not constrained.
     strength: `float`
         The amount that symmetry is enforced. If `strength=0` then no
         symmetry is enforced, while `strength=1` enforces strict symmetry
         (ie. the mean of the two symmetric pixels is used for both of them).
-    use_soft: `bool`
-        Whether to use the strict SDSS symmetry `use_soft=False` or
-        the soft proximal operator (`use_soft=True`).
+        This parameter is only used when `algorithm = "soft"`.
 
     Returns
     -------
     result: `function`
         The update function based on the specified parameters.
     """
-    if use_soft:
+    if algorithm == "kspace" and (shift is None or np.all(shift == 0)):
+        algorithm = "soft"
+        strength = 1
+    if algorithm == "kspace":
+        return uncentered_operator(X, prox_kspace_symmetry, center, shift=shift, step=step, fill=fill)
+    if algorithm == "sdss":
+        return uncentered_operator(X, prox_sdss_symmetry, center, step=step, fill=fill)
+    if algorithm == "soft" or algorithm == "kspace" and shift is None:
+        # If there is no shift then the symmetry is exact and we can just use
+        # the soft symmetry algorithm
         return uncentered_operator(X, prox_soft_symmetry, center, step=step, strength=strength, fill=fill)
-    return uncentered_operator(X, prox_sdss_symmetry, center, step=step, fill=fill)
+
+    msg = "algorithm must be one of 'soft', 'sdss', 'kspace', recieved '{0}''"
+    raise ValueError(msg.format(algorithm))
 
 
 def proj(A, B):
