@@ -120,7 +120,7 @@ def init_extended_source(sky_coord, frame, observation, bg_rms,
 
     # Apply the necessary constraints
     if symmetric:
-        morph = operator.prox_uncentered_symmetry(morph, 0, center=center, use_soft=False)
+        morph = operator.prox_uncentered_symmetry(morph, 0, center=center, algorithm="sdss")
     if monotonic:
         # use finite thresh to remove flat bridges
         prox_monotonic = operator.prox_strict_monotonic(morph.shape, use_nearest=False,
@@ -166,7 +166,7 @@ def init_combined_extended_source(sky_coord, frame, observations, bg_rms, obs_id
 
     # Apply the necessary constraints
     if symmetric:
-        morph = operator.prox_uncentered_symmetry(morph, 0, center=center, use_soft=False)
+        morph = operator.prox_uncentered_symmetry(morph, 0, center=center, algorithm="sdss")
 
     if monotonic:
         # use finite thresh to remove flat bridges
@@ -265,7 +265,7 @@ class PointSource(Component):
     While the source can have any `constraints`, the default constraints are
     symmetry and monotonicity.
     """
-    def __init__(self, frame, sky_coord, observation, symmetric=False, monotonic=True,
+    def __init__(self, frame, sky_coord, observation, symmetric=True, monotonic=True,
                  center_step=5, delay_thresh=10, **component_kwargs):
         """Source intialized with a single pixel
 
@@ -333,23 +333,26 @@ class PointSource(Component):
             it = self._parent.it
         # Update the central pixel location (pixel_center)
         update.fit_pixel_center(self)
-        if it > self.delay_thresh:
-            update.threshold(self)
+        # Thresholding needs to be fixed (DM-10190)
+        # if it > self.delay_thresh:
+        #     update.threshold(self)
+
+        # If there is a threshold bounding box, use it
+        if hasattr(self, "bboxes") and "thresh" in self.bboxes:
+            bbox = self.bboxes["thresh"]
+        else:
+            bbox = None
 
         if self.symmetric:
-            # Translate to the centered frame
-            update.translation(self, 1)
+            # Update the centroid position
+            if it % 5 == 0:
+                update.psf_weighted_centroid(self)
             # make the morphology perfectly symmetric
-            update.symmetric(self, strength=1)
-            # Translate back to the model frame
-            update.translation(self, -1)
+            update.symmetric(self, algorithm="kspace", bbox=bbox)
 
         if self.monotonic:
             # make the morphology monotonically decreasing
-            if hasattr(self, "bboxes") and "thresh" in self.bboxes:
-                update.monotonic(self, self.pixel_center, bbox=self.bboxes["thresh"])
-            else:
-                update.monotonic(self, self.pixel_center)
+            update.monotonic(self, self.pixel_center, bbox=bbox)
 
         update.positive(self)  # Make the SED and morph non-negative
         update.normalized(self)  # Use MORPH_MAX normalization
@@ -358,7 +361,7 @@ class PointSource(Component):
 
 class ExtendedSource(PointSource):
     def __init__(self, frame, sky_coord, observation, bg_rms, thresh=1,
-                 symmetric=False, monotonic=True, center_step=5, delay_thresh=10, **component_kwargs):
+                 symmetric=True, monotonic=True, center_step=5, delay_thresh=10, **component_kwargs):
         """Extended source intialized to match a set of observations
 
         Parameters

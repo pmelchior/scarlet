@@ -187,6 +187,11 @@ class Observation():
             shape = np.array(model_frame.shape[1:]) + psf_shape - 1
             # Choose the optimal shape for FFTPack DFT
             self._fftpack_shape = [fftpack.helper.next_fast_len(d) for d in shape]
+            # autograd.numpy.fft does not currently work
+            # if the last dimension is odd
+            while self._fftpack_shape[-1] % 2 != 0:
+                _shape = self._fftpack_shape[-1] + 1
+                self._fftpack_shape[-1] = fftpack.helper.next_fast_len(_shape)
             # Store the pre-fftpack optimization slices
             self._slices = tuple([slice(s) for s in shape])
 
