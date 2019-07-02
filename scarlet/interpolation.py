@@ -1,4 +1,4 @@
-import autograd.numpy as np
+import numpy as np
 
 
 def get_projection_slices(image, shape, yx0=None):
