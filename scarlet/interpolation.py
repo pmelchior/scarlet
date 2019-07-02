@@ -316,9 +316,13 @@ def sinc_interp(coord_hr, coord_lr, sample_lr):
     hy = np.abs(y_lr[1] - y_lr[0])
     hx = np.abs(x_lr[np.int(np.sqrt(np.size(x_lr))) + 1] - x_lr[0])
 
-    assert hy != 0
-    return np.array([sample_lr * sinc2D((y_hr[:, np.newaxis] - y_lr) / (hy), (x_hr[:, np.newaxis] - x_lr) / (hx))]).sum(axis=2)
 
+
+    assert hy != 0
+    if np.size(sample_lr.shape) == 1:
+        return np.array([sample_lr * sinc2D((y_hr[:, np.newaxis] - y_lr) / (hy), (x_hr[:, np.newaxis] - x_lr) / (hx))]).sum(axis=2)
+    elif np.size(sample_lr.shape) == 2:
+        return np.array([(sample[np.newaxis,:] * sinc2D((y_hr[:, np.newaxis] - y_lr) / (hy), (x_hr[:, np.newaxis] - x_lr) / (hx))).sum(axis=2) for sample in sample_lr])
 
 def fft_resample(img, dy, dx, kernel=lanczos, **kwargs):
     """Translate the image by a fraction of a pixel

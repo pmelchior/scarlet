@@ -319,45 +319,78 @@ class LowResObservation(Observation):
             h = x_hr[1] - x_hr[0]
         assert h != 0
 
-        # sinc interpolant:
-        # ker_mat = interpolation.sinc2D((y_lr[:, np.newaxis] - y_hr[np.newaxis, :]) / h,
-        #                           (x_lr[:, np.newaxis] - x_hr[np.newaxis, :]) / h)#.reshape(Nlr, Ny, Nx)
-        # print(ker_mat.shape)
-        import matplotlib.pyplot as plt
-
-        print(self.fftpack_shape[0])
         operator = []
         for m in range(Nlr):
             ker[y_hr, x_hr] = interpolation.sinc2D((y_lr[m] - y_hr) / h,
-                                                   (x_lr[m] - x_hr) / h)  # .reshape(Ny, Nx)
-            print(x_lr, x_hr)
-
-            plt.imshow(np.log(ker), cmap='gist_stern')
-            plt.show()
+                                                   (x_lr[m] - x_hr) / h)
             ker_fft = np.fft.rfftn(ker, self.fftpack_shape)
             operator_fft = ker_fft[np.newaxis, :, :] * psfs
             op_ifft = np.fft.ifftshift(np.fft.irfftn(operator_fft, axes=(1, 2)), axes=(1, 2))
             operator.append(_centered(op_ifft, (Bpsf, Ny, Nx)))
-        print(np.shape(operator_fft))
-        # operator_fft = np.reshape(operator_fft, (Bpsf*Nlr,self.fftpack_shape[0],self.fftpack_shape[1]))
 
-        operator = _centered(operator, (Bpsf * Nlr, Ny, Nx))
-
-        #        import scipy.signal as scp
-        #        operator = scp.fftconvolve(psfs[None,:,:,:], ker[:,None,:,:], mode = 'same', axes = (2,3))
-        #    print(np.shape(operator))
-        #    plt.imshow(np.array(operator)[0, 1, :, :], cmap = 'gist_stern'); plt.show()
-        print(np.shape(operator))
-
-        # FFTs of the psf and sinc
-        # ker_fft = np.fft.rfftn(ker, self.fftpack_shape, axes=(1, 2))
-        #
-        # operator = np.fft.irfftn(operator_fft, axes=(2,3)) * Nlr / (Nx * Ny) / np.pi
-
-        # A little trimming
-        # operator = _centered(operator, (Bpsf, Ny, Nx)).reshape(Bpsf, Nlr, Nx * Ny)
+        operator = _centered(np.array(operator).reshape(Bpsf * Nlr, Ny, Nx), (Bpsf * Nlr, Ny, Nx))
 
         return np.array(operator).reshape(Bpsf, Nx * Ny, Nlr) * Nlr / (Nx * Ny * np.pi)
+
+    def match_psfs(self, psf_hr, wcs_hr, wcs_lr):
+        '''psf matching between different dataset
+
+        Matches PSFS at different resolutions by interpolating psf_lr on the same grid as psf_hr
+
+        Parameters
+        ----------
+        psf_hr: array
+            centered psf of the high resolution scene
+        psf_lr: array
+            centered psf of the low resolution scene
+        wcs_hr: WCS object
+            wcs of the high resolution scene
+        wcs_lr: WCS object
+            wcs of the low resolution scene
+        Returns
+        -------
+        psf_match_hr: array
+            high rresolution psf at mactching size
+        psf_match_lr: array
+            low resolution psf at matching size and resolution
+        '''
+
+        psf_lr = self.psfs
+
+        ny_hr, nx_hr = psf_hr.shape
+        npsf, ny_lr, nx_lr = psf_lr.shape
+
+        # Createsa wcs for psfs centered around the frame center
+        psf_wcs_hr = wcs_hr.deepcopy()
+        psf_wcs_lr = wcs_lr.deepcopy()
+
+        if psf_wcs_hr.naxis == 2:
+            psf_wcs_hr.wcs.crval = 0., 0.
+            psf_wcs_hr.wcs.crpix = ny_hr / 2., nx_hr / 2.
+        elif psf_wcs_hr.naxis == 3:
+            psf_wcs_hr.wcs.crval = 0., 0., 0.
+            psf_wcs_hr.wcs.crpix = ny_hr / 2., nx_hr / 2., 0.
+        if psf_wcs_lr.naxis == 2:
+            psf_wcs_lr.wcs.crval = 0., 0.
+            psf_wcs_lr.wcs.crpix = ny_lr / 2., nx_lr / 2.
+        elif psf_wcs_lr.naxis == 3:
+            psf_wcs_lr.wcs.crval = 0., 0., 0.
+            psf_wcs_lr.wcs.crpix = ny_lr / 2., nx_lr / 2., 0
+
+        mask, p_lr, p_hr = resampling.match_patches(psf_hr.shape, psf_lr.data.shape[1:], psf_wcs_hr, psf_wcs_lr)
+
+        cmask = np.where(mask == 1)
+
+        n_p = np.int((np.size(cmask[0])) ** 0.5)
+
+        psf_match_lr = interpolation.sinc_interp(cmask, p_hr[::-1], psf_lr.reshape(npsf, ny_lr*nx_lr)).reshape(npsf, n_p, n_p)
+
+        psf_match_hr = psf_hr[:, np.int((ny_hr - n_p) / 2):np.int((ny_hr + n_p) / 2),
+                       np.int((nx_hr - n_p) / 2):np.int((nx_hr + n_p) / 2)]
+
+        psf_match_hr /= np.max(psf_match_hr)
+        psf_match_lr /= np.max(psf_match_lr)
+        return psf_match_hr, psf_match_lr
 
     def match(self, model_frame):
         '''Matches the observation with a scene
@@ -401,12 +434,14 @@ class LowResObservation(Observation):
         resconv_op = []
         target_kernels = []
         observed_kernels = []
-        for _psf in self.psfs:
-            # Computes spatially matching observation and target psfs. The observation psf is also resampled to the scene's resolution
-            new_target, observed_psf = resampling.match_psfs(_target, _psf, whr, wlr)
-            target_kernels.append(new_target)
-            observed_kernels.append(observed_psf)
+        # Computes spatially matching observation and target psfs. The observation psf is also resampled to the scene's resolution
+        new_target, observed_psf = self.match_psfs(_target, whr, wlr)
+        #for _psf in self.psfs:
 
+        #    target_kernels.append(new_target)
+        #    observed_kernels.append(observed_psf)
+
+        print(target_kernels.shape, observed_kernels.shape, 'ziz')
         # First we setup the parameters for the model -> observation FFTs
         # Make the PSF stamp wider due to errors when matching PSFs
         psf_shape = np.array(new_target[1].shape) + 10
@@ -424,8 +459,6 @@ class LowResObservation(Observation):
         diff_fft = observed_fft / target_fft
         diff_fft[sel] = 0
         diff_fft = diff_fft / diff_fft.sum(axis=(1, 2))[:, np.newaxis, np.newaxis]
-        # diff_psf = np.fft.ifftshift(np.fft.irfftn(diff_fft, self.fftpack_shape, axes=(1, 2)), axes=(1, 2))
-        # diff_psf = _centered(diff_psf, _shape[1:])
 
         # Computes the resampling/convolution matrix
         resconv_op = self.make_operator(_shape, diff_fft)

@@ -44,6 +44,7 @@ def match_patches(shape_hr, shape_lr, wcs_hr, wcs_lr):
 
     im_hr = np.zeros((Ny_hr, Nx_hr))
     im_lr = np.zeros((Ny_lr, Nx_lr))
+    print(im_hr.shape, im_lr.shape)
 
     # Coordinates of pixels in both frames
     y_hr, x_hr = np.where(im_hr == 0)
@@ -76,6 +77,11 @@ def match_patches(shape_hr, shape_lr, wcs_hr, wcs_lr):
     # Mask of low resolution pixels in the overlap at high resolution:
     over_hr = ((x_lr > 0) * (x_lr < Nx_lr) * (y_lr > 0) * (y_lr < Ny_lr))
 
+    import matplotlib.pyplot as plt
+    plt.plot(over_lr[0], over_lr[1], 'o')
+    plt.plot(over_hr[0], over_hr[1], 'o')
+    plt.show()
+
     mask = over_hr.reshape(Ny_hr, Nx_hr)
 
     class SourceInitError(Exception):
@@ -98,58 +104,3 @@ def match_patches(shape_hr, shape_lr, wcs_hr, wcs_lr):
 
     return mask, coordlr_over_lr, coordlr_over_hr
 
-
-def match_psfs(psf_hr, psf_lr, wcs_hr, wcs_lr):
-    '''psf matching between different dataset
-
-    Matches PSFS at different resolutions by interpolating psf_lr on the same grid as psf_hr
-
-    Parameters
-    ----------
-    psf_hr: array
-        centered psf of the high resolution scene
-    psf_lr: array
-        centered psf of the low resolution scene
-    wcs_hr: WCS object
-        wcs of the high resolution scene
-    wcs_lr: WCS object
-        wcs of the low resolution scene
-    Returns
-    -------
-    psf_match_hr: array
-        high rresolution psf at mactching size
-    psf_match_lr: array
-        low resolution psf at matching size and resolution
-    '''
-
-    ny_hr, nx_hr = psf_hr.shape
-    ny_lr, nx_lr = psf_lr.shape
-
-    psf_wcs_hr = wcs_hr.deepcopy()
-    psf_wcs_lr = wcs_lr.deepcopy()
-    if np.size(wcs_hr.array_shape) == 2:
-        psf_wcs_hr.wcs.crval = 0., 0.
-        psf_wcs_hr.wcs.crpix = ny_hr / 2., nx_hr / 2.
-    elif np.size(psf_wcs_hr.array_shape) == 3:
-        psf_wcs_hr.wcs.crval = 0., 0., 0.
-        psf_wcs_hr.wcs.crpix = ny_hr / 2., nx_hr / 2., 0.
-    if np.size(psf_wcs_lr.array_shape) == 2:
-        psf_wcs_lr.wcs.crval = 0., 0.
-        psf_wcs_lr.wcs.crpix = ny_lr / 2., nx_lr / 2.
-    elif np.size(psf_wcs_lr.array_shape) == 3:
-        psf_wcs_lr.wcs.crval = 0., 0., 0.
-        psf_wcs_lr.wcs.crpix = ny_lr / 2., nx_lr / 2., 0
-
-    mask, p_lr, p_hr = match_patches(psf_hr.shape, psf_lr.data.shape, psf_wcs_hr, psf_wcs_lr)
-
-    cmask = np.where(mask == 1)
-
-    n_p = np.int((np.size(cmask[0])) ** 0.5)
-    psf_match_lr = interpolation.sinc_interp(cmask, p_hr[::-1], (psf_lr).flatten()).reshape(n_p, n_p)
-
-    psf_match_hr = psf_hr[np.int((ny_hr - n_p) / 2):np.int((ny_hr + n_p) / 2),
-                   np.int((nx_hr - n_p) / 2):np.int((nx_hr + n_p) / 2)]
-
-    psf_match_hr /= np.max(psf_match_hr)
-    psf_match_lr /= np.max(psf_match_lr)
-    return psf_match_hr, psf_match_lr
