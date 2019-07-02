@@ -44,12 +44,12 @@ def match_patches(shape_hr, shape_lr, wcs_hr, wcs_lr):
 
     im_hr = np.zeros((Ny_hr, Nx_hr))
     im_lr = np.zeros((Ny_lr, Nx_lr))
-    print(im_hr.shape, im_lr.shape)
 
     # Coordinates of pixels in both frames
     y_hr, x_hr = np.where(im_hr == 0)
     Y_lr, X_lr = np.where(im_lr == 0)
 
+    #Corresponding angular positions
     if np.size(wcs_lr.array_shape) == 2:
         ra_lr, dec_lr = wcs_lr.all_pix2world(X_lr, Y_lr, 0, ra_dec_order=True)
     elif np.size(wcs_lr.array_shape) == 3:
@@ -77,11 +77,6 @@ def match_patches(shape_hr, shape_lr, wcs_hr, wcs_lr):
     # Mask of low resolution pixels in the overlap at high resolution:
     over_hr = ((x_lr > 0) * (x_lr < Nx_lr) * (y_lr > 0) * (y_lr < Ny_lr))
 
-    import matplotlib.pyplot as plt
-    plt.plot(over_lr[0], over_lr[1], 'o')
-    plt.plot(over_hr[0], over_hr[1], 'o')
-    plt.show()
-
     mask = over_hr.reshape(Ny_hr, Nx_hr)
 
     class SourceInitError(Exception):
@@ -93,14 +88,15 @@ def match_patches(shape_hr, shape_lr, wcs_hr, wcs_lr):
     if np.sum(mask) == 0:
         raise SourceInitError
 
-    # Coordinates of low resolution pixels in the overlap at low resolution:
-    ylr_over_lr = X_lr[(over_lr == 1)]
-    xlr_over_lr = Y_lr[(over_lr == 1)]
-    coordlr_over_lr = (xlr_over_lr, ylr_over_lr)
     # Coordinates of low resolution pixels in the overlap at high resolution:
-    ylr_over_hr = X_hr[(over_lr == 1)]
-    xlr_over_hr = Y_hr[(over_lr == 1)]
-    coordlr_over_hr = (xlr_over_hr, ylr_over_hr)
+    ylr_lr = X_lr[(over_lr == 1)]
+    xlr_lr = Y_lr[(over_lr == 1)]
+    coordlr_lr = (xlr_lr, ylr_lr)
+    # Coordinates of low resolution pixels in the overlap at low resolution:
+    ylr_hr = X_hr[(over_lr == 1)]
+    xlr_hr = Y_hr[(over_lr == 1)]
+    coordlr_hr = (xlr_hr, ylr_hr)
 
-    return mask, coordlr_over_lr, coordlr_over_hr
+
+    return mask, coordlr_lr, coordlr_hr
 

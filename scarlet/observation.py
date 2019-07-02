@@ -286,7 +286,7 @@ class LowResObservation(Observation):
         else:
             self.weights = 1
 
-    def make_operator(self, shape, psfs):
+    def make_operator(self, shape, psfs_fft):
         '''Builds the resampling and convolution operator
 
         Builds the matrix that expresses the linear operation of resampling a function evaluated on a grid with coordinates
@@ -306,11 +306,16 @@ class LowResObservation(Observation):
             the convolution-resampling matrix
         '''
         B, Ny, Nx = shape
-        Bpsf = psfs.shape[0]
+        Bpsf = psfs_fft.shape[0]
 
         ker = np.zeros((Ny, Nx))
         y_hr, x_hr = np.where(ker == 0)
-        y_lr, x_lr = self._coord_lr
+        y_lr, x_lr = self._coord_hr
+
+        import matplotlib.pyplot as plt
+        plt.plot(x_hr, y_hr, 'o')
+        plt.plot(x_lr, y_lr, 'o')
+        plt.show()
 
         Nlr = x_lr.size
 
@@ -323,14 +328,21 @@ class LowResObservation(Observation):
         for m in range(Nlr):
             ker[y_hr, x_hr] = interpolation.sinc2D((y_lr[m] - y_hr) / h,
                                                    (x_lr[m] - x_hr) / h)
+
             ker_fft = np.fft.rfftn(ker, self.fftpack_shape)
-            operator_fft = ker_fft[np.newaxis, :, :] * psfs
-            op_ifft = np.fft.ifftshift(np.fft.irfftn(operator_fft, axes=(1, 2)), axes=(1, 2))
-            operator.append(_centered(op_ifft, (Bpsf, Ny, Nx)))
+            operator_fft = ker_fft[np.newaxis, :, :] * psfs_fft
+            op_ifft = np.fft.ifftshift(np.fft.irfftn(operator_fft,  axes=(1, 2)), axes=(1, 2))
+            op_ifft = _centered(op_ifft, (Bpsf,Ny, Nx))
 
-        operator = _centered(np.array(operator).reshape(Bpsf * Nlr, Ny, Nx), (Bpsf * Nlr, Ny, Nx))
+          #  import matplotlib.pyplot as plt
+          #  plt.imshow(op_ifft[0], cmap = 'gist_stern')
+          #  plt.show()
 
-        return np.array(operator).reshape(Bpsf, Nx * Ny, Nlr) * Nlr / (Nx * Ny * np.pi)
+            operator.append(op_ifft)
+
+
+
+        return np.array(operator).reshape(Nlr, Nx * Ny, Bpsf).T * np.float(Nx * Ny)/ (Nlr * np.pi)
 
     def match_psfs(self, psf_hr, wcs_hr, wcs_lr):
         '''psf matching between different dataset
@@ -385,12 +397,12 @@ class LowResObservation(Observation):
 
         psf_match_lr = interpolation.sinc_interp(cmask, p_hr[::-1], psf_lr.reshape(npsf, ny_lr*nx_lr)).reshape(npsf, n_p, n_p)
 
-        psf_match_hr = psf_hr[:, np.int((ny_hr - n_p) / 2):np.int((ny_hr + n_p) / 2),
+        psf_match_hr = psf_hr[np.int((ny_hr - n_p) / 2):np.int((ny_hr + n_p) / 2),
                        np.int((nx_hr - n_p) / 2):np.int((nx_hr + n_p) / 2)]
 
         psf_match_hr /= np.max(psf_match_hr)
         psf_match_lr /= np.max(psf_match_lr)
-        return psf_match_hr, psf_match_lr
+        return psf_match_hr[np.newaxis,:], psf_match_lr
 
     def match(self, model_frame):
         '''Matches the observation with a scene
@@ -431,35 +443,41 @@ class LowResObservation(Observation):
         _target = model_frame.psfs[0, :, :]
         _shape = model_frame.shape
 
-        resconv_op = []
-        target_kernels = []
-        observed_kernels = []
+
         # Computes spatially matching observation and target psfs. The observation psf is also resampled to the scene's resolution
-        new_target, observed_psf = self.match_psfs(_target, whr, wlr)
-        #for _psf in self.psfs:
+        target_kernels, observed_kernels = self.match_psfs(_target, whr, wlr)
 
-        #    target_kernels.append(new_target)
-        #    observed_kernels.append(observed_psf)
-
-        print(target_kernels.shape, observed_kernels.shape, 'ziz')
         # First we setup the parameters for the model -> observation FFTs
         # Make the PSF stamp wider due to errors when matching PSFs
-        psf_shape = np.array(new_target[1].shape) + 10
-        shape = np.array(model_frame.shape[1:]) + psf_shape - 1
+        psf_shape = np.array(target_kernels[1:].shape) + 10
+        shape = np.array(model_frame.shape[1:]) + psf_shape[1:] - 1
         # Choose the optimal shape for FFTPack DFT
         self.fftpack_shape = [fftpack.helper.next_fast_len(d) for d in shape]
         # Store the pre-fftpack optimization slices
         self.slices = tuple([slice(s) for s in shape])
 
+        # Now we setup the parameters for the psf -> kernel FFTs
+        shape = np.array(model_frame.psfs.shape) - 1
+        shape[1:] += np.array(self.frame.psfs[0].shape)
+
+        _fftpack_shape = [fftpack.helper.next_fast_len(d) for d in shape[1:]]
+
         # Computes the diff kernel in Fourier
-        target_fft = np.fft.rfftn(np.fft.ifftshift(target_kernels, axes=(1, 2)), self.fftpack_shape, axes=(1, 2))
-        observed_fft = np.fft.rfftn(np.fft.ifftshift(observed_kernels, axes=(1, 2)), self.fftpack_shape, axes=(1, 2))
+        target_fft = np.fft.rfftn(target_kernels, self.fftpack_shape, axes=(1, 2))
+        observed_fft = np.fft.rfftn(observed_kernels, self.fftpack_shape, axes=(1, 2))
 
-        sel = (target_fft == 0)
+        sel = (target_fft[0] == 0)
         diff_fft = observed_fft / target_fft
-        diff_fft[sel] = 0
-        diff_fft = diff_fft / diff_fft.sum(axis=(1, 2))[:, np.newaxis, np.newaxis]
+        diff_fft[:,sel] = 0
+        #diff_fft = diff_fft / diff_fft.sum(axis=(1, 2))[:, np.newaxis, np.newaxis]
 
+        diff_psf = np.fft.ifftshift(np.fft.irfftn(diff_fft, self.fftpack_shape, axes = (1,2)),axes = (1,2))
+        diff_fft /= diff_psf.sum(axis=(1, 2))[:, np.newaxis, np.newaxis]
+
+
+        import matplotlib.pyplot as plt
+        plt.imshow(diff_psf[0], cmap = 'gist_stern')
+        plt.show()
         # Computes the resampling/convolution matrix
         resconv_op = self.make_operator(_shape, diff_fft)
 
