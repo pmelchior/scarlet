@@ -314,7 +314,6 @@ def symmetric(component, algorithm="kspace", bbox=None, fill=None, strength=.5):
         morph = component.morph
         shape = component.shape[-2:]
         center = pixel_center
-    morph = morph.copy()
 
     step_size = component.step_morph
     try:
