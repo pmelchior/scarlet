@@ -35,8 +35,10 @@ class Frame():
         PSF in each band
     channels: list of hashable elements
         Names/identifiers of spectral channels
+    dtype: `numpy.dtype`
+        Dtype to represent the data.
     """
-    def __init__(self, shape, wcs=None, psfs=None, channels=None):
+    def __init__(self, shape, wcs=None, psfs=None, channels=None, dtype=np.float32):
         assert len(shape) == 3
         self._shape = tuple(shape)
         self.wcs = wcs
@@ -52,6 +54,7 @@ class Frame():
 
         assert channels is None or len(channels) == shape[0]
         self.channels = channels
+        self.dtype = dtype
 
     @property
     def C(self):
@@ -143,11 +146,11 @@ class Observation():
             half the width of the PSF, for FFTs. This is needed to
             prevent artifacts from the FFT.
         """
-        self.frame = Frame(images.shape, wcs=wcs, psfs=psfs, channels=channels)
+        self.frame = Frame(images.shape, wcs=wcs, psfs=psfs, channels=channels, dtype=images.dtype)
 
-        self.images = np.array(images)
+        self.images = np.array(images, dtype=self.frame.dtype)
         if weights is not None:
-            self.weights = np.array(weights)
+            self.weights = np.array(weights, dtype=self.frame.dtype)
         else:
             self.weights = 1
 
@@ -169,6 +172,14 @@ class Observation():
         -------
         None
         """
+
+        if self.frame.dtype != model_frame.dtype:
+            msg = "Dtypes of model and observation different. Casting observation to {}".format(model_frame.dtype)
+            logger.warning(msg)
+            self.frame.dtype = model_frame.dtype
+            self.images = self.images.astype(model_frame.dtype)
+            if type(self.weights) is np.ndarray:
+                self.weights = self.weights.astype(model_frame.dtype)
 
         #  channels of model that are represented in this observation
         self._band_slice = slice(None)
@@ -207,7 +218,7 @@ class Observation():
                 kernel = _centered(kernel, psf_shape)
                 _diff_kernels_fft.append(np.fft.rfftn(kernel, self._fftpack_shape))
 
-            self._diff_kernels_fft = np.array(_diff_kernels_fft)
+            self._diff_kernels_fft = np.array(_diff_kernels_fft, dtype=self.frame.dtype)
 
         return self
 
@@ -234,7 +245,7 @@ class Observation():
         model_ = model[self._band_slice,:,:]
 
         if self._diff_kernels_fft is not None:
-            model_ = np.array([self._convolve_band(model_[c], self._diff_kernels_fft[c]) for c in range(self.frame.C)])
+            model_ = np.array([self._convolve_band(model_[c], self._diff_kernels_fft[c]) for c in range(self.frame.C)], dtype=self.frame.dtype)
 
         return model_
 
@@ -260,17 +271,17 @@ class Observation():
 
 class LowResObservation(Observation):
 
-    def __init__(self, images, wcs=None, psfs=None, weights=None, channels=None, padding=3):
+    def __init__(self, images, wcs=None, psfs=None, weights=None, channels=None, padding=3, dtype=np.float32):
 
         assert wcs is not None, "WCS is necessary for LowResObservation"
         assert psfs is not None, "PSFs are necessary for LowResObservation"
 
-        self.frame = Frame(images.shape, wcs=wcs, psfs=psfs, channels=channels)
-        self.images = np.array(images)
+        self.frame = Frame(images.shape, wcs=wcs, psfs=psfs, channels=channels, dtype=dtype)
+        self.images = np.array(images, dtype=self.frame.dtype)
         self._padding = padding
 
         if weights is not None:
-            self.weights = np.array(weights)
+            self.weights = np.array(weights, dtype=self.frame.dtype)
         else:
             self.weights = 1
 
@@ -315,7 +326,7 @@ class LowResObservation(Observation):
             # Computes the resampling/convolution matrix
             resconv_op.append(resampling.make_operator(_shape, coord_hr, diff_psf))
 
-        self._resconv_op = np.array(resconv_op)
+        self._resconv_op = np.array(resconv_op, dtype=self.frame.dtype)
 
         return self
 
@@ -337,7 +348,7 @@ class LowResObservation(Observation):
             The convolved and resampled `model` in the observation frame.
         """
         model_ = model[self._band_slice,:,:]
-        model_ = np.array([np.dot(model_[c].flatten(), self._resconv_op[c]) for c in range(self.frame.C)])
+        model_ = np.array([np.dot(model_[c].flatten(), self._resconv_op[c]) for c in range(self.frame.C)], dtype=self.frame.dtype)
 
         return model_
 
