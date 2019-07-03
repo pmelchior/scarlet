@@ -321,6 +321,7 @@ class LowResObservation(Observation):
         import scipy.signal as scp
 
         operator = np.zeros((Bpsf, Nx*Ny, Nlr))
+
         for m in range(Nlr):
             ker[y_hr, x_hr] = interpolation.sinc2D((y_lr[m] - y_hr) / h,
                                                    (x_lr[m] - x_hr) / h)
