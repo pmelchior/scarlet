@@ -49,7 +49,7 @@ def match_patches(shape_hr, shape_lr, wcs_hr, wcs_lr):
     y_hr, x_hr = np.where(im_hr == 0)
     Y_lr, X_lr = np.where(im_lr == 0)
 
-    # Corresponding angular positions
+    #Corresponding angular positions
     if np.size(wcs_lr.array_shape) == 2:
         ra_lr, dec_lr = wcs_lr.all_pix2world(X_lr, Y_lr, 0, ra_dec_order=True)
     elif np.size(wcs_lr.array_shape) == 3:
@@ -97,4 +97,6 @@ def match_patches(shape_hr, shape_lr, wcs_hr, wcs_lr):
     xlr_hr = Y_hr[(over_lr == 1)]
     coordlr_hr = (xlr_hr, ylr_hr)
 
+
     return mask, coordlr_lr, coordlr_hr
+

@@ -148,7 +148,7 @@ class Observation():
             prevent artifacts from the FFT.
         """
         self.frame = Frame(images.shape, wcs=wcs, psfs=psfs, channels=channels)
-        self.psfs = psfs
+
         self.images = np.array(images)
         if weights is not None:
             self.weights = np.array(weights)
@@ -213,7 +213,7 @@ class Observation():
             target_fft = np.fft.rfftn(model_frame.psfs, _fftpack_shape, axes=(1, 2))
 
             # fft of the observation's PSFs in each band
-            _psf_fft = np.fft.rfftn(self.psfs, _fftpack_shape, axes=(1, 2))
+            _psf_fft = np.fft.rfftn(self.frame.psfs, _fftpack_shape, axes=(1, 2))
 
             # Diff kernel between observation and target psf in Fourrier
             kernels = np.fft.ifftshift(np.fft.irfftn(_psf_fft / target_fft, _fftpack_shape, axes=(1, 2)), axes=(1, 2))
@@ -223,17 +223,15 @@ class Observation():
 
             kernels = _centered(kernels, psf_shape)
 
-            _diff_kernels_fft = np.fft.rfftn(kernels, self._fftpack_shape, axes=(1, 2))
-
-            self._diff_kernels_fft = np.array(_diff_kernels_fft)
+            self._diff_kernels_fft = np.fft.rfftn(kernels, self._fftpack_shape, axes=(1, 2))
 
         return self
 
-    def _convolve_band(self, model, diff_kernel_fft):
+    def _convolve(self, model):
         """Convolve the model in a single band
         """
         model_fft = np.fft.rfftn(model, self._fftpack_shape, axes=(1, 2))
-        convolved = np.fft.irfftn(model_fft * diff_kernel_fft, self._fftpack_shape, axes=(1, 2))[self.slices]
+        convolved = np.fft.irfftn(model_fft * self._diff_kernels_fft, self._fftpack_shape, axes=(1, 2))[self.slices]
         return _centered(convolved, model.shape)
 
     def render(self, model):
@@ -251,7 +249,7 @@ class Observation():
         """
         model_ = model[self._band_slice, :, :]
         if self._diff_kernels_fft is not None:
-            model_ = self._convolve_band(model_, self._diff_kernels_fft)
+            model_ = self._convolve(model_)
         return model_
 
     def get_loss(self, model):
@@ -285,7 +283,7 @@ class LowResObservation(Observation):
         self.images = np.array(images)
         self._padding = padding
 
-        self.psfs = psfs
+
         if weights is not None:
             self.weights = np.array(weights)
         else:
@@ -391,9 +389,8 @@ class LowResObservation(Observation):
 
         n_p = np.int((np.size(cmask[0])) ** 0.5)
 
-        psf_match_lr = interpolation.sinc_interp(cmask, p_hr[::-1], psf_lr.reshape(npsf, ny_lr * nx_lr)).reshape(npsf,
-                                                                                                                 n_p,
-                                                                                                                 n_p)
+        psf_match_lr = interpolation.sinc_interp(cmask, p_hr[::-1],
+                                                 psf_lr.reshape(npsf, ny_lr * nx_lr)).reshape(npsf, n_p, n_p)
 
         psf_match_hr = psf_hr[np.int((ny_hr - n_p) / 2):np.int((ny_hr + n_p) / 2),
                        np.int((nx_hr - n_p) / 2):np.int((nx_hr + n_p) / 2)]
