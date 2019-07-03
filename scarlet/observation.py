@@ -286,7 +286,7 @@ class LowResObservation(Observation):
         else:
             self.weights = 1
 
-    def make_operator(self, shape, psfs_fft):
+    def make_operator(self, shape, psfs):
         '''Builds the resampling and convolution operator
 
         Builds the matrix that expresses the linear operation of resampling a function evaluated on a grid with coordinates
@@ -306,16 +306,11 @@ class LowResObservation(Observation):
             the convolution-resampling matrix
         '''
         B, Ny, Nx = shape
-        Bpsf = psfs_fft.shape[0]
+        Bpsf = psfs.shape[0]
 
         ker = np.zeros((Ny, Nx))
         y_hr, x_hr = np.where(ker == 0)
         y_lr, x_lr = self._coord_hr
-
-        import matplotlib.pyplot as plt
-        plt.plot(x_hr, y_hr, 'o')
-        plt.plot(x_lr, y_lr, 'o')
-        plt.show()
 
         Nlr = x_lr.size
 
@@ -323,26 +318,21 @@ class LowResObservation(Observation):
         if h == 0:
             h = x_hr[1] - x_hr[0]
         assert h != 0
+        import scipy.signal as scp
 
-        operator = []
+        operator = np.zeros((Bpsf, Nx*Ny, Nlr))
         for m in range(Nlr):
             ker[y_hr, x_hr] = interpolation.sinc2D((y_lr[m] - y_hr) / h,
                                                    (x_lr[m] - x_hr) / h)
 
-            ker_fft = np.fft.rfftn(ker, self.fftpack_shape)
-            operator_fft = ker_fft[np.newaxis, :, :] * psfs_fft
-            op_ifft = np.fft.ifftshift(np.fft.irfftn(operator_fft,  axes=(1, 2)), axes=(1, 2))
-            op_ifft = _centered(op_ifft, (Bpsf,Ny, Nx))
+            #ker_fft = np.fft.rfftn(ker, self.fftpack_shape)
+            #operator_fft = ker_fft[np.newaxis, :, :] * psfs_fft
+            #op_ifft = np.fft.ifftshift(np.fft.irfftn(operator_fft,  axes=(1, 2)), axes=(1, 2))
+            #op_ifft = _centered(op_ifft, (Bpsf,Ny, Nx))
+            op_line = _centered(scp.fftconvolve(ker[np.newaxis, :, :], psfs, axes = (1,2)), (Bpsf, Nx, Ny))
+            operator[:,:,m] = op_line.reshape(Bpsf,Ny*Nx)#op_ifft.reshape(Bpsf, Nx*Ny)
 
-          #  import matplotlib.pyplot as plt
-          #  plt.imshow(op_ifft[0], cmap = 'gist_stern')
-          #  plt.show()
-
-            operator.append(op_ifft)
-
-
-
-        return np.array(operator).reshape(Nlr, Nx * Ny, Bpsf).T * np.float(Nx * Ny)/ (Nlr * np.pi)
+        return np.array(operator) * np.float(Nx * Ny)/ (Nlr * np.pi)
 
     def match_psfs(self, psf_hr, wcs_hr, wcs_lr):
         '''psf matching between different dataset
@@ -469,17 +459,12 @@ class LowResObservation(Observation):
         sel = (target_fft[0] == 0)
         diff_fft = observed_fft / target_fft
         diff_fft[:,sel] = 0
-        #diff_fft = diff_fft / diff_fft.sum(axis=(1, 2))[:, np.newaxis, np.newaxis]
 
         diff_psf = np.fft.ifftshift(np.fft.irfftn(diff_fft, self.fftpack_shape, axes = (1,2)),axes = (1,2))
-        diff_fft /= diff_psf.sum(axis=(1, 2))[:, np.newaxis, np.newaxis]
+        diff_psf /= diff_psf.sum(axis=(1, 2))[:, np.newaxis, np.newaxis]
 
-
-        import matplotlib.pyplot as plt
-        plt.imshow(diff_psf[0], cmap = 'gist_stern')
-        plt.show()
         # Computes the resampling/convolution matrix
-        resconv_op = self.make_operator(_shape, diff_fft)
+        resconv_op = self.make_operator(_shape, diff_psf)
 
         self._resconv_op = np.array(resconv_op)
 
