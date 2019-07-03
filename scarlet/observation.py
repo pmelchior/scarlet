@@ -193,7 +193,6 @@ class Observation():
             shape[0] = model_frame.shape[0]
 
             # Choose the optimal shape for FFTPack DFT
-
             self._fftpack_shape = [fftpack.helper.next_fast_len(d) for d in shape[1:]]
             # autograd.numpy.fft does not currently work
             # if the last dimension is odd
@@ -228,14 +227,13 @@ class Observation():
 
             self._diff_kernels_fft = np.array(_diff_kernels_fft)
 
-
         return self
 
     def _convolve_band(self, model, diff_kernel_fft):
         """Convolve the model in a single band
         """
-        model_fft = np.fft.rfftn(model, self._fftpack_shape, axes = (1,2))
-        convolved = np.fft.irfftn(model_fft * diff_kernel_fft, self._fftpack_shape, axes = (1,2))[self.slices]
+        model_fft = np.fft.rfftn(model, self._fftpack_shape, axes=(1, 2))
+        convolved = np.fft.irfftn(model_fft * diff_kernel_fft, self._fftpack_shape, axes=(1, 2))[self.slices]
         return _centered(convolved, model.shape)
 
     def render(self, model):
@@ -327,20 +325,20 @@ class LowResObservation(Observation):
         assert h != 0
         import scipy.signal as scp
 
-        operator = np.zeros((Bpsf, Nx*Ny, Nlr))
+        operator = np.zeros((Bpsf, Nx * Ny, Nlr))
 
         for m in range(Nlr):
             ker[y_hr, x_hr] = interpolation.sinc2D((y_lr[m] - y_hr) / h,
                                                    (x_lr[m] - x_hr) / h)
 
-            #ker_fft = np.fft.rfftn(ker, self.fftpack_shape)
-            #operator_fft = ker_fft[np.newaxis, :, :] * psfs_fft
-            #op_ifft = np.fft.ifftshift(np.fft.irfftn(operator_fft,  axes=(1, 2)), axes=(1, 2))
-            #op_ifft = _centered(op_ifft, (Bpsf,Ny, Nx))
-            op_line = _centered(scp.fftconvolve(ker[np.newaxis, :, :], psfs, axes = (1,2)), (Bpsf, Nx, Ny))
-            operator[:,:,m] = op_line.reshape(Bpsf,Ny*Nx)#op_ifft.reshape(Bpsf, Nx*Ny)
+            # ker_fft = np.fft.rfftn(ker, self.fftpack_shape)
+            # operator_fft = ker_fft[np.newaxis, :, :] * psfs_fft
+            # op_ifft = np.fft.ifftshift(np.fft.irfftn(operator_fft,  axes=(1, 2)), axes=(1, 2))
+            # op_ifft = _centered(op_ifft, (Bpsf,Ny, Nx))
+            op_line = _centered(scp.fftconvolve(ker[np.newaxis, :, :], psfs, axes=(1, 2)), (Bpsf, Nx, Ny))
+            operator[:, :, m] = op_line.reshape(Bpsf, Ny * Nx)  # op_ifft.reshape(Bpsf, Nx*Ny)
 
-        return np.array(operator) * np.float(Nx * Ny)/ (Nlr * np.pi)
+        return np.array(operator) * np.float(Nx * Ny) / (Nlr * np.pi)
 
     def match_psfs(self, psf_hr, wcs_hr, wcs_lr):
         '''psf matching between different dataset
@@ -393,14 +391,16 @@ class LowResObservation(Observation):
 
         n_p = np.int((np.size(cmask[0])) ** 0.5)
 
-        psf_match_lr = interpolation.sinc_interp(cmask, p_hr[::-1], psf_lr.reshape(npsf, ny_lr*nx_lr)).reshape(npsf, n_p, n_p)
+        psf_match_lr = interpolation.sinc_interp(cmask, p_hr[::-1], psf_lr.reshape(npsf, ny_lr * nx_lr)).reshape(npsf,
+                                                                                                                 n_p,
+                                                                                                                 n_p)
 
         psf_match_hr = psf_hr[np.int((ny_hr - n_p) / 2):np.int((ny_hr + n_p) / 2),
                        np.int((nx_hr - n_p) / 2):np.int((nx_hr + n_p) / 2)]
 
         psf_match_hr /= np.max(psf_match_hr)
         psf_match_lr /= np.max(psf_match_lr)
-        return psf_match_hr[np.newaxis,:], psf_match_lr
+        return psf_match_hr[np.newaxis, :], psf_match_lr
 
     def match(self, model_frame):
         '''Matches the observation with a scene
@@ -441,7 +441,6 @@ class LowResObservation(Observation):
         _target = model_frame.psfs[0, :, :]
         _shape = model_frame.shape
 
-
         # Computes spatially matching observation and target psfs. The observation psf is also resampled to the scene's resolution
         target_kernels, observed_kernels = self.match_psfs(_target, whr, wlr)
 
@@ -466,9 +465,9 @@ class LowResObservation(Observation):
 
         sel = (target_fft[0] == 0)
         diff_fft = observed_fft / target_fft
-        diff_fft[:,sel] = 0
+        diff_fft[:, sel] = 0
 
-        diff_psf = np.fft.ifftshift(np.fft.irfftn(diff_fft, self.fftpack_shape, axes = (1,2)),axes = (1,2))
+        diff_psf = np.fft.ifftshift(np.fft.irfftn(diff_fft, self.fftpack_shape, axes=(1, 2)), axes=(1, 2))
         diff_psf /= diff_psf.sum(axis=(1, 2))[:, np.newaxis, np.newaxis]
 
         # Computes the resampling/convolution matrix

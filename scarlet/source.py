@@ -70,6 +70,7 @@ def get_best_fit_seds(morphs, frame, observation):
     seds = np.dot(np.linalg.inv(np.dot(_morph, _morph.T)), np.dot(_morph, data.T))
     return seds
 
+
 def build_detection_coadd(sed, bg_rms, observation, thresh=1):
     """Build a channel weighted coadd to use for source detection
 
@@ -160,7 +161,8 @@ def init_combined_extended_source(sky_coord, frame, observations, bg_rms, obs_id
         seds.append(_sed)
     sed = np.concatenate(seds).flatten()
 
-    morph, bg_cutoff = build_detection_coadd(seds[obs_idx], bg_rms[obs_idx], observations[obs_idx], thresh)  # amplitude is in sed
+    morph, bg_cutoff = build_detection_coadd(seds[obs_idx], bg_rms[obs_idx], observations[obs_idx],
+                                             thresh)  # amplitude is in sed
 
     center = frame.get_pixel(sky_coord)
 
@@ -234,6 +236,7 @@ class RandomSource(Component):
     a uniform random field and (optionally) matches the SED to match a given
     observation.
     """
+
     def __init__(self, frame, observation=None, **component_kwargs):
         """Source intialized with a single pixel
 
@@ -265,6 +268,7 @@ class PointSource(Component):
     While the source can have any `constraints`, the default constraints are
     symmetry and monotonicity.
     """
+
     def __init__(self, frame, sky_coord, observation, symmetric=True, monotonic=True,
                  center_step=5, delay_thresh=10, **component_kwargs):
         """Source intialized with a single pixel
@@ -455,6 +459,7 @@ class MultiComponentSource(ComponentTree):
     The SED for all components is calculated as the best fit of the multi-component
     morphology to the multi-channel image in the region of the source.
     """
+
     def __init__(self, frame, sky_coord, observation, bg_rms, thresh=1, flux_percentiles=None,
                  symmetric=True, monotonic=True, **component_kwargs):
         """Create multi-component extended source.

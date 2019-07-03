@@ -206,7 +206,7 @@ def cubic_spline(dx, a=1, b=0):
     x = np.abs(dx - window)
     result = np.piecewise(x,
                           [x <= 1, (x > 1) & (x < 2)],
-                          [lambda x:inner(x), lambda x:outer(x)])
+                          [lambda x: inner(x), lambda x: outer(x)])
 
     return result, np.array(window).astype(int)
 
@@ -264,7 +264,7 @@ def quintic_spline(dx, dtype=np.float64):
     x = np.abs(dx - window)
     result = np.piecewise(x,
                           [x <= 1, (x > 1) & (x <= 2), (x > 2) & (x <= 3)],
-                          [lambda x:inner(x), lambda x:middle(x), lambda x:outer(x)])
+                          [lambda x: inner(x), lambda x: middle(x), lambda x: outer(x)])
     return result, window
 
 
@@ -316,13 +316,15 @@ def sinc_interp(coord_hr, coord_lr, sample_lr):
     hy = np.abs(y_lr[1] - y_lr[0])
     hx = np.abs(x_lr[np.int(np.sqrt(np.size(x_lr))) + 1] - x_lr[0])
 
-
-
     assert hy != 0
     if np.size(sample_lr.shape) == 1:
-        return np.array([sample_lr * sinc2D((y_hr[:, np.newaxis] - y_lr) / (hy), (x_hr[:, np.newaxis] - x_lr) / (hx))]).sum(axis=2)
+        return np.array(
+            [sample_lr * sinc2D((y_hr[:, np.newaxis] - y_lr) / (hy), (x_hr[:, np.newaxis] - x_lr) / (hx))]).sum(axis=2)
     elif np.size(sample_lr.shape) == 2:
-        return np.array([(sample[np.newaxis,:] * sinc2D((y_hr[:, np.newaxis] - y_lr) / (hy), (x_hr[:, np.newaxis] - x_lr) / (hx))).sum(axis=1) for sample in sample_lr])
+        return np.array([(sample[np.newaxis, :] * sinc2D((y_hr[:, np.newaxis] - y_lr) / (hy),
+                                                         (x_hr[:, np.newaxis] - x_lr) / (hx))).sum(axis=1) for sample in
+                         sample_lr])
+
 
 def fft_resample(img, dy, dx, kernel=lanczos, **kwargs):
     """Translate the image by a fraction of a pixel
