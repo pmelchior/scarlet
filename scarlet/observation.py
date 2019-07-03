@@ -204,7 +204,7 @@ class Observation():
             self.slices = tuple(([slice(s) for s in shape]))
 
             # Now we setup the parameters for the psf -> kernel FFTs
-            shape = np.array(model_frame.psfs.shape) - 1
+            shape = np.array(model_frame.psfs.shape) #- 1
             shape[1:] += np.array(self.frame.psfs[0].shape)
 
             _fftpack_shape = [fftpack.helper.next_fast_len(d) for d in shape[1:]]
@@ -250,6 +250,7 @@ class Observation():
         model_ = model[self._band_slice, :, :]
         if self._diff_kernels_fft is not None:
             model_ = self._convolve(model_)
+
         return model_
 
     def get_loss(self, model):
@@ -361,7 +362,7 @@ class LowResObservation(Observation):
             low resolution psf at matching size and resolution
         '''
 
-        psf_lr = self.psfs
+        psf_lr = self.frame.psfs
 
         ny_hr, nx_hr = psf_hr.shape
         npsf, ny_lr, nx_lr = psf_lr.shape
@@ -451,7 +452,7 @@ class LowResObservation(Observation):
         self.slices = tuple([slice(s) for s in shape])
 
         # Now we setup the parameters for the psf -> kernel FFTs
-        shape = np.array(model_frame.psfs.shape) - 1
+        shape = np.array(model_frame.psfs.shape) #- 1
         shape[1:] += np.array(self.frame.psfs[0].shape)
 
         _fftpack_shape = [fftpack.helper.next_fast_len(d) for d in shape[1:]]
