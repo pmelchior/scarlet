@@ -2,7 +2,6 @@ import autograd.numpy as np
 from autograd import grad
 
 from .component import ComponentTree, BlendFlag
-from .observation import Frame
 
 import logging
 
