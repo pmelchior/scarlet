@@ -41,6 +41,8 @@ class Blend(ComponentTree):
             observations = (observations,)
         self.observations = observations
 
+        n_params = 2 * self.K
+        self._grad = grad(self._loss, tuple(range(n_params)))
         self.mse = []
 
     @property
@@ -109,7 +111,7 @@ class Blend(ComponentTree):
         parameters = seds + morphs
         # This calculates the partial derivatives wrt
         # all the seds and morphologies
-        gradients = grad(self._loss, tuple(range(len(parameters))))(*parameters)
+        gradients = self._grad(*parameters)
         sed_gradients = gradients[:self.K]
         morph_gradients = gradients[self.K:]
         # set the sed and morphology gradients for each source
