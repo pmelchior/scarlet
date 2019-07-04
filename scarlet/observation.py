@@ -41,6 +41,13 @@ class Frame():
     def __init__(self, shape, wcs=None, psfs=None, channels=None, dtype=np.float32):
         assert len(shape) == 3
         self._shape = tuple(shape)
+
+        if self.Ny != fftpack.next_fast_len(self.Ny):
+            logger.warning('Ny={} not fast for FFT. Consider increasing to {} pixels'.format(self.Ny, fftpack.next_fast_len(self.Ny)))
+
+        if self.Nx != fftpack.next_fast_len(self.Nx):
+            logger.warning('Nx={} not fast for FFT. Consider increasing to {} pixels'.format(self.Nx, fftpack.next_fast_len(self.Nx)))
+
         self.wcs = wcs
 
         if psfs is None:
