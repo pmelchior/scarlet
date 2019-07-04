@@ -170,8 +170,8 @@ class TestComponentTree(object):
         assert tree2.coord is None
         assert_array_equal(tree1.components, (c1, c2))
         assert_array_equal(tree2.components, (c1, c2, c3))
-        assert_array_equal(tree1.nodes, (c1, c2))
-        assert_array_equal(tree2.nodes, (tree1, c3))
+        assert_array_equal(tree1.sources, (c1, c2))
+        assert_array_equal(tree2.sources, (tree1, c3))
         assert tree1.n_nodes == 2
         assert tree2.n_nodes == 2
 
@@ -225,17 +225,17 @@ class TestComponentTree(object):
         assert tree1.n_components == 4
         assert tree1.n_nodes == 4
         assert tree1.components == (c1, c2, c3, c4)
-        assert tree1.nodes == (c1, c2, c3, c4)
+        assert tree1.sources == (c1, c2, c3, c4)
 
         tree1 += c5
         assert tree1.n_components == 5
         assert tree1.n_nodes == 5
         assert tree1.components == (c1, c2, c3, c4, c5)
-        assert tree1.nodes == (c1, c2, c3, c4, c5)
+        assert tree1.sources == (c1, c2, c3, c4, c5)
         assert tree2.n_components == 2
         assert tree2.n_nodes == 2
         assert tree2.components == (c3, c4)
-        assert tree2.nodes == (c3, c4)
+        assert tree2.sources == (c3, c4)
 
         # Test getitem
         tree1[0] == c1

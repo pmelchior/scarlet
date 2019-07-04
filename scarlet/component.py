@@ -281,8 +281,11 @@ class ComponentTree():
         return self._tree[0].frame
 
     @property
-    def nodes(self):
-        """Initial list that generates the tree.
+    def sources(self):
+        """Initial list of components or sources that generate the tree.
+
+        This will be different than `self.components` because sources can
+        have multiple components.
 
         Returns
         -------
