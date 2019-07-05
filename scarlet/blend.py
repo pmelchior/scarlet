@@ -1,7 +1,7 @@
 import autograd.numpy as np
 from autograd import grad
 
-from .component import ComponentTree, BlendFlag
+from .component import ComponentTree
 
 import logging
 
@@ -71,11 +71,14 @@ class Blend(ComponentTree):
             Relative error for convergence of each component.
         """
         # compute the backward gradient tree
-        x = self.parameters
-        n_params = len(x)
+        p = self.parameters
+        n_params = len(p)
+        x = [param.data for param in p]
         m = [np.zeros(x_.shape, x_.dtype) for x_ in x]
         v = [np.zeros(x_.shape, x_.dtype) for x_ in x]
         self._grad = grad(self._loss, tuple(range(n_params)))
+        e_rel2 = e_rel ** 2
+        converged = True
 
         for it in range(max_iter):
             g = self._grad(*x)
@@ -83,22 +86,25 @@ class Blend(ComponentTree):
             # TODO: need prior gradients here...
 
             # Adam gradient updates
-            for p in range(n_params):
-                m[p] = (1 - b1) * g[p] + b1 * m[p]       # First  moment estimate
-                v[p] = (1 - b2) * (g[p]**2) + b2 * v[p]  # Second moment estimate
-                mhat = m[p] / (1 - b1**(it + 1))          # Bias corrections
-                vhat = v[p] / (1 - b2**(it + 1))
+            for j in range(n_params):
+                m[j] = (1 - b1) * g[j] + b1 * m[j]       # First  moment estimate
+                v[j] = (1 - b2) * (g[j]**2) + b2 * v[j]  # Second moment estimate
+                mhat = m[j] / (1 - b1**(it + 1))         # Bias corrections
+                vhat = v[j] / (1 - b2**(it + 1))
+                delta = step_size * mhat / (np.sqrt(vhat) + eps)
                 # inline update
-                x[p] -= step_size*mhat/(np.sqrt(vhat) + eps)
+                x[j] -= delta
 
-                # TODO: need to store effective step size in components
-                # these are not constant even within one parameter!
-
-                # TODO: check convergence
-                # BlendFlag need to be enumerated because number of parameters is free
+                # store step sizes for prox steps and convergence flags
+                #p[j].step = delta / (g[j] + eps)
+                p[j].converged = np.sum(delta**2) <= e_rel2 * np.sum(x[j]**2)
+                converged &= p[j].converged
 
             # Call the update functions for all of the sources
             self.update()
+
+            if converged:
+                break
 
     def _loss(self, *parameters):
         """Loss function for autograd
@@ -115,48 +121,3 @@ class Blend(ComponentTree):
             total_loss = total_loss + observation.get_loss(model)
         self.mse.append(total_loss._value)
         return total_loss
-
-    def _check_convergence(self, e_rel):
-        """Check to see if all of the components have converged
-
-        The `flag` property of each component is updated to reflect
-        whether or not its SED and morphology have converged.
-
-        Parameters
-        ----------
-        e_rel: float
-            Relative error for convergence of each component.
-
-        Returns
-        -------
-        converged: bool
-            Whether or not all of the components have converged.
-        """
-        e_rel2 = e_rel ** 2
-        if self.it > 1:
-            converged = True
-            for component in self.components:
-                # sed convergence
-                diff2 = ((component._last_sed - component.sed) ** 2).sum()
-                if diff2 <= e_rel2 * (component.sed ** 2).sum():
-                    component.flags &= ~BlendFlag.SED_NOT_CONVERGED
-                else:
-                    component.flags |= BlendFlag.SED_NOT_CONVERGED
-                    converged = False
-                # morph convergence
-                diff2 = ((component._last_morph - component.morph) ** 2).sum()
-                if diff2 <= e_rel2 * (component.morph ** 2).sum():
-                    component.flags &= ~BlendFlag.MORPH_NOT_CONVERGED
-                else:
-                    component.flags |= BlendFlag.MORPH_NOT_CONVERGED
-                    converged = False
-        else:
-            converged = False
-
-        # Store a copy of each SED and morphology for the
-        # convergence check in the next iteration
-        for c in self.components:
-            c._last_sed = c.sed.copy()
-            c._last_morph = c.morph.copy()
-
-        return converged

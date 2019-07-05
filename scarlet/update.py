@@ -44,22 +44,22 @@ def fit_pixel_center(component, window=None):
 def positive_sed(component):
     """Make the SED non-negative
     """
-    prox_plus(component.sed, component.step_sed)
+    prox_plus(component.sed, component._sed.step)
     return component
 
 
 def positive_morph(component):
     """Make the morphology non-negative
     """
-    prox_plus(component.morph, component.step_morph)
+    prox_plus(component.morph, component._morph.step)
     return component
 
 
 def positive(component):
     """Make both the SED and morpholgy non-negative
     """
-    prox_plus(component.sed, component.step_sed)
-    prox_plus(component.morph, component.step_morph)
+    prox_plus(component.sed, component._sed.step)
+    prox_plus(component.morph, component._morph.step)
     return component
 
 
@@ -102,14 +102,14 @@ def normalized(component, type='morph_max'):
 def sparse_l0(component, thresh):
     """L0 norm (sparsity) on morphology
     """
-    prox_hard(component.morph, component.step_morph, thresh)
+    prox_hard(component.morph, component._morph.step, thresh)
     return component
 
 
 def sparse_l1(component, thresh):
     """L1 norm (sparsity) on morphology
     """
-    prox_soft(component.morph, component.step_morph, thresh)
+    prox_soft(component.morph, component._morph.step, thresh)
     return component
 
 
@@ -195,7 +195,7 @@ def monotonic(component, pixel_center, use_nearest=False, thresh=0, exact=False,
             prox = partial(operator.prox_cone, G=G)
         Cache.set(prox_name, key, prox)
 
-    step_size = component.step_morph
+    step_size = component._morph.step
     prox(morph, step_size)
     if bbox is not None:
         component.morph[:] = np.zeros(component.morph.shape, dtype=component.morph.dtype)
@@ -315,7 +315,7 @@ def symmetric(component, algorithm="kspace", bbox=None, fill=None, strength=.5):
         shape = component.shape[-2:]
         center = pixel_center
 
-    step_size = component.step_morph
+    step_size = component._morph.step
     try:
         shift = component.shift
     except AttributeError:

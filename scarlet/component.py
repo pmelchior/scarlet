@@ -1,40 +1,25 @@
-try:
-    from enum import Flag, auto
-except ImportError:
-    from aenum import Flag, auto
-
 import autograd.numpy as np
 
 import logging
 
 logger = logging.getLogger("scarlet.component")
 
+# TODO: this would be much nicer if we cold derive from np.ndarray, but ...
+class Parameter():
+    def __init__(self, data, step=None, converged=None):
+        self.data = data
+        if step is None:
+            step = 0
+        self.step = step
+        self.converged = converged
 
-class BlendFlag(Flag):
-    """Flags that can be set by scarlet
+    @property
+    def shape(self):
+        return self.data.shape
 
-    Attributes
-    ----------
-    NONE:
-        There are no flags for this object.
-    SED_NOT_CONVERGED:
-        The SED has not yet converged.
-    MORPH_NOT_CONVERGED:
-        The morphology has not yet converged.
-    EDGE_PIXELS:
-        There is flux at the edge of the model,
-        meaning the shape and intensity of the source
-        might be incorrect.
-    NO_VALID_PIXELS:
-        All of the pixels of the source were below
-        the detection threshold.
-    """
-    NONE = 0
-    SED_NOT_CONVERGED = auto()
-    MORPH_NOT_CONVERGED = auto()
-    EDGE_PIXELS = auto()
-    NO_VALID_PIXELS = auto()
-
+    @property
+    def dtype(self):
+        return self.data.dtype
 
 class Prior():
     """Differentiable Prior
@@ -91,13 +76,9 @@ class Component():
     def __init__(self, frame, sed, morph, prior=None, fix_sed=False, fix_morph=False):
         self._frame = frame
         # set sed and morph
-        self._sed = np.array(sed)
-        self._morph = np.array(morph)
-        self.step_morph = 1
-        self.step_sed = 1
-        self.prior = prior
-        # Initially the component has not converged
-        self.flags = BlendFlag.SED_NOT_CONVERGED | BlendFlag.MORPH_NOT_CONVERGED
+        self._sed = Parameter(sed)
+        self._morph = Parameter(morph)
+        self._prior = prior
 
         # Properties used for indexing in the ComponentTree
         self._index = None
@@ -132,13 +113,13 @@ class Component():
     def sed(self):
         """Numpy view of the component SED
         """
-        return self._sed
+        return self._sed.data
 
     @property
     def morph(self):
         """Numpy view of the component morphology
         """
-        return self._morph
+        return self._morph.data
 
     def get_model(self, *params):
         """Get the model for this component.
@@ -156,24 +137,12 @@ class Component():
             sed, morph = params
             return sed[:, None, None] * morph[None, :, :]
 
-        return self._sed[:, None, None] * self._morph[None, :, :]
+        return self.sed[:, None, None] * self.morph[None, :, :]
 
     def get_flux(self):
         """Get flux in every band
         """
         return self.morph.sum() * self.sed
-
-    def backward_prior(self):
-        """Use the prior to update the gradient
-        """
-        if self.prior is not None:
-            self.prior.compute_grad(self)
-            if not self.fix_morph:
-                self.morph_grad += self.prior.morph_grad
-                self.L_morph += self.prior.L_morph
-            if not self.fix_sed:
-                self.sed_grad += self.prior.sed_grad
-                self.L_sed += self.prior.L_sed
 
     def update(self):
         """Update the component
