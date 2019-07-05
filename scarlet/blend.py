@@ -96,7 +96,7 @@ class Blend(ComponentTree):
                 x[j] -= delta
 
                 # store step sizes for prox steps and convergence flags
-                #p[j].step = delta / (g[j] + eps)
+                p[j].step = delta / (g[j] + eps)
                 p[j].converged = np.sum(delta**2) <= e_rel2 * np.sum(x[j]**2)
                 converged &= p[j].converged
 
