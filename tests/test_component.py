@@ -172,8 +172,8 @@ class TestComponentTree(object):
         assert_array_equal(tree2.components, (c1, c2, c3))
         assert_array_equal(tree1.sources, (c1, c2))
         assert_array_equal(tree2.sources, (tree1, c3))
-        assert tree1.n_nodes == 2
-        assert tree2.n_nodes == 2
+        assert tree1.n_sources == 2
+        assert tree2.n_sources == 2
 
         # shapes
         assert tree1.K == 2
@@ -223,17 +223,17 @@ class TestComponentTree(object):
         # Test iadd
         tree1 += tree2
         assert tree1.n_components == 4
-        assert tree1.n_nodes == 4
+        assert tree1.n_sources == 4
         assert tree1.components == (c1, c2, c3, c4)
         assert tree1.sources == (c1, c2, c3, c4)
 
         tree1 += c5
         assert tree1.n_components == 5
-        assert tree1.n_nodes == 5
+        assert tree1.n_sources == 5
         assert tree1.components == (c1, c2, c3, c4, c5)
         assert tree1.sources == (c1, c2, c3, c4, c5)
         assert tree2.n_components == 2
-        assert tree2.n_nodes == 2
+        assert tree2.n_sources == 2
         assert tree2.components == (c3, c4)
         assert tree2.sources == (c3, c4)
 
