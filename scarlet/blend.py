@@ -103,7 +103,7 @@ class Blend(ComponentTree):
             # Call the update functions for all of the sources
             self.update()
 
-            if converged:
+            if converged or (it > 1 and abs(self.mse[-2] - self.mse[-1]) < e_rel * self.mse[-1]): 
                 break
 
     def _loss(self, *parameters):
