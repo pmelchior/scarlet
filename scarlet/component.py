@@ -93,16 +93,11 @@ class Component():
         # set sed and morph
         self._sed = np.array(sed)
         self._morph = np.array(morph)
-        self.sed_grad = 0
-        self.morph_grad = 0
+        self.step_morph = 1
+        self.step_sed = 1
         self.prior = prior
-        self.L_sed = 1
-        self.L_morph = 1
         # Initially the component has not converged
         self.flags = BlendFlag.SED_NOT_CONVERGED | BlendFlag.MORPH_NOT_CONVERGED
-        # Store the SED and morphology from the previous iteration
-        self._last_sed = np.zeros(sed.shape, dtype=sed.dtype)
-        self._last_morph = np.zeros(morph.shape, dtype=morph.dtype)
 
         # Properties used for indexing in the ComponentTree
         self._index = None
@@ -145,29 +140,23 @@ class Component():
         """
         return self._morph
 
-    def get_model(self, sed=None, morph=None):
+    def get_model(self, *params):
         """Get the model for this component.
 
         Parameters
         ----------
-        sed: array
-            An sed to use in the model. If `sed` is `None`
-            then `self.sed` is used.
-        morph: array
-            A morphology to use in the model.
-            If `morph` is `None` then `self.morph`
-            is used.
+        params: tuple of optimimzation parameters
 
         Returns
         -------
-        model: array or tensor
+        model: array
             (Bands, Height, Width) image of the model
         """
-        if sed is not None and morph is not None:
+        if len(params):
+            sed, morph = params
             return sed[:, None, None] * morph[None, :, :]
-        elif sed is None and morph is None:
-            return self._sed[:, None, None] * self._morph[None, :, :]
-        raise ValueError("You need to supply `sed` and `morph` or neither")
+
+        return self._sed[:, None, None] * self._morph[None, :, :]
 
     def get_flux(self):
         """Get flux in every band
@@ -196,18 +185,8 @@ class Component():
         return self
 
     @property
-    def step_morph(self):
-        try:
-            return 1 / self.L_morph
-        except AttributeError:
-            return None
-
-    @property
-    def step_sed(self):
-        try:
-            return 1 / self.L_sed
-        except AttributeError:
-            return None
+    def parameters(self):
+        return self._sed, self._morph
 
 
 class ComponentTree():
@@ -311,19 +290,19 @@ class ComponentTree():
             else:
                 return (self._index,)
 
-    def get_model(self, seds=None, morphs=None):
+    @property
+    def parameters(self):
+        pars = []
+        for c in self.components:
+            pars += c.parameters
+        return pars
+
+    def get_model(self, *params):
         """Get the model this component tree
 
         Parameters
         ----------
-        seds: list of arrays
-            Optional list of seds for each component in the tree.
-            If `seds` is `None` then `self.sed` is used for
-            each component.
-        morphs: list of arrays
-            Optional list of morphologies for each component in
-            the tree. If `morphs` is `None` then `self.morph`
-            is used for each component.
+        params: tuple of optimization parameters
 
         Returns
         -------
@@ -331,12 +310,16 @@ class ComponentTree():
             (Bands, Height, Width) data cube
         """
         model = np.zeros(self.frame.shape)
-        for k in range(self.K):
-            if seds is not None and morphs is not None:
-                _model = self.components[k].get_model(seds[k], morphs[k])
-                model = model + _model
-            else:
-                model = model + self.components[k].get_model()
+        if len(params):
+            i = 0
+            for k,c in enumerate(self.components):
+                j = len(c.parameters)
+                p = params[i:i+j]
+                i += j
+                model = model + c.get_model(*p)
+        else:
+            for c in self.components:
+                model = model + c.get_model()
 
         return model
 
