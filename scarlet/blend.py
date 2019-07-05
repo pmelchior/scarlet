@@ -41,8 +41,6 @@ class Blend(ComponentTree):
             observations = (observations,)
         self.observations = observations
 
-        n_params = 2 * self.K
-        self._grad = grad(self._loss, tuple(range(n_params)))
         self.mse = []
 
     @property
@@ -62,7 +60,7 @@ class Blend(ComponentTree):
                 return False
         return True
 
-    def fit(self, max_iter=200, e_rel=1e-2, approximate_L=False):
+    def fit(self, max_iter=200, e_rel=1e-2, step_size=0.1, b1=0.5, b2=0.5, eps=1e-8):
         """Fit the model for each source to the data
 
         Parameters
@@ -71,53 +69,36 @@ class Blend(ComponentTree):
             Maximum number of iterations if the algorithm doesn't converge.
         e_rel: float
             Relative error for convergence of each component.
-        approximate_L: bool
-            Whether or not to use a rough approximation of the
-            Lipschitz constants
         """
+        # compute the backward gradient tree
+        x = self.parameters
+        n_params = len(x)
+        m = [np.zeros(x_.shape, x_.dtype) for x_ in x]
+        v = [np.zeros(x_.shape, x_.dtype) for x_ in x]
+        self._grad = grad(self._loss, tuple(range(n_params)))
 
-        for step in range(max_iter):
-            # Back propagate the gradients
-            self._backward()
+        for it in range(max_iter):
+            g = self._grad(*x)
 
-            # Calculate the Lipschitz constants,
-            # which are needed to determine the step size for each component
-            self._set_lipschitz(approximate_L)
+            # TODO: need prior gradients here...
 
-            # Take the next gradient step for each component
-            for c in self.components:
-                c.L_sed = self.L_sed
-                c.L_morph = self.L_morph
+            # Adam gradient updates
+            for p in range(n_params):
+                m[p] = (1 - b1) * g[p] + b1 * m[p]       # First  moment estimate
+                v[p] = (1 - b2) * (g[p]**2) + b2 * v[p]  # Second moment estimate
+                mhat = m[p] / (1 - b1**(it + 1))          # Bias corrections
+                vhat = v[p] / (1 - b2**(it + 1))
+                # inline update
+                x[p] -= step_size*mhat/(np.sqrt(vhat) + eps)
 
-                c.backward_prior()
-                if not c.fix_sed:
-                    c._sed = c._sed - c.step_sed * c.sed_grad
-                    c.sed_grad = 0
-                if not c.fix_morph:
-                    c._morph = c._morph - c.step_morph * c.morph_grad
-                    c.morph_grad = 0
+                # TODO: need to store effective step size in components
+                # these are not constant even within one parameter!
+
+                # TODO: check convergence
+                # BlendFlag need to be enumerated because number of parameters is free
 
             # Call the update functions for all of the sources
             self.update()
-
-            if self._check_convergence(e_rel):
-                break
-
-    def _backward(self):
-        """Backpropagate the gradients for the seds and morphs
-        """
-        seds = [c.sed for c in self.components]
-        morphs = [c.morph for c in self.components]
-        parameters = seds + morphs
-        # This calculates the partial derivatives wrt
-        # all the seds and morphologies
-        gradients = self._grad(*parameters)
-        sed_gradients = gradients[:self.K]
-        morph_gradients = gradients[self.K:]
-        # set the sed and morphology gradients for each source
-        for k,c in enumerate(self.components):
-            c.sed_grad = sed_gradients[k]
-            c.morph_grad = morph_gradients[k]
 
     def _loss(self, *parameters):
         """Loss function for autograd
@@ -127,11 +108,7 @@ class Blend(ComponentTree):
         function and update the gradient for each
         parameter
         """
-        # Unpack the seds and morphologies
-        seds = parameters[:self.K]
-        morphs = parameters[self.K:]
-
-        model = self.get_model(seds, morphs)
+        model = self.get_model(*parameters)
         # Caculate the total loss function from all of the observations
         total_loss = 0
         for observation in self.observations:
@@ -183,42 +160,3 @@ class Blend(ComponentTree):
             c._last_morph = c.morph.copy()
 
         return converged
-
-    def _set_lipschitz(self, approximate_L):
-        """Update the Lipschitz constants from the observations
-        """
-        if approximate_L:
-            # spectral norm of S*S^T or A^T*A is of order the mean amplitude
-            # of their elements times the number of components
-            LA, LS = 0, 0
-            for c in self.components:
-                LS += (c.sed ** 2).sum().item()
-                LA += (c.morph ** 2).sum().item()
-
-            # if loss has increased from last iteration, increase L
-            # TODO: this is insufficient if the estimation above is miles off!
-            # Then: escalate the increase
-            if self.it > 1 and self.mse[-1] > self.mse[-2]:
-                LS *= 2
-                LA *= 2
-        else:
-            # This is still an approximation, but a less crude (albeit slower) one
-            C, Ny, Nx = self.frame.shape
-            seds = np.zeros((self.K, C), dtype=self.components[0].sed.dtype)
-            morphs = np.zeros((self.K, Ny, Nx), dtype=self.components[0].morph.dtype)
-            for k, component in enumerate(self.components):
-                seds[k] = component.sed
-                morphs[k] = component.morph
-            _S = morphs.reshape(morphs.shape[0], -1)
-            _SST = _S.dot(_S.T)
-            _ATA = seds.T.dot(seds)
-            # Lipschitz constant for A
-            LA = np.real(np.linalg.eigvals(_SST).max())
-            # Lipschitz constant for S
-            LS = np.real(np.linalg.eigvals(_ATA).max())
-
-        LA *= len(self.observations)
-        LS *= len(self.observations)
-
-        self.L_sed = LA
-        self.L_morph = LS
