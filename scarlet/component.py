@@ -78,8 +78,13 @@ class Component():
         self._frame = frame
 
         # set sed and morph
-        self._sed = Parameter(np.array(sed))
-        self._morph = Parameter(np.array(morph))
+        self._sed = sed
+        if not fix_sed:
+            self._sed = Parameter(np.array(self._sed), name="sed")
+
+        self._morph = morph
+        if not fix_morph:
+            self._morph = Parameter(np.array(self._morph), name="morph")
 
         self._prior = prior
 
@@ -127,7 +132,7 @@ class Component():
 
     @property
     def parameters(self):
-        return self._sed, self._morph
+        return [ p for p in [self._sed, self._morph] if isinstance(p, Parameter) ]
 
     def get_model(self, *params):
         """Get the model for this component.
@@ -141,11 +146,16 @@ class Component():
         model: array
             (Bands, Height, Width) image of the model
         """
-        if len(params):
+        sed, morph = self.sed, self.morph
+        # if params are set they are not Parameters, but autograd ArrayBoxes
+        if len(params) == 2:
             sed, morph = params
-            return sed[:, None, None] * morph[None, :, :]
-
-        return self.sed[:, None, None] * self.morph[None, :, :]
+        elif len(params) == 1:
+            if params[0]._value.name == "sed":
+                sed = params[0]
+            else:
+                morph = params[0]
+        return sed[:, None, None] * morph[None, :, :]
 
     def get_flux(self):
         """Get flux in every band

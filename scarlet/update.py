@@ -8,6 +8,7 @@ from . import operator
 from .bbox import trim
 from .cache import Cache
 from .psf import generate_psf_image, gaussian
+from .component import Parameter
 
 
 def _fit_pixel_center(morph, center, window=None):
@@ -40,26 +41,37 @@ def fit_pixel_center(component, window=None):
     component.pixel_center = _fit_pixel_center(component.morph, component.pixel_center, window)
     return component
 
+def fixed_sed(component):
+    return isinstance(component._sed, Parameter) is False
+
+def fixed_morph(component):
+    return isinstance(component._morph, Parameter) is False
 
 def positive_sed(component):
     """Make the SED non-negative
     """
-    prox_plus(component.sed, component._sed.step)
+    if fixed_sed(component):
+        return component
+
+    prox_plus(component._sed, component._sed.step)
     return component
 
 
 def positive_morph(component):
     """Make the morphology non-negative
     """
-    prox_plus(component.morph, component._morph.step)
+    if fixed_morph(component):
+        return component
+
+    prox_plus(component._morph, component._morph.step)
     return component
 
 
 def positive(component):
     """Make both the SED and morpholgy non-negative
     """
-    prox_plus(component.sed, component._sed.step)
-    prox_plus(component.morph, component._morph.step)
+    positive_sed(component)
+    positive_morph(component)
     return component
 
 
@@ -80,20 +92,22 @@ def normalized(component, type='morph_max'):
     For `type='morph_max'` the morphology matrix is
     normalized so that its maximum value is one.
     """
-    t = type.lower()
+    if fixed_sed(component) or fixed_morph(component):
+        return component
 
+    t = type.lower()
     if t == 'sed':
-        norm = component.sed.sum()
-        component.sed[:] = component.sed / norm
-        component.morph[:] = component.morph * norm
+        norm = component._sed.sum()
+        component._sed[:] = component._sed / norm
+        component._morph[:] = component._morph * norm
     elif t == 'morph':
-        norm = component.morph.sum()
-        component.sed[:] = component.sed * norm
-        component.morph[:] = component.morph / norm
+        norm = component._morph.sum()
+        component._sed[:] = component._sed * norm
+        component._morph[:] = component._morph / norm
     elif t == 'morph_max':
-        norm = component.morph.max()
-        component.sed[:] = component.sed * norm
-        component.morph[:] = component.morph / norm
+        norm = component._morph.max()
+        component._sed[:] = component._sed * norm
+        component._morph[:] = component._morph / norm
     else:
         raise ValueError("Unrecognized normalization '{0}'".format(type))
     return component
@@ -102,14 +116,20 @@ def normalized(component, type='morph_max'):
 def sparse_l0(component, thresh):
     """L0 norm (sparsity) on morphology
     """
-    prox_hard(component.morph, component._morph.step, thresh)
+    if fixed_morph(component):
+        return component
+
+    prox_hard(component._morph, component._morph.step, thresh)
     return component
 
 
 def sparse_l1(component, thresh):
     """L1 norm (sparsity) on morphology
     """
-    prox_soft(component.morph, component._morph.step, thresh)
+    if fixed_morph(component):
+        return component
+
+    prox_soft(component._morph, component._morph.step, thresh)
     return component
 
 
@@ -143,9 +163,12 @@ def threshold(component):
     The region that contains flux above the threshold is contained
     in `component.bboxes["thresh"]`.
     """
-    thresh, _bins = _threshold(component.morph)
-    component.morph[component.morph < thresh] = 0
-    bbox = trim(component.morph)
+    if fixed_morph(component):
+        return component
+
+    thresh, _bins = _threshold(component._morph)
+    component._morph[component._morph < thresh] = 0
+    bbox = trim(component._morph)
     if not hasattr(component, "bboxes"):
         component.bboxes = {}
     component.bboxes["thresh"] = bbox
@@ -164,15 +187,18 @@ def monotonic(component, pixel_center, use_nearest=False, thresh=0, exact=False,
     See `~scarlet.operator.prox_monotonic`
     for a description of the other parameters.
     """
+    if fixed_morph(component):
+        return component
+
     if bbox is not None:
         # Only apply monotonicity to the pixels inside the bounding box
-        morph = component.morph[bbox.slices]
+        morph = component.morph_[bbox.slices]
         shape = morph.shape
         if shape[0] <= 1 or shape[1] <= 1:
             return component
         center = pixel_center[0]-bbox.bottom, pixel_center[1]-bbox.left
     else:
-        morph = component.morph
+        morph = component.morph_
         shape = component.shape[-2:]
         center = pixel_center
     morph = morph.copy()
@@ -198,21 +224,24 @@ def monotonic(component, pixel_center, use_nearest=False, thresh=0, exact=False,
     step_size = component._morph.step
     prox(morph, step_size)
     if bbox is not None:
-        component.morph[:] = np.zeros(component.morph.shape, dtype=component.morph.dtype)
-        component.morph[bbox.slices] = morph
+        component._morph[:] = np.zeros(component._morph.shape, dtype=component._morph.dtype)
+        component._morph[bbox.slices] = morph
     else:
-        component.morph[:] = morph
+        component._morph[:] = morph
     return component
 
 
 def translation(component, direction=1, kernel=interpolation.lanczos, padding=3):
     """Shift the morphology by a given amount
     """
+    if fixed_morph(component):
+        return component
+
     dy, dx = component.shift
     dy *= direction
     dx *= direction
     _kernel, _, _ = interpolation.get_separable_kernel(dy, dx, kernel=kernel)
-    component.morph[:] = interpolation.fft_resample(component.morph, dy, dx)
+    component._morph[:] = interpolation.fft_resample(component._morph, dy, dx)
     return component
 
 
@@ -302,16 +331,19 @@ def symmetric(component, algorithm="kspace", bbox=None, fill=None, strength=.5):
     See `~scarlet.operator.prox_uncentered_symmetry`
     for a description of the parameters.
     """
+    if fixed_morph(component):
+        return component
+
     pixel_center = component.pixel_center
     if bbox is not None:
         # Only apply monotonicity to the pixels inside the bounding box
-        morph = component.morph[bbox.slices]
+        morph = component._morph[bbox.slices]
         shape = morph.shape
         if shape[0] <= 1 or shape[1] <= 1:
             return component
         center = pixel_center[0]-bbox.bottom, pixel_center[1]-bbox.left
     else:
-        morph = component.morph
+        morph = component._morph
         shape = component.shape[-2:]
         center = pixel_center
 
@@ -322,8 +354,8 @@ def symmetric(component, algorithm="kspace", bbox=None, fill=None, strength=.5):
         shift = None
     operator.prox_uncentered_symmetry(morph, step_size, center, algorithm, fill, shift, strength)
     if bbox is not None:
-        component.morph[:] = np.zeros(component.morph.shape, dtype=component.morph.dtype)
-        component.morph[bbox.slices] = morph
+        component._morph[:] = np.zeros(component._morph.shape, dtype=component._morph.dtype)
+        component._morph[bbox.slices] = morph
     else:
-        component.morph[:] = morph
+        component._morph[:] = morph
     return component
