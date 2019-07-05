@@ -60,7 +60,7 @@ class Blend(ComponentTree):
                 return False
         return True
 
-    def fit(self, max_iter=200, e_rel=1e-2, step_size=0.1, b1=0.5, b2=0.5, eps=1e-8):
+    def fit(self, max_iter=200, e_rel=1e-2, step_size=0.01, b1=0.5, b2=0.5, eps=1e-8):
         """Fit the model for each source to the data
 
         Parameters
@@ -103,7 +103,7 @@ class Blend(ComponentTree):
             # Call the update functions for all of the sources
             self.update()
 
-            if converged or (it > 1 and abs(self.mse[-2] - self.mse[-1]) < e_rel * self.mse[-1]): 
+            if converged or (it > 1 and abs(self.mse[-2] - self.mse[-1]) < e_rel * self.mse[-1]):
                 break
 
     def _loss(self, *parameters):
