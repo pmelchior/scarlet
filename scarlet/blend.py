@@ -71,9 +71,9 @@ class Blend(ComponentTree):
             Relative error for convergence of each component.
         """
         # compute the backward gradient tree
-        p = self.parameters
-        n_params = len(p)
-        x = [param.data for param in p]
+        x = self.parameters
+        n_params = len(x)
+        #x = [param.data for param in p]
         m = [np.zeros(x_.shape, x_.dtype) for x_ in x]
         v = [np.zeros(x_.shape, x_.dtype) for x_ in x]
         self._grad = grad(self._loss, tuple(range(n_params)))
@@ -96,9 +96,9 @@ class Blend(ComponentTree):
                 x[j] -= delta
 
                 # store step sizes for prox steps and convergence flags
-                p[j].step = delta / (g[j] + eps)
-                p[j].converged = np.sum(delta**2) <= e_rel2 * np.sum(x[j]**2)
-                converged &= p[j].converged
+                x[j].step = delta / (g[j] + eps)
+                x[j].converged = np.sum(delta**2) <= e_rel2 * np.sum(x[j]**2)
+                converged &= x[j].converged
 
             # Call the update functions for all of the sources
             self.update()

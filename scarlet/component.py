@@ -1,25 +1,26 @@
 import autograd.numpy as np
-
+from autograd.numpy.numpy_boxes import ArrayBox
+from autograd.core import VSpace
 import logging
 
 logger = logging.getLogger("scarlet.component")
 
-# TODO: this would be much nicer if we cold derive from np.ndarray, but ...
-class Parameter():
-    def __init__(self, data, step=None, converged=None):
-        self.data = data
-        if step is None:
-            step = 0
-        self.step = step
-        self.converged = converged
+class Parameter(np.ndarray):
+    def __new__(cls, array, step=0, converged=None, name="", **kwargs):
+        obj = np.asarray(array, dtype=array.dtype).view(cls)
+        obj.step = step
+        obj.converged = converged
+        obj.name = name
+        return obj
 
-    @property
-    def shape(self):
-        return self.data.shape
+    def __array_finalize__(self, obj):
+        if obj is None: return
+        self.step = getattr(obj, 'step', 0)
+        self.converged = getattr(obj, 'converged', None)
+        self.name = getattr(obj, 'name', "")
 
-    @property
-    def dtype(self):
-        return self.data.dtype
+ArrayBox.register(Parameter)
+VSpace.register(Parameter, vspace_maker=VSpace.mappings[np.ndarray])
 
 class Prior():
     """Differentiable Prior
@@ -75,17 +76,16 @@ class Component():
 
     def __init__(self, frame, sed, morph, prior=None, fix_sed=False, fix_morph=False):
         self._frame = frame
+
         # set sed and morph
-        self._sed = Parameter(sed)
-        self._morph = Parameter(morph)
+        self._sed = Parameter(np.array(sed))
+        self._morph = Parameter(np.array(morph))
+
         self._prior = prior
 
         # Properties used for indexing in the ComponentTree
         self._index = None
         self._parent = None
-
-        self.fix_sed = fix_sed
-        self.fix_morph = fix_morph
 
     @property
     def shape(self):
@@ -113,13 +113,21 @@ class Component():
     def sed(self):
         """Numpy view of the component SED
         """
-        return self._sed.data
+        if isinstance(self._sed, Parameter):
+            return self._sed.view(np.ndarray)
+        return self._sed
 
     @property
     def morph(self):
         """Numpy view of the component morphology
         """
-        return self._morph.data
+        if isinstance(self._morph, Parameter):
+            return self._morph.view(np.ndarray)
+        return self._morph
+
+    @property
+    def parameters(self):
+        return self._sed, self._morph
 
     def get_model(self, *params):
         """Get the model for this component.
@@ -152,10 +160,6 @@ class Component():
         that will be executed during fitting.
         """
         return self
-
-    @property
-    def parameters(self):
-        return self._sed, self._morph
 
 
 class ComponentTree():
