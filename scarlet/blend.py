@@ -71,21 +71,21 @@ class Blend(ComponentTree):
 
         for it in range(max_iter):
             g = self._grad(*x)
-
-            # TODO: need prior gradients here...
+            gp = self._grad_prior(*x)
 
             # Adam gradient updates
             for j in range(n_params):
-                m[j] = (1 - b1) * g[j] + b1 * m[j]       # First  moment estimate
-                v[j] = (1 - b2) * (g[j]**2) + b2 * v[j]  # Second moment estimate
-                mhat = m[j] / (1 - b1**(it + 1))         # Bias corrections
+                ggp = g[j] + gp[j]                      # grad of loss and prior
+                m[j] = (1 - b1) * ggp + b1 * m[j]       # First  moment estimate
+                v[j] = (1 - b2) * ggp**2 + b2 * v[j]    # Second moment estimate
+                mhat = m[j] / (1 - b1**(it + 1))        # Bias corrections
                 vhat = v[j] / (1 - b2**(it + 1))
                 delta = step_size * mhat / (np.sqrt(vhat) + eps)
                 # inline update
                 x[j] -= delta
 
                 # store step sizes for prox steps and convergence flags
-                x[j].step = delta / (g[j] + eps)
+                x[j].step = delta / (ggp + eps)
                 x[j].converged = np.sum(delta**2) <= e_rel2 * np.sum(x[j]**2)
                 converged &= x[j].converged
 
@@ -110,3 +110,7 @@ class Blend(ComponentTree):
             total_loss = total_loss + observation.get_loss(model)
         self.mse.append(total_loss._value)
         return total_loss
+
+    def _grad_prior(self, *parameters):
+        # TODO: could use collecting identical priors to run on mini-batches
+        return [ p.prior(p.view(np.ndarray)) if p.prior is not None else 0 for p in parameters ]
