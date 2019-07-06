@@ -49,17 +49,6 @@ class Blend(ComponentTree):
         """
         return len(self.mse)
 
-    @property
-    def converged(self):
-        """Whether the full Blend has converged within e_rel.
-
-        For convergence tests of individual components, check its `flags` member.
-        """
-        for c in self.components:
-            if (c.flags & (BlendFlag.SED_NOT_CONVERGED | BlendFlag.MORPH_NOT_CONVERGED)).value > 0:
-                return False
-        return True
-
     def fit(self, max_iter=200, e_rel=1e-2, step_size=0.01, b1=0.5, b2=0.5, eps=1e-8):
         """Fit the model for each source to the data
 

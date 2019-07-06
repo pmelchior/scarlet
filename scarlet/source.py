@@ -1,13 +1,11 @@
 import autograd.numpy as np
+import logging
+logger = logging.getLogger("scarlet.source")
 
-from .component import Component, ComponentTree, Parameter
 from . import operator
 from . import update
+from .component import Component, ComponentTree, Parameter
 from .interpolation import get_projection_slices
-
-import logging
-
-logger = logging.getLogger("scarlet.source")
 
 
 class SourceInitError(Exception):

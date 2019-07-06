@@ -2,6 +2,7 @@ import autograd.numpy as np
 from autograd.numpy.numpy_boxes import ArrayBox
 from autograd.core import VSpace
 import logging
+import pickle
 
 logger = logging.getLogger("scarlet.component")
 
@@ -130,6 +131,22 @@ class Component():
         """
         return self
 
+    def __getstate__(self):
+        # needed for pickling to understand what to save
+        return tuple([self._sed.copy(), self._morph.copy()])
+
+    def __setstate__(self, state):
+        self._sed, self._morph = state
+
+    def save(self, filename):
+        fp = open(filename, "wb")
+        pickle.dump(self, fp)
+        fp.close()
+
+    @classmethod
+    def load(cls, filename):
+        fp = open(filename, "rb")
+        return pickle.load(fp)
 
 class ComponentTree():
     """Base class for hierarchical collections of Components.
