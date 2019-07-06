@@ -6,51 +6,25 @@ import logging
 logger = logging.getLogger("scarlet.component")
 
 class Parameter(np.ndarray):
-    def __new__(cls, array, step=0, converged=None, name="", **kwargs):
+    def __new__(cls, array, name="", prior=None, step=0, converged=False, fixed=False, **kwargs):
         obj = np.asarray(array, dtype=array.dtype).view(cls)
+        obj.name = name
+        obj.prior = prior
         obj.step = step
         obj.converged = converged
-        obj.name = name
+        obj.fixed = fixed
         return obj
 
     def __array_finalize__(self, obj):
         if obj is None: return
-        self.step = getattr(obj, 'step', 0)
-        self.converged = getattr(obj, 'converged', None)
         self.name = getattr(obj, 'name', "")
+        self.prior = getattr(obj, 'prior', None)
+        self.step = getattr(obj, 'step', 0)
+        self.converged = getattr(obj, 'converged', False)
+        self.fixed = getattr(obj, 'fixed', False)
 
 ArrayBox.register(Parameter)
 VSpace.register(Parameter, vspace_maker=VSpace.mappings[np.ndarray])
-
-class Prior():
-    """Differentiable Prior
-
-    Attributes
-    ----------
-    grad_func: `function`
-        Function used to create the gradient
-    L_func: `function`
-        Function used to calculate the Lipschitz constant
-        of the gradient.
-    """
-
-    def __init__(self, grad_func, L_func):
-        self._grad_func = grad_func
-        self._L_func = L_func
-        self.sed_grad = 0
-        self.morph_grad = 0
-
-    # can be overloaded but needs to set these 4 members
-    # for batch processing: cache results with c as key
-    def compute_grad(self, component):
-        """Calculate the gradient
-
-        This method is called by the `Component` that owns
-        it during fitting to calculate the gradient update
-        for the component due to the prior.
-        """
-        self.sed_grad, self.morph_grad = self._grad_func(component._sed, component._morph)
-        self.L_sed, self.L_morph = self._L_func(component._sed, component._morph)
 
 
 class Component():
@@ -60,33 +34,22 @@ class Component():
 
     Parameters
     ----------
-    frame: a `~scarlet.Frame` instance
+    frame: `~scarlet.Frame`
         The spectral and spatial characteristics of this component.
-    sed: array
+    sed: `~scarlet.Parameter`
         1D array (bands) of the initial SED.
-    morph: array
-        Data cube (Height, Width) of the initial morphology.
-    prior: list of `~scarlet.component.Prior`s
-        Prior that generates gradients for the component.
-    fix_sed: bool, default=`False`
-        Whether or not the SED is fixed, or can be updated
-    fix_morph: bool, default=`False`
-        Whether or not the morphology is fixed, or can be updated
+    morph: `~scarlet.Parameter`
+        Image (Height, Width) of the initial morphology.
     """
 
-    def __init__(self, frame, sed, morph, prior=None, fix_sed=False, fix_morph=False):
+    def __init__(self, frame, sed, morph):
         self._frame = frame
 
         # set sed and morph
+        assert isinstance(sed, Parameter)
+        assert isinstance(morph, Parameter)
         self._sed = sed
-        if not fix_sed:
-            self._sed = Parameter(np.array(self._sed), name="sed")
-
         self._morph = morph
-        if not fix_morph:
-            self._morph = Parameter(np.array(self._morph), name="morph")
-
-        self._prior = prior
 
         # Properties used for indexing in the ComponentTree
         self._index = None
@@ -118,21 +81,17 @@ class Component():
     def sed(self):
         """Numpy view of the component SED
         """
-        if isinstance(self._sed, Parameter):
-            return self._sed.view(np.ndarray)
-        return self._sed
+        return self._sed.view(np.ndarray)
 
     @property
     def morph(self):
         """Numpy view of the component morphology
         """
-        if isinstance(self._morph, Parameter):
-            return self._morph.view(np.ndarray)
-        return self._morph
+        return self._morph.view(np.ndarray)
 
     @property
     def parameters(self):
-        return [ p for p in [self._sed, self._morph] if isinstance(p, Parameter) ]
+        return [ p for p in [self._sed, self._morph] if not p.fixed ]
 
     def get_model(self, *params):
         """Get the model for this component.

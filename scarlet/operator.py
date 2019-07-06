@@ -22,7 +22,7 @@ def _prox_strict_monotonic(X, step, ref_idx, dist_idx, thresh=0):
     """Force an intensity profile to be monotonic based on nearest neighbor
     """
     from . import operators_pybind11
-    operators_pybind11.prox_monotonic(X.reshape(-1), step, ref_idx, dist_idx, thresh)
+    operators_pybind11.prox_monotonic(X.reshape(-1), ref_idx, dist_idx, thresh)
     return X
 
 

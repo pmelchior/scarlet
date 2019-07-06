@@ -1,6 +1,6 @@
 import autograd.numpy as np
 
-from .component import Component, ComponentTree
+from .component import Component, ComponentTree, Parameter
 from . import operator
 from . import update
 from .interpolation import get_projection_slices
@@ -234,7 +234,7 @@ class RandomSource(Component):
     a uniform random field and (optionally) matches the SED to match a given
     observation.
     """
-    def __init__(self, frame, observation=None, **component_kwargs):
+    def __init__(self, frame, observation=None):
         """Source intialized with a single pixel
 
         Parameters
@@ -243,8 +243,6 @@ class RandomSource(Component):
             The frame of the model
         observation: list of `~scarlet.Observation`
             Observation to initialize the SED of the source
-        component_kwargs: dict
-            Keyword arguments to pass to the component initialization.
         """
         C, Ny, Nx = frame.shape
         morph = np.random.rand(Ny, Nx)
@@ -254,7 +252,10 @@ class RandomSource(Component):
         else:
             sed = get_best_fit_seds(morph[None], frame, observation)[0]
 
-        super().__init__(frame, sed, morph, **component_kwargs)
+        sed = Parameter(sed, name="sed")
+        morph = Parameter(morph, name="morph")
+
+        super().__init__(frame, sed, morph)
 
 
 class PointSource(Component):
@@ -266,7 +267,7 @@ class PointSource(Component):
     symmetry and monotonicity.
     """
     def __init__(self, frame, sky_coord, observation, symmetric=True, monotonic=True,
-                 center_step=5, delay_thresh=10, **component_kwargs):
+                 center_step=5, delay_thresh=10):
         """Source intialized with a single pixel
 
         Parameters
@@ -287,8 +288,6 @@ class PointSource(Component):
             Number of steps to skip before turning on thresholding.
             This is useful for point sources because it allows them to grow
             slightly before removing pixels with low significance.
-        component_kwargs: dict
-            Keyword arguments to pass to the component initialization.
         """
         # this ignores any broadening from the PSFs ...
         C, Ny, Nx = frame.shape
@@ -314,7 +313,10 @@ class PointSource(Component):
             # Account for the PSF in the intensity
             sed /= observation.frame.psfs.max(axis=(1, 2))
 
-        super().__init__(frame, sed, morph, **component_kwargs)
+        sed = Parameter(sed, name="sed")
+        morph = Parameter(morph, name="morph")
+
+        super().__init__(frame, sed, morph)
         self.symmetric = symmetric
         self.monotonic = monotonic
         self.center_step = center_step
@@ -361,7 +363,7 @@ class PointSource(Component):
 
 class ExtendedSource(PointSource):
     def __init__(self, frame, sky_coord, observation, bg_rms, thresh=1,
-                 symmetric=True, monotonic=True, center_step=5, delay_thresh=10, **component_kwargs):
+                 symmetric=True, monotonic=True, center_step=5, delay_thresh=10):
         """Extended source intialized to match a set of observations
 
         Parameters
@@ -382,8 +384,6 @@ class ExtendedSource(PointSource):
         monotonic: `bool`
             Whether or not to make the object monotonically decrease
             in flux from the center.
-        component_kwargs: dict
-            Keyword arguments to pass to the component initialization.
         """
         self.symmetric = symmetric
         self.monotonic = monotonic
@@ -395,14 +395,15 @@ class ExtendedSource(PointSource):
 
         sed, morph = init_extended_source(sky_coord, frame, observation, bg_rms,
                                           thresh, True, monotonic)
-
-        Component.__init__(self, frame, sed, morph, **component_kwargs)
+        sed = Parameter(sed, name="sed")
+        morph = Parameter(morph, name="morph")
+        Component.__init__(self, frame, sed, morph)
         self.update()
 
 
 class CombinedExtendedSource(PointSource):
     def __init__(self, frame, sky_coord, observations, bg_rms, obs_idx=0, thresh=1,
-                 symmetric=False, monotonic=True, center_step=5, delay_thresh=0, **component_kwargs):
+                 symmetric=False, monotonic=True, center_step=5, delay_thresh=0):
         """Extended source intialized to match a set of observations
 
         Parameters
@@ -426,8 +427,6 @@ class CombinedExtendedSource(PointSource):
         monotonic: `bool`
             Whether or not to make the object monotonically decrease
             in flux from the center.
-        component_kwargs: dict
-            Keyword arguments to pass to the component initialization.
         """
         self.symmetric = symmetric
         self.monotonic = monotonic
@@ -439,8 +438,9 @@ class CombinedExtendedSource(PointSource):
 
         sed, morph = init_combined_extended_source(sky_coord, frame, observations, bg_rms, obs_idx,
                                                    thresh, True, monotonic)
-
-        Component.__init__(self, frame, sed, morph, **component_kwargs)
+        sed = Parameter(sed, name="sed")
+        morph = Parameter(morph, name="morph")
+        Component.__init__(self, frame, sed, morph)
 
 
 class MultiComponentSource(ComponentTree):
@@ -456,7 +456,7 @@ class MultiComponentSource(ComponentTree):
     morphology to the multi-channel image in the region of the source.
     """
     def __init__(self, frame, sky_coord, observation, bg_rms, thresh=1, flux_percentiles=None,
-                 symmetric=True, monotonic=True, **component_kwargs):
+                 symmetric=True, monotonic=True):
         """Create multi-component extended source.
 
         Parameters
@@ -481,18 +481,18 @@ class MultiComponentSource(ComponentTree):
         monotonic: `bool`
             Whether or not to make the object monotonically decrease
             in flux from the center.
-        component_kwargs: dict
-            Keyword arguments to pass to the component initialization.
         """
         seds, morphs = init_multicomponent_source(sky_coord, frame, observation, bg_rms, flux_percentiles,
                                                   thresh, symmetric, monotonic)
 
         class MultiComponent(Component):
-            def __init__(self, frame, sed, morph, symmetric, monotonic, **kwargs):
+            def __init__(self, frame, sed, morph, symmetric, monotonic):
                 self.symmetric = symmetric
                 self.monotonic = monotonic
                 self.pixel_center = frame.get_pixel(sky_coord)
-                super().__init__(frame, sed, morph, **kwargs)
+                sed = Parameter(sed, name="sed")
+                morph = Parameter(morph, name="morph")
+                super().__init__(frame, sed, morph)
 
             def update(self):
                 if self.symmetric:
@@ -509,7 +509,7 @@ class MultiComponentSource(ComponentTree):
                 return self
 
         components = [
-            MultiComponent(frame, seds[k], morphs[k], symmetric, monotonic, **component_kwargs)
+            MultiComponent(frame, seds[k], morphs[k], symmetric, monotonic)
             for k in range(len(seds))
         ]
         super().__init__(components)
