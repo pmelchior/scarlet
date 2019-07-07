@@ -8,7 +8,6 @@ from . import operator
 from . import measurement
 from .bbox import trim
 from .cache import Cache
-from .psf import generate_psf_image, gaussian
 
 
 def positive_sed(component):

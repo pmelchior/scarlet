@@ -3,6 +3,7 @@ import numpy as np
 
 import scarlet
 import scarlet.update as update
+import scarlet.measurement as measurement
 from scarlet.cache import Cache
 
 
@@ -12,27 +13,12 @@ class TestUpdate(object):
         morph[4, 7] = 1
         morph[11, 9] = 2
         # Use the default window, which misses the higher point
-        center = update._fit_pixel_center(morph, (5, 5))
+        center = measurement.max_pixel(morph, (5, 5))
         np.testing.assert_array_equal([4, 7], center)
 
         # Make window wider and test again
-        center = update._fit_pixel_center(morph, (5, 5), window=tuple([slice(0, 15)] * 2))
+        center = measurement.max_pixel(morph, (5, 5), window=tuple([slice(0, 15)] * 2))
         np.testing.assert_array_equal([11, 9], center)
-
-        # Same tests but using the component
-        sed = np.array([1, 0, 2, 4, 10])
-        shape = (len(sed), morph.shape[0], morph.shape[1])
-        frame = scarlet.Frame(shape)
-
-        src = scarlet.Component(frame, sed, morph)
-        src.pixel_center = (5, 5)
-        update.fit_pixel_center(src)
-        np.testing.assert_array_equal([4, 7], src.pixel_center)
-
-        src = scarlet.Component(frame, sed, morph)
-        src.pixel_center = (5, 5)
-        update.fit_pixel_center(src, window=tuple([slice(0, 15)] * 2))
-        np.testing.assert_array_equal([11, 9], src.pixel_center)
 
     def test_non_negativity(self):
         sed = np.array([-.1, .1, 4, -.2, .2, 0])
@@ -121,7 +107,7 @@ class TestUpdate(object):
         shape = (len(sed), morph.shape[0], morph.shape[1])
         frame = scarlet.Frame(shape)
         src = scarlet.Component(frame, sed.copy(), morph.copy())
-        thresh, _ = update._threshold(src.morph)
+        thresh, _ = measurement.threshold(src.morph)
         true_morph = np.zeros(morph.shape)
         true_morph[7:14, 7:14] = morph[7:14, 7:14]
         update.threshold(src)

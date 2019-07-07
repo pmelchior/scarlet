@@ -5,6 +5,7 @@ from . import operator
 from . import update
 from . import measurement
 from .interpolation import get_projection_slices
+from .psf import generate_psf_image, gaussian
 
 import logging
 
