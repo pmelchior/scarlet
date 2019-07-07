@@ -3,7 +3,9 @@ import autograd.numpy as np
 from .component import Component, ComponentTree
 from . import operator
 from . import update
+from . import measurement
 from .interpolation import get_projection_slices
+from .psf import generate_psf_image, gaussian
 
 import logging
 
@@ -319,6 +321,18 @@ class PointSource(Component):
         self.monotonic = monotonic
         self.center_step = center_step
         self.delay_thresh = delay_thresh
+
+        # create PSF as weight for centroid measurements
+        if self.symmetric:
+            if self.frame.psfs is None:
+                shape = (41, 41)
+                psf = generate_psf_image(gaussian, shape, amplitude=1, sigma=.9)
+                psf /= psf.max()
+                self._centroid_weight = psf
+            else:
+                self._centroid_weight = self.frame.psfs[0]
+
+        # ensure adherence to constraints
         self.update()
 
     def update(self):
@@ -331,8 +345,10 @@ class PointSource(Component):
             it = 0
         else:
             it = self._parent.it
+
         # Update the central pixel location (pixel_center)
-        update.fit_pixel_center(self)
+        self.pixel_center = measurement.max_pixel(self.morph, self.pixel_center)
+
         # Thresholding needs to be fixed (DM-10190)
         # if it > self.delay_thresh:
         #     update.threshold(self)
@@ -346,7 +362,8 @@ class PointSource(Component):
         if self.symmetric:
             # Update the centroid position
             if it % 5 == 0:
-                update.psf_weighted_centroid(self)
+                self.pixel_center, self.shift = measurement.psf_weighted_centroid(self.morph, self._centroid_weight, self.pixel_center)
+
             # make the morphology perfectly symmetric
             update.symmetric(self, algorithm="kspace", bbox=bbox)
 
@@ -397,6 +414,17 @@ class ExtendedSource(PointSource):
                                           thresh, True, monotonic)
 
         Component.__init__(self, frame, sed, morph, **component_kwargs)
+
+        # create PSF as weight for centroid measurements
+        if self.symmetric:
+            if self.frame.psfs is None:
+                shape = (41, 41)
+                psf = generate_psf_image(gaussian, shape, amplitude=1, sigma=.9)
+                psf /= psf.max()
+                self._centroid_weight = psf
+            else:
+                self._centroid_weight = self.frame.psfs[0]
+
         self.update()
 
 
