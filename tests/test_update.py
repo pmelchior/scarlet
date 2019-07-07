@@ -91,7 +91,7 @@ class TestUpdate(object):
         morph = np.arange(shape[1]*shape[2], dtype=float).reshape(shape[1], shape[2])
 
         # Test l0 sparsity
-        src = scarlet.Component(frame, sed.copy(), morph.copy())
+        src = scarlet.Component(frame, sed, morph)
         src.L_morph = 1
         update.sparse_l0(src, thresh=4)
         true_morph = morph.copy()
@@ -135,8 +135,7 @@ class TestUpdate(object):
         sed = np.arange(shape[0])
         morph = np.arange(shape[1]*shape[2], dtype=float).reshape(shape[1], shape[2])
 
-        src = scarlet.Component(frame, sed.copy(), morph.copy())
-        src.L_morph = 1
+        src = scarlet.Component(frame, sed, morph)
         update.monotonic(src, (2, 2), use_nearest=True, exact=False, thresh=0)
         new_X = [[0.0, 1.0, 2.0, 3.0, 4.0],
                  [5.0, 6.0, 7.0, 8.0, 9.0],
@@ -149,8 +148,7 @@ class TestUpdate(object):
         # Weighted
         # We need to clear the cache, since this has already been created
         Cache._cache = {}
-        src = scarlet.Component(frame, sed.copy(), morph.copy())
-        src.L_morph = 1
+        src = scarlet.Component(frame, sed, morph)
         update.monotonic(src, (2, 2))
         new_X = [[0.000000000, 1.000000000, 2.000000000, 3.000000000, 4.000000000],
                  [5.000000000, 6.000000000, 7.000000000, 8.000000000, 9.000000000],
