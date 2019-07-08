@@ -75,33 +75,61 @@ class Blend(ComponentTree):
             Whether or not to use a rough approximation of the
             Lipschitz constants
         """
-
+        t = np.zeros((9, max_iter))
+        count = 0
         for step in range(max_iter):
             # Back propagate the gradients
+            import time
+            t[0,count] = time.clock()
             self._backward()
+            t[1, count] = time.clock()
 
             # Calculate the Lipschitz constants,
             # which are needed to determine the step size for each component
             self._set_lipschitz(approximate_L)
-
+            t[2, count] = time.clock()
             # Take the next gradient step for each component
             for c in self.components:
                 c.L_sed = self.L_sed
+                t[3, count] = time.clock()
                 c.L_morph = self.L_morph
-
+                t[4, count] = time.clock()
                 c.backward_prior()
+                t[5, count] = time.clock()
                 if not c.fix_sed:
                     c._sed = c._sed - c.step_sed * c.sed_grad
+                    t[6, count] = time.clock()
                     c.sed_grad = 0
                 if not c.fix_morph:
                     c._morph = c._morph - c.step_morph * c.morph_grad
+                    t[7, count] = time.clock()
                     c.morph_grad = 0
 
             # Call the update functions for all of the sources
             self.update()
+            t[8, count] = time.clock()
+            count+=1
 
             if self._check_convergence(e_rel):
                 break
+        import matplotlib.pyplot as plt
+        plt.plot(t[1, :]-t[0,:], label = 'self._backward')
+        plt.plot(t[2, :]-t[1, :], label='set Lipschitz')
+        plt.plot(t[3, :]-t[2, :], label='L_sed')
+        plt.plot(t[4, :]-t[3, :], label='Lmorph')
+        plt.plot(t[5, :]-t[4, :], label='backward prior')
+        plt.plot(t[6, :]-t[5, :], label='grad step sed')
+        plt.plot(t[7, :]-t[6, :], label='grad step morhp')
+        plt.plot(t[8, :]-t[7, :], label='self.update')
+        plt.yscale('log')
+        plt.legend()
+
+        plt.xlabel('iterations')
+        plt.ylabel('time ()')
+
+        plt.savefig('Ndim'+str(count))
+        plt.show()
+
 
     def _backward(self):
         """Backpropagate the gradients for the seds and morphs
