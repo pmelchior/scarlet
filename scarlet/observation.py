@@ -448,7 +448,7 @@ class LowResObservation(Observation):
         self.slices = tuple([slice(s) for s in shape])
 
         # Now we setup the parameters for the psf -> kernel FFTs
-        shape = np.array(model_frame.psfs.shape) #- 1
+        shape = np.array(model_frame.psfs.shape)
         shape[1:] += np.array(self.frame.psfs[0].shape)
 
         _fftpack_shape = [fftpack.helper.next_fast_len(d) for d in shape[1:]]
