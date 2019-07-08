@@ -329,13 +329,9 @@ class LowResObservation(Observation):
         for m in range(Nlr):
             ker[y_hr, x_hr] = interpolation.sinc2D((y_lr[m] - y_hr) / h,
                                                    (x_lr[m] - x_hr) / h)
-
-            # ker_fft = np.fft.rfftn(ker, self.fftpack_shape)
-            # operator_fft = ker_fft[np.newaxis, :, :] * psfs_fft
-            # op_ifft = np.fft.ifftshift(np.fft.irfftn(operator_fft,  axes=(1, 2)), axes=(1, 2))
-            # op_ifft = _centered(op_ifft, (Bpsf,Ny, Nx))
-            op_line = _centered(scp.fftconvolve(ker[np.newaxis, :, :], psfs, axes=(1, 2)), (Bpsf, Nx, Ny))
-            operator[:, :, m] = op_line.reshape(Bpsf, Ny * Nx)  # op_ifft.reshape(Bpsf, Nx*Ny)
+            for bpsf in range(Bpsf):
+                op_line = scp.fftconvolve(ker, psfs[bpsf], mode = 'same')
+                operator[bpsf, :, m] = op_line.reshape(Ny * Nx)
 
         return np.array(operator) * np.float(Nx * Ny) / (Nlr * np.pi)
 
