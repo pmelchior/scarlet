@@ -1,6 +1,40 @@
 import autograd.numpy as np
 from . import interpolation
 
+def conv2D_fft(shape, coord_lr):
+    '''performs a convolution of a coordinate kernel by a psf
+    This function is used in the making of the resampling convolution operator.
+    It create a kernel based on the sinc of the difference between coordinates in a high resolution frame and reference
+    coordinate (ym,xm)
+    Parameters
+    ----------
+    shape: tuple
+        shape of the high resolution frame
+    ym, xm: arrays
+        coordinate of the low resolution location where to compute mapping
+    p: array
+        PSF kernel
+    h: float
+        pixel size
+    Returns
+    -------
+    result: array
+        vector for convolution and resampling of the high resolution plane into pixel (xm,ym) at low resolution
+    '''
+
+    B, Ny, Nx = shape
+
+
+    y_lr, x_lr = coord_lr
+
+    N_lr = y_lr.size
+    ker = np.zeros((N_lr,Ny, Nx))
+    y, x = np.where(ker[0] == 0)
+
+    for m in range(N_lr):
+        ker[m, y, x] = interpolation.sinc2D((y_lr[m] - y), (x_lr[m] - x))
+
+    return ker
 
 def match_patches(shape_hr, shape_lr, wcs_hr, wcs_lr):
     '''Matches datasets at different resolutions

@@ -284,18 +284,15 @@ class LowResObservation(Observation):
         self.images = np.array(images)
         self._padding = padding
 
-
         if weights is not None:
             self.weights = np.array(weights)
         else:
             self.weights = 1
 
-    def make_operator(self, shape, psfs):
+    def make_operator(self, shape, psf):
         '''Builds the resampling and convolution operator
-
         Builds the matrix that expresses the linear operation of resampling a function evaluated on a grid with coordinates
         'coord_lr' to a grid with shape 'shape', and convolving by a kernel p
-
         Parameters
         ------
         shape: tuple
@@ -306,40 +303,23 @@ class LowResObservation(Observation):
             convolution kernel (PSF)
         Returns
         -------
-        operator: array
+        mat: array
             the convolution-resampling matrix
         '''
         B, Ny, Nx = shape
-        Bpsf = psfs.shape[0]
+        y_hr, x_hr = np.where(np.zeros((Ny, Nx)) == 0)
+        y_lr, x_lr = self._coord_lr
+        mat = np.zeros((Ny * Nx, x_lr.size))
 
-        ker = np.zeros((Ny, Nx))
-        y_hr, x_hr = np.where(ker == 0)
-        y_lr, x_lr = self._coord_hr
-
-        Nlr = x_lr.size
-
-        h = y_hr[1] - y_hr[0]
-        if h == 0:
-            h = x_hr[1] - x_hr[0]
-        assert h != 0
         import scipy.signal as scp
 
-        operator = np.zeros((Bpsf, Nx * Ny, Nlr))
+        for m in range(np.size(x_lr)):
+            mat[:, m] = scp.fftconvolve(self._ker[m], psf, mode='same').flatten() / np.pi * y_lr.size / y_hr.size
+        return mat
 
-        for m in range(Nlr):
-            ker[y_hr, x_hr] = interpolation.sinc2D((y_lr[m] - y_hr) / h,
-                                                   (x_lr[m] - x_hr) / h)
-            for bpsf in range(Bpsf):
-                op_line = scp.fftconvolve(ker, psfs[bpsf], mode = 'same')
-                operator[bpsf, :, m] = op_line.reshape(Ny * Nx)
-
-        return np.array(operator) * np.float(Nx * Ny) / (Nlr * np.pi)
-
-    def match_psfs(self, psf_hr, wcs_hr, wcs_lr):
+    def match_psfs(self, psf_hr, wcs_hr):
         '''psf matching between different dataset
-
         Matches PSFS at different resolutions by interpolating psf_lr on the same grid as psf_hr
-
         Parameters
         ----------
         psf_hr: array
@@ -359,6 +339,7 @@ class LowResObservation(Observation):
         '''
 
         psf_lr = self.frame.psfs
+        wcs_lr = self.frame.wcs
 
         ny_hr, nx_hr = psf_hr.shape
         npsf, ny_lr, nx_lr = psf_lr.shape
@@ -389,6 +370,7 @@ class LowResObservation(Observation):
         psf_match_lr = interpolation.sinc_interp(cmask, p_hr[::-1],
                                                  psf_lr.reshape(npsf, ny_lr * nx_lr)).reshape(npsf, n_p, n_p)
 
+
         psf_match_hr = psf_hr[np.int((ny_hr - n_p) / 2):np.int((ny_hr + n_p) / 2),
                        np.int((nx_hr - n_p) / 2):np.int((nx_hr + n_p) / 2)]
 
@@ -397,29 +379,16 @@ class LowResObservation(Observation):
         return psf_match_hr[np.newaxis, :], psf_match_lr
 
     def match(self, model_frame):
-        '''Matches the observation with a scene
 
-        Builds the tools to project images of this observation to a scene at a different resolution and psf.
-
-        Parameters
-        ----------
-        scene: Scene object
-            A scene in which to project the images from this observation
-        Returns
-        -------
-        None
-            instanciates new attributes of the object
-
-        '''
         #  channels of model that are represented in this observation
         self._band_slice = slice(None)
         if self.frame.channels is not model_frame.channels:
             bmin = model_frame.channels.index(self.frame.channels[0])
             bmax = model_frame.channels.index(self.frame.channels[-1])
-            self._band_slice = slice(bmin, bmax + 1)
+            self._band_slice = slice(bmin, bmax+1)
+
         # Get pixel coordinates in each frame.
-        mask, coord_lr, coord_hr = resampling.match_patches(model_frame.shape, self.frame.shape, model_frame.wcs,
-                                                            self.frame.wcs)
+        mask, coord_lr, coord_hr = resampling.match_patches(model_frame.shape, self.frame.shape, model_frame.wcs, self.frame.wcs)
         self._coord_lr = coord_lr
         self._coord_hr = coord_hr
         self._mask = mask
@@ -427,45 +396,35 @@ class LowResObservation(Observation):
         # Compute diff kernel at hr
 
         whr = model_frame.wcs
-        wlr = self.frame.wcs
 
         # Reference PSF
-        # This definition of a target is a little arbitrary
-        # I will probably be the job of `band to point the taget psf
         _target = model_frame.psfs[0, :, :]
         _shape = model_frame.shape
 
-        # Computes spatially matching observation and target psfs. The observation psf is also resampled to the scene's resolution
-        target_kernels, observed_kernels = self.match_psfs(_target, whr, wlr)
 
-        # First we setup the parameters for the model -> observation FFTs
-        # Make the PSF stamp wider due to errors when matching PSFs
-        psf_shape = np.array(target_kernels[1:].shape) + 10
-        shape = np.array(model_frame.shape[1:]) + psf_shape[1:] - 1
-        # Choose the optimal shape for FFTPack DFT
-        self.fftpack_shape = [fftpack.helper.next_fast_len(d) for d in shape]
-        # Store the pre-fftpack optimization slices
-        self.slices = tuple([slice(s) for s in shape])
+        self._fftpack_shape = [fftpack.helper.next_fast_len(d) for d in _target.shape]
 
-        # Now we setup the parameters for the psf -> kernel FFTs
-        shape = np.array(model_frame.psfs.shape)
-        shape[1:] += np.array(self.frame.psfs[0].shape)
-
-        _fftpack_shape = [fftpack.helper.next_fast_len(d) for d in shape[1:]]
+        # Interpolation kernel for resampling
+        self._ker = resampling.conv2D_fft(_shape, self._coord_hr)
+        # Computes spatially matching observation and target psfs. The observation psf is also resampled to the model frame resolution
+        new_target, observed_psf = self.match_psfs(_target, whr)
+        target_fft = np.fft.rfftn(new_target[0], self._fftpack_shape)
+        sel = target_fft == 0
+        observed_fft = np.fft.rfftn(observed_psf, self._fftpack_shape, axes=(1, 2))
 
         # Computes the diff kernel in Fourier
-        target_fft = np.fft.rfftn(target_kernels, self.fftpack_shape, axes=(1, 2))
-        observed_fft = np.fft.rfftn(observed_kernels, self.fftpack_shape, axes=(1, 2))
+        kernel_fft = observed_fft / target_fft
+        kernel_fft[:,sel] = 0
+        kernel = np.fft.irfftn(kernel_fft, self._fftpack_shape, axes = (1,2))
+        kernel = np.fft.ifftshift(kernel, axes = (1,2))
 
-        sel = (target_fft[0] == 0)
-        diff_fft = observed_fft / target_fft
-        diff_fft[:, sel] = 0
-
-        diff_psf = np.fft.ifftshift(np.fft.irfftn(diff_fft, self.fftpack_shape, axes=(1, 2)), axes=(1, 2))
-        diff_psf /= diff_psf.sum(axis=(1, 2))[:, np.newaxis, np.newaxis]
+        kernel = _centered(kernel, observed_psf.shape)
+        diff_psf = kernel / kernel.max()
 
         # Computes the resampling/convolution matrix
-        resconv_op = self.make_operator(_shape, diff_psf)
+        resconv_op = []
+        for dpsf in diff_psf:
+            resconv_op.append(self.make_operator(_shape, dpsf))
 
         self._resconv_op = np.array(resconv_op)
 
@@ -477,30 +436,26 @@ class LowResObservation(Observation):
 
     def _render(self, model):
         """Resample and convolve a model in the observation frame
-
         Parameters
         ----------
         model: array
             The model in some other data frame.
-
         Returns
         -------
         model_: array
             The convolved and resampled `model` in the observation frame.
         """
-        model_ = model[self._band_slice, :, :]
+        model_ = model[self._band_slice,:,:]
         model_ = np.array([np.dot(model_[c].flatten(), self._resconv_op[c]) for c in range(self.frame.C)])
 
         return model_
 
     def render(self, model):
         """Resample and convolve a model in the observation frame
-
         Parameters
         ----------
         model: array
             The model in some other data frame.
-
         Returns
         -------
         model_: array
@@ -512,12 +467,10 @@ class LowResObservation(Observation):
 
     def get_loss(self, model):
         """Computes the loss/fidelity of a given model wrt to the observation
-
         Parameters
         ----------
         model: array
             A model from `Blend`
-
         Returns
         -------
         loss: float
