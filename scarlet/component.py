@@ -47,10 +47,14 @@ class Component():
         self._frame = frame
 
         # set sed and morph
-        assert isinstance(sed, Parameter)
-        assert isinstance(morph, Parameter)
-        self._sed = sed
-        self._morph = morph
+        if isinstance(sed, Parameter):
+            self._sed = sed
+        else:
+            self._sed = Parameter(sed.copy(), name="sed")
+        if isinstance(morph, Parameter):
+            self._morph = morph
+        else:
+            self._morph = Parameter(morph.copy(), name="morph")
 
         # Properties used for indexing in the ComponentTree
         self._index = None

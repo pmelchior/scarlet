@@ -29,10 +29,12 @@ class TestComponent(object):
         assert isinstance(component._morph, scarlet.Parameter)
         assert isinstance(component._sed, scarlet.Parameter)
 
-        # Fix sed and morph
-        component = scarlet.Component(frame, sed, morph, fix_sed=True, fix_morph=True)
-        assert not isinstance(component._morph, scarlet.Parameter)
-        assert not isinstance(component._sed, scarlet.Parameter)
+        # explicitly set sed and morph fixed
+        sed = scarlet.Parameter(sed, name="sed", fixed=True)
+        morph = scarlet.Parameter(morph, name="morph", fixed=False)
+        component = scarlet.Component(frame, sed, morph)
+        assert component._sed.fixed is True
+        assert component._morph.fixed is False
 
     def test_properties(self):
         sed = np.arange(5)

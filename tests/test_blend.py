@@ -84,7 +84,6 @@ class TestBlend(object):
 
         model = observation.render(blend.get_model())
         assert_almost_equal(images, model)
-        assert blend.converged is False
 
         for s0, s in zip(sources, blend.sources):
             assert_array_equal(s.get_model(), s0.get_model())
@@ -104,7 +103,8 @@ class TestBlend(object):
         # Try to run for 10 iterations
         # Since the model is already near exact, it should converge
         # on the 2nd iteration (since it doesn't calculate the initial loss)
-        blend.fit(10)
+        blend.fit(100)
+        print (blend.mse)
 
         assert blend.it == 2
         assert_almost_equal(blend.L_sed, 2.5481250470053265)
