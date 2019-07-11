@@ -10,7 +10,7 @@ import logging
 logger = logging.getLogger("scarlet.observation")
 
 
-def _centered(arr, newshape, conv = 0):
+def _centered(arr, newshape):
     """Return the center newshape portion of the array.
 
     This function is used by `fft_convolve` to remove
@@ -20,9 +20,6 @@ def _centered(arr, newshape, conv = 0):
     currshape = np.array(arr.shape)
     startind = (currshape - newshape) // 2
     endind = startind + newshape
-    if conv == 1:
-        endind[1:] += 1
-        startind[1:] += 1
     myslice = [slice(startind[k], endind[k]) for k in range(len(endind))]
 
     return arr[tuple(myslice)]
@@ -192,25 +189,32 @@ class Observation():
             # Make the PSF stamp wider due to errors when matching PSFs
             psf_shape = np.array(self.frame.psfs.shape)
             psf_shape[1:] += self._padding
-            shape = np.array(model_frame.shape) + psf_shape - 1
-            shape[0] = model_frame.shape[0]
+            conv_shape = np.array(model_frame.shape) + psf_shape - 1
+            conv_shape[0] = model_frame.shape[0]
 
             # Choose the optimal shape for FFTPack DFT
-            self._fftpack_shape = [fftpack.helper.next_fast_len(d) for d in shape[1:]]
+            self._fftpack_shape = [fftpack.helper.next_fast_len(d) for d in conv_shape[1:]]
+
             # autograd.numpy.fft does not currently work
             # if the last dimension is odd
             while self._fftpack_shape[-1] % 2 != 0:
                 _shape = self._fftpack_shape[-1] + 1
                 self._fftpack_shape[-1] = fftpack.helper.next_fast_len(_shape)
 
+
             # Store the pre-fftpack optimization slices
-            self.slices = tuple(([slice(s) for s in shape]))
+            self.slices = tuple(([slice(s) for s in conv_shape]))
 
             # Now we setup the parameters for the psf -> kernel FFTs
-            shape = np.array(model_frame.psfs.shape) - 1
-            shape[1:] += np.array(self.frame.psfs[0].shape)
+            shape = np.array(self.frame.psfs.shape) + np.array(model_frame.psfs.shape) - 1
+            shape[0] = np.array(self.frame.psfs.shape[0])
 
+            #Fast fft shapes for kernels
             _fftpack_shape = [fftpack.helper.next_fast_len(d) for d in shape[1:]]
+
+            while _fftpack_shape[-1] % 2 != 0:
+                k_shape = np.array(_fftpack_shape) + 1
+                _fftpack_shape = [fftpack.helper.next_fast_len(k_s) for k_s in k_shape]
 
             # fft of the target psf
             target_fft = np.fft.rfftn(model_frame.psfs, _fftpack_shape, axes=(1, 2))
@@ -221,10 +225,10 @@ class Observation():
             # Diff kernel between observation and target psf in Fourrier
             kernels = np.fft.ifftshift(np.fft.irfftn(_psf_fft / target_fft, _fftpack_shape, axes=(1, 2)), axes=(1, 2))
 
-            if kernels.shape[1] % 2 == 0:
+            if kernels.shape[1] % 2 == 0 :
                 kernels = kernels[:, 1:, 1:]
 
-            kernels = _centered(kernels, psf_shape, conv = 1)
+            kernels = _centered(kernels, psf_shape)
 
             self._diff_kernels_fft = np.fft.rfftn(kernels, self._fftpack_shape, axes=(1, 2))
 
@@ -405,21 +409,28 @@ class LowResObservation(Observation):
         _shape = model_frame.shape
 
 
-        self._fftpack_shape = [fftpack.helper.next_fast_len(d) for d in _target.shape]
+        _fftpack_shape = [fftpack.helper.next_fast_len(d) for d in _target.shape]
+
+        while _fftpack_shape[-1] % 2 != 0:
+            k_shape = np.array(_fftpack_shape) + 1
+            _fftpack_shape = [fftpack.helper.next_fast_len(k_s) for k_s in k_shape]
 
         # Interpolation kernel for resampling
         self._ker = resampling.conv2D_fft(_shape, self._coord_hr)
         # Computes spatially matching observation and target psfs. The observation psf is also resampled to the model frame resolution
         new_target, observed_psf = self.match_psfs(_target, whr)
-        target_fft = np.fft.rfftn(new_target[0], self._fftpack_shape)
+        target_fft = np.fft.rfftn(new_target[0], _fftpack_shape)
         sel = target_fft == 0
-        observed_fft = np.fft.rfftn(observed_psf, self._fftpack_shape, axes=(1, 2))
+        observed_fft = np.fft.rfftn(observed_psf, _fftpack_shape, axes=(1, 2))
 
         # Computes the diff kernel in Fourier
         kernel_fft = observed_fft / target_fft
         kernel_fft[:,sel] = 0
-        kernel = np.fft.irfftn(kernel_fft, self._fftpack_shape, axes = (1,2))
+        kernel = np.fft.irfftn(kernel_fft, _fftpack_shape, axes = (1,2))
         kernel = np.fft.ifftshift(kernel, axes = (1,2))
+
+        if kernel.shape[1] % 2 == 0:
+            kernel = kernel[:, 1:, 1:]
 
         kernel = _centered(kernel, observed_psf.shape)
         diff_psf = kernel / kernel.max()
