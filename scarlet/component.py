@@ -11,7 +11,7 @@ class Parameter(np.ndarray):
         obj = np.asarray(array, dtype=array.dtype).view(cls)
         obj.name = name
         obj.prior = prior
-        obj.step = step
+        obj.step = 0
         obj.converged = converged
         obj.fixed = fixed
         return obj
@@ -20,9 +20,13 @@ class Parameter(np.ndarray):
         if obj is None: return
         self.name = getattr(obj, 'name', "")
         self.prior = getattr(obj, 'prior', None)
-        self.step = getattr(obj, 'step', 0)
+        self.step = getattr(obj, 'step_size', 0)
         self.converged = getattr(obj, 'converged', False)
         self.fixed = getattr(obj, 'fixed', False)
+
+    @property
+    def _data(self):
+        return self.view(np.ndarray)
 
 ArrayBox.register(Parameter)
 VSpace.register(Parameter, vspace_maker=VSpace.mappings[np.ndarray])
@@ -86,13 +90,13 @@ class Component():
     def sed(self):
         """Numpy view of the component SED
         """
-        return self._sed.view(np.ndarray)
+        return self._sed._data
 
     @property
     def morph(self):
         """Numpy view of the component morphology
         """
-        return self._morph.view(np.ndarray)
+        return self._morph._data
 
     @property
     def parameters(self):

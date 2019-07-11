@@ -41,8 +41,6 @@ class Blend(ComponentTree):
             observations = (observations,)
         self.observations = observations
 
-        self.mse = []
-
     @property
     def it(self):
         """Number of iterations run in the `fit` method
@@ -59,21 +57,29 @@ class Blend(ComponentTree):
         e_rel: float
             Relative error for convergence of each component.
         """
-        # compute the backward gradient tree
+
+        # dynamically call parameters to allow for addition / fixing
         x = self.parameters
         n_params = len(x)
-        #x = [param.data for param in p]
         m = [np.zeros(x_.shape, x_.dtype) for x_ in x]
         v = [np.zeros(x_.shape, x_.dtype) for x_ in x]
         vhat = [np.zeros(x_.shape, x_.dtype) for x_ in x]
+
+        # compute the backward gradient tree
         self._grad = grad(self._loss, tuple(range(n_params)))
+        self._set_stepsizes(*x, step_size=step_size)
         e_rel2 = e_rel ** 2
+        self.mse = []
+        converged = False
 
         for it in range(max_iter):
             g = self._grad(*x)
             gp = self._grad_prior(*x)
             b1t = b1**(it+1)
             b1tm1 = b1**it
+
+            # for convergence test
+            x_ = [x_.view(np.ndarray).copy() for x_ in x]
 
             # AdamX gradient updates
             for j in range(n_params):
@@ -85,18 +91,23 @@ class Blend(ComponentTree):
                 else:
                     vhat[j] = np.maximum(v[j], vhat[j] * (1 - b1t)**2 / (1 - b1tm1)**2)
 
-                # inline update
-                x[j] -= step_size * m[j] / np.sqrt(vhat[j])
-
-                # # store step sizes for prox steps and convergence flags
-                # x[j].converged = np.sum(delta**2) <= e_rel2 * np.sum(x[j]**2)
-                # converged &= x[j].converged
+                # inline update from gradients
+                x[j] -= x[j].step * m[j] / np.sqrt(vhat[j])
 
             # Call the update functions for all of the sources
+            # convergence needs to be evaluated *after* the prox updates
             self.update()
 
-            if (it > 1 and abs(self.mse[-2] - self.mse[-1]) < e_rel * self.mse[-1]):
+            converged = True
+            for j in range(n_params):
+                x[j].converged = np.sum((x_[j] - x[j]._data)**2) <= e_rel2 * np.sum(x[j]._data**2)
+                converged &= x[j].converged
+
+            if converged:
                 break
+
+        return self
+
 
     def _loss(self, *parameters):
         """Loss function for autograd
@@ -117,3 +128,13 @@ class Blend(ComponentTree):
     def _grad_prior(self, *parameters):
         # TODO: could use collecting identical priors to run on mini-batches
         return [ p.prior(p.view(np.ndarray)) if p.prior is not None else 0 for p in parameters ]
+
+    def _set_stepsizes(self, *parameters, step_size=1e-2):
+        # pick step as a fraction of the mac value of the parameter
+        # since we don't want faint sources to slow down, we set all sources to
+        # the same step size
+        max_value = {}
+        for p in parameters:
+            max_value[p.name] = max(p._data.max(), max_value.get(p.name, 0))
+        for p in parameters:
+            p.step = step_size * max_value[p.name]
