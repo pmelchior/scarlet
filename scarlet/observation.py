@@ -10,7 +10,7 @@ import logging
 logger = logging.getLogger("scarlet.observation")
 
 
-def _centered(arr, newshape):
+def _centered(arr, newshape, conv = 0):
     """Return the center newshape portion of the array.
 
     This function is used by `fft_convolve` to remove
@@ -20,6 +20,9 @@ def _centered(arr, newshape):
     currshape = np.array(arr.shape)
     startind = (currshape - newshape) // 2
     endind = startind + newshape
+    if conv == 1:
+        endind[1:] += 1
+        startind[1:] += 1
     myslice = [slice(startind[k], endind[k]) for k in range(len(endind))]
 
     return arr[tuple(myslice)]
@@ -204,7 +207,7 @@ class Observation():
             self.slices = tuple(([slice(s) for s in shape]))
 
             # Now we setup the parameters for the psf -> kernel FFTs
-            shape = np.array(model_frame.psfs.shape)
+            shape = np.array(model_frame.psfs.shape) - 1
             shape[1:] += np.array(self.frame.psfs[0].shape)
 
             _fftpack_shape = [fftpack.helper.next_fast_len(d) for d in shape[1:]]
@@ -221,7 +224,7 @@ class Observation():
             if kernels.shape[1] % 2 == 0:
                 kernels = kernels[:, 1:, 1:]
 
-            kernels = _centered(kernels, psf_shape)
+            kernels = _centered(kernels, psf_shape, conv = 1)
 
             self._diff_kernels_fft = np.fft.rfftn(kernels, self._fftpack_shape, axes=(1, 2))
 
