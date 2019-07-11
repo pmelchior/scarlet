@@ -49,7 +49,7 @@ class Blend(ComponentTree):
         """
         return len(self.mse)
 
-    def fit(self, max_iter=200, e_rel=1e-2, step_size=0.01, b1=0.5, b2=0.5, eps=1e-8):
+    def fit(self, max_iter=200, e_rel=1e-3, step_size=1e-2, b1=0.5, b2=0.999):
         """Fit the model for each source to the data
 
         Parameters
@@ -65,34 +65,37 @@ class Blend(ComponentTree):
         #x = [param.data for param in p]
         m = [np.zeros(x_.shape, x_.dtype) for x_ in x]
         v = [np.zeros(x_.shape, x_.dtype) for x_ in x]
+        vhat = [np.zeros(x_.shape, x_.dtype) for x_ in x]
         self._grad = grad(self._loss, tuple(range(n_params)))
         e_rel2 = e_rel ** 2
-        converged = True
 
         for it in range(max_iter):
             g = self._grad(*x)
             gp = self._grad_prior(*x)
+            b1t = b1**(it+1)
+            b1tm1 = b1**it
 
-            # Adam gradient updates
+            # AdamX gradient updates
             for j in range(n_params):
-                ggp = g[j] + gp[j]                      # grad of loss and prior
-                m[j] = (1 - b1) * ggp + b1 * m[j]       # First  moment estimate
-                v[j] = (1 - b2) * ggp**2 + b2 * v[j]    # Second moment estimate
-                mhat = m[j] / (1 - b1**(it + 1))        # Bias corrections
-                vhat = v[j] / (1 - b2**(it + 1))
-                delta = step_size * mhat / (np.sqrt(vhat) + eps)
-                # inline update
-                x[j] -= delta
+                ggp = g[j] + gp[j]
+                m[j] = (1 - b1t) * ggp + b1t * m[j]
+                v[j] = (1 - b2) * ggp**2 + b2 * v[j]
+                if it == 0:
+                    vhat[j] = v[j]
+                else:
+                    vhat[j] = np.maximum(v[j], vhat[j] * (1 - b1t)**2 / (1 - b1tm1)**2)
 
-                # store step sizes for prox steps and convergence flags
-                x[j].step = delta / (ggp + eps)
-                x[j].converged = np.sum(delta**2) <= e_rel2 * np.sum(x[j]**2)
-                converged &= x[j].converged
+                # inline update
+                x[j] -= step_size * m[j] / np.sqrt(vhat[j])
+
+                # # store step sizes for prox steps and convergence flags
+                # x[j].converged = np.sum(delta**2) <= e_rel2 * np.sum(x[j]**2)
+                # converged &= x[j].converged
 
             # Call the update functions for all of the sources
             self.update()
 
-            if converged or (it > 1 and abs(self.mse[-2] - self.mse[-1]) < e_rel * self.mse[-1]):
+            if (it > 1 and abs(self.mse[-2] - self.mse[-1]) < e_rel * self.mse[-1]):
                 break
 
     def _loss(self, *parameters):
