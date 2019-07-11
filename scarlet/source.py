@@ -327,10 +327,11 @@ class PointSource(Component):
         This method can be overwritten if a different set of constraints
         or update functions is desired.
         """
-        if self._parent is None:
-            it = 0
-        else:
-            it = self._parent.it
+        try:
+            self.update_it += 1
+        except AttributeError:
+            self.update_it = 0
+
         # Update the central pixel location (pixel_center)
         update.fit_pixel_center(self)
         # Thresholding needs to be fixed (DM-10190)
@@ -345,7 +346,7 @@ class PointSource(Component):
 
         if self.symmetric:
             # Update the centroid position
-            if it % 5 == 0:
+            if self.update_it % 5 == 0:
                 update.psf_weighted_centroid(self)
             # make the morphology perfectly symmetric
             update.symmetric(self, algorithm="kspace", bbox=bbox)

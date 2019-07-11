@@ -41,12 +41,6 @@ class Blend(ComponentTree):
             observations = (observations,)
         self.observations = observations
 
-    @property
-    def it(self):
-        """Number of iterations run in the `fit` method
-        """
-        return len(self.mse)
-
     def fit(self, max_iter=200, e_rel=1e-3, step_size=1e-2, b1=0.5, b2=0.999):
         """Fit the model for each source to the data
 
