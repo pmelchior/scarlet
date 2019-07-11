@@ -42,11 +42,8 @@ class Frame():
         assert len(shape) == 3
         self._shape = tuple(shape)
 
-        if self.Ny != fftpack.next_fast_len(self.Ny):
-            logger.warning('Ny={} not fast for FFT. Consider increasing to {} pixels'.format(self.Ny, fftpack.next_fast_len(self.Ny)))
-
-        if self.Nx != fftpack.next_fast_len(self.Nx):
-            logger.warning('Nx={} not fast for FFT. Consider increasing to {} pixels'.format(self.Nx, fftpack.next_fast_len(self.Nx)))
+        if self.Ny != fftpack.next_fast_len(self.Ny) or self.Nx != fftpack.next_fast_len(self.Nx):
+            logger.warning('Shape ({},{}) not fast for FFT. Consider increasing to ({},{}) pixels'.format(self.Ny, self.Nx, fftpack.next_fast_len(self.Ny), fftpack.next_fast_len(self.Nx)))
 
         self.wcs = wcs
 
@@ -57,6 +54,12 @@ class Frame():
             if not np.allclose(psfs.sum(axis=(1, 2)), 1):
                 logger.warning('PSFs not normalized. Normalizing now..')
                 psfs /= psfs.sum(axis=(1, 2))[:,None,None]
+
+            if dtype != psfs.dtype:
+                msg = "Dtypes of PSFs and Frame different. Casting PSFs to {}".format(dtype)
+                logger.warning(msg)
+                psfs = psfs.astype(dtype)
+
         self._psfs = psfs
 
         assert channels is None or len(channels) == shape[0]
@@ -155,9 +158,9 @@ class Observation():
         """
         self.frame = Frame(images.shape, wcs=wcs, psfs=psfs, channels=channels, dtype=images.dtype)
 
-        self.images = np.array(images, dtype=self.frame.dtype)
+        self.images = np.array(images)
         if weights is not None:
-            self.weights = np.array(weights, dtype=self.frame.dtype)
+            self.weights = np.array(weights)
         else:
             self.weights = 1
 
@@ -187,6 +190,8 @@ class Observation():
             self.images = self.images.astype(model_frame.dtype)
             if type(self.weights) is np.ndarray:
                 self.weights = self.weights.astype(model_frame.dtype)
+            if self.frame._psfs is not None:
+                self.frame._psfs = self.frame._psfs.astype(model_frame.dtype)
 
         #  channels of model that are represented in this observation
         self._band_slice = slice(None)
@@ -225,7 +230,7 @@ class Observation():
                 kernel = _centered(kernel, psf_shape)
                 _diff_kernels_fft.append(np.fft.rfftn(kernel, self._fftpack_shape))
 
-            self._diff_kernels_fft = np.array(_diff_kernels_fft, dtype=self.frame.dtype)
+            self._diff_kernels_fft = np.array(_diff_kernels_fft)
 
         return self
 
@@ -278,21 +283,24 @@ class Observation():
 
 class LowResObservation(Observation):
 
-    def __init__(self, images, wcs=None, psfs=None, weights=None, channels=None, padding=3, dtype=np.float32):
+    def __init__(self, images, wcs=None, psfs=None, weights=None, channels=None, padding=3):
 
         assert wcs is not None, "WCS is necessary for LowResObservation"
         assert psfs is not None, "PSFs are necessary for LowResObservation"
 
-        self.frame = Frame(images.shape, wcs=wcs, psfs=psfs, channels=channels, dtype=dtype)
-        self.images = np.array(images, dtype=self.frame.dtype)
-        self._padding = padding
-
-        if weights is not None:
-            self.weights = np.array(weights, dtype=self.frame.dtype)
-        else:
-            self.weights = 1
+        super().__init__(images, wcs=wcs, psfs=psfs, weights=weights, channels=channels, padding=padding)
 
     def match(self, model_frame):
+
+        if self.frame.dtype != model_frame.dtype:
+            msg = "Dtypes of model and observation different. Casting observation to {}".format(model_frame.dtype)
+            logger.warning(msg)
+            self.frame.dtype = model_frame.dtype
+            self.images = self.images.astype(model_frame.dtype)
+            if type(self.weights) is np.ndarray:
+                self.weights = self.weights.astype(model_frame.dtype)
+            if self.frame._psfs is not None:
+                self.frame._psfs = self.frame._psfs.astype(model_frame.dtype)
 
         #  channels of model that are represented in this observation
         self._band_slice = slice(None)

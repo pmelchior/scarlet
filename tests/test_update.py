@@ -35,32 +35,33 @@ class TestUpdate(object):
         np.testing.assert_array_equal([11, 9], src.pixel_center)
 
     def test_non_negativity(self):
-        sed = np.array([-.1, .1, 4, -.2, .2, 0])
-        morph = np.array([[-1, -.5, -1], [.1, 2, .3], [-.5, .3, 0]])
-        shape = (len(sed), morph.shape[0], morph.shape[1])
+        shape = (6, 3, 3)
         frame = scarlet.Frame(shape)
+        sed = np.array([-.1, .1, 4, -.2, .2, 0], dtype=frame.dtype)
+        morph = np.array([[-1, -.5, -1], [.1, 2, .3], [-.5, .3, 0]], dtype=frame.dtype)
 
         # Test SED only
         src = scarlet.Component(frame, sed.copy(), morph.copy())
         update.positive_sed(src)
-        np.testing.assert_array_equal(src.sed, [0, .1, 4, 0, .2, 0])
+        np.testing.assert_array_almost_equal(src.sed, [0, .1, 4, 0, .2, 0])
         np.testing.assert_array_equal(src.morph, morph)
         # Test morph only
         src = scarlet.Component(frame, sed.copy(), morph.copy())
         update.positive_morph(src)
         np.testing.assert_array_equal(src.sed, sed)
-        np.testing.assert_array_equal(src.morph, [[0, 0, 0], [.1, 2, .3], [0, .3, 0]])
+        np.testing.assert_array_almost_equal(src.morph, [[0, 0, 0], [.1, 2, .3], [0, .3, 0]])
+
         # Test SED and morph
         src = scarlet.Component(frame, sed.copy(), morph.copy())
         update.positive(src)
-        np.testing.assert_array_equal(src.sed, [0, .1, 4, 0, .2, 0])
-        np.testing.assert_array_equal(src.morph, [[0, 0, 0], [.1, 2, .3], [0, .3, 0]])
+        np.testing.assert_array_almost_equal(src.sed, [0, .1, 4, 0, .2, 0])
+        np.testing.assert_array_almost_equal(src.morph, [[0, 0, 0], [.1, 2, .3], [0, .3, 0]])
 
     def test_normalized(self):
         shape = (6, 5, 5)
         frame = scarlet.Frame(shape)
-        sed = np.arange(shape[0], dtype=float)
-        morph = np.arange(shape[1]*shape[2], dtype=float).reshape(shape[1], shape[2])
+        sed = np.arange(shape[0], dtype=frame.dtype)
+        morph = np.arange(shape[1]*shape[2], dtype=frame.dtype).reshape(shape[1], shape[2])
 
         # Test SED normalization
         src = scarlet.Component(frame, sed.copy(), morph.copy())
@@ -131,7 +132,7 @@ class TestUpdate(object):
 
     def test_monotonic(self):
         shape = (6, 5, 5)
-        frame = scarlet.Frame(shape)
+        frame = scarlet.Frame(shape, dtype=np.float64)
         sed = np.arange(shape[0])
         morph = np.arange(shape[1]*shape[2], dtype=float).reshape(shape[1], shape[2])
 

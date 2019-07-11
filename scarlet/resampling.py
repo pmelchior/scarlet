@@ -1,4 +1,4 @@
-import autograd.numpy as np
+import numpy as np
 from . import interpolation
 
 def conv2D_fft(shape, ym, xm, p, h):

@@ -138,10 +138,10 @@ class TestComponentTree(object):
     def test_init(self):
         shape = (5, 5, 5)
         frame = scarlet.Frame(shape)
-        sed1 = np.arange(shape[0], dtype=float)
+        sed1 = np.arange(shape[0], dtype=frame.dtype)
         sed2 = np.ones_like(sed1)
-        sed3 = np.arange(shape[0], dtype=float)[::-1]
-        morph1 = np.arange(shape[1]*shape[2], dtype=float).reshape(shape[1], shape[2])
+        sed3 = np.arange(shape[0], dtype=frame.dtype)[::-1]
+        morph1 = np.arange(shape[1]*shape[2], dtype=frame.dtype).reshape(shape[1], shape[2])
         morph2 = np.zeros_like(morph1)
         morph2[1:-1, 1:-1] = [[1, 2, 1], [2, 4, 2], [1, 2, 1]]
         morph3 = np.ones_like(morph1)
@@ -208,10 +208,10 @@ class TestComponentTree(object):
         assert_array_equal(tflux2, flux1 + flux2 + flux3)
 
     def test_items(self):
-        sed = np.arange(3, dtype=float)
-        morph = np.arange(25, dtype=float).reshape(5, 5)
-        shape = (len(sed), morph.shape[0], morph.shape[1])
+        shape = (3, 5, 5)
         frame = scarlet.Frame(shape)
+        sed = np.arange(3, dtype=frame.dtype)
+        morph = np.arange(25, dtype=frame.dtype).reshape(5, 5)
         c1 = UpdateComponent(frame=frame, sed=sed, morph=morph)
         c2 = UpdateComponent(frame=frame, sed=sed, morph=morph)
         c3 = UpdateComponent(frame=frame, sed=sed, morph=morph)
