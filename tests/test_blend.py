@@ -53,38 +53,19 @@ def init_data(shape, coords, amplitudes=None, convolve=True, dtype=np.float32):
 
 
 class TestBlend(object):
-    def test_init(self):
+    def test_model_render(self):
         shape = (6, 31, 55)
         coords = [(20, 10), (10, 30), (17, 42)]
         target_psf, psfs, images, channels, seds, morphs = init_data(shape, coords, [3, 2, 1], dtype=np.float64)
-
-        # Test vanilla init
-        frame = scarlet.Frame(images.shape, dtype=np.float64)
-        observation = scarlet.Observation(images).match(frame)
-        sources = [scarlet.PointSource(frame, coord, observation) for coord in coords]
-        blend = scarlet.Blend(sources, observation)
-
-        assert len(blend.observations) == 1
-        assert blend.observations[0] == observation
-        assert blend.mse == []
-        assert blend.frame.shape == frame.shape
-        assert blend.frame.psfs == frame.psfs
 
         # Test init with psfs
         frame = scarlet.Frame(images.shape, psfs=target_psf[None], dtype=np.float64)
         observation = scarlet.Observation(images, psfs=psfs).match(frame)
         sources = [scarlet.PointSource(frame, coord, observation) for coord in coords]
-
         blend = scarlet.Blend(sources, observation)
-        assert blend.observations[0] == observation
-        assert blend.mse == []
-        assert blend.frame == frame
-        assert_array_equal(blend.frame.psfs, frame.psfs)
-        assert_array_equal(observation._diff_kernels_fft.shape, (6, 81, 55))
-
         model = observation.render(blend.get_model())
+
         assert_almost_equal(images, model)
-        assert blend.converged is False
 
         for k in range(len(sources)):
             assert_array_equal(blend.sources[k].get_model(), sources[k].get_model())

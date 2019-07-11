@@ -16,48 +16,6 @@ class UpdateComponent(scarlet.Component):
 
 
 class TestComponent(object):
-    def test_init(self):
-        # Minimal init
-        sed = np.arange(5)
-        morph = np.arange(20).reshape(4, 5)
-        shape = (len(sed), morph.shape[0], morph.shape[1])
-        frame = scarlet.Frame(shape)
-        component = scarlet.Component(frame, sed, morph)
-
-        assert_array_equal(component.sed, sed)
-        assert_array_equal(component.morph, morph)
-        assert component.sed_grad == 0
-        assert component.morph_grad == 0
-        assert component.flags == BlendFlag.SED_NOT_CONVERGED | BlendFlag.MORPH_NOT_CONVERGED
-        assert_array_equal(component._last_sed, np.zeros_like(sed))
-        assert_array_equal(component._last_morph, np.zeros_like(morph))
-        assert component.L_sed == 1
-        assert component.L_morph == 1
-        assert component._index is None
-        assert component._parent is None
-        assert component.fix_morph is False
-        assert component.fix_sed is False
-
-        # Fix sed and morph
-        component = scarlet.Component(frame, sed, morph, fix_sed=True, fix_morph=True)
-        assert component.fix_sed is True
-        assert component.fix_morph is True
-
-    def test_properties(self):
-        sed = np.arange(5)
-        morph = np.arange(20).reshape(4, 5)
-        shape = (len(sed), morph.shape[0], morph.shape[1])
-        frame = scarlet.Frame(shape)
-        component = scarlet.Component(frame, sed, morph)
-        component.L_sed = .2
-        component.L_morph = .5
-
-        assert component.frame.C == 5
-        assert component.frame.Ny == 4
-        assert component.frame.Nx == 5
-        assert component.coord is None
-        assert component.step_sed == 5
-        assert component.step_morph == 2
 
     def test_methods(self):
         # get_model
@@ -78,10 +36,8 @@ class TestComponent(object):
         assert_array_equal(model, truth)
         assert_array_equal(other_model, other_truth)
 
-        with pytest.raises(ValueError):
-            component.get_model(sed)
-        with pytest.raises(ValueError):
-            component.get_model(morph=morph)
+
+        # TODO: test component with partial parameter list
 
         # get_flux
         flux = component.get_flux()
@@ -98,40 +54,6 @@ class TestComponent(object):
         assert component.coord is None
         assert component.step_sed == 1
         assert component.step_morph == 1
-
-    def test_prior(self):
-        def test_grad(sed, morph):
-            return 1/sed, morph**2
-
-        def prior_L(sed, morph):
-            return 5, 10
-
-        sed = np.arange(1, 6)
-        morph = np.arange(20).reshape(4, 5)
-        shape = (len(sed), morph.shape[0], morph.shape[1])
-        frame = scarlet.Frame(shape)
-        prior = scarlet.Prior(test_grad, prior_L)
-        component = scarlet.Component(frame, sed, morph, prior)
-        component.backward_prior()
-
-        true_sed_grad = 1/sed
-        true_morph_grad = morph**2
-        assert_almost_equal(component.sed_grad, true_sed_grad)
-        assert_almost_equal(component.morph_grad, true_morph_grad)
-        assert component.L_sed == 6
-        assert component.L_morph == 11
-
-        # Make sure that prior gradient is overwritten but the
-        # component gradient is cumulative
-        component.backward_prior()
-        assert_almost_equal(component.sed_grad, 2*true_sed_grad)
-        assert_almost_equal(component.morph_grad, 2*true_morph_grad)
-        assert_almost_equal(component.prior.sed_grad, true_sed_grad)
-        assert_almost_equal(component.prior.morph_grad, true_morph_grad)
-        assert component.L_sed == 11
-        assert component.L_morph == 21
-        assert component.prior.L_sed == 5
-        assert component.prior.L_morph == 10
 
 
 class TestComponentTree(object):
