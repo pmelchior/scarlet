@@ -53,7 +53,7 @@ class Blend(ComponentTree):
         """
         assert b1 >= 0 and b1 < 1
         assert b2 >= 0 and b2 < 1
-        assert prox_iter >= 1
+        assert prox_iter == 1 or (prox_iter > 1 and prox_iter % 2 == 0)
 
         # dynamically call parameters to allow for addition / fixing
         x = self.parameters
@@ -114,6 +114,12 @@ class Blend(ComponentTree):
 
             if converged:
                 break
+            # additionally allow for f value convergence
+            elif it > 5:
+                prev = np.mean(self.mse[-5:-2])
+                current = np.mean(self.mse[-4:])
+                if it > 5 and abs(prev - current) < e_rel * current:
+                    break
 
         return self
 
