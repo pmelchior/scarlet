@@ -67,8 +67,8 @@ class TestBlend(object):
 
         assert_almost_equal(images, model)
 
-        for k in range(len(sources)):
-            assert_array_equal(blend.sources[k].get_model(), sources[k].get_model())
+        for s0, s in zip(sources, blend.sources):
+            assert_array_equal(s.get_model(), s0.get_model())
 
     def test_fit_point_source(self):
         shape = (6, 31, 55)
@@ -109,7 +109,7 @@ class TestBlend(object):
         # Scale the input psfs by the observation and model psfs to ensure
         # the sources were initialized correctly
         psf_scale = observation.frame.psfs.max(axis=(1, 2)) / frame.psfs[0].max()
-        scaled_seds = np.array([src.sed*psf_scale for src in blend.sources])
+        scaled_seds = np.array([c.sed*psf_scale for c in blend.components])
 
         assert_almost_equal(scaled_seds, seds)
 

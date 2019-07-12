@@ -109,6 +109,19 @@ class TestProx(object):
                   [16.0, 16.5, 17.0, 17.5, 18.0]]
         np.testing.assert_array_equal(_X, result)
 
+    def test_kspace_symmetry(self):
+        x = np.zeros((21, 21))
+        x[8:13, 8:13] = [
+            [1, 2, 3, 2, 1],
+            [2, 3, 4, 3, 1],
+            [3, 4, 5, 1, 1],
+            [2, 3, 1, 1, 1],
+            [1, 1, 1, 1, 1]
+        ]
+        _x = scarlet.operator.prox_kspace_symmetry(x, None, (0, 0))
+        symmetric = (x[::-1, ::-1] + x) / 2
+        np.testing.assert_almost_equal(_x, symmetric)
+
     def test_bulge_disk(self):
         disk_sed = np.arange(5)
         bulge_sed = np.arange(5)[::-1]

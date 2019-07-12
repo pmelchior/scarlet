@@ -69,7 +69,7 @@ class TestPointSource(object):
         assert_array_equal(src.sed, seds[0])
         assert_array_equal(src.morph, truth)
         assert src.pixel_center == coords[0]
-        assert src.symmetric is False
+        assert src.symmetric is True
         assert src.monotonic is True
         assert src.center_step == 5
         assert src.delay_thresh == 10
@@ -79,8 +79,8 @@ class TestPointSource(object):
         src = scarlet.PointSource(frame, coords[0], obs)
 
         # We need to multiply by 4 because of psf normalization
-        assert_array_equal(src.sed*4, seds[0])
-        assert_array_equal(morphs[0], src.morph)
+        assert_almost_equal(src.sed*4, seds[0])
+        assert_almost_equal(morphs[0], src.morph)
         assert src.pixel_center == coords[0]
 
 
@@ -172,7 +172,7 @@ class TestExtendedSource(object):
         # Test ExtendedSource.__init__
         src = scarlet.ExtendedSource(frame, skycoord, observation, bg_rms)
         assert_array_equal(src.pixel_center, skycoord)
-        assert src.symmetric is False
+        assert src.symmetric is True
         assert src.monotonic is True
         assert src.center_step == 5
         assert src.delay_thresh == 10

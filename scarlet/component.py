@@ -281,8 +281,11 @@ class ComponentTree():
         return self._tree[0].frame
 
     @property
-    def nodes(self):
-        """Initial list that generates the tree.
+    def sources(self):
+        """Initial list of components or sources that generate the tree.
+
+        This can be different than `self.components` because sources can
+        have multiple components.
 
         Returns
         -------
@@ -291,8 +294,15 @@ class ComponentTree():
         return self._tree
 
     @property
-    def n_nodes(self):
-        """Number of direct attached nodes.
+    def n_sources(self):
+        """Number of initial sources or components.
+
+        This can be different than `self.n_components` because sources can
+        have multiple components.
+
+        Returns
+        -------
+        int: number of initial sources
         """
         return len(self._tree)
 
@@ -363,7 +373,7 @@ class ComponentTree():
         ----------
         c: `~scarlet.component.Component` or `~scarlet.component.ComponentTree`
         """
-        c_index = self.n_nodes
+        c_index = self.n_sources
         if isinstance(c, ComponentTree):
             self._tree = self._tree + c._tree
         elif isinstance(c, Component):

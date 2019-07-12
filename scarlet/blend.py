@@ -2,7 +2,6 @@ import autograd.numpy as np
 from autograd import grad
 
 from .component import ComponentTree, BlendFlag
-from .observation import Frame
 
 import logging
 
@@ -42,6 +41,8 @@ class Blend(ComponentTree):
             observations = (observations,)
         self.observations = observations
 
+        n_params = 2 * self.K
+        self._grad = grad(self._loss, tuple(range(n_params)))
         self.mse = []
 
     @property
@@ -60,15 +61,6 @@ class Blend(ComponentTree):
             if (c.flags & (BlendFlag.SED_NOT_CONVERGED | BlendFlag.MORPH_NOT_CONVERGED)).value > 0:
                 return False
         return True
-
-    @property
-    def sources(self):
-        """Return the list of sources used in the blend.
-
-        This will be different than `Blend.components` when
-        some sources have multiple components.
-        """
-        return self.nodes
 
     def fit(self, max_iter=200, e_rel=1e-2, approximate_L=False):
         """Fit the model for each source to the data
@@ -91,12 +83,10 @@ class Blend(ComponentTree):
             # Calculate the Lipschitz constants,
             # which are needed to determine the step size for each component
             self._set_lipschitz(approximate_L)
-
             # Take the next gradient step for each component
             for c in self.components:
                 c.L_sed = self.L_sed
                 c.L_morph = self.L_morph
-
                 c.backward_prior()
                 if not c.fix_sed:
                     c._sed = c._sed - c.step_sed * c.sed_grad
@@ -111,22 +101,22 @@ class Blend(ComponentTree):
             if self._check_convergence(e_rel):
                 break
 
+
     def _backward(self):
         """Backpropagate the gradients for the seds and morphs
         """
-        seds = [src.sed for src in self.sources]
-        morphs = [src.morph for src in self.sources]
+        seds = [c.sed for c in self.components]
+        morphs = [c.morph for c in self.components]
         parameters = seds + morphs
         # This calculates the partial derivatives wrt
         # all the seds and morphologies
-        gradients = grad(self._loss, tuple(range(len(parameters))))(*parameters)
+        gradients = self._grad(*parameters)
         sed_gradients = gradients[:self.K]
         morph_gradients = gradients[self.K:]
         # set the sed and morphology gradients for each source
-        for k in range(self.K):
-            src = self.sources[k]
-            src.sed_grad = sed_gradients[k]
-            src.morph_grad = morph_gradients[k]
+        for k,c in enumerate(self.components):
+            c.sed_grad = sed_gradients[k]
+            c.morph_grad = morph_gradients[k]
 
     def _loss(self, *parameters):
         """Loss function for autograd
