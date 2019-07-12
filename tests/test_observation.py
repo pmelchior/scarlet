@@ -23,8 +23,6 @@ class TestObservation(object):
             for s in sigmas
         ])
 
-        norm_psf = psfs.copy()
-        norm_psf /= psfs.sum(axis=(1, 2))[:, None, None]
         normalized = psfs.copy()
         normalized /= psfs.sum(axis=(1, 2))[:, None, None]
 
@@ -57,7 +55,7 @@ class TestObservation(object):
         assert_array_equal(frame.get_pixel(skycoord), [-110, -202])
 
     def test_init(self):
-        images = np.arange(1, 430).reshape(3, 11, 13)
+        images = np.arange(1, 430, dtype=np.float32).reshape(3, 11, 13)
         weights = np.ones_like(images)
         psfs = np.arange(1, 76).reshape(3, 5, 5)
         norm_psfs = psfs / psfs.sum(axis=(1,2))[:, None, None]
@@ -102,7 +100,7 @@ class TestObservation(object):
 
         assert_almost_equal(result, truth)
 
-    def test_get_model(self):
+    def test_render(self):
         shape = (43, 43)
         target_psf = self.get_psfs(shape, [.9])[1][0]
         target_psf = target_psf[None]
@@ -128,10 +126,11 @@ class TestObservation(object):
         assert_almost_equal(result, images)
 
     def test_get_loss(self):
-        images = np.arange(60).reshape(3, 4, 5)
-        weights = np.ones_like(images) * 0.5
-        frame = scarlet.Frame(images.shape)
+        shape = (3,4,5)
+        frame = scarlet.Frame(shape)
+        images = np.arange(60).reshape(shape)
+        weights = np.ones_like(images) * 2
         observation = scarlet.Observation(images, weights=weights).match(frame)
-        model = 0.5 * images
+        model = 4 * np.ones_like(images)
         true_loss = 0.5 * np.sum((weights * (model-images))**2)
         assert_almost_equal(true_loss, observation.get_loss(model))

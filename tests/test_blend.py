@@ -4,7 +4,7 @@ from numpy.testing import assert_almost_equal, assert_array_equal
 import scarlet
 
 
-def init_data(shape, coords, amplitudes=None, convolve=True):
+def init_data(shape, coords, amplitudes=None, convolve=True, dtype=np.float32):
     import scipy.signal
 
     B, Ny, Nx = shape
@@ -15,9 +15,9 @@ def init_data(shape, coords, amplitudes=None, convolve=True):
     assert K == len(amplitudes)
 
     _seds = [
-        np.arange(B, dtype=float),
-        np.arange(B, dtype=float)[::-1],
-        np.ones((B,), dtype=float)
+        np.arange(B, dtype=dtype),
+        np.arange(B, dtype=dtype)[::-1],
+        np.ones((B,), dtype=dtype)
     ]
     seds = np.array([_seds[n % 3]*amplitudes[n] for n in range(K)])
 
@@ -35,15 +35,15 @@ def init_data(shape, coords, amplitudes=None, convolve=True):
         target_psf /= target_psf.sum()
 
         psfs = np.array([scarlet.psf.generate_psf_image(scarlet.psf.gaussian, psf_shape, psf_center,
-                                                        amplitude=1, sigma=1+.2*b) for b in range(B)])
+                                                        amplitude=1, sigma=1+.2*b) for b in range(B)], dtype=dtype)
         # Convolve the image with the psf in each channel
         # Use scipy.signal.convolve without using FFTs as a sanity check
         images = np.array([scipy.signal.convolve(img, psf, method="direct", mode="same")
-                           for img, psf in zip(images, psfs)])
+                           for img, psf in zip(images, psfs)], dtype=dtype)
         # Convolve the true morphology with the target PSF,
         # also using scipy.signal.convolve as a sanity check
         morphs = np.array([scipy.signal.convolve(m, target_psf, method="direct", mode="same")
-                           for m in morphs])
+                           for m in morphs], dtype=dtype)
         morphs /= morphs.max()
         psfs /= psfs.sum(axis=(1,2))[:,None,None]
 
@@ -53,38 +53,19 @@ def init_data(shape, coords, amplitudes=None, convolve=True):
 
 
 class TestBlend(object):
-    def test_init(self):
+    def test_model_render(self):
         shape = (6, 31, 55)
         coords = [(20, 10), (10, 30), (17, 42)]
-        target_psf, psfs, images, channels, seds, morphs = init_data(shape, coords, [3, 2, 1])
-
-        # Test vanilla init
-        frame = scarlet.Frame(images.shape)
-        observation = scarlet.Observation(images).match(frame)
-        sources = [scarlet.PointSource(frame, coord, observation) for coord in coords]
-        blend = scarlet.Blend(sources, observation)
-
-        assert len(blend.observations) == 1
-        assert blend.observations[0] == observation
-        assert blend.mse == []
-        assert blend.frame.shape == frame.shape
-        assert blend.frame.psfs == frame.psfs
+        target_psf, psfs, images, channels, seds, morphs = init_data(shape, coords, [3, 2, 1], dtype=np.float64)
 
         # Test init with psfs
-        frame = scarlet.Frame(images.shape, psfs=target_psf[None])
+        frame = scarlet.Frame(images.shape, psfs=target_psf[None], dtype=np.float64)
         observation = scarlet.Observation(images, psfs=psfs).match(frame)
         sources = [scarlet.PointSource(frame, coord, observation) for coord in coords]
-
         blend = scarlet.Blend(sources, observation)
-        assert blend.observations[0] == observation
-        assert blend.mse == []
-        assert blend.frame == frame
-        assert_array_equal(blend.frame.psfs, frame.psfs)
-        assert_array_equal(observation._diff_kernels_fft.shape, (6, 81, 55))
-
         model = observation.render(blend.get_model())
+
         assert_almost_equal(images, model)
-        assert blend.converged is False
 
         for s0, s in zip(sources, blend.sources):
             assert_array_equal(s.get_model(), s0.get_model())
@@ -93,11 +74,11 @@ class TestBlend(object):
         shape = (6, 31, 55)
         coords = [(20, 10), (10, 30), (17, 42)]
         amplitudes = [3, 2, 1]
-        target_psf, psfs, images, channels, seds, morphs = init_data(shape, coords, amplitudes)
+        target_psf, psfs, images, channels, seds, morphs = init_data(shape, coords, amplitudes, dtype=np.float64)
         B, Ny, Nx = shape
         K = len(coords)
 
-        frame = scarlet.Frame(images.shape, psfs=target_psf[None])
+        frame = scarlet.Frame(images.shape, psfs=target_psf[None], dtype=np.float64)
         observation = scarlet.Observation(images, psfs=psfs).match(frame)
         sources = [scarlet.PointSource(frame, coord, observation) for coord in coords]
         blend = scarlet.Blend(sources, observation)
@@ -116,10 +97,10 @@ class TestBlend(object):
         shape = (6, 31, 55)
         coords = [(20, 10), (10, 30), (17, 42)]
         amplitudes = [3, 2, 1]
-        target_psf, psfs, images, channels, seds, morphs = init_data(shape, coords, amplitudes)
+        target_psf, psfs, images, channels, seds, morphs = init_data(shape, coords, amplitudes, dtype=np.float64)
         B, Ny, Nx = shape
 
-        frame = scarlet.Frame(images.shape, psfs=target_psf[None])
+        frame = scarlet.Frame(images.shape, psfs=target_psf[None], dtype=np.float64)
         observation = scarlet.Observation(images, psfs=psfs).match(frame)
         bg_rms = np.ones((B,))
         sources = [scarlet.ExtendedSource(frame, coord, observation, bg_rms) for coord in coords]

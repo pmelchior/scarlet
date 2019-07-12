@@ -38,9 +38,10 @@ class Frame():
         PSF in each band
     channels: list of hashable elements
         Names/identifiers of spectral channels
+    dtype: `numpy.dtype`
+        Dtype to represent the data.
     """
-
-    def __init__(self, shape, wcs=None, psfs=None, channels=None):
+    def __init__(self, shape, wcs=None, psfs=None, channels=None, dtype=np.float32):
         assert len(shape) == 3
         self._shape = tuple(shape)
         self.wcs = wcs
@@ -48,15 +49,21 @@ class Frame():
         if psfs is None:
             logger.warning('No PSFs specified. Possible, but dangerous!')
         else:
-            assert len(psfs) == 1 or len(psfs) == shape[
-                0], 'PSFs need to have shape (1,Ny,Nx) for Blend and (B,Ny,Nx) for Observation'
+            assert len(psfs) == 1 or len(psfs) == shape[0], 'PSFs need to have shape (1,Ny,Nx) for Blend and (B,Ny,Nx) for Observation'
             if not np.allclose(psfs.sum(axis=(1, 2)), 1):
                 logger.warning('PSFs not normalized. Normalizing now..')
                 psfs /= psfs.sum(axis=(1, 2))[:, None, None]
+
+            if dtype != psfs.dtype:
+                msg = "Dtypes of PSFs and Frame different. Casting PSFs to {}".format(dtype)
+                logger.warning(msg)
+                psfs = psfs.astype(dtype)
+
         self._psfs = psfs
 
         assert channels is None or len(channels) == shape[0]
         self.channels = channels
+        self.dtype = dtype
 
     @property
     def C(self):
@@ -147,7 +154,7 @@ class Observation():
             half the width of the PSF, for FFTs. This is needed to
             prevent artifacts from the FFT.
         """
-        self.frame = Frame(images.shape, wcs=wcs, psfs=psfs, channels=channels)
+        self.frame = Frame(images.shape, wcs=wcs, psfs=psfs, channels=channels, dtype=images.dtype)
 
         self.images = np.array(images)
         if weights is not None:
@@ -173,6 +180,16 @@ class Observation():
         -------
         None
         """
+
+        if self.frame.dtype != model_frame.dtype:
+            msg = "Dtypes of model and observation different. Casting observation to {}".format(model_frame.dtype)
+            logger.warning(msg)
+            self.frame.dtype = model_frame.dtype
+            self.images = self.images.astype(model_frame.dtype)
+            if type(self.weights) is np.ndarray:
+                self.weights = self.weights.astype(model_frame.dtype)
+            if self.frame._psfs is not None:
+                self.frame._psfs = self.frame._psfs.astype(model_frame.dtype)
 
         #  channels of model that are represented in this observation
         self._band_slice = slice(None)
@@ -287,14 +304,7 @@ class LowResObservation(Observation):
         assert wcs is not None, "WCS is necessary for LowResObservation"
         assert psfs is not None, "PSFs are necessary for LowResObservation"
 
-        self.frame = Frame(images.shape, wcs=wcs, psfs=psfs, channels=channels)
-        self.images = np.array(images)
-        self._padding = padding
-
-        if weights is not None:
-            self.weights = np.array(weights)
-        else:
-            self.weights = 1
+        super().__init__(images, wcs=wcs, psfs=psfs, weights=weights, channels=channels, padding=padding)
 
     def make_operator(self, shape, psf):
         '''Builds the resampling and convolution operator
@@ -387,6 +397,16 @@ class LowResObservation(Observation):
 
     def match(self, model_frame):
 
+        if self.frame.dtype != model_frame.dtype:
+            msg = "Dtypes of model and observation different. Casting observation to {}".format(model_frame.dtype)
+            logger.warning(msg)
+            self.frame.dtype = model_frame.dtype
+            self.images = self.images.astype(model_frame.dtype)
+            if type(self.weights) is np.ndarray:
+                self.weights = self.weights.astype(model_frame.dtype)
+            if self.frame._psfs is not None:
+                self.frame._psfs = self.frame._psfs.astype(model_frame.dtype)
+
         #  channels of model that are represented in this observation
         self._band_slice = slice(None)
         if self.frame.channels is not model_frame.channels:
@@ -440,7 +460,7 @@ class LowResObservation(Observation):
         for dpsf in diff_psf:
             resconv_op.append(self.make_operator(_shape, dpsf))
 
-        self._resconv_op = np.array(resconv_op)
+        self._resconv_op = np.array(resconv_op, dtype=self.frame.dtype)
 
         return self
 
@@ -460,7 +480,7 @@ class LowResObservation(Observation):
             The convolved and resampled `model` in the observation frame.
         """
         model_ = model[self._band_slice,:,:]
-        model_ = np.array([np.dot(model_[c].flatten(), self._resconv_op[c]) for c in range(self.frame.C)])
+        model_ = np.array([np.dot(model_[c].flatten(), self._resconv_op[c]) for c in range(self.frame.C)], dtype=self.frame.dtype)
 
         return model_
 
