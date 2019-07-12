@@ -269,13 +269,16 @@ def prox_kspace_symmetry(X, step, shift=None, padding=10):
 
     convshape = 2*np.array(shape)-1
     from scipy import fftpack
-    fast_shape = shape#[fftpack.helper.next_fast_len(d) for d in convshape]
+    fast_shape = [fftpack.helper.next_fast_len(d) for d in convshape]
+
+    # Store the pre-fftpack optimization slices
+    slices = tuple(([slice(s) for s in convshape]))
 
     freq_x = np.fft.fftfreq(fast_shape[1])
     freq_y = np.fft.fftfreq(fast_shape[0])
 
     # Transform to k space
-    X_fft = np.fft.fftn(np.fft.ifftshift(X), fast_shape)
+    X_fft = np.fft.fftn(X, fast_shape)
 
     # Shift the signal to recenter it, negative because math is opposite from
     # pixel direction
@@ -292,7 +295,7 @@ def prox_kspace_symmetry(X, step, shift=None, padding=10):
     result_fft = result_fft*inv_shifter
 
     # Transform to real space
-    result = np.fft.fftshift(np.fft.irfftn(result_fft, fast_shape))
+    result = np.fft.ifftshift(np.fft.irfftn(result_fft, fast_shape))#[slices]
 
     # Return the unpadded transform
     #result = np.real(result[corner[0]:corner[0]+shape[0], corner[1]:corner[1]+shape[1]])
@@ -302,10 +305,14 @@ def prox_kspace_symmetry(X, step, shift=None, padding=10):
     result[zeroMask] = 0
 
     import matplotlib.pyplot as plt
-    plt.imshow(result)
+    plt.imshow(X)
     plt.colorbar()
     plt.show()
 
+    plt.imshow(np.real(shifter))
+    plt.show()
+    plt.imshow(np.real(X_fft))
+    plt.show()
     assert result.shape == shape
     return result
 
