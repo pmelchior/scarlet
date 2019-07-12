@@ -37,7 +37,7 @@ class TestComponent(object):
         assert_array_equal(other_model, other_truth)
 
 
-        # TODO: test component with partial parameter list
+        # TODO: test component with partial parameter list (issue #121)
 
         # get_flux
         flux = component.get_flux()
