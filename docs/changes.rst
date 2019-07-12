@@ -8,7 +8,6 @@ General
 - Completely restructured code, including using `autograd` package to calculate gradients.
 - PSF convolutions are now performed on the model of the entire blend as opposed to
   individually for each source.
-- It is possible to perform deblending on images with different orientations and resolutions.
 - `Blend` no longer fits for source positions. Instead it is up to the user to implement a
   centering algorithm, such as centroiding or the `scarlet.update.fix_pixel_center`.
 - Updates to all of the docs and tutorials to match the new API.
@@ -34,6 +33,7 @@ New Features
   resolutions.
 - `Frame` issues warnings when PSF is not specified or not normalized.
 - `Frame.channels` is used to identify channels in multiple observations.
+- PSF convolutions and ffts of image cubes are performed using ndimensional fft along selected axes for better performance.
 
 API Changes
 ^^^^^^^^^^^
@@ -57,6 +57,8 @@ API Changes
 - Sources and components are no longer centered in a small patch that is reprojected
   into the model frame. Instead components can exist anywhere on an image and constraints that
   require a center, such as symmetry and monotonicity, can use the new `uncentered_operator` method.
+- `make_operator` is now a method of the `LowResObservation` class as should be.
+
 
 0.45 (2019-3-27)
 ----------------

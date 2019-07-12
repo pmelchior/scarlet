@@ -83,12 +83,10 @@ class Blend(ComponentTree):
             # Calculate the Lipschitz constants,
             # which are needed to determine the step size for each component
             self._set_lipschitz(approximate_L)
-
             # Take the next gradient step for each component
             for c in self.components:
                 c.L_sed = self.L_sed
                 c.L_morph = self.L_morph
-
                 c.backward_prior()
                 if not c.fix_sed:
                     c._sed = c._sed - c.step_sed * c.sed_grad
@@ -102,6 +100,7 @@ class Blend(ComponentTree):
 
             if self._check_convergence(e_rel):
                 break
+
 
     def _backward(self):
         """Backpropagate the gradients for the seds and morphs
