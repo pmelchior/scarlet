@@ -264,7 +264,7 @@ def prox_kspace_symmetry(X, step, shift=None, padding=10):
     # Record the morph shape
     shape = X.shape
     #fast shapes for acceleration
-    _fftpack_shape = [fftpack.helper.next_fast_len(d) for d in (2 * (np.array(X.shape)+padding) - 1)]
+    _fftpack_shape = [fftpack.helper.next_fast_len(d) for d in ((np.array(X.shape)+padding))]
 
     dy, dx = shift
     #padding with fast shape
