@@ -36,17 +36,6 @@ def get_pixel_sed(sky_coord, observation):
 
     pixel = observation.frame.get_pixel(sky_coord)
     sed = observation.images[:, pixel[0], pixel[1]].copy()
-    if observation.frame.psfs is not None:
-        # Account for the PSF in the intensity
-        sed /= observation.frame.psfs.max(axis=(1, 2))
-
-    if np.all(sed[-1] <= 0):
-        # If the flux in all channels is  <=0,
-        # the new sed will be filled with NaN values,
-        # which will cause the code to crash later
-        msg = "Zero or negative flux at y={0}, x={1}"
-        raise SourceInitError(msg.format(*sky_coord))
-
     return sed
 
 
@@ -99,12 +88,15 @@ def build_detection_coadd(sed, bg_rms, observation, thresh=1):
     if np.any(bg_rms <= 0):
         raise ValueError("bg_rms must be greater than zero in all channels")
 
-    weights = np.array([sed[c] / bg_rms[c] ** 2 for c in range(C)])
-    jacobian = np.array([sed[c] ** 2 / bg_rms[c] ** 2 for c in range(C)]).sum()
-    detect = np.einsum('i,i...', weights, observation.images) / jacobian
+    positive = [ c for c in range(C) if sed[c] > 0 ]
+    positive_img = [observation.images[c] for c in positive]
+    positive_bgrms = np.array([bg_rms[c] for c in positive])
+    weights = np.array([sed[c] / bg_rms[c] ** 2 for c in positive])
+    jacobian = np.array([sed[c] ** 2 / bg_rms[c] ** 2 for c in positive]).sum()
+    detect = np.einsum('i,i...', weights, positive_img) / jacobian
 
     # thresh is multiple above the rms of detect (weighted variance across channels)
-    bg_cutoff = thresh * np.sqrt((weights ** 2 * bg_rms ** 2).sum()) / jacobian
+    bg_cutoff = thresh * np.sqrt((weights ** 2 * positive_bgrms ** 2).sum()) / jacobian
     return detect, bg_cutoff
 
 
@@ -115,8 +107,24 @@ def init_extended_source(sky_coord, frame, observation, bg_rms,
     """
     # determine initial SED from peak position
     sed = get_pixel_sed(sky_coord, observation)  # amplitude is in sed
+
+    # approx. correct PSF width variations from SED by normalizing heights
+    if observation.frame.psfs is not None:
+        # Account for the PSF in the intensity
+        sed /= observation.frame.psfs.max(axis=(1, 2))
+
     if frame.psfs is not None:
         sed = sed * frame.psfs[0].max()
+
+    if np.any(sed <= 0):
+        # If the flux in all channels is  <=0,
+        # the new sed will be filled with NaN values,
+        # which will cause the code to crash later
+        msg = "Zero or negative SED {} at y={}, x={}".format(sed, *sky_coord)
+        if np.all(sed <= 0):
+            logger.warning(msg)
+        else:
+            logger.info(msg)
 
     morph, bg_cutoff = build_detection_coadd(sed, bg_rms, observation, thresh)
     center = frame.get_pixel(sky_coord)
@@ -160,8 +168,28 @@ def init_combined_extended_source(sky_coord, frame, observations, bg_rms, obs_id
     seds = []
     for obs in observations:
         _sed = get_pixel_sed(sky_coord, obs)
+
+        # approx. correct PSF width variations from SED by normalizing heights
+        if obs.frame.psfs is not None:
+            # Account for the PSF in the intensity
+            _sed /= obs.frame.psfs.max(axis=(1, 2))
+
         seds.append(_sed)
+
     sed = np.concatenate(seds).flatten()
+
+    if frame.psfs is not None:
+        sed = sed * frame.psfs[0].max()
+
+    if np.any(sed <= 0):
+        # If the flux in all channels is  <=0,
+        # the new sed will be filled with NaN values,
+        # which will cause the code to crash later
+        msg = "Zero or negative SED {} at y={}, x={}".format(sed, *sky_coord)
+        if np.all(sed <= 0):
+            logger.warning(msg)
+        else:
+            logger.info(msg)
 
     morph, bg_cutoff = build_detection_coadd(seds[obs_idx], bg_rms[obs_idx], observations[obs_idx],
                                              thresh)  # amplitude is in sed
@@ -187,9 +215,9 @@ def init_combined_extended_source(sky_coord, frame, observations, bg_rms, obs_id
 
     # normalize to unity at peak pixel
     cy, cx = center
-
     center_morph = morph[np.int(cy), np.int(cx)]
     morph /= center_morph
+
     return sed, morph
 
 
@@ -224,9 +252,31 @@ def init_multicomponent_source(sky_coord, frame, observation, bg_rms, flux_perce
     # renormalize morphs: initially Smax
     for k in range(K):
         morphs[k] /= morphs[k].max()
+        if np.all(morphs[k] <= 0):
+            msg = "Zero or negative morphology for component {} at y={}, x={}"
+            logger.warning(msg.format(k, *skycoords))
 
     # optimal SEDs given the morphologies, assuming img only has that source
     seds = get_best_fit_seds(morphs, frame, observation)
+
+    for k in range(K):
+        # approx. correct PSF width variations from SED by normalizing heights
+        if observation.frame.psfs is not None:
+            # Account for the PSF in the intensity
+            seds[k] /= observation.frame.psfs.max(axis=(1, 2))
+
+        if frame.psfs is not None:
+            seds[k] *= frame.psfs[0].max()
+
+        if np.any(seds[k] <= 0):
+            # If the flux in all channels is  <=0,
+            # the new sed will be filled with NaN values,
+            # which will cause the code to crash later
+            msg = "Zero or negative SED {} for component {} at y={}, x={}".format(seds[k], k, *sky_coord)
+            if np.all(sed <= 0):
+                logger.warning(msg)
+            else:
+                logger.info(msg)
 
     return seds, morphs
 
