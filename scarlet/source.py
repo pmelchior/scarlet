@@ -251,10 +251,10 @@ def init_multicomponent_source(sky_coord, frame, observation, bg_rms, flux_perce
 
     # renormalize morphs: initially Smax
     for k in range(K):
-        morphs[k] /= morphs[k].max()
         if np.all(morphs[k] <= 0):
             msg = "Zero or negative morphology for component {} at y={}, x={}"
             logger.warning(msg.format(k, *skycoords))
+        morphs[k] /= morphs[k].max()
 
     # optimal SEDs given the morphologies, assuming img only has that source
     seds = get_best_fit_seds(morphs, frame, observation)
