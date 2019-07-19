@@ -581,11 +581,11 @@ class PixelCNNSource(ExtendedSource):
         This method can be overwritten if a different set of constraints
         or update functions is desired.
         """
-         if 'pixelCNN' in self.bboxes:
-             # Apply a projection to set the  source to 0 outside of the prior area
-             morph = self._morph[self.bboxes['pixelCNN'].slices]
-             self._morph[:] = np.zeros(self._morph.shape, dtype=self._morph.dtype)
-             self._morph[self.bboxes['pixelCNN'].slices] = morph
+        if 'pixelCNN' in self.bboxes:
+            # Apply a projection to set the  source to 0 outside of the prior area
+            morph = self._morph[self.bboxes['pixelCNN'].slices]
+            self._morph[:] = np.zeros(self._morph.shape, dtype=self._morph.dtype)
+            self._morph[self.bboxes['pixelCNN'].slices] = morph
 
         super().update()
 
