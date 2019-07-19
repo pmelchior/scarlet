@@ -550,6 +550,7 @@ class PixelCNNSource(ExtendedSource):
         self.stamp_size = 32
         super().__init__(frame, sky_coord, observation, bg_rms, thresh,
                          symmetric, monotonic, center_step, delay_thresh, normalization)
+        self._morph.prior = self.prior
 
     def update_bbox(self):
         radius = self.stamp_size // 2
@@ -570,6 +571,7 @@ class PixelCNNSource(ExtendedSource):
         Apply the prior by extracting a postage stamp around the source
         """
         postage_stamp = x[self.bboxes['pixelCNN'].slices]
+        print(postage_stamp.shape)
 
         grad_prior = np.zeros(self._morph.shape, dtype=self._morph.dtype)
         grad_prior[self.bboxes['pixelCNN'].slices]  = self._prior(postage_stamp)
@@ -582,11 +584,11 @@ class PixelCNNSource(ExtendedSource):
         This method can be overwritten if a different set of constraints
         or update functions is desired.
         """
-        if 'pixelCNN' in self.bboxes:
-            # Apply a projection to set the  source to 0 outside of the prior area
-            morph = self._morph[self.bboxes['pixelCNN'].slices]
-            self._morph[:] = np.zeros(self._morph.shape, dtype=self._morph.dtype)
-            self._morph[self.bboxes['pixelCNN'].slices] = morph
+        # if 'pixelCNN' in self.bboxes:
+        #     # Apply a projection to set the  source to 0 outside of the prior area
+        #     morph = self._morph[self.bboxes['pixelCNN'].slices]
+        #     self._morph[:] = np.zeros(self._morph.shape, dtype=self._morph.dtype)
+        #     self._morph[self.bboxes['pixelCNN'].slices] = morph
 
         super().update()
 
