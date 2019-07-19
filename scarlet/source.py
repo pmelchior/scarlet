@@ -6,7 +6,7 @@ from . import operator
 from . import update
 from .component import Component, ComponentTree, Parameter
 from .interpolation import get_projection_slices
-
+from .bbox import Box
 
 class SourceInitError(Exception):
     """Error during source initialization
@@ -265,7 +265,7 @@ class PointSource(Component):
     symmetry and monotonicity.
     """
     def __init__(self, frame, sky_coord, observation, symmetric=True, monotonic=True,
-                 center_step=5, delay_thresh=10):
+                 center_step=5, delay_thresh=10, normalization='morph_max'):
         """Source intialized with a single pixel
 
         Parameters
@@ -319,6 +319,7 @@ class PointSource(Component):
         self.monotonic = monotonic
         self.center_step = center_step
         self.delay_thresh = delay_thresh
+        self.normalization = normalization
         self.update()
 
     def update(self):
@@ -356,13 +357,14 @@ class PointSource(Component):
             update.monotonic(self, self.pixel_center, bbox=bbox)
 
         update.positive(self)  # Make the SED and morph non-negative
-        update.normalized(self)  # Use MORPH_MAX normalization
+        update.normalized(self, type=self.normalization)  # Use MORPH_MAX normalization
         return self
 
 
 class ExtendedSource(PointSource):
     def __init__(self, frame, sky_coord, observation, bg_rms, thresh=1,
-                 symmetric=True, monotonic=True, center_step=5, delay_thresh=10):
+                 symmetric=True, monotonic=True, center_step=5, delay_thresh=10,
+                 normalization='morph_max'):
         """Extended source intialized to match a set of observations
 
         Parameters
@@ -391,6 +393,7 @@ class ExtendedSource(PointSource):
         self.pixel_center = center
         self.center_step = center_step
         self.delay_thresh = delay_thresh
+        self.normalization = normalization
 
         sed, morph = init_extended_source(sky_coord, frame, observation, bg_rms,
                                           thresh, True, monotonic)
@@ -402,7 +405,8 @@ class ExtendedSource(PointSource):
 
 class CombinedExtendedSource(PointSource):
     def __init__(self, frame, sky_coord, observations, bg_rms, obs_idx=0, thresh=1,
-                 symmetric=False, monotonic=True, center_step=5, delay_thresh=0):
+                 symmetric=False, monotonic=True, center_step=5, delay_thresh=0,
+                 normalization='morph_max'):
         """Extended source intialized to match a set of observations
 
         Parameters
@@ -434,6 +438,7 @@ class CombinedExtendedSource(PointSource):
         self.pixel_center = center
         self.center_step = center_step
         self.delay_thresh = delay_thresh
+        self.normalization = normalization
 
         sed, morph = init_combined_extended_source(sky_coord, frame, observations, bg_rms, obs_idx,
                                                    thresh, True, monotonic)
@@ -512,3 +517,78 @@ class MultiComponentSource(ComponentTree):
             for k in range(len(seds))
         ]
         super().__init__(components)
+
+
+class PixelCNNSource(ExtendedSource):
+    def __init__(self, frame, sky_coord, observation, bg_rms, prior, thresh=1,
+                 symmetric=False, monotonic=False, center_step=5, delay_thresh=10,
+                 normalization='sed'):
+        """Extended source using a pixelcnn morphology prior and
+        intialized to match a set of observations
+
+        Parameters
+        ----------
+        frame: `~scarlet.Frame`
+            The frame of the model
+        sky_coord: tuple
+            Center of the source
+        observation: `~scarlet.observation.Observation`
+            Observation to initialize this source.
+        bg_rms: array
+            Background RMS in each channel in observation.
+        thresh: `float`
+            Multiple of the backround RMS used as a
+            flux cutoff for morphology initialization.
+        symmetric: `bool`
+            Whether or not to enforce symmetry.
+        monotonic: `bool`
+            Whether or not to make the object monotonically decrease
+            in flux from the center.
+        """
+        self.bboxes = {}
+        self._prior = prior
+        self.stamp_size = 32
+        super().__init__(frame, sky_coord, observation, bg_rms, thresh,
+                         symmetric, monotonic, center_step, delay_thresh, normalization)
+
+    def update_bbox(self):
+        radius = self.stamp_size // 2
+        left = self.pixel_center[1] - radius
+        right = self.pixel_center[1] + radius
+        bottom = self.pixel_center[0] - radius
+        top = self.pixel_center[0] + radius
+
+        _left = max(left, 0)
+        _right = min(right, self.frame.Nx)
+        _bottom = max(bottom, 0)
+        _top = min(top, self.frame.Ny)
+
+        self.bboxes["pixelCNN"] = Box.from_bounds(_bottom, _top, _left, _right)
+
+    def prior(self, x):
+        """
+        Apply the prior by extracting a postage stamp around the source
+        """
+        postage_stamp = x[self.bboxes['pixelCNN'].slices]
+
+        grad_prior = np.zeros(self._morph.shape, dtype=self._morph.dtype)
+        grad_prior[self.bboxes['pixelCNN'].slices]  = self._prior(postage_stamp)
+
+        return grad_prior
+
+    def update(self):
+        """Default update parameters for an ExtendedSource
+
+        This method can be overwritten if a different set of constraints
+        or update functions is desired.
+        """
+        if 'pixelCNN' in self.bboxes:
+            # Apply a projection to set the  source to 0 outside of the prior area
+            morph = self._morph[self.bboxes['pixelCNN'].slices]
+            self._morph[:] = np.zeros(self._morph.shape, dtype=self._morph.dtype)
+            self._morph[self.bboxes['pixelCNN'].slices] = morph
+
+        super().update()
+
+        self.update_bbox()
+        return self
