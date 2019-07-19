@@ -547,14 +547,14 @@ class PixelCNNSource(ExtendedSource):
         """
         radius = self.stamp_size // 2
         left = self.pixel_center[1] - radius
-        right = self.pixel_center[1] + radius
+        right = self.pixel_center[1] + radius - 1
         bottom = self.pixel_center[0] - radius
-        top = self.pixel_center[0] + radius
+        top = self.pixel_center[0] + radius - 1
 
         _left = max(left, 0)
-        _right = min(right, self.frame.Nx)
+        _right = min(right, self.frame.Nx -1)
         _bottom = max(bottom, 0)
-        _top = min(top, self.frame.Ny)
+        _top = min(top, self.frame.Ny - 1)
 
         self.bboxes["pixelCNN"] = Box.from_bounds(_bottom, _top, _left, _right)
         self._cnn_padding = ((_bottom-bottom, top-_top), (_left-left, right-_right))
@@ -563,16 +563,20 @@ class PixelCNNSource(ExtendedSource):
         """
         Apply the prior by extracting a postage stamp around the source
         """
+
         postage_stamp = x[self.bboxes['pixelCNN'].slices]
-        postage_stamp = np.pad(postage_stamp, self._cnn_padding)
+
+        postage_stamp = np.pad(postage_stamp, self._cnn_padding, mode='constant')
 
         grad_prior = np.zeros(self._morph.shape, dtype=self._morph.dtype)
-        bottom, top, left, right = self._cnn_padding
+        (bottom, top), (left, right) = self._cnn_padding
         top = None if top == 0 else -top
         right = None if right == 0 else -right
 
-        grad_prior[self.bboxes['pixelCNN'].slices] = self._prior(postage_stamp)[bottom:top, left:right]
 
+        p = self._prior(postage_stamp)
+
+        grad_prior[self.bboxes['pixelCNN'].slices] = p[bottom:top, left:right]
         return grad_prior
 
     def update(self):
@@ -583,11 +587,11 @@ class PixelCNNSource(ExtendedSource):
         """
         if 'pixelCNN' in self.bboxes:
             # Apply a projection to set the  source to 0 outside of the prior area
-            morph = self._morph[self.bboxes['pixelCNN'].slices]
+            morph = self._morph[self.bboxes['pixelCNN'].slices]*1.0
             self._morph[:] = np.zeros(self._morph.shape, dtype=self._morph.dtype)
             self._morph[self.bboxes['pixelCNN'].slices] = morph
 
-        super().update()
+        #super().update()
 
         self.update_bbox()
         return self
