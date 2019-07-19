@@ -528,22 +528,12 @@ class PixelCNNSource(ExtendedSource):
 
         Parameters
         ----------
-        frame: `~scarlet.Frame`
-            The frame of the model
-        sky_coord: tuple
-            Center of the source
-        observation: `~scarlet.observation.Observation`
-            Observation to initialize this source.
-        bg_rms: array
-            Background RMS in each channel in observation.
-        thresh: `float`
-            Multiple of the backround RMS used as a
-            flux cutoff for morphology initialization.
-        symmetric: `bool`
-            Whether or not to enforce symmetry.
-        monotonic: `bool`
-            Whether or not to make the object monotonically decrease
-            in flux from the center.
+        prior: `function`
+            A function used to calculate a prior gradient.
+            For a `PixelCNNSource` this is the PixelCNN result used to
+            update the gradient.
+
+        See `ExtendedSource` for other parameter definitions
         """
         self.bboxes = {}
         self._prior = prior
@@ -553,6 +543,8 @@ class PixelCNNSource(ExtendedSource):
         self._morph.prior = self.prior
 
     def update_bbox(self):
+        """Update the bounding box passed to the pixel CNN
+        """
         radius = self.stamp_size // 2
         left = self.pixel_center[1] - radius
         right = self.pixel_center[1] + radius
@@ -565,16 +557,21 @@ class PixelCNNSource(ExtendedSource):
         _top = min(top, self.frame.Ny)
 
         self.bboxes["pixelCNN"] = Box.from_bounds(_bottom, _top, _left, _right)
+        self._cnn_padding = ((_bottom-bottom, top-_top), (_left-left, right-_right))
 
     def prior(self, x):
         """
         Apply the prior by extracting a postage stamp around the source
         """
         postage_stamp = x[self.bboxes['pixelCNN'].slices]
-        print(postage_stamp.shape)
+        postage_stamp = np.pad(postage_stamp, self._cnn_padding)
 
         grad_prior = np.zeros(self._morph.shape, dtype=self._morph.dtype)
-        grad_prior[self.bboxes['pixelCNN'].slices]  = self._prior(postage_stamp)
+        bottom, top, left, right = self._cnn_padding
+        top = None if top == 0 else -top
+        right = None if right == 0 else -right
+
+        grad_prior[self.bboxes['pixelCNN'].slices] = self._prior(postage_stamp)[bottom:top, left:right]
 
         return grad_prior
 
@@ -584,11 +581,11 @@ class PixelCNNSource(ExtendedSource):
         This method can be overwritten if a different set of constraints
         or update functions is desired.
         """
-        # if 'pixelCNN' in self.bboxes:
-        #     # Apply a projection to set the  source to 0 outside of the prior area
-        #     morph = self._morph[self.bboxes['pixelCNN'].slices]
-        #     self._morph[:] = np.zeros(self._morph.shape, dtype=self._morph.dtype)
-        #     self._morph[self.bboxes['pixelCNN'].slices] = morph
+         if 'pixelCNN' in self.bboxes:
+             # Apply a projection to set the  source to 0 outside of the prior area
+             morph = self._morph[self.bboxes['pixelCNN'].slices]
+             self._morph[:] = np.zeros(self._morph.shape, dtype=self._morph.dtype)
+             self._morph[self.bboxes['pixelCNN'].slices] = morph
 
         super().update()
 
