@@ -419,7 +419,7 @@ class PointSource(Component):
                 self.pixel_center, self.shift = measurement.psf_weighted_centroid(self.morph, self._centroid_weight, self.pixel_center)
 
             # make the morphology perfectly symmetric
-            update.symmetric(self, algorithm="kspace", bbox=bbox)
+            update.symmetric(self, self.pixel_center, algorithm="kspace", bbox=bbox)
 
         if self.monotonic:
             # make the morphology monotonically decreasing
@@ -539,7 +539,7 @@ class MultiComponentSource(ComponentTree):
     """
 
     def __init__(self, frame, sky_coord, observation, bg_rms, thresh=1, flux_percentiles=None,
-                 symmetric=True, monotonic=True, **component_kwargs):
+                 symmetric=True, monotonic=True, center_step=5, delay_thresh=10, **component_kwargs):
         """Create multi-component extended source.
 
         Parameters
@@ -567,32 +567,65 @@ class MultiComponentSource(ComponentTree):
         component_kwargs: dict
             Keyword arguments to pass to the component initialization.
         """
+        self.symmetric = symmetric
+        self.monotonic = monotonic
+        self.pixel_center = frame.get_pixel(sky_coord)
+        self.center_step = center_step
+        self.delay_thresh = delay_thresh
+
         seds, morphs = init_multicomponent_source(sky_coord, frame, observation, bg_rms, flux_percentiles,
-                                                  thresh, symmetric, monotonic)
+                                                          thresh, symmetric, monotonic)
 
-        class MultiComponent(Component):
-            def __init__(self, frame, sed, morph, symmetric, monotonic, **kwargs):
-                self.symmetric = symmetric
-                self.monotonic = monotonic
-                self.pixel_center = frame.get_pixel(sky_coord)
-                super().__init__(frame, sed, morph, **kwargs)
-
-            def update(self):
-                if self.symmetric:
-                    update.symmetric_fit_center(self)  # update the center position
-                    center = self.coords
-                    update.symmetric(self, center)  # make the morph perfectly symmetric
-                elif self.monotonic:
-                    update.fit_pixel_center(self)
-                    center = self.pixel_center
-                if self.monotonic:
-                    update.monotonic(self, center)  # make the morph monotonically decreasing
-                update.positive(self)  # Make the SED and morph non-negative
-                update.normalized(self, type='morph_max')
-                return self
-
-        components = [
-            MultiComponent(frame, seds[k], morphs[k], symmetric, monotonic, **component_kwargs)
-            for k in range(len(seds))
-        ]
+        components = [ Component(frame, seds[k], morphs[k]) for k in range(len(seds)) ]
         super().__init__(components)
+
+        # create PSF as weight for centroid measurements
+        if self.symmetric:
+            if self.frame.psfs is None:
+                shape = (41, 41)
+                psf = generate_psf_image(gaussian, shape, amplitude=1, sigma=.9)
+                psf /= psf.max()
+                self._centroid_weight = psf
+            else:
+                self._centroid_weight = self.frame.psfs[0]
+
+        # ensure adherence to constraints
+        self.update()
+
+    def update(self):
+
+        if self._parent is None:
+            it = 0
+        else:
+            it = self._parent.it
+
+        # Update the central pixel location (pixel_center)
+        # use the flux weighted mean of all components
+        _morph = np.sum([c.morph * c.sed.sum() for c in self], axis=0)
+
+        self.pixel_center = measurement.max_pixel(_morph, self.pixel_center)
+            
+        # Thresholding needs to be fixed (DM-10190)
+        # if it > self.delay_thresh:
+        #   for c in self:
+        #       update.threshold(c)
+
+        # If there is a threshold bounding box, use it
+        if hasattr(self, "bboxes") and "thresh" in self.bboxes:
+            bbox = self.bboxes["thresh"]
+        else:
+            bbox = None
+
+        if self.symmetric and it % 5 == 0:
+            # Update the centroid position
+            self.pixel_center, self.shift = measurement.psf_weighted_centroid(_morph, self._centroid_weight, self.pixel_center)
+
+        for c in self.components:
+            if self.symmetric:
+                update.symmetric(c, self.pixel_center, algorithm="kspace", bbox=bbox)
+            if self.monotonic:
+                update.monotonic(c, self.pixel_center, bbox=bbox)
+            update.positive(c)
+            update.normalized(c, type='morph_max')
+
+        return self

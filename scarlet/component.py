@@ -363,8 +363,8 @@ class ComponentTree():
         perform updates on multiple components at once
         (for example separating a buldge and disk).
         """
-        for component in self.components:
-            component.update()
+        for node in self._tree:
+            node.update()
 
     def __iadd__(self, c):
         """Add another component or tree.
