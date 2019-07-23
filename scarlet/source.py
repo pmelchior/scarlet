@@ -19,23 +19,55 @@ class SourceInitError(Exception):
 
 
 def get_pixel_sed(sky_coord, observation):
-    """Get the SED at `position` in `img`
+    """Get the SED at `sky_coord` in `observation`
 
     Parameters
     ----------
     sky_coord: tuple
-        Center of the source
+        Position in the observation
     observation: `~scarlet.Observation`
         Observation to extract SED from.
 
     Returns
     -------
     SED: `~numpy.array`
-        SED for a single source
     """
 
     pixel = observation.frame.get_pixel(sky_coord)
     sed = observation.images[:, pixel[0], pixel[1]].copy()
+    return sed
+
+
+def get_psf_sed(sky_coord, observation, frame):
+    """Get SED for a point source at `sky_coord` in `observation`
+
+    Identical to `get_pixel_sed`, but corrects for the different
+    peak values of the observed seds to approximately correct for PSF
+    width variations between channels.
+
+    Parameters
+    ----------
+    sky_coord: tuple
+        Position in the observation
+    observation: `~scarlet.Observation`
+        Observation to extract SED from.
+    frame: `~scarlet.Frame`
+        Frame of the model
+
+    Returns
+    -------
+    SED: `~numpy.array`
+    """
+    sed = get_pixel_sed(sky_coord, observation)
+
+    # approx. correct PSF width variations from SED by normalizing heights
+    if observation.frame.psfs is not None:
+        # Account for the PSF in the intensity
+        sed /= observation.frame.psfs.max(axis=(1, 2))
+
+    if frame.psfs is not None:
+        sed = sed * frame.psfs[0].max()
+
     return sed
 
 
@@ -53,6 +85,10 @@ def get_best_fit_seds(morphs, frame, observation):
         The frame of the model
     observation: `~scarlet.Observation`
         Observation to extract SEDs from.
+
+    Returns
+    -------
+    SED: `~numpy.array`
     """
     K = len(morphs)
     _morph = morphs.reshape(K, -1)
@@ -105,16 +141,8 @@ def init_extended_source(sky_coord, frame, observation, bg_rms,
     """Initialize the source that is symmetric and monotonic
     See `ExtendedSource` for a description of the parameters
     """
-    # determine initial SED from peak position
-    sed = get_pixel_sed(sky_coord, observation)  # amplitude is in sed
-
-    # approx. correct PSF width variations from SED by normalizing heights
-    if observation.frame.psfs is not None:
-        # Account for the PSF in the intensity
-        sed /= observation.frame.psfs.max(axis=(1, 2))
-
-    if frame.psfs is not None:
-        sed = sed * frame.psfs[0].max()
+    # determine initial SED from peak position, accounting for PSF changes
+    sed = get_psf_sed(sky_coord, observation, frame)
 
     if np.any(sed <= 0):
         # If the flux in all channels is  <=0,
@@ -167,19 +195,9 @@ def init_combined_extended_source(sky_coord, frame, observations, bg_rms, obs_id
 
     seds = []
     for obs in observations:
-        _sed = get_pixel_sed(sky_coord, obs)
-
-        # approx. correct PSF width variations from SED by normalizing heights
-        if obs.frame.psfs is not None:
-            # Account for the PSF in the intensity
-            _sed /= obs.frame.psfs.max(axis=(1, 2))
-
+        _sed = get_psf_sed(sky_coord, obs, frame)
         seds.append(_sed)
-
     sed = np.concatenate(seds).flatten()
-
-    if frame.psfs is not None:
-        sed = sed * frame.psfs[0].max()
 
     if np.any(sed <= 0):
         # If the flux in all channels is  <=0,
@@ -260,14 +278,6 @@ def init_multicomponent_source(sky_coord, frame, observation, bg_rms, flux_perce
     seds = get_best_fit_seds(morphs, frame, observation)
 
     for k in range(K):
-        # approx. correct PSF width variations from SED by normalizing heights
-        if observation.frame.psfs is not None:
-            # Account for the PSF in the intensity
-            seds[k] /= observation.frame.psfs.max(axis=(1, 2))
-
-        if frame.psfs is not None:
-            seds[k] *= frame.psfs[0].max()
-
         if np.any(seds[k] <= 0):
             # If the flux in all channels is  <=0,
             # the new sed will be filled with NaN values,
@@ -604,7 +614,7 @@ class MultiComponentSource(ComponentTree):
         _morph = np.sum([c.morph * c.sed.sum() for c in self], axis=0)
 
         self.pixel_center = measurement.max_pixel(_morph, self.pixel_center)
-            
+
         # Thresholding needs to be fixed (DM-10190)
         # if it > self.delay_thresh:
         #   for c in self:
