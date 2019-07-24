@@ -45,11 +45,6 @@ class TestPointSource(object):
         sed = np.concatenate([scarlet.source.get_pixel_sed(skycoord, obs) for obs in observations])
         assert_array_equal(sed, true_sed)
 
-        with pytest.raises(SourceInitError):
-            images = images1 - 200
-            obs = scarlet.Observation(images)
-            sed = scarlet.source.get_pixel_sed(skycoord, obs)
-
     def test_point_source(self):
         shape = (5, 11, 21)
         coords = [(4, 8), (8, 11), (5, 16)]

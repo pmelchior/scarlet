@@ -184,7 +184,7 @@ class TestUpdate(object):
         src = scarlet.Component(frame, sed.copy(), morph.copy())
         src.L_morph = 1
         src.pixel_center = (2, 2)
-        update.symmetric(src)
+        update.symmetric(src, src.pixel_center)
         result = np.ones_like(morph) * 12
         np.testing.assert_array_equal(src.morph, result)
 
@@ -192,7 +192,7 @@ class TestUpdate(object):
         src = scarlet.Component(frame, sed.copy(), morph.copy())
         src.L_morph = 1
         src.pixel_center = (2, 2)
-        update.symmetric(src, strength=.5, algorithm="soft")
+        update.symmetric(src, src.pixel_center, strength=.5, algorithm="soft")
         result = [[6.0, 6.5, 7.0, 7.5, 8.0],
                   [8.5, 9.0, 9.5, 10.0, 10.5],
                   [11.0, 11.5, 12.0, 12.5, 13.0],
@@ -204,7 +204,7 @@ class TestUpdate(object):
         src = scarlet.Component(frame, sed.copy(), morph.copy())
         src.L_morph = 1
         src.pixel_center = (1, 1)
-        update.symmetric(src)
+        update.symmetric(src, src.pixel_center)
         result = morph.copy()
         result[:3, :3] = 6
         np.testing.assert_array_equal(src.morph, result)
