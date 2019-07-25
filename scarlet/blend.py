@@ -72,13 +72,13 @@ class Blend(ComponentTree):
             assert len(priors) == 1, "Currently only supports a single morphology prior for all components"
             prior = priors[0]
 
-            self._inx = tf.placeholder(shape=[batch_size, prior.stamp_size, prior.stamp_size, 1])
-            out = prior(self._inx)
+            inx = tf.placeholder(shape=[batch_size, prior.stamp_size, prior.stamp_size, 1])
+            grad_prior = prior.grad(inx)
 
             self.sess = tf.Session()
             self.sess.run(tf.global_variables_initializer())
 
-            self._compute_grad_prior = lambda x: self.run(out, feed_dict={self._inx: x})
+            self._compute_grad_prior = lambda x: self.run(grad_prior, feed_dict={inx: x})
 
         # compute the backward gradient tree
         self._grad = grad(self._loss, tuple(range(n_params)))
@@ -164,13 +164,13 @@ class Blend(ComponentTree):
             if p.prior is not None:
                 bbox, padding = p.get_centered_ROI(p.prior.stamp_size)
                 roi = np.pad(p[bbox.slices], padding, mode='constant')
-                batch.append(roi)
+                batch.append(roi.reshape((1, p.prior.stamp_size, p.prior.stamp_size, 1)))
 
         if len(batch) == 0:
             return [0,]*len(parameters)
 
         # Concatenate stamps and feed them to the network
-        batch = self._compute_grad_prior(np.vstack(batch))
+        batch = self._compute_grad_prior(np.stack(batch, axis=0))
 
         # Extract the results and interleave 0s for parameters not affected by
         # prior
