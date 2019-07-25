@@ -30,7 +30,52 @@ class SEDParameter(Parameter):
     pass
 
 class MorphParameter(Parameter):
-    pass
+    """
+    Specialization of the parameter class to represent a morphology.
+    """
+
+    def __new__(cls, array, pixel_center=(0,0), **kwargs):
+        obj = super().__new__(cls, array, **kwargs).view(cls)
+        obj.pixel_center = pixel_center
+        return obj
+
+    def __array_finalize__(self, obj):
+        super().__array_finalize__(obj)
+        if obj is None: return
+        self.pixel_center = getattr(obj, 'pixel_center', (0,0))
+
+    def get_centered_ROI(self, size):
+        """
+        Extracts a bounding box of desired size centered on the pixel center.
+
+        Parameters
+        ----------
+        size: `int`
+            Size in pixels of the ROI
+
+        Returns
+        -------
+        bbox: `~scarlet.Box`
+            Bounding box centered on the source
+        padding:
+            Optionally non zero padding needed to get a postage stamp of the
+            desired size (in case of border effects).
+        """
+        radius = size // 2
+        left = self.pixel_center[1] - radius
+        right = self.pixel_center[1] + radius - 1
+        bottom = self.pixel_center[0] - radius
+        top = self.pixel_center[0] + radius - 1
+
+        _left = max(left, 0)
+        _right = min(right, self.shape[1] -1)
+        _bottom = max(bottom, 0)
+        _top = min(top, self.shape[0] - 1)
+
+        padding = ((_bottom-bottom, top-_top), (_left-left, right-_right))
+
+        return Box.from_bounds(_bottom, _top, _left, _right), padding
+
 
 ArrayBox.register(SEDParameter)
 ArrayBox.register(MorphParameter)
@@ -103,6 +148,12 @@ class Component():
         """Numpy view of the component morphology
         """
         return self._morph._data
+
+    @property
+    def pixel_center(self):
+        """ Pixel center of component
+        """
+        return self._morph.pixel_center
 
     @property
     def parameters(self):

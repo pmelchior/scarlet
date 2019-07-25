@@ -4,7 +4,7 @@ logger = logging.getLogger("scarlet.source")
 
 from . import operator
 from . import update
-from .component import Component, ComponentTree, Parameter
+from .component import Component, ComponentTree, Parameter, MorphParameter
 from .interpolation import get_projection_slices
 
 
@@ -304,7 +304,7 @@ class PointSource(Component):
             bb, ibb, _ = get_projection_slices(frame.psfs[0], morph.shape, yx0)
             morph[bb] = frame.psfs[0][ibb]
 
-        self.pixel_center = pixel
+        pixel_center = pixel
         pixel = observation.frame.get_pixel(sky_coord)
         sed = observation.images[:, pixel[0], pixel[1]].copy()
         if observation.frame.psfs is not None:
@@ -312,7 +312,7 @@ class PointSource(Component):
             sed /= observation.frame.psfs.max(axis=(1, 2))
 
         sed = Parameter(sed, name="sed")
-        morph = Parameter(morph, name="morph")
+        morph = MorphParameter(morph, pixel_center=pixel_center, name="morph")
 
         super().__init__(frame, sed, morph)
         self.symmetric = symmetric
@@ -333,7 +333,7 @@ class PointSource(Component):
             self.update_it = 0
 
         # Update the central pixel location (pixel_center)
-        update.fit_pixel_center(self)
+        update.fit_pixel_center(self._morph)
         # Thresholding needs to be fixed (DM-10190)
         # if it > self.delay_thresh:
         #     update.threshold(self)
@@ -353,7 +353,7 @@ class PointSource(Component):
 
         if self.monotonic:
             # make the morphology monotonically decreasing
-            update.monotonic(self, self.pixel_center, bbox=bbox)
+            update.monotonic(self, self._morph.pixel_center, bbox=bbox)
 
         update.positive(self)  # Make the SED and morph non-negative
         update.normalized(self)  # Use MORPH_MAX normalization
@@ -387,15 +387,14 @@ class ExtendedSource(PointSource):
         self.symmetric = symmetric
         self.monotonic = monotonic
         self.coords = sky_coord
-        center = frame.get_pixel(sky_coord)
-        self.pixel_center = center
         self.center_step = center_step
         self.delay_thresh = delay_thresh
 
         sed, morph = init_extended_source(sky_coord, frame, observation, bg_rms,
                                           thresh, True, monotonic)
         sed = Parameter(sed, name="sed")
-        morph = Parameter(morph, name="morph")
+        morph = MorphParameter(morph, pixel_center=frame.get_pixel(sky_coord), name="morph")
+
         Component.__init__(self, frame, sed, morph)
         self.update()
 
@@ -430,15 +429,14 @@ class CombinedExtendedSource(PointSource):
         self.symmetric = symmetric
         self.monotonic = monotonic
         self.coords = sky_coord
-        center = frame.get_pixel(sky_coord)
-        self.pixel_center = center
         self.center_step = center_step
         self.delay_thresh = delay_thresh
 
         sed, morph = init_combined_extended_source(sky_coord, frame, observations, bg_rms, obs_idx,
                                                    thresh, True, monotonic)
         sed = Parameter(sed, name="sed")
-        morph = Parameter(morph, name="morph")
+        morph = MorphParameter(morph, pixel_center=frame.get_pixel(sky_coord), name="morph")
+
         Component.__init__(self, frame, sed, morph)
 
 
@@ -488,9 +486,8 @@ class MultiComponentSource(ComponentTree):
             def __init__(self, frame, sed, morph, symmetric, monotonic):
                 self.symmetric = symmetric
                 self.monotonic = monotonic
-                self.pixel_center = frame.get_pixel(sky_coord)
                 sed = Parameter(sed, name="sed")
-                morph = Parameter(morph, name="morph")
+                morph = MorphParameter(morph, pixel_center=frame.get_pixel(sky_coord), name="morph")
                 super().__init__(frame, sed, morph)
 
             def update(self):
@@ -499,8 +496,8 @@ class MultiComponentSource(ComponentTree):
                     center = self.coords
                     update.symmetric(self, center)  # make the morph perfectly symmetric
                 elif self.monotonic:
-                    update.fit_pixel_center(self)
-                    center = self.pixel_center
+                    update.fit_pixel_center(self.morph)
+                    center = self._morph.pixel_center
                 if self.monotonic:
                     update.monotonic(self, center)  # make the morph monotonically decreasing
                 update.positive(self)  # Make the SED and morph non-negative

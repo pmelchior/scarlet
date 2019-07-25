@@ -22,11 +22,11 @@ def _fit_pixel_center(morph, center, window=None):
     return tuple(np.unravel_index(np.argmax(_morph), _morph.shape) + yx0)
 
 
-def fit_pixel_center(component, window=None):
+def fit_pixel_center(parameter, window=None):
     """Use the pixel with the maximum flux as the center
 
     In case there is a nearby bright neighbor, we only update
-    the center within the immediate vascinity of the previous center.
+    the center within the immediate viscinity of the previous center.
     This allows the center to shift over time, but prevents a large,
     likely unphysical update.
 
@@ -38,8 +38,10 @@ def fit_pixel_center(component, window=None):
         on the previous center are used. If it is desired to use the entire
         morphology just set `window=(slice(None), slice(None))`.
     """
-    component.pixel_center = _fit_pixel_center(component.morph, component.pixel_center, window)
-    return component
+    parameter.pixel_center = _fit_pixel_center(parameter,
+                                               parameter.pixel_center,
+                                               window)
+    return parameter
 
 def positive_sed(component):
     """Make the SED non-negative
@@ -262,7 +264,7 @@ def psf_weighted_centroid(component):
     else:
         psf = component.frame.psfs[0]
 
-    cy, cx = component.pixel_center
+    cy, cx = component._morph.pixel_center
 
     # Determine the width of the psf
     psf_shape_y, psf_shape_x = psf.shape
@@ -314,7 +316,7 @@ def psf_weighted_centroid(component):
     whole_pixel_center = np.round((first_moment_y, first_moment_x))
     dy, dx = whole_pixel_center - (first_moment_y, first_moment_x)
     morph_pixel_center = tuple((whole_pixel_center + offset).astype(int))
-    component.pixel_center = morph_pixel_center
+    component._morph.pixel_center = morph_pixel_center
     component.shift = (dy, dx)
     return component
 
@@ -328,7 +330,7 @@ def symmetric(component, algorithm="kspace", bbox=None, fill=None, strength=.5):
     if component._morph.fixed:
         return component
 
-    pixel_center = component.pixel_center
+    pixel_center = component._morph.pixel_center
     if bbox is not None:
         # Only apply monotonicity to the pixels inside the bounding box
         morph = component._morph[bbox.slices]
