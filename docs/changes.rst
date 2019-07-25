@@ -1,5 +1,5 @@
 
-0.5 (unreleased)
+0.5 (2019-06-26)
 ---------------
 
 General
@@ -9,6 +9,8 @@ General
 - PSF convolutions are now performed on the model of the entire blend as opposed to
   individually for each source.
 - It is possible to perform deblending on images with different orientations and resolutions.
+- `Blend` no longer fits for source positions. Instead it is up to the user to implement a
+  centering algorithm, such as centroiding or the `scarlet.update.fix_pixel_center`.
 - Updates to all of the docs and tutorials to match the new API.
 
 New Features
@@ -30,9 +32,14 @@ New Features
   map any number of filter bands to an RGB that can be displayed.
 - A `CombinedExtendedSource` initializes sources with multiple observations at different pixel
   resolutions.
+- `Frame` issues warnings when PSF is not specified or not normalized.
+- `Frame.channels` is used to identify channels in multiple observations.
 
 API Changes
 ^^^^^^^^^^^
+- `Scene` is a is a confusing name and has been renamed to `Frame`.
+- `Observation.get_model` is a confusing name and has been renamed to `Observation.render`.
+- `Blend` does not have a `frame` argument any more, it inherits its frame from sources.
 - `Component` is now the base class for sources and `Source` has been removed
   `PointSource`, `ExtendedSource`, and `MultiComponentSource` are now inherited from `Component`.
 - The `Constraint` class and module were removed in place of an update method that
@@ -44,8 +51,7 @@ API Changes
   entire scene with the component added in place, using the `Scene` target `PSF`. To get a
   model in the same space as observations requires calling `Observation.get_model` and passing
   the high resolution/best seeing model.
-- `Blend` no longer fits for source positions. Instead it is up to the user to implement a
-  centering algorithm, such as centroiding or the `scarlet.update.fix_pixel_center`.
+- `Frame` has a `channels` argument instead of `filter_curves`.
 - The old `resampling.py` module has been renamed `interpolation.py` and a new `resampling.py`
   used for multi-resolution resampling/reprojection.
 - Sources and components are no longer centered in a small patch that is reprojected

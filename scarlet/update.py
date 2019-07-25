@@ -5,39 +5,9 @@ from proxmin.operators import prox_plus, prox_hard, prox_soft
 
 from . import interpolation
 from . import operator
+from . import measurement
 from .bbox import trim
 from .cache import Cache
-
-
-def _fit_pixel_center(morph, center, window=None):
-    cy, cx = np.int(center[0]), np.int(center[1])
-
-    if window is None:
-        window = slice(cy-2, cy+3), slice(cx-2, cx+3)
-
-    _morph = morph[window]
-    yx0 = np.array([window[0].start, window[1].start])
-    return tuple(np.unravel_index(np.argmax(_morph), _morph.shape) + yx0)
-
-
-def fit_pixel_center(component, window=None):
-    """Use the pixel with the maximum flux as the center
-
-    In case there is a nearby bright neighbor, we only update
-    the center within the immediate vascinity of the previous center.
-    This allows the center to shift over time, but prevents a large,
-    likely unphysical update.
-
-    Parameters
-    ----------
-    window: tuple of slices
-        Slices in y and x of the central region to include in the fit.
-        If `window` is `None` then only the 3x3 grid of pixels centered
-        on the previous center are used. If it is desired to use the entire
-        morphology just set `window=(slice(None), slice(None))`.
-    """
-    component.pixel_center = _fit_pixel_center(component.morph, component.pixel_center, window)
-    return component
 
 
 def positive_sed(component):
@@ -112,24 +82,6 @@ def sparse_l1(component, thresh):
     return component
 
 
-def _threshold(morph):
-    """Find the threshold value for a given morphology
-    """
-    _morph = morph[morph > 0]
-    _bins = 50
-    # Decrease the bin size for sources with a small number of pixels
-    if _morph.size < 500:
-        _bins = max(np.int(_morph.size/10), 1)
-        if _bins == 1:
-            return 0, _bins
-    hist, bins = np.histogram(np.log10(_morph).reshape(-1), _bins)
-    cutoff = np.where(hist == 0)[0]
-    # If all of the pixels are used there is no need to threshold
-    if len(cutoff) == 0:
-        return 0, _bins
-    return 10**bins[cutoff[-1]], _bins
-
-
 def threshold(component):
     """Set a cutoff threshold for pixels below the noise
 
@@ -142,7 +94,7 @@ def threshold(component):
     The region that contains flux above the threshold is contained
     in `component.bboxes["thresh"]`.
     """
-    thresh, _bins = _threshold(component.morph)
+    thresh, _bins = measurement.threshold(component.morph)
     component.morph[component.morph < thresh] = 0
     bbox = trim(component.morph)
     if not hasattr(component, "bboxes"):
@@ -197,6 +149,7 @@ def monotonic(component, pixel_center, use_nearest=False, thresh=0, exact=False,
     step_size = component.step_morph
     prox(morph, step_size)
     if bbox is not None:
+        component.morph[:] = np.zeros(component.morph.shape, dtype=component.morph.dtype)
         component.morph[bbox.slices] = morph
     else:
         component.morph[:] = morph
@@ -214,13 +167,34 @@ def translation(component, direction=1, kernel=interpolation.lanczos, padding=3)
     return component
 
 
-def symmetric(component, strength=1, use_prox=True, kernel=interpolation.lanczos, padding=3):
+def symmetric(component, algorithm="kspace", bbox=None, fill=None, strength=.5):
     """Make the source symmetric about its center
 
     See `~scarlet.operator.prox_uncentered_symmetry`
     for a description of the parameters.
     """
+    pixel_center = component.pixel_center
+    if bbox is not None:
+        # Only apply monotonicity to the pixels inside the bounding box
+        morph = component.morph[bbox.slices]
+        shape = morph.shape
+        if shape[0] <= 1 or shape[1] <= 1:
+            return component
+        center = pixel_center[0]-bbox.bottom, pixel_center[1]-bbox.left
+    else:
+        morph = component.morph
+        shape = component.shape[-2:]
+        center = pixel_center
+
     step_size = component.step_morph
-    center = component.pixel_center
-    operator.prox_uncentered_symmetry(component.morph, step_size, center, strength, use_prox)
+    try:
+        shift = component.shift
+    except AttributeError:
+        shift = None
+    operator.prox_uncentered_symmetry(morph, step_size, center, algorithm, fill, shift, strength)
+    if bbox is not None:
+        component.morph[:] = np.zeros(component.morph.shape, dtype=component.morph.dtype)
+        component.morph[bbox.slices] = morph
+    else:
+        component.morph[:] = morph
     return component

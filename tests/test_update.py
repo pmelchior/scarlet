@@ -3,6 +3,7 @@ import numpy as np
 
 import scarlet
 import scarlet.update as update
+import scarlet.measurement as measurement
 from scarlet.cache import Cache
 
 
@@ -12,64 +13,56 @@ class TestUpdate(object):
         morph[4, 7] = 1
         morph[11, 9] = 2
         # Use the default window, which misses the higher point
-        center = update._fit_pixel_center(morph, (5, 5))
+        center = measurement.max_pixel(morph, (5, 5))
         np.testing.assert_array_equal([4, 7], center)
 
         # Make window wider and test again
-        center = update._fit_pixel_center(morph, (5, 5), window=tuple([slice(0, 15)] * 2))
+        center = measurement.max_pixel(morph, (5, 5), window=tuple([slice(0, 15)] * 2))
         np.testing.assert_array_equal([11, 9], center)
-
-        # Same tests but using the component
-        sed = np.array([1, 0, 2, 4, 10])
-        src = scarlet.Component(sed, morph)
-        src.pixel_center = (5, 5)
-        update.fit_pixel_center(src)
-        np.testing.assert_array_equal([4, 7], src.pixel_center)
-
-        src = scarlet.Component(sed, morph)
-        src.pixel_center = (5, 5)
-        update.fit_pixel_center(src, window=tuple([slice(0, 15)] * 2))
-        np.testing.assert_array_equal([11, 9], src.pixel_center)
 
     def test_non_negativity(self):
         sed = np.array([-.1, .1, 4, -.2, .2, 0])
         morph = np.array([[-1, -.5, -1], [.1, 2, .3], [-.5, .3, 0]])
+        shape = (len(sed), morph.shape[0], morph.shape[1])
+        frame = scarlet.Frame(shape)
 
         # Test SED only
-        src = scarlet.Component(sed.copy(), morph.copy())
+        src = scarlet.Component(frame, sed.copy(), morph.copy())
         update.positive_sed(src)
         np.testing.assert_array_equal(src.sed, [0, .1, 4, 0, .2, 0])
         np.testing.assert_array_equal(src.morph, morph)
         # Test morph only
-        src = scarlet.Component(sed.copy(), morph.copy())
+        src = scarlet.Component(frame, sed.copy(), morph.copy())
         update.positive_morph(src)
         np.testing.assert_array_equal(src.sed, sed)
         np.testing.assert_array_equal(src.morph, [[0, 0, 0], [.1, 2, .3], [0, .3, 0]])
         # Test SED and morph
-        src = scarlet.Component(sed.copy(), morph.copy())
+        src = scarlet.Component(frame, sed.copy(), morph.copy())
         update.positive(src)
         np.testing.assert_array_equal(src.sed, [0, .1, 4, 0, .2, 0])
         np.testing.assert_array_equal(src.morph, [[0, 0, 0], [.1, 2, .3], [0, .3, 0]])
 
     def test_normalized(self):
-        sed = np.arange(6, dtype=float)
-        morph = np.arange(25, dtype=float).reshape(5, 5)
+        shape = (6, 5, 5)
+        frame = scarlet.Frame(shape)
+        sed = np.arange(shape[0], dtype=float)
+        morph = np.arange(shape[1]*shape[2], dtype=float).reshape(shape[1], shape[2])
 
         # Test SED normalization
-        src = scarlet.Component(sed.copy(), morph.copy())
+        src = scarlet.Component(frame, sed.copy(), morph.copy())
         update.normalized(src, type='sed')
         np.testing.assert_array_equal(src.sed, sed/15)
         np.testing.assert_array_equal(src.morph, morph*15)
 
         # Test morph unity normalization
-        src = scarlet.Component(sed.copy(), morph.copy())
+        src = scarlet.Component(frame, sed.copy(), morph.copy())
         update.normalized(src, type='morph')
         norm = np.sum(morph)
         np.testing.assert_array_equal(src.sed, sed*norm)
         np.testing.assert_array_equal(src.morph, morph/norm)
 
         # Test morph max normalization
-        src = scarlet.Component(sed.copy(), morph.copy())
+        src = scarlet.Component(frame, sed.copy(), morph.copy())
         update.normalized(src)
         np.testing.assert_array_equal(src.sed, sed*24)
         np.testing.assert_array_equal(src.morph, morph/24)
@@ -78,11 +71,13 @@ class TestUpdate(object):
             update.normalized(src, type='fubar')
 
     def test_sparsity(self):
-        sed = np.arange(6, dtype=float)
-        morph = np.arange(25, dtype=float).reshape(5, 5)
+        shape = (6, 5, 5)
+        frame = scarlet.Frame(shape)
+        sed = np.arange(shape[0])
+        morph = np.arange(shape[1]*shape[2], dtype=float).reshape(shape[1], shape[2])
 
         # Test l0 sparsity
-        src = scarlet.Component(sed.copy(), morph.copy())
+        src = scarlet.Component(frame, sed.copy(), morph.copy())
         src.L_morph = 1
         update.sparse_l0(src, thresh=4)
         true_morph = morph.copy()
@@ -91,7 +86,7 @@ class TestUpdate(object):
         np.testing.assert_array_equal(src.morph, true_morph)
 
         # Test l1 sparsity
-        src = scarlet.Component(sed.copy(), morph.copy())
+        src = scarlet.Component(frame, sed.copy(), morph.copy())
         src.L_morph = 0.5
         update.sparse_l1(src, thresh=2)
         true_morph = np.zeros((morph.size))
@@ -109,8 +104,10 @@ class TestUpdate(object):
         signal[7:14, 7:14] = scarlet.psf.generate_psf_image(func, (21, 21), amplitude=10, sigma=3)[7:14, 7:14]
         morph = signal + noise
         sed = np.arange(5)
-        src = scarlet.Component(sed.copy(), morph.copy())
-        thresh, _ = update._threshold(src.morph)
+        shape = (len(sed), morph.shape[0], morph.shape[1])
+        frame = scarlet.Frame(shape)
+        src = scarlet.Component(frame, sed.copy(), morph.copy())
+        thresh, _ = measurement.threshold(src.morph)
         true_morph = np.zeros(morph.shape)
         true_morph[7:14, 7:14] = morph[7:14, 7:14]
         update.threshold(src)
@@ -119,10 +116,12 @@ class TestUpdate(object):
         assert src.bboxes["thresh"] == scarlet.bbox.Box((7, 7), 7, 7)
 
     def test_monotonic(self):
-        morph = np.arange(25, dtype=float).reshape(5, 5)
-        # Nearest neighbor
-        sed = np.arange(6)
-        src = scarlet.Component(sed.copy(), morph.copy())
+        shape = (6, 5, 5)
+        frame = scarlet.Frame(shape)
+        sed = np.arange(shape[0])
+        morph = np.arange(shape[1]*shape[2], dtype=float).reshape(shape[1], shape[2])
+
+        src = scarlet.Component(frame, sed.copy(), morph.copy())
         src.L_morph = 1
         update.monotonic(src, (2, 2), use_nearest=True, exact=False, thresh=0)
         new_X = [[0.0, 1.0, 2.0, 3.0, 4.0],
@@ -136,7 +135,7 @@ class TestUpdate(object):
         # Weighted
         # We need to clear the cache, since this has already been created
         Cache._cache = {}
-        src = scarlet.Component(sed.copy(), morph.copy())
+        src = scarlet.Component(frame, sed.copy(), morph.copy())
         src.L_morph = 1
         update.monotonic(src, (2, 2))
         new_X = [[0.000000000, 1.000000000, 2.000000000, 3.000000000, 4.000000000],
@@ -149,15 +148,14 @@ class TestUpdate(object):
 
         # Test that use_nearest=True and thresh !=0 are incompatible
         Cache._cache = {}
-        sed = np.arange(6)
-        src = scarlet.Component(sed.copy(), morph.copy())
+        src = scarlet.Component(frame, sed.copy(), morph.copy())
         src.L_morph = 1
         with pytest.raises(ValueError):
             update.monotonic(src, (2, 2), use_nearest=True, thresh=.25)
 
         # Use a threshold to force a gradient of 75% or steeper
         Cache._cache = {}
-        src = scarlet.Component(sed.copy(), morph.copy())
+        src = scarlet.Component(frame, sed.copy(), morph.copy())
         src.L_morph = 1
         update.monotonic(src, (2, 2), thresh=.25)
         new_X = [[0.000000000, 1.000000000, 2.000000000, 3.000000000, 4.000000000],
@@ -170,17 +168,19 @@ class TestUpdate(object):
 
         # Test that exact=True is not implemented
         Cache._cache = {}
-        src = scarlet.Component(sed.copy(), morph.copy())
+        src = scarlet.Component(frame, sed.copy(), morph.copy())
         src.L_morph = 1
         with pytest.raises(NotImplementedError):
             update.monotonic(src, (2, 2), exact=True)
 
     def test_symmetry(self):
-        sed = np.arange(6)
-        morph = np.arange(25, dtype=float).reshape(5, 5)
+        shape = (6, 5, 5)
+        frame = scarlet.Frame(shape)
+        sed = np.arange(shape[0])
+        morph = np.arange(shape[1]*shape[2], dtype=float).reshape(shape[1], shape[2])
 
         # Centered symmetry
-        src = scarlet.Component(sed.copy(), morph.copy())
+        src = scarlet.Component(frame, sed.copy(), morph.copy())
         src.L_morph = 1
         src.pixel_center = (2, 2)
         update.symmetric(src)
@@ -188,10 +188,10 @@ class TestUpdate(object):
         np.testing.assert_array_equal(src.morph, result)
 
         # Centered symmetry at half strength
-        src = scarlet.Component(sed.copy(), morph.copy())
+        src = scarlet.Component(frame, sed.copy(), morph.copy())
         src.L_morph = 1
         src.pixel_center = (2, 2)
-        update.symmetric(src, strength=.5)
+        update.symmetric(src, strength=.5, algorithm="soft")
         result = [[6.0, 6.5, 7.0, 7.5, 8.0],
                   [8.5, 9.0, 9.5, 10.0, 10.5],
                   [11.0, 11.5, 12.0, 12.5, 13.0],
@@ -200,7 +200,7 @@ class TestUpdate(object):
         np.testing.assert_array_equal(src.morph, result)
 
         # Uncentered symmetry
-        src = scarlet.Component(sed.copy(), morph.copy())
+        src = scarlet.Component(frame, sed.copy(), morph.copy())
         src.L_morph = 1
         src.pixel_center = (1, 1)
         update.symmetric(src)
