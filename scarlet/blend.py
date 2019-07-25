@@ -63,6 +63,23 @@ class Blend(ComponentTree):
         vhat = [np.zeros(x_.shape, x_.dtype) for x_ in x]
         h = [np.zeros(x_.shape, x_.dtype) for x_ in x]
 
+        priors = [p.prior for p in x if p.prior is not None]
+        batch_size = len(priors)
+        priors = set(priors)
+        if batch_size > 0:
+            import tensorflow as tf
+
+            assert len(priors) == 1, "Currently only supports a single morphology prior for all components"
+            prior = priors[0]
+
+            self._inx = tf.placeholder(shape=[batch_size, prior.stamp_size, prior.stamp_size, 1])
+            out = prior(self._inx)
+
+            self.sess = tf.Session()
+            self.sess.run(tf.global_variables_initializer())
+
+            self._compute_grad_prior = lambda x: self.run(out, feed_dict={self._inx: x})
+
         # compute the backward gradient tree
         self._grad = grad(self._loss, tuple(range(n_params)))
         step_sizes = self._get_stepsizes(*x, step_size=step_size)
@@ -141,7 +158,39 @@ class Blend(ComponentTree):
 
     def _grad_prior(self, *parameters):
         # TODO: could use collecting identical priors to run on mini-batches
-        return [ p.prior(p.view(np.ndarray)) if p.prior is not None else 0 for p in parameters ]
+        #return [ p.prior(p.view(np.ndarray)) if p.prior is not None else 0 for p in parameters ]
+        batch = []
+        for p in parameters:
+            if p.prior is not None:
+                bbox, padding = p.get_centered_ROI(p.prior.stamp_size)
+                roi = np.pad(p[bbox.slices], padding, mode='constant')
+                batch.append(roi)
+
+        if len(batch) == 0:
+            return [0,]*len(parameters)
+
+        # Concatenate stamps and feed them to the network
+        batch = self._compute_grad_prior(np.vstack(batch))
+
+        # Extract the results and interleave 0s for parameters not affected by
+        # prior
+        grad_prior = []
+        ind = 0
+        for p in parameters:
+            if p.prior is not None:
+                gp = np.zeros(p.shape, dtype=p.dtype)
+                bbox, padding = p.get_centered_ROI(p.prior.stamp_size)
+                (bottom, top), (left, right) = padding
+                top = None if top == 0 else -top
+                right = None if right == 0 else -right
+
+                gp[bbox.slices] = batch[ind++][bottom:top, left:right]
+
+                grad_prior.append(gp)
+            else:
+                grad_prior.append(0)
+
+        return grad_prior
 
     def _get_stepsizes(self, *parameters, step_size=1e-3):
         # pick step as a fraction of the mac value of the parameter

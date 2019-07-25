@@ -362,7 +362,8 @@ class PointSource(Component):
 
 class ExtendedSource(PointSource):
     def __init__(self, frame, sky_coord, observation, bg_rms, thresh=1,
-                 symmetric=True, monotonic=True, center_step=5, delay_thresh=10):
+                 symmetric=True, monotonic=True, center_step=5, delay_thresh=10,
+                 prior=None):
         """Extended source intialized to match a set of observations
 
         Parameters
@@ -393,7 +394,8 @@ class ExtendedSource(PointSource):
         sed, morph = init_extended_source(sky_coord, frame, observation, bg_rms,
                                           thresh, True, monotonic)
         sed = Parameter(sed, name="sed")
-        morph = MorphParameter(morph, pixel_center=frame.get_pixel(sky_coord), name="morph")
+        morph = MorphParameter(morph, pixel_center=frame.get_pixel(sky_coord),
+                               prior=prior, name="morph")
 
         Component.__init__(self, frame, sed, morph)
         self.update()
@@ -401,7 +403,7 @@ class ExtendedSource(PointSource):
 
 class CombinedExtendedSource(PointSource):
     def __init__(self, frame, sky_coord, observations, bg_rms, obs_idx=0, thresh=1,
-                 symmetric=False, monotonic=True, center_step=5, delay_thresh=0):
+                 symmetric=False, monotonic=True, center_step=5, delay_thresh=0, prior=None):
         """Extended source intialized to match a set of observations
 
         Parameters
@@ -435,7 +437,8 @@ class CombinedExtendedSource(PointSource):
         sed, morph = init_combined_extended_source(sky_coord, frame, observations, bg_rms, obs_idx,
                                                    thresh, True, monotonic)
         sed = Parameter(sed, name="sed")
-        morph = MorphParameter(morph, pixel_center=frame.get_pixel(sky_coord), name="morph")
+        morph = MorphParameter(morph, pixel_center=frame.get_pixel(sky_coord),
+                               prior=prior, name="morph")
 
         Component.__init__(self, frame, sed, morph)
 
