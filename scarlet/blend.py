@@ -90,7 +90,7 @@ class Blend(ComponentTree):
                     vhat[j] = np.maximum(v[j], vhat[j] * (1 - b1t)**2 / (1 - b1tm1)**2)
 
                 # inline update from gradients
-                x[j] -= step_sizes[x[j].name] * m[j] / np.sqrt(vhat[j])
+                x[j] -= step_sizes[type(x[j])] * m[j] / np.sqrt(vhat[j])
 
                 # step size for prox sub-iterations below
                 h[j] = np.sqrt(vhat[j])
@@ -149,6 +149,7 @@ class Blend(ComponentTree):
         # the same step size
         step_sizes = {}
         for p in parameters:
-            step_sizes[p.name] = max(step_size * p._data.max(), step_sizes.get(p.name, 0))
+            t = type(p)
+            step_sizes[t] = max(step_size * p._data.max(), step_sizes.get(t, 0))
 
         return step_sizes

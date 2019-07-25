@@ -7,9 +7,8 @@ import pickle
 logger = logging.getLogger("scarlet.component")
 
 class Parameter(np.ndarray):
-    def __new__(cls, array, name="", prior=None, step=0, converged=False, fixed=False, **kwargs):
+    def __new__(cls, array, prior=None, step=0, converged=False, fixed=False, **kwargs):
         obj = np.asarray(array, dtype=array.dtype).view(cls)
-        obj.name = name
         obj.prior = prior
         obj.step = 0
         obj.converged = converged
@@ -18,7 +17,6 @@ class Parameter(np.ndarray):
 
     def __array_finalize__(self, obj):
         if obj is None: return
-        self.name = getattr(obj, 'name', "")
         self.prior = getattr(obj, 'prior', None)
         self.step = getattr(obj, 'step_size', 0)
         self.converged = getattr(obj, 'converged', False)
@@ -28,8 +26,16 @@ class Parameter(np.ndarray):
     def _data(self):
         return self.view(np.ndarray)
 
-ArrayBox.register(Parameter)
-VSpace.register(Parameter, vspace_maker=VSpace.mappings[np.ndarray])
+class SEDParameter(Parameter):
+    pass
+
+class MorphParameter(Parameter):
+    pass
+
+ArrayBox.register(SEDParameter)
+ArrayBox.register(MorphParameter)
+VSpace.register(SEDParameter, vspace_maker=VSpace.mappings[np.ndarray])
+VSpace.register(MorphParameter, vspace_maker=VSpace.mappings[np.ndarray])
 
 
 class Component():
@@ -51,14 +57,14 @@ class Component():
         self._frame = frame
 
         # set sed and morph
-        if isinstance(sed, Parameter):
+        if isinstance(sed, SEDParameter):
             self._sed = sed
         else:
-            self._sed = Parameter(sed.copy(), name="sed")
-        if isinstance(morph, Parameter):
+            self._sed = SEDParameter(sed.copy())
+        if isinstance(morph, MorphParameter):
             self._morph = morph
         else:
-            self._morph = Parameter(morph.copy(), name="morph")
+            self._morph = MorphParameter(morph.copy())
 
         # Properties used for indexing in the ComponentTree
         self._index = None
@@ -115,14 +121,14 @@ class Component():
             (Bands, Height, Width) image of the model
         """
         sed, morph = self.sed, self.morph
+
         # if params are set they are not Parameters, but autograd ArrayBoxes
-        if len(params) == 2:
-            sed, morph = params
-        elif len(params) == 1:
-            if params[0]._value.name == "sed":
-                sed = params[0]
-            else:
-                morph = params[0]
+        # need to access the wrapped class with _value
+        for p in params:
+            if isinstance(p._value, SEDParameter):
+                sed = p
+            if isinstance(p._value, MorphParameter):
+                morph = p
         return sed[:, None, None] * morph[None, :, :]
 
     def get_flux(self):

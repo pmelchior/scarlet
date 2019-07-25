@@ -30,8 +30,8 @@ class TestComponent(object):
         assert isinstance(component._sed, scarlet.Parameter)
 
         # explicitly set sed and morph fixed
-        sed = scarlet.Parameter(sed, name="sed", fixed=True)
-        morph = scarlet.Parameter(morph, name="morph", fixed=False)
+        sed = scarlet.SEDParameter(sed, fixed=True)
+        morph = scarlet.MorphParameter(morph, fixed=False)
         component = scarlet.Component(frame, sed, morph)
         assert component._sed.fixed is True
         assert component._morph.fixed is False
@@ -58,14 +58,6 @@ class TestComponent(object):
         model = component.get_model()
         truth = sed[:, None, None] * morph[None, :, :]
         assert_array_equal(model, truth)
-
-        other_sed = np.ones_like(sed)
-        other_morph = morph + 10
-        other_truth = other_sed[:, None, None] * other_morph[None, :, :]
-        model = component.get_model()
-        other_model = component.get_model(other_sed, other_morph)
-        assert_array_equal(model, truth)
-        assert_array_equal(other_model, other_truth)
 
         # get_flux
         flux = component.get_flux()
