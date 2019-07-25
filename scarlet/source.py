@@ -332,6 +332,13 @@ class PointSource(Component):
         except AttributeError:
             self.update_it = 0
 
+        # If morphology prior is used, we set to 0 everything outside of the ROI
+        if self._morph.prior is not None:
+            bbox, _ = self._morph.get_centered_ROI(self._morph.prior.stamp_size)
+            morph = self._morph[bbox.slices]*1.0
+            self._morph[:] = np.zeros(self._morph.shape, dtype=self._morph.dtype)
+            self._morph[bbox.slices] = morph
+
         # Update the central pixel location (pixel_center)
         update.fit_pixel_center(self._morph)
         # Thresholding needs to be fixed (DM-10190)

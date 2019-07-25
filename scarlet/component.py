@@ -4,6 +4,8 @@ from autograd.core import VSpace
 import logging
 import pickle
 
+from .bbox import Box
+
 logger = logging.getLogger("scarlet.component")
 
 class Parameter(np.ndarray):
