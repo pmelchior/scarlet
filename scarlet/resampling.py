@@ -76,6 +76,8 @@ def match_patches(shape_hr, shape_lr, wcs_hr, wcs_lr):
     assert wcs_hr != None
     assert wcs_lr != None
 
+    rot = wcs_lr
+
     im_hr = np.zeros((Ny_hr, Nx_hr))
     im_lr = np.zeros((Ny_lr, Nx_lr))
 
@@ -133,4 +135,59 @@ def match_patches(shape_hr, shape_lr, wcs_hr, wcs_lr):
 
 
     return mask, coordlr_lr, coordlr_hr
+
+
+def factor_operator(mat, shape_lr, shape_hr):
+    ''' Factorises the resampling operator to speed-up operations
+
+
+
+    '''
+
+    nl1, nl2 = shape_lr
+    nh1, nh2 = shape_lr
+
+    #Making images out of resampling matrix
+    Kern = (mat).reshape(nh1*nh2, nl1, nl2)
+
+    #Coordinates of highres grid
+    loc = np.zeros((nh1, nh2))
+    xl, yl = np.where(loc == 0)
+    xl = xl.reshape(nh1, nh2)
+    yl = yl.reshape(nh1, nh2)
+    #High res grid in the low res frame
+    Xl = (xl * nl1 / (nh1)).flatten()
+    Yl = (yl * nl2 / (nh2)).flatten()
+    #coordinates at high res that are in the middle of the frame
+    loc[(np.where((xl > nh1 / 4) * (xl < 3 * nh1 / 4) * (yl > nh2 / 4) * (yl < 3 * nh2 / 4)))] = 1
+
+    #Slicing the matrix to take only vectors in the middle of the frame
+    mat = Kern[np.where(loc.flatten() == 1), :, :]
+
+    #Corresponding coordinates in the middle of the frame in low res reference
+    Xl = Xl[np.where(loc.flatten() == 1)].astype(np.intp)
+    Yl = Yl[np.where(loc.flatten() == 1)].astype(np.intp)
+
+
+    xl1, xl2, yl1, yl2 = (Xl.astype(int) - nl1 / 4).astype(int), (Xl.astype(int) + nl1 / 4).astype(int), (
+                Yl.astype(int) - nl2 / 4).astype(int), (Yl.astype(int) + nl2 / 4).astype(int)
+
+    M = np.zeros((np.int(nh1 * nh2 / 4), np.int(nl1 / 2) - 1, np.int(nl2 / 2) - 1))
+
+    for i in range(np.int(n1 * n2 / 4)):
+        print(M[i, :, :].shape, mat[0, i, xl1[i]:xl2[i], yl1[i]:yl2[i]].shape)
+        M[i, :, :] = mat[0, i, xl1[i]:xl2[i], yl1[i]:yl2[i]]
+
+    hdus = fits.PrimaryHDU(M)
+    lists = fits.HDUList([hdus])
+    lists.writeto('../HSTC/Mat_centered.fits', clobber=True)
+
+    U, E, V = np.linalg.svd(M.reshape(np.int(N1 / 2) * np.int(N2 / 2), np.int(n1 * n2 / 4)), full_matrices=False)
+
+    print(U.shape, E.shape, V.shape, )
+    Ev = np.dot(np.diag(E), V)
+
+    hdus = fits.PrimaryHDU(Ev.reshape(np.int(n1 * n2 / 4), np.int(N1 / 2), np.int(N2 / 2)))
+    lists = fits.HDUList([hdus])
+    lists.writeto('../HSTC/SVD.fits', clobber=True)
 

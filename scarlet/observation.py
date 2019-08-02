@@ -299,10 +299,11 @@ class Observation():
 
 class LowResObservation(Observation):
 
-    def __init__(self, images, wcs=None, psfs=None, weights=None, channels=None, padding=3):
+    def __init__(self, images, wcs=None, psfs=None, weights=None, channels=None, padding=3, operator = 'exact'):
 
         assert wcs is not None, "WCS is necessary for LowResObservation"
         assert psfs is not None, "PSFs are necessary for LowResObservation"
+        assert operator in ['exact', 'bilinear', 'SVD']
 
         super().__init__(images, wcs=wcs, psfs=psfs, weights=weights, channels=channels, padding=padding)
 
@@ -331,7 +332,8 @@ class LowResObservation(Observation):
         import scipy.signal as scp
 
         for m in range(np.size(x_lr)):
-            mat[:, m] = scp.fftconvolve(self._ker[m], psf, mode='same').flatten() / np.pi * y_lr.size / y_hr.size
+            line = scp.fftconvolve(self._ker[m], psf, mode='same').flatten()
+            mat[:, m] = line/np.sum(line)
         return mat
 
     def match_psfs(self, psf_hr, wcs_hr):
