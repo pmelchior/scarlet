@@ -195,32 +195,6 @@
 <div class="section" id="module-scarlet.update">
 <span id="Reference/API"></span><h2>Reference/API<a class="headerlink" href="#module-scarlet.update" title="Permalink to this headline">¶</a></h2>
 <dl class="function">
-<dt id="scarlet.update.fit_pixel_center">
-<code class="descclassname">scarlet.update.</code><code class="descname">fit_pixel_center</code><span class="sig-paren">(</span><em>component</em>, <em>window=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/update.html#fit_pixel_center"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.update.fit_pixel_center" title="Permalink to this definition">¶</a></dt>
-<dd><p>Use the pixel with the maximum flux as the center</p>
-<p>In case there is a nearby bright neighbor, we only update
-the center within the immediate vascinity of the previous center.
-This allows the center to shift over time, but prevents a large,
-likely unphysical update.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first last docutils">
-<dt><strong>window: tuple of slices</strong></dt>
-<dd><p class="first last">Slices in y and x of the central region to include in the fit.
-If <cite>window</cite> is <cite>None</cite> then only the 3x3 grid of pixels centered
-on the previous center are used. If it is desired to use the entire
-morphology just set <cite>window=(slice(None), slice(None))</cite>.</p>
-</dd>
-</dl>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="function">
 <dt id="scarlet.update.monotonic">
 <code class="descclassname">scarlet.update.</code><code class="descname">monotonic</code><span class="sig-paren">(</span><em>component</em>, <em>pixel_center</em>, <em>use_nearest=False</em>, <em>thresh=0</em>, <em>exact=False</em>, <em>bbox=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/update.html#monotonic"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.update.monotonic" title="Permalink to this definition">¶</a></dt>
 <dd><p>Make morphology monotonically decrease from the center</p>
@@ -292,7 +266,7 @@ normalized so that its maximum value is one.</p>
 
 <dl class="function">
 <dt id="scarlet.update.symmetric">
-<code class="descclassname">scarlet.update.</code><code class="descname">symmetric</code><span class="sig-paren">(</span><em>component</em>, <em>strength=1</em>, <em>use_prox=True</em>, <em>kernel=&lt;function lanczos&gt;</em>, <em>padding=3</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/update.html#symmetric"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.update.symmetric" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">scarlet.update.</code><code class="descname">symmetric</code><span class="sig-paren">(</span><em>component</em>, <em>pixel_center</em>, <em>algorithm=’kspace’</em>, <em>bbox=None</em>, <em>fill=None</em>, <em>strength=0.5</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/update.html#symmetric"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.update.symmetric" title="Permalink to this definition">¶</a></dt>
 <dd><p>Make the source symmetric about its center</p>
 <p>See <cite>~scarlet.operator.prox_uncentered_symmetry</cite>
 for a description of the parameters.</p>

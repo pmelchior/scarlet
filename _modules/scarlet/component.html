@@ -238,8 +238,8 @@
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">sed</span><span class="p">,</span> <span class="n">morph</span><span class="p">,</span> <span class="n">prior</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">fix_sed</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">fix_morph</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_frame</span> <span class="o">=</span> <span class="n">frame</span>
         <span class="c1"># set sed and morph</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_sed</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">sed</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_morph</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">morph</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_sed</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">sed</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_frame</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_morph</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">morph</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_frame</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">sed_grad</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">morph_grad</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">prior</span> <span class="o">=</span> <span class="n">prior</span>
@@ -428,8 +428,11 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tree</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">frame</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">nodes</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Initial list that generates the tree.</span>
+    <span class="k">def</span> <span class="nf">sources</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Initial list of components or sources that generate the tree.</span>
+
+<span class="sd">        This can be different than `self.components` because sources can</span>
+<span class="sd">        have multiple components.</span>
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
@@ -438,8 +441,15 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tree</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">n_nodes</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Number of direct attached nodes.</span>
+    <span class="k">def</span> <span class="nf">n_sources</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Number of initial sources or components.</span>
+
+<span class="sd">        This can be different than `self.n_components` because sources can</span>
+<span class="sd">        have multiple components.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        int: number of initial sources</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_tree</span><span class="p">)</span>
 
@@ -474,11 +484,10 @@
 <span class="sd">        model: array</span>
 <span class="sd">            (Bands, Height, Width) data cube</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">model</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="n">model</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">K</span><span class="p">):</span>
             <span class="k">if</span> <span class="n">seds</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">morphs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="n">_model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="p">[</span><span class="n">k</span><span class="p">]</span><span class="o">.</span><span class="n">get_model</span><span class="p">(</span><span class="n">seds</span><span class="p">[</span><span class="n">k</span><span class="p">],</span> <span class="n">morphs</span><span class="p">[</span><span class="n">k</span><span class="p">])</span>
-                <span class="n">model</span> <span class="o">=</span> <span class="n">model</span> <span class="o">+</span> <span class="n">_model</span>
+                <span class="n">model</span> <span class="o">=</span> <span class="n">model</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="p">[</span><span class="n">k</span><span class="p">]</span><span class="o">.</span><span class="n">get_model</span><span class="p">(</span><span class="n">seds</span><span class="p">[</span><span class="n">k</span><span class="p">],</span> <span class="n">morphs</span><span class="p">[</span><span class="n">k</span><span class="p">])</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">model</span> <span class="o">=</span> <span class="n">model</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="p">[</span><span class="n">k</span><span class="p">]</span><span class="o">.</span><span class="n">get_model</span><span class="p">()</span>
 
@@ -501,8 +510,8 @@
 <span class="sd">        perform updates on multiple components at once</span>
 <span class="sd">        (for example separating a buldge and disk).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">for</span> <span class="n">component</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="p">:</span>
-            <span class="n">component</span><span class="o">.</span><span class="n">update</span><span class="p">()</span></div>
+        <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tree</span><span class="p">:</span>
+            <span class="n">node</span><span class="o">.</span><span class="n">update</span><span class="p">()</span></div>
 
     <span class="k">def</span> <span class="nf">__iadd__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">c</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Add another component or tree.</span>
@@ -511,7 +520,7 @@
 <span class="sd">        ----------</span>
 <span class="sd">        c: `~scarlet.component.Component` or `~scarlet.component.ComponentTree`</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">c_index</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_nodes</span>
+        <span class="n">c_index</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_sources</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">ComponentTree</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_tree</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tree</span> <span class="o">+</span> <span class="n">c</span><span class="o">.</span><span class="n">_tree</span>
         <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">Component</span><span class="p">):</span>

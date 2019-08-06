@@ -21,6 +21,7 @@
     "import numpy as np\n",
     "\n",
     "import scarlet\n",
+    "\n",
     "import scarlet.display\n",
     "import astropy.io.fits as fits\n",
     "from astropy.wcs import WCS\n",
@@ -28,6 +29,7 @@
     "import sep\n",
     "\n",
     "%matplotlib inline\n",
+    "\n",
     "import matplotlib\n",
     "import matplotlib.pyplot as plt\n",
     "# use a better colormap and don't interpolate the pixels\n",
@@ -51,10 +53,10 @@
    "outputs": [],
    "source": [
     "# Load the HSC image data\n",
-    "obs_hdu = fits.open('../../data/test_resampling/Cut_HSC.fits')\n",
+    "obs_hdu = fits.open('../../data/test_resampling/Cut_HSC1.fits')\n",
     "data_hsc = obs_hdu[0].data.byteswap().newbyteorder()\n",
     "wcs_hsc = WCS(obs_hdu[0].header)\n",
-    "channels_hsc = ['g','r','i']\n",
+    "channels_hsc = ['g','r','i','z','y']\n",
     "\n",
     "# Load the HSC PSF data\n",
     "psf_hsc = fits.open('../../data/test_resampling/PSF_HSC.fits')[0].data\n",
@@ -62,8 +64,9 @@
     "psf_hsc /= psf_hsc.sum(axis=(1,2))[:,None,None]\n",
     "Np1, Np2 = psf_hsc[0].shape\n",
     "\n",
+    "\n",
     "# Load the HST image data\n",
-    "hst_hdu = fits.open('../../data/test_resampling/Cut_HST.fits')\n",
+    "hst_hdu = fits.open('../../data/test_resampling/Cut_HST1.fits')\n",
     "data_hst = hst_hdu[0].data\n",
     "wcs_hst = WCS(hst_hdu[0].header)\n",
     "channels_hst = ['F814W']\n",
@@ -80,7 +83,7 @@
     "n1,n2 = np.shape(data_hst)\n",
     "data_hst = data_hst.reshape(1, n1, n2).byteswap().newbyteorder()#*np.max(data_hsc)/np.max(data_hst)\n",
     "\n",
-    "r, N1, N2 = data_hsc.shape"
+    "r, N1, N2 = data_hsc.shape\n"
    ]
   },
   {
@@ -135,7 +138,6 @@
     "# Convert the HST coordinates to the HSC WCS\n",
     "ra, dec = wcs_hst.wcs_pix2world(yo,xo,0)\n",
     "Yo,Xo, l = wcs_hsc.wcs_world2pix(ra, dec, 0, 0)\n",
-    "\n",
     "# Map the HSC image to RGB\n",
     "img_rgb = scarlet.display.img_to_rgb(data_hsc, norm=hsc_norm)\n",
     "# Apply Asinh to the HST data\n",
@@ -161,7 +163,9 @@
   {
    "cell_type": "code",
    "execution_count": null,
-   "metadata": {},
+   "metadata": {
+    "scrolled": false
+   },
    "outputs": [],
    "source": [
     "# Initialize the frame using the HST PSF and WCS\n",
@@ -173,7 +177,7 @@
     "obs_hst = scarlet.Observation(data_hst, wcs=wcs_hst, psfs=psf_hst, channels=channels_hst).match(frame)\n",
     "obs_hsc = scarlet.LowResObservation(data_hsc,  wcs=wcs_hsc, psfs=psf_hsc, channels=channels_hsc).match(frame)\n",
     "\n",
-    "# Keep the order of the observations consistent with the `structure` parameter\n",
+    "# Keep the order of the observations consistent with the `channels` parameter\n",
     "# This implementation is a bit of a hack and will be refined in the future\n",
     "obs = [obs_hsc, obs_hst]\n",
     "\n",
@@ -245,26 +249,29 @@
     "residual_lr_rgb = scarlet.display.img_to_rgb(residual_lr[:,:-5])\n",
     "\n",
     "# Get the HR residual\n",
-    "residual_hr = (data_hst - model)[0]\n",
+    "residual_hr = (data_hst - obs_hst.render(model))[0]\n",
     "vmax = residual_hr.max()\n",
     "\n",
     "plt.figure(figsize=(15, 10))\n",
     "plt.subplot(231)\n",
     "plt.imshow(img_rgb)\n",
-    "plt.title(\"Data\")\n",
-    "plt.subplot(232)\n",
+    "plt.title(\"HSC data\")\n",
+    "plt.subplot(235)\n",
     "plt.imshow(init_rgb)\n",
     "plt.title(\"HighRes Model\")\n",
-    "plt.subplot(233)\n",
+    "plt.subplot(232)\n",
     "plt.imshow(init_rgb_lr)\n",
     "plt.title(\"LowRes Model\")\n",
-    "plt.subplot(235)\n",
+    "plt.subplot(236)\n",
     "plt.imshow(residual_hr, cmap=\"seismic\", vmin=-vmax, vmax=vmax)\n",
     "plt.colorbar(fraction=.045)\n",
     "plt.title(\"HST residual\")\n",
-    "plt.subplot(236)\n",
+    "plt.subplot(233)\n",
     "plt.imshow(residual_lr_rgb)\n",
     "plt.title(\"HSC residual\")\n",
+    "plt.subplot(234)\n",
+    "plt.imshow(hst_img)\n",
+    "plt.title('HST data')\n",
     "plt.show()"
    ]
   },
@@ -315,20 +322,23 @@
     "plt.figure(figsize=(15, 10))\n",
     "plt.subplot(231)\n",
     "plt.imshow(img_rgb)\n",
-    "plt.title(\"Data\")\n",
-    "plt.subplot(232)\n",
-    "plt.imshow(rgb)\n",
-    "plt.title(\"HighRes Model\")\n",
-    "plt.subplot(233)\n",
-    "plt.imshow(rgb_lr)\n",
-    "plt.title(\"LowRes Model\")\n",
+    "plt.title(\"HSC data\")\n",
     "plt.subplot(235)\n",
+    "plt.imshow(rgb)\n",
+    "plt.title(\"HST Model\")\n",
+    "plt.subplot(232)\n",
+    "plt.imshow(rgb_lr)\n",
+    "plt.title(\"HSC Model\")\n",
+    "plt.subplot(236)\n",
     "plt.imshow(residual_hr, cmap=\"seismic\", vmin=-vmax, vmax=vmax)\n",
     "plt.colorbar(fraction=.045)\n",
     "plt.title(\"HST residual\")\n",
-    "plt.subplot(236)\n",
+    "plt.subplot(233)\n",
     "plt.imshow(residual_lr_rgb)\n",
     "plt.title(\"HSC residual\")\n",
+    "plt.subplot(234)\n",
+    "plt.imshow(hst_img)\n",
+    "plt.title('HST data')\n",
     "plt.show()"
    ]
   },
@@ -357,9 +367,9 @@
     "    model_lr = obs_hsc.render(model)\n",
     "    \n",
     "    # Display the low resolution image and residuals\n",
-    "    img_lr_rgb = scarlet.display.img_to_rgb(model_lr)\n",
+    "    img_lr_rgb = scarlet.display.img_to_rgb(model_lr, norm = hsc_norm)\n",
     "    res = data_hsc-model_lr\n",
-    "    res_rgb = scarlet.display.img_to_rgb(res)\n",
+    "    res_rgb = scarlet.display.img_to_rgb(res, norm = hsc_norm)\n",
     "    \n",
     "    plt.figure(figsize=(15,15))\n",
     "    \n",
@@ -409,6 +419,20 @@
     "    plt.suptitle(\"Source {0}\".format(k), y=.92)\n",
     "    plt.show()"
    ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": []
   }
  ],
  "metadata": {
@@ -428,7 +452,7 @@
    "name": "python",
    "nbconvert_exporter": "python",
    "pygments_lexer": "ipython3",
-   "version": "3.7.3"
+   "version": "3.7.1"
   }
  },
  "nbformat": 4,

@@ -150,7 +150,9 @@
 <span class="kn">from</span> <span class="nn">.component</span> <span class="k">import</span> <span class="n">Component</span><span class="p">,</span> <span class="n">ComponentTree</span>
 <span class="kn">from</span> <span class="nn">.</span> <span class="k">import</span> <span class="n">operator</span>
 <span class="kn">from</span> <span class="nn">.</span> <span class="k">import</span> <span class="n">update</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="k">import</span> <span class="n">measurement</span>
 <span class="kn">from</span> <span class="nn">.interpolation</span> <span class="k">import</span> <span class="n">get_projection_slices</span>
+<span class="kn">from</span> <span class="nn">.psf</span> <span class="k">import</span> <span class="n">generate_psf_image</span><span class="p">,</span> <span class="n">gaussian</span>
 
 <span class="kn">import</span> <span class="nn">logging</span>
 
@@ -164,33 +166,54 @@
 
 
 <div class="viewcode-block" id="get_pixel_sed"><a class="viewcode-back" href="../../source.html#scarlet.source.get_pixel_sed">[docs]</a><span class="k">def</span> <span class="nf">get_pixel_sed</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">,</span> <span class="n">observation</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Get the SED at `position` in `img`</span>
+    <span class="sd">&quot;&quot;&quot;Get the SED at `sky_coord` in `observation`</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
 <span class="sd">    sky_coord: tuple</span>
-<span class="sd">        Center of the source</span>
+<span class="sd">        Position in the observation</span>
 <span class="sd">    observation: `~scarlet.Observation`</span>
 <span class="sd">        Observation to extract SED from.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
 <span class="sd">    SED: `~numpy.array`</span>
-<span class="sd">        SED for a single source</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">pixel</span> <span class="o">=</span> <span class="n">observation</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">get_pixel</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">)</span>
     <span class="n">sed</span> <span class="o">=</span> <span class="n">observation</span><span class="o">.</span><span class="n">images</span><span class="p">[:,</span> <span class="n">pixel</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">pixel</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">sed</span></div>
+
+
+<div class="viewcode-block" id="get_psf_sed"><a class="viewcode-back" href="../../source.html#scarlet.source.get_psf_sed">[docs]</a><span class="k">def</span> <span class="nf">get_psf_sed</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">,</span> <span class="n">observation</span><span class="p">,</span> <span class="n">frame</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Get SED for a point source at `sky_coord` in `observation`</span>
+
+<span class="sd">    Identical to `get_pixel_sed`, but corrects for the different</span>
+<span class="sd">    peak values of the observed seds to approximately correct for PSF</span>
+<span class="sd">    width variations between channels.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    sky_coord: tuple</span>
+<span class="sd">        Position in the observation</span>
+<span class="sd">    observation: `~scarlet.Observation`</span>
+<span class="sd">        Observation to extract SED from.</span>
+<span class="sd">    frame: `~scarlet.Frame`</span>
+<span class="sd">        Frame of the model</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    SED: `~numpy.array`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">sed</span> <span class="o">=</span> <span class="n">get_pixel_sed</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">,</span> <span class="n">observation</span><span class="p">)</span>
+
+    <span class="c1"># approx. correct PSF width variations from SED by normalizing heights</span>
     <span class="k">if</span> <span class="n">observation</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">psfs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="c1"># Account for the PSF in the intensity</span>
         <span class="n">sed</span> <span class="o">/=</span> <span class="n">observation</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">psfs</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
 
-    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">sed</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">):</span>
-        <span class="c1"># If the flux in all channels is  &lt;=0,</span>
-        <span class="c1"># the new sed will be filled with NaN values,</span>
-        <span class="c1"># which will cause the code to crash later</span>
-        <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;Zero or negative flux at y=</span><span class="si">{0}</span><span class="s2">, x=</span><span class="si">{1}</span><span class="s2">&quot;</span>
-        <span class="k">raise</span> <span class="n">SourceInitError</span><span class="p">(</span><span class="n">msg</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="o">*</span><span class="n">sky_coord</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">frame</span><span class="o">.</span><span class="n">psfs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">sed</span> <span class="o">=</span> <span class="n">sed</span> <span class="o">*</span> <span class="n">frame</span><span class="o">.</span><span class="n">psfs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
 
     <span class="k">return</span> <span class="n">sed</span></div>
 
@@ -206,9 +229,13 @@
 <span class="sd">    morphs: list</span>
 <span class="sd">        Morphology for each component in the source.</span>
 <span class="sd">    frame: `scarlet.observation.frame`</span>
-<span class="sd">        The frame that the model lives in.</span>
+<span class="sd">        The frame of the model</span>
 <span class="sd">    observation: `~scarlet.Observation`</span>
 <span class="sd">        Observation to extract SEDs from.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    SED: `~numpy.array`</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">K</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">morphs</span><span class="p">)</span>
     <span class="n">_morph</span> <span class="o">=</span> <span class="n">morphs</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">K</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
@@ -216,6 +243,7 @@
     <span class="n">data</span> <span class="o">=</span> <span class="n">images</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">observation</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">C</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
     <span class="n">seds</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">_morph</span><span class="p">,</span> <span class="n">_morph</span><span class="o">.</span><span class="n">T</span><span class="p">)),</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">_morph</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">T</span><span class="p">))</span>
     <span class="k">return</span> <span class="n">seds</span></div>
+
 
 <div class="viewcode-block" id="build_detection_coadd"><a class="viewcode-back" href="../../source.html#scarlet.source.build_detection_coadd">[docs]</a><span class="k">def</span> <span class="nf">build_detection_coadd</span><span class="p">(</span><span class="n">sed</span><span class="p">,</span> <span class="n">bg_rms</span><span class="p">,</span> <span class="n">observation</span><span class="p">,</span> <span class="n">thresh</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Build a channel weighted coadd to use for source detection</span>
@@ -243,12 +271,15 @@
     <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">bg_rms</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">):</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;bg_rms must be greater than zero in all channels&quot;</span><span class="p">)</span>
 
-    <span class="n">weights</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">sed</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">/</span> <span class="n">bg_rms</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">C</span><span class="p">)])</span>
-    <span class="n">jacobian</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">sed</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">/</span> <span class="n">bg_rms</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">C</span><span class="p">)])</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
-    <span class="n">detect</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s1">&#39;i,i...&#39;</span><span class="p">,</span> <span class="n">weights</span><span class="p">,</span> <span class="n">observation</span><span class="o">.</span><span class="n">images</span><span class="p">)</span> <span class="o">/</span> <span class="n">jacobian</span>
+    <span class="n">positive</span> <span class="o">=</span> <span class="p">[</span> <span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">C</span><span class="p">)</span> <span class="k">if</span> <span class="n">sed</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="p">]</span>
+    <span class="n">positive_img</span> <span class="o">=</span> <span class="p">[</span><span class="n">observation</span><span class="o">.</span><span class="n">images</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">positive</span><span class="p">]</span>
+    <span class="n">positive_bgrms</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">bg_rms</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">positive</span><span class="p">])</span>
+    <span class="n">weights</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">sed</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">/</span> <span class="n">bg_rms</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">positive</span><span class="p">])</span>
+    <span class="n">jacobian</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">sed</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">/</span> <span class="n">bg_rms</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">positive</span><span class="p">])</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+    <span class="n">detect</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s1">&#39;i,i...&#39;</span><span class="p">,</span> <span class="n">weights</span><span class="p">,</span> <span class="n">positive_img</span><span class="p">)</span> <span class="o">/</span> <span class="n">jacobian</span>
 
     <span class="c1"># thresh is multiple above the rms of detect (weighted variance across channels)</span>
-    <span class="n">bg_cutoff</span> <span class="o">=</span> <span class="n">thresh</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">weights</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">bg_rms</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span> <span class="o">/</span> <span class="n">jacobian</span>
+    <span class="n">bg_cutoff</span> <span class="o">=</span> <span class="n">thresh</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">weights</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">positive_bgrms</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span> <span class="o">/</span> <span class="n">jacobian</span>
     <span class="k">return</span> <span class="n">detect</span><span class="p">,</span> <span class="n">bg_cutoff</span></div>
 
 
@@ -257,17 +288,25 @@
     <span class="sd">&quot;&quot;&quot;Initialize the source that is symmetric and monotonic</span>
 <span class="sd">    See `ExtendedSource` for a description of the parameters</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="c1"># determine initial SED from peak position</span>
-    <span class="n">sed</span> <span class="o">=</span> <span class="n">get_pixel_sed</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">,</span> <span class="n">observation</span><span class="p">)</span>  <span class="c1"># amplitude is in sed</span>
-    <span class="k">if</span> <span class="n">frame</span><span class="o">.</span><span class="n">psfs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">sed</span> <span class="o">=</span> <span class="n">sed</span> <span class="o">*</span> <span class="n">frame</span><span class="o">.</span><span class="n">psfs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+    <span class="c1"># determine initial SED from peak position, accounting for PSF changes</span>
+    <span class="n">sed</span> <span class="o">=</span> <span class="n">get_psf_sed</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">,</span> <span class="n">observation</span><span class="p">,</span> <span class="n">frame</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">sed</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">):</span>
+        <span class="c1"># If the flux in all channels is  &lt;=0,</span>
+        <span class="c1"># the new sed will be filled with NaN values,</span>
+        <span class="c1"># which will cause the code to crash later</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;Zero or negative SED </span><span class="si">{}</span><span class="s2"> at y=</span><span class="si">{}</span><span class="s2">, x=</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">sed</span><span class="p">,</span> <span class="o">*</span><span class="n">sky_coord</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">sed</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">):</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
 
     <span class="n">morph</span><span class="p">,</span> <span class="n">bg_cutoff</span> <span class="o">=</span> <span class="n">build_detection_coadd</span><span class="p">(</span><span class="n">sed</span><span class="p">,</span> <span class="n">bg_rms</span><span class="p">,</span> <span class="n">observation</span><span class="p">,</span> <span class="n">thresh</span><span class="p">)</span>
     <span class="n">center</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">get_pixel</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">)</span>
 
     <span class="c1"># Apply the necessary constraints</span>
     <span class="k">if</span> <span class="n">symmetric</span><span class="p">:</span>
-        <span class="n">morph</span> <span class="o">=</span> <span class="n">operator</span><span class="o">.</span><span class="n">prox_uncentered_symmetry</span><span class="p">(</span><span class="n">morph</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">center</span><span class="o">=</span><span class="n">center</span><span class="p">,</span> <span class="n">use_soft</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">morph</span> <span class="o">=</span> <span class="n">operator</span><span class="o">.</span><span class="n">prox_uncentered_symmetry</span><span class="p">(</span><span class="n">morph</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">center</span><span class="o">=</span><span class="n">center</span><span class="p">,</span> <span class="n">algorithm</span><span class="o">=</span><span class="s2">&quot;sdss&quot;</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">monotonic</span><span class="p">:</span>
         <span class="c1"># use finite thresh to remove flat bridges</span>
         <span class="n">prox_monotonic</span> <span class="o">=</span> <span class="n">operator</span><span class="o">.</span><span class="n">prox_strict_monotonic</span><span class="p">(</span><span class="n">morph</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">use_nearest</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
@@ -303,17 +342,28 @@
 
     <span class="n">seds</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="k">for</span> <span class="n">obs</span> <span class="ow">in</span> <span class="n">observations</span><span class="p">:</span>
-        <span class="n">_sed</span> <span class="o">=</span> <span class="n">get_pixel_sed</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">,</span> <span class="n">obs</span><span class="p">)</span>
+        <span class="n">_sed</span> <span class="o">=</span> <span class="n">get_psf_sed</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">,</span> <span class="n">obs</span><span class="p">,</span> <span class="n">frame</span><span class="p">)</span>
         <span class="n">seds</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_sed</span><span class="p">)</span>
     <span class="n">sed</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">seds</span><span class="p">)</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
 
-    <span class="n">morph</span><span class="p">,</span> <span class="n">bg_cutoff</span> <span class="o">=</span> <span class="n">build_detection_coadd</span><span class="p">(</span><span class="n">seds</span><span class="p">[</span><span class="n">obs_idx</span><span class="p">],</span> <span class="n">bg_rms</span><span class="p">[</span><span class="n">obs_idx</span><span class="p">],</span> <span class="n">observations</span><span class="p">[</span><span class="n">obs_idx</span><span class="p">],</span> <span class="n">thresh</span><span class="p">)</span>  <span class="c1"># amplitude is in sed</span>
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">sed</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">):</span>
+        <span class="c1"># If the flux in all channels is  &lt;=0,</span>
+        <span class="c1"># the new sed will be filled with NaN values,</span>
+        <span class="c1"># which will cause the code to crash later</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;Zero or negative SED </span><span class="si">{}</span><span class="s2"> at y=</span><span class="si">{}</span><span class="s2">, x=</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">sed</span><span class="p">,</span> <span class="o">*</span><span class="n">sky_coord</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">sed</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">):</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+    <span class="n">morph</span><span class="p">,</span> <span class="n">bg_cutoff</span> <span class="o">=</span> <span class="n">build_detection_coadd</span><span class="p">(</span><span class="n">seds</span><span class="p">[</span><span class="n">obs_idx</span><span class="p">],</span> <span class="n">bg_rms</span><span class="p">[</span><span class="n">obs_idx</span><span class="p">],</span> <span class="n">observations</span><span class="p">[</span><span class="n">obs_idx</span><span class="p">],</span>
+                                             <span class="n">thresh</span><span class="p">)</span>  <span class="c1"># amplitude is in sed</span>
 
     <span class="n">center</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">get_pixel</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">)</span>
 
     <span class="c1"># Apply the necessary constraints</span>
     <span class="k">if</span> <span class="n">symmetric</span><span class="p">:</span>
-        <span class="n">morph</span> <span class="o">=</span> <span class="n">operator</span><span class="o">.</span><span class="n">prox_uncentered_symmetry</span><span class="p">(</span><span class="n">morph</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">center</span><span class="o">=</span><span class="n">center</span><span class="p">,</span> <span class="n">use_soft</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">morph</span> <span class="o">=</span> <span class="n">operator</span><span class="o">.</span><span class="n">prox_uncentered_symmetry</span><span class="p">(</span><span class="n">morph</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">center</span><span class="o">=</span><span class="n">center</span><span class="p">,</span> <span class="n">algorithm</span><span class="o">=</span><span class="s2">&quot;sdss&quot;</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">monotonic</span><span class="p">:</span>
         <span class="c1"># use finite thresh to remove flat bridges</span>
@@ -330,9 +380,9 @@
 
     <span class="c1"># normalize to unity at peak pixel</span>
     <span class="n">cy</span><span class="p">,</span> <span class="n">cx</span> <span class="o">=</span> <span class="n">center</span>
-
     <span class="n">center_morph</span> <span class="o">=</span> <span class="n">morph</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">int</span><span class="p">(</span><span class="n">cy</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">int</span><span class="p">(</span><span class="n">cx</span><span class="p">)]</span>
     <span class="n">morph</span> <span class="o">/=</span> <span class="n">center_morph</span>
+
     <span class="k">return</span> <span class="n">sed</span><span class="p">,</span> <span class="n">morph</span></div>
 
 
@@ -366,12 +416,57 @@
 
     <span class="c1"># renormalize morphs: initially Smax</span>
     <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">K</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">morphs</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">):</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;Zero or negative morphology for component </span><span class="si">{}</span><span class="s2"> at y=</span><span class="si">{}</span><span class="s2">, x=</span><span class="si">{}</span><span class="s2">&quot;</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="n">msg</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="o">*</span><span class="n">skycoords</span><span class="p">))</span>
         <span class="n">morphs</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">/=</span> <span class="n">morphs</span><span class="p">[</span><span class="n">k</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
 
     <span class="c1"># optimal SEDs given the morphologies, assuming img only has that source</span>
     <span class="n">seds</span> <span class="o">=</span> <span class="n">get_best_fit_seds</span><span class="p">(</span><span class="n">morphs</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">observation</span><span class="p">)</span>
 
+    <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">K</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">seds</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">):</span>
+            <span class="c1"># If the flux in all channels is  &lt;=0,</span>
+            <span class="c1"># the new sed will be filled with NaN values,</span>
+            <span class="c1"># which will cause the code to crash later</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;Zero or negative SED </span><span class="si">{}</span><span class="s2"> for component </span><span class="si">{}</span><span class="s2"> at y=</span><span class="si">{}</span><span class="s2">, x=</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">seds</span><span class="p">[</span><span class="n">k</span><span class="p">],</span> <span class="n">k</span><span class="p">,</span> <span class="o">*</span><span class="n">sky_coord</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">sed</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">):</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
     <span class="k">return</span> <span class="n">seds</span><span class="p">,</span> <span class="n">morphs</span></div>
+
+
+<div class="viewcode-block" id="RandomSource"><a class="viewcode-back" href="../../source.html#scarlet.source.RandomSource">[docs]</a><span class="k">class</span> <span class="nc">RandomSource</span><span class="p">(</span><span class="n">Component</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Sources with uniform random morphology.</span>
+
+<span class="sd">    For cases with no well-defined spatial shape, this source initializes</span>
+<span class="sd">    a uniform random field and (optionally) matches the SED to match a given</span>
+<span class="sd">    observation.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">observation</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">component_kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Source intialized with a single pixel</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        frame: `~scarlet.Frame`</span>
+<span class="sd">            The frame of the model</span>
+<span class="sd">        observation: list of `~scarlet.Observation`</span>
+<span class="sd">            Observation to initialize the SED of the source</span>
+<span class="sd">        component_kwargs: dict</span>
+<span class="sd">            Keyword arguments to pass to the component initialization.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">C</span><span class="p">,</span> <span class="n">Ny</span><span class="p">,</span> <span class="n">Nx</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">shape</span>
+        <span class="n">morph</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="n">Ny</span><span class="p">,</span> <span class="n">Nx</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">observation</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">sed</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="n">C</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">sed</span> <span class="o">=</span> <span class="n">get_best_fit_seds</span><span class="p">(</span><span class="n">morph</span><span class="p">[</span><span class="kc">None</span><span class="p">],</span> <span class="n">frame</span><span class="p">,</span> <span class="n">observation</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">sed</span><span class="p">,</span> <span class="n">morph</span><span class="p">,</span> <span class="o">**</span><span class="n">component_kwargs</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="PointSource"><a class="viewcode-back" href="../../source.html#scarlet.source.PointSource">[docs]</a><span class="k">class</span> <span class="nc">PointSource</span><span class="p">(</span><span class="n">Component</span><span class="p">):</span>
@@ -382,14 +477,15 @@
 <span class="sd">    While the source can have any `constraints`, the default constraints are</span>
 <span class="sd">    symmetry and monotonicity.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">sky_coord</span><span class="p">,</span> <span class="n">observation</span><span class="p">,</span> <span class="n">symmetric</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">monotonic</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">sky_coord</span><span class="p">,</span> <span class="n">observation</span><span class="p">,</span> <span class="n">symmetric</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">monotonic</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
                  <span class="n">center_step</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">delay_thresh</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="o">**</span><span class="n">component_kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Source intialized with a single pixel</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
 <span class="sd">        frame: `~scarlet.Frame`</span>
-<span class="sd">            The frame that the model lives in.</span>
+<span class="sd">            The frame of the model</span>
 <span class="sd">        sky_coord: tuple</span>
 <span class="sd">            Center of the source</span>
 <span class="sd">        observation: list of `~scarlet.Observation`</span>
@@ -436,6 +532,18 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">monotonic</span> <span class="o">=</span> <span class="n">monotonic</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">center_step</span> <span class="o">=</span> <span class="n">center_step</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">delay_thresh</span> <span class="o">=</span> <span class="n">delay_thresh</span>
+
+        <span class="c1"># create PSF as weight for centroid measurements</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">symmetric</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">psfs</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">shape</span> <span class="o">=</span> <span class="p">(</span><span class="mi">41</span><span class="p">,</span> <span class="mi">41</span><span class="p">)</span>
+                <span class="n">psf</span> <span class="o">=</span> <span class="n">generate_psf_image</span><span class="p">(</span><span class="n">gaussian</span><span class="p">,</span> <span class="n">shape</span><span class="p">,</span> <span class="n">amplitude</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=.</span><span class="mi">9</span><span class="p">)</span>
+                <span class="n">psf</span> <span class="o">/=</span> <span class="n">psf</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_centroid_weight</span> <span class="o">=</span> <span class="n">psf</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_centroid_weight</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">psfs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="c1"># ensure adherence to constraints</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
 
 <div class="viewcode-block" id="PointSource.update"><a class="viewcode-back" href="../../source.html#scarlet.source.PointSource.update">[docs]</a>    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -448,25 +556,31 @@
             <span class="n">it</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">it</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parent</span><span class="o">.</span><span class="n">it</span>
+
         <span class="c1"># Update the central pixel location (pixel_center)</span>
-        <span class="n">update</span><span class="o">.</span><span class="n">fit_pixel_center</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">it</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">delay_thresh</span><span class="p">:</span>
-            <span class="n">update</span><span class="o">.</span><span class="n">threshold</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pixel_center</span> <span class="o">=</span> <span class="n">measurement</span><span class="o">.</span><span class="n">max_pixel</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">morph</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pixel_center</span><span class="p">)</span>
+
+        <span class="c1"># Thresholding needs to be fixed (DM-10190)</span>
+        <span class="c1"># if it &gt; self.delay_thresh:</span>
+        <span class="c1">#     update.threshold(self)</span>
+
+        <span class="c1"># If there is a threshold bounding box, use it</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;bboxes&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="s2">&quot;thresh&quot;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">bboxes</span><span class="p">:</span>
+            <span class="n">bbox</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bboxes</span><span class="p">[</span><span class="s2">&quot;thresh&quot;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">bbox</span> <span class="o">=</span> <span class="kc">None</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">symmetric</span><span class="p">:</span>
-            <span class="c1"># Translate to the centered frame</span>
-            <span class="n">update</span><span class="o">.</span><span class="n">translation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="c1"># Update the centroid position</span>
+            <span class="k">if</span> <span class="n">it</span> <span class="o">%</span> <span class="mi">5</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">pixel_center</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">shift</span> <span class="o">=</span> <span class="n">measurement</span><span class="o">.</span><span class="n">psf_weighted_centroid</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">morph</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_centroid_weight</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pixel_center</span><span class="p">)</span>
+
             <span class="c1"># make the morphology perfectly symmetric</span>
-            <span class="n">update</span><span class="o">.</span><span class="n">symmetric</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strength</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-            <span class="c1"># Translate back to the model frame</span>
-            <span class="n">update</span><span class="o">.</span><span class="n">translation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">update</span><span class="o">.</span><span class="n">symmetric</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pixel_center</span><span class="p">,</span> <span class="n">algorithm</span><span class="o">=</span><span class="s2">&quot;kspace&quot;</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="n">bbox</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">monotonic</span><span class="p">:</span>
             <span class="c1"># make the morphology monotonically decreasing</span>
-            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;bboxes&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="s2">&quot;thresh&quot;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">bboxes</span><span class="p">:</span>
-                <span class="n">update</span><span class="o">.</span><span class="n">monotonic</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pixel_center</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">bboxes</span><span class="p">[</span><span class="s2">&quot;thresh&quot;</span><span class="p">])</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">update</span><span class="o">.</span><span class="n">monotonic</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pixel_center</span><span class="p">)</span>
+            <span class="n">update</span><span class="o">.</span><span class="n">monotonic</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pixel_center</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="n">bbox</span><span class="p">)</span>
 
         <span class="n">update</span><span class="o">.</span><span class="n">positive</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>  <span class="c1"># Make the SED and morph non-negative</span>
         <span class="n">update</span><span class="o">.</span><span class="n">normalized</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>  <span class="c1"># Use MORPH_MAX normalization</span>
@@ -475,13 +589,13 @@
 
 <div class="viewcode-block" id="ExtendedSource"><a class="viewcode-back" href="../../source.html#scarlet.source.ExtendedSource">[docs]</a><span class="k">class</span> <span class="nc">ExtendedSource</span><span class="p">(</span><span class="n">PointSource</span><span class="p">):</span>
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">sky_coord</span><span class="p">,</span> <span class="n">observation</span><span class="p">,</span> <span class="n">bg_rms</span><span class="p">,</span> <span class="n">thresh</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
-                 <span class="n">symmetric</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">monotonic</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">center_step</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">delay_thresh</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="o">**</span><span class="n">component_kwargs</span><span class="p">):</span>
+                 <span class="n">symmetric</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">monotonic</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">center_step</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">delay_thresh</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="o">**</span><span class="n">component_kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Extended source intialized to match a set of observations</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
 <span class="sd">        frame: `~scarlet.Frame`</span>
-<span class="sd">            The frame that the model lives in.</span>
+<span class="sd">            The frame of the model</span>
 <span class="sd">        sky_coord: tuple</span>
 <span class="sd">            Center of the source</span>
 <span class="sd">        observation: `~scarlet.observation.Observation`</span>
@@ -511,6 +625,17 @@
                                           <span class="n">thresh</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="n">monotonic</span><span class="p">)</span>
 
         <span class="n">Component</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">sed</span><span class="p">,</span> <span class="n">morph</span><span class="p">,</span> <span class="o">**</span><span class="n">component_kwargs</span><span class="p">)</span>
+
+        <span class="c1"># create PSF as weight for centroid measurements</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">symmetric</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">psfs</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">shape</span> <span class="o">=</span> <span class="p">(</span><span class="mi">41</span><span class="p">,</span> <span class="mi">41</span><span class="p">)</span>
+                <span class="n">psf</span> <span class="o">=</span> <span class="n">generate_psf_image</span><span class="p">(</span><span class="n">gaussian</span><span class="p">,</span> <span class="n">shape</span><span class="p">,</span> <span class="n">amplitude</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=.</span><span class="mi">9</span><span class="p">)</span>
+                <span class="n">psf</span> <span class="o">/=</span> <span class="n">psf</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_centroid_weight</span> <span class="o">=</span> <span class="n">psf</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_centroid_weight</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">psfs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">()</span></div>
 
 
@@ -522,7 +647,7 @@
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
 <span class="sd">        frame: `~scarlet.Frame`</span>
-<span class="sd">            The frame that the model lives in.</span>
+<span class="sd">            The frame of the model</span>
 <span class="sd">        sky_coord: tuple</span>
 <span class="sd">            Center of the source</span>
 <span class="sd">        observations: list of `~scarlet.Observation`</span>
@@ -569,14 +694,15 @@
 <span class="sd">    The SED for all components is calculated as the best fit of the multi-component</span>
 <span class="sd">    morphology to the multi-channel image in the region of the source.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">sky_coord</span><span class="p">,</span> <span class="n">observation</span><span class="p">,</span> <span class="n">bg_rms</span><span class="p">,</span> <span class="n">thresh</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">flux_percentiles</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                 <span class="n">symmetric</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">monotonic</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">component_kwargs</span><span class="p">):</span>
+                 <span class="n">symmetric</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">monotonic</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">center_step</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">delay_thresh</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="o">**</span><span class="n">component_kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Create multi-component extended source.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
 <span class="sd">        frame: `~scarlet.Frame`</span>
-<span class="sd">            The frame that the model lives in.</span>
+<span class="sd">            The frame of the model</span>
 <span class="sd">        sky_coord: tuple</span>
 <span class="sd">            Center of the source</span>
 <span class="sd">        observation: `~scarlet.Observation`</span>
@@ -598,35 +724,68 @@
 <span class="sd">        component_kwargs: dict</span>
 <span class="sd">            Keyword arguments to pass to the component initialization.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">symmetric</span> <span class="o">=</span> <span class="n">symmetric</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">monotonic</span> <span class="o">=</span> <span class="n">monotonic</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pixel_center</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">get_pixel</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">center_step</span> <span class="o">=</span> <span class="n">center_step</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">delay_thresh</span> <span class="o">=</span> <span class="n">delay_thresh</span>
+
         <span class="n">seds</span><span class="p">,</span> <span class="n">morphs</span> <span class="o">=</span> <span class="n">init_multicomponent_source</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">observation</span><span class="p">,</span> <span class="n">bg_rms</span><span class="p">,</span> <span class="n">flux_percentiles</span><span class="p">,</span>
-                                                  <span class="n">thresh</span><span class="p">,</span> <span class="n">symmetric</span><span class="p">,</span> <span class="n">monotonic</span><span class="p">)</span>
+                                                          <span class="n">thresh</span><span class="p">,</span> <span class="n">symmetric</span><span class="p">,</span> <span class="n">monotonic</span><span class="p">)</span>
 
-        <span class="k">class</span> <span class="nc">MultiComponent</span><span class="p">(</span><span class="n">Component</span><span class="p">):</span>
-            <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">sed</span><span class="p">,</span> <span class="n">morph</span><span class="p">,</span> <span class="n">symmetric</span><span class="p">,</span> <span class="n">monotonic</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">symmetric</span> <span class="o">=</span> <span class="n">symmetric</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">monotonic</span> <span class="o">=</span> <span class="n">monotonic</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">pixel_center</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">get_pixel</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">)</span>
-                <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">sed</span><span class="p">,</span> <span class="n">morph</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">components</span> <span class="o">=</span> <span class="p">[</span> <span class="n">Component</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">seds</span><span class="p">[</span><span class="n">k</span><span class="p">],</span> <span class="n">morphs</span><span class="p">[</span><span class="n">k</span><span class="p">])</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">seds</span><span class="p">))</span> <span class="p">]</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">components</span><span class="p">)</span>
 
-            <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">symmetric</span><span class="p">:</span>
-                    <span class="n">update</span><span class="o">.</span><span class="n">symmetric_fit_center</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>  <span class="c1"># update the center position</span>
-                    <span class="n">center</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">coords</span>
-                    <span class="n">update</span><span class="o">.</span><span class="n">symmetric</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">center</span><span class="p">)</span>  <span class="c1"># make the morph perfectly symmetric</span>
-                <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">monotonic</span><span class="p">:</span>
-                    <span class="n">update</span><span class="o">.</span><span class="n">fit_pixel_center</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
-                    <span class="n">center</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pixel_center</span>
-                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">monotonic</span><span class="p">:</span>
-                    <span class="n">update</span><span class="o">.</span><span class="n">monotonic</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">center</span><span class="p">)</span>  <span class="c1"># make the morph monotonically decreasing</span>
-                <span class="n">update</span><span class="o">.</span><span class="n">positive</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>  <span class="c1"># Make the SED and morph non-negative</span>
-                <span class="n">update</span><span class="o">.</span><span class="n">normalized</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;morph_max&#39;</span><span class="p">)</span>
-                <span class="k">return</span> <span class="bp">self</span>
+        <span class="c1"># create PSF as weight for centroid measurements</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">symmetric</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">psfs</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">shape</span> <span class="o">=</span> <span class="p">(</span><span class="mi">41</span><span class="p">,</span> <span class="mi">41</span><span class="p">)</span>
+                <span class="n">psf</span> <span class="o">=</span> <span class="n">generate_psf_image</span><span class="p">(</span><span class="n">gaussian</span><span class="p">,</span> <span class="n">shape</span><span class="p">,</span> <span class="n">amplitude</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=.</span><span class="mi">9</span><span class="p">)</span>
+                <span class="n">psf</span> <span class="o">/=</span> <span class="n">psf</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_centroid_weight</span> <span class="o">=</span> <span class="n">psf</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_centroid_weight</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">psfs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
 
-        <span class="n">components</span> <span class="o">=</span> <span class="p">[</span>
-            <span class="n">MultiComponent</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">seds</span><span class="p">[</span><span class="n">k</span><span class="p">],</span> <span class="n">morphs</span><span class="p">[</span><span class="n">k</span><span class="p">],</span> <span class="n">symmetric</span><span class="p">,</span> <span class="n">monotonic</span><span class="p">,</span> <span class="o">**</span><span class="n">component_kwargs</span><span class="p">)</span>
-            <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">seds</span><span class="p">))</span>
-        <span class="p">]</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">components</span><span class="p">)</span></div>
+        <span class="c1"># ensure adherence to constraints</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
+
+<div class="viewcode-block" id="MultiComponentSource.update"><a class="viewcode-back" href="../../source.html#scarlet.source.MultiComponentSource.update">[docs]</a>    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parent</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">it</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">it</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parent</span><span class="o">.</span><span class="n">it</span>
+
+        <span class="c1"># Update the central pixel location (pixel_center)</span>
+        <span class="c1"># use the flux weighted mean of all components</span>
+        <span class="n">_morph</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">([</span><span class="n">c</span><span class="o">.</span><span class="n">morph</span> <span class="o">*</span> <span class="n">c</span><span class="o">.</span><span class="n">sed</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">pixel_center</span> <span class="o">=</span> <span class="n">measurement</span><span class="o">.</span><span class="n">max_pixel</span><span class="p">(</span><span class="n">_morph</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pixel_center</span><span class="p">)</span>
+
+        <span class="c1"># Thresholding needs to be fixed (DM-10190)</span>
+        <span class="c1"># if it &gt; self.delay_thresh:</span>
+        <span class="c1">#   for c in self:</span>
+        <span class="c1">#       update.threshold(c)</span>
+
+        <span class="c1"># If there is a threshold bounding box, use it</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;bboxes&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="s2">&quot;thresh&quot;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">bboxes</span><span class="p">:</span>
+            <span class="n">bbox</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bboxes</span><span class="p">[</span><span class="s2">&quot;thresh&quot;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">bbox</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">symmetric</span> <span class="ow">and</span> <span class="n">it</span> <span class="o">%</span> <span class="mi">5</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c1"># Update the centroid position</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">pixel_center</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">shift</span> <span class="o">=</span> <span class="n">measurement</span><span class="o">.</span><span class="n">psf_weighted_centroid</span><span class="p">(</span><span class="n">_morph</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_centroid_weight</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pixel_center</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">symmetric</span><span class="p">:</span>
+                <span class="n">update</span><span class="o">.</span><span class="n">symmetric</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pixel_center</span><span class="p">,</span> <span class="n">algorithm</span><span class="o">=</span><span class="s2">&quot;kspace&quot;</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="n">bbox</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">monotonic</span><span class="p">:</span>
+                <span class="n">update</span><span class="o">.</span><span class="n">monotonic</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pixel_center</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="n">bbox</span><span class="p">)</span>
+            <span class="n">update</span><span class="o">.</span><span class="n">positive</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+            <span class="n">update</span><span class="o">.</span><span class="n">normalized</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;morph_max&#39;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span></div></div>
 </pre></div>
 
            </div>

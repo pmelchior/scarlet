@@ -199,7 +199,7 @@
 <span id="Reference/API"></span><h2>Reference/API<a class="headerlink" href="#module-scarlet.observation" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="scarlet.observation.Frame">
-<em class="property">class </em><code class="descclassname">scarlet.observation.</code><code class="descname">Frame</code><span class="sig-paren">(</span><em>shape</em>, <em>wcs=None</em>, <em>psfs=None</em>, <em>channels=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/observation.html#Frame"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.Frame" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">scarlet.observation.</code><code class="descname">Frame</code><span class="sig-paren">(</span><em>shape</em>, <em>wcs=None</em>, <em>psfs=None</em>, <em>channels=None</em>, <em>dtype=&lt;class ‘numpy.float32’&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/observation.html#Frame"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.Frame" title="Permalink to this definition">¶</a></dt>
 <dd><p>Spatial and spectral characteristics of the data</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -217,6 +217,9 @@
 </dd>
 <dt><strong>channels: list of hashable elements</strong></dt>
 <dd><p class="first last">Names/identifiers of spectral channels</p>
+</dd>
+<dt><strong>dtype: `numpy.dtype`</strong></dt>
+<dd><p class="first last">Dtype to represent the data.</p>
 </dd>
 </dl>
 </td>
@@ -293,40 +296,58 @@ then this just returns the <cite>sky_coord</cite></p>
 </colgroup>
 <tbody valign="top">
 <tr class="row-odd"><td><a class="reference internal" href="#scarlet.observation.LowResObservation.get_loss" title="scarlet.observation.LowResObservation.get_loss"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_loss</span></code></a>(model)</td>
-<td>Computes the loss/fidelity of a given model wrt to the observation</td>
+<td>Computes the loss/fidelity of a given model wrt to the observation Parameters ———- model: array     A model from <cite>Blend</cite> Returns ——- loss: float     Loss of the model</td>
 </tr>
-<tr class="row-even"><td><a class="reference internal" href="#scarlet.observation.LowResObservation.match" title="scarlet.observation.LowResObservation.match"><code class="xref py py-obj docutils literal notranslate"><span class="pre">match</span></code></a>(model_frame)</td>
+<tr class="row-even"><td><a class="reference internal" href="#scarlet.observation.LowResObservation.make_operator" title="scarlet.observation.LowResObservation.make_operator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_operator</span></code></a>(shape,&nbsp;psf)</td>
+<td>Builds the resampling and convolution operator Builds the matrix that expresses the linear operation of resampling a function evaluated on a grid with coordinates ‘coord_lr’ to a grid with shape ‘shape’, and convolving by a kernel p Parameters —— shape: tuple     shape of the high resolution scene coord_lr: array     coordinates of the overlapping pixels from the low resolution grid in the high resolution grid frame.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="#scarlet.observation.LowResObservation.match" title="scarlet.observation.LowResObservation.match"><code class="xref py py-obj docutils literal notranslate"><span class="pre">match</span></code></a>(model_frame)</td>
 <td>Match the frame of <cite>Blend</cite> to the frame of this observation.</td>
 </tr>
+<tr class="row-even"><td><a class="reference internal" href="#scarlet.observation.LowResObservation.match_psfs" title="scarlet.observation.LowResObservation.match_psfs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">match_psfs</span></code></a>(psf_hr,&nbsp;wcs_hr)</td>
+<td>psf matching between different dataset Matches PSFS at different resolutions by interpolating psf_lr on the same grid as psf_hr Parameters ———- psf_hr: array     centered psf of the high resolution scene psf_lr: array     centered psf of the low resolution scene wcs_hr: WCS object     wcs of the high resolution scene wcs_lr: WCS object     wcs of the low resolution scene Returns ——- psf_match_hr: array     high rresolution psf at mactching size psf_match_lr: array     low resolution psf at matching size and resolution</td>
+</tr>
 <tr class="row-odd"><td><a class="reference internal" href="#scarlet.observation.LowResObservation.render" title="scarlet.observation.LowResObservation.render"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render</span></code></a>(model)</td>
-<td>Resample and convolve a model in the observation frame</td>
+<td>Resample and convolve a model in the observation frame Parameters ———- model: array     The model in some other data frame.</td>
 </tr>
 </tbody>
 </table>
 <dl class="method">
 <dt id="scarlet.observation.LowResObservation.get_loss">
 <code class="descname">get_loss</code><span class="sig-paren">(</span><em>model</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/observation.html#LowResObservation.get_loss"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.LowResObservation.get_loss" title="Permalink to this definition">¶</a></dt>
-<dd><p>Computes the loss/fidelity of a given model wrt to the observation</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first docutils">
-<dt><strong>model: array</strong></dt>
-<dd><p class="first last">A model from <cite>Blend</cite></p>
-</dd>
+<dd><p>Computes the loss/fidelity of a given model wrt to the observation
+Parameters
+———-
+model: array</p>
+<blockquote>
+<div>A model from <cite>Blend</cite></div></blockquote>
+<dl class="docutils">
+<dt>loss: float</dt>
+<dd>Loss of the model</dd>
 </dl>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first last docutils">
-<dt><strong>loss: float</strong></dt>
-<dd><p class="first last">Loss of the model</p>
-</dd>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.observation.LowResObservation.make_operator">
+<code class="descname">make_operator</code><span class="sig-paren">(</span><em>shape</em>, <em>psf</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/observation.html#LowResObservation.make_operator"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.LowResObservation.make_operator" title="Permalink to this definition">¶</a></dt>
+<dd><p>Builds the resampling and convolution operator
+Builds the matrix that expresses the linear operation of resampling a function evaluated on a grid with coordinates
+‘coord_lr’ to a grid with shape ‘shape’, and convolving by a kernel p
+Parameters
+——
+shape: tuple</p>
+<blockquote>
+<div>shape of the high resolution scene</div></blockquote>
+<dl class="docutils">
+<dt>coord_lr: array</dt>
+<dd>coordinates of the overlapping pixels from the low resolution grid in the high resolution grid frame.</dd>
+<dt>p: array</dt>
+<dd>convolution kernel (PSF)</dd>
 </dl>
-</td>
-</tr>
-</tbody>
-</table>
+<dl class="docutils">
+<dt>mat: array</dt>
+<dd>the convolution-resampling matrix</dd>
+</dl>
 </dd></dl>
 
 <dl class="method">
@@ -355,29 +376,44 @@ and filter transformations.</p>
 </dd></dl>
 
 <dl class="method">
+<dt id="scarlet.observation.LowResObservation.match_psfs">
+<code class="descname">match_psfs</code><span class="sig-paren">(</span><em>psf_hr</em>, <em>wcs_hr</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/observation.html#LowResObservation.match_psfs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.LowResObservation.match_psfs" title="Permalink to this definition">¶</a></dt>
+<dd><p>psf matching between different dataset
+Matches PSFS at different resolutions by interpolating psf_lr on the same grid as psf_hr
+Parameters
+———-
+psf_hr: array</p>
+<blockquote>
+<div>centered psf of the high resolution scene</div></blockquote>
+<dl class="docutils">
+<dt>psf_lr: array</dt>
+<dd>centered psf of the low resolution scene</dd>
+<dt>wcs_hr: WCS object</dt>
+<dd>wcs of the high resolution scene</dd>
+<dt>wcs_lr: WCS object</dt>
+<dd>wcs of the low resolution scene</dd>
+</dl>
+<dl class="docutils">
+<dt>psf_match_hr: array</dt>
+<dd>high rresolution psf at mactching size</dd>
+<dt>psf_match_lr: array</dt>
+<dd>low resolution psf at matching size and resolution</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
 <dt id="scarlet.observation.LowResObservation.render">
 <code class="descname">render</code><span class="sig-paren">(</span><em>model</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/observation.html#LowResObservation.render"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.LowResObservation.render" title="Permalink to this definition">¶</a></dt>
-<dd><p>Resample and convolve a model in the observation frame</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first docutils">
-<dt><strong>model: array</strong></dt>
-<dd><p class="first last">The model in some other data frame.</p>
-</dd>
+<dd><p>Resample and convolve a model in the observation frame
+Parameters
+———-
+model: array</p>
+<blockquote>
+<div>The model in some other data frame.</div></blockquote>
+<dl class="docutils">
+<dt><a href="#id1"><span class="problematic" id="id2">model_</span></a>: array</dt>
+<dd>The convolved and resampled <cite>model</cite> in the observation frame.</dd>
 </dl>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first last docutils">
-<dt><strong>model_: array</strong></dt>
-<dd><p class="first last">The convolved and resampled <cite>model</cite> in the observation frame.</p>
-</dd>
-</dl>
-</td>
-</tr>
-</tbody>
-</table>
 </dd></dl>
 
 </dd></dl>

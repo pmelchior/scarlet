@@ -484,7 +484,7 @@ div.rendered_html tbody tr:hover {
 </div>
 <div class="section" id="Initialize-the-Frame-and-the-Observations">
 <h2>Initialize the Frame and the Observations<a class="headerlink" href="#Initialize-the-Frame-and-the-Observations" title="Permalink to this headline">¶</a></h2>
-<div class="nbinput nblast docutils container">
+<div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
 </pre></div>
 </div>
@@ -493,6 +493,14 @@ div.rendered_html tbody tr:hover {
 <span class="n">observation</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">Observation</span><span class="p">(</span><span class="n">images</span><span class="p">,</span> <span class="n">psfs</span><span class="o">=</span><span class="n">psfs</span><span class="p">)</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
 </pre></div>
 </div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+Dtypes of PSFs and Frame different. Casting PSFs to &lt;class &#39;numpy.float32&#39;&gt;
+</pre></div></div>
 </div>
 </div>
 <div class="section" id="Initialize-the-sources">
@@ -513,14 +521,14 @@ sources and which ones to model as extended objects.</p>
             <span class="n">frame</span><span class="p">,</span>
             <span class="p">(</span><span class="n">src</span><span class="p">[</span><span class="s2">&quot;y&quot;</span><span class="p">],</span> <span class="n">src</span><span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">]),</span>
             <span class="n">observation</span><span class="p">,</span>
-            <span class="n">fix_morph</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="c1"># This prevents the source morphology from changing</span>
+            <span class="n">fix_morph</span><span class="o">=</span><span class="bp">True</span> <span class="c1"># This prevents the source morphology from changing</span>
         <span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">new_source</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">ExtendedSource</span><span class="p">(</span>
             <span class="n">frame</span><span class="p">,</span>
            <span class="p">(</span><span class="n">src</span><span class="p">[</span><span class="s2">&quot;y&quot;</span><span class="p">],</span> <span class="n">src</span><span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">]),</span>
             <span class="n">observation</span><span class="p">,</span>
-            <span class="n">bg_rms</span><span class="o">=</span><span class="n">bg_rms</span><span class="p">,</span>
+            <span class="n">bg_rms</span><span class="o">=</span><span class="n">bg_rms</span>
         <span class="p">)</span>
     <span class="n">sources</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">new_source</span><span class="p">)</span>
 </pre></div>
@@ -582,8 +590,8 @@ extended sources are partially deconvolved. It also means that we have to be car
 <div class="output_area docutils container">
 <div class="highlight"><pre>
 Fit for 20 iterations
-CPU times: user 1.91 s, sys: 13.7 ms, total: 1.93 s
-Wall time: 482 ms
+CPU times: user 1.73 s, sys: 29.9 ms, total: 1.76 s
+Wall time: 438 ms
 </pre></div></div>
 </div>
 <div class="nbinput docutils container">
@@ -682,7 +690,7 @@ Wall time: 482 ms
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-Total residual 141753.7986093644
+Total residual 141725.734375
 </pre></div></div>
 </div>
 <p>The dipoles we see at the center of the stellar sources is because the catalog offset the centers of all the sources by a random amount and by fixing the morphology we also cannot adjust the position, which also caused the code to require a greater number of iterations for convergence. A future version of <em>scarlet</em> will hopefully address this unfortunate side effect of fitting PSF stars.</p>

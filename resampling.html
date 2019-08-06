@@ -198,89 +198,27 @@
 <span id="Reference/API"></span><h2>Reference/API<a class="headerlink" href="#module-scarlet.resampling" title="Permalink to this headline">¶</a></h2>
 <dl class="function">
 <dt id="scarlet.resampling.conv2D_fft">
-<code class="descclassname">scarlet.resampling.</code><code class="descname">conv2D_fft</code><span class="sig-paren">(</span><em>shape</em>, <em>ym</em>, <em>xm</em>, <em>p</em>, <em>h</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/resampling.html#conv2D_fft"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.resampling.conv2D_fft" title="Permalink to this definition">¶</a></dt>
-<dd><p>performs a convolution of a coordinate kernel by a psf</p>
-<p>This function is used in the making of the resampling convolution operator.
+<code class="descclassname">scarlet.resampling.</code><code class="descname">conv2D_fft</code><span class="sig-paren">(</span><em>shape</em>, <em>coord_lr</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/resampling.html#conv2D_fft"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.resampling.conv2D_fft" title="Permalink to this definition">¶</a></dt>
+<dd><p>performs a convolution of a coordinate kernel by a psf
+This function is used in the making of the resampling convolution operator.
 It create a kernel based on the sinc of the difference between coordinates in a high resolution frame and reference
-coordinate (ym,xm)</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first last docutils">
-<dt><strong>shape: tuple</strong></dt>
-<dd><p class="first last">shape of the high resolution frame</p>
-</dd>
-<dt><strong>ym, xm: arrays</strong></dt>
-<dd><p class="first last">coordinate of the low resolution location where to compute mapping</p>
-</dd>
-<dt><strong>p: array</strong></dt>
-<dd><p class="first last">PSF kernel</p>
-</dd>
-<dt><strong>h: float</strong></dt>
-<dd><p class="first last">pixel size</p>
-</dd>
-<dt><strong>Returns</strong></dt>
-<dd></dd>
-<dt><strong>——-</strong></dt>
-<dd></dd>
-<dt><strong>result: array</strong></dt>
-<dd><p class="first last">vector for convolution and resampling of the high resolution plane into pixel (xm,ym) at low resolution</p>
-</dd>
-</dl>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="function">
-<dt id="scarlet.resampling.linorm2D">
-<code class="descclassname">scarlet.resampling.</code><code class="descname">linorm2D</code><span class="sig-paren">(</span><em>S</em>, <em>nit</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/resampling.html#linorm2D"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.resampling.linorm2D" title="Permalink to this definition">¶</a></dt>
-<dd><p>Power iteration</p>
-<p>Estimates the inverse of the Lipschitz constant of a matrix SS.T</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first docutils">
-<dt><strong>A: array</strong></dt>
-<dd><p class="first last">operator for which we seek the lipschitz constant</p>
-</dd>
-<dt><strong>nit: int</strong></dt>
-<dd><p class="first last">maximum number of iterations</p>
-</dd>
-</dl>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first last docutils">
-<dt><strong>xn: float</strong></dt>
-<dd><p class="first last">inverse of the Lipschitz constant of SS.T</p>
-</dd>
-</dl>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="function">
-<dt id="scarlet.resampling.make_operator">
-<code class="descclassname">scarlet.resampling.</code><code class="descname">make_operator</code><span class="sig-paren">(</span><em>shape</em>, <em>coord_lr</em>, <em>p</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/resampling.html#make_operator"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.resampling.make_operator" title="Permalink to this definition">¶</a></dt>
-<dd><p>Builds the resampling and convolution operator</p>
-<p>Builds the matrix that expresses the linear operation of resampling a function evaluated on a grid with coordinates
-‘coord_lr’ to a grid with shape ‘shape’, and convolving by a kernel p</p>
+coordinate (ym,xm)
+Parameters
+———-
+shape: tuple</p>
+<blockquote>
+<div>shape of the high resolution frame</div></blockquote>
 <dl class="docutils">
-<dt>shape: tuple</dt>
-<dd>shape of the high resolution scene</dd>
-<dt>coord_lr: array</dt>
-<dd>coordinates of the overlapping pixels from the low resolution grid in the high resolution grid frame.</dd>
+<dt>ym, xm: arrays</dt>
+<dd>coordinate of the low resolution location where to compute mapping</dd>
 <dt>p: array</dt>
-<dd>convolution kernel (PSF)</dd>
+<dd>PSF kernel</dd>
+<dt>h: float</dt>
+<dd>pixel size</dd>
 </dl>
 <dl class="docutils">
-<dt>mat: array</dt>
-<dd>the convolution-resampling matrix</dd>
+<dt>result: array</dt>
+<dd>vector for convolution and resampling of the high resolution plane into pixel (xm,ym) at low resolution</dd>
 </dl>
 </dd></dl>
 
@@ -313,45 +251,6 @@ for the dataset pixels inside the overlap.</p>
 </dd>
 <dt><strong>coordlr_over_hr: array</strong></dt>
 <dd><p class="first last">coordinates of the overlaps at low resolution in the high resolution frame.</p>
-</dd>
-</dl>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="function">
-<dt id="scarlet.resampling.match_psfs">
-<code class="descclassname">scarlet.resampling.</code><code class="descname">match_psfs</code><span class="sig-paren">(</span><em>psf_hr</em>, <em>psf_lr</em>, <em>wcs_hr</em>, <em>wcs_lr</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/resampling.html#match_psfs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.resampling.match_psfs" title="Permalink to this definition">¶</a></dt>
-<dd><p>psf matching between different dataset</p>
-<p>Matches PSFS at different resolutions by interpolating psf_lr on the same grid as psf_hr</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first last docutils">
-<dt><strong>psf_hr: array</strong></dt>
-<dd><p class="first last">centered psf of the high resolution scene</p>
-</dd>
-<dt><strong>psf_lr: array</strong></dt>
-<dd><p class="first last">centered psf of the low resolution scene</p>
-</dd>
-<dt><strong>wcs_hr: WCS object</strong></dt>
-<dd><p class="first last">wcs of the high resolution scene</p>
-</dd>
-<dt><strong>wcs_lr: WCS object</strong></dt>
-<dd><p class="first last">wcs of the low resolution scene</p>
-</dd>
-<dt><strong>Returns</strong></dt>
-<dd></dd>
-<dt><strong>——-</strong></dt>
-<dd></dd>
-<dt><strong>psf_match_hr: array</strong></dt>
-<dd><p class="first last">high rresolution psf at mactching size</p>
-</dd>
-<dt><strong>psf_match_lr: array</strong></dt>
-<dd><p class="first last">low resolution psf at matching size and resolution</p>
 </dd>
 </dl>
 </td>

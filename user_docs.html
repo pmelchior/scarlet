@@ -498,7 +498,7 @@ levels are known as well, so we also estimate the background RMS of the images:<
 </div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">Observation</span></code> is a hyperspectral data cube, with an optional cube for weights. Internally, it’ll construct its own <code class="docutils literal notranslate"><span class="pre">Frame</span></code>. Assuming that our observations are all from a single camera and that observation and the model frame use the same pixel scale, we can initialize them by</p>
-<div class="nbinput nblast docutils container">
+<div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
 </pre></div>
 </div>
@@ -507,6 +507,15 @@ levels are known as well, so we also estimate the background RMS of the images:<
 <span class="n">observation</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">Observation</span><span class="p">(</span><span class="n">images</span><span class="p">,</span> <span class="n">psfs</span><span class="o">=</span><span class="n">psfs</span><span class="p">,</span> <span class="n">channels</span><span class="o">=</span><span class="n">channels</span><span class="p">)</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
 </pre></div>
 </div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+Dtypes of PSFs and Frame different. Casting PSFs to &lt;class &#39;numpy.float32&#39;&gt;
+Dtypes of PSFs and Frame different. Casting PSFs to float32
+</pre></div></div>
 </div>
 <p>The previous command calls the <code class="docutils literal notranslate"><span class="pre">match</span></code> method to compute the PSF difference kernel; because the channels are identical, no spectral matching will be performed.</p>
 <p>We generally recommend this pattern: 1. define model frame 2. construct observation 3. match it to the model frame</p>
@@ -535,8 +544,9 @@ levels are known as well, so we also estimate the background RMS of the images:<
 <p>Additional arguments for <code class="docutils literal notranslate"><span class="pre">Component</span></code> can fix SED and morpology so that they are not updated during the fit, and provide a <a class="reference internal" href="component.html#scarlet.component.Prior"><span class="std std-ref">Prior</span></a>, i.e.&nbsp;a constraint applied as an an update to the gradient of the likelihood for the given component. While not yet incorporated into the master branch of <em>scarlet</em>, experimental code already uses real galaxy morphologies as priors. We recommend watching the <a class="reference external" href="https://github.com/fred3m/scarlet">scarlet github repo</a> for
 its release in the near future.</p>
 <p>For a more practical approach, we introduce the concept of <strong>sources</strong>, which are single or multiple components joined into a logical unit. For instance, resolved galaxies may have a bulge component and a disk component, or even more advanced components like a jet or dust lanes.</p>
-<p>For many applications, the built-in sources</p>
+<p>For many applications, the built-in</p>
 <ul class="simple">
+<li><a class="reference internal" href="source.html#scarlet.source.RandomSource"><span class="std std-ref">RandomSource</span></a></li>
 <li><a class="reference internal" href="source.html#scarlet.source.PointSource"><span class="std std-ref">PointSource</span></a></li>
 <li><a class="reference internal" href="source.html#scarlet.source.ExtendedSource"><span class="std std-ref">ExtendedSource</span></a></li>
 <li><a class="reference internal" href="source.html#scarlet.source.MultiComponentSource"><span class="std std-ref">MultiComponentSource</span></a></li>
@@ -814,10 +824,7 @@ New filer weights:
             <span class="n">ax</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;Band&quot;</span><span class="p">)</span>
             <span class="n">ax</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Intensity&quot;</span><span class="p">)</span>
         <span class="c1"># Mark the current source in the image</span>
-        <span class="k">if</span> <span class="n">components</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
-            <span class="n">y</span><span class="p">,</span><span class="n">x</span> <span class="o">=</span> <span class="n">src</span><span class="o">.</span><span class="n">components</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">pixel_center</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">y</span><span class="p">,</span><span class="n">x</span> <span class="o">=</span> <span class="n">src</span><span class="o">.</span><span class="n">pixel_center</span>
+        <span class="n">y</span><span class="p">,</span><span class="n">x</span> <span class="o">=</span> <span class="n">src</span><span class="o">.</span><span class="n">pixel_center</span>
         <span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">x</span><span class="o">-</span><span class="n">bb</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">start</span><span class="p">,</span> <span class="n">y</span><span class="o">-</span><span class="n">bb</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">start</span><span class="p">,</span> <span class="s1">&#39;rx&#39;</span><span class="p">,</span> <span class="n">mew</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
         <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
         <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
@@ -884,7 +891,7 @@ New filer weights:
     <span class="k">for</span> <span class="n">src</span> <span class="ow">in</span> <span class="n">catalog</span>
 <span class="p">]</span>
 <span class="c1"># Show the initial guess for the brightest four sources</span>
-<span class="n">display_sources</span><span class="p">(</span><span class="n">sources</span><span class="p">[:</span><span class="mi">4</span><span class="p">],</span> <span class="n">observation</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">asinh</span><span class="p">)</span>
+<span class="n">display_sources</span><span class="p">(</span><span class="n">sources</span><span class="p">,</span> <span class="n">observation</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">asinh</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -909,11 +916,32 @@ New filer weights:
 <img alt="_images/user_docs_33_2.png" src="_images/user_docs_33_2.png" />
 </div>
 </div>
-<div class="nboutput nblast docutils container">
+<div class="nboutput docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
 <img alt="_images/user_docs_33_3.png" src="_images/user_docs_33_3.png" />
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="_images/user_docs_33_4.png" src="_images/user_docs_33_4.png" />
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="_images/user_docs_33_5.png" src="_images/user_docs_33_5.png" />
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="_images/user_docs_33_6.png" src="_images/user_docs_33_6.png" />
 </div>
 </div>
 <p>As you can see from the plots, there are still improvements needed to the <a class="reference internal" href="source.html#scarlet.source.MultiComponentSource"><span class="std std-ref">MultiComponentSource</span></a> class but this should illustrate how a multi-component source can be created and displayed.</p>
@@ -1000,10 +1028,6 @@ they overlap with another source).</p>
 <p>Demanding that astrophysical sources are symmetric reduces the number of effective degrees of freedom of the model, and most galaxies are <em>largely</em> symmetric. The idea of using symmetry as a constraint has been used successfully in the SDSS deblender and also in our tests on substantially deeper HSC images. If this constraint feels overly restrictive, recall that virtually all galaxy model fitting impose symmety using more restrictive Sersic profiles, which also make assumptions about the radial
 profile.</p>
 <p>To make a source symmetric requires a position to make the model symmetric about. Source models are highy sensitive to this fractional pixel location so it is necessary to include an update function that estimates the position of a symmetric source in the blend. See <a class="reference external" href="#Center-Positions">Center Positions</a> for more on setting the center of a source.</p>
-<div class="admonition warning">
-<p class="first admonition-title">Warning</p>
-<p class="last">The current symmetry algorithm is broken and should not be used. A fix has been created and will be pushed to master in the coming weeks to reimplement a fast(er) symmetry algorithm that works properly.</p>
-</div>
 </div>
 <div class="section" id="Monotonicity">
 <h3>Monotonicity<a class="headerlink" href="#Monotonicity" title="Permalink to this headline">¶</a></h3>
@@ -1057,7 +1081,7 @@ nearest one in the direction to the peak. Otherwise a weighted average of all pi
 <h3>Center Positions<a class="headerlink" href="#Center-Positions" title="Permalink to this headline">¶</a></h3>
 <p>In order to model individual sources in an image it is usually necessary to give each source a center position (for jets and irregular galaxies the concept of “center” is a bit less defined). Traditional photometric measurements typicaly define the center by the weighted center of flux calculation (commonly abusing terminology and refering to the position as a <em>centroid</em>, not to be confused with the <em>geometric centroid</em>). This location can be misleading because in a blend the center of flux for
 blended objects will naturally be shifted toward any neighboring sources, so naively using the center of flux for a source in the observations will be insufficient.</p>
-<p>In many cases the location of the peak pixel is sufficient (e.g. <a class="reference external" href="#Monotonicity">monotonicity</a>) without worrying about the subpixel location. In these cases the <a class="reference internal" href="update.html#scarlet.update.fit_pixel_center"><span class="std std-ref">fit_pixel_center</span></a> method can be used to find the pixel in <code class="docutils literal notranslate"><span class="pre">component.morph</span></code> with the maximum flux and use that to set <code class="docutils literal notranslate"><span class="pre">component.pixel_center</span></code>. It is possible to pass a <code class="docutils literal notranslate"><span class="pre">window</span></code> to <a class="reference internal" href="update.html#scarlet.update.fit_pixel_center"><span class="std std-ref">fit_pixel_center</span></a>, where <code class="docutils literal notranslate"><span class="pre">(0,</span> <span class="pre">0)</span></code> is the center
+<p>In many cases the location of the peak pixel is sufficient (e.g. <a class="reference external" href="#Monotonicity">monotonicity</a>) without worrying about the subpixel location. In these cases the fit_pixel_center method can be used to find the pixel in <code class="docutils literal notranslate"><span class="pre">component.morph</span></code> with the maximum flux and use that to set <code class="docutils literal notranslate"><span class="pre">component.pixel_center</span></code>. It is possible to pass a <code class="docutils literal notranslate"><span class="pre">window</span></code> to fit_pixel_center, where <code class="docutils literal notranslate"><span class="pre">(0,</span> <span class="pre">0)</span></code> is the center
 of the morphology, and only use the flux inside that window to determine the pixel center. By default <code class="docutils literal notranslate"><span class="pre">window</span> <span class="pre">=</span> <span class="pre">(slice(cy-2,</span> <span class="pre">cy+3),</span> <span class="pre">slice(cx-2,</span> <span class="pre">cx+3))</span></code>, meaning only pixels in a <span class="math notranslate nohighlight">\(7\times 7\)</span> window centered on the estimated center position are used to search for the peak pixel. This prevents bright sources on the outskirts of fainter ones from causing the pixel center to jump from the fainter source to a pixel in the brighter source.</p>
 <p>When a more precise center is needed the center of flux of the <em>morphology</em> can be used to estimate the center of the source. This measurement is different than the center of flux from the observation images, since the model should not have contamination from neighboring sources and ideally use a target PSF with circular symmetry.</p>
 </div>
@@ -1077,11 +1101,6 @@ of the morphology, and only use the flux inside that window to determine the pix
 <span class="n">blend</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">Blend</span><span class="p">(</span><span class="n">sources</span><span class="p">,</span> <span class="n">observation</span><span class="p">)</span>
 </pre></div>
 </div>
-</div>
-<div class="admonition warning">
-<p class="first admonition-title">Warning</p>
-<p class="last">A number of internal properties are set when a <cite>Blend</cite> instance is created.
-If it is necessary to add or remove sources at a later time, it is best to create a new <cite>Blend</cite> using the new source list.</p>
 </div>
 </div>
 <div class="section" id="Fitting-a-Model">
@@ -1117,10 +1136,10 @@ If it is necessary to add or remove sources at a later time, it is best to creat
 <div class="highlight"><pre>
 10
 20
-22
+29
 </pre></div></div>
 </div>
-<p>where we see that the blend converged in the last <code class="docutils literal notranslate"><span class="pre">fit</span></code> before reaching 30 iterations.</p>
+<p>where we see that the blend converged in the last <code class="docutils literal notranslate"><span class="pre">fit</span></code> before reaching 90 iterations.</p>
 </div>
 <div class="section" id="Extracting-Models-from-a-Blend">
 <h3>Extracting Models from a Blend<a class="headerlink" href="#Extracting-Models-from-a-Blend" title="Permalink to this headline">¶</a></h3>
@@ -1144,7 +1163,7 @@ If it is necessary to add or remove sources at a later time, it is best to creat
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="_images/user_docs_51_0.png" src="_images/user_docs_51_0.png" />
+<img alt="_images/user_docs_49_0.png" src="_images/user_docs_49_0.png" />
 </div>
 </div>
 <p>Notice that the result does <em>not</em> look very much like the model. This is because when <code class="docutils literal notranslate"><span class="pre">get_model</span></code> is called from either a <a class="reference internal" href="component.html#scarlet.component.Component"><span class="std std-ref">Component</span></a> or a <a class="reference internal" href="blend.html#scarlet.blend.Blend"><span class="std std-ref">Blend</span></a> it returns it in the model frame (both in terms of resolution and target PSF). To convert the model to the observation frame we need to use <a class="reference internal" href="observation.html#scarlet.observation.Observation.render"><span class="std std-ref">Observation.render</span></a>:</p>
@@ -1168,7 +1187,7 @@ If it is necessary to add or remove sources at a later time, it is best to creat
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="_images/user_docs_53_0.png" src="_images/user_docs_53_0.png" />
+<img alt="_images/user_docs_51_0.png" src="_images/user_docs_51_0.png" />
 </div>
 </div>
 <p>It is also possible to load the model for each source individually:</p>
@@ -1179,6 +1198,74 @@ If it is necessary to add or remove sources at a later time, it is best to creat
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
 <span></span><span class="k">for</span> <span class="n">src</span> <span class="ow">in</span> <span class="n">blend</span><span class="o">.</span><span class="n">sources</span><span class="p">:</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">src</span><span class="o">.</span><span class="n">get_model</span><span class="p">()</span>
+    <span class="n">model_</span> <span class="o">=</span> <span class="n">observation</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">model</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">10</span> <span class="o">*</span> <span class="n">bg_rms</span><span class="o">.</span><span class="n">max</span><span class="p">():</span>
+        <span class="n">norm</span> <span class="o">=</span> <span class="n">AsinhMapping</span><span class="p">(</span><span class="n">minimum</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">stretch</span><span class="o">=</span><span class="n">model_</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="o">*.</span><span class="mo">05</span><span class="p">,</span> <span class="n">Q</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">norm</span> <span class="o">=</span> <span class="n">LinearMapping</span><span class="p">(</span><span class="n">minimum</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">maximum</span><span class="o">=</span><span class="n">model_</span><span class="o">.</span><span class="n">max</span><span class="p">())</span>
+    <span class="n">model_rgb</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">display</span><span class="o">.</span><span class="n">img_to_rgb</span><span class="p">(</span><span class="n">model_</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">model_rgb</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="_images/user_docs_53_0.png" src="_images/user_docs_53_0.png" />
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="_images/user_docs_53_1.png" src="_images/user_docs_53_1.png" />
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="_images/user_docs_53_2.png" src="_images/user_docs_53_2.png" />
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="_images/user_docs_53_3.png" src="_images/user_docs_53_3.png" />
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="_images/user_docs_53_4.png" src="_images/user_docs_53_4.png" />
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="_images/user_docs_53_5.png" src="_images/user_docs_53_5.png" />
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="_images/user_docs_53_6.png" src="_images/user_docs_53_6.png" />
+</div>
+</div>
+<p>We can also display all of the components for a given blend, which is useful when one or more sources have multiple components. In this case, because each source was initialized with a single component, there is no difference:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[23]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="k">for</span> <span class="n">component</span> <span class="ow">in</span> <span class="n">blend</span><span class="o">.</span><span class="n">components</span><span class="p">:</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">component</span><span class="o">.</span><span class="n">get_model</span><span class="p">()</span>
     <span class="n">model_</span> <span class="o">=</span> <span class="n">observation</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">model</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">10</span> <span class="o">*</span> <span class="n">bg_rms</span><span class="o">.</span><span class="n">max</span><span class="p">():</span>
         <span class="n">norm</span> <span class="o">=</span> <span class="n">AsinhMapping</span><span class="p">(</span><span class="n">minimum</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">stretch</span><span class="o">=</span><span class="n">model_</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="o">*.</span><span class="mo">05</span><span class="p">,</span> <span class="n">Q</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
@@ -1237,74 +1324,6 @@ If it is necessary to add or remove sources at a later time, it is best to creat
 </div>
 <div class="output_area docutils container">
 <img alt="_images/user_docs_55_6.png" src="_images/user_docs_55_6.png" />
-</div>
-</div>
-<p>We can also display all of the components for a given blend, which is useful when one or more sources have multiple components. In this case, because each source was initialized with a single component, there is no difference:</p>
-<div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[23]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
-<span></span><span class="k">for</span> <span class="n">component</span> <span class="ow">in</span> <span class="n">blend</span><span class="o">.</span><span class="n">components</span><span class="p">:</span>
-    <span class="n">model</span> <span class="o">=</span> <span class="n">component</span><span class="o">.</span><span class="n">get_model</span><span class="p">()</span>
-    <span class="n">model_</span> <span class="o">=</span> <span class="n">observation</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">model</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">10</span> <span class="o">*</span> <span class="n">bg_rms</span><span class="o">.</span><span class="n">max</span><span class="p">():</span>
-        <span class="n">norm</span> <span class="o">=</span> <span class="n">AsinhMapping</span><span class="p">(</span><span class="n">minimum</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">stretch</span><span class="o">=</span><span class="n">model_</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="o">*.</span><span class="mo">05</span><span class="p">,</span> <span class="n">Q</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="n">norm</span> <span class="o">=</span> <span class="n">LinearMapping</span><span class="p">(</span><span class="n">minimum</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">maximum</span><span class="o">=</span><span class="n">model_</span><span class="o">.</span><span class="n">max</span><span class="p">())</span>
-    <span class="n">model_rgb</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">display</span><span class="o">.</span><span class="n">img_to_rgb</span><span class="p">(</span><span class="n">model_</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">)</span>
-    <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">model_rgb</span><span class="p">)</span>
-    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
-</pre></div>
-</div>
-</div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<img alt="_images/user_docs_57_0.png" src="_images/user_docs_57_0.png" />
-</div>
-</div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<img alt="_images/user_docs_57_1.png" src="_images/user_docs_57_1.png" />
-</div>
-</div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<img alt="_images/user_docs_57_2.png" src="_images/user_docs_57_2.png" />
-</div>
-</div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<img alt="_images/user_docs_57_3.png" src="_images/user_docs_57_3.png" />
-</div>
-</div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<img alt="_images/user_docs_57_4.png" src="_images/user_docs_57_4.png" />
-</div>
-</div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<img alt="_images/user_docs_57_5.png" src="_images/user_docs_57_5.png" />
-</div>
-</div>
-<div class="nboutput nblast docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<img alt="_images/user_docs_57_6.png" src="_images/user_docs_57_6.png" />
 </div>
 </div>
 </div>
@@ -1402,56 +1421,56 @@ If it is necessary to add or remove sources at a later time, it is best to creat
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-Total iterations: 22
+Total iterations: 29
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="_images/user_docs_61_1.png" src="_images/user_docs_61_1.png" />
+<img alt="_images/user_docs_59_1.png" src="_images/user_docs_59_1.png" />
 </div>
 </div>
 <div class="nboutput docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="_images/user_docs_61_2.png" src="_images/user_docs_61_2.png" />
+<img alt="_images/user_docs_59_2.png" src="_images/user_docs_59_2.png" />
 </div>
 </div>
 <div class="nboutput docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="_images/user_docs_61_3.png" src="_images/user_docs_61_3.png" />
+<img alt="_images/user_docs_59_3.png" src="_images/user_docs_59_3.png" />
 </div>
 </div>
 <div class="nboutput docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="_images/user_docs_61_4.png" src="_images/user_docs_61_4.png" />
+<img alt="_images/user_docs_59_4.png" src="_images/user_docs_59_4.png" />
 </div>
 </div>
 <div class="nboutput docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="_images/user_docs_61_5.png" src="_images/user_docs_61_5.png" />
+<img alt="_images/user_docs_59_5.png" src="_images/user_docs_59_5.png" />
 </div>
 </div>
 <div class="nboutput docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="_images/user_docs_61_6.png" src="_images/user_docs_61_6.png" />
+<img alt="_images/user_docs_59_6.png" src="_images/user_docs_59_6.png" />
 </div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="_images/user_docs_61_7.png" src="_images/user_docs_61_7.png" />
+<img alt="_images/user_docs_59_7.png" src="_images/user_docs_59_7.png" />
 </div>
 </div>
 <p>Notice that for most sources it was the morphology that converged first and it was the faintest source that converged last. This makes sense: the morphologies are normalized and most of their flux is located in the center, so tose values tend to converge faster, and sources with low signal to noise struggle to find an amplitude consistent with the data when their neighbors with much larger flux are constantly adjusting the outer edges of their models.</p>

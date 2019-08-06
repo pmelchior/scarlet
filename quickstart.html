@@ -438,7 +438,7 @@ div.rendered_html tbody tr:hover {
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
 <span></span><span class="kn">from</span> <span class="nn">astropy.visualization.lupton_rgb</span> <span class="kn">import</span> <span class="n">AsinhMapping</span><span class="p">,</span> <span class="n">LinearMapping</span>
 
-<span class="n">stretch</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">stretch</span> <span class="o">=</span> <span class="mf">0.1</span>
 <span class="n">Q</span> <span class="o">=</span> <span class="mi">10</span>
 <span class="n">norm</span> <span class="o">=</span> <span class="n">AsinhMapping</span><span class="p">(</span><span class="n">minimum</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">stretch</span><span class="o">=</span><span class="n">stretch</span><span class="p">,</span> <span class="n">Q</span><span class="o">=</span><span class="n">Q</span><span class="p">)</span>
 <span class="n">img_rgb</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">display</span><span class="o">.</span><span class="n">img_to_rgb</span><span class="p">(</span><span class="n">images</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">)</span>
@@ -481,7 +481,7 @@ div.rendered_html tbody tr:hover {
 </div>
 </div>
 <p>With this we can fully specify the <code class="docutils literal notranslate"><span class="pre">Frame</span></code> and the <code class="docutils literal notranslate"><span class="pre">Observation</span></code>, which is essentially a <code class="docutils literal notranslate"><span class="pre">Frame</span></code> with a data portion.</p>
-<div class="nbinput nblast docutils container">
+<div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
 </pre></div>
 </div>
@@ -490,6 +490,15 @@ div.rendered_html tbody tr:hover {
 <span class="n">observation</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">Observation</span><span class="p">(</span><span class="n">images</span><span class="p">,</span> <span class="n">psfs</span><span class="o">=</span><span class="n">psfs</span><span class="p">)</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
 </pre></div>
 </div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+Dtypes of PSFs and Frame different. Casting PSFs to &lt;class &#39;numpy.float32&#39;&gt;
+Dtypes of PSFs and Frame different. Casting PSFs to float32
+</pre></div></div>
 </div>
 <p>The previous command calls the <code class="docutils literal notranslate"><span class="pre">match</span></code> method to compute e.g.&nbsp;PSF difference kernel and filter transformations.</p>
 </div>
@@ -531,8 +540,28 @@ div.rendered_html tbody tr:hover {
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
 <span></span><span class="n">blend</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">Blend</span><span class="p">(</span><span class="n">sources</span><span class="p">,</span> <span class="n">observation</span><span class="p">)</span>
-<span class="n">blend</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="mi">200</span><span class="p">,</span> <span class="n">e_rel</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">)</span>
-<span class="k">print</span><span class="p">(</span><span class="s2">&quot;scarlet ran for {0} iterations&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">blend</span><span class="o">.</span><span class="n">it</span><span class="p">))</span>
+<span class="o">%</span><span class="k">time</span> blend.fit(200, e_rel=1e-3)
+<span class="k">print</span><span class="p">(</span><span class="s2">&quot;scarlet ran for {0} iterations to MSE = {1}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">blend</span><span class="o">.</span><span class="n">mse</span><span class="p">),</span> <span class="n">blend</span><span class="o">.</span><span class="n">mse</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">semilogy</span><span class="p">(</span><span class="n">blend</span><span class="o">.</span><span class="n">mse</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+CPU times: user 16.6 s, sys: 309 ms, total: 16.9 s
+Wall time: 4.24 s
+scarlet ran for 162 iterations to MSE = 210.91696166992188
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="output_area highlight-none notranslate"><div class="highlight"><pre>
+<span></span>[&lt;matplotlib.lines.Line2D at 0x117cea940&gt;]
 </pre></div>
 </div>
 </div>
@@ -540,16 +569,15 @@ div.rendered_html tbody tr:hover {
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<div class="highlight"><pre>
-scarlet ran for 169 iterations
-</pre></div></div>
+<img alt="_images/quickstart_14_2.png" src="_images/quickstart_14_2.png" />
+</div>
 </div>
 </div>
 <div class="section" id="View-the-results">
 <h2>View the results<a class="headerlink" href="#View-the-results" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="View-the-full-model">
 <h3>View the full model<a class="headerlink" href="#View-the-full-model" title="Permalink to this headline">¶</a></h3>
-<p>First we load the model for the entire blend and its residual. Then we display the model using the same <span class="math notranslate nohighlight">\(sinh^{-1}\)</span> stretch as the full image and a linear stretch for the residual.</p>
+<p>First we load the model for the entire blend, render it in the observation frame, and compute its residuals. We then show each using the same <span class="math notranslate nohighlight">\(sinh^{-1}\)</span> stretch as the full image and a linear stretch for the residual.</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
 </pre></div>
@@ -575,8 +603,8 @@ scarlet ran for 169 iterations
 
 <span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">component</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">blend</span><span class="o">.</span><span class="n">components</span><span class="p">):</span>
     <span class="n">y</span><span class="p">,</span><span class="n">x</span> <span class="o">=</span> <span class="n">component</span><span class="o">.</span><span class="n">pixel_center</span>
-    <span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;b&quot;</span><span class="p">)</span>
-    <span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;b&quot;</span><span class="p">)</span>
+    <span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;w&quot;</span><span class="p">)</span>
+    <span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;w&quot;</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </pre></div>
 </div>
@@ -591,28 +619,13 @@ scarlet ran for 169 iterations
 </div>
 <div class="section" id="View-the-source-models">
 <h3>View the source models<a class="headerlink" href="#View-the-source-models" title="Permalink to this headline">¶</a></h3>
-<p>It can also be useful to view the model for each source. For each source we extract the portion of the image contained in the sources bounding box, the true simulated source flux, and the model of the source, scaled so that all of the images have roughly the same pixel scale.</p>
+<p>It can also be useful to view the model for each source, in its original frame and in its observed frame. In this example, the two frames differ by an extra convolution from the minimal <code class="docutils literal notranslate"><span class="pre">model_psf</span></code> constructed above to the observed psfs.</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
-<span></span><span class="k">def</span> <span class="nf">get_true_image</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">catalog</span><span class="p">,</span> <span class="n">filters</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Create the true multiband image for a source</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">img</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">catalog</span><span class="p">[</span><span class="n">catalog</span><span class="p">[</span><span class="s2">&quot;index&quot;</span><span class="p">]</span><span class="o">==</span><span class="n">m</span><span class="p">][</span><span class="s2">&quot;intensity_&quot;</span><span class="o">+</span><span class="n">f</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">filters</span><span class="p">])</span>
-    <span class="k">return</span> <span class="n">img</span>
-
-<span class="c1"># We can only show the true values if the input catalog has the true intensity data for the sources</span>
-<span class="c1"># in other words, if you used SEP to build your catalog you do not have the true data.</span>
-<span class="k">if</span> <span class="s2">&quot;intensity_&quot;</span><span class="o">+</span><span class="n">filters</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">in</span> <span class="n">catalog</span><span class="o">.</span><span class="n">dtype</span><span class="o">.</span><span class="n">names</span><span class="p">:</span>
-    <span class="n">has_truth</span> <span class="o">=</span> <span class="bp">True</span>
-    <span class="n">axes</span> <span class="o">=</span> <span class="mi">3</span>
-<span class="k">else</span><span class="p">:</span>
-    <span class="n">has_truth</span> <span class="o">=</span> <span class="bp">False</span>
-    <span class="n">axes</span> <span class="o">=</span> <span class="mi">2</span>
-
-<span class="c1"># Set the stretch based on the model</span>
+<span></span><span class="c1"># Set the stretch based on the model</span>
 <span class="n">stretch</span> <span class="o">=</span> <span class="o">.</span><span class="mi">3</span>
 <span class="n">Q</span> <span class="o">=</span> <span class="mi">10</span>
 <span class="n">norm</span> <span class="o">=</span> <span class="n">AsinhMapping</span><span class="p">(</span><span class="n">minimum</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">stretch</span><span class="o">=</span><span class="n">stretch</span><span class="p">,</span> <span class="n">Q</span><span class="o">=</span><span class="n">Q</span><span class="p">)</span>
@@ -621,22 +634,30 @@ scarlet ran for 169 iterations
     <span class="c1"># Get the model for a single source</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">src</span><span class="o">.</span><span class="n">get_model</span><span class="p">()</span>
     <span class="n">model_</span> <span class="o">=</span> <span class="n">observation</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
-    <span class="n">model_rgb</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">display</span><span class="o">.</span><span class="n">img_to_rgb</span><span class="p">(</span><span class="n">model_</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">)</span>
-    <span class="c1"># Get the patch from the original image</span>
+
+    <span class="c1"># Convert observation and models to RGB</span>
     <span class="n">img_rgb</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">display</span><span class="o">.</span><span class="n">img_to_rgb</span><span class="p">(</span><span class="n">images</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">)</span>
+    <span class="n">model_rgb</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">display</span><span class="o">.</span><span class="n">img_to_rgb</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">)</span>
+    <span class="n">model_rgb_</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">display</span><span class="o">.</span><span class="n">img_to_rgb</span><span class="p">(</span><span class="n">model_</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">)</span>
+
     <span class="c1"># Set the figure size</span>
     <span class="n">ratio</span> <span class="o">=</span> <span class="n">src</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">/</span><span class="n">src</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
     <span class="n">fig_height</span> <span class="o">=</span> <span class="mi">3</span><span class="o">*</span><span class="n">src</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">/</span><span class="mi">20</span>
     <span class="n">fig_width</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">fig_height</span><span class="o">*</span><span class="n">ratio</span><span class="p">,</span><span class="mi">2</span><span class="p">)</span>
     <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="n">fig_width</span><span class="p">,</span> <span class="n">fig_height</span><span class="p">))</span>
+
     <span class="c1"># Generate and show the figure</span>
-    <span class="n">ax</span> <span class="o">=</span> <span class="p">[</span><span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="n">n</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2</span><span class="p">)]</span>
+    <span class="n">ax</span> <span class="o">=</span> <span class="p">[</span><span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="n">n</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">)]</span>
     <span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">img_rgb</span><span class="p">)</span>
     <span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Data&quot;</span><span class="p">)</span>
-    <span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">model_rgb</span><span class="p">)</span>
-    <span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;model {0}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">k</span><span class="p">))</span>
+    <span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">model_rgb_</span><span class="p">)</span>
+    <span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Observed model {0}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">k</span><span class="p">))</span>
+    <span class="n">ax</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">model_rgb</span><span class="p">)</span>
+    <span class="n">ax</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Model {0}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">k</span><span class="p">))</span>
     <span class="c1"># Mark the source in the data image</span>
     <span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">src</span><span class="o">.</span><span class="n">pixel_center</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">src</span><span class="o">.</span><span class="n">pixel_center</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="s2">&quot;rx&quot;</span><span class="p">,</span> <span class="n">mew</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">ms</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+    <span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">src</span><span class="o">.</span><span class="n">pixel_center</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">src</span><span class="o">.</span><span class="n">pixel_center</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="s2">&quot;rx&quot;</span><span class="p">,</span> <span class="n">mew</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">ms</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+    <span class="n">ax</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">src</span><span class="o">.</span><span class="n">pixel_center</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">src</span><span class="o">.</span><span class="n">pixel_center</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="s2">&quot;rx&quot;</span><span class="p">,</span> <span class="n">mew</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">ms</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
     <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </pre></div>
 </div>

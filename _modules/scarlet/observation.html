@@ -148,6 +148,8 @@
 <span></span><span class="kn">import</span> <span class="nn">autograd.numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">from</span> <span class="nn">scipy</span> <span class="k">import</span> <span class="n">fftpack</span>
 
+<span class="kn">from</span> <span class="nn">.</span> <span class="k">import</span> <span class="n">interpolation</span>
+
 <span class="kn">from</span> <span class="nn">.</span> <span class="k">import</span> <span class="n">resampling</span>
 
 <span class="kn">import</span> <span class="nn">logging</span>
@@ -166,6 +168,7 @@
     <span class="n">startind</span> <span class="o">=</span> <span class="p">(</span><span class="n">currshape</span> <span class="o">-</span> <span class="n">newshape</span><span class="p">)</span> <span class="o">//</span> <span class="mi">2</span>
     <span class="n">endind</span> <span class="o">=</span> <span class="n">startind</span> <span class="o">+</span> <span class="n">newshape</span>
     <span class="n">myslice</span> <span class="o">=</span> <span class="p">[</span><span class="nb">slice</span><span class="p">(</span><span class="n">startind</span><span class="p">[</span><span class="n">k</span><span class="p">],</span> <span class="n">endind</span><span class="p">[</span><span class="n">k</span><span class="p">])</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">endind</span><span class="p">))]</span>
+
     <span class="k">return</span> <span class="n">arr</span><span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="n">myslice</span><span class="p">)]</span>
 
 
@@ -182,8 +185,10 @@
 <span class="sd">        PSF in each band</span>
 <span class="sd">    channels: list of hashable elements</span>
 <span class="sd">        Names/identifiers of spectral channels</span>
+<span class="sd">    dtype: `numpy.dtype`</span>
+<span class="sd">        Dtype to represent the data.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">shape</span><span class="p">,</span> <span class="n">wcs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">psfs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">channels</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">shape</span><span class="p">,</span> <span class="n">wcs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">psfs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">channels</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">):</span>
         <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_shape</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">wcs</span> <span class="o">=</span> <span class="n">wcs</span>
@@ -194,11 +199,18 @@
             <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">psfs</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">psfs</span><span class="p">)</span> <span class="o">==</span> <span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="s1">&#39;PSFs need to have shape (1,Ny,Nx) for Blend and (B,Ny,Nx) for Observation&#39;</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">psfs</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)),</span> <span class="mi">1</span><span class="p">):</span>
                 <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s1">&#39;PSFs not normalized. Normalizing now..&#39;</span><span class="p">)</span>
-                <span class="n">psfs</span> <span class="o">/=</span> <span class="n">psfs</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">))[:,</span><span class="kc">None</span><span class="p">,</span><span class="kc">None</span><span class="p">]</span>
+                <span class="n">psfs</span> <span class="o">/=</span> <span class="n">psfs</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">))[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span>
+
+            <span class="k">if</span> <span class="n">dtype</span> <span class="o">!=</span> <span class="n">psfs</span><span class="o">.</span><span class="n">dtype</span><span class="p">:</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;Dtypes of PSFs and Frame different. Casting PSFs to </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">dtype</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+                <span class="n">psfs</span> <span class="o">=</span> <span class="n">psfs</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">dtype</span><span class="p">)</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">_psfs</span> <span class="o">=</span> <span class="n">psfs</span>
 
         <span class="k">assert</span> <span class="n">channels</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">channels</span><span class="p">)</span> <span class="o">==</span> <span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">channels</span> <span class="o">=</span> <span class="n">channels</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dtype</span> <span class="o">=</span> <span class="n">dtype</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">C</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -266,8 +278,7 @@
 <span class="sd">        prevent artifacts from the FFT.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">images</span><span class="p">,</span> <span class="n">psfs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">wcs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">channels</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                 <span class="n">padding</span><span class="o">=</span><span class="mi">10</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">images</span><span class="p">,</span> <span class="n">psfs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">wcs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">channels</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">10</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Create an Observation</span>
 
 <span class="sd">        Parameters</span>
@@ -290,7 +301,7 @@
 <span class="sd">            half the width of the PSF, for FFTs. This is needed to</span>
 <span class="sd">            prevent artifacts from the FFT.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">frame</span> <span class="o">=</span> <span class="n">Frame</span><span class="p">(</span><span class="n">images</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">wcs</span><span class="o">=</span><span class="n">wcs</span><span class="p">,</span> <span class="n">psfs</span><span class="o">=</span><span class="n">psfs</span><span class="p">,</span> <span class="n">channels</span><span class="o">=</span><span class="n">channels</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">frame</span> <span class="o">=</span> <span class="n">Frame</span><span class="p">(</span><span class="n">images</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">wcs</span><span class="o">=</span><span class="n">wcs</span><span class="p">,</span> <span class="n">psfs</span><span class="o">=</span><span class="n">psfs</span><span class="p">,</span> <span class="n">channels</span><span class="o">=</span><span class="n">channels</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">images</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">images</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">images</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">weights</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -317,52 +328,81 @@
 <span class="sd">        None</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">dtype</span> <span class="o">!=</span> <span class="n">model_frame</span><span class="o">.</span><span class="n">dtype</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;Dtypes of model and observation different. Casting observation to </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">model_frame</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">dtype</span> <span class="o">=</span> <span class="n">model_frame</span><span class="o">.</span><span class="n">dtype</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">images</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">images</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">model_frame</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">weights</span><span class="p">)</span> <span class="ow">is</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">weights</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">weights</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">model_frame</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">_psfs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">_psfs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">_psfs</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">model_frame</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+
         <span class="c1">#  channels of model that are represented in this observation</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_band_slice</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">channels</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">model_frame</span><span class="o">.</span><span class="n">channels</span><span class="p">:</span>
             <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">channels</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">model_frame</span><span class="o">.</span><span class="n">channels</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
             <span class="n">bmin</span> <span class="o">=</span> <span class="n">model_frame</span><span class="o">.</span><span class="n">channels</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">channels</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
             <span class="n">bmax</span> <span class="o">=</span> <span class="n">model_frame</span><span class="o">.</span><span class="n">channels</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">channels</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_band_slice</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="n">bmin</span><span class="p">,</span> <span class="n">bmax</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_band_slice</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="n">bmin</span><span class="p">,</span> <span class="n">bmax</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_diff_kernels_fft</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">psfs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">model_frame</span><span class="o">.</span><span class="n">psfs</span><span class="p">:</span>
             <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">psfs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">model_frame</span><span class="o">.</span><span class="n">psfs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
             <span class="c1"># First we setup the parameters for the model -&gt; observation FFTs</span>
             <span class="c1"># Make the PSF stamp wider due to errors when matching PSFs</span>
-            <span class="n">psf_shape</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">psfs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_padding</span>
-            <span class="n">shape</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">model_frame</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span> <span class="o">+</span> <span class="n">psf_shape</span> <span class="o">-</span> <span class="mi">1</span>
+            <span class="n">psf_shape</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">psfs</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+            <span class="n">psf_shape</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_padding</span>
+            <span class="n">conv_shape</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">model_frame</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">+</span> <span class="n">psf_shape</span> <span class="o">-</span> <span class="mi">1</span>
+            <span class="n">conv_shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">model_frame</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
             <span class="c1"># Choose the optimal shape for FFTPack DFT</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_fftpack_shape</span> <span class="o">=</span> <span class="p">[</span><span class="n">fftpack</span><span class="o">.</span><span class="n">helper</span><span class="o">.</span><span class="n">next_fast_len</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">shape</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_fftpack_shape</span> <span class="o">=</span> <span class="p">[</span><span class="n">fftpack</span><span class="o">.</span><span class="n">helper</span><span class="o">.</span><span class="n">next_fast_len</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">conv_shape</span><span class="p">[</span><span class="mi">1</span><span class="p">:]]</span>
+
+            <span class="c1"># autograd.numpy.fft does not currently work</span>
+            <span class="c1"># if the last dimension is odd</span>
+            <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fftpack_shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">_shape</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fftpack_shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_fftpack_shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">fftpack</span><span class="o">.</span><span class="n">helper</span><span class="o">.</span><span class="n">next_fast_len</span><span class="p">(</span><span class="n">_shape</span><span class="p">)</span>
+
+
             <span class="c1"># Store the pre-fftpack optimization slices</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_slices</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">([</span><span class="nb">slice</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">shape</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">slices</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(([</span><span class="nb">slice</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">conv_shape</span><span class="p">]))</span>
 
             <span class="c1"># Now we setup the parameters for the psf -&gt; kernel FFTs</span>
-            <span class="n">shape</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">model_frame</span><span class="o">.</span><span class="n">psfs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">psfs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
-            <span class="n">_fftpack_shape</span> <span class="o">=</span> <span class="p">[</span><span class="n">fftpack</span><span class="o">.</span><span class="n">helper</span><span class="o">.</span><span class="n">next_fast_len</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">shape</span><span class="p">]</span>
-            <span class="c1"># Deconvolve the target PSF</span>
-            <span class="n">target_fft</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">rfftn</span><span class="p">(</span><span class="n">model_frame</span><span class="o">.</span><span class="n">psfs</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">_fftpack_shape</span><span class="p">)</span>
+            <span class="n">shape</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">psfs</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">model_frame</span><span class="o">.</span><span class="n">psfs</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+            <span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">psfs</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
 
-            <span class="c1"># Match the PSF in each band</span>
-            <span class="n">_diff_kernels_fft</span> <span class="o">=</span> <span class="p">[]</span>
-            <span class="k">for</span> <span class="n">psf</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">psfs</span><span class="p">:</span>
-                <span class="n">_psf_fft</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">rfftn</span><span class="p">(</span><span class="n">psf</span><span class="p">,</span> <span class="n">_fftpack_shape</span><span class="p">)</span>
-                <span class="n">kernel</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">fftshift</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">irfftn</span><span class="p">(</span><span class="n">_psf_fft</span> <span class="o">/</span> <span class="n">target_fft</span><span class="p">,</span> <span class="n">_fftpack_shape</span><span class="p">))</span>
-                <span class="n">kernel</span> <span class="o">*=</span> <span class="n">model_frame</span><span class="o">.</span><span class="n">psfs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
-                <span class="k">if</span> <span class="n">kernel</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-                    <span class="n">kernel</span> <span class="o">=</span> <span class="n">kernel</span><span class="p">[</span><span class="mi">1</span><span class="p">:,</span> <span class="mi">1</span><span class="p">:]</span>
-                <span class="n">kernel</span> <span class="o">=</span> <span class="n">_centered</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">psf_shape</span><span class="p">)</span>
-                <span class="n">_diff_kernels_fft</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">rfftn</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fftpack_shape</span><span class="p">))</span>
+            <span class="c1">#Fast fft shapes for kernels</span>
+            <span class="n">_fftpack_shape</span> <span class="o">=</span> <span class="p">[</span><span class="n">fftpack</span><span class="o">.</span><span class="n">helper</span><span class="o">.</span><span class="n">next_fast_len</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">:]]</span>
 
-            <span class="bp">self</span><span class="o">.</span><span class="n">_diff_kernels_fft</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">_diff_kernels_fft</span><span class="p">)</span>
+            <span class="k">while</span> <span class="n">_fftpack_shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">k_shape</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">_fftpack_shape</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+                <span class="n">_fftpack_shape</span> <span class="o">=</span> <span class="p">[</span><span class="n">fftpack</span><span class="o">.</span><span class="n">helper</span><span class="o">.</span><span class="n">next_fast_len</span><span class="p">(</span><span class="n">k_s</span><span class="p">)</span> <span class="k">for</span> <span class="n">k_s</span> <span class="ow">in</span> <span class="n">k_shape</span><span class="p">]</span>
+
+            <span class="c1"># fft of the target psf</span>
+            <span class="n">target_fft</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">rfftn</span><span class="p">(</span><span class="n">model_frame</span><span class="o">.</span><span class="n">psfs</span><span class="p">,</span> <span class="n">_fftpack_shape</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+
+            <span class="c1"># fft of the observation&#39;s PSFs in each band</span>
+            <span class="n">_psf_fft</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">rfftn</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">psfs</span><span class="p">,</span> <span class="n">_fftpack_shape</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+
+            <span class="c1"># Diff kernel between observation and target psf in Fourrier</span>
+            <span class="n">kernels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">ifftshift</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">irfftn</span><span class="p">(</span><span class="n">_psf_fft</span> <span class="o">/</span> <span class="n">target_fft</span><span class="p">,</span> <span class="n">_fftpack_shape</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)),</span> <span class="n">axes</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+
+            <span class="k">if</span> <span class="n">kernels</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span> <span class="p">:</span>
+                <span class="n">kernels</span> <span class="o">=</span> <span class="n">kernels</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">:,</span> <span class="mi">1</span><span class="p">:]</span>
+
+            <span class="n">kernels</span> <span class="o">=</span> <span class="n">_centered</span><span class="p">(</span><span class="n">kernels</span><span class="p">,</span> <span class="n">psf_shape</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_diff_kernels_fft</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">rfftn</span><span class="p">(</span><span class="n">kernels</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fftpack_shape</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
 
         <span class="k">return</span> <span class="bp">self</span></div>
 
-    <span class="k">def</span> <span class="nf">_convolve_band</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">diff_kernel_fft</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">_convolve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Convolve the model in a single band</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">model_fft</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">rfftn</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fftpack_shape</span><span class="p">)</span>
-        <span class="n">convolved</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">irfftn</span><span class="p">(</span><span class="n">model_fft</span> <span class="o">*</span> <span class="n">diff_kernel_fft</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fftpack_shape</span><span class="p">)[</span><span class="bp">self</span><span class="o">.</span><span class="n">_slices</span><span class="p">]</span>
+        <span class="n">model_fft</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">rfftn</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fftpack_shape</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+        <span class="n">convolved</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">irfftn</span><span class="p">(</span><span class="n">model_fft</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_diff_kernels_fft</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fftpack_shape</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">))[</span><span class="bp">self</span><span class="o">.</span><span class="n">slices</span><span class="p">]</span>
         <span class="k">return</span> <span class="n">_centered</span><span class="p">(</span><span class="n">convolved</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
 
 <div class="viewcode-block" id="Observation.render"><a class="viewcode-back" href="../../observation.html#scarlet.observation.Observation.render">[docs]</a>    <span class="k">def</span> <span class="nf">render</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">):</span>
@@ -378,10 +418,9 @@
 <span class="sd">        model_: array</span>
 <span class="sd">            The convolved `model` in the observation frame</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">model_</span> <span class="o">=</span> <span class="n">model</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_band_slice</span><span class="p">,:,:]</span>
-
+        <span class="n">model_</span> <span class="o">=</span> <span class="n">model</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_band_slice</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_diff_kernels_fft</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">model_</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">_convolve_band</span><span class="p">(</span><span class="n">model_</span><span class="p">[</span><span class="n">c</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">_diff_kernels_fft</span><span class="p">[</span><span class="n">c</span><span class="p">])</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">C</span><span class="p">)])</span>
+            <span class="n">model_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_convolve</span><span class="p">(</span><span class="n">model_</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="n">model_</span></div>
 
@@ -412,16 +451,108 @@
         <span class="k">assert</span> <span class="n">wcs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;WCS is necessary for LowResObservation&quot;</span>
         <span class="k">assert</span> <span class="n">psfs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;PSFs are necessary for LowResObservation&quot;</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">frame</span> <span class="o">=</span> <span class="n">Frame</span><span class="p">(</span><span class="n">images</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">wcs</span><span class="o">=</span><span class="n">wcs</span><span class="p">,</span> <span class="n">psfs</span><span class="o">=</span><span class="n">psfs</span><span class="p">,</span> <span class="n">channels</span><span class="o">=</span><span class="n">channels</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">images</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">images</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_padding</span> <span class="o">=</span> <span class="n">padding</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">images</span><span class="p">,</span> <span class="n">wcs</span><span class="o">=</span><span class="n">wcs</span><span class="p">,</span> <span class="n">psfs</span><span class="o">=</span><span class="n">psfs</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">weights</span><span class="p">,</span> <span class="n">channels</span><span class="o">=</span><span class="n">channels</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="n">padding</span><span class="p">)</span>
 
-        <span class="k">if</span> <span class="n">weights</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">weights</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">weights</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">weights</span> <span class="o">=</span> <span class="mi">1</span>
+<div class="viewcode-block" id="LowResObservation.make_operator"><a class="viewcode-back" href="../../observation.html#scarlet.observation.LowResObservation.make_operator">[docs]</a>    <span class="k">def</span> <span class="nf">make_operator</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">shape</span><span class="p">,</span> <span class="n">psf</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Builds the resampling and convolution operator</span>
+<span class="sd">        Builds the matrix that expresses the linear operation of resampling a function evaluated on a grid with coordinates</span>
+<span class="sd">        &#39;coord_lr&#39; to a grid with shape &#39;shape&#39;, and convolving by a kernel p</span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ------</span>
+<span class="sd">        shape: tuple</span>
+<span class="sd">            shape of the high resolution scene</span>
+<span class="sd">        coord_lr: array</span>
+<span class="sd">            coordinates of the overlapping pixels from the low resolution grid in the high resolution grid frame.</span>
+<span class="sd">        p: array</span>
+<span class="sd">            convolution kernel (PSF)</span>
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        mat: array</span>
+<span class="sd">            the convolution-resampling matrix</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">B</span><span class="p">,</span> <span class="n">Ny</span><span class="p">,</span> <span class="n">Nx</span> <span class="o">=</span> <span class="n">shape</span>
+        <span class="n">y_hr</span><span class="p">,</span> <span class="n">x_hr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">Ny</span><span class="p">,</span> <span class="n">Nx</span><span class="p">))</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">y_lr</span><span class="p">,</span> <span class="n">x_lr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_coord_lr</span>
+        <span class="n">mat</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">Ny</span> <span class="o">*</span> <span class="n">Nx</span><span class="p">,</span> <span class="n">x_lr</span><span class="o">.</span><span class="n">size</span><span class="p">))</span>
+
+        <span class="kn">import</span> <span class="nn">scipy.signal</span> <span class="k">as</span> <span class="nn">scp</span>
+
+        <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">x_lr</span><span class="p">)):</span>
+            <span class="n">mat</span><span class="p">[:,</span> <span class="n">m</span><span class="p">]</span> <span class="o">=</span> <span class="n">scp</span><span class="o">.</span><span class="n">fftconvolve</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ker</span><span class="p">[</span><span class="n">m</span><span class="p">],</span> <span class="n">psf</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;same&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">y_lr</span><span class="o">.</span><span class="n">size</span> <span class="o">/</span> <span class="n">y_hr</span><span class="o">.</span><span class="n">size</span>
+        <span class="k">return</span> <span class="n">mat</span></div>
+
+<div class="viewcode-block" id="LowResObservation.match_psfs"><a class="viewcode-back" href="../../observation.html#scarlet.observation.LowResObservation.match_psfs">[docs]</a>    <span class="k">def</span> <span class="nf">match_psfs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">psf_hr</span><span class="p">,</span> <span class="n">wcs_hr</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;psf matching between different dataset</span>
+<span class="sd">        Matches PSFS at different resolutions by interpolating psf_lr on the same grid as psf_hr</span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        psf_hr: array</span>
+<span class="sd">            centered psf of the high resolution scene</span>
+<span class="sd">        psf_lr: array</span>
+<span class="sd">            centered psf of the low resolution scene</span>
+<span class="sd">        wcs_hr: WCS object</span>
+<span class="sd">            wcs of the high resolution scene</span>
+<span class="sd">        wcs_lr: WCS object</span>
+<span class="sd">            wcs of the low resolution scene</span>
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        psf_match_hr: array</span>
+<span class="sd">            high rresolution psf at mactching size</span>
+<span class="sd">        psf_match_lr: array</span>
+<span class="sd">            low resolution psf at matching size and resolution</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+
+        <span class="n">psf_lr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">psfs</span>
+        <span class="n">wcs_lr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">wcs</span>
+
+        <span class="n">ny_hr</span><span class="p">,</span> <span class="n">nx_hr</span> <span class="o">=</span> <span class="n">psf_hr</span><span class="o">.</span><span class="n">shape</span>
+        <span class="n">npsf</span><span class="p">,</span> <span class="n">ny_lr</span><span class="p">,</span> <span class="n">nx_lr</span> <span class="o">=</span> <span class="n">psf_lr</span><span class="o">.</span><span class="n">shape</span>
+
+        <span class="c1"># Createsa wcs for psfs centered around the frame center</span>
+        <span class="n">psf_wcs_hr</span> <span class="o">=</span> <span class="n">wcs_hr</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">()</span>
+        <span class="n">psf_wcs_lr</span> <span class="o">=</span> <span class="n">wcs_lr</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">psf_wcs_hr</span><span class="o">.</span><span class="n">naxis</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="n">psf_wcs_hr</span><span class="o">.</span><span class="n">wcs</span><span class="o">.</span><span class="n">crval</span> <span class="o">=</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span>
+            <span class="n">psf_wcs_hr</span><span class="o">.</span><span class="n">wcs</span><span class="o">.</span><span class="n">crpix</span> <span class="o">=</span> <span class="n">ny_hr</span> <span class="o">/</span> <span class="mf">2.</span><span class="p">,</span> <span class="n">nx_hr</span> <span class="o">/</span> <span class="mf">2.</span>
+        <span class="k">elif</span> <span class="n">psf_wcs_hr</span><span class="o">.</span><span class="n">naxis</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="n">psf_wcs_hr</span><span class="o">.</span><span class="n">wcs</span><span class="o">.</span><span class="n">crval</span> <span class="o">=</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span>
+            <span class="n">psf_wcs_hr</span><span class="o">.</span><span class="n">wcs</span><span class="o">.</span><span class="n">crpix</span> <span class="o">=</span> <span class="n">ny_hr</span> <span class="o">/</span> <span class="mf">2.</span><span class="p">,</span> <span class="n">nx_hr</span> <span class="o">/</span> <span class="mf">2.</span><span class="p">,</span> <span class="mf">0.</span>
+        <span class="k">if</span> <span class="n">psf_wcs_lr</span><span class="o">.</span><span class="n">naxis</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="n">psf_wcs_lr</span><span class="o">.</span><span class="n">wcs</span><span class="o">.</span><span class="n">crval</span> <span class="o">=</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span>
+            <span class="n">psf_wcs_lr</span><span class="o">.</span><span class="n">wcs</span><span class="o">.</span><span class="n">crpix</span> <span class="o">=</span> <span class="n">ny_lr</span> <span class="o">/</span> <span class="mf">2.</span><span class="p">,</span> <span class="n">nx_lr</span> <span class="o">/</span> <span class="mf">2.</span>
+        <span class="k">elif</span> <span class="n">psf_wcs_lr</span><span class="o">.</span><span class="n">naxis</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="n">psf_wcs_lr</span><span class="o">.</span><span class="n">wcs</span><span class="o">.</span><span class="n">crval</span> <span class="o">=</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span>
+            <span class="n">psf_wcs_lr</span><span class="o">.</span><span class="n">wcs</span><span class="o">.</span><span class="n">crpix</span> <span class="o">=</span> <span class="n">ny_lr</span> <span class="o">/</span> <span class="mf">2.</span><span class="p">,</span> <span class="n">nx_lr</span> <span class="o">/</span> <span class="mf">2.</span><span class="p">,</span> <span class="mi">0</span>
+
+        <span class="n">mask</span><span class="p">,</span> <span class="n">p_lr</span><span class="p">,</span> <span class="n">p_hr</span> <span class="o">=</span> <span class="n">resampling</span><span class="o">.</span><span class="n">match_patches</span><span class="p">(</span><span class="n">psf_hr</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">psf_lr</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">:],</span> <span class="n">psf_wcs_hr</span><span class="p">,</span> <span class="n">psf_wcs_lr</span><span class="p">)</span>
+
+        <span class="n">cmask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">mask</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="n">n_p</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">int</span><span class="p">((</span><span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">cmask</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span> <span class="o">**</span> <span class="mf">0.5</span><span class="p">)</span>
+
+        <span class="n">psf_match_lr</span> <span class="o">=</span> <span class="n">interpolation</span><span class="o">.</span><span class="n">sinc_interp</span><span class="p">(</span><span class="n">cmask</span><span class="p">,</span> <span class="n">p_hr</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
+                                                 <span class="n">psf_lr</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">npsf</span><span class="p">,</span> <span class="n">ny_lr</span> <span class="o">*</span> <span class="n">nx_lr</span><span class="p">))</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">npsf</span><span class="p">,</span> <span class="n">n_p</span><span class="p">,</span> <span class="n">n_p</span><span class="p">)</span>
+
+
+        <span class="n">psf_match_hr</span> <span class="o">=</span> <span class="n">psf_hr</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">int</span><span class="p">((</span><span class="n">ny_hr</span> <span class="o">-</span> <span class="n">n_p</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">):</span><span class="n">np</span><span class="o">.</span><span class="n">int</span><span class="p">((</span><span class="n">ny_hr</span> <span class="o">+</span> <span class="n">n_p</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">),</span>
+                       <span class="n">np</span><span class="o">.</span><span class="n">int</span><span class="p">((</span><span class="n">nx_hr</span> <span class="o">-</span> <span class="n">n_p</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">):</span><span class="n">np</span><span class="o">.</span><span class="n">int</span><span class="p">((</span><span class="n">nx_hr</span> <span class="o">+</span> <span class="n">n_p</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)]</span>
+
+        <span class="n">psf_match_hr</span> <span class="o">/=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">psf_match_hr</span><span class="p">)</span>
+        <span class="n">psf_match_lr</span> <span class="o">/=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">psf_match_lr</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">psf_match_hr</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:],</span> <span class="n">psf_match_lr</span></div>
 
 <div class="viewcode-block" id="LowResObservation.match"><a class="viewcode-back" href="../../observation.html#scarlet.observation.LowResObservation.match">[docs]</a>    <span class="k">def</span> <span class="nf">match</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model_frame</span><span class="p">):</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">dtype</span> <span class="o">!=</span> <span class="n">model_frame</span><span class="o">.</span><span class="n">dtype</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;Dtypes of model and observation different. Casting observation to </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">model_frame</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">dtype</span> <span class="o">=</span> <span class="n">model_frame</span><span class="o">.</span><span class="n">dtype</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">images</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">images</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">model_frame</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">weights</span><span class="p">)</span> <span class="ow">is</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">weights</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">weights</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">model_frame</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">_psfs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">_psfs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">_psfs</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">model_frame</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
 
         <span class="c1">#  channels of model that are represented in this observation</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_band_slice</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
@@ -439,30 +570,44 @@
         <span class="c1"># Compute diff kernel at hr</span>
 
         <span class="n">whr</span> <span class="o">=</span> <span class="n">model_frame</span><span class="o">.</span><span class="n">wcs</span>
-        <span class="n">wlr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">wcs</span>
 
         <span class="c1"># Reference PSF</span>
         <span class="n">_target</span> <span class="o">=</span> <span class="n">model_frame</span><span class="o">.</span><span class="n">psfs</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span>
         <span class="n">_shape</span> <span class="o">=</span> <span class="n">model_frame</span><span class="o">.</span><span class="n">shape</span>
 
+
+        <span class="n">_fftpack_shape</span> <span class="o">=</span> <span class="p">[</span><span class="n">fftpack</span><span class="o">.</span><span class="n">helper</span><span class="o">.</span><span class="n">next_fast_len</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">_target</span><span class="o">.</span><span class="n">shape</span><span class="p">]</span>
+
+        <span class="k">while</span> <span class="n">_fftpack_shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">k_shape</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">_fftpack_shape</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+            <span class="n">_fftpack_shape</span> <span class="o">=</span> <span class="p">[</span><span class="n">fftpack</span><span class="o">.</span><span class="n">helper</span><span class="o">.</span><span class="n">next_fast_len</span><span class="p">(</span><span class="n">k_s</span><span class="p">)</span> <span class="k">for</span> <span class="n">k_s</span> <span class="ow">in</span> <span class="n">k_shape</span><span class="p">]</span>
+
+        <span class="c1"># Interpolation kernel for resampling</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ker</span> <span class="o">=</span> <span class="n">resampling</span><span class="o">.</span><span class="n">conv2D_fft</span><span class="p">(</span><span class="n">_shape</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_coord_hr</span><span class="p">)</span>
+        <span class="c1"># Computes spatially matching observation and target psfs. The observation psf is also resampled to the model frame resolution</span>
+        <span class="n">new_target</span><span class="p">,</span> <span class="n">observed_psf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">match_psfs</span><span class="p">(</span><span class="n">_target</span><span class="p">,</span> <span class="n">whr</span><span class="p">)</span>
+        <span class="n">target_fft</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">rfftn</span><span class="p">(</span><span class="n">new_target</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">_fftpack_shape</span><span class="p">)</span>
+        <span class="n">sel</span> <span class="o">=</span> <span class="n">target_fft</span> <span class="o">==</span> <span class="mi">0</span>
+        <span class="n">observed_fft</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">rfftn</span><span class="p">(</span><span class="n">observed_psf</span><span class="p">,</span> <span class="n">_fftpack_shape</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+
+        <span class="c1"># Computes the diff kernel in Fourier</span>
+        <span class="n">kernel_fft</span> <span class="o">=</span> <span class="n">observed_fft</span> <span class="o">/</span> <span class="n">target_fft</span>
+        <span class="n">kernel_fft</span><span class="p">[:,</span><span class="n">sel</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">kernel</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">irfftn</span><span class="p">(</span><span class="n">kernel_fft</span><span class="p">,</span> <span class="n">_fftpack_shape</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">))</span>
+        <span class="n">kernel</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">ifftshift</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">kernel</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">kernel</span> <span class="o">=</span> <span class="n">kernel</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">:,</span> <span class="mi">1</span><span class="p">:]</span>
+
+        <span class="n">kernel</span> <span class="o">=</span> <span class="n">_centered</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">observed_psf</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="n">diff_psf</span> <span class="o">=</span> <span class="n">kernel</span> <span class="o">/</span> <span class="n">kernel</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+
+        <span class="c1"># Computes the resampling/convolution matrix</span>
         <span class="n">resconv_op</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="k">for</span> <span class="n">_psf</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">psfs</span><span class="p">:</span>
-            <span class="c1"># Computes spatially matching observation and target psfs. The observation psf is also resampled to the model frame resolution</span>
-            <span class="n">new_target</span><span class="p">,</span> <span class="n">observed_psf</span> <span class="o">=</span> <span class="n">resampling</span><span class="o">.</span><span class="n">match_psfs</span><span class="p">(</span><span class="n">_target</span><span class="p">,</span> <span class="n">_psf</span><span class="p">,</span> <span class="n">whr</span><span class="p">,</span> <span class="n">wlr</span><span class="p">)</span>
-            <span class="c1"># Computes the diff kernel in Fourier</span>
-            <span class="n">target_fft</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">fft2</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">ifftshift</span><span class="p">(</span><span class="n">new_target</span><span class="p">))</span>
-            <span class="n">observed_fft</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">fft2</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">ifftshift</span><span class="p">(</span><span class="n">observed_psf</span><span class="p">))</span>
-            <span class="n">kernel_fft</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">target_fft</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
-            <span class="n">sel</span> <span class="o">=</span> <span class="n">target_fft</span> <span class="o">!=</span> <span class="mi">0</span>
-            <span class="n">kernel_fft</span><span class="p">[</span><span class="n">sel</span><span class="p">]</span> <span class="o">=</span> <span class="n">observed_fft</span><span class="p">[</span><span class="n">sel</span><span class="p">]</span> <span class="o">/</span> <span class="n">target_fft</span><span class="p">[</span><span class="n">sel</span><span class="p">]</span>
-            <span class="n">kernel</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">ifft2</span><span class="p">(</span><span class="n">kernel_fft</span><span class="p">)</span>
-            <span class="n">kernel</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">fftshift</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">real</span><span class="p">(</span><span class="n">kernel</span><span class="p">))</span>
-            <span class="n">diff_psf</span> <span class="o">=</span> <span class="n">kernel</span> <span class="o">/</span> <span class="n">kernel</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">dpsf</span> <span class="ow">in</span> <span class="n">diff_psf</span><span class="p">:</span>
+            <span class="n">resconv_op</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">make_operator</span><span class="p">(</span><span class="n">_shape</span><span class="p">,</span> <span class="n">dpsf</span><span class="p">))</span>
 
-            <span class="c1"># Computes the resampling/convolution matrix</span>
-            <span class="n">resconv_op</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">resampling</span><span class="o">.</span><span class="n">make_operator</span><span class="p">(</span><span class="n">_shape</span><span class="p">,</span> <span class="n">coord_hr</span><span class="p">,</span> <span class="n">diff_psf</span><span class="p">))</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">_resconv_op</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">resconv_op</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_resconv_op</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">resconv_op</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="bp">self</span></div>
 
@@ -472,30 +617,26 @@
 
     <span class="k">def</span> <span class="nf">_render</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Resample and convolve a model in the observation frame</span>
-
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
 <span class="sd">        model: array</span>
 <span class="sd">            The model in some other data frame.</span>
-
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        model_: array</span>
 <span class="sd">            The convolved and resampled `model` in the observation frame.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">model_</span> <span class="o">=</span> <span class="n">model</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_band_slice</span><span class="p">,:,:]</span>
-        <span class="n">model_</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">model_</span><span class="p">[</span><span class="n">c</span><span class="p">]</span><span class="o">.</span><span class="n">flatten</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resconv_op</span><span class="p">[</span><span class="n">c</span><span class="p">])</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">C</span><span class="p">)])</span>
+        <span class="n">model_</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">model_</span><span class="p">[</span><span class="n">c</span><span class="p">]</span><span class="o">.</span><span class="n">flatten</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resconv_op</span><span class="p">[</span><span class="n">c</span><span class="p">])</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">C</span><span class="p">)],</span> <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="n">model_</span>
 
 <div class="viewcode-block" id="LowResObservation.render"><a class="viewcode-back" href="../../observation.html#scarlet.observation.LowResObservation.render">[docs]</a>    <span class="k">def</span> <span class="nf">render</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Resample and convolve a model in the observation frame</span>
-
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
 <span class="sd">        model: array</span>
 <span class="sd">            The model in some other data frame.</span>
-
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        model_: array</span>
@@ -507,12 +648,10 @@
 
 <div class="viewcode-block" id="LowResObservation.get_loss"><a class="viewcode-back" href="../../observation.html#scarlet.observation.LowResObservation.get_loss">[docs]</a>    <span class="k">def</span> <span class="nf">get_loss</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Computes the loss/fidelity of a given model wrt to the observation</span>
-
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
 <span class="sd">        model: array</span>
 <span class="sd">            A model from `Blend`</span>
-
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        loss: float</span>

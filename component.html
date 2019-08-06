@@ -418,11 +418,11 @@ that will be executed during fitting.</p>
 <dt><a class="reference internal" href="#scarlet.component.ComponentTree.n_components" title="scarlet.component.ComponentTree.n_components"><code class="xref py py-obj docutils literal notranslate"><span class="pre">n_components</span></code></a></dt>
 <dd><p class="first last">Number of components.</p>
 </dd>
-<dt><a class="reference internal" href="#scarlet.component.ComponentTree.n_nodes" title="scarlet.component.ComponentTree.n_nodes"><code class="xref py py-obj docutils literal notranslate"><span class="pre">n_nodes</span></code></a></dt>
-<dd><p class="first last">Number of direct attached nodes.</p>
+<dt><a class="reference internal" href="#scarlet.component.ComponentTree.n_sources" title="scarlet.component.ComponentTree.n_sources"><code class="xref py py-obj docutils literal notranslate"><span class="pre">n_sources</span></code></a></dt>
+<dd><p class="first last">Number of initial sources or components.</p>
 </dd>
-<dt><a class="reference internal" href="#scarlet.component.ComponentTree.nodes" title="scarlet.component.ComponentTree.nodes"><code class="xref py py-obj docutils literal notranslate"><span class="pre">nodes</span></code></a></dt>
-<dd><p class="first last">Initial list that generates the tree.</p>
+<dt><a class="reference internal" href="#scarlet.component.ComponentTree.sources" title="scarlet.component.ComponentTree.sources"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sources</span></code></a></dt>
+<dd><p class="first last">Initial list of components or sources that generate the tree.</p>
 </dd>
 </dl>
 </td>
@@ -522,15 +522,31 @@ is used for each component.</p>
 </dd></dl>
 
 <dl class="attribute">
-<dt id="scarlet.component.ComponentTree.n_nodes">
-<code class="descname">n_nodes</code><a class="headerlink" href="#scarlet.component.ComponentTree.n_nodes" title="Permalink to this definition">¶</a></dt>
-<dd><p>Number of direct attached nodes.</p>
+<dt id="scarlet.component.ComponentTree.n_sources">
+<code class="descname">n_sources</code><a class="headerlink" href="#scarlet.component.ComponentTree.n_sources" title="Permalink to this definition">¶</a></dt>
+<dd><p>Number of initial sources or components.</p>
+<p>This can be different than <cite>self.n_components</cite> because sources can
+have multiple components.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first last docutils">
+<dt><strong>int: number of initial sources</strong></dt>
+<dd></dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="attribute">
-<dt id="scarlet.component.ComponentTree.nodes">
-<code class="descname">nodes</code><a class="headerlink" href="#scarlet.component.ComponentTree.nodes" title="Permalink to this definition">¶</a></dt>
-<dd><p>Initial list that generates the tree.</p>
+<dt id="scarlet.component.ComponentTree.sources">
+<code class="descname">sources</code><a class="headerlink" href="#scarlet.component.ComponentTree.sources" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initial list of components or sources that generate the tree.</p>
+<p>This can be different than <cite>self.components</cite> because sources can
+have multiple components.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />

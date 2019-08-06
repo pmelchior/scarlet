@@ -147,44 +147,14 @@
   <h1>Source code for scarlet.update</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span> <span class="nn">functools</span> <span class="k">import</span> <span class="n">partial</span>
 
-<span class="kn">import</span> <span class="nn">autograd.numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">from</span> <span class="nn">proxmin.operators</span> <span class="k">import</span> <span class="n">prox_plus</span><span class="p">,</span> <span class="n">prox_hard</span><span class="p">,</span> <span class="n">prox_soft</span>
 
 <span class="kn">from</span> <span class="nn">.</span> <span class="k">import</span> <span class="n">interpolation</span>
 <span class="kn">from</span> <span class="nn">.</span> <span class="k">import</span> <span class="n">operator</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="k">import</span> <span class="n">measurement</span>
 <span class="kn">from</span> <span class="nn">.bbox</span> <span class="k">import</span> <span class="n">trim</span>
 <span class="kn">from</span> <span class="nn">.cache</span> <span class="k">import</span> <span class="n">Cache</span>
-
-
-<span class="k">def</span> <span class="nf">_fit_pixel_center</span><span class="p">(</span><span class="n">morph</span><span class="p">,</span> <span class="n">center</span><span class="p">,</span> <span class="n">window</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-    <span class="n">cy</span><span class="p">,</span> <span class="n">cx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">int</span><span class="p">(</span><span class="n">center</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">np</span><span class="o">.</span><span class="n">int</span><span class="p">(</span><span class="n">center</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
-
-    <span class="k">if</span> <span class="n">window</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">window</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="n">cy</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="n">cy</span><span class="o">+</span><span class="mi">3</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="n">cx</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="n">cx</span><span class="o">+</span><span class="mi">3</span><span class="p">)</span>
-
-    <span class="n">_morph</span> <span class="o">=</span> <span class="n">morph</span><span class="p">[</span><span class="n">window</span><span class="p">]</span>
-    <span class="n">yx0</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">window</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">start</span><span class="p">,</span> <span class="n">window</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">start</span><span class="p">])</span>
-    <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">unravel_index</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">_morph</span><span class="p">),</span> <span class="n">_morph</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">+</span> <span class="n">yx0</span><span class="p">)</span>
-
-
-<div class="viewcode-block" id="fit_pixel_center"><a class="viewcode-back" href="../../update.html#scarlet.update.fit_pixel_center">[docs]</a><span class="k">def</span> <span class="nf">fit_pixel_center</span><span class="p">(</span><span class="n">component</span><span class="p">,</span> <span class="n">window</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Use the pixel with the maximum flux as the center</span>
-
-<span class="sd">    In case there is a nearby bright neighbor, we only update</span>
-<span class="sd">    the center within the immediate vascinity of the previous center.</span>
-<span class="sd">    This allows the center to shift over time, but prevents a large,</span>
-<span class="sd">    likely unphysical update.</span>
-
-<span class="sd">    Parameters</span>
-<span class="sd">    ----------</span>
-<span class="sd">    window: tuple of slices</span>
-<span class="sd">        Slices in y and x of the central region to include in the fit.</span>
-<span class="sd">        If `window` is `None` then only the 3x3 grid of pixels centered</span>
-<span class="sd">        on the previous center are used. If it is desired to use the entire</span>
-<span class="sd">        morphology just set `window=(slice(None), slice(None))`.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">component</span><span class="o">.</span><span class="n">pixel_center</span> <span class="o">=</span> <span class="n">_fit_pixel_center</span><span class="p">(</span><span class="n">component</span><span class="o">.</span><span class="n">morph</span><span class="p">,</span> <span class="n">component</span><span class="o">.</span><span class="n">pixel_center</span><span class="p">,</span> <span class="n">window</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">component</span></div>
 
 
 <div class="viewcode-block" id="positive_sed"><a class="viewcode-back" href="../../update.html#scarlet.update.positive_sed">[docs]</a><span class="k">def</span> <span class="nf">positive_sed</span><span class="p">(</span><span class="n">component</span><span class="p">):</span>
@@ -259,24 +229,6 @@
     <span class="k">return</span> <span class="n">component</span></div>
 
 
-<span class="k">def</span> <span class="nf">_threshold</span><span class="p">(</span><span class="n">morph</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Find the threshold value for a given morphology</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">_morph</span> <span class="o">=</span> <span class="n">morph</span><span class="p">[</span><span class="n">morph</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]</span>
-    <span class="n">_bins</span> <span class="o">=</span> <span class="mi">50</span>
-    <span class="c1"># Decrease the bin size for sources with a small number of pixels</span>
-    <span class="k">if</span> <span class="n">_morph</span><span class="o">.</span><span class="n">size</span> <span class="o">&lt;</span> <span class="mi">500</span><span class="p">:</span>
-        <span class="n">_bins</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int</span><span class="p">(</span><span class="n">_morph</span><span class="o">.</span><span class="n">size</span><span class="o">/</span><span class="mi">10</span><span class="p">),</span> <span class="mi">1</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">_bins</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
-            <span class="k">return</span> <span class="mi">0</span><span class="p">,</span> <span class="n">_bins</span>
-    <span class="n">hist</span><span class="p">,</span> <span class="n">bins</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">histogram</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">_morph</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">),</span> <span class="n">_bins</span><span class="p">)</span>
-    <span class="n">cutoff</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">hist</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
-    <span class="c1"># If all of the pixels are used there is no need to threshold</span>
-    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">cutoff</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-        <span class="k">return</span> <span class="mi">0</span><span class="p">,</span> <span class="n">_bins</span>
-    <span class="k">return</span> <span class="mi">10</span><span class="o">**</span><span class="n">bins</span><span class="p">[</span><span class="n">cutoff</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]],</span> <span class="n">_bins</span>
-
-
 <div class="viewcode-block" id="threshold"><a class="viewcode-back" href="../../update.html#scarlet.update.threshold">[docs]</a><span class="k">def</span> <span class="nf">threshold</span><span class="p">(</span><span class="n">component</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Set a cutoff threshold for pixels below the noise</span>
 
@@ -289,7 +241,7 @@
 <span class="sd">    The region that contains flux above the threshold is contained</span>
 <span class="sd">    in `component.bboxes[&quot;thresh&quot;]`.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">thresh</span><span class="p">,</span> <span class="n">_bins</span> <span class="o">=</span> <span class="n">_threshold</span><span class="p">(</span><span class="n">component</span><span class="o">.</span><span class="n">morph</span><span class="p">)</span>
+    <span class="n">thresh</span><span class="p">,</span> <span class="n">_bins</span> <span class="o">=</span> <span class="n">measurement</span><span class="o">.</span><span class="n">threshold</span><span class="p">(</span><span class="n">component</span><span class="o">.</span><span class="n">morph</span><span class="p">)</span>
     <span class="n">component</span><span class="o">.</span><span class="n">morph</span><span class="p">[</span><span class="n">component</span><span class="o">.</span><span class="n">morph</span> <span class="o">&lt;</span> <span class="n">thresh</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
     <span class="n">bbox</span> <span class="o">=</span> <span class="n">trim</span><span class="p">(</span><span class="n">component</span><span class="o">.</span><span class="n">morph</span><span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">component</span><span class="p">,</span> <span class="s2">&quot;bboxes&quot;</span><span class="p">):</span>
@@ -344,6 +296,7 @@
     <span class="n">step_size</span> <span class="o">=</span> <span class="n">component</span><span class="o">.</span><span class="n">step_morph</span>
     <span class="n">prox</span><span class="p">(</span><span class="n">morph</span><span class="p">,</span> <span class="n">step_size</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">bbox</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">component</span><span class="o">.</span><span class="n">morph</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">component</span><span class="o">.</span><span class="n">morph</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">component</span><span class="o">.</span><span class="n">morph</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
         <span class="n">component</span><span class="o">.</span><span class="n">morph</span><span class="p">[</span><span class="n">bbox</span><span class="o">.</span><span class="n">slices</span><span class="p">]</span> <span class="o">=</span> <span class="n">morph</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">component</span><span class="o">.</span><span class="n">morph</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">morph</span>
@@ -361,15 +314,35 @@
     <span class="k">return</span> <span class="n">component</span></div>
 
 
-<div class="viewcode-block" id="symmetric"><a class="viewcode-back" href="../../update.html#scarlet.update.symmetric">[docs]</a><span class="k">def</span> <span class="nf">symmetric</span><span class="p">(</span><span class="n">component</span><span class="p">,</span> <span class="n">strength</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">use_prox</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">kernel</span><span class="o">=</span><span class="n">interpolation</span><span class="o">.</span><span class="n">lanczos</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">3</span><span class="p">):</span>
+<div class="viewcode-block" id="symmetric"><a class="viewcode-back" href="../../update.html#scarlet.update.symmetric">[docs]</a><span class="k">def</span> <span class="nf">symmetric</span><span class="p">(</span><span class="n">component</span><span class="p">,</span> <span class="n">pixel_center</span><span class="p">,</span> <span class="n">algorithm</span><span class="o">=</span><span class="s2">&quot;kspace&quot;</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">fill</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">strength</span><span class="o">=.</span><span class="mi">5</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Make the source symmetric about its center</span>
 
 <span class="sd">    See `~scarlet.operator.prox_uncentered_symmetry`</span>
 <span class="sd">    for a description of the parameters.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">bbox</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># Only apply monotonicity to the pixels inside the bounding box</span>
+        <span class="n">morph</span> <span class="o">=</span> <span class="n">component</span><span class="o">.</span><span class="n">morph</span><span class="p">[</span><span class="n">bbox</span><span class="o">.</span><span class="n">slices</span><span class="p">]</span>
+        <span class="n">shape</span> <span class="o">=</span> <span class="n">morph</span><span class="o">.</span><span class="n">shape</span>
+        <span class="k">if</span> <span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="mi">1</span> <span class="ow">or</span> <span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">component</span>
+        <span class="n">center</span> <span class="o">=</span> <span class="n">pixel_center</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">bbox</span><span class="o">.</span><span class="n">bottom</span><span class="p">,</span> <span class="n">pixel_center</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">bbox</span><span class="o">.</span><span class="n">left</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">morph</span> <span class="o">=</span> <span class="n">component</span><span class="o">.</span><span class="n">morph</span>
+        <span class="n">shape</span> <span class="o">=</span> <span class="n">component</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">:]</span>
+        <span class="n">center</span> <span class="o">=</span> <span class="n">pixel_center</span>
+
     <span class="n">step_size</span> <span class="o">=</span> <span class="n">component</span><span class="o">.</span><span class="n">step_morph</span>
-    <span class="n">center</span> <span class="o">=</span> <span class="n">component</span><span class="o">.</span><span class="n">pixel_center</span>
-    <span class="n">operator</span><span class="o">.</span><span class="n">prox_uncentered_symmetry</span><span class="p">(</span><span class="n">component</span><span class="o">.</span><span class="n">morph</span><span class="p">,</span> <span class="n">step_size</span><span class="p">,</span> <span class="n">center</span><span class="p">,</span> <span class="n">strength</span><span class="p">,</span> <span class="n">use_prox</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">shift</span> <span class="o">=</span> <span class="n">component</span><span class="o">.</span><span class="n">shift</span>
+    <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+        <span class="n">shift</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">operator</span><span class="o">.</span><span class="n">prox_uncentered_symmetry</span><span class="p">(</span><span class="n">morph</span><span class="p">,</span> <span class="n">step_size</span><span class="p">,</span> <span class="n">center</span><span class="p">,</span> <span class="n">algorithm</span><span class="p">,</span> <span class="n">fill</span><span class="p">,</span> <span class="n">shift</span><span class="p">,</span> <span class="n">strength</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">bbox</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">component</span><span class="o">.</span><span class="n">morph</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">component</span><span class="o">.</span><span class="n">morph</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">component</span><span class="o">.</span><span class="n">morph</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+        <span class="n">component</span><span class="o">.</span><span class="n">morph</span><span class="p">[</span><span class="n">bbox</span><span class="o">.</span><span class="n">slices</span><span class="p">]</span> <span class="o">=</span> <span class="n">morph</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">component</span><span class="o">.</span><span class="n">morph</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">morph</span>
     <span class="k">return</span> <span class="n">component</span></div>
 </pre></div>
 

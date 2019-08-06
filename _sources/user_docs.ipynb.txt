@@ -216,8 +216,9 @@
     "\n",
     "For a more practical approach, we introduce the concept of **sources**, which are single or multiple components joined into a logical unit. For instance, resolved galaxies may have a bulge component and a disk component, or even more advanced components like a jet or dust lanes. \n",
     "\n",
-    "For many applications, the built-in sources\n",
+    "For many applications, the built-in\n",
     "\n",
+    "* [RandomSource](source.ipynb#scarlet.source.RandomSource)\n",
     "* [PointSource](source.ipynb#scarlet.source.PointSource)\n",
     "* [ExtendedSource](source.ipynb#scarlet.source.ExtendedSource)\n",
     "* [MultiComponentSource](source.ipynb#scarlet.source.MultiComponentSource)\n",
@@ -492,10 +493,7 @@
     "            ax[-1].set_xlabel(\"Band\")\n",
     "            ax[-1].set_ylabel(\"Intensity\")\n",
     "        # Mark the current source in the image\n",
-    "        if components > 1:\n",
-    "            y,x = src.components[0].pixel_center\n",
-    "        else:\n",
-    "            y,x = src.pixel_center\n",
+    "        y,x = src.pixel_center\n",
     "        ax[0].plot(x-bb[2].start, y-bb[1].start, 'rx', mew=2)\n",
     "        plt.tight_layout()\n",
     "        plt.show()"
@@ -546,7 +544,7 @@
     "    for src in catalog\n",
     "]\n",
     "# Show the initial guess for the brightest four sources\n",
-    "display_sources(sources[:4], observation, norm=asinh)"
+    "display_sources(sources, observation, norm=asinh)"
    ]
   },
   {
@@ -660,17 +658,6 @@
    ]
   },
   {
-   "cell_type": "raw",
-   "metadata": {
-    "raw_mimetype": "text/restructuredtext"
-   },
-   "source": [
-    ".. warning::\n",
-    "\n",
-    "    The current symmetry algorithm is broken and should not be used. A fix has been created and will be pushed to master in the coming weeks to reimplement a fast(er) symmetry algorithm that works properly."
-   ]
-  },
-  {
    "cell_type": "markdown",
    "metadata": {},
    "source": [
@@ -754,18 +741,6 @@
    ]
   },
   {
-   "cell_type": "raw",
-   "metadata": {
-    "raw_mimetype": "text/restructuredtext"
-   },
-   "source": [
-    ".. warning::\n",
-    "\n",
-    "    A number of internal properties are set when a `Blend` instance is created.\n",
-    "    If it is necessary to add or remove sources at a later time, it is best to create a new `Blend` using the new source list."
-   ]
-  },
-  {
    "cell_type": "markdown",
    "metadata": {},
    "source": [
@@ -806,7 +781,7 @@
    "cell_type": "markdown",
    "metadata": {},
    "source": [
-    "where we see that the blend converged in the last `fit` before reaching 30 iterations."
+    "where we see that the blend converged in the last `fit` before reaching 90 iterations."
    ]
   },
   {
