@@ -369,30 +369,33 @@ class LowResObservation(Observation):
 
         if psf_wcs_hr.naxis == 2:
             psf_wcs_hr.wcs.crval = 0., 0.
-            psf_wcs_hr.wcs.crpix = ny_hr / 2., nx_hr / 2.
+            yh0, xh0 = np.where(psf_hr == np.max(psf_hr))
+            psf_wcs_hr.wcs.crpix = yh0[0], xh0[0]
         elif psf_wcs_hr.naxis == 3:
             psf_wcs_hr.wcs.crval = 0., 0., 0.
-            psf_wcs_hr.wcs.crpix = ny_hr / 2., nx_hr / 2., 0.
+            lh0, yh0, xh0 = np.where(psf_hr == np.max(psf_hr))
+            psf_wcs_hr.wcs.crpix = yh0[0], xh0[0], lh0[0]
         if psf_wcs_lr.naxis == 2:
             psf_wcs_lr.wcs.crval = 0., 0.
-            psf_wcs_lr.wcs.crpix = ny_lr / 2., nx_lr / 2.
+            yl0, xl0 = np.where(psf_lr == np.max(psf_lr))
+            psf_wcs_lr.wcs.crpix = yl0[0], xl0[0]
         elif psf_wcs_lr.naxis == 3:
             psf_wcs_lr.wcs.crval = 0., 0., 0.
-            psf_wcs_lr.wcs.crpix = ny_lr / 2., nx_lr / 2., 0
+            lh0, yh0, xh0 = np.where(psf_lr == np.max(psf_lr))
+            psf_wcs_lr.wcs.crpix = yh0[0], xh0[0], lh0[0]
 
         p_lr, p_hr, pover_hr = resampling.match_patches(psf_hr.shape, psf_lr.data.shape[1:], psf_wcs_hr, psf_wcs_lr, psf = True)
 
-        npsf_y = np.max(pover_hr[0])-np.min(pover_hr[0])
-        npsf_x = np.max(pover_hr[1])-np.min(pover_hr[1])
+        npsf_y = np.max(pover_hr[0])-np.min(pover_hr[0])+1
+        npsf_x = np.max(pover_hr[1])-np.min(pover_hr[1])+1
 
-        psf_match_lr = interpolation.sinc_interp(pover_hr, p_hr,
-                                                 psf_lr.reshape(npsf, ny_lr * nx_lr)).reshape(npsf, npsf_y, npsf_x)
-        psf_match_hr = psf_hr[pover_hr]
+        psf_match_lr = interpolation.sinc_interp(pover_hr, p_hr[::-1],
+                                                 psf_lr[:,p_lr[0], p_lr[1]]).reshape(npsf, npsf_y, npsf_x)
+        psf_match_hr = psf_hr[pover_hr[0], pover_hr[1]].reshape(npsf_y, npsf_x)
 
-        import matplotlib.pyplot as plt
-        plt.imshow(psf_match_lr, cmap = 'gist_stern'); plt.show()
-
-        assert np.shape(psf_match_lr) == np.shape(psf_match_hr)
+        print(psf_hr.shape, np.where(psf_hr == np.max(psf_hr)))
+        print(psf_match_hr.shape, np.where(psf_match_hr == np.max(psf_match_hr)))
+        assert np.shape(psf_match_lr[0]) == np.shape(psf_match_hr)
 
         psf_match_hr /= np.max(psf_match_hr)
         psf_match_lr /= np.max(psf_match_lr)
@@ -456,6 +459,11 @@ class LowResObservation(Observation):
 
         if kernel.shape[1] % 2 == 0:
             kernel = kernel[:, 1:, 1:]
+
+        import matplotlib.pyplot as plt
+
+        plt.imshow(kernel[0], cmap='gist_stern');
+        plt.show()
 
         kernel = _centered(kernel, observed_psf.shape)
         diff_psf = kernel / kernel.max()

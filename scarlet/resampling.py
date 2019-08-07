@@ -57,6 +57,8 @@ def match_patches(shape_hr, shape_lr, wcs_hr, wcs_lr, isrot = True, perimeter  =
         coordinates of the overlap in low resolution.
     coordlr_over_hr: array
         coordinates of the overlaps at low resolution in the high resolution frame.
+    coordhr_hr: array
+        coordinates of the high resolution pixels in the overlap. Necessary for psf matching
     '''
 
     assert perimeter in ['overlap', 'union'], 'perimeter should be either overlap or union.'
@@ -88,7 +90,7 @@ def match_patches(shape_hr, shape_lr, wcs_hr, wcs_lr, isrot = True, perimeter  =
         y_hr = y_hr.flatten()
     else:
         # Coordinates of the high resolution pixels
-        y_hr, x_hr = range(Ny_hr), range(Nx_hr)
+        y_hr, x_hr = np.array(range(Ny_hr)), np.array(range(Nx_hr))
 
     # Capital letters are for coordinates of low-resolution pixels
     if (isrot is True) or (psf is True):
@@ -100,7 +102,7 @@ def match_patches(shape_hr, shape_lr, wcs_hr, wcs_lr, isrot = True, perimeter  =
         Y_lr = Y_lr.flatten()
 
     else:
-        Y_lr, X_lr = range(Ny_lr), range(Nx_lr)
+        Y_lr, X_lr = np.array(range(Ny_lr)), np.array(range(Nx_lr))
 
     #Corresponding angular positions
     #of low resolution pixels
@@ -110,21 +112,21 @@ def match_patches(shape_hr, shape_lr, wcs_hr, wcs_lr, isrot = True, perimeter  =
         ra_lr, dec_lr = wcs_lr.all_pix2world(X_lr, Y_lr, 0, 0, ra_dec_order=True)
     #of high resolution pixels
     if np.size(wcs_hr.array_shape) == 2:
-        ra_hr, dec_hr = wcs_hr.all_pix2world(y_hr, x_hr, 0, ra_dec_order=True)
+        ra_hr, dec_hr = wcs_hr.all_pix2world(x_hr, y_hr, 0, ra_dec_order=True)
     elif np.size(wcs_hr.array_shape) == 3:
-        ra_hr, dec_hr = wcs_hr.all_pix2world(y_hr, x_hr, 0, 0, ra_dec_order=True)
+        ra_hr, dec_hr, eggbenedict = wcs_hr.all_pix2world(x_hr, y_hr, 0, 0, ra_dec_order=True)
 
     # Coordinates of the low resolution pixels in the high resolution frame
     if np.size(wcs_hr.array_shape) == 2:
         X_hr, Y_hr = wcs_hr.all_world2pix(ra_lr, dec_lr, 0, ra_dec_order=True)
     elif np.size(wcs_hr.array_shape) == 3:
-        X_hr, Y_hr = wcs_hr.all_world2pix(ra_lr, dec_lr, 0, 0, ra_dec_order=True)
+        X_hr, Y_hr, eggbenedict = wcs_hr.all_world2pix(ra_lr, dec_lr, 0, 0, ra_dec_order=True)
 
     # Coordinates of the high resolution pixels in the low resolution frame
     if np.size(wcs_lr.array_shape) == 2:
-        y_lr, x_lr = wcs_lr.all_pix2world(ra_hr, dec_hr, 0, ra_dec_order=True)
+        x_lr, y_lr = wcs_lr.all_world2pix(ra_hr, dec_hr, 0, ra_dec_order=True)
     elif np.size(wcs_lr.array_shape) == 3:
-        y_lr, x_lr = wcs_lr.all_pix2world(ra_hr, dec_hr, 0, 0, ra_dec_order=True)
+        x_lr, y_lr, eggsbenedict = wcs_lr.all_world2pix(ra_hr, dec_hr, 0, 0, ra_dec_order=True)
 
 
 
@@ -132,7 +134,7 @@ def match_patches(shape_hr, shape_lr, wcs_hr, wcs_lr, isrot = True, perimeter  =
     over_lr = ((X_hr > 0) * (X_hr < Nx_hr) * (Y_hr > 0) * (Y_hr < Ny_hr))
     #mask of high resolution pixels at high resolution in the overlap (needed for psf matching)
     over_hr = ((x_lr > 0) * (x_lr < Nx_lr) * (y_lr > 0) * (y_lr < Ny_lr))
-    print(over_hr)
+
     #pixels of the high resolution pixels in the overlap at high resolution (needed for PSF only)
     coordhr_hr = (y_hr[(over_hr == 1)], x_hr[(over_hr == 1)])
 

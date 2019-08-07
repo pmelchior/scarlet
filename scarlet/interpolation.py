@@ -317,6 +317,7 @@ def sinc_interp(coord_hr, coord_lr, sample_lr):
     hx = np.abs(x_lr[np.int(np.sqrt(np.size(x_lr))) + 1] - x_lr[0])
 
     assert hy != 0
+    assert hx != 0
     if np.size(sample_lr.shape) == 1:
         return np.array(
             [sample_lr * sinc2D((y_hr[:, np.newaxis] - y_lr) / (hy), (x_hr[:, np.newaxis] - x_lr) / (hx))]).sum(axis=2)
