@@ -380,18 +380,19 @@ class LowResObservation(Observation):
             psf_wcs_lr.wcs.crval = 0., 0., 0.
             psf_wcs_lr.wcs.crpix = ny_lr / 2., nx_lr / 2., 0
 
-        mask, p_lr, p_hr = resampling.match_patches(psf_hr.shape, psf_lr.data.shape[1:], psf_wcs_hr, psf_wcs_lr)
+        p_lr, p_hr, pover_hr = resampling.match_patches(psf_hr.shape, psf_lr.data.shape[1:], psf_wcs_hr, psf_wcs_lr, psf = True)
 
-        cmask = np.where(mask == 1)
+        npsf_y = np.max(pover_hr[0])-np.min(pover_hr[0])
+        npsf_x = np.max(pover_hr[1])-np.min(pover_hr[1])
 
-        n_p = np.int((np.size(cmask[0])) ** 0.5)
+        psf_match_lr = interpolation.sinc_interp(pover_hr, p_hr,
+                                                 psf_lr.reshape(npsf, ny_lr * nx_lr)).reshape(npsf, npsf_y, npsf_x)
+        psf_match_hr = psf_hr[pover_hr]
 
-        psf_match_lr = interpolation.sinc_interp(cmask, p_hr[::-1],
-                                                 psf_lr.reshape(npsf, ny_lr * nx_lr)).reshape(npsf, n_p, n_p)
+        import matplotlib.pyplot as plt
+        plt.imshow(psf_match_lr, cmap = 'gist_stern'); plt.show()
 
-
-        psf_match_hr = psf_hr[np.int((ny_hr - n_p) / 2):np.int((ny_hr + n_p) / 2),
-                       np.int((nx_hr - n_p) / 2):np.int((nx_hr + n_p) / 2)]
+        assert np.shape(psf_match_lr) == np.shape(psf_match_hr)
 
         psf_match_hr /= np.max(psf_match_hr)
         psf_match_lr /= np.max(psf_match_lr)
@@ -416,14 +417,16 @@ class LowResObservation(Observation):
             bmax = model_frame.channels.index(self.frame.channels[-1])
             self._band_slice = slice(bmin, bmax+1)
 
+        # Angle between datasets
+        rot = np.cross(np.sum(self.frame.wcs.wcs.pc, axis=0)[:2], np.sum(model_frame.wcs.wcs.pc, axis=0)[:2])
+        isrot = (np.abs(rot) % np.pi) < np.finfo(float).eps
+
         # Get pixel coordinates in each frame.
-        mask, coord_lr, coord_hr = resampling.match_patches(model_frame.shape, self.frame.shape, model_frame.wcs, self.frame.wcs)
+        coord_lr, coord_hr, coordhr_over = resampling.match_patches(model_frame.shape, self.frame.shape, model_frame.wcs, self.frame.wcs, isrot = isrot)
         self._coord_lr = coord_lr
         self._coord_hr = coord_hr
-        self._mask = mask
 
         # Compute diff kernel at hr
-
         whr = model_frame.wcs
 
         # Reference PSF
@@ -466,9 +469,6 @@ class LowResObservation(Observation):
 
         return self
 
-    @property
-    def matching_mask(self):
-        return self._mask
 
     def _render(self, model):
         """Resample and convolve a model in the observation frame
