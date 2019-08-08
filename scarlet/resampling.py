@@ -1,21 +1,18 @@
 import numpy as np
 from . import interpolation
+from . import observation
 
-def conv2D_fft(shape, coord_lr):
-    '''performs a convolution of a coordinate kernel by a psf
+def make_ker2D(shape, coord_lr):
+    '''Builds a coordinate kernel for 2D sinc interpolation
     This function is used in the making of the resampling convolution operator.
     It create a kernel based on the sinc of the difference between coordinates in a high resolution frame and reference
-    coordinate (ym,xm)
+    coordinate (coord_lr)
     Parameters
     ----------
     shape: tuple
         shape of the high resolution frame
-    ym, xm: arrays
+    coord_lr: arrays
         coordinate of the low resolution location where to compute mapping
-    p: array
-        PSF kernel
-    h: float
-        pixel size
     Returns
     -------
     result: array
@@ -23,7 +20,6 @@ def conv2D_fft(shape, coord_lr):
     '''
 
     B, Ny, Nx = shape
-
 
     y_lr, x_lr = coord_lr
 
@@ -35,6 +31,37 @@ def conv2D_fft(shape, coord_lr):
         ker[m, y, x] = interpolation.sinc2D((y_lr[m] - y), (x_lr[m] - x))
 
     return ker
+
+def make_ker1D(coord_hr, coord_lr, axis = 0):
+    '''Builds a coordinate kernel for 1D sinc interpolation
+    This function is used in the making of the resampling convolution operator.
+    It creates a kernel based on the sinc of the difference between coordinates in a high resolution frame and reference
+    coordinate (ym,xm)
+    Parameters
+    ----------
+    Ny: tuple
+        size of the high resolution frame along the y-axis
+    coord_lr: arrays
+        coordinate of the low resolution location where to compute mapping
+    axis: int
+        axis along which the kernel is being built
+    Returns
+    -------
+    result: array
+        vector for convolution and resampling of the high resolution plane into pixel (xm,ym) at low resolution
+    '''
+    assert axis in [0,1]
+
+    z_lr = coord_lr[axis]
+    z = coord_hr[axis]
+
+    if axis == 0:
+        ker = np.sinc(z_lr[:,np.newaxis]-z[np.newaxis, :])
+    elif axis == 1:
+        ker = np.sinc(z_lr[np.newaxis, :] - z[:,np.newaxis])
+
+    return ker
+
 
 def match_patches(shape_hr, shape_lr, wcs_hr, wcs_lr, isrot = True, perimeter  = 'overlap', psf = False):
     '''Matches datasets at different resolutions

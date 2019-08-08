@@ -9,7 +9,6 @@ import logging
 
 logger = logging.getLogger("scarlet.observation")
 
-
 def _centered(arr, newshape):
     """Return the center newshape portion of the array.
 
@@ -23,6 +22,69 @@ def _centered(arr, newshape):
     myslice = [slice(startind[k], endind[k]) for k in range(len(endind))]
 
     return arr[tuple(myslice)]
+
+def convolve_1Dfft(img, ker, ker_fft = None, axis = 0, return_fft = False):
+    '''Performs 1D convolutions between 2D interpolation kernels and images along a specified axis.
+
+    Parameters
+    ----------
+    img: array
+        image to convolve (here actually image to interpolate)
+    ker: array
+        a set of 1D interpolation kernels
+    axis: int
+        axis along which the 1D convolutions are performed
+    ker_fft: array
+        if provided, ker_fft is used as the fft of the sinc kernel. This is intended to avoid performing multiple
+        ffts on the same kernel
+    Returns
+    -------
+    result: array
+        vector for convolution and resampling of the high resolution plane into pixel (xm,ym) at low resolution
+    '''
+    #Records original size of convolution axis
+    if axis == 0:
+        _shape = [ker.shape[0],ker.shape[1],img.shape[1]]
+    elif axis == 1:
+        _shape = [img.shape[0],ker.shape[0], ker.shape[1]]
+
+    ker_axis = np.abs(axis-1)
+    #finds fast sizes for numpy's fft
+    fast_shape = fftpack.helper.next_fast_len(np.max([ker.shape[ker_axis], img.shape[axis]]))
+    #Pad to fast shapes
+    padding_ker = (fast_shape - ker.shape[ker_axis]) // 2
+    #padding_img = (fast_shape - img.shape[axis]) // 2
+
+    if axis == 0:
+        #img = np.pad(img, ((padding_img, padding_img), (0, 0)), 'constant')
+        if ker_fft is None:
+            ker = np.pad(ker, ((0, 0), (padding_ker, padding_ker)), 'constant')
+    elif axis == 1:
+        #img = np.pad(img, ((0, 0), (padding_img, padding_img)), 'constant')
+        if ker_fft is None:
+            ker = np.pad(ker, ((padding_ker, padding_ker),(0, 0)), 'constant')
+    #performs fft of convolution actors
+    img_fft = np.fft.fftn(np.fft.ifftshift(img), [fast_shape], axes = [axis])
+
+    if ker_fft is None:
+        ker_fft = np.fft.fftn(np.fft.ifftshift(ker), axes = [ker_axis])
+
+    # Convolution in Fourier domain
+    if axis == 0:
+        res_fft = img_fft[np.newaxis,:,:]*ker_fft[:,:,np.newaxis]
+    elif axis == 1:
+        res_fft = img_fft[:,:, np.newaxis] * ker_fft[np.newaxis,:,:]
+
+    res = np.fft.fftshift(np.fft.ifftn(res_fft, axes = [axis]), axes = [axis])
+
+    if return_fft is True:
+        # Unpadding
+        return _centered(np.real(res), _shape), ker_fft
+    else:
+        #Unpadding
+        return _centered(np.real(res), _shape)
+
+
 
 
 class Frame():
@@ -369,20 +431,16 @@ class LowResObservation(Observation):
 
         if psf_wcs_hr.naxis == 2:
             psf_wcs_hr.wcs.crval = 0., 0.
-            yh0, xh0 = np.where(psf_hr == np.max(psf_hr))
-            psf_wcs_hr.wcs.crpix = yh0[0], xh0[0]
+            psf_wcs_hr.wcs.crpix = ny_hr / 2.+1, nx_hr / 2.+1
         elif psf_wcs_hr.naxis == 3:
             psf_wcs_hr.wcs.crval = 0., 0., 0.
-            lh0, yh0, xh0 = np.where(psf_hr == np.max(psf_hr))
-            psf_wcs_hr.wcs.crpix = yh0[0], xh0[0], lh0[0]
+            psf_wcs_hr.wcs.crpix = ny_hr / 2+1, nx_hr / 2., 0.
         if psf_wcs_lr.naxis == 2:
             psf_wcs_lr.wcs.crval = 0., 0.
-            yl0, xl0 = np.where(psf_lr == np.max(psf_lr))
-            psf_wcs_lr.wcs.crpix = yl0[0], xl0[0]
+            psf_wcs_lr.wcs.crpix = ny_lr / 2.+1, nx_lr / 2.+1
         elif psf_wcs_lr.naxis == 3:
             psf_wcs_lr.wcs.crval = 0., 0., 0.
-            lh0, yh0, xh0 = np.where(psf_lr == np.max(psf_lr))
-            psf_wcs_lr.wcs.crpix = yh0[0], xh0[0], lh0[0]
+            psf_wcs_lr.wcs.crpix = ny_lr / 2.+1, nx_lr / 2.+1, 0
 
         p_lr, p_hr, pover_hr = resampling.match_patches(psf_hr.shape, psf_lr.data.shape[1:], psf_wcs_hr, psf_wcs_lr, psf = True)
 
@@ -393,13 +451,57 @@ class LowResObservation(Observation):
                                                  psf_lr[:,p_lr[0], p_lr[1]]).reshape(npsf, npsf_y, npsf_x)
         psf_match_hr = psf_hr[pover_hr[0], pover_hr[1]].reshape(npsf_y, npsf_x)
 
-        print(psf_hr.shape, np.where(psf_hr == np.max(psf_hr)))
-        print(psf_match_hr.shape, np.where(psf_match_hr == np.max(psf_match_hr)))
         assert np.shape(psf_match_lr[0]) == np.shape(psf_match_hr)
 
         psf_match_hr /= np.max(psf_match_hr)
         psf_match_lr /= np.max(psf_match_lr)
         return psf_match_hr[np.newaxis, :], psf_match_lr
+
+    def build_diffkernel(self, model_frame):
+        '''Builds the differential convolution kernel between the observation and the frame psfs
+
+        Parameters
+        ----------
+        model_frame: Frame object
+            the frame of the model (hehehe)
+        Returns
+        -------
+        diff_psf: array
+            the differential psf between observation and frame psfs.
+        '''
+        # Compute diff kernel at hr
+        whr = model_frame.wcs
+
+        # Reference PSF
+        _target = model_frame.psfs[0, :, :]
+        _shape = model_frame.shape
+
+        _fftpack_shape = [fftpack.helper.next_fast_len(d) for d in _target.shape]
+
+        while _fftpack_shape[-1] % 2 != 0:
+            k_shape = np.array(_fftpack_shape) + 1
+            _fftpack_shape = [fftpack.helper.next_fast_len(k_s) for k_s in k_shape]
+
+        # Computes spatially matching observation and target psfs. The observation psf is also resampled \\
+        # to the model frame resolution
+        new_target, observed_psf = self.match_psfs(_target, whr)
+        target_fft = np.fft.rfftn(new_target[0], _fftpack_shape)
+        sel = target_fft == 0
+        observed_fft = np.fft.rfftn(observed_psf, _fftpack_shape, axes=(1, 2))
+
+        # Computes the diff kernel in Fourier
+        kernel_fft = observed_fft / target_fft
+        kernel_fft[:, sel] = 0
+        kernel = np.fft.irfftn(kernel_fft, _fftpack_shape, axes=(1, 2))
+        kernel = np.fft.ifftshift(kernel, axes=(1, 2))
+
+        if kernel.shape[1] % 2 == 0:
+            kernel = kernel[:, 1:, 1:]
+
+        kernel = _centered(kernel, observed_psf.shape)
+        diff_psf = kernel / kernel.max()
+
+        return diff_psf
 
     def match(self, model_frame):
 
@@ -425,53 +527,41 @@ class LowResObservation(Observation):
         isrot = (np.abs(rot) % np.pi) < np.finfo(float).eps
 
         # Get pixel coordinates in each frame.
-        coord_lr, coord_hr, coordhr_over = resampling.match_patches(model_frame.shape, self.frame.shape, model_frame.wcs, self.frame.wcs, isrot = isrot)
+        coord_lr, coord_hr, coordhr_over = resampling.match_patches(model_frame.shape, self.frame.shape,
+                                                                    model_frame.wcs, self.frame.wcs, isrot = isrot)
+        #Coordinates of overlapping low resolutions pixels at low resolution
         self._coord_lr = coord_lr
+        #Coordinates of overlaping low resolution pixels in high resolution frame
         self._coord_hr = coord_hr
+        #Coordinates for all model frame pixels
+        frame_coord = (np.array(range(model_frame.Ny)), np.array(range(model_frame.Nx)))
 
-        # Compute diff kernel at hr
-        whr = model_frame.wcs
+        diff_psf = self.build_diffkernel(model_frame)
 
-        # Reference PSF
-        _target = model_frame.psfs[0, :, :]
-        _shape = model_frame.shape
+        nky, nkx = diff_psf[0].shape
+        # Coordinates for all psf pixels in model frame (centered on the frame's centre)
+        psf_coord = (np.array(range(nky))-nky/2+model_frame.Ny/2, np.array(range(nkx))-nkx/2+model_frame.Nx/2)
 
 
-        _fftpack_shape = [fftpack.helper.next_fast_len(d) for d in _target.shape]
+        #1D convolutions convolutions of the model are done along the smaller axis
+        if self.frame.Ny < self.frame.Nx:
+            # Interpolation kernel for resampling
+            _ker_psf = resampling.make_ker1D(frame_coord, self._coord_hr, axis = 1)
+            self._ker_model = resampling.make_ker1D(psf_coord, self._coord_hr, axis = 0)
+        else:
+            # Interpolation kernel for resampling
+            _ker_psf = resampling.make_ker1D(frame_coord,self._coord_hr, axis = 0)
+            self._ker_model = resampling.make_ker1D(psf_coord, self._coord_hr, axis = 1)
 
-        while _fftpack_shape[-1] % 2 != 0:
-            k_shape = np.array(_fftpack_shape) + 1
-            _fftpack_shape = [fftpack.helper.next_fast_len(k_s) for k_s in k_shape]
-
-        # Interpolation kernel for resampling
-        self._ker = resampling.conv2D_fft(_shape, self._coord_hr)
-        # Computes spatially matching observation and target psfs. The observation psf is also resampled to the model frame resolution
-        new_target, observed_psf = self.match_psfs(_target, whr)
-        target_fft = np.fft.rfftn(new_target[0], _fftpack_shape)
-        sel = target_fft == 0
-        observed_fft = np.fft.rfftn(observed_psf, _fftpack_shape, axes=(1, 2))
-
-        # Computes the diff kernel in Fourier
-        kernel_fft = observed_fft / target_fft
-        kernel_fft[:,sel] = 0
-        kernel = np.fft.irfftn(kernel_fft, _fftpack_shape, axes = (1,2))
-        kernel = np.fft.ifftshift(kernel, axes = (1,2))
-
-        if kernel.shape[1] % 2 == 0:
-            kernel = kernel[:, 1:, 1:]
-
-        import matplotlib.pyplot as plt
-
-        plt.imshow(kernel[0], cmap='gist_stern');
-        plt.show()
-
-        kernel = _centered(kernel, observed_psf.shape)
-        diff_psf = kernel / kernel.max()
+        self.ker_model_fft = None
 
         # Computes the resampling/convolution matrix
         resconv_op = []
         for dpsf in diff_psf:
-            resconv_op.append(self.make_operator(_shape, dpsf))
+            resconv_temp = convolve_1Dfft(dpsf, _ker_psf, axis = 0)
+            resconv_shape = np.shape(resconv_temp)
+
+            resconv_op.append(np.reshape(resconv_temp,(resconv_shape[0], resconv_shape[1]*resconv_shape[2])))
 
         self._resconv_op = np.array(resconv_op, dtype=self.frame.dtype)
 
@@ -489,13 +579,26 @@ class LowResObservation(Observation):
         model_: array
             The convolved and resampled `model` in the observation frame.
         """
-        model_ = model[self._band_slice,:,:]
-        model_ = np.array([np.dot(model_[c].flatten(), self._resconv_op[c]) for c in range(self.frame.C)], dtype=self.frame.dtype)
 
-        return model_
+        model_ = model[self._band_slice,:,:]
+        model_image = []
+        for c in range(self.frame.C):
+            if self.ker_model_fft is None:
+
+                model_conv1d, _ker_model_fft = convolve_1Dfft(model_[c], self._ker_model, axis = 1, return_fft = True)
+                self.ker_model_fft = _ker_model_fft
+            else:
+                model_conv1d = convolve_1Dfft(model_[c], self._ker_model,
+                                                         ker_fft = self.ker_model_fft, axis = 1, return_fft = False)
+            model_shape = np.shape(model_conv1d)
+
+            model_image.append(np.dot(model_conv1d.reshape(model_shape[0]*model_shape[1], model_shape[2]).T,self._resconv_op[c].T))
+        model_image = np.array(model_image, dtype=self.frame.dtype)
+
+        return model_image
 
     def render(self, model):
-        """Resample and convolve a model in the observation frame
+        """Resample and convolve a model in the observation frame for display only!
         Parameters
         ----------
         model: array
@@ -524,4 +627,5 @@ class LowResObservation(Observation):
         model_ = self._render(model)
 
         return 0.5 * np.sum((self.weights * (
-                model_ - self.images[:, self._coord_lr[0].astype(int), self._coord_lr[1].astype(int)])) ** 2)
+                model_ - self.images[:, np.min(self._coord_lr[0]).astype(int):np.max(self._coord_lr[0]).astype(int)+1,
+                         np.min(self._coord_lr[1]).astype(int):np.max(self._coord_lr[1]).astype(int)+1])) ** 2)
