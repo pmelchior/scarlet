@@ -51,31 +51,21 @@ def convolve_1Dfft(img, ker, ker_fft = None, axis = 0, return_fft = False):
     ker_axis = np.abs(axis-1)
     #finds fast sizes for numpy's fft
     fast_shape = fftpack.helper.next_fast_len(np.max([ker.shape[ker_axis], img.shape[axis]]))
-    #Pad to fast shapes
-    padding_ker = (fast_shape - ker.shape[ker_axis]) // 2
-    #padding_img = (fast_shape - img.shape[axis]) // 2
 
-    if axis == 0:
-        #img = np.pad(img, ((padding_img, padding_img), (0, 0)), 'constant')
-        if ker_fft is None:
-            ker = np.pad(ker, ((0, 0), (padding_ker, padding_ker)), 'constant')
-    elif axis == 1:
-        #img = np.pad(img, ((0, 0), (padding_img, padding_img)), 'constant')
-        if ker_fft is None:
-            ker = np.pad(ker, ((padding_ker, padding_ker),(0, 0)), 'constant')
     #performs fft of convolution actors
-    img_fft = np.fft.fftn(np.fft.ifftshift(img), [fast_shape], axes = [axis])
+    img_fft = np.fft.rfftn(img, [fast_shape], axes = [axis])
 
     if ker_fft is None:
-        ker_fft = np.fft.fftn(np.fft.ifftshift(ker), axes = [ker_axis])
+        ker_fft = np.fft.rfftn(ker, [fast_shape], axes = [ker_axis])
 
     # Convolution in Fourier domain
     if axis == 0:
         res_fft = img_fft[np.newaxis,:,:]*ker_fft[:,:,np.newaxis]
+
     elif axis == 1:
         res_fft = img_fft[:,:, np.newaxis] * ker_fft[np.newaxis,:,:]
 
-    res = np.fft.fftshift(np.fft.ifftn(res_fft, axes = [axis]), axes = [axis])
+    res = np.fft.ifftshift(np.fft.irfftn(res_fft, axes = [1]), axes = 1)
 
     if return_fft is True:
         # Unpadding
@@ -453,8 +443,8 @@ class LowResObservation(Observation):
 
         assert np.shape(psf_match_lr[0]) == np.shape(psf_match_hr)
 
-        psf_match_hr /= np.max(psf_match_hr)
-        psf_match_lr /= np.max(psf_match_lr)
+        psf_match_hr /= np.sum(psf_match_hr)
+        psf_match_lr /= np.sum(psf_match_lr)
         return psf_match_hr[np.newaxis, :], psf_match_lr
 
     def build_diffkernel(self, model_frame):
@@ -499,7 +489,7 @@ class LowResObservation(Observation):
             kernel = kernel[:, 1:, 1:]
 
         kernel = _centered(kernel, observed_psf.shape)
-        diff_psf = kernel / kernel.max()
+        diff_psf = kernel / kernel.sum()
 
         return diff_psf
 
@@ -538,13 +528,19 @@ class LowResObservation(Observation):
 
         diff_psf = self.build_diffkernel(model_frame)
 
+        #Padding the psf to the frame size
+        #At the moment, this only handles the case where size(psf)<size(frame), which,
+        # I think is the only one that should arise anyway
+        padx = np.int((model_frame.shape[1] - diff_psf.shape[1]) / 2)
+        pady = np.int((model_frame.shape[2] - diff_psf.shape[2]) / 2)
+        diff_psf = np.pad(diff_psf, ((0, 0), (padx, padx), (pady, pady)), 'constant')
+
         nky, nkx = diff_psf[0].shape
         # Coordinates for all psf pixels in model frame (centered on the frame's centre)
-        psf_coord = (np.array(range(nky))-nky/2+model_frame.Ny/2, np.array(range(nkx))-nkx/2+model_frame.Nx/2)
-
+        psf_coord = frame_coord#(np.array(range(nky))-nky/2+model_frame.Ny/2, np.array(range(nkx))-nkx/2+model_frame.Nx/2)
 
         #1D convolutions convolutions of the model are done along the smaller axis
-        if self.frame.Ny < self.frame.Nx:
+        if self.frame.Ny <= self.frame.Nx:
             # Interpolation kernel for resampling
             _ker_psf = resampling.make_ker1D(frame_coord, self._coord_hr, axis = 1)
             self._ker_model = resampling.make_ker1D(psf_coord, self._coord_hr, axis = 0)
@@ -558,11 +554,16 @@ class LowResObservation(Observation):
         # Computes the resampling/convolution matrix
         resconv_op = []
         for dpsf in diff_psf:
-            resconv_temp = convolve_1Dfft(dpsf, _ker_psf, axis = 0)
-            resconv_shape = np.shape(resconv_temp)
+            if self.frame.Ny <= self.frame.Nx:
+                resconv_temp = convolve_1Dfft(dpsf, _ker_psf, axis = 1)
+                resconv_shape = np.shape(resconv_temp)
 
-            resconv_op.append(np.reshape(resconv_temp,(resconv_shape[0], resconv_shape[1]*resconv_shape[2])))
+                resconv_op.append(np.reshape(resconv_temp,(resconv_shape[0]*resconv_shape[1], resconv_shape[2])))
+            else:
+                resconv_temp = convolve_1Dfft(dpsf, _ker_psf, axis=0)
+                resconv_shape = np.shape(resconv_temp)
 
+                resconv_op.append(np.reshape(resconv_temp, (resconv_shape[0], resconv_shape[1] * resconv_shape[2])))
         self._resconv_op = np.array(resconv_op, dtype=self.frame.dtype)
 
         return self
@@ -583,16 +584,33 @@ class LowResObservation(Observation):
         model_ = model[self._band_slice,:,:]
         model_image = []
         for c in range(self.frame.C):
-            if self.ker_model_fft is None:
 
-                model_conv1d, _ker_model_fft = convolve_1Dfft(model_[c], self._ker_model, axis = 1, return_fft = True)
-                self.ker_model_fft = _ker_model_fft
+            if self.frame.Ny <= self.frame.Nx:
+                if self.ker_model_fft is None:
+
+                    model_conv1d, _ker_model_fft = convolve_1Dfft(model_[c], self._ker_model, axis = 0, return_fft = True)
+                    self.ker_model_fft = _ker_model_fft
+
+                else:
+                    model_conv1d = convolve_1Dfft(model_[c], self._ker_model,
+                                                             ker_fft = self.ker_model_fft, axis = 0, return_fft = False)
             else:
-                model_conv1d = convolve_1Dfft(model_[c], self._ker_model,
-                                                         ker_fft = self.ker_model_fft, axis = 1, return_fft = False)
+                if self.ker_model_fft is None:
+
+                    model_conv1d, _ker_model_fft = convolve_1Dfft(model_[c], self._ker_model, axis = 1, return_fft = True)
+                    self.ker_model_fft = _ker_model_fft
+                else:
+                    model_conv1d = convolve_1Dfft(model_[c], self._ker_model,
+                                                  ker_fft=self.ker_model_fft, axis = 1, return_fft=False)
+
             model_shape = np.shape(model_conv1d)
 
-            model_image.append(np.dot(model_conv1d.reshape(model_shape[0]*model_shape[1], model_shape[2]).T,self._resconv_op[c].T))
+            if self.frame.Ny <= self.frame.Nx:
+                #I DON'T KNOW why this axis is inverted and IT KILLS ME!!
+                model_image.append(np.dot(model_conv1d.reshape(model_shape[0],model_shape[1] * model_shape[2]), self._resconv_op[c])[::-1, :])
+            else:
+                model_image.append(np.dot(self._resconv_op[c],
+                                          model_conv1d.reshape(model_shape[0]*model_shape[1], model_shape[2])))
         model_image = np.array(model_image, dtype=self.frame.dtype)
 
         return model_image
@@ -609,7 +627,10 @@ class LowResObservation(Observation):
             The convolved and resampled `model` in the observation frame.
         """
         img = np.zeros(self.frame.shape)
-        img[:, self._coord_lr[0], self._coord_lr[1]] = self._render(model)
+
+        img[:, np.min(self._coord_lr[0]).astype(int):np.max(self._coord_lr[0]).astype(int)+1,
+                         np.min(self._coord_lr[1]).astype(int):np.max(self._coord_lr[1]).astype(int)+1] = \
+            self._render(model)
         return img
 
     def get_loss(self, model):

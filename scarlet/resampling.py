@@ -57,8 +57,10 @@ def make_ker1D(coord_hr, coord_lr, axis = 0):
 
     if axis == 0:
         ker = np.sinc(z_lr[:,np.newaxis]-z[np.newaxis, :])
+        ker /= np.sum(ker, axis = 1)[:,None]
     elif axis == 1:
         ker = np.sinc(z_lr[np.newaxis, :] - z[:,np.newaxis])
+        ker /= np.sum(ker, axis=0)[None,:]
 
     return ker
 
