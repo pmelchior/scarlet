@@ -531,9 +531,9 @@ class LowResObservation(Observation):
         #Padding the psf to the frame size
         #At the moment, this only handles the case where size(psf)<size(frame), which,
         # I think is the only one that should arise anyway
-        padx = np.int((model_frame.shape[1] - diff_psf.shape[1]) / 2)
-        pady = np.int((model_frame.shape[2] - diff_psf.shape[2]) / 2)
-        diff_psf = np.pad(diff_psf, ((0, 0), (padx, padx), (pady, pady)), 'constant')
+        pady = np.int((model_frame.shape[1] - diff_psf.shape[1]) / 2)
+        padx = np.int((model_frame.shape[2] - diff_psf.shape[2]) / 2)
+        diff_psf = np.pad(diff_psf, ((0, 0), (pady, pady), (padx, padx)), 'constant')
 
         nky, nkx = diff_psf[0].shape
         # Coordinates for all psf pixels in model frame (centered on the frame's centre)
