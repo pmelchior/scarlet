@@ -26,4 +26,4 @@ class MorphologyPrior():
             4d Tensor containing the input image (s)
         """
         #TODO: Standardize the keywords for the prior outputs
-        return self.module(x, as_dict=True)['grads']
+        return (1e-4)*self.module(x, as_dict=True)['grads']
