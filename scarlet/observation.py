@@ -23,57 +23,50 @@ def _centered(arr, newshape):
 
     return arr[tuple(myslice)]
 
-def convolve_1Dfft(img, ker, ker_fft = None, axis = 0, return_fft = False):
-    '''Performs 1D convolutions between 2D interpolation kernels and images along a specified axis.
+
+def sinc_shift_1D(img, shift, axis, fast_size):
+    '''Performs 1D sinc convolutions and shifting in Fourier space
 
     Parameters
     ----------
     img: array
-        image to convolve (here actually image to interpolate)
-    ker: array
-        a set of 1D interpolation kernels
-    axis: int
-        axis along which the 1D convolutions are performed
-    ker_fft: array
-        if provided, ker_fft is used as the fft of the sinc kernel. This is intended to avoid performing multiple
-        ffts on the same kernel
+        the 2D image to sinc convolve and shift
+    shift: array
+        an array of the shift values for each line of img
+    axis: int (0 or 1)
+        the axis along which the convolution and shifting happens
+    fast_size: int
+        numpy's fast fft size for Fourier transform
     Returns
     -------
     result: array
-        vector for convolution and resampling of the high resolution plane into pixel (xm,ym) at low resolution
+        the shifted and sinc convolved array in configuration space
     '''
-    #Records original size of convolution axis
+
+    assert np.size(img.shape) == 2
+    assert axis in [0,1]
+
+    #fft convolution along the desired axis
+    img_fft = np.fft.rfftn(img, [fast_size], axes = [axis])
+
+    #frequency sampling
+    nu = np.fft.rfftfreq(fast_size)
+
     if axis == 0:
-        _shape = [ker.shape[0],ker.shape[1],img.shape[1]]
-    elif axis == 1:
-        _shape = [img.shape[0],ker.shape[0], ker.shape[1]]
+        # shifting operator
+        shift_op = np.exp(-1j * shift[:, np.newaxis] * nu[np.newaxis, :])
+        # convolution by sinc: setting to zero all coefficients > n//2
+        #shift_op[fast_size // 2 :, :] = 0
+        img_shiftfft = img_fft[np.newaxis, :, :]*shift_op[:,:,np.newaxis]
 
-    ker_axis = np.abs(axis-1)
-    #finds fast sizes for numpy's fft
-    fast_shape = fftpack.helper.next_fast_len(np.max([ker.shape[ker_axis], img.shape[axis]]))
-
-    #performs fft of convolution actors
-    img_fft = np.fft.rfftn(img, [fast_shape], axes = [axis])
-
-    if ker_fft is None:
-        ker_fft = np.fft.rfftn(ker, [fast_shape], axes = [ker_axis])
-
-    # Convolution in Fourier domain
-    if axis == 0:
-        res_fft = img_fft[np.newaxis,:,:]*ker_fft[:,:,np.newaxis]
-
-    elif axis == 1:
-        res_fft = img_fft[:,:, np.newaxis] * ker_fft[np.newaxis,:,:]
-
-    res = np.fft.ifftshift(np.fft.irfftn(res_fft, axes = [1]), axes = 1)
-
-    if return_fft is True:
-        # Unpadding
-        return _centered(np.real(res), _shape), ker_fft
     else:
-        #Unpadding
-        return _centered(np.real(res), _shape)
+        # shifting operator
+        shift_op = np.exp(-1j * nu[:, np.newaxis] * shift[np.newaxis, :])
+        # convolution by sinc: setting to zero all coefficients > n//2
+        #shift_op[:,fast_size // 2 :] = 0
+        img_shiftfft = img_fft[:, :, np.newaxis]*shift_op[np.newaxis, :,:]
 
+    return np.fft.irfftn(img_shiftfft, [fast_size], axes = [1])
 
 
 
@@ -524,7 +517,7 @@ class LowResObservation(Observation):
         #Coordinates of overlaping low resolution pixels in high resolution frame
         self._coord_hr = coord_hr
         #Coordinates for all model frame pixels
-        frame_coord = (np.array(range(model_frame.Ny)), np.array(range(model_frame.Nx)))
+        self.frame_coord = (np.array(range(model_frame.Ny)), np.array(range(model_frame.Nx)))
 
         diff_psf = self.build_diffkernel(model_frame)
 
@@ -535,35 +528,42 @@ class LowResObservation(Observation):
         padx = np.int((model_frame.shape[2] - diff_psf.shape[2]) / 2)
         diff_psf = np.pad(diff_psf, ((0, 0), (pady, pady), (padx, padx)), 'constant')
 
-        nky, nkx = diff_psf[0].shape
+        # 1D convolutions convolutions of the model are done along the smaller axis, therefore,
+        # psf is convolved along the frame's longer axis.
+        #the smaller frame axis:
+        self.small_axis = (self.frame.Nx <= self.frame.Ny)
+
         # Coordinates for all psf pixels in model frame (centered on the frame's centre)
-        psf_coord = frame_coord#(np.array(range(nky))-nky/2+model_frame.Ny/2, np.array(range(nkx))-nkx/2+model_frame.Nx/2)
+        # Choose the optimal shape for FFTPack DFT
+        psf_fast = fftpack.helper.next_fast_len(diff_psf.shape[1 + (not self.small_axis)])
 
-        #1D convolutions convolutions of the model are done along the smaller axis
-        if self.frame.Ny <= self.frame.Nx:
-            # Interpolation kernel for resampling
-            _ker_psf = resampling.make_ker1D(frame_coord, self._coord_hr, axis = 1)
-            self._ker_model = resampling.make_ker1D(psf_coord, self._coord_hr, axis = 0)
-        else:
-            # Interpolation kernel for resampling
-            _ker_psf = resampling.make_ker1D(frame_coord,self._coord_hr, axis = 0)
-            self._ker_model = resampling.make_ker1D(psf_coord, self._coord_hr, axis = 1)
+        # autograd.numpy.fft does not currently work
+        # if the last dimension is odd
+        while psf_fast % 2 != 0:
+            psf_fast = fftpack.helper.next_fast_len(psf_fast+1)
 
-        self.ker_model_fft = None
+        self.obs_fast = fftpack.helper.next_fast_len(model_frame.shape[1 + (self.small_axis)])
+
+        # autograd.numpy.fft does not currently work
+        # if the last dimension is odd
+        while psf_fast % 2 != 0:
+            self.obs_fast = fftpack.helper.next_fast_len(self.obs_fast + 1)
 
         # Computes the resampling/convolution matrix
         resconv_op = []
         for dpsf in diff_psf:
-            if self.frame.Ny <= self.frame.Nx:
-                resconv_temp = convolve_1Dfft(dpsf, _ker_psf, axis = 1)
-                resconv_shape = np.shape(resconv_temp)
 
-                resconv_op.append(np.reshape(resconv_temp,(resconv_shape[0]*resconv_shape[1], resconv_shape[2])))
+            resconv_temp = sinc_shift_1D(dpsf, self._coord_hr[(not self.small_axis)], (not self.small_axis), psf_fast)
+            resconv_shape = np.shape(resconv_temp)
+
+
+            if (not self.small_axis):
+                resconv_op.append(np.reshape(resconv_temp,(resconv_shape[0] * resconv_shape[1], resconv_shape[2])))
+                resconv_op[:,:,-1] /= np.sum(resconv_op[:,:,-1], axis=0)[np.newaxis, :]
+
             else:
-                resconv_temp = convolve_1Dfft(dpsf, _ker_psf, axis=0)
-                resconv_shape = np.shape(resconv_temp)
-
                 resconv_op.append(np.reshape(resconv_temp, (resconv_shape[0], resconv_shape[1] * resconv_shape[2])))
+                resconv_op[-1] /= np.sum(resconv_op[-1], axis=1)[:, np.newaxis]
         self._resconv_op = np.array(resconv_op, dtype=self.frame.dtype)
 
         return self
@@ -585,32 +585,15 @@ class LowResObservation(Observation):
         model_image = []
         for c in range(self.frame.C):
 
-            if self.frame.Ny <= self.frame.Nx:
-                if self.ker_model_fft is None:
-
-                    model_conv1d, _ker_model_fft = convolve_1Dfft(model_[c], self._ker_model, axis = 0, return_fft = True)
-                    self.ker_model_fft = _ker_model_fft
-
-                else:
-                    model_conv1d = convolve_1Dfft(model_[c], self._ker_model,
-                                                             ker_fft = self.ker_model_fft, axis = 0, return_fft = False)
-            else:
-                if self.ker_model_fft is None:
-
-                    model_conv1d, _ker_model_fft = convolve_1Dfft(model_[c], self._ker_model, axis = 1, return_fft = True)
-                    self.ker_model_fft = _ker_model_fft
-                else:
-                    model_conv1d = convolve_1Dfft(model_[c], self._ker_model,
-                                                  ker_fft=self.ker_model_fft, axis = 1, return_fft=False)
-
+            model_conv1d = sinc_shift_1D(model_[c], self._coord_hr[self.small_axis], self.small_axis, self.obs_fast)
             model_shape = np.shape(model_conv1d)
 
-            if self.frame.Ny <= self.frame.Nx:
-                #I DON'T KNOW why this axis is inverted and IT KILLS ME!!
-                model_image.append(np.dot(model_conv1d.reshape(model_shape[0],model_shape[1] * model_shape[2]), self._resconv_op[c])[::-1, :])
+            if (self.small_axis):
+
+                model_image.append(np.dot(self._resconv_op[c],model_conv1d.reshape(model_shape[0]*model_shape[1], model_shape[2])))
             else:
-                model_image.append(np.dot(self._resconv_op[c],
-                                          model_conv1d.reshape(model_shape[0]*model_shape[1], model_shape[2])))
+                model_image.append(np.dot(model_conv1d.reshape(model_shape[0]*model_shape[1], model_shape[2]), self._resconv_op[c]))
+
         model_image = np.array(model_image, dtype=self.frame.dtype)
 
         return model_image
