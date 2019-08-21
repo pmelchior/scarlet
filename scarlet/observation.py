@@ -54,19 +54,19 @@ def sinc_shift_1D(img, shift, axis, fast_size):
 
     if axis == 0:
         # shifting operator
-        shift_op = np.exp(-1j * shift[:, np.newaxis] * nu[np.newaxis, :])
+        shift_op = np.exp(-1j *2*np.pi* shift[:, np.newaxis] * nu[np.newaxis, :])
         # convolution by sinc: setting to zero all coefficients > n//2
-        #shift_op[fast_size // 2 :, :] = 0
+        shift_op[fast_size // 2 :, :] = 0
         img_shiftfft = img_fft[np.newaxis, :, :]*shift_op[:,:,np.newaxis]
 
     else:
         # shifting operator
-        shift_op = np.exp(-1j * nu[:, np.newaxis] * shift[np.newaxis, :])
+        shift_op = np.exp(-1j *2*np.pi* nu[:, np.newaxis] * shift[np.newaxis, :])
         # convolution by sinc: setting to zero all coefficients > n//2
-        #shift_op[:,fast_size // 2 :] = 0
+        shift_op[:,fast_size // 2 :] = 0
         img_shiftfft = img_fft[:, :, np.newaxis]*shift_op[np.newaxis, :,:]
 
-    return np.fft.irfftn(img_shiftfft, [fast_size], axes = [1])
+    return np.fft.fftshift(np.fft.irfftn(img_shiftfft, [fast_size], axes = [1]), axes = [1])
 
 
 
@@ -352,35 +352,6 @@ class LowResObservation(Observation):
 
         super().__init__(images, wcs=wcs, psfs=psfs, weights=weights, channels=channels, padding=padding)
 
-    def make_operator(self, shape, psf):
-        '''Builds the resampling and convolution operator
-        Builds the matrix that expresses the linear operation of resampling a function evaluated on a grid with coordinates
-        'coord_lr' to a grid with shape 'shape', and convolving by a kernel p
-        Parameters
-        ------
-        shape: tuple
-            shape of the high resolution scene
-        coord_lr: array
-            coordinates of the overlapping pixels from the low resolution grid in the high resolution grid frame.
-        p: array
-            convolution kernel (PSF)
-        Returns
-        -------
-        mat: array
-            the convolution-resampling matrix
-        '''
-        B, Ny, Nx = shape
-        y_hr, x_hr = np.where(np.zeros((Ny, Nx)) == 0)
-        y_lr, x_lr = self._coord_lr
-        mat = np.zeros((Ny * Nx, x_lr.size))
-
-        import scipy.signal as scp
-
-        for m in range(np.size(x_lr)):
-            line = scp.fftconvolve(self._ker[m], psf, mode='same').flatten()
-            mat[:, m] = line/np.sum(line)
-        return mat
-
     def match_psfs(self, psf_hr, wcs_hr):
         '''psf matching between different dataset
         Matches PSFS at different resolutions by interpolating psf_lr on the same grid as psf_hr
@@ -436,6 +407,7 @@ class LowResObservation(Observation):
 
         assert np.shape(psf_match_lr[0]) == np.shape(psf_match_hr)
 
+
         psf_match_hr /= np.sum(psf_match_hr)
         psf_match_lr /= np.sum(psf_match_lr)
         return psf_match_hr[np.newaxis, :], psf_match_lr
@@ -484,6 +456,7 @@ class LowResObservation(Observation):
         kernel = _centered(kernel, observed_psf.shape)
         diff_psf = kernel / kernel.sum()
 
+
         return diff_psf
 
     def match(self, model_frame):
@@ -512,6 +485,7 @@ class LowResObservation(Observation):
         # Get pixel coordinates in each frame.
         coord_lr, coord_hr, coordhr_over = resampling.match_patches(model_frame.shape, self.frame.shape,
                                                                     model_frame.wcs, self.frame.wcs, isrot = isrot)
+
         #Coordinates of overlapping low resolutions pixels at low resolution
         self._coord_lr = coord_lr
         #Coordinates of overlaping low resolution pixels in high resolution frame
@@ -580,19 +554,17 @@ class LowResObservation(Observation):
         model_: array
             The convolved and resampled `model` in the observation frame.
         """
-
         model_ = model[self._band_slice,:,:]
         model_image = []
         for c in range(self.frame.C):
 
             model_conv1d = sinc_shift_1D(model_[c], self._coord_hr[self.small_axis], self.small_axis, self.obs_fast)
             model_shape = np.shape(model_conv1d)
-
+            # I dont KNOW why this stupid axis is inverted and it KILLS ME!!!!
             if (self.small_axis):
-
-                model_image.append(np.dot(self._resconv_op[c],model_conv1d.reshape(model_shape[0]*model_shape[1], model_shape[2])))
+                model_image.append(np.dot(self._resconv_op[c],model_conv1d.reshape(model_shape[0]*model_shape[1], model_shape[2]))[:,:,::-1])
             else:
-                model_image.append(np.dot(model_conv1d.reshape(model_shape[0]*model_shape[1], model_shape[2]), self._resconv_op[c]))
+                model_image.append(np.dot(model_conv1d.reshape(model_shape[0]*model_shape[1], model_shape[2]), self._resconv_op[c])[:,::-1,:])
 
         model_image = np.array(model_image, dtype=self.frame.dtype)
 
