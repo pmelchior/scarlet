@@ -456,7 +456,6 @@ class LowResObservation(Observation):
         kernel = _centered(kernel, observed_psf.shape)
         diff_psf = kernel / kernel.sum()
 
-
         return diff_psf
 
     def match(self, model_frame):
@@ -533,12 +532,13 @@ class LowResObservation(Observation):
 
             if (not self.small_axis):
                 resconv_op.append(np.reshape(resconv_temp,(resconv_shape[0] * resconv_shape[1], resconv_shape[2])))
-                resconv_op[:,:,-1] /= np.sum(resconv_op[:,:,-1], axis=0)[np.newaxis, :]
+
 
             else:
                 resconv_op.append(np.reshape(resconv_temp, (resconv_shape[0], resconv_shape[1] * resconv_shape[2])))
-                resconv_op[-1] /= np.sum(resconv_op[-1], axis=1)[:, np.newaxis]
-        self._resconv_op = np.array(resconv_op, dtype=self.frame.dtype)
+
+        self._resconv_op = np.array(resconv_op, dtype=self.frame.dtype)*(model_frame.Ny*model_frame.Nx)/(self.frame.Ny*
+                                                                                                         self.frame.Nx)
 
         return self
 
