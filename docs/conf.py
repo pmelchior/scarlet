@@ -44,7 +44,7 @@ extensions = [
     'numpydoc',
 ]
 
-nbsphinx_timeout = 180
+nbsphinx_timeout = 1200
 
 class_members_toctree = False
 

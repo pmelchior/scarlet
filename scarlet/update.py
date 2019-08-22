@@ -167,13 +167,12 @@ def translation(component, direction=1, kernel=interpolation.lanczos, padding=3)
     return component
 
 
-def symmetric(component, algorithm="kspace", bbox=None, fill=None, strength=.5):
+def symmetric(component, pixel_center, algorithm="kspace", bbox=None, fill=None, strength=.5):
     """Make the source symmetric about its center
 
     See `~scarlet.operator.prox_uncentered_symmetry`
     for a description of the parameters.
     """
-    pixel_center = component.pixel_center
     if bbox is not None:
         # Only apply monotonicity to the pixels inside the bounding box
         morph = component.morph[bbox.slices]
