@@ -562,9 +562,9 @@ class LowResObservation(Observation):
             model_shape = np.shape(model_conv1d)
             # I dont KNOW why this stupid axis is inverted and it KILLS ME!!!!
             if (self.small_axis):
-                model_image.append(np.dot(self._resconv_op[c],model_conv1d.reshape(model_shape[0]*model_shape[1], model_shape[2]))[:,:,::-1])
+                model_image.append(np.dot(self._resconv_op[c],model_conv1d.reshape(model_shape[0]*model_shape[1], model_shape[2]))[:,::-1])
             else:
-                model_image.append(np.dot(model_conv1d.reshape(model_shape[0]*model_shape[1], model_shape[2]), self._resconv_op[c])[:,::-1,:])
+                model_image.append(np.dot(model_conv1d.reshape(model_shape[0]*model_shape[1], model_shape[2]), self._resconv_op[c])[::-1,:])
 
         model_image = np.array(model_image, dtype=self.frame.dtype)
 
