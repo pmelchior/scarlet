@@ -18,14 +18,16 @@ def match_patches(shape_hr, shape_lr, wcs_hr, wcs_lr, isrot = True, perimeter  =
     Returns
     -------
     coordlr_over_lr: array
-        coordinates of the overlap in low resolution.
+        coordinates of the matching pixels at low resolution in the low resolution frame.
     coordlr_over_hr: array
-        coordinates of the overlaps at low resolution in the high resolution frame.
+        coordinates of the matching pixels at low resolution in the high resolution frame.
     coordhr_hr: array
         coordinates of the high resolution pixels in the overlap. Necessary for psf matching
     '''
 
     assert perimeter in ['overlap', 'union'], 'perimeter should be either overlap or union.'
+    if psf == True:
+        perimeter == 'overlap'
 
     if np.size(shape_hr) == 3:
         B_hr, Ny_hr, Nx_hr = shape_hr
@@ -46,18 +48,10 @@ def match_patches(shape_hr, shape_lr, wcs_hr, wcs_lr, isrot = True, perimeter  =
 
 
 
-    if psf is True:
-        # Coordinates of all high resolution pixels. This is only needed for PSF matches.
-        y_hr, x_hr = np.indices((Ny_hr, Nx_hr))
-
-        x_hr = x_hr.flatten()
-        y_hr = y_hr.flatten()
-    else:
-        # Coordinates of the high resolution pixels
-        y_hr, x_hr = np.array(range(Ny_hr)), np.array(range(Nx_hr))
+    y_hr, x_hr = np.array(range(Ny_hr)), np.array(range(Nx_hr))
 
     # Capital letters are for coordinates of low-resolution pixels
-    if (isrot is True) or (psf is True):
+    if isrot:
 
         # Coordinates of all low resolution pixels. All are needed if frames are rotated.
         Y_lr, X_lr = np.indices((Ny_lr, Nx_lr))
@@ -96,10 +90,10 @@ def match_patches(shape_hr, shape_lr, wcs_hr, wcs_lr, isrot = True, perimeter  =
 
     #mask of low resolution pixels at high resolution in the overlap:
     over_lr = ((X_hr > 0) * (X_hr < Nx_hr) * (Y_hr > 0) * (Y_hr < Ny_hr))
-    #mask of high resolution pixels at high resolution in the overlap (needed for psf matching)
+    #mask of high resolution pixels at low resolution in the overlap (needed for psf matching)
     over_hr = ((x_lr > 0) * (x_lr < Nx_lr) * (y_lr > 0) * (y_lr < Ny_lr))
 
-    #pixels of the high resolution pixels in the overlap at high resolution (needed for PSF only)
+    #pixels of the high resolution frame in the overlap in high resolution frame (needed for PSF only)
     coordhr_hr = (y_hr[(over_hr == 1)], x_hr[(over_hr == 1)])
 
     class SourceInitError(Exception):
