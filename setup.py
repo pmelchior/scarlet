@@ -148,7 +148,7 @@ setup(
     description='Blind Source Separation using proximal matrix factorization',
     author='Fred Moolekamp and Peter Melchior',
     author_email='fred.moolekamp@gmail.com',
-    url='https://github.com/fred3m/scarlet',
+    url='https://github.com/pmelchior/scarlet',
     keywords=['astro', 'deblending', 'photometry', 'nmf'],
     ext_modules=ext_modules,
     install_requires=install_requires,

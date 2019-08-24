@@ -1,42 +1,6 @@
 import numpy as np
-from . import interpolation
 
-def conv2D_fft(shape, coord_lr):
-    '''performs a convolution of a coordinate kernel by a psf
-    This function is used in the making of the resampling convolution operator.
-    It create a kernel based on the sinc of the difference between coordinates in a high resolution frame and reference
-    coordinate (ym,xm)
-    Parameters
-    ----------
-    shape: tuple
-        shape of the high resolution frame
-    ym, xm: arrays
-        coordinate of the low resolution location where to compute mapping
-    p: array
-        PSF kernel
-    h: float
-        pixel size
-    Returns
-    -------
-    result: array
-        vector for convolution and resampling of the high resolution plane into pixel (xm,ym) at low resolution
-    '''
-
-    B, Ny, Nx = shape
-
-
-    y_lr, x_lr = coord_lr
-
-    N_lr = y_lr.size
-    ker = np.zeros((N_lr,Ny, Nx))
-    y, x = np.where(ker[0] == 0)
-
-    for m in range(N_lr):
-        ker[m, y, x] = interpolation.sinc2D((y_lr[m] - y), (x_lr[m] - x))
-
-    return ker
-
-def match_patches(shape_hr, shape_lr, wcs_hr, wcs_lr):
+def match_patches(shape_hr, shape_lr, wcs_hr, wcs_lr, isrot = True, perimeter  = 'overlap', psf = False):
     '''Matches datasets at different resolutions
 
     Finds the region of overlap between two datasets and creates a mask for the region as well as the pixel coordinates
@@ -48,16 +12,22 @@ def match_patches(shape_hr, shape_lr, wcs_hr, wcs_lr):
         shapes of the two datasets
     wcs_hr, wcs_lr: WCS objects
         WCS of the Low and High resolution fields respectively
+    perimeter: string
+        returns the coordinates in the intersection or union of both frames if set to 'overlap' or 'union' respectively
 
     Returns
     -------
-    mask: array
-        mask of overlapping pixel in the high resolution frame.
     coordlr_over_lr: array
-        coordinates of the overlap in low resolution.
+        coordinates of the matching pixels at low resolution in the low resolution frame.
     coordlr_over_hr: array
-        coordinates of the overlaps at low resolution in the high resolution frame.
+        coordinates of the matching pixels at low resolution in the high resolution frame.
+    coordhr_hr: array
+        coordinates of the high resolution pixels in the overlap. Necessary for psf matching
     '''
+
+    assert perimeter in ['overlap', 'union'], 'perimeter should be either overlap or union.'
+    if psf == True:
+        perimeter == 'overlap'
 
     if np.size(shape_hr) == 3:
         B_hr, Ny_hr, Nx_hr = shape_hr
@@ -76,42 +46,55 @@ def match_patches(shape_hr, shape_lr, wcs_hr, wcs_lr):
     assert wcs_hr != None
     assert wcs_lr != None
 
-    im_hr = np.zeros((Ny_hr, Nx_hr))
-    im_lr = np.zeros((Ny_lr, Nx_lr))
 
-    # Coordinates of pixels in both frames
-    y_hr, x_hr = np.where(im_hr == 0)
-    Y_lr, X_lr = np.where(im_lr == 0)
+
+    y_hr, x_hr = np.array(range(Ny_hr)), np.array(range(Nx_hr))
+
+    # Capital letters are for coordinates of low-resolution pixels
+    if isrot:
+
+        # Coordinates of all low resolution pixels. All are needed if frames are rotated.
+        Y_lr, X_lr = np.indices((Ny_lr, Nx_lr))
+
+        X_lr = X_lr.flatten()
+        Y_lr = Y_lr.flatten()
+
+    else:
+        Y_lr, X_lr = np.array(range(Ny_lr)), np.array(range(Nx_lr))
 
     #Corresponding angular positions
+    #of low resolution pixels
     if np.size(wcs_lr.array_shape) == 2:
         ra_lr, dec_lr = wcs_lr.all_pix2world(X_lr, Y_lr, 0, ra_dec_order=True)
     elif np.size(wcs_lr.array_shape) == 3:
         ra_lr, dec_lr = wcs_lr.all_pix2world(X_lr, Y_lr, 0, 0, ra_dec_order=True)
+    #of high resolution pixels
     if np.size(wcs_hr.array_shape) == 2:
-        ra_hr, dec_hr = wcs_hr.all_pix2world(y_hr, x_hr, 0, ra_dec_order=True)
+        ra_hr, dec_hr = wcs_hr.all_pix2world(x_hr, y_hr, 0, ra_dec_order=True)
     elif np.size(wcs_hr.array_shape) == 3:
-        ra_hr, dec_hr = wcs_hr.all_pix2world(y_hr, x_hr, 0, 0, ra_dec_order=True)
+        ra_hr, dec_hr, eggbenedict = wcs_hr.all_pix2world(x_hr, y_hr, 0, 0, ra_dec_order=True)
 
     # Coordinates of the low resolution pixels in the high resolution frame
     if np.size(wcs_hr.array_shape) == 2:
         X_hr, Y_hr = wcs_hr.all_world2pix(ra_lr, dec_lr, 0, ra_dec_order=True)
     elif np.size(wcs_hr.array_shape) == 3:
-        X_hr, Y_hr = wcs_hr.all_world2pix(ra_lr, dec_lr, 0, 0, ra_dec_order=True)
+        X_hr, Y_hr, eggbenedict = wcs_hr.all_world2pix(ra_lr, dec_lr, 0, 0, ra_dec_order=True)
 
     # Coordinates of the high resolution pixels in the low resolution frame
     if np.size(wcs_lr.array_shape) == 2:
         x_lr, y_lr = wcs_lr.all_world2pix(ra_hr, dec_hr, 0, ra_dec_order=True)
-    # Coordinates of the high resolution pixels in the low resolution frame
     elif np.size(wcs_lr.array_shape) == 3:
-        x_lr, y_lr, l = wcs_lr.all_world2pix(ra_hr, dec_hr, 0, 0, ra_dec_order=True)
+        x_lr, y_lr, eggsbenedict = wcs_lr.all_world2pix(ra_hr, dec_hr, 0, 0, ra_dec_order=True)
 
-    # Mask of low resolution pixels in the overlap at low resolution:
+
+
+    #mask of low resolution pixels at high resolution in the overlap:
     over_lr = ((X_hr > 0) * (X_hr < Nx_hr) * (Y_hr > 0) * (Y_hr < Ny_hr))
-    # Mask of low resolution pixels in the overlap at high resolution:
+    #mask of high resolution pixels at low resolution in the overlap (needed for psf matching)
     over_hr = ((x_lr > 0) * (x_lr < Nx_lr) * (y_lr > 0) * (y_lr < Ny_lr))
 
-    mask = over_hr.reshape(Ny_hr, Nx_hr)
+    #pixels of the high resolution frame in the overlap in high resolution frame (needed for PSF only)
+    coordhr_hr = (y_hr[(over_hr == 1)], x_hr[(over_hr == 1)])
 
     class SourceInitError(Exception):
         """
@@ -119,18 +102,27 @@ def match_patches(shape_hr, shape_lr, wcs_hr, wcs_lr):
         """
         pass
 
-    if np.sum(mask) == 0:
+    if np.sum(over_lr) == 0:
         raise SourceInitError
 
-    # Coordinates of low resolution pixels in the overlap at high resolution:
-    ylr_lr = X_lr[(over_lr == 1)]
-    xlr_lr = Y_lr[(over_lr == 1)]
-    coordlr_lr = (xlr_lr, ylr_lr)
-    # Coordinates of low resolution pixels in the overlap at low resolution:
-    ylr_hr = X_hr[(over_lr == 1)]
-    xlr_hr = Y_hr[(over_lr == 1)]
-    coordlr_hr = (xlr_hr, ylr_hr)
+    if perimeter is 'overlap':
+        # Coordinates of low resolution pixels in the overlap at low resolution:
+        ylr_lr = Y_lr[(over_lr == 1)]
+        xlr_lr = X_lr[(over_lr == 1)]
+        coordlr_lr = (ylr_lr, xlr_lr)
+        # Coordinates of low resolution pixels in the overlap at high resolution:
+        ylr_hr = Y_hr[(over_lr == 1)]
+        xlr_hr = X_hr[(over_lr == 1)]
 
+        coordlr_hr = (ylr_hr, xlr_hr)
 
-    return mask, coordlr_lr, coordlr_hr
+    elif perimeter is 'union':
+
+        # Coordinates of low resolution pixels at low resolution:
+        coordlr_lr = (Y_lr, X_lr)
+
+        # Coordinates of low resolution pixels at high resolution:
+        coordlr_hr = (Y_hr, X_hr)
+
+    return coordlr_lr, coordlr_hr, coordhr_hr
 
