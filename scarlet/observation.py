@@ -24,7 +24,7 @@ def _centered(arr, newshape):
     return arr[tuple(myslice)]
 
 
-def sinc_shift_1D(img, shift, axis, fast_size):
+def sinc_shift_1D(img, shift, axis, fast_size, sign = -1):
     '''Performs 1D sinc convolutions and shifting in Fourier space
 
     Parameters
@@ -37,6 +37,8 @@ def sinc_shift_1D(img, shift, axis, fast_size):
         the axis along which the convolution and shifting happens
     fast_size: int
         numpy's fast fft size for Fourier transform
+    sign: int
+        Should be 1 or -1. Is used to invert an axis.
     Returns
     -------
     result: array
@@ -45,6 +47,7 @@ def sinc_shift_1D(img, shift, axis, fast_size):
 
     assert np.size(img.shape) == 2
     assert axis in [0,1]
+    assert sign in [-1,1]
 
     #fft convolution along the desired axis
     img_fft = np.fft.rfftn(img, [fast_size], axes = [axis])
@@ -54,21 +57,73 @@ def sinc_shift_1D(img, shift, axis, fast_size):
 
     if axis == 0:
         # shifting operator
-        shift_op = np.exp(-1j *2*np.pi* shift[:, np.newaxis] * nu[np.newaxis, :])
+        shift_op = np.exp(-2j * sign * np.pi * shift[:, np.newaxis] * nu[np.newaxis, :])
         # convolution by sinc: setting to zero all coefficients > n//2
         shift_op[fast_size // 2 :, :] = 0
         img_shiftfft = img_fft[np.newaxis, :, :]*shift_op[:,:,np.newaxis]
 
     else:
         # shifting operator
-        shift_op = np.exp(-1j *2*np.pi* nu[:, np.newaxis] * shift[np.newaxis, :])
+        shift_op = np.exp(-2j * sign * np.pi * nu[:, np.newaxis] * shift[np.newaxis, :])
         # convolution by sinc: setting to zero all coefficients > n//2
         shift_op[:,fast_size // 2 :] = 0
         img_shiftfft = img_fft[:, :, np.newaxis]*shift_op[np.newaxis, :,:]
 
     return np.fft.fftshift(np.fft.irfftn(img_shiftfft, [fast_size], axes = [1]), axes = [1])
 
+def sinc_shift_2D(psfs, shifts):
+    '''Performs 2 1D sinc convolutions and shifting in Fourier space
 
+    Parameters
+    ----------
+    psf: array
+        a cube of 2D images to sinc convolve and shift (usually the PSFs)
+    shift: array
+        an array of the shift values for each line and columns of psf
+    Returns
+    -------
+    result: array
+        the shifted and sinc convolved array in configuration space
+    '''
+
+    assert np.size(psfs.shape) == 3
+
+    fast_shape = np.array([fftpack.helper.next_fast_len(s) for s in psfs.shape[1:]])
+    while fast_shape[0] % 2 != 0:
+        fast_shape = fftpack.helper.next_fast_len(fast_shape[0] + 1)
+    while fast_shape[1] % 2 != 0:
+        fast_shape = fftpack.helper.next_fast_len(fast_shape[1] + 1)
+
+    #fft convolution along the desired axis
+    psfs_fft = np.fft.rfftn(psfs, fast_shape, axes = [1,2])
+
+    #frequency sampling
+    nu = np.fft.fftfreq(fast_shape[0])
+    mu = np.fft.rfftfreq(fast_shape[1])
+
+    # shifting operator
+    shift_y = np.exp(-2j * np.pi* shifts[0][ :, np.newaxis] * nu[np.newaxis, :])
+    shift_x = np.exp(-2j * np.pi* shifts[1][ :, np.newaxis] * mu[np.newaxis, :])
+
+    psfs_shiftfft = []
+    for psf_fft in psfs_fft:
+        #Shift along the y-axis
+        psf_shiftfft = psf_fft[np.newaxis, :, :]*shift_y[:,:,np.newaxis]
+        # Shift along the x-axis
+        psfs_shiftfft.append(psf_shiftfft * shift_x[:, np.newaxis, :])
+
+    psfs_shiftfft = np.array(psfs_shiftfft)
+    # convolution by sinc: setting to zero all coefficients > n//2
+    psfs_shiftfft[:,:,fast_shape[0] // 2:, fast_shape[1] // 2:] = 0
+
+    #Inverse Fourier transform. Here I voluntarily avoid to irfftn over the whole array
+    # due to that function scaling badly memory-wise
+    op = np.zeros((psfs.shape[0], psfs_shiftfft.shape[1], psfs.shape[1], psfs.shape[2]))
+    for count in range(len(shifts[0])):
+        op[:, count, :, :] = (np.fft.fftshift(np.fft.irfftn(psfs_shiftfft[:,count,:,:], fast_shape,
+                                                            axes = [1,2]), axes = [1,2]))
+
+    return op
 
 class Frame():
     """Spatial and spectral characteristics of the data
@@ -482,6 +537,7 @@ class LowResObservation(Observation):
 
         # Angle between datasets
         rot = np.cross(np.sum(self.frame.wcs.wcs.pc, axis=0)[:2], np.sum(model_frame.wcs.wcs.pc, axis=0)[:2])
+        #Is the angle larger than machine precision?
         self.isrot = (np.abs(rot) % np.pi) > np.finfo(float).eps
 
         # Get pixel coordinates in each frame.
@@ -507,42 +563,51 @@ class LowResObservation(Observation):
         padx = np.ceil((model_frame.shape[2] - diff_psf.shape[2]) / 2.).astype(int)
         diff_psf = np.pad(diff_psf, ((0, 0), (pady, pady), (padx, padx)), 'constant')
 
-        # 1D convolutions convolutions of the model are done along the smaller axis, therefore,
-        # psf is convolved along the frame's longer axis.
-        #the smaller frame axis:
-        self.small_axis = (self.frame.Nx <= self.frame.Ny)
+        if self.isrot:
+            self.resconv_op = sinc_shift_2D(diff_psf, self._coord_hr)
+            resconv_shape = self.resconv_op.shape
+            self.resconv_op = np.reshape(self.resconv_op,
+                                         (resconv_shape[0], resconv_shape[1],
+                                          resconv_shape[2] * resconv_shape[3])) * \
+                                         (model_frame.Ny * model_frame.Nx) / (self.frame.Ny * self.frame.Nx)
+            self.resconv_op = np.array(self.resconv_op, dtype=self.frame.dtype)
 
-        # Coordinates for all psf pixels in model frame (centered on the frame's centre)
-        # Choose the optimal shape for FFTPack DFT
-        psf_fast = fftpack.helper.next_fast_len(diff_psf.shape[1 + (not self.small_axis)])
+        else:
+            # 1D convolutions convolutions of the model are done along the smaller axis, therefore,
+            # psf is convolved along the frame's longer axis.
+            #the smaller frame axis:
+            self.small_axis = (self.frame.Nx <= self.frame.Ny)
 
-        # autograd.numpy.fft does not currently work
-        # if the last dimension is odd
-        while psf_fast % 2 != 0:
-            psf_fast = fftpack.helper.next_fast_len(psf_fast+1)
+            # Coordinates for all psf pixels in model frame (centered on the frame's centre)
+            # Choose the optimal shape for FFTPack DFT
+            psf_fast = fftpack.helper.next_fast_len(diff_psf.shape[1 + (not self.small_axis)])
 
-        self.obs_fast = fftpack.helper.next_fast_len(model_frame.shape[1 + (self.small_axis)])
+            # autograd.numpy.fft does not currently work
+            # if the last dimension is odd
+            while psf_fast % 2 != 0:
+                psf_fast = fftpack.helper.next_fast_len(psf_fast+1)
 
-        # autograd.numpy.fft does not currently work
-        # if the last dimension is odd
-        while psf_fast % 2 != 0:
-            self.obs_fast = fftpack.helper.next_fast_len(self.obs_fast + 1)
+            self.obs_fast = fftpack.helper.next_fast_len(model_frame.shape[1 + (self.small_axis)])
 
-        # Computes the resampling/convolution matrix
-        resconv_op = []
-        for dpsf in diff_psf:
+            # autograd.numpy.fft does not currently work
+            # if the last dimension is odd
+            while psf_fast % 2 != 0:
+                self.obs_fast = fftpack.helper.next_fast_len(self.obs_fast + 1)
 
-            resconv_temp = sinc_shift_1D(dpsf, self._coord_hr[(not self.small_axis)], (not self.small_axis), psf_fast)
-            resconv_shape = np.shape(resconv_temp)
+            # Computes the resampling/convolution matrix
+            resconv_op = []
+            for dpsf in diff_psf:
 
-            if (not self.small_axis):
-                resconv_op.append(np.reshape(resconv_temp,(resconv_shape[0] * resconv_shape[1], resconv_shape[2])))
-            else:
-                resconv_op.append(np.reshape(resconv_temp, (resconv_shape[0], resconv_shape[1] * resconv_shape[2])))
+                resconv_temp = sinc_shift_1D(dpsf, self._coord_hr[(not self.small_axis)], (not self.small_axis), psf_fast,
+                                            sign = 1)
+                resconv_shape = np.shape(resconv_temp)
 
-
-        self._resconv_op = np.array(resconv_op, dtype=self.frame.dtype)*(model_frame.Ny*model_frame.Nx)/(self.frame.Ny*
-                                                                                                         self.frame.Nx)
+                if (not self.small_axis):
+                    resconv_op.append(np.reshape(resconv_temp, (resconv_shape[0] * resconv_shape[1], resconv_shape[2])))
+                else:
+                    resconv_op.append(np.reshape(resconv_temp, (resconv_shape[0], resconv_shape[1] * resconv_shape[2])))
+            self._resconv_op = np.array(resconv_op, dtype=self.frame.dtype)*(model_frame.Ny*model_frame.Nx)/\
+                               (self.frame.Ny * self.frame.Nx)
 
         return self
 
@@ -558,21 +623,26 @@ class LowResObservation(Observation):
         model_: array
             The convolved and resampled `model` in the observation frame.
         """
-        model_ = model[self._band_slice,:,:]
+        model_ = model[self._band_slice, :, :]
         model_image = []
         for c in range(self.frame.C):
 
-            model_conv1d = sinc_shift_1D(model_[c], self._coord_hr[self.small_axis], self.small_axis, self.obs_fast)
-            model_shape = np.shape(model_conv1d)
-
-            # I dont KNOW why this stupid axis is inverted and it KILLS ME!!!!
-
-            if (self.small_axis):
-                model_image.append(np.dot(self._resconv_op[c],model_conv1d.reshape(model_shape[0]*model_shape[1],
-                                                                                model_shape[2]))[:,::-1])
+            if self.isrot:
+                model_image.append(np.dot(self.resconv_op[c],model_[c].flatten()))
             else:
-                model_image.append(np.dot(model_conv1d.reshape(model_shape[0]*model_shape[1], model_shape[2]),
-                                        self._resconv_op[c])[::-1,:])
+                #1-D convolution of the model. Here sign is -1 because the model has to be shifted in the direction
+                # opposite to the shift as if applied to the PSF.
+                model_conv1d = sinc_shift_1D(model_[c], self._coord_hr[self.small_axis], self.small_axis, self.obs_fast,
+                                             sign = -1)
+                model_shape = np.shape(model_conv1d)
+
+                #Multiplication of the 1-D convolved model by the 1-D convolved PSF
+                if (self.small_axis):
+                    model_image.append(np.dot(self._resconv_op[c],model_conv1d.reshape(model_shape[0]*model_shape[1],
+                                                                                    model_shape[2])))
+                else:
+                    model_image.append(np.dot(model_conv1d.reshape(model_shape[0],model_shape[1]*model_shape[2]),
+                                            self._resconv_op[c]))
 
         model_image = np.array(model_image, dtype=self.frame.dtype)
 
@@ -591,10 +661,13 @@ class LowResObservation(Observation):
         """
         img = np.zeros(self.frame.shape)
 
-
-        img[:, np.min(self._coord_lr[0]).astype(int):np.max(self._coord_lr[0]).astype(int)+1,
-                     np.min(self._coord_lr[1]).astype(int):np.max(self._coord_lr[1]).astype(int)+1] = \
-        self._render(model)
+        min_lr = [np.min(self._coord_lr[0]).astype(int), np.min(self._coord_lr[1]).astype(int)]
+        max_lr = [np.max(self._coord_lr[0]).astype(int), np.max(self._coord_lr[1]).astype(int)]
+        if self.isrot:
+            img[:, min_lr[0]:max_lr[0] + 1, min_lr[1]:max_lr[1] + 1] = \
+                self._render(model).reshape(img.shape[0],max_lr[0]+1-min_lr[0], max_lr[1]+1-min_lr[1])
+        else:
+            img[:, min_lr[0]:max_lr[0] + 1, min_lr[1]:max_lr[1] + 1] = self._render(model)
         return img
 
     def get_loss(self, model):
@@ -611,6 +684,8 @@ class LowResObservation(Observation):
 
         model_ = self._render(model)
 
+        min_lr = [np.min(self._coord_lr[0]).astype(int), np.min(self._coord_lr[1]).astype(int)]
+        max_lr = [np.max(self._coord_lr[0]).astype(int), np.max(self._coord_lr[1]).astype(int)]
         return 0.5 * np.sum((self.weights * (
-                model_ - self.images[:, np.min(self._coord_lr[0]).astype(int):np.max(self._coord_lr[0]).astype(int)+1,
-                         np.min(self._coord_lr[1]).astype(int):np.max(self._coord_lr[1]).astype(int)+1])) ** 2)
+                model_ -
+                self.images[:, min_lr[0]:max_lr[0] + 1, min_lr[1]:max_lr[1] + 1])) ** 2)
