@@ -95,9 +95,9 @@ def sinc_shift_2D(imgs, shifts, axes = [None], doit = 0, padding = 0):
 
     fast_shape = np.array([fftpack.helper.next_fast_len(s+padding) for s in imgs.shape[1:]])
     while fast_shape[0] % 2 != 0:
-        fast_shape = fftpack.helper.next_fast_len(fast_shape[0] + 1)
+        fast_shape[0] = fftpack.helper.next_fast_len(fast_shape[0] + 1)
     while fast_shape[1] % 2 != 0:
-        fast_shape = fftpack.helper.next_fast_len(fast_shape[1] + 1)
+        fast_shape[1] = fftpack.helper.next_fast_len(fast_shape[1] + 1)
 
     #fft
     imgs_fft = np.fft.rfftn(imgs, fast_shape, axes = [1,2])
@@ -559,7 +559,7 @@ class LowResObservation(Observation):
         # sin of the angle between datasets (normalised cross product)
         self.sin_rot = np.cross(self_framevector, model_framevector)
         #Is the angle larger than machine precision?
-        self.isrot = (np.abs(self.sin_rot)**2) < np.finfo(float).eps
+        self.isrot = (np.abs(self.sin_rot)**2) > np.finfo(float).eps
         if not self.isrot:
             self.sin_rot = 0
             self.cos_rot = 1
@@ -594,6 +594,11 @@ class LowResObservation(Observation):
         padx = np.ceil((model_frame.shape[2] - diff_psf.shape[2]) / 2.).astype(int)
         diff_psf = np.pad(diff_psf, ((0, 0), (pady, pady), (padx, padx)), 'constant')
 
+        # 1D convolutions convolutions of the model are done along the smaller axis, therefore,
+        # psf is convolved along the frame's longer axis.
+        # the smaller frame axis:
+        self.small_axis = (self.frame.Nx <= self.frame.Ny)
+
         if self.isrot:
 
             #Unrotated coordinates:
@@ -603,11 +608,6 @@ class LowResObservation(Observation):
             #Removing redundancy
             self.Y_unrot = Y_unrot[:, 0]
             self.X_unrot = X_unrot[0, :]
-
-            # 1D convolutions convolutions of the model are done along the smaller axis, therefore,
-            # psf is convolved along the frame's longer axis.
-            # the smaller frame axis:
-            self.small_axis = (self.frame.Nx <= self.frame.Ny)
 
             if self.small_axis:
                 resconv_op = sinc_shift_2D(diff_psf, [self.Y_unrot * self.cos_rot, self.Y_unrot * self.sin_rot],
@@ -625,10 +625,6 @@ class LowResObservation(Observation):
 
         #I should probably get rid of the 1-D case.
         else:
-            # 1D convolutions convolutions of the model are done along the smaller axis, therefore,
-            # psf is convolved along the frame's longer axis.
-            #the smaller frame axis:
-            self.small_axis = (self.frame.Nx <= self.frame.Ny)
 
             # Coordinates for all psf pixels in model frame (centered on the frame's centre)
             # Choose the optimal shape for FFTPack DFT
@@ -681,16 +677,22 @@ class LowResObservation(Observation):
             if self.small_axis:
                 model_conv1d = sinc_shift_2D(model_, [-self.sin_rot * self.X_unrot, self.cos_rot * self.X_unrot],
                                              axes=[None], doit = 1)
+                model_shape = np.shape(model_conv1d)
+                for c in range(self.frame.C):
+                    model_image.append(np.dot(model_conv1d[c].reshape(model_shape[1],
+                                                                      model_shape[3] * model_shape[2]),
+                                              self._resconv_op[c].T).T[:, ::-1])
 
             else:
                 model_conv1d = sinc_shift_2D(model_, [self.Y_unrot * self.cos_rot, self.Y_unrot * self.sin_rot],
                                              axes=[None], doit = 1)
-            model_shape = np.shape(model_conv1d)
+                model_shape = np.shape(model_conv1d)
+                for c in range(self.frame.C):
+                    model_image.append(np.dot(model_conv1d[c].reshape(model_shape[1],
+                                                                      model_shape[3] * model_shape[2]),
+                                              self._resconv_op[c].T)[::-1, :])
 
-            for c in range(self.frame.C):
 
-                model_image.append(np.dot(model_conv1d[c].reshape(model_shape[1],
-                                                               model_shape[3] * model_shape[2]), self._resconv_op[c].T).T[:,::-1])
         else:
             for c in range(self.frame.C):
 
