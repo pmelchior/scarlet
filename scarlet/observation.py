@@ -4,7 +4,6 @@ from scipy import fftpack
 from . import interpolation
 
 from . import resampling
-import matplotlib.pyplot as plt
 
 import logging
 
