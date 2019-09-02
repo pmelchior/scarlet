@@ -1,6 +1,6 @@
 import operator
 
-import numpy as np
+import autograd.numpy as np
 from scipy import fftpack
 
 
@@ -53,6 +53,10 @@ def _pad(arr, newshape, axes=None):
     else:
         # only pad the axes that will be transformed
         pad_width = [(0, 0) for axis in arr.shape]
+        try:
+            len(axes)
+        except TypeError:
+            axes = [axes]
         for a, axis in enumerate(axes):
             dS = newshape[a] - arr.shape[axis]
             startind = (dS+1) // 2
@@ -61,27 +65,11 @@ def _pad(arr, newshape, axes=None):
     return np.pad(arr, pad_width, mode="constant")
 
 
-def _get_fft_axes(spectral_axis=0):
-    """Return the axes used for the fft
-
-    Given the dimension that contains spectral information,
-    return the `axes` required by `np.fft.fftn` to only
-    Fourier Transform the spatial dimensions.
-    """
-    if spectral_axis is not None:
-        axes = [0, 1, 2]
-        axes.remove(spectral_axis)
-    else:
-        axes = None
-    return axes
-
-
-def _get_fft_shape(img1, img2, padding=3, spectral_axis=0):
+def _get_fft_shape(img1, img2, padding=3, axes=None):
     """Return the fast fft shapes for each spatial axis
 
-    Given the axis that contains the spectral information
-    (`spectral_axis`), calculate the fast fft shape
-    for each remaining dimension.
+    Calculate the fast fft shape for each dimension in
+    axes.
     """
     shape1 = np.asarray(img1.shape)
     shape2 = np.asarray(img2.shape)
@@ -90,17 +78,17 @@ def _get_fft_shape(img1, img2, padding=3, spectral_axis=0):
         msg = "img1 and img2 must have the same number of dimensions, but got {0} and {1}"
         raise ValueError(msg.format(len(shape1, len(shape2))))
     # Set the combined shape based on the total dimensions
-    print("spectral_axis", spectral_axis)
-    if spectral_axis == 0:
-        print("spectral_axis 0")
-        shape = shape1[1:] + shape2[1:]
-    elif spectral_axis == 2:
-        shape = shape1[:-1] + shape2[:-1]
-    elif spectral_axis is None:
+    if axes is None:
         shape = shape1 + shape2
     else:
-        raise ValueError("spectral_axis should be 0, 2 or None, got {0}".format(spectral_axis))
-    print("shape is", shape)
+        shape = np.zeros(len(axes))
+        try:
+            len(axes)
+        except TypeError:
+            axes = [axes]
+        for n, ax in enumerate(axes):
+            shape[n] = shape1[ax] + shape2[ax]
+
     shape += padding
     # Use the next fastest shape in each dimension
     shape = [fftpack.helper.next_fast_len(s) for s in shape]
@@ -109,6 +97,7 @@ def _get_fft_shape(img1, img2, padding=3, spectral_axis=0):
     while shape[-1] % 2 != 0:
         shape[-1] += 1
         shape[-1] = fftpack.helper.next_fast_len(shape[-1])
+
     return shape
 
 
@@ -122,7 +111,7 @@ class Fourier(object):
     padding, so the FFT for each different shape is stored
     in a dictionary.
     """
-    def __init__(self, image, image_fft=None, spectral_axis=0):
+    def __init__(self, image, image_fft=None, axes=None):
         """Initialize the object
 
         Parameters
@@ -132,19 +121,18 @@ class Fourier(object):
         image_fft: dict
             A dictionary of {shape: fft_value} for which each different
             shape has a precalculated FFT.
-        spectral_axis: int
-            The dimension of the array that contains spectral information.
-            If `spectral_axis` is `None` then there is no spectral axis.
+        axes: int or tuple
+            The dimension(s) of the array that will be transformed.
         """
         if image_fft is None:
             self._fft = {}
         else:
             self._fft = image_fft
         self._image = image
-        self._spectral_axis = spectral_axis
+        self._axes = axes
 
     @staticmethod
-    def from_fft(image_fft, fft_shape, image_shape, spectral_axis=0):
+    def from_fft(image_fft, fft_shape, image_shape, axes=None):
         """Generate a new Fourier object from an FFT dictionary
 
         If the fft of an image has been generated but not its
@@ -167,23 +155,21 @@ class Fourier(object):
             The shape of the image *before padding*.
             This will regenerate the image with the extra
             padding stripped.
-        spectral_axis: int
-            The dimension of the array that contains spectral information.
-            If `image` only has 2 dimensions then this argument is ignored.
+        axes: int or tuple
+            The dimension(s) of the array that will be transformed.
 
         Returns
         -------
         result: `Fourier`
             A `Fourier` object generated from the FFT.
         """
-        axes = _get_fft_axes(spectral_axis)
         image = np.fft.irfftn(image_fft, fft_shape, axes=axes)
         # Shift the center of the image from the bottom left to the center
-        image = np.fft.fftshift(image)
+        image = np.fft.fftshift(image, axes=axes)
         # Trim the image to remove the padding added
         # to reduce fft artifacts
         image = _centered(image, image_shape)
-        return Fourier(image, {tuple(fft_shape): image_fft}, spectral_axis)
+        return Fourier(image, {tuple(fft_shape): image_fft}, axes)
 
     @property
     def image(self):
@@ -191,9 +177,9 @@ class Fourier(object):
         return self._image
 
     @property
-    def spectral_axis(self):
-        """The dimension of the image containing spectral information"""
-        return self._spectral_axis
+    def axes(self):
+        """The axes that are transormed"""
+        return self._axes
 
     @property
     def shape(self):
@@ -207,23 +193,43 @@ class Fourier(object):
         # If this is the first time calling `fft` for this shape,
         # generate the FFT.
         if fft_shape not in self._fft:
-            axes = _get_fft_axes(self.spectral_axis)
-            print("axes:", axes)
-            image = _pad(self.image, fft_shape, axes)
-            print("image shape", image.shape)
-            self._fft[fft_shape] = np.fft.rfftn(np.fft.ifftshift(image, axes), axes=axes)
+            image = _pad(self.image, fft_shape, self._axes)
+            self._fft[fft_shape] = np.fft.rfftn(np.fft.ifftshift(image, self._axes), axes=self._axes)
         return self._fft[fft_shape]
+
+    def __len__(self):
+        return len(self.image)
+
+    def normalize(self):
+        """Normalize the image to sum to one
+        """
+        indices = [slice(None)] * len(self.shape)
+        for ax in self._axes:
+            indices[ax] = None
+        indices = tuple(indices)
+        normalization = 1/self._image.sum(axis=self._axes)
+        self._image *= normalization[indices]
+        for shape, image_fft in self._fft.items():
+            self._fft[shape] *= normalization[indices]
+
+    def sum(self, axis=None):
+        return self.image.sum(axis)
+
+    def max(self, axis=None):
+        return self.image.max(axis=axis)
+
+    def __getitem__(self, index):
+        return self.image[index]
 
 
 def _kspace_operation(image1, image2, padding, operator, shape):
     """Combine two images in k-space using a given `operator`"""
-    if image1.spectral_axis != image2.spectral_axis:
-        msg = "Both images must have the same spectral dimension, received {0} and {1}"
-        msg.format(image1.spectral_axis, image2.spectral_axis)
-        raise ValueError(msg)
-    fft_shape = _get_fft_shape(image1.image, image2.image, padding, image1.spectral_axis)
+    if image1.axes != image2.axes:
+        msg = "Both images must have the same axes, got {0} and {1}".format(image1.axes, image2.axes)
+        raise Exception(msg)
+    fft_shape = _get_fft_shape(image1.image, image2.image, padding, image1.axes)
     convolved_fft = operator(image1.fft(fft_shape), image2.fft(fft_shape))
-    convolved = Fourier.from_fft(convolved_fft, fft_shape, shape, image1.spectral_axis)
+    convolved = Fourier.from_fft(convolved_fft, fft_shape, shape, image1.axes)
     return convolved
 
 
@@ -239,15 +245,17 @@ def match_psfs(psf1, psf2, padding=3):
     padding: int
         Additional padding to use when generating the FFT
         to supress artifacts.
+    axes: tuple or None
+        Axes that contain the spatial information for the PSFs.
     """
-    if psf1.shape[psf1.spectral_axis] < psf2.shape[psf2.spectral_axis]:
+    if psf1.shape[0] < psf2.shape[0]:
         shape = psf2.shape
     else:
         shape = psf1.shape
     return _kspace_operation(psf1, psf2, padding, operator.truediv, shape)
 
 
-def convolve(image1, image2, padding=3):
+def convolve(image1, image2, padding=3, axes=None):
     """Convolve two images
 
     Parameters

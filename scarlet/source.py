@@ -390,7 +390,7 @@ class PointSource(Component):
         if self.symmetric:
             if self.frame.psfs is None:
                 shape = (41, 41)
-                psf = generate_psf_image(gaussian, shape, amplitude=1, sigma=.9)
+                psf = generate_psf_image(gaussian, shape, amplitude=1, sigma=.9, normalize=False)
                 psf /= psf.max()
                 self._centroid_weight = psf
             else:
@@ -483,7 +483,7 @@ class ExtendedSource(PointSource):
         if self.symmetric:
             if self.frame.psfs is None:
                 shape = (41, 41)
-                psf = generate_psf_image(gaussian, shape, amplitude=1, sigma=.9)
+                psf = generate_psf_image(gaussian, shape, amplitude=1, sigma=.9, normalize=False)
                 psf /= psf.max()
                 self._centroid_weight = psf
             else:
@@ -593,7 +593,7 @@ class MultiComponentSource(ComponentTree):
         if self.symmetric:
             if self.frame.psfs is None:
                 shape = (41, 41)
-                psf = generate_psf_image(gaussian, shape, amplitude=1, sigma=.9)
+                psf = generate_psf_image(gaussian, shape, amplitude=1, sigma=.9, normalize=False)
                 psf /= psf.max()
                 self._centroid_weight = psf
             else:

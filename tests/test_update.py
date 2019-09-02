@@ -102,7 +102,8 @@ class TestUpdate(object):
         noise = np.random.rand(21, 21)*2  # noise background to eliminate
         signal = np.zeros(noise.shape)
         func = scarlet.psf.gaussian
-        signal[7:14, 7:14] = scarlet.psf.generate_psf_image(func, (21, 21), amplitude=10, sigma=3)[7:14, 7:14]
+        signal[7:14, 7:14] = scarlet.psf.generate_psf_image(func, (21, 21), normalize=False,
+                                                            amplitude=10, sigma=3)[7:14, 7:14]
         morph = signal + noise
         sed = np.arange(5)
         shape = (len(sed), morph.shape[0], morph.shape[1])
