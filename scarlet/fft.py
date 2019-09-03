@@ -76,7 +76,7 @@ def _get_fft_shape(img1, img2, padding=3, axes=None):
     # Make sure the shapes are the same size
     if len(shape1) != len(shape2):
         msg = "img1 and img2 must have the same number of dimensions, but got {0} and {1}"
-        raise ValueError(msg.format(len(shape1, len(shape2))))
+        raise ValueError(msg.format(len(shape1), len(shape2)))
     # Set the combined shape based on the total dimensions
     if axes is None:
         shape = shape1 + shape2
@@ -225,7 +225,8 @@ class Fourier(object):
         return self.image.max(axis=axis)
 
     def __getitem__(self, index):
-        return self.image[index]
+        fft_kernels = {shape: kernel[index] for shape, kernel in self._fft.items()}
+        return Fourier(self.image[index], fft_kernels)
 
 
 def _kspace_operation(image1, image2, padding, operator, shape):

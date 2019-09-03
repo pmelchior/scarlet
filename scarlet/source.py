@@ -6,6 +6,7 @@ from . import update
 from . import measurement
 from .interpolation import get_projection_slices
 from .psf import generate_psf_image, gaussian
+from . import fft
 
 import logging
 
@@ -173,10 +174,30 @@ def init_extended_source(sky_coord, frame, observation, bg_rms,
         raise SourceInitError(msg.format(*sky_coord, bg_cutoff))
     morph[~mask] = 0
 
+    if frame.psfs is not observation.frame.psfs and frame.psfs is not None:
+        mask = morph == 0
+        _morph = fft.Fourier(morph)
+        # The widest PSF will have the minimum max pixel value
+        kidx = np.argmax(observation.frame.psfs.max(axis=(1, 2)))
+        kernel = fft.match_psfs(frame.psfs, observation.frame.psfs)[kidx]
+        morph = fft.convolve(_morph, kernel).image
+        morph[mask] = 0
+
+        if symmetric:
+            morph = operator.prox_uncentered_symmetry(morph, 0, center=center, algorithm="sdss")
+        if monotonic:
+            # use finite thresh to remove flat bridges
+            prox_monotonic = operator.prox_strict_monotonic(morph.shape, use_nearest=False,
+                                                            center=center, thresh=.1)
+            morph = prox_monotonic(morph, 0).reshape(morph.shape)
+
+        morph[morph < 0] = 0
+
     # normalize to unity at peak pixel
     cy, cx = np.array(center).astype(int)
     center_morph = morph[cy, cx]
     morph /= center_morph
+    #sed *= center_morph
     return sed, morph
 
 
@@ -370,8 +391,8 @@ class PointSource(Component):
             sy, sx = (np.array(frame.psfs[0].shape) - 1) // 2
             cy, cx = (np.array(morph.shape) - 1) // 2
             yx0 = int(py - cy - sy), int(px - cx - sx)
-            bb, ibb, _ = get_projection_slices(frame.psfs[0], morph.shape, yx0)
-            morph[bb] = frame.psfs[0][ibb]
+            bb, ibb, _ = get_projection_slices(frame.psfs[0].image, morph.shape, yx0)
+            morph[bb] = frame.psfs[0].image[ibb]
 
         self.pixel_center = pixel
         pixel = observation.frame.get_pixel(sky_coord)
@@ -394,7 +415,7 @@ class PointSource(Component):
                 psf /= psf.max()
                 self._centroid_weight = psf
             else:
-                self._centroid_weight = self.frame.psfs[0]
+                self._centroid_weight = self.frame.psfs[0].image
 
         # ensure adherence to constraints
         self.update()
@@ -487,7 +508,7 @@ class ExtendedSource(PointSource):
                 psf /= psf.max()
                 self._centroid_weight = psf
             else:
-                self._centroid_weight = self.frame.psfs[0]
+                self._centroid_weight = self.frame.psfs[0].image
 
         self.update()
 
@@ -597,7 +618,7 @@ class MultiComponentSource(ComponentTree):
                 psf /= psf.max()
                 self._centroid_weight = psf
             else:
-                self._centroid_weight = self.frame.psfs[0]
+                self._centroid_weight = self.frame.psfs[0].image
 
         # ensure adherence to constraints
         self.update()
