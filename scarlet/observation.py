@@ -104,9 +104,7 @@ class Frame():
             if dtype != psfs.image.dtype:
                 msg = "Dtypes of PSFs and Frame different. Casting PSFs to {}".format(dtype)
                 logger.warning(msg)
-                _psfs = psfs.image.astype(dtype)
-                # Create a new Fourier object with the correct dtype
-                psfs = fft.Fourier(_psfs, axes=(1, 2))
+                psfs.update_dtype(dtype)
 
         self._psfs = psfs
 
@@ -239,8 +237,7 @@ class Observation():
             if type(self.weights) is np.ndarray:
                 self.weights = self.weights.astype(model_frame.dtype)
             if self.frame._psfs is not None:
-                _psfs = self.frame._psfs.image.astype(model_frame.dtype)
-                self.frame._psfs = fft.Fourier(_psfs, axes=(1, 2))
+                self.frame.psfs.update_dtype(model_frame.dtype)
 
         #  channels of model that are represented in this observation
         self._band_slice = slice(None)

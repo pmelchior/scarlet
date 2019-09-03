@@ -212,6 +212,12 @@ class Fourier(object):
         for shape, image_fft in self._fft.items():
             self._fft[shape] *= normalization[indices]
 
+    def update_dtype(self, dtype):
+        if self.image.dtype != dtype:
+            self._image = self._image.astype(dtype)
+            for shape in self._fft:
+                self._fft[shape] = self._fft[shape].astype(dtype)
+
     def sum(self, axis=None):
         return self.image.sum(axis)
 
