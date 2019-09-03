@@ -203,9 +203,12 @@ class Fourier(object):
     def normalize(self):
         """Normalize the image to sum to one
         """
-        indices = [slice(None)] * len(self.shape)
-        for ax in self._axes:
-            indices[ax] = None
+        if self._axes is not None:
+            indices = [slice(None)] * len(self.shape)
+            for ax in self._axes:
+                indices[ax] = None
+        else:
+            indices = [None] * len(self.shape)
         indices = tuple(indices)
         normalization = 1/self._image.sum(axis=self._axes)
         self._image *= normalization[indices]

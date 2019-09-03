@@ -82,8 +82,7 @@ def generate_psf_image(func, shape, subsamples=10, normalize=True, **kwargs):
     y = np.linspace(-ry, ry, shape[0])
     x = np.linspace(-rx, rx, shape[1])
     f = partial(func, **kwargs)
-    #result = apply_2D_trapezoid_rule(y, x, partial(f, **kwargs), subsamples)
-    result = f(y, x, **kwargs)
+    result = apply_2D_trapezoid_rule(y, x, partial(f, **kwargs), subsamples)
     if normalize:
         result /= result.sum()
     return result
