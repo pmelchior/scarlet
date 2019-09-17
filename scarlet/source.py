@@ -6,7 +6,6 @@ from . import update
 from . import measurement
 from .interpolation import get_projection_slices
 from .psf import generate_psf_image, gaussian
-from . import fft
 
 import logging
 
@@ -137,38 +136,8 @@ def build_detection_coadd(sed, bg_rms, observation, thresh=1):
     return detect, bg_cutoff
 
 
-def _deconvolve_init(morph, center, observation, frame, symmetric, monotonic, bg_rms, sn_psf_weight=False):
-    mask = morph == 0
-    _morph = fft.Fourier(morph)
-    if sn_psf_weight:
-        # Use the PSF in the band with the highest signal to noise for the source
-        cy, cx = np.array(center).astype(int)
-        sn = observation.images[:, cy, cx] / bg_rms
-        kidx = np.argmax(sn)
-    else:
-        # The narrowest PSF will have the maximum max pixel value,
-        # so we choose that for the deconvolution to limit
-        # high frequency deconvolution artifacts
-        kidx = np.argmax(observation.frame.psfs.max(axis=(1, 2)))
-    kernel = fft.match_psfs(frame.psfs, observation.frame.psfs)[kidx]
-    morph = fft.convolve(_morph, kernel).image
-    morph[mask] = 0
-
-    # We need to remove high frequency power that occurs during deconvolution
-    if symmetric:
-        morph = operator.prox_uncentered_symmetry(morph, 0, center=center, algorithm="sdss")
-    if monotonic:
-        # use finite thresh to remove flat bridges
-        prox_monotonic = operator.prox_strict_monotonic(morph.shape, use_nearest=False,
-                                                        center=center, thresh=.1)
-        morph = prox_monotonic(morph, 0).reshape(morph.shape)
-
-    morph[morph < 0] = 0
-    return morph
-
-
 def init_extended_source(sky_coord, frame, observation, bg_rms,
-                         thresh=1., symmetric=True, monotonic=True, sn_psf_weight=False):
+                         thresh=1., symmetric=True, monotonic=True):
     """Initialize the source that is symmetric and monotonic
     See `ExtendedSource` for a description of the parameters
     """
@@ -203,10 +172,6 @@ def init_extended_source(sky_coord, frame, observation, bg_rms,
         msg = "No flux above threshold={2} for source at y={0} x={1}"
         raise SourceInitError(msg.format(*sky_coord, bg_cutoff))
     morph[~mask] = 0
-
-    if frame.psfs is not observation.frame.psfs and frame.psfs is not None:
-        morph = _deconvolve_init(morph, center, observation, frame, symmetric,
-                                 monotonic, bg_rms, sn_psf_weight)
 
     # normalize to unity at peak pixel
     cy, cx = np.array(center).astype(int)
@@ -477,8 +442,7 @@ class PointSource(Component):
 
 class ExtendedSource(PointSource):
     def __init__(self, frame, sky_coord, observation, bg_rms, thresh=1,
-                 symmetric=True, monotonic=True, center_step=5, delay_thresh=10,
-                 sn_psf_weight=False, **component_kwargs):
+                 symmetric=True, monotonic=True, center_step=5, delay_thresh=10, **component_kwargs):
         """Extended source intialized to match a set of observations
 
         Parameters
@@ -511,7 +475,7 @@ class ExtendedSource(PointSource):
         self.delay_thresh = delay_thresh
 
         sed, morph = init_extended_source(sky_coord, frame, observation, bg_rms,
-                                          thresh, True, monotonic, sn_psf_weight)
+                                          thresh, True, monotonic)
 
         Component.__init__(self, frame, sed, morph, **component_kwargs)
 

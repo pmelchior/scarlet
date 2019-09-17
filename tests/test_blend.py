@@ -118,7 +118,7 @@ class TestBlend(object):
 
         # Fit the model
         blend.fit(100)
-        assert blend.it == 14
+        assert blend.it == 15
         mse = np.array(blend.mse[:-1])
         _mse = np.array(blend.mse[1:])
         assert np.all(mse-_mse >= 0)
