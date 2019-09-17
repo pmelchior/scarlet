@@ -228,17 +228,33 @@ class Fourier(object):
         return self.image.max(axis=axis)
 
     def __getitem__(self, index):
-        fft_kernels = {shape: kernel[index] for shape, kernel in self._fft.items()}
-        return Fourier(self.image[index], fft_kernels)
+        # Make the index a tuple
+        if not hasattr(index, "__getitem__"):
+            index = tuple([index])
+
+        # Axes that are removed from the shape of the new object
+        removed = np.array([n for n, idx in enumerate(index) if not isinstance(idx, slice)])
+        # Only propagate the shape indices for axes not removed
+
+        # Only propagate axes that are sliced or not indexed and
+        # decrement them by the number of removed axes smaller than each one
+        axes = tuple([ax-np.sum(removed < ax) for ax in self.axes if ax not in removed])
+        # Create views into the fft transformed values, appropriately adjusting
+        # the shapes for the new axes
+        fft_kernels = {
+            tuple([s for idx, s in enumerate(shape) if self.axes[idx] not in removed]): kernel[index]
+            for shape, kernel in self._fft.items()
+        }
+        return Fourier(self.image[index], fft_kernels, axes=axes)
 
 
-def _kspace_operation(image1, image2, padding, operator, shape):
+def _kspace_operation(image1, image2, padding, op, shape):
     """Combine two images in k-space using a given `operator`"""
     if image1.axes != image2.axes:
         msg = "Both images must have the same axes, got {0} and {1}".format(image1.axes, image2.axes)
         raise Exception(msg)
     fft_shape = _get_fft_shape(image1.image, image2.image, padding, image1.axes)
-    convolved_fft = operator(image1.fft(fft_shape), image2.fft(fft_shape))
+    convolved_fft = op(image1.fft(fft_shape), image2.fft(fft_shape))
     convolved = Fourier.from_fft(convolved_fft, fft_shape, shape, image1.axes)
     return convolved
 

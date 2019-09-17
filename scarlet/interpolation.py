@@ -421,14 +421,12 @@ def sinc2D(y, x):
     return np.dot(np.sinc(y), np.sinc(x))
 
 
-def apply_2D_trapezoid_rule(y, x, f, dNy, dNx=None, dy=None, dx=None):
-    """Use the trapezoid rule to integrate over a subsampled function
-
-    2D implementation of the trapezoid rule.
-    See `apply_2D_trapezoid_rule` for a description, with the difference
-    that `f` is a function `f(y,x)`, where we note the c ++`(y,x)` ordering.
+def subsample_function(y, x, f, dNy, dNx=None, dy=None, dx=None):
+    """Subsample a function
+    Given the expected pixel grid of a function, subsample that function
+    at a grid subdivided in x by `dNx` and y by `dNy`.
     """
-    # Use the spacing between x values to define the integrated regions
+    # Use the spacing between x values to define the subsampled regions
     if dx is None:
         dx = x[1] - x[0]
     if dy is None:
@@ -443,7 +441,22 @@ def apply_2D_trapezoid_rule(y, x, f, dNy, dNx=None, dy=None, dx=None):
     # Create the subsampled interval and use it to sample `f`
     _x = np.linspace(x[0]-dx/2, x[-1]+dx/2, len(x)*dNx+1)
     _y = np.linspace(y[0]-dy/2, y[-1]+dy/2, len(y)*dNy+1)
-    z = f(_y, _x)
+    return f(_y, _x), _y, _x
+
+
+def apply_2D_trapezoid_rule(y, x, f, dNy, dNx=None, dy=None, dx=None):
+    """Use the trapezoid rule to integrate over a subsampled function
+    2D implementation of the trapezoid rule.
+    See `apply_trapezoid_rule` for a description, with the difference
+    that `f` is a function `f(y,x)`, where we note the c ++`(y,x)` ordering.
+    """
+    if dx is None:
+        dx = x[1] - x[0]
+    if dy is None:
+        dy = y[1] - y[0]
+    if dNx is None:
+        dNx = dNy
+    z, _y, _x = subsample_function(y, x, f, dNy, dNx, dy, dx)
 
     # Calculate the volume of each sub region
     dz = 0.4 * (z[:-1, :-1] + z[1:, :-1] + z[:-1, 1:] + z[1:, 1:])

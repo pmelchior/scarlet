@@ -329,7 +329,7 @@ class LowResObservation(Observation):
             low resolution psf at matching size and resolution
         '''
 
-        psf_lr = self.frame.psfs
+        psf_lr = self.frame.psfs.image
         wcs_lr = self.frame.wcs
 
         ny_hr, nx_hr = psf_hr.shape
@@ -366,7 +366,6 @@ class LowResObservation(Observation):
 
         assert np.shape(psf_match_lr[0]) == np.shape(psf_match_hr)
 
-
         psf_match_hr /= np.sum(psf_match_hr)
         psf_match_lr /= np.sum(psf_match_lr)
         return psf_match_hr[np.newaxis, :], psf_match_lr
@@ -387,8 +386,7 @@ class LowResObservation(Observation):
         whr = model_frame.wcs
 
         # Reference PSF
-        _target = model_frame.psfs[0, :, :]
-        _shape = model_frame.shape
+        _target = model_frame.psfs.image[0, :, :]
 
         _fftpack_shape = [fftpack.helper.next_fast_len(d) for d in _target.shape]
 
@@ -420,14 +418,14 @@ class LowResObservation(Observation):
     def match(self, model_frame):
 
         if self.frame.dtype != model_frame.dtype:
-            msg = "Dtypes of model and observation different. Casting observation to {}".format(model_frame.dtype)
-            logger.warning(msg)
+            msg = "Dtypes of model and observation different. Casting observation to {}"
+            logger.warning(msg.format(model_frame.dtype))
             self.frame.dtype = model_frame.dtype
             self.images = self.images.astype(model_frame.dtype)
             if type(self.weights) is np.ndarray:
                 self.weights = self.weights.astype(model_frame.dtype)
             if self.frame._psfs is not None:
-                self.frame._psfs = self.frame._psfs.astype(model_frame.dtype)
+                self.frame._psfs = self.frame._psfs.update_dtype(model_frame.dtype)
 
         #  channels of model that are represented in this observation
         self._band_slice = slice(None)
