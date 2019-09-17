@@ -425,7 +425,7 @@ class LowResObservation(Observation):
             if type(self.weights) is np.ndarray:
                 self.weights = self.weights.astype(model_frame.dtype)
             if self.frame._psfs is not None:
-                self.frame._psfs = self.frame._psfs.update_dtype(model_frame.dtype)
+                self.frame._psfs.update_dtype(model_frame.dtype)
 
         #  channels of model that are represented in this observation
         self._band_slice = slice(None)
