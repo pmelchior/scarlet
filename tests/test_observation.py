@@ -19,7 +19,7 @@ def get_airy_wcs():
 class TestObservation(object):
     def get_psfs(self, shape, sigmas):
         psfs = np.array([
-            scarlet.psf.generate_psf_image(scarlet.psf.gaussian, shape, amplitude=1, sigma=s)
+            scarlet.psf.generate_psf_image(scarlet.psf.gaussian, shape, amplitude=1, sigma=s).image
             for s in sigmas
         ])
 

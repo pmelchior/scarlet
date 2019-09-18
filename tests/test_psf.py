@@ -90,7 +90,7 @@ class TestPsf(object):
     def test_generate_psf_image(self):
         # Gaussian
         psf = scarlet.psf.generate_psf_image(scarlet.psf.gaussian, (5, 5), normalize=False,
-                                             amplitude=1, sigma=.5)
+                                             amplitude=1, sigma=.5).image
         truth = [[0.0000048820, 0.0005536870, 0.0023856813, 0.0005536870, 0.0000048820],
                  [0.0005536870, 0.0627960770, 0.2705706056, 0.0627960770, 0.0005536870],
                  [0.0023856813, 0.2705706056, 1.1658125164, 0.2705706056, 0.0023856813],
@@ -100,7 +100,7 @@ class TestPsf(object):
         assert_almost_equal(psf, truth)
         # Moffat, with center
         psf = scarlet.psf.generate_psf_image(scarlet.psf.moffat, (5, 5), normalize=False, y0=-1, x0=0,
-                                             amplitude=1, alpha=2.3)
+                                             amplitude=1, alpha=2.3).image
         truth = [[0.5926995943, 0.9778247951, 1.2040852826, 0.9778247951, 0.5926995943],
                  [0.6885055756, 1.2040852826, 1.5270177289, 1.2040852826, 0.6885055756],
                  [0.5926995943, 0.9778247951, 1.2040852826, 0.9778247951, 0.5926995943],

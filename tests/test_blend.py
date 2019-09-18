@@ -29,11 +29,11 @@ def init_data(shape, coords, amplitudes=None, convolve=True, dtype=np.float32):
     if convolve:
         psf_radius = 20
         psf_shape = (2*psf_radius+1, 2*psf_radius+1)
-        target_psf = scarlet.psf.generate_psf_image(scarlet.psf.gaussian, psf_shape, sigma=.9)
+        target_psf = scarlet.psf.generate_psf_image(scarlet.psf.gaussian, psf_shape, sigma=.9).image
         target_psf /= target_psf.sum()
 
         psfs = np.array([
-            scarlet.psf.generate_psf_image(scarlet.psf.gaussian, psf_shape, sigma=1+.2*b)
+            scarlet.psf.generate_psf_image(scarlet.psf.gaussian, psf_shape, sigma=1+.2*b).image
             for b in range(B)
         ], dtype=dtype)
         psfs /= psfs.max(axis=(1, 2))[:, None, None]

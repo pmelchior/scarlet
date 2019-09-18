@@ -74,12 +74,9 @@ class TestFourier(object):
         """Test matching two 2D psfs
         """
         # Narrow PSF
-        g1 = scarlet.psf.generate_psf_image(scarlet.psf.gaussian, (41, 41), sigma=1)
+        psf1 = scarlet.psf.generate_psf_image(scarlet.psf.gaussian, (41, 41), sigma=1)
         # Wide PSF
-        g2 = scarlet.psf.generate_psf_image(scarlet.psf.gaussian, (41, 41), sigma=2)
-
-        psf1 = fft.Fourier(g1)
-        psf2 = fft.Fourier(g2)
+        psf2 = scarlet.psf.generate_psf_image(scarlet.psf.gaussian, (41, 41), sigma=2)
 
         # Test narrow to wide
         kernel_1to2 = fft.match_psfs(psf2, psf1)
@@ -97,11 +94,10 @@ class TestFourier(object):
         gaussian = partial(scarlet.psf.generate_psf_image, func=scarlet.psf.gaussian, shape=(41, 41))
 
         # Single band target PSF
-        target = gaussian(sigma=.9)[None, :, :]
+        psf1 = gaussian(sigma=.9)[None, :, :]
         # Multiband observation PSF
-        observation = np.array([gaussian(sigma=1+.3*n) for n in range(5)])
+        observation = np.array([gaussian(sigma=1+.3*n).image for n in range(5)])
 
-        psf1 = fft.Fourier(target, axes=(1, 2))
         psf2 = fft.Fourier(observation, axes=(1, 2))
 
         # Nawrrow to wide
