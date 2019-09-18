@@ -450,21 +450,21 @@ def apply_2D_trapezoid_rule(y, x, f, dNy, dNx=None, dy=None, dx=None):
     See `apply_trapezoid_rule` for a description, with the difference
     that `f` is a function `f(y,x)`, where we note the c ++`(y,x)` ordering.
     """
-    if dx is None:
-        dx = x[1] - x[0]
     if dy is None:
         dy = y[1] - y[0]
+    if dx is None:
+        dx = x[1] - x[0]
     if dNx is None:
         dNx = dNy
     z, _y, _x = subsample_function(y, x, f, dNy, dNx, dy, dx)
 
     # Calculate the volume of each sub region
     dz = 0.4 * (z[:-1, :-1] + z[1:, :-1] + z[:-1, 1:] + z[1:, 1:])
-    volumes = dx * dy * dz / dNy / dNx
+    volumes = dy * dx * dz / dNy / dNx
 
     # Sum up the sub regions around each point to
     # give it the same shape as the original `(y,x)`
-    _dNx = len(_x) // dNx
     _dNy = len(_y) // dNy
+    _dNx = len(_x) // dNx
     volumes = np.array(np.split(np.array(np.split(volumes, _dNx, axis=1)), _dNy, axis=1)).sum(axis=(2, 3))
     return volumes

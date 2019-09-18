@@ -2,6 +2,7 @@ from functools import partial
 
 import numpy as np
 from .interpolation import apply_2D_trapezoid_rule
+from .fft import Fourier
 
 
 def moffat(y, x, y0, x0, amplitude, alpha, beta=1.5):
@@ -85,7 +86,7 @@ def generate_psf_image(func, shape, subsamples=10, normalize=True, **kwargs):
     result = apply_2D_trapezoid_rule(y, x, partial(f, **kwargs), subsamples)
     if normalize:
         result /= result.sum()
-    return result
+    return Fourier(result)
 
 
 def fit_target_psf(psfs, func, init_values=None, extract_values=None):

@@ -129,6 +129,8 @@ class Fourier(object):
         else:
             self._fft = image_fft
         self._image = image
+        if axes is None:
+            axes = tuple(range(len(self.shape)))
         self._axes = axes
 
     @staticmethod
@@ -193,6 +195,9 @@ class Fourier(object):
         # If this is the first time calling `fft` for this shape,
         # generate the FFT.
         if fft_shape not in self._fft:
+            if len(fft_shape) != len(self.axes):
+                msg = "fft_shape self.axes must have the same number of dimensions, got {0}, {1}"
+                raise ValueError(msg.format(fft_shape, self.axes))
             image = _pad(self.image, fft_shape, self._axes)
             self._fft[fft_shape] = np.fft.rfftn(np.fft.ifftshift(image, self._axes), axes=self._axes)
         return self._fft[fft_shape]
@@ -233,12 +238,18 @@ class Fourier(object):
             index = tuple([index])
 
         # Axes that are removed from the shape of the new object
-        removed = np.array([n for n, idx in enumerate(index) if not isinstance(idx, slice)])
-        # Only propagate the shape indices for axes not removed
+        removed = np.array([n for n, idx in enumerate(index)
+                            if not isinstance(idx, slice) and idx is not None])
+        # Axes that are added to the shape of the new object
+        # (with `np.newaxis` or `None`)
+        added = np.array([n for n, idx in enumerate(index) if idx is None])
 
         # Only propagate axes that are sliced or not indexed and
         # decrement them by the number of removed axes smaller than each one
-        axes = tuple([ax-np.sum(removed < ax) for ax in self.axes if ax not in removed])
+        # and increment them by the number of added axes smaller than
+        # each index.
+        axes = tuple([ax-np.sum(removed < ax)+np.sum(added <= ax) for ax in self.axes if ax not in removed])
+
         # Create views into the fft transformed values, appropriately adjusting
         # the shapes for the new axes
         fft_kernels = {
@@ -249,7 +260,13 @@ class Fourier(object):
 
 
 def _kspace_operation(image1, image2, padding, op, shape):
-    """Combine two images in k-space using a given `operator`"""
+    """Combine two images in k-space using a given `operator`
+
+    `image1` and `image2` are required to be `Fourier` objects and
+    `op` should be an operator (either `operator.mul` for a convolution
+    or `operator.truediv` for deconvolution). `shape` is the shape of the
+    output image (`Fourier` instance).
+    """
     if image1.axes != image2.axes:
         msg = "Both images must have the same axes, got {0} and {1}".format(image1.axes, image2.axes)
         raise Exception(msg)

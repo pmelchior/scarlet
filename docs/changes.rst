@@ -27,7 +27,7 @@ New Features
 API Changes
 ^^^^^^^^^^^
 - When looking at `Frame.psfs` (or `Observation.Frame.psfs`)
-  the result will now be a `Fourier` object and the `Fourier.fft` method needs to be called
+  the result will now be a `Fourier` object and the `Fourier.image` method needs to be called
   in order to access the PSF image cube.
 
 - `psf.moffat`, `psf.gaussian`, and `psf.double_gaussian` now accept
