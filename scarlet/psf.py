@@ -1,7 +1,11 @@
+from functools import partial
+
 import numpy as np
+from .interpolation import apply_2D_trapezoid_rule
+from .fft import Fourier
 
 
-def moffat(coords, y0, x0, amplitude, alpha, beta=1.5):
+def moffat(y, x, y0, x0, amplitude, alpha, beta=1.5):
     """Moffat Function
 
     Symmetric 2D Moffat function:
@@ -10,33 +14,79 @@ def moffat(coords, y0, x0, amplitude, alpha, beta=1.5):
 
         A (1+\frac{(x-x0)^2+(y-y0)^2}{\alpha^2})^{-\beta}
     """
-    Y, X = coords
+    X, Y = np.meshgrid(x, y)
     return (amplitude*(1+((X-x0)**2+(Y-y0)**2)/alpha**2)**-beta)
 
 
-def gaussian(coords, y0, x0, amplitude, sigma):
+def gaussian(y, x, y0=0, x0=0, amplitude=None, sigma=1):
     """Circular Gaussian Function
+
+    Parameters
+    ----------
+    y: array
+        Coordinates to sample the circular gaussian in the y dimension.
+    x: array
+        Coordinates to sample the circular gaussian in the x dimension.
+    amplitude: float
+        Height of the gaussian. If `amplitude` is `None` then
+        `amplitude = 1/(np.pi**2*sigma**2)`
+        (so that the gaussian is normalized).
+    sigma: float
+        Standard deviation of the gaussian.
+
+    Returns
+    -------
+    result: array
+        A 2D circular gaussian sampled at the coordinates `(y_i, x_j)`
+        for all i in `y` and j in `x`.
     """
-    Y, X = coords
+    if amplitude is None:
+        amplitude = 1/(np.pi**2*sigma**2)
+    X, Y = np.meshgrid(x, y)
     return (amplitude*np.exp(-((X-x0)**2+(Y-y0)**2)/(2*sigma**2)))
 
 
-def double_gaussian(coords, y0, x0, A1, sigma1, A2, sigma2):
+def double_gaussian(y, x, y0=0, x0=0, A1=None, sigma1=1, A2=None, sigma2=1):
     """Sum of two Gaussian Functions
     """
-    return gaussian(coords, y0, x0, A1, sigma1) + gaussian(coords, y0, x0, A2, sigma2)
+    return gaussian(y, x, y0, x0, A1, sigma1) + gaussian(y, x, y0, x0, A2, sigma2)
 
 
-def generate_psf_image(func, shape, center=None, *args, **kwargs):
+def generate_psf_image(func, shape, subsamples=10, normalize=True, **kwargs):
     """Generate a PSF image based on a function and shape
+
+    This function uses a subdivided pixel scale to sample `func` at
+    higher frequencies and uses the trapezoid rule to estimate the integral
+    in each subsampled region. The subsampled pixel are then summed to
+    give the estimated integration values for each pixel at the scale requested
+    by `shape`.
+
+    Parameters
+    ----------
+    shape: tuple
+        Expected shape of the output image.
+    subsamples: int
+        Number of pixels to subdivide each output pixel for
+        a more accurate integration.
+    normalize: bool
+        Whether or not to normalize the PSF.
+    kwargs: keyword arguments
+        Keyword arguments to pass to `func`.
+
+    Returns
+    -------
+    result: array
+        Integrated image generated
     """
-    X = np.arange(shape[1])
-    Y = np.arange(shape[0])
-    X, Y = np.meshgrid(X, Y)
-    coords = np.stack([Y, X])
-    if center is None:
-        center = (shape[0]-1) // 2, (shape[1]-1) // 2
-    return func(coords, center[0], center[1], *args, **kwargs)
+    ry, rx = np.array(shape) // 2
+
+    y = np.linspace(-ry, ry, shape[0])
+    x = np.linspace(-rx, rx, shape[1])
+    f = partial(func, **kwargs)
+    result = apply_2D_trapezoid_rule(y, x, partial(f, **kwargs), subsamples)
+    if normalize:
+        result /= result.sum()
+    return Fourier(result)
 
 
 def fit_target_psf(psfs, func, init_values=None, extract_values=None):
@@ -74,9 +124,9 @@ def fit_target_psf(psfs, func, init_values=None, extract_values=None):
     """
     from scipy.optimize import curve_fit
 
-    X = np.arange(psfs.shape[2])
-    Y = np.arange(psfs.shape[1])
-    X, Y = np.meshgrid(X, Y)
+    x = np.arange(psfs.shape[2])
+    y = np.arange(psfs.shape[1])
+    X, Y = np.meshgrid(x, y)
     coords = np.stack([Y, X])
     y0, x0 = (psfs.shape[1]-1) // 2, (psfs.shape[2]-1) // 2
     init_params = [y0, x0]
@@ -95,7 +145,8 @@ def fit_target_psf(psfs, func, init_values=None, extract_values=None):
     def reshape_func(*args):
         """Flatten the function output to work with `scipy.curve_fit`
         """
-        return func(*args).reshape(-1)
+        _args = [y, x] + list(args[1:])
+        return func(*_args).reshape(-1)
 
     # Fit each PSF with the specified function and store the results
     for n, psf in enumerate(psfs):

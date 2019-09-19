@@ -19,7 +19,7 @@ def get_airy_wcs():
 class TestObservation(object):
     def get_psfs(self, shape, sigmas):
         psfs = np.array([
-            scarlet.psf.generate_psf_image(scarlet.psf.gaussian, shape, amplitude=1, sigma=s)
+            scarlet.psf.generate_psf_image(scarlet.psf.gaussian, shape, amplitude=1, sigma=s).image
             for s in sigmas
         ])
 
@@ -79,7 +79,7 @@ class TestObservation(object):
         assert obs.frame.Ny == 11
         assert obs.frame.Nx == 13
         assert obs.frame.shape == images.shape
-        assert_almost_equal(obs.frame.psfs, norm_psfs)
+        assert_almost_equal(obs.frame.psfs.image, norm_psfs)
         assert_almost_equal(obs.frame.psfs.sum(axis=(1, 2)), [1]*3)
         assert_array_equal(obs.weights, weights)
         assert_array_equal(obs.frame.channels, channels)
