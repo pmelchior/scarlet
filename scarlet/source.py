@@ -370,8 +370,8 @@ class PointSource(Component):
             sy, sx = (np.array(frame.psfs[0].shape) - 1) // 2
             cy, cx = (np.array(morph.shape) - 1) // 2
             yx0 = int(py - cy - sy), int(px - cx - sx)
-            bb, ibb, _ = get_projection_slices(frame.psfs[0], morph.shape, yx0)
-            morph[bb] = frame.psfs[0][ibb]
+            bb, ibb, _ = get_projection_slices(frame.psfs[0].image, morph.shape, yx0)
+            morph[bb] = frame.psfs[0].image[ibb]
 
         self.pixel_center = pixel
         pixel = observation.frame.get_pixel(sky_coord)
@@ -390,11 +390,11 @@ class PointSource(Component):
         if self.symmetric:
             if self.frame.psfs is None:
                 shape = (41, 41)
-                psf = generate_psf_image(gaussian, shape, amplitude=1, sigma=.9)
+                psf = generate_psf_image(gaussian, shape, amplitude=1, sigma=.9, normalize=False).image
                 psf /= psf.max()
                 self._centroid_weight = psf
             else:
-                self._centroid_weight = self.frame.psfs[0]
+                self._centroid_weight = self.frame.psfs[0].image
 
         # ensure adherence to constraints
         self.update()
@@ -483,11 +483,11 @@ class ExtendedSource(PointSource):
         if self.symmetric:
             if self.frame.psfs is None:
                 shape = (41, 41)
-                psf = generate_psf_image(gaussian, shape, amplitude=1, sigma=.9)
+                psf = generate_psf_image(gaussian, shape, amplitude=1, sigma=.9, normalize=False).image
                 psf /= psf.max()
                 self._centroid_weight = psf
             else:
-                self._centroid_weight = self.frame.psfs[0]
+                self._centroid_weight = self.frame.psfs[0].image
 
         self.update()
 
@@ -593,11 +593,11 @@ class MultiComponentSource(ComponentTree):
         if self.symmetric:
             if self.frame.psfs is None:
                 shape = (41, 41)
-                psf = generate_psf_image(gaussian, shape, amplitude=1, sigma=.9)
+                psf = generate_psf_image(gaussian, shape, amplitude=1, sigma=.9, normalize=False).image
                 psf /= psf.max()
                 self._centroid_weight = psf
             else:
-                self._centroid_weight = self.frame.psfs[0]
+                self._centroid_weight = self.frame.psfs[0].image
 
         # ensure adherence to constraints
         self.update()

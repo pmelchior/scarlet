@@ -6,16 +6,14 @@ from numpy.testing import assert_almost_equal
 class TestPsf(object):
     def test_moffat(self):
         shape = 7, 7
-        X = np.arange(shape[1])
-        Y = np.arange(shape[0])
-        X, Y = np.meshgrid(X, Y)
-        coords = np.stack([Y, X])
+        x = np.arange(shape[1])
+        y = np.arange(shape[0])
         y0 = 3
         x0 = 5
         amplitude = 4.6
         alpha = 1.123
         beta = 1.491
-        result = scarlet.psf.moffat(coords, y0, x0, amplitude, alpha, beta)
+        result = scarlet.psf.moffat(y, x, y0, x0, amplitude, alpha, beta)
 
         truth = [[0.03206059739715075, 0.049750104330030576, 0.07898230258561093, 0.12363652428535422,
                   0.17582539510961576, 0.20197531771865862, 0.17582539510961576],
@@ -35,15 +33,13 @@ class TestPsf(object):
 
     def test_gaussian(self):
         shape = 7, 7
-        X = np.arange(shape[1])
-        Y = np.arange(shape[0])
-        X, Y = np.meshgrid(X, Y)
-        coords = np.stack([Y, X])
+        x = np.arange(shape[1])
+        y = np.arange(shape[0])
         y0 = 3
         x0 = 5
         amplitude = 4.6
         sigma = 1.872
-        result = scarlet.psf.gaussian(coords, y0, x0, amplitude, sigma)
+        result = scarlet.psf.gaussian(y, x, y0, x0, amplitude, sigma)
 
         truth = [[0.035972150170478605, 0.1299111667397572, 0.3526936664142025, 0.7198134054492321,
                   1.1043666731044601, 1.2737310805289048, 1.1043666731044601],
@@ -64,17 +60,15 @@ class TestPsf(object):
 
     def test_double_gaussian(self):
         shape = 7, 7
-        X = np.arange(shape[1])
-        Y = np.arange(shape[0])
-        X, Y = np.meshgrid(X, Y)
-        coords = np.stack([Y, X])
+        x = np.arange(shape[1])
+        y = np.arange(shape[0])
         y0 = 3
         x0 = 5
         A1 = 4.2
         sigma1 = .938
         A2 = 2.042
         sigma2 = 3.67
-        result = scarlet.psf.double_gaussian(coords, y0, x0, A1, sigma1, A2, sigma2)
+        result = scarlet.psf.double_gaussian(y, x, y0, x0, A1, sigma1, A2, sigma2)
 
         truth = [[0.5779677726051379, 0.8072428930726728, 1.0469367888293277, 1.2628823397211582,
                   1.4230484212789571, 1.4872678517124784, 1.4230484212789571],
@@ -95,33 +89,35 @@ class TestPsf(object):
 
     def test_generate_psf_image(self):
         # Gaussian
-        psf = scarlet.psf.generate_psf_image(scarlet.psf.gaussian, (5, 5), amplitude=1, sigma=.5)
-        truth = [[0.0000001125, 0.0000453999, 0.0003354626, 0.0000453999, 0.0000001125],
-                 [0.0000453999, 0.0183156389, 0.1353352832, 0.0183156389, 0.0000453999],
-                 [0.0003354626, 0.1353352832, 1.0000000000, 0.1353352832, 0.0003354626],
-                 [0.0000453999, 0.0183156389, 0.1353352832, 0.0183156389, 0.0000453999],
-                 [0.0000001125, 0.0000453999, 0.0003354626, 0.0000453999, 0.0000001125]]
+        psf = scarlet.psf.generate_psf_image(scarlet.psf.gaussian, (5, 5), normalize=False,
+                                             amplitude=1, sigma=.5).image
+        truth = [[0.0000048820, 0.0005536870, 0.0023856813, 0.0005536870, 0.0000048820],
+                 [0.0005536870, 0.0627960770, 0.2705706056, 0.0627960770, 0.0005536870],
+                 [0.0023856813, 0.2705706056, 1.1658125164, 0.2705706056, 0.0023856813],
+                 [0.0005536870, 0.0627960770, 0.2705706056, 0.0627960770, 0.0005536870],
+                 [0.0000048820, 0.0005536870, 0.0023856813, 0.0005536870, 0.0000048820]]
+
         assert_almost_equal(psf, truth)
         # Moffat, with center
-        psf = scarlet.psf.generate_psf_image(scarlet.psf.moffat, (5, 5), (1, 2), 1, 2.3)
-        truth = [[0.3686043413, 0.6181476401, 0.7712719551, 0.6181476401, 0.3686043413],
-                 [0.4296946407, 0.7712719551, 1.0000000000, 0.7712719551, 0.4296946407],
-                 [0.3686043413, 0.6181476401, 0.7712719551, 0.6181476401, 0.3686043413],
-                 [0.2511285197, 0.3686043413, 0.4296946407, 0.3686043413, 0.2511285197],
-                 [0.1555474694, 0.2035036860, 0.2252346302, 0.2035036860, 0.1555474694]]
+        psf = scarlet.psf.generate_psf_image(scarlet.psf.moffat, (5, 5), normalize=False, y0=-1, x0=0,
+                                             amplitude=1, alpha=2.3).image
+        truth = [[0.5926995943, 0.9778247951, 1.2040852826, 0.9778247951, 0.5926995943],
+                 [0.6885055756, 1.2040852826, 1.5270177289, 1.2040852826, 0.6885055756],
+                 [0.5926995943, 0.9778247951, 1.2040852826, 0.9778247951, 0.5926995943],
+                 [0.4056982772, 0.5926995943, 0.6885055756, 0.5926995943, 0.4056982772],
+                 [0.2515929101, 0.3290172049, 0.3639736564, 0.3290172049, 0.2515929101]]
         assert_almost_equal(psf, truth)
 
     def test_fit_target_psf(self):
         shape = 21, 21
-        X = np.arange(shape[1])
-        Y = np.arange(shape[0])
-        X, Y = np.meshgrid(X, Y)
-        coords = np.stack([Y, X])
+        x = np.arange(shape[1])
+        y = np.arange(shape[0])
         y0 = 10
         x0 = 10
         amplitude = 4.6
         sigmas = [1.1, 0.91, 2.6, 1.02, 3.5]
-        psfs = np.array([scarlet.psf.gaussian(coords, y0, x0, amplitude, sigma) for sigma in sigmas])
+        psfs = np.array([scarlet.psf.gaussian(y, x, y0, x0, amplitude, sigma) for sigma in sigmas])
+        print(psfs.shape)
         target_psf, all_params, params = scarlet.psf.fit_target_psf(psfs, scarlet.psf.gaussian)
 
         assert_almost_equal(target_psf.sum(), 1)

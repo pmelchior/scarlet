@@ -2,16 +2,16 @@ import autograd.numpy as np
 from scipy import fftpack
 
 from . import interpolation
-
+from . import fft
 from . import resampling
 
 import logging
 
 logger = logging.getLogger("scarlet.observation")
 
+
 def _centered(arr, newshape):
     """Return the center newshape portion of the array.
-
     This function is used by `fft_convolve` to remove
     the zero padded region of the convolution.
     """
@@ -162,15 +162,18 @@ class Frame():
         if psfs is None:
             logger.warning('No PSFs specified. Possible, but dangerous!')
         else:
-            assert len(psfs) == 1 or len(psfs) == shape[0], 'PSFs need to have shape (1,Ny,Nx) for Blend and (B,Ny,Nx) for Observation'
+            msg = 'PSFs need to have shape (1,Ny,Nx) for Blend and (B,Ny,Nx) for Observation'
+            assert len(psfs) == 1 or len(psfs) == shape[0], msg
+            if not isinstance(psfs, fft.Fourier):
+                psfs = fft.Fourier(psfs, axes=(1, 2))
             if not np.allclose(psfs.sum(axis=(1, 2)), 1):
                 logger.warning('PSFs not normalized. Normalizing now..')
-                psfs /= psfs.sum(axis=(1, 2))[:, None, None]
+                psfs.normalize()
 
-            if dtype != psfs.dtype:
+            if dtype != psfs.image.dtype:
                 msg = "Dtypes of PSFs and Frame different. Casting PSFs to {}".format(dtype)
                 logger.warning(msg)
-                psfs = psfs.astype(dtype)
+                psfs.update_dtype(dtype)
 
         self._psfs = psfs
 
@@ -295,14 +298,15 @@ class Observation():
         """
 
         if self.frame.dtype != model_frame.dtype:
-            msg = "Dtypes of model and observation different. Casting observation to {}".format(model_frame.dtype)
+            msg = "Dtypes of model and observation different. Casting observation to {}"
+            msg = msg.format(model_frame.dtype)
             logger.warning(msg)
             self.frame.dtype = model_frame.dtype
             self.images = self.images.astype(model_frame.dtype)
             if type(self.weights) is np.ndarray:
                 self.weights = self.weights.astype(model_frame.dtype)
             if self.frame._psfs is not None:
-                self.frame._psfs = self.frame._psfs.astype(model_frame.dtype)
+                self.frame.psfs.update_dtype(model_frame.dtype)
 
         #  channels of model that are represented in this observation
         self._band_slice = slice(None)
@@ -312,64 +316,17 @@ class Observation():
             bmax = model_frame.channels.index(self.frame.channels[-1])
             self._band_slice = slice(bmin, bmax + 1)
 
-        self._diff_kernels_fft = None
+        self._diff_kernels = None
         if self.frame.psfs is not model_frame.psfs:
             assert self.frame.psfs is not None and model_frame.psfs is not None
-            # First we setup the parameters for the model -> observation FFTs
-            # Make the PSF stamp wider due to errors when matching PSFs
-            psf_shape = np.array(self.frame.psfs.shape)
-            psf_shape[1:] += self._padding
-            conv_shape = np.array(model_frame.shape) + psf_shape - 1
-            conv_shape[0] = model_frame.shape[0]
-
-            # Choose the optimal shape for FFTPack DFT
-            self._fftpack_shape = [fftpack.helper.next_fast_len(d) for d in conv_shape[1:]]
-
-            # autograd.numpy.fft does not currently work
-            # if the last dimension is odd
-            while self._fftpack_shape[-1] % 2 != 0:
-                _shape = self._fftpack_shape[-1] + 1
-                self._fftpack_shape[-1] = fftpack.helper.next_fast_len(_shape)
-
-
-            # Store the pre-fftpack optimization slices
-            self.slices = tuple(([slice(s) for s in conv_shape]))
-
-            # Now we setup the parameters for the psf -> kernel FFTs
-            shape = np.array(self.frame.psfs.shape) + np.array(model_frame.psfs.shape) - 1
-            shape[0] = np.array(self.frame.psfs.shape[0])
-
-            #Fast fft shapes for kernels
-            _fftpack_shape = [fftpack.helper.next_fast_len(d) for d in shape[1:]]
-
-            while _fftpack_shape[-1] % 2 != 0:
-                k_shape = np.array(_fftpack_shape) + 1
-                _fftpack_shape = [fftpack.helper.next_fast_len(k_s) for k_s in k_shape]
-
-            # fft of the target psf
-            target_fft = np.fft.rfftn(model_frame.psfs, _fftpack_shape, axes=(1, 2))
-
-            # fft of the observation's PSFs in each band
-            _psf_fft = np.fft.rfftn(self.frame.psfs, _fftpack_shape, axes=(1, 2))
-
-            # Diff kernel between observation and target psf in Fourrier
-            kernels = np.fft.ifftshift(np.fft.irfftn(_psf_fft / target_fft, _fftpack_shape, axes=(1, 2)), axes=(1, 2))
-
-            if kernels.shape[1] % 2 == 0 :
-                kernels = kernels[:, 1:, 1:]
-
-            kernels = _centered(kernels, psf_shape)
-
-            self._diff_kernels_fft = np.fft.rfftn(kernels, self._fftpack_shape, axes=(1, 2))
+            self._diff_kernels = fft.match_psfs(self.frame.psfs, model_frame.psfs)
 
         return self
 
     def _convolve(self, model):
         """Convolve the model in a single band
         """
-        model_fft = np.fft.rfftn(model, self._fftpack_shape, axes=(1, 2))
-        convolved = np.fft.irfftn(model_fft * self._diff_kernels_fft, self._fftpack_shape, axes=(1, 2))[self.slices]
-        return _centered(convolved, model.shape)
+        return fft.convolve(fft.Fourier(model, axes=(1, 2)), self._diff_kernels).image
 
     def render(self, model):
         """Convolve a model to the observation frame
@@ -385,7 +342,7 @@ class Observation():
             The convolved `model` in the observation frame
         """
         model_ = model[self._band_slice, :, :]
-        if self._diff_kernels_fft is not None:
+        if self._diff_kernels is not None:
             model_ = self._convolve(model_)
 
         return model_
@@ -441,7 +398,7 @@ class LowResObservation(Observation):
             low resolution psf at matching size and resolution
         '''
 
-        psf_lr = self.frame.psfs
+        psf_lr = self.frame.psfs.image
         wcs_lr = self.frame.wcs
 
         ny_hr, nx_hr = psf_hr.shape
@@ -478,7 +435,6 @@ class LowResObservation(Observation):
 
         assert np.shape(psf_match_lr[0]) == np.shape(psf_match_hr)
 
-
         psf_match_hr /= np.sum(psf_match_hr)
         psf_match_lr /= np.sum(psf_match_lr)
         return psf_match_hr[np.newaxis, :], psf_match_lr
@@ -499,8 +455,7 @@ class LowResObservation(Observation):
         whr = model_frame.wcs
 
         # Reference PSF
-        _target = model_frame.psfs[0, :, :]
-        _shape = model_frame.shape
+        _target = model_frame.psfs.image[0, :, :]
 
         _fftpack_shape = [fftpack.helper.next_fast_len(d) for d in _target.shape]
 
@@ -532,14 +487,14 @@ class LowResObservation(Observation):
     def match(self, model_frame):
 
         if self.frame.dtype != model_frame.dtype:
-            msg = "Dtypes of model and observation different. Casting observation to {}".format(model_frame.dtype)
-            logger.warning(msg)
+            msg = "Dtypes of model and observation different. Casting observation to {}"
+            logger.warning(msg.format(model_frame.dtype))
             self.frame.dtype = model_frame.dtype
             self.images = self.images.astype(model_frame.dtype)
             if type(self.weights) is np.ndarray:
                 self.weights = self.weights.astype(model_frame.dtype)
             if self.frame._psfs is not None:
-                self.frame._psfs = self.frame._psfs.astype(model_frame.dtype)
+                self.frame._psfs.update_dtype(model_frame.dtype)
 
         #  channels of model that are represented in this observation
         self._band_slice = slice(None)
