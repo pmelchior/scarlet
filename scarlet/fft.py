@@ -111,7 +111,7 @@ class Fourier(object):
     padding, so the FFT for each different shape is stored
     in a dictionary.
     """
-    def __init__(self, image, image_fft=None, axes=None):
+    def __init__(self, image = None, image_fft=None, axes=None):
         """Initialize the object
 
         Parameters
@@ -128,7 +128,8 @@ class Fourier(object):
             self._fft = {}
         else:
             self._fft = image_fft
-        self._image = image
+        if image is not None:
+            self._image = np.array(image)
         if axes is None:
             axes = tuple(range(len(self.shape)))
         self._axes = axes
@@ -259,7 +260,7 @@ class Fourier(object):
         return Fourier(self.image[index], fft_kernels, axes=axes)
 
 
-def _kspace_operation(image1, image2, padding, op, shape):
+def _kspace_operation(image1, image2, padding, op, shape, image2_fft = False):
     """Combine two images in k-space using a given `operator`
 
     `image1` and `image2` are required to be `Fourier` objects and
@@ -271,7 +272,10 @@ def _kspace_operation(image1, image2, padding, op, shape):
         msg = "Both images must have the same axes, got {0} and {1}".format(image1.axes, image2.axes)
         raise Exception(msg)
     fft_shape = _get_fft_shape(image1.image, image2.image, padding, image1.axes)
-    convolved_fft = op(image1.fft(fft_shape), image2.fft(fft_shape))
+    if image2_fft is False:
+        convolved_fft = op(image1.fft(fft_shape), image2.fft(fft_shape))
+    else:
+        convolved_fft = op(image1.fft(fft_shape), image2)
     convolved = Fourier.from_fft(convolved_fft, fft_shape, shape, image1.axes)
     return convolved
 

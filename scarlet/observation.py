@@ -10,20 +10,6 @@ import logging
 logger = logging.getLogger("scarlet.observation")
 
 
-def _centered(arr, newshape):
-    """Return the center newshape portion of the array.
-    This function is used by `fft_convolve` to remove
-    the zero padded region of the convolution.
-    """
-    newshape = np.asarray(newshape)
-    currshape = np.array(arr.shape)
-    startind = (currshape - newshape) // 2
-    endind = startind + newshape
-    myslice = [slice(startind[k], endind[k]) for k in range(len(endind))]
-
-    return arr[tuple(myslice)]
-
-
 def sinc_shift_1D(img, shift, axis, fast_size, sign = -1):
     '''Performs 1D sinc convolutions and shifting in Fourier space
 
@@ -479,7 +465,7 @@ class LowResObservation(Observation):
         if kernel.shape[1] % 2 == 0:
             kernel = kernel[:, 1:, 1:]
 
-        kernel = _centered(kernel, observed_psfs.shape)
+        kernel = fft._centered(kernel, observed_psfs.shape)
         diff_psf = kernel / kernel.sum()
 
         return diff_psf

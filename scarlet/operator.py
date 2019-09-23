@@ -4,7 +4,7 @@ import numpy as np
 from proxmin.operators import prox_unity_plus
 from proxmin.utils import MatrixAdapter
 
-from . import observation
+from . import fft
 from scipy import fftpack
 
 from .cache import Cache
@@ -296,7 +296,7 @@ def prox_kspace_symmetry(X, step, shift=None, padding=10):
     # Transform to real space
     result = np.fft.fftshift(np.fft.ifftn(result_fft))
     # Return the unpadded transform
-    result = observation._centered(np.real(result), shape)
+    result = fft._centered(np.real(result), shape)
     result[zeroMask] = 0
     assert result.shape == shape
 
