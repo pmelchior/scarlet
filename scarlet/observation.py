@@ -4,6 +4,7 @@ from scipy import fftpack
 from . import interpolation
 from . import fft
 from . import resampling
+from .psf import generate_psf_image, gaussian, fit_target_psf
 
 import logging
 
@@ -178,7 +179,8 @@ class Observation():
         prevent artifacts from the FFT.
     """
 
-    def __init__(self, images, psfs=None, weights=None, wcs=None, channels=None, padding=10):
+    def __init__(self, images, psfs=None, weights=None, wcs=None, channels=None, padding=10,
+                 inverse_kernel=None):
         """Create an Observation
 
         Parameters
@@ -210,8 +212,9 @@ class Observation():
             self.weights = 1
 
         self._padding = padding
+        self._inverse = inverse_kernel
 
-    def match(self, model_frame):
+    def match(self, model_frame, inverse=True, window=None):
         """Match the frame of `Blend` to the frame of this observation.
 
         The method sets up the mappings in spectral and spatial coordinates,
@@ -251,6 +254,42 @@ class Observation():
         if self.frame.psfs is not model_frame.psfs:
             assert self.frame.psfs is not None and model_frame.psfs is not None
             self._diff_kernels = fft.match_psfs(self.frame.psfs, model_frame.psfs)
+
+            # Also invert the difference kernel to allow deconvolutions.
+            # This can be used for initialization to create a better
+            # initial model.
+            if inverse:
+                if inverse == "auto":
+                    _, all_params, _ = fit_target_psf(self.frame.psfs.image, gaussian)
+                    print("sigma", [params[3] for params in all_params])
+                    _psfs = np.array([
+                        generate_psf_image(gaussian, self.frame.psfs[0].shape, sigma=params[3]).image
+                        for params in all_params
+                    ])
+                    _psfs = fft.Fourier(_psfs, axes=(1, 2))
+                    print(_psfs.image.sum(axis=(1, 2)))
+                else:
+                    _psfs = self.frame.psfs
+
+                import matplotlib.pyplot as plt
+                for psf in self.frame.psfs:
+                    plt.imshow(psf.image)
+                    plt.show()
+
+                for psf in _psfs:
+                    plt.imshow(psf.image)
+                    plt.show()
+
+                residual = self.frame.psfs.image - _psfs.image
+                for r in residual:
+                    vmax = np.max(np.abs(r))
+                    plt.imshow(r, vmin=-vmax, vmax=vmax, cmap="seismic")
+                    plt.colorbar()
+                    plt.show()
+
+                self._inverse_kernels = fft.match_psfs(model_frame.psfs, _psfs, window=window)
+            else:
+                self._inverse_kernels = None
 
         return self
 

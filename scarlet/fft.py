@@ -101,6 +101,101 @@ def _get_fft_shape(img1, img2, padding=3, axes=None):
     return shape
 
 
+def rect_window(freq, freq_limit):
+    """Use a rectangular window to filter the signal
+
+    `freq_limit` is the maximum frequency that will pass through the filter.
+    """
+    window = np.zeros(freq.shape, dtype=freq.dtype)
+    window[(abs(freq) < freq_limit)] = 1
+    return window
+
+
+def kaiser_window(freq, alpha=3):
+    """Use a Kaiser filtering window
+    """
+    nN = freq
+    return np.i0(np.pi*alpha * np.sqrt(1-(nN)**2)) / np.i0(np.pi*alpha)
+
+
+def hann_window(freq):
+    """Use a Hann filtering window
+    """
+    nN = freq
+    return np.cos(np.pi*nN)**2
+
+
+def tukey_window(freq, alpha=.5):
+    """Use a Tukey filtering window
+    """
+    nN = np.abs(freq)
+
+    window = np.ones(freq.shape, dtype=freq.dtype)
+    omega = 2*nN/alpha
+    top = 0.5 * (1+np.cos(np.pi*(omega - 1/alpha + 1)))
+    cut = nN > 0.5*(1-alpha)
+    window[cut] = top[cut]
+    return window
+
+
+def product_window(func, shape, **kwargs):
+    """Implement a 2D window as the product of two 1D windows
+
+    Parameters
+    ----------
+    func: `Function`
+        The filtering function in the x and y directions
+    shape: tuple
+        The shape of the real-space image.
+        This is used to set the frequencies
+        for the window.
+    kwargs: dict
+        Keyword arguments for `func`.
+
+    Returns
+    -------
+    result: 2D array
+        A window that can be used to filter the signal.
+    """
+    fy = np.fft.fftfreq(shape[0])
+    fx = np.fft.fftfreq(shape[1])
+    fx, fy = np.meshgrid(fx, fy)
+    wy = func(fy, **kwargs)
+    wx = func(fx, **kwargs)
+    return wy * wx
+
+
+def symmetric_window(func, shape, **kwargs):
+    """Implement a 2D window that is circularly symmetric
+
+    Parameters
+    ----------
+    func: `Function`
+        The filtering function in the x and y directions
+    shape: tuple
+        The shape of the real-space image.
+        This is used to set the frequencies
+        for the window.
+    kwargs: dict
+        Keyword arguments for `func`.
+
+    Returns
+    -------
+    result: 2D array
+        A window that can be used to filter the signal.
+    """
+    fy = np.fft.fftshift(np.fft.fftfreq(shape[0]))
+    fx = np.fft.fftshift(np.fft.fftfreq(shape[1]))
+    fx, fy = np.meshgrid(fx, fy)
+    r = np.sqrt(fy**2 + fx**2)
+    result = func(r, **kwargs)
+    # Set the window outside of the x, y window to zero
+    # This prevents periodic windows from cycling
+    # back up at the diagonal edges
+    result[(r > np.abs(fy).max()) | (r > np.abs(fx).max())] = 0
+    return result
+
+
 class Fourier(object):
     """An array that stores its Fourier Transform
 
@@ -234,7 +329,7 @@ class Fourier(object):
 
     def __getitem__(self, index):
         # Make the index a tuple
-        if not hasattr(index, "__getitem__"):
+        if not hasattr(index, "__iter__"):
             index = tuple([index])
 
         # Axes that are removed from the shape of the new object
@@ -256,10 +351,14 @@ class Fourier(object):
             tuple([s for idx, s in enumerate(shape) if self.axes[idx] not in removed]): kernel[index]
             for shape, kernel in self._fft.items()
         }
+        # If all of the remaining axes are used then remove the
+        # axes dependence
+        if axes == tuple(np.arange(len(self.image[index].shape))):
+            axes = None
         return Fourier(self.image[index], fft_kernels, axes=axes)
 
 
-def _kspace_operation(image1, image2, padding, op, shape):
+def _kspace_operation(image1, image2, padding, op, shape, window=None):
     """Combine two images in k-space using a given `operator`
 
     `image1` and `image2` are required to be `Fourier` objects and
@@ -272,11 +371,21 @@ def _kspace_operation(image1, image2, padding, op, shape):
         raise Exception(msg)
     fft_shape = _get_fft_shape(image1.image, image2.image, padding, image1.axes)
     convolved_fft = op(image1.fft(fft_shape), image2.fft(fft_shape))
+    if window is not None:
+        _fft_shape = tuple([a for idx, a in enumerate(convolved_fft.shape) if idx in image1.axes])
+        # Since mathcing uses real FFTs we need to chop the
+        # window and reshape it to be the same size as the image
+        if window.shape != _fft_shape:
+            cx = (window.shape[1]-1) // 2
+            window[:, :cx] = 0
+            window = _pad(window, _fft_shape)
+            window = np.fft.ifftshift(window)
+        convolved_fft *= window
     convolved = Fourier.from_fft(convolved_fft, fft_shape, shape, image1.axes)
     return convolved
 
 
-def match_psfs(psf1, psf2, padding=3):
+def match_psfs(psf1, psf2, padding=3, window=None):
     """Calculate the difference kernel between two psfs
 
     Parameters
@@ -295,7 +404,7 @@ def match_psfs(psf1, psf2, padding=3):
         shape = psf2.shape
     else:
         shape = psf1.shape
-    return _kspace_operation(psf1, psf2, padding, operator.truediv, shape)
+    return _kspace_operation(psf1, psf2, padding, operator.truediv, shape, window)
 
 
 def convolve(image1, image2, padding=3, axes=None):
