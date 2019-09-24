@@ -5,7 +5,7 @@ from proxmin.operators import prox_unity_plus
 from proxmin.utils import MatrixAdapter
 
 from . import fft
-from scipy import fftpack
+from . import interpolation
 
 from .cache import Cache
 
@@ -269,7 +269,7 @@ def prox_kspace_symmetry(X, step, shift=None, padding=10):
     zeroMask = X.image <= 0
 
     #Compute shift operator
-    shifter_y, shifter_x = mk_shifter(fft_shape)
+    shifter_y, shifter_x = interpolation.mk_shifter(fft_shape)
     #Apply shift in Fourier
     result_fft = X_fft * shifter_y[:, np.newaxis] ** (-dy)
     result_fft *= shifter_x[np.newaxis, :] ** (-dx)
@@ -278,45 +278,13 @@ def prox_kspace_symmetry(X, step, shift=None, padding=10):
     result_fft = result_fft.real
 
     #Unshift
+    result_fft = result_fft * shifter_y[:, np.newaxis] ** dy
+    result_fft = result_fft * shifter_x[np.newaxis, :] ** dx
+
     result = fft.Fourier.from_fft(result_fft, fft_shape, X.image.shape, [0,1])
 
+    result.image[zeroMask] = 0
     return np.real(result.image)
-
-def mk_shifter(shape):
-    ''' Performs shifts in the Fourier domain on Fourier objects
-
-    Parameters:
-    -----------
-    shape: array
-        shape of the 2-D array to shift
-    Returns:
-    --------
-    result: Fourier
-        A Fourier object with shifted arrays
-    '''
-
-    #ssert all([s is fftpack.helper.next_fast_len(s) for s in fft_shape])
-
-    #Name of the chached shifts. Here I deviate from convention voluntarilly because several different methods
-    # might cache useful shifts.
-    name = 'fft_shift'
-    key = (shape[0], shape[1])
-    try:
-        shift_y, shift_x = Cache.check(name, key)
-    except KeyError:
-
-        freq_x = np.fft.rfftfreq(shape[1])
-        freq_y = np.fft.fftfreq(shape[0])
-
-        # Shift the signal to recenter it, negative because math is opposite from
-        # pixel direction
-        shift_y = np.exp(-1j * 2 * np.pi * freq_y)
-        shift_x = np.exp(-1j * 2 * np.pi * freq_x)
-
-    shifters = (shift_y, shift_x)
-    Cache.set(name, key, shifters)
-
-    return shifters
 
 
 def prox_uncentered_symmetry(X, step, center=None, algorithm="kspace", fill=None, shift=None, strength=.5):
