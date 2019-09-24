@@ -250,58 +250,73 @@ def prox_soft_symmetry(X, step, strength=1):
     X[:] = 0.5 * strength * (X+Xs) + (1-strength) * X
     return X
 
-
 def prox_kspace_symmetry(X, step, shift=None, padding=10):
     """Symmetry in Fourier Space
 
     This algorithm by Nate Lust uses the fact that throwing
-    away the imaginary part in Fourier space leaves a symmetric
-    soution in real space. So `X` is transformed to Fourier space,
-    shifted by the fractional amount `shift=(dy, dx)`,
-    the imaginary part is discarded, shited back to its original position,
-    then transformed back to real space.
+        away the imaginary part in Fourier space leaves a symmetric
+        soution in real space. So `X` is transformed to Fourier space,
+        shifted by the fractional amount `shift=(dy, dx)`,
+        the imaginary part is discarded, shited back to its original position,
+        then transformed back to real space.
     """
-    # Record the morph shape
-    shape = X.shape
-    #fast shapes for acceleration
-    _fftpack_shape = [fftpack.helper.next_fast_len(d) for d in ((np.array(X.shape)+padding))]
-
+    # Get fast shapes
+    fft_shape = fft._get_fft_shape(X, X, padding=padding)
     dy, dx = shift
-    #padding with fast shape
-    padding = (np.array(_fftpack_shape) - X.shape+padding)//2
 
-    zeroMask = X <= 0
-    X = np.pad(X, ((padding[0], padding[0]),(padding[1], padding[1])), 'constant')
+    X = fft.Fourier(X)
+    X_fft = X.fft(fft_shape)
+    zeroMask = X.image <= 0
 
-    # Transform to k space
-    X_fft = np.fft.fftn(np.fft.ifftshift(X))
+    #Compute shift operator
+    shifter_y, shifter_x = mk_shifter(fft_shape)
+    #Apply shift in Fourier
+    result_fft = X_fft * shifter_y[:, np.newaxis] ** (-dy)
+    result_fft *= shifter_x[np.newaxis, :] ** (-dx)
 
-    freq_x = np.fft.fftfreq(X_fft.shape[1])
-    freq_y = np.fft.fftfreq(X_fft.shape[0])
-
-    # Shift the signal to recenter it, negative because math is opposite from
-    # pixel direction
-    shifter = np.outer(np.exp(-1j * 2 * np.pi * freq_y * -(dy)),
-                       np.exp(-1j * 2 * np.pi * freq_x * -(dx)))
-    inv_shifter = np.outer(np.exp(-1j * 2 * np.pi * freq_y * (dy)),
-                           np.exp(-1j * 2 * np.pi * freq_x * (dx)))
-    result_fft = X_fft * shifter
-
-    # symmeterize
+    #symmetrize
     result_fft = result_fft.real
 
-    # Shift back
-    result_fft = result_fft * inv_shifter
+    #Unshift
+    result = fft.Fourier.from_fft(result_fft, fft_shape, X.image.shape, [0,1])
 
-    # Transform to real space
-    result = np.fft.fftshift(np.fft.ifftn(result_fft))
-    # Return the unpadded transform
-    result = fft._centered(np.real(result), shape)
-    result[zeroMask] = 0
-    assert result.shape == shape
+    return np.real(result.image)
 
+def mk_shifter(shape):
+    ''' Performs shifts in the Fourier domain on Fourier objects
 
-    return result
+    Parameters:
+    -----------
+    shape: array
+        shape of the 2-D array to shift
+    Returns:
+    --------
+    result: Fourier
+        A Fourier object with shifted arrays
+    '''
+
+    #ssert all([s is fftpack.helper.next_fast_len(s) for s in fft_shape])
+
+    #Name of the chached shifts. Here I deviate from convention voluntarilly because several different methods
+    # might cache useful shifts.
+    name = 'fft_shift'
+    key = (shape[0], shape[1])
+    try:
+        shift_y, shift_x = Cache.check(name, key)
+    except KeyError:
+
+        freq_x = np.fft.rfftfreq(shape[1])
+        freq_y = np.fft.fftfreq(shape[0])
+
+        # Shift the signal to recenter it, negative because math is opposite from
+        # pixel direction
+        shift_y = np.exp(-1j * 2 * np.pi * freq_y)
+        shift_x = np.exp(-1j * 2 * np.pi * freq_x)
+
+    shifters = (shift_y, shift_x)
+    Cache.set(name, key, shifters)
+
+    return shifters
 
 
 def prox_uncentered_symmetry(X, step, center=None, algorithm="kspace", fill=None, shift=None, strength=.5):

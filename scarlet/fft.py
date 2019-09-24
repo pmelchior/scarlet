@@ -111,7 +111,7 @@ class Fourier(object):
     padding, so the FFT for each different shape is stored
     in a dictionary.
     """
-    def __init__(self, image = None, image_fft=None, axes=None):
+    def __init__(self, image=None, image_fft=None, axes=None):
         """Initialize the object
 
         Parameters
@@ -129,7 +129,7 @@ class Fourier(object):
         else:
             self._fft = image_fft
         if image is not None:
-            self._image = np.array(image)
+            self._image = image
         if axes is None:
             axes = tuple(range(len(self.shape)))
         self._axes = axes
@@ -148,7 +148,7 @@ class Fourier(object):
         image_fft: array
             The FFT of the image.
         fft_shape: tuple
-            Shape of the image used to generate the FFT.
+            "Fast" shape of the image used to generate the FFT.
             This will be different than `image_fft.shape` if
             any of the dimensions are odd, since `np.fft.rfft`
             requires an even number of dimensions (for symmetry),
@@ -260,7 +260,7 @@ class Fourier(object):
         return Fourier(self.image[index], fft_kernels, axes=axes)
 
 
-def _kspace_operation(image1, image2, padding, op, shape, image2_fft = False):
+def _kspace_operation(image1, image2, padding, op, shape):
     """Combine two images in k-space using a given `operator`
 
     `image1` and `image2` are required to be `Fourier` objects and
@@ -272,10 +272,8 @@ def _kspace_operation(image1, image2, padding, op, shape, image2_fft = False):
         msg = "Both images must have the same axes, got {0} and {1}".format(image1.axes, image2.axes)
         raise Exception(msg)
     fft_shape = _get_fft_shape(image1.image, image2.image, padding, image1.axes)
-    if image2_fft is False:
-        convolved_fft = op(image1.fft(fft_shape), image2.fft(fft_shape))
-    else:
-        convolved_fft = op(image1.fft(fft_shape), image2)
+    convolved_fft = op(image1.fft(fft_shape), image2.fft(fft_shape))
+    #why is shape not image1.shape? images are never padded
     convolved = Fourier.from_fft(convolved_fft, fft_shape, shape, image1.axes)
     return convolved
 
