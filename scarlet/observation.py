@@ -363,7 +363,7 @@ class LowResObservation(Observation):
 
         super().__init__(images, wcs=wcs, psfs=psfs, weights=weights, channels=channels, padding=padding)
 
-    def match_psfs(self, psf_hr, wcs_hr):
+    def match_psfs(self, psf_hr, wcs_hr, angle):
         '''psf matching between different dataset
         Matches PSFS at different resolutions by interpolating psf_lr on the same grid as psf_hr
         Parameters
@@ -376,6 +376,8 @@ class LowResObservation(Observation):
             wcs of the high resolution scene
         wcs_lr: WCS object
             wcs of the low resolution scene
+        angle: tuple
+            the cos and sin of the rotation angle between frames
         Returns
         -------
         psf_match_hr: array
@@ -413,9 +415,9 @@ class LowResObservation(Observation):
         npsf_y = np.max(coordover_hr[0])-np.min(coordover_hr[0])+1
         npsf_x = np.max(coordover_hr[1])-np.min(coordover_hr[1])+1
 
-        psf_match_lr = interpolation.sinc_interp(coordover_hr, pcoordlr_hr,
-                                            psf_lr[:,pcoordlr_lr[0].min():pcoordlr_lr[1].max()+1,pcoordlr_lr[1].min():
-                                            pcoordlr_lr[1].max()+1]).reshape(npsf_bands, npsf_y, npsf_x)
+        psf_valid = psf_lr[:,pcoordlr_lr[0].min():pcoordlr_lr[1].max()+1,pcoordlr_lr[1].min():pcoordlr_lr[1].max()+1]
+        psf_match_lr = interpolation.sinc_interp(psf_valid, coordover_hr, pcoordlr_hr, angle = angle)
+
         psf_match_hr = psf_hr[coordover_hr[0].min():coordover_hr[0].max()+1,
                        coordover_hr[1].min():coordover_hr[1].max()+1].reshape(npsf_y, npsf_x)
 
@@ -425,13 +427,15 @@ class LowResObservation(Observation):
         psf_match_lr /= np.sum(psf_match_lr)
         return psf_match_hr[np.newaxis, :], psf_match_lr
 
-    def build_diffkernel(self, model_frame):
+    def build_diffkernel(self, model_frame, angle):
         '''Builds the differential convolution kernel between the observation and the frame psfs
 
         Parameters
         ----------
         model_frame: Frame object
             the frame of the model (hehehe)
+        angle: tuple
+            tuple of the cos and sin of the rotation angle between frames.
         Returns
         -------
         diff_psf: array
@@ -451,22 +455,9 @@ class LowResObservation(Observation):
 
         # Computes spatially matching observation and target psfs. The observation psf is also resampled \\
         # to the model frame resolution
-        new_target, observed_psfs = self.match_psfs(_target, whr)
-        target_fft = np.fft.rfftn(new_target[0], _fftpack_shape)
-        sel = target_fft == 0
-        observed_ffts = np.fft.rfftn(observed_psfs, _fftpack_shape, axes=(1, 2))
+        new_target, observed_psfs = self.match_psfs(_target, whr, angle)
 
-        # Computes the diff kernel in Fourier
-        kernel_fft = observed_ffts / target_fft
-        kernel_fft[:, sel] = 0
-        kernel = np.fft.irfftn(kernel_fft, _fftpack_shape, axes=(1, 2))
-        kernel = np.fft.ifftshift(kernel, axes=(1, 2))
-
-        if kernel.shape[1] % 2 == 0:
-            kernel = kernel[:, 1:, 1:]
-
-        kernel = fft._centered(kernel, observed_psfs.shape)
-        diff_psf = kernel / kernel.sum()
+        diff_psf = fft.match_psfs(fft.Fourier(observed_psfs), fft.Fourier(new_target))
 
         return diff_psf
 
@@ -498,16 +489,17 @@ class LowResObservation(Observation):
 
         # sin of the angle between datasets (normalised cross product)
         self.sin_rot = np.cross(self_framevector, model_framevector)
+        # cos of the angle. (normalised scalar product)
+        self.cos_rot = np.dot(self_framevector, model_framevector)
         #Is the angle larger than machine precision?
         self.isrot = (np.abs(self.sin_rot)**2) > np.finfo(float).eps
         if not self.isrot:
             self.sin_rot = 0
             self.cos_rot = 1
-        #cos of the angle. (normalised scalar product)
-        self.cos_rot = np.dot(self_framevector, model_framevector)
-        if np.abs(self.cos_rot) < np.finfo(float).eps:
-            self.cos_rot = 0
-            self.sin_rot = 1
+            angle = None
+        else:
+            angle = (self.cos_rot, self.sin_rot)
+
         #This is a sanity check for me. I suggest to keep it while we are testing that thing, but ultimately, it can go.
         assert (1 - self.sin_rot ** 2 - self.cos_rot ** 2) < np.finfo(float).eps
 
@@ -525,7 +517,7 @@ class LowResObservation(Observation):
         #Coordinates for all model frame pixels
         self.frame_coord = (np.array(range(model_frame.Ny)), np.array(range(model_frame.Nx)))
 
-        diff_psf = self.build_diffkernel(model_frame)
+        diff_psf = self.build_diffkernel(model_frame, angle)
 
         #Padding the psf to the frame size
         #At the moment, this only handles the case where size(psf)<size(frame), which,

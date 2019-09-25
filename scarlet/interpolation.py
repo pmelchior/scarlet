@@ -1,5 +1,6 @@
 import numpy as np
 from .cache import Cache
+from . import fft
 
 
 def get_projection_slices(image, shape, yx0=None):
@@ -334,16 +335,20 @@ def mk_shifter(shape):
 
     return shifters
 
-def sinc_interp(coord_hr, coord_lr, sample_lr):
+def sinc_interp(images, coord_hr, coord_lr, angle = None, padding = 3):
     '''
     Parameters
     ----------
+    image: array
+        image whose pixels are at positions coord_lr
     coord_hr: array (2xN)
         Coordinates of the high resolution grid
     coord_lr: array (2xM)
         Coordinates of the low resolution grid
-    sample_lr: array (N)
-        Sample at positions coord_hr
+    angle: float
+        rotation angle between coordinate sets coord_hr and coord_lr
+    padding: int
+        value of zero padding for fft
     Returns
     -------
         result:  interpolated  samples at positions coord_hr
@@ -356,8 +361,44 @@ def sinc_interp(coord_hr, coord_lr, sample_lr):
     assert hy != 0
     assert hx != 0
 
-    return np.array([np.dot(np.dot(np.sinc((y_lr[np.newaxis, :]-y_hr[:, np.newaxis]) / hy),sample.T),
-                                        np.sinc((x_lr[:, np.newaxis]-x_hr[np.newaxis,:])/ hx) ) for sample in sample_lr])
+    if angle is None:
+        result = [np.dot(np.dot(np.sinc((y_lr[np.newaxis, :]-y_hr[:, np.newaxis]) / hy),image.T),
+                                        np.sinc((x_lr[:, np.newaxis]-x_hr[np.newaxis,:])/ hx) ) for image in images]
+        return np.array(result)
+    else:
+        cos = angle[0]
+        sin = angle[1]
+
+        fft_shape = fft._get_fft_shape(images, images, padding=padding, axes = [1, 2])
+
+        X = fft.Fourier(images, axes = [1, 2])
+        #Fourier transform
+        X_fft = X.fft(fft_shape)
+
+        #Shift elementary kernel
+        shifter_y, shifter_x = mk_shifter(fft_shape)
+        #Shifts values
+        shift_y = shifter_y[np.newaxis, :] ** (-y_hr[:, np.newaxis] * cos/hy)
+        shift_x = shifter_x[np.newaxis, :] ** (-y_hr[:, np.newaxis] * sin/hx)
+        #Apply shifts
+        result_fft = X_fft[:, np.newaxis, :, :] * shift_y[np.newaxis, :, :, np.newaxis]
+        result_fft = result_fft * shift_x[np.newaxis, :, np.newaxis, :]
+
+        #Shape of the expected array
+        result_shape = np.array([result_fft.shape[0], result_fft.shape[1], X.image.shape[1], X.image.shape[2]])
+        #Shifts applied in one direction
+        result_shift = fft.Fourier.from_fft(result_fft, fft_shape, result_shape, [2, 3])
+        #sinc kernels
+        shy = np.sinc((y_lr[np.newaxis, :] + x_hr[:, np.newaxis] * sin)/hy)
+        shx = np.sinc((x_lr[np.newaxis, :] - x_hr[:, np.newaxis] * cos)/hx)
+
+        #Sinc kernels in both direction
+        result_y = (result_shift.image[:, :, np.newaxis,:, :] *
+                    shy[np.newaxis, np.newaxis, :, :, np.newaxis]).sum(axis = -2)
+        result = (result_y * shx[np.newaxis,np.newaxis,:, :]).sum(axis = -1)
+
+        return result
+
 
 
 def fft_resample(img, dy, dx, kernel=lanczos, **kwargs):

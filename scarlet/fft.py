@@ -111,7 +111,7 @@ class Fourier(object):
     padding, so the FFT for each different shape is stored
     in a dictionary.
     """
-    def __init__(self, image=None, image_fft=None, axes=None):
+    def __init__(self, image, image_fft=None, axes=None):
         """Initialize the object
 
         Parameters
@@ -128,8 +128,7 @@ class Fourier(object):
             self._fft = {}
         else:
             self._fft = image_fft
-        if image is not None:
-            self._image = image
+        self._image = image
         if axes is None:
             axes = tuple(range(len(self.shape)))
         self._axes = axes
