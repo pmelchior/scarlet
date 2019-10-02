@@ -265,7 +265,8 @@ def prox_kspace_symmetry(X, step, shift=None, padding=10):
     dy, dx = shift
 
     X = fft.Fourier(X)
-    X_fft = X.fft(fft_shape)
+    X_fft = X.fft(fft_shape, (0,1))
+
     zeroMask = X.image <= 0
 
     #Compute shift operator
