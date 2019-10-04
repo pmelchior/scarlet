@@ -1,6 +1,79 @@
 import numpy as np
 
 
+def get_centered(X, center=None):
+    if center is None:
+        py, px = np.unravel_index(np.argmax(X), X.shape)
+    else:
+        py, px = center
+    cy, cx = np.array(X.shape) // 2
+
+    if py == cy and px == cx:
+        return X
+
+    dy = int(2*(py-cy))
+    dx = int(2*(px-cx))
+    if not X.shape[0] % 2:
+        dy += 1
+    if not X.shape[1] % 2:
+        dx += 1
+    if dx < 0:
+        xslice = slice(None, dx)
+    else:
+        xslice = slice(dx, None)
+    if dy < 0:
+        yslice = slice(None, dy)
+    else:
+        yslice = slice(dy, None)
+
+    return X[yslice, xslice], (yslice, xslice)
+
+
+def project(arr, newshape, axes=None):
+    newshape = np.asarray(newshape)
+    currshape = np.array(arr.shape)
+
+    dS = currshape - newshape
+    slices = [slice(None)] * len(dS)
+    pad_width = [(0, 0)] * len(dS)
+    for axis, size in enumerate(dS):
+        if size > 0:
+            sidx = (size + 1) // 2
+            eidx = sidx - size
+            slices[axis] = slice(sidx, eidx)
+        elif size < 0:
+            sidx = (-size + 1) // 2
+            eidx = -size - sidx
+            pad_width[axis] = (sidx, eidx)
+    slices = tuple(slices)
+    result = np.pad(arr[slices], pad_width, mode="constant")
+    return result, slices, pad_width
+
+
+def unproject(arr, slices, pad_width):
+    unslices = [slice(None)] * len(arr.shape)
+    padding = [(0, 0)] * len(arr.shape)
+    for axis in range(len(arr.shape)):
+        sidx, eidx = pad_width[axis]
+        if eidx == 0:
+            unslices[axis] = slice(sidx, None)
+        else:
+            unslices[axis] = slice(sidx, -eidx)
+        s = slices[axis]
+        if s is not None:
+            if s.start is None:
+                left = 0
+            else:
+                left = s.start
+            if s.stop is None:
+                right = 0
+            else:
+                right = -s.stop
+            padding[axis] = (left, right)
+    result = np.pad(arr[tuple(unslices)], padding, mode="constant")
+    return result
+
+
 def get_projection_slices(image, shape, yx0=None):
     """Get slices needed to project an image
 

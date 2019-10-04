@@ -230,7 +230,7 @@ class Observation():
         -------
         None
         """
-
+        self.window = window
         if self.frame.dtype != model_frame.dtype:
             msg = "Dtypes of model and observation different. Casting observation to {}"
             msg = msg.format(model_frame.dtype)
@@ -259,35 +259,7 @@ class Observation():
             # This can be used for initialization to create a better
             # initial model.
             if inverse:
-                if inverse == "auto":
-                    _, all_params, _ = fit_target_psf(self.frame.psfs.image, gaussian)
-                    print("sigma", [params[3] for params in all_params])
-                    _psfs = np.array([
-                        generate_psf_image(gaussian, self.frame.psfs[0].shape, sigma=params[3]).image
-                        for params in all_params
-                    ])
-                    _psfs = fft.Fourier(_psfs, axes=(1, 2))
-                    print(_psfs.image.sum(axis=(1, 2)))
-                else:
-                    _psfs = self.frame.psfs
-
-                import matplotlib.pyplot as plt
-                for psf in self.frame.psfs:
-                    plt.imshow(psf.image)
-                    plt.show()
-
-                for psf in _psfs:
-                    plt.imshow(psf.image)
-                    plt.show()
-
-                residual = self.frame.psfs.image - _psfs.image
-                for r in residual:
-                    vmax = np.max(np.abs(r))
-                    plt.imshow(r, vmin=-vmax, vmax=vmax, cmap="seismic")
-                    plt.colorbar()
-                    plt.show()
-
-                self._inverse_kernels = fft.match_psfs(model_frame.psfs, _psfs, window=window)
+                self._inverse_kernels = fft.match_psfs(model_frame.psfs, self.frame.psfs, window=window)
             else:
                 self._inverse_kernels = None
 
@@ -296,7 +268,7 @@ class Observation():
     def _convolve(self, model):
         """Convolve the model in a single band
         """
-        return fft.convolve(fft.Fourier(model, axes=(1, 2)), self._diff_kernels).image
+        return fft.convolve(fft.Fourier(model, axes=(1, 2)), self._diff_kernels, window=self.window).image
 
     def render(self, model):
         """Convolve a model to the observation frame

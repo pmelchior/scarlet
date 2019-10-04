@@ -4,9 +4,10 @@ from .component import Component, ComponentTree
 from . import operator
 from . import update
 from . import measurement
-from .interpolation import get_projection_slices
+from .interpolation import get_projection_slices, get_centered, project, unproject
 from .psf import generate_psf_image, gaussian
 from . import fft
+from . import modeling
 
 import logging
 
@@ -147,14 +148,13 @@ def _deconvolve_init(morph, center, observation, frame, symmetric, monotonic, bg
         cy, cx = np.array(center).astype(int)
         sn = observation.images[:, cy, cx] / bg_rms
         kidx = np.argmax(sn)
-        print("doconvolution index", kidx)
     else:
         # The narrowest PSF will have the maximum max pixel value,
         # so we choose that for the deconvolution to limit
         # high frequency deconvolution artifacts
         kidx = np.argmax(observation.frame.psfs.max(axis=(1, 2)))
     kernel = observation._inverse_kernels[kidx]
-    morph = fft.convolve(_morph, kernel).image
+    morph = fft.convolve(_morph, kernel, window=observation.window).image
     morph[mask] = 0
 
     # We need to remove high frequency power that occurs during deconvolution
@@ -533,6 +533,92 @@ class ExtendedSource(PointSource):
                 self._centroid_weight = self.frame.psfs[0].image
 
         self.update()
+
+
+class ModelSource(PointSource):
+    def __init__(self, frame, sky_coord, observation, symmetric=False, monotonic=True, **component_kwargs):
+        """Initialize a Source based on a parametric model
+        """
+        pixel = observation.frame.get_pixel(sky_coord)
+        images = observation.images
+        self.pixel_center = pixel
+        self.observation = observation
+
+        # Generate a morphology for each band
+        morphs = np.zeros(images.shape)
+        for b, img in enumerate(images):
+            morph = operator.prox_uncentered_symmetry(img.copy(), 0, center=pixel, algorithm="sdss", fill=0)
+            prox_monotonic = operator.prox_strict_monotonic(morph.shape, use_nearest=False,
+                                                            center=pixel, thresh=.1)
+            morph = prox_monotonic(morph, 0).reshape(morph.shape)
+            morph[morph < 0] = 0
+            morphs[b] = morph
+        self.morphs = morphs
+        # Set the initial SED
+        sed = get_psf_sed(sky_coord, observation, frame)
+
+        bidx = np.argmax(sed)
+        # Temporarily use one of the morphs as a placeholder
+        # to initialize the class
+        Component.__init__(self, frame, sed, morphs[bidx], **component_kwargs)
+        self.observed_moments = {}
+        self.psf_moments = {}
+        self.moments = {}
+
+        self.symmetric = symmetric
+        self.monotonic = monotonic
+
+    def generate_moments(self, psf_moments=None, band=None):
+        """Generate the moments needed to calculate orientation parameters
+
+        This method returns this instance but generates the
+        `observed_moments`, `psf_moments`, and `moments` of the
+        class instance.
+
+        Parameters
+        ----------
+        band: int
+            The index of the band to use for generating moments
+        psf_moments: `Moment` or `None`
+            The method to use for measuring the PSF moments.
+            If the PSF is near a Gaussian `psf_moments=None` can
+            be used, which directly measures the moments of the PSF image.
+            Since most PSFs have an extended tail and are better fit
+            as a double gaussian or moffat, it is usually better for
+            the user to fit the PSF to a sum of gaussians and use the
+            moments of the narrower , which can be passed to this
+            function.
+        """
+        if band is None:
+            band = np.argmax(self.sed)
+
+        morph = self.morphs[band]
+        self.observed_moments[band] = modeling.Moments(morph, self.pixel_center)
+
+        # Use the PSF to deconvolve the moments (if available)
+        if psf_moments is not None or self.observation.frame.psfs is not None:
+            if psf_moments is None:
+                psf = self.observation.frame.psfs[band].image
+                psf_moments = {}
+                psf_moments[band] = modeling.Moments(psf)
+            self.moments[band] = modeling.DeconvolvedMoment(self.observed_moments[band], psf_moments[band])
+            self.psf_moments[band] = psf_moments[band]
+        else:
+            self.moments[band] = self.observed_moments[band]
+        return self
+
+
+class MomentSource(ModelSource):
+    def __init__(self, *args, psf_moments=None, band=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if band is None:
+            band = np.argmax(self.sed)
+        self.generate_moments(psf_moments, band)
+        params = modeling.get_ellipse_params(self.moments[band])
+        morph = modeling.get_model(self.morphs[0].shape, modeling.gaussian2D,
+                                   center=self.pixel_center, *params)
+        morph /= morph.max()
+        self._morph = morph
 
 
 class CombinedExtendedSource(PointSource):

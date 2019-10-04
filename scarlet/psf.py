@@ -129,8 +129,8 @@ def fit_target_psf(psfs, func, init_values=None, extract_values=None):
     X, Y = np.meshgrid(x, y)
     coords = np.stack([Y, X])
     y0, x0 = (psfs.shape[1]-1) // 2, (psfs.shape[2]-1) // 2
-    init_params = [y0, x0]
     if init_values is None:
+        init_params = [y0, x0]
         if func == moffat:
             init_params += [1., 3., 1.5]
         elif func == gaussian:
@@ -139,6 +139,8 @@ def fit_target_psf(psfs, func, init_values=None, extract_values=None):
             init_params += [1., 3., .5, 6.]
         else:
             raise ValueError("Custom functions require `init_values`")
+    else:
+        init_params = init_values
     all_params = []
     init_params = tuple(init_params)
 

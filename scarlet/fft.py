@@ -407,7 +407,7 @@ def match_psfs(psf1, psf2, padding=3, window=None):
     return _kspace_operation(psf1, psf2, padding, operator.truediv, shape, window)
 
 
-def convolve(image1, image2, padding=3, axes=None):
+def convolve(image1, image2, padding=3, axes=None, window=None):
     """Convolve two images
 
     Parameters
@@ -420,4 +420,4 @@ def convolve(image1, image2, padding=3, axes=None):
         Additional padding to use when generating the FFT
         to supress artifacts.
     """
-    return _kspace_operation(image1, image2, padding, operator.mul, image1.shape)
+    return _kspace_operation(image1, image2, padding, operator.mul, image1.shape, window)
