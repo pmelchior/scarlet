@@ -1,4 +1,4 @@
-import autograd.numpy as np
+import numpy as np
 
 
 def get_projection_slices(image, shape, yx0=None):
@@ -206,7 +206,7 @@ def cubic_spline(dx, a=1, b=0):
     x = np.abs(dx - window)
     result = np.piecewise(x,
                           [x <= 1, (x > 1) & (x < 2)],
-                          [lambda x:inner(x), lambda x:outer(x)])
+                          [lambda x: inner(x), lambda x: outer(x)])
 
     return result, np.array(window).astype(int)
 
@@ -264,7 +264,7 @@ def quintic_spline(dx, dtype=np.float64):
     x = np.abs(dx - window)
     result = np.piecewise(x,
                           [x <= 1, (x > 1) & (x <= 2), (x > 2) & (x <= 3)],
-                          [lambda x:inner(x), lambda x:middle(x), lambda x:outer(x)])
+                          [lambda x: inner(x), lambda x: middle(x), lambda x: outer(x)])
     return result, window
 
 
@@ -314,10 +314,13 @@ def sinc_interp(coord_hr, coord_lr, sample_lr):
     y_hr, x_hr = coord_hr
     y_lr, x_lr = coord_lr
     hy = np.abs(y_lr[1] - y_lr[0])
-    hx = np.abs(x_lr[np.int(np.sqrt(np.size(x_lr))) + 1] - x_lr[0])
+    hx = np.abs(x_lr[1] - x_lr[0])
 
     assert hy != 0
-    return np.array([sample_lr * sinc2D((y_hr[:, np.newaxis] - y_lr) / (hy), (x_hr[:, np.newaxis] - x_lr) / (hx))]).sum(axis=2)
+    assert hx != 0
+
+    return np.array([np.dot(np.dot(np.sinc((y_lr[np.newaxis, :]-y_hr[:, np.newaxis]) / hy),sample.T),
+                                        np.sinc((x_lr[:, np.newaxis]-x_hr[np.newaxis,:])/ hx) ) for sample in sample_lr])
 
 
 def fft_resample(img, dy, dx, kernel=lanczos, **kwargs):
@@ -415,4 +418,53 @@ def sinc2D(y, x):
     result: array
         2-D sinc evaluated in x and y
     '''
-    return np.sinc(y) * np.sinc(x)
+    return np.dot(np.sinc(y), np.sinc(x))
+
+
+def subsample_function(y, x, f, dNy, dNx=None, dy=None, dx=None):
+    """Subsample a function
+    Given the expected pixel grid of a function, subsample that function
+    at a grid subdivided in x by `dNx` and y by `dNy`.
+    """
+    # Use the spacing between x values to define the subsampled regions
+    if dx is None:
+        dx = x[1] - x[0]
+    if dy is None:
+        dy = y[1] - y[0]
+    if dNx is None:
+        dNx = dNy
+    assert dNy % 2 == 0, "dNy must be even, received {0}".format(dNy)
+    assert dNx % 2 == 0, "dNx must be even, received {0}".format(dNx)
+    assert np.all(np.isclose(x[1:]-x[:-1], x[1] - x[0])), "x must have equal spacing"
+    assert np.all(np.isclose(y[1:]-y[:-1], y[1] - y[0])), "y must have equal spacing"
+
+    # Create the subsampled interval and use it to sample `f`
+    _x = np.linspace(x[0]-dx/2, x[-1]+dx/2, len(x)*dNx+1)
+    _y = np.linspace(y[0]-dy/2, y[-1]+dy/2, len(y)*dNy+1)
+    return f(_y, _x), _y, _x
+
+
+def apply_2D_trapezoid_rule(y, x, f, dNy, dNx=None, dy=None, dx=None):
+    """Use the trapezoid rule to integrate over a subsampled function
+    2D implementation of the trapezoid rule.
+    See `apply_trapezoid_rule` for a description, with the difference
+    that `f` is a function `f(y,x)`, where we note the c ++`(y,x)` ordering.
+    """
+    if dy is None:
+        dy = y[1] - y[0]
+    if dx is None:
+        dx = x[1] - x[0]
+    if dNx is None:
+        dNx = dNy
+    z, _y, _x = subsample_function(y, x, f, dNy, dNx, dy, dx)
+
+    # Calculate the volume of each sub region
+    dz = 0.4 * (z[:-1, :-1] + z[1:, :-1] + z[:-1, 1:] + z[1:, 1:])
+    volumes = dy * dx * dz / dNy / dNx
+
+    # Sum up the sub regions around each point to
+    # give it the same shape as the original `(y,x)`
+    _dNy = len(_y) // dNy
+    _dNx = len(_x) // dNx
+    volumes = np.array(np.split(np.array(np.split(volumes, _dNx, axis=1)), _dNy, axis=1)).sum(axis=(2, 3))
+    return volumes

@@ -91,8 +91,8 @@ class Component():
     def __init__(self, frame, sed, morph, prior=None, fix_sed=False, fix_morph=False):
         self._frame = frame
         # set sed and morph
-        self._sed = np.array(sed)
-        self._morph = np.array(morph)
+        self._sed = np.array(sed, dtype=self._frame.dtype)
+        self._morph = np.array(morph, dtype=self._frame.dtype)
         self.sed_grad = 0
         self.morph_grad = 0
         self.prior = prior
@@ -337,11 +337,10 @@ class ComponentTree():
         model: array
             (Bands, Height, Width) data cube
         """
-        model = np.zeros(self.frame.shape)
+        model = np.zeros(self.frame.shape, dtype=self.frame.dtype)
         for k in range(self.K):
             if seds is not None and morphs is not None:
-                _model = self.components[k].get_model(seds[k], morphs[k])
-                model = model + _model
+                model = model + self.components[k].get_model(seds[k], morphs[k])
             else:
                 model = model + self.components[k].get_model()
 
@@ -364,8 +363,8 @@ class ComponentTree():
         perform updates on multiple components at once
         (for example separating a buldge and disk).
         """
-        for component in self.components:
-            component.update()
+        for node in self._tree:
+            node.update()
 
     def __iadd__(self, c):
         """Add another component or tree.
