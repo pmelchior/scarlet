@@ -141,17 +141,7 @@
    "metadata": {},
    "outputs": [],
    "source": [
-    "# Define the pixel grid\n",
-    "X = np.arange(psfs.shape[2])\n",
-    "Y = np.arange(psfs.shape[1])\n",
-    "X, Y = np.meshgrid(X, Y)\n",
-    "coords = np.stack([Y, X])\n",
-    "y0, x0 = (psfs.shape[1]-1) // 2, (psfs.shape[2]-1) // 2\n",
-    "# Use a narrow gaussian as the target PSF\n",
-    "model_psf = scarlet.psf.gaussian(coords, y0, x0, 1, .9)\n",
-    "# Normalize the target_psf so that the input flux is not rescaled\n",
-    "model_psf /= model_psf.sum()\n",
-    "model_psf = model_psf[None,:,:]"
+    "model_psf = scarlet.psf.generate_psf_image(scarlet.psf.gaussian, psfs.shape[1:], sigma=.9, amplitude=1)[None]"
    ]
   },
   {
@@ -1014,7 +1004,7 @@
    "name": "python",
    "nbconvert_exporter": "python",
    "pygments_lexer": "ipython3",
-   "version": "3.7.3"
+   "version": "3.7.2"
   }
  },
  "nbformat": 4,

@@ -196,6 +196,15 @@
 <div class="section" id="module-scarlet.interpolation">
 <span id="Reference/API"></span><h2>Reference/API<a class="headerlink" href="#module-scarlet.interpolation" title="Permalink to this headline">¶</a></h2>
 <dl class="function">
+<dt id="scarlet.interpolation.apply_2D_trapezoid_rule">
+<code class="descclassname">scarlet.interpolation.</code><code class="descname">apply_2D_trapezoid_rule</code><span class="sig-paren">(</span><em>y</em>, <em>x</em>, <em>f</em>, <em>dNy</em>, <em>dNx=None</em>, <em>dy=None</em>, <em>dx=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/interpolation.html#apply_2D_trapezoid_rule"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.interpolation.apply_2D_trapezoid_rule" title="Permalink to this definition">¶</a></dt>
+<dd><p>Use the trapezoid rule to integrate over a subsampled function
+2D implementation of the trapezoid rule.
+See <cite>apply_trapezoid_rule</cite> for a description, with the difference
+that <cite>f</cite> is a function <cite>f(y,x)</cite>, where we note the c ++`(y,x)` ordering.</p>
+</dd></dl>
+
+<dl class="function">
 <dt id="scarlet.interpolation.bilinear">
 <code class="descclassname">scarlet.interpolation.</code><code class="descname">bilinear</code><span class="sig-paren">(</span><em>dx</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/interpolation.html#bilinear"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.interpolation.bilinear" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bilinear interpolation kernel</p>
@@ -620,6 +629,14 @@ the projection.</p>
 </tr>
 </tbody>
 </table>
+</dd></dl>
+
+<dl class="function">
+<dt id="scarlet.interpolation.subsample_function">
+<code class="descclassname">scarlet.interpolation.</code><code class="descname">subsample_function</code><span class="sig-paren">(</span><em>y</em>, <em>x</em>, <em>f</em>, <em>dNy</em>, <em>dNx=None</em>, <em>dy=None</em>, <em>dx=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/interpolation.html#subsample_function"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.interpolation.subsample_function" title="Permalink to this definition">¶</a></dt>
+<dd><p>Subsample a function
+Given the expected pixel grid of a function, subsample that function
+at a grid subdivided in x by <cite>dNx</cite> and y by <cite>dNy</cite>.</p>
 </dd></dl>
 
 </div>

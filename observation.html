@@ -275,31 +275,19 @@ then this just returns the <cite>sky_coord</cite></p>
 
 <dl class="class">
 <dt id="scarlet.observation.LowResObservation">
-<em class="property">class </em><code class="descclassname">scarlet.observation.</code><code class="descname">LowResObservation</code><span class="sig-paren">(</span><em>images</em>, <em>wcs=None</em>, <em>psfs=None</em>, <em>weights=None</em>, <em>channels=None</em>, <em>padding=3</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/observation.html#LowResObservation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.LowResObservation" title="Permalink to this definition">¶</a></dt>
-<dd><table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Attributes:</th><td class="field-body"><dl class="first last docutils">
-<dt><strong>matching_mask</strong></dt>
-<dd></dd>
-</dl>
-</td>
-</tr>
-</tbody>
-</table>
-<p class="rubric">Methods</p>
+<em class="property">class </em><code class="descclassname">scarlet.observation.</code><code class="descname">LowResObservation</code><span class="sig-paren">(</span><em>images</em>, <em>wcs=None</em>, <em>psfs=None</em>, <em>weights=None</em>, <em>channels=None</em>, <em>padding=3</em>, <em>operator=’exact’</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/observation.html#LowResObservation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.LowResObservation" title="Permalink to this definition">¶</a></dt>
+<dd><p class="rubric">Methods</p>
 <table border="1" class="longtable docutils">
 <colgroup>
 <col width="10%" />
 <col width="90%" />
 </colgroup>
 <tbody valign="top">
-<tr class="row-odd"><td><a class="reference internal" href="#scarlet.observation.LowResObservation.get_loss" title="scarlet.observation.LowResObservation.get_loss"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_loss</span></code></a>(model)</td>
-<td>Computes the loss/fidelity of a given model wrt to the observation Parameters ———- model: array     A model from <cite>Blend</cite> Returns ——- loss: float     Loss of the model</td>
+<tr class="row-odd"><td><a class="reference internal" href="#scarlet.observation.LowResObservation.build_diffkernel" title="scarlet.observation.LowResObservation.build_diffkernel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_diffkernel</span></code></a>(model_frame)</td>
+<td>Builds the differential convolution kernel between the observation and the frame psfs</td>
 </tr>
-<tr class="row-even"><td><a class="reference internal" href="#scarlet.observation.LowResObservation.make_operator" title="scarlet.observation.LowResObservation.make_operator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_operator</span></code></a>(shape,&nbsp;psf)</td>
-<td>Builds the resampling and convolution operator Builds the matrix that expresses the linear operation of resampling a function evaluated on a grid with coordinates ‘coord_lr’ to a grid with shape ‘shape’, and convolving by a kernel p Parameters —— shape: tuple     shape of the high resolution scene coord_lr: array     coordinates of the overlapping pixels from the low resolution grid in the high resolution grid frame.</td>
+<tr class="row-even"><td><a class="reference internal" href="#scarlet.observation.LowResObservation.get_loss" title="scarlet.observation.LowResObservation.get_loss"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_loss</span></code></a>(model)</td>
+<td>Computes the loss/fidelity of a given model wrt to the observation Parameters ———- model: array     A model from <cite>Blend</cite> Returns ——- loss: float     Loss of the model</td>
 </tr>
 <tr class="row-odd"><td><a class="reference internal" href="#scarlet.observation.LowResObservation.match" title="scarlet.observation.LowResObservation.match"><code class="xref py py-obj docutils literal notranslate"><span class="pre">match</span></code></a>(model_frame)</td>
 <td>Match the frame of <cite>Blend</cite> to the frame of this observation.</td>
@@ -308,10 +296,36 @@ then this just returns the <cite>sky_coord</cite></p>
 <td>psf matching between different dataset Matches PSFS at different resolutions by interpolating psf_lr on the same grid as psf_hr Parameters ———- psf_hr: array     centered psf of the high resolution scene psf_lr: array     centered psf of the low resolution scene wcs_hr: WCS object     wcs of the high resolution scene wcs_lr: WCS object     wcs of the low resolution scene Returns ——- psf_match_hr: array     high rresolution psf at mactching size psf_match_lr: array     low resolution psf at matching size and resolution</td>
 </tr>
 <tr class="row-odd"><td><a class="reference internal" href="#scarlet.observation.LowResObservation.render" title="scarlet.observation.LowResObservation.render"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render</span></code></a>(model)</td>
-<td>Resample and convolve a model in the observation frame Parameters ———- model: array     The model in some other data frame.</td>
+<td>Resample and convolve a model in the observation frame for display only! Parameters ———- model: array     The model in some other data frame.</td>
 </tr>
 </tbody>
 </table>
+<dl class="method">
+<dt id="scarlet.observation.LowResObservation.build_diffkernel">
+<code class="descname">build_diffkernel</code><span class="sig-paren">(</span><em>model_frame</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/observation.html#LowResObservation.build_diffkernel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.LowResObservation.build_diffkernel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Builds the differential convolution kernel between the observation and the frame psfs</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first last docutils">
+<dt><strong>model_frame: Frame object</strong></dt>
+<dd><p class="first last">the frame of the model (hehehe)</p>
+</dd>
+<dt><strong>Returns</strong></dt>
+<dd></dd>
+<dt><strong>——-</strong></dt>
+<dd></dd>
+<dt><strong>diff_psf: array</strong></dt>
+<dd><p class="first last">the differential psf between observation and frame psfs.</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
 <dl class="method">
 <dt id="scarlet.observation.LowResObservation.get_loss">
 <code class="descname">get_loss</code><span class="sig-paren">(</span><em>model</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/observation.html#LowResObservation.get_loss"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.LowResObservation.get_loss" title="Permalink to this definition">¶</a></dt>
@@ -324,29 +338,6 @@ model: array</p>
 <dl class="docutils">
 <dt>loss: float</dt>
 <dd>Loss of the model</dd>
-</dl>
-</dd></dl>
-
-<dl class="method">
-<dt id="scarlet.observation.LowResObservation.make_operator">
-<code class="descname">make_operator</code><span class="sig-paren">(</span><em>shape</em>, <em>psf</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/observation.html#LowResObservation.make_operator"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.LowResObservation.make_operator" title="Permalink to this definition">¶</a></dt>
-<dd><p>Builds the resampling and convolution operator
-Builds the matrix that expresses the linear operation of resampling a function evaluated on a grid with coordinates
-‘coord_lr’ to a grid with shape ‘shape’, and convolving by a kernel p
-Parameters
-——
-shape: tuple</p>
-<blockquote>
-<div>shape of the high resolution scene</div></blockquote>
-<dl class="docutils">
-<dt>coord_lr: array</dt>
-<dd>coordinates of the overlapping pixels from the low resolution grid in the high resolution grid frame.</dd>
-<dt>p: array</dt>
-<dd>convolution kernel (PSF)</dd>
-</dl>
-<dl class="docutils">
-<dt>mat: array</dt>
-<dd>the convolution-resampling matrix</dd>
 </dl>
 </dd></dl>
 
@@ -404,7 +395,7 @@ psf_hr: array</p>
 <dl class="method">
 <dt id="scarlet.observation.LowResObservation.render">
 <code class="descname">render</code><span class="sig-paren">(</span><em>model</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/observation.html#LowResObservation.render"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.LowResObservation.render" title="Permalink to this definition">¶</a></dt>
-<dd><p>Resample and convolve a model in the observation frame
+<dd><p>Resample and convolve a model in the observation frame for display only!
 Parameters
 ———-
 model: array</p>
@@ -545,6 +536,41 @@ and filter transformations.</p>
 </table>
 </dd></dl>
 
+</dd></dl>
+
+<dl class="function">
+<dt id="scarlet.observation.sinc_shift_1D">
+<code class="descclassname">scarlet.observation.</code><code class="descname">sinc_shift_1D</code><span class="sig-paren">(</span><em>img</em>, <em>shift</em>, <em>axis</em>, <em>fast_size</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/scarlet/observation.html#sinc_shift_1D"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.sinc_shift_1D" title="Permalink to this definition">¶</a></dt>
+<dd><p>Performs 1D sinc convolutions and shifting in Fourier space</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first last docutils">
+<dt><strong>img: array</strong></dt>
+<dd><p class="first last">the 2D image to sinc convolve and shift</p>
+</dd>
+<dt><strong>shift: array</strong></dt>
+<dd><p class="first last">an array of the shift values for each line of img</p>
+</dd>
+<dt><strong>axis: int (0 or 1)</strong></dt>
+<dd><p class="first last">the axis along which the convolution and shifting happens</p>
+</dd>
+<dt><strong>fast_size: int</strong></dt>
+<dd><p class="first last">numpy’s fast fft size for Fourier transform</p>
+</dd>
+<dt><strong>Returns</strong></dt>
+<dd></dd>
+<dt><strong>——-</strong></dt>
+<dd></dd>
+<dt><strong>result: array</strong></dt>
+<dd><p class="first last">the shifted and sinc convolved array in configuration space</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 </div>
