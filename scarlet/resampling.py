@@ -72,19 +72,19 @@ def match_patches(shape_hr, shape_lr, wcs_hr, wcs_lr, isrot = True, perimeter  =
     if np.size(wcs_hr.array_shape) == 2:
         ra_hr, dec_hr = wcs_hr.all_pix2world(x_hr, y_hr, 0, ra_dec_order=True)
     elif np.size(wcs_hr.array_shape) == 3:
-        ra_hr, dec_hr, eggbenedict = wcs_hr.all_pix2world(x_hr, y_hr, 0, 0, ra_dec_order=True)
+        ra_hr, dec_hr, _ = wcs_hr.all_pix2world(x_hr, y_hr, 0, 0, ra_dec_order=True)
 
     # Coordinates of the low resolution pixels in the high resolution frame
     if np.size(wcs_hr.array_shape) == 2:
         X_hr, Y_hr = wcs_hr.all_world2pix(ra_lr, dec_lr, 0, ra_dec_order=True)
     elif np.size(wcs_hr.array_shape) == 3:
-        X_hr, Y_hr, eggbenedict = wcs_hr.all_world2pix(ra_lr, dec_lr, 0, 0, ra_dec_order=True)
+        X_hr, Y_hr, _ = wcs_hr.all_world2pix(ra_lr, dec_lr, 0, 0, ra_dec_order=True)
 
     # Coordinates of the high resolution pixels in the low resolution frame
     if np.size(wcs_lr.array_shape) == 2:
         x_lr, y_lr = wcs_lr.all_world2pix(ra_hr, dec_hr, 0, ra_dec_order=True)
     elif np.size(wcs_lr.array_shape) == 3:
-        x_lr, y_lr, eggsbenedict = wcs_lr.all_world2pix(ra_hr, dec_hr, 0, 0, ra_dec_order=True)
+        x_lr, y_lr, _ = wcs_lr.all_world2pix(ra_hr, dec_hr, 0, 0, ra_dec_order=True)
 
     #mask of low resolution pixels at high resolution in the overlap:
     over_lr = ((X_hr >= 0) * (X_hr < Nx_hr+1) * (Y_hr >= 0) * (Y_hr < Ny_hr+1))
