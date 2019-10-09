@@ -363,6 +363,7 @@ class LowResObservation(Observation):
             the shifted and sinc convolved array in configuration space
         '''
         # fft
+
         fft_shape = np.array(self._fft_shape)[tuple([axes])]
         imgs_fft = imgs.fft(fft_shape, np.array(axes)+1)
         transformed_shape = np.array(imgs_fft.shape[1:])
@@ -377,7 +378,6 @@ class LowResObservation(Observation):
         shishift = []
         for ax in axes:
             shishift.append(shifter[ax][np.newaxis, :] ** shifts[ax][:, np.newaxis])
-        import matplotlib.pyplot as plt
         # convolution by sinc: setting to zero all coefficients > n//2 along the desired axis:
         if len(axes) == 1:
             shishift[0][:, shishift[0].shape[1] // 4:-shishift[0].shape[1] // 4] = 0
@@ -458,43 +458,53 @@ class LowResObservation(Observation):
         #Coordinates for all model frame pixels
         self.frame_coord = (np.array(range(model_frame.Ny)), np.array(range(model_frame.Nx)))
 
+        center_y = (np.max(self._coord_hr[0]) - np.min(self._coord_hr[0]) + 1) / 2
+        center_x = (np.max(self._coord_hr[1]) - np.min(self._coord_hr[1]) + 1) / 2
+
         diff_psf = self.build_diffkernel(model_frame, angle)
+
         # 1D convolutions convolutions of the model are done along the smaller axis, therefore,
         # psf is convolved along the frame's longer axis.
         # the smaller frame axis:
         self.small_axis = (self.frame.Nx <= self.frame.Ny)
 
-        self._fft_shape = fft._get_fft_shape(diff_psf, np.zeros(model_frame.shape), padding=3,
-                                             axes=[-2, -1])
+        self._fft_shape = fft._get_fft_shape(model_frame.psfs, np.zeros(model_frame.shape), padding=3,
+                                             axes=[-2, -1], max=True)
+        diff_psf = fft.Fourier(fft._pad(diff_psf.image, self._fft_shape, axes = (1,2)))
         if self.isrot:
 
             #Unrotated coordinates:
-            Y_unrot = (self._coord_hr[0] * self.cos_rot + self._coord_hr[1] * self.sin_rot).reshape(self.lr_shape)
-            X_unrot = (self._coord_hr[1] * self.cos_rot - self._coord_hr[0] * self.sin_rot).reshape(self.lr_shape)
+            Y_unrot = ((self._coord_hr[0] - center_y) * self.cos_rot +
+                       (self._coord_hr[1] - center_x) * self.sin_rot).reshape(self.lr_shape)
+            X_unrot = ((self._coord_hr[1] - center_x) * self.cos_rot -
+                       (self._coord_hr[0] - center_y) * self.sin_rot).reshape(self.lr_shape)
 
             #Removing redundancy
             self.Y_unrot = Y_unrot[:, 0]
             self.X_unrot = X_unrot[0, :]
 
             if self.small_axis:
-                shifts = [self.Y_unrot * self.cos_rot, self.Y_unrot * self.sin_rot]
+                self.shifts = [self.Y_unrot * self.cos_rot, self.Y_unrot * self.sin_rot]
+                self.other_shifts = [-self.sin_rot * self.X_unrot, self.cos_rot * self.X_unrot]
             else:
-                shifts = [-self.sin_rot * self.X_unrot, self.cos_rot * self.X_unrot]
+                self.shifts = [-self.sin_rot * self.X_unrot, self.cos_rot * self.X_unrot]
+                self.other_shifts = [self.Y_unrot * self.cos_rot, self.Y_unrot * self.sin_rot]
 
             axes = (0,1)
 
-        #I should probably get rid of the 1-D case.
+        #1-D case.
         else:
-            # Padding the psf to the fast_shape size
-            pady = np.ceil((self._fft_shape[0] - diff_psf.shape[1]) / 2.).astype(int)
-            padx = np.ceil((self._fft_shape[1] - diff_psf.shape[2]) / 2.).astype(int)
-            diff_psf = fft.Fourier(np.pad(diff_psf.image, ((0, 0), (pady, pady), (padx, padx)), 'constant'))
 
             axes = [int(not self.small_axis)]
-            shifts = self._coord_hr
+            self.shifts = np.array(self._coord_hr)
+
+            self.shifts[0] -= center_y
+            self.shifts[1] -= center_x
+
+            self.other_shifts = np.copy(self.shifts)
 
         # Computes the resampling/convolution matrix
-        resconv_op = self.sinc_shift(diff_psf, shifts, axes, int(not self.small_axis))
+        resconv_op = self.sinc_shift(diff_psf, self.shifts, axes, int(not self.small_axis))
 
         self._resconv_op = np.array(resconv_op*(model_frame.Ny * model_frame.Nx) / (self.frame.Ny * self.frame.Nx),
                                     dtype=self.frame.dtype)
@@ -514,30 +524,30 @@ class LowResObservation(Observation):
             The convolved and resampled `model` in the observation frame.
         """
         # Padding the psf to the fast_shape size
-        pady = np.ceil((self._fft_shape[0] - model.shape[1]) / 2.).astype(int)
-        padx = np.ceil((self._fft_shape[1] - model.shape[2]) / 2.).astype(int)
-        model_ = fft.Fourier(np.pad(model[self._band_slice, :, :], ((0, 0), (pady, pady), (padx, padx)), 'constant'))
+        model_ = fft.Fourier(fft._pad(model[self._band_slice, :, :], self._fft_shape, axes=(-2, -1)))
 
         model_image = []
         if self.isrot:
-            if self.small_axis:
-                model_conv = self.sinc_shift(model_, [-self.sin_rot * self.X_unrot, self.cos_rot * self.X_unrot],
-                                             (0,1), int(self.small_axis))
-            else:
-                model_conv = self.sinc_shift(model_, [self.cos_rot * self.Y_unrot, self.sin_rot * self.Y_unrot],
-                                                  (0,1), int(self.small_axis))
-
+            axes = (0, 1)
+            sum_axis = int(self.small_axis)
 
         else:
-            #1-D convolution of the model. Here sign is -1 because the model has to be shifted in the direction
-            # opposite to the shift as if applied to the PSF.
             axes = [int(self.small_axis)]
-            model_conv = self.sinc_shift(model_, self._coord_hr, axes, int(self.small_axis))
+            sum_axis = int(self.small_axis)
+
+
+        model_conv = self.sinc_shift(model_, self.other_shifts, axes, sum_axis)
 
         model_conv = model_conv.reshape(*model_conv.shape[:2], -1)
-        for c in range(self.frame.C):
-            model_image.append((model_conv[c] @ self._resconv_op[c].T).T)
-        return np.array(model_image, dtype=self.frame.dtype)
+        if self.small_axis:
+            for c in range(self.frame.C):
+                model_image.append((model_conv[c] @ self._resconv_op[c].T).T)
+            return np.array(model_image, dtype=self.frame.dtype)[:, :, ::-1]
+        else:
+            for c in range(self.frame.C):
+                model_image.append((model_conv[c] @ self._resconv_op[c].T))
+            return np.array(model_image, dtype=self.frame.dtype)[:, ::-1, :]
+
 
     def render(self, model):
         """Resample and convolve a model in the observation frame for display only!
@@ -555,6 +565,7 @@ class LowResObservation(Observation):
         img[:, np.min(self._coord_lr[0]).astype(int):np.max(self._coord_lr[0]).astype(int) + 1,
         np.min(self._coord_lr[1]).astype(int):np.max(self._coord_lr[1]).astype(int) + 1] = \
             self._render(model)
+
         return img
 
     def get_loss(self, model):
@@ -573,6 +584,7 @@ class LowResObservation(Observation):
 
         min_lr = [np.min(self._coord_lr[0]).astype(int), np.min(self._coord_lr[1]).astype(int)]
         max_lr = [np.max(self._coord_lr[0]).astype(int), np.max(self._coord_lr[1]).astype(int)]
+
         return 0.5 * np.sum((self.weights * (
                 model_ -
                 self.images[:, min_lr[0]:max_lr[0] + 1, min_lr[1]:max_lr[1] + 1])) ** 2)
