@@ -1,5 +1,5 @@
 import autograd.numpy as np
-from scipy import fftpack
+import matplotlib.pyplot as plt
 
 from . import interpolation
 from . import fft
@@ -9,6 +9,69 @@ import logging
 
 logger = logging.getLogger("scarlet.observation")
 
+
+def sinc_shift(imgs, shifts, _fft_shape, axes, sum_axis):
+    '''Performs 2 1D sinc convolutions and shifting along one rotated axis in Fourier space.
+
+    Parameters
+    ----------
+    imgs: Fourier
+        a Fourier object of 2D images to sinc convolve and shift
+        to the adequate shape.
+    shifts: array
+        an array of the shift values for each line and columns of images in imgs
+    fft_shape: tuple
+        shape of the fast fft to transform imgs
+    axes: array
+        Optional argument that specifies the axes along which to apply sinc convolution.
+        If set to `None`, no sinc is applied.
+    sum_axis: int
+        axis along which the summation is performed. If axes is of length one, sum_axis should correspond to axes.
+    inv: Bool
+        if set to true the inverse of the Fourier transforms of imgs is used.
+    Returns
+    -------
+    result: array
+        the shifted and sinc convolved array in configuration space
+    '''
+    # fft
+    fft_shape = np.array(_fft_shape)[tuple([axes])]
+    imgs_fft = imgs.fft(fft_shape, np.array(axes) + 1)
+    transformed_shape = np.array(imgs_fft.shape[1:])
+    transformed_shape[tuple([axes])] = fft_shape
+
+    # frequency sampling
+    if len(axes) == 1:
+        shifter = np.array(interpolation.mk_shifter(_fft_shape, real=True))
+    else:
+        shifter = np.array(interpolation.mk_shifter(_fft_shape))
+
+    shishift = []
+    for ax in axes:
+        shishift.append(shifter[ax][np.newaxis, :] ** (shifts[ax][:, np.newaxis]))
+
+    # convolution by sinc: setting to zero all coefficients > n//2 along the desired axis:
+    if len(axes) == 1:
+        shishift[0][:, shishift[0].shape[1] // 4:] = 0
+    else:
+        shishift[sum_axis][:, shishift[sum_axis].shape[1] // 4:] = 0
+    # Shift
+    if 0 in axes:
+        # Shift along the x-axis
+        imgs_shiftfft = imgs_fft[:, np.newaxis, :, :] * shishift[0][np.newaxis, :, :, np.newaxis]
+        if 1 in axes:
+            # Shift along the y axis
+            imgs_shiftfft = imgs_shiftfft * shishift[1][np.newaxis, :, np.newaxis, :]
+
+    elif 1 in axes:
+        # Apply shifts and sinc
+        imgs_shiftfft = imgs_fft[:, np.newaxis, :, :] * shishift[0][np.newaxis, :, np.newaxis, :]
+    # Inverse Fourier transform.
+    inv_shape = tuple(imgs_shiftfft.shape[:2]) + tuple(transformed_shape)
+    # The n-dimensional transform could pose problem for very large images, but I am not sure it is a regime we should care about
+    op = fft.Fourier.from_fft(imgs_shiftfft, fft_shape, inv_shape, np.array(axes) + len(imgs_shiftfft.shape) - 2)
+
+    return op.image
 
 class Frame():
     """Spatial and spectral characteristics of the data
@@ -241,166 +304,14 @@ class Observation():
 
 class LowResObservation(Observation):
 
-    def __init__(self, images, wcs=None, psfs=None, weights=None, channels=None, padding=3, operator = 'exact'):
+    def __init__(self, images, wcs=None, psfs=None, weights=None, channels=None, padding=3):
 
         assert wcs is not None, "WCS is necessary for LowResObservation"
         assert psfs is not None, "PSFs are necessary for LowResObservation"
-        assert operator in ['exact', 'bilinear', 'SVD']
 
         super().__init__(images, wcs=wcs, psfs=psfs, weights=weights, channels=channels, padding=padding)
 
-    def match_psfs(self, psf_hr, wcs_hr, angle):
-        '''psf matching between different dataset
-        Matches PSFS at different resolutions by interpolating psf_lr on the same grid as psf_hr
-        Parameters
-        ----------
-        psf_hr: array
-            centered psf of the high resolution scene
-        psf_lr: array
-            centered psf of the low resolution scene
-        wcs_hr: WCS object
-            wcs of the high resolution scene
-        wcs_lr: WCS object
-            wcs of the low resolution scene
-        angle: tuple
-            the cos and sin of the rotation angle between frames
-        Returns
-        -------
-        psf_match_hr: array
-            high rresolution psf at mactching size
-        psf_match_lr: array
-            low resolution psf at matching size and resolution
-        '''
 
-        psf_lr = self.frame.psfs.image
-        wcs_lr = self.frame.wcs
-
-        ny_hr, nx_hr = psf_hr.shape
-        npsf_bands, ny_lr, nx_lr = psf_lr.shape
-
-        # Createsa wcs for psfs centered around the frame center
-        psf_wcs_hr = wcs_hr.deepcopy()
-        psf_wcs_lr = wcs_lr.deepcopy()
-
-        if psf_wcs_hr.naxis == 2:
-            psf_wcs_hr.wcs.crval = 0., 0.
-            psf_wcs_hr.wcs.crpix = ny_hr / 2.+1, nx_hr / 2.+1
-        elif psf_wcs_hr.naxis == 3:
-            psf_wcs_hr.wcs.crval = 0., 0., 0.
-            psf_wcs_hr.wcs.crpix = ny_hr / 2+1, nx_hr / 2.+1, 0.
-        if psf_wcs_lr.naxis == 2:
-            psf_wcs_lr.wcs.crval = 0., 0.
-            psf_wcs_lr.wcs.crpix = ny_lr / 2.+1, nx_lr / 2.+1
-        elif psf_wcs_lr.naxis == 3:
-            psf_wcs_lr.wcs.crval = 0., 0., 0.
-            psf_wcs_lr.wcs.crpix = ny_lr / 2.+1, nx_lr / 2.+1, 0
-
-        pcoordlr_lr, pcoordlr_hr, coordover_hr = resampling.match_patches(psf_hr.shape, psf_lr.data.shape[1:],
-                                                                    psf_wcs_hr, psf_wcs_lr, isrot = False, psf = True)
-
-        npsf_y = np.max(coordover_hr[0])-np.min(coordover_hr[0])+1
-        npsf_x = np.max(coordover_hr[1])-np.min(coordover_hr[1])+1
-
-        psf_valid = psf_lr[:,pcoordlr_lr[0].min():pcoordlr_lr[1].max()+1,pcoordlr_lr[1].min():pcoordlr_lr[1].max()+1]\
-
-        psf_match_lr = interpolation.sinc_interp(psf_valid, coordover_hr, pcoordlr_hr, angle = angle)
-
-        psf_match_hr = psf_hr[coordover_hr[0].min():coordover_hr[0].max()+1,
-                       coordover_hr[1].min():coordover_hr[1].max()+1].reshape(npsf_y, npsf_x)
-
-        assert np.shape(psf_match_lr[0]) == np.shape(psf_match_hr)
-
-        psf_match_hr /= np.sum(psf_match_hr)
-        psf_match_lr /= np.sum(psf_match_lr)
-        return psf_match_hr[np.newaxis, :], psf_match_lr
-
-    def build_diffkernel(self, model_frame, angle):
-        '''Builds the differential convolution kernel between the observation and the frame psfs
-
-        Parameters
-        ----------
-        model_frame: Frame object
-            the frame of the model (hehehe)
-        angle: tuple
-            tuple of the cos and sin of the rotation angle between frames.
-        Returns
-        -------
-        diff_psf: array
-            the differential psf between observation and frame psfs.
-        '''
-        # Compute diff kernel at hr
-        whr = model_frame.wcs
-
-        # Reference PSF
-        _target = model_frame.psfs.image[0, :, :]
-
-        # Computes spatially matching observation and target psfs. The observation psf is also resampled \\
-        # to the model frame resolution
-        new_target, observed_psfs = self.match_psfs(_target, whr, angle)
-
-        diff_psf = fft.match_psfs(fft.Fourier(observed_psfs), fft.Fourier(new_target))
-
-        return diff_psf
-
-    def sinc_shift(self, imgs, shifts, axes, sum_axis):
-        '''Performs 2 1D sinc convolutions and shifting along one rotated axis in Fourier space.
-
-        Parameters
-        ----------
-        imgs: Fourier
-            a Fourier object of 2D images to sinc convolve and shift
-            to the adequate shape.
-        shifts: array
-            an array of the shift values for each line and columns of images in imgs
-        axes: array
-            Optional argument that specifies the axes along which to apply sinc convolution.
-            If set to `None`, no sinc is applied.
-        sum_axis: int
-            axis along which the summation is performed. If axes is of length one, sum_axis should correspond to axes.
-        Returns
-        -------
-        result: array
-            the shifted and sinc convolved array in configuration space
-        '''
-        # fft
-        fft_shape = np.array(self._fft_shape)[tuple([axes])]
-        imgs_fft = imgs.fft(fft_shape, np.array(axes)+1)
-        transformed_shape = np.array(imgs_fft.shape[1:])
-        transformed_shape[tuple([axes])] = fft_shape
-
-        # frequency sampling
-        if len(axes) == 1:
-            shifter = np.array(interpolation.mk_shifter(self._fft_shape, real = True))
-        else:
-            shifter = np.array(interpolation.mk_shifter(self._fft_shape))
-
-        shishift = []
-        for ax in axes:
-            shishift.append(shifter[ax][np.newaxis, :] ** shifts[ax][:, np.newaxis])
-        import matplotlib.pyplot as plt
-        # convolution by sinc: setting to zero all coefficients > n//2 along the desired axis:
-        if len(axes) == 1:
-            shishift[0][:, shishift[0].shape[1] // 4:-shishift[0].shape[1] // 4] = 0
-        else:
-            shishift[sum_axis][:, shishift[sum_axis].shape[1] // 4:-shishift[sum_axis].shape[1] // 4] = 0
-        # Shift
-        if 0 in axes:
-            imgs_shiftfft = imgs_fft[:, np.newaxis, :, :] * shishift[0][np.newaxis, :, :, np.newaxis]
-            # Shift along the x-axis
-            if 1 in axes:
-                #apply shifts and sinc
-                imgs_shiftfft = imgs_shiftfft * shishift[1][np.newaxis, :, np.newaxis, :]
-
-        elif 1 in axes:
-            #Apply shifts and sinc
-            imgs_shiftfft = imgs_fft[:, np.newaxis, :, :] * shishift[0][np.newaxis, :, np.newaxis, :]
-
-        # Inverse Fourier transform.
-        inv_shape = tuple(imgs_shiftfft.shape[:2]) + tuple(transformed_shape)
-        #The n-dimensional transform could pose problem for very large images, but I am not sure it is a regime we should care about
-        op = fft.Fourier.from_fft(imgs_shiftfft, fft_shape, inv_shape, np.array(axes)+len(imgs_shiftfft.shape)-2).image
-
-        return op
 
     def match(self, model_frame):
 
@@ -429,20 +340,18 @@ class LowResObservation(Observation):
         model_framevector /= np.sum(model_framevector**2)**0.5
 
         # sin of the angle between datasets (normalised cross product)
-        self.sin_rot = np.cross(self_framevector, model_framevector)
+        sin_rot = np.cross(self_framevector, model_framevector)
         # cos of the angle. (normalised scalar product)
-        self.cos_rot = np.dot(self_framevector, model_framevector)
+        cos_rot = np.dot(self_framevector, model_framevector)
         #Is the angle larger than machine precision?
-        self.isrot = (np.abs(self.sin_rot)**2) > np.finfo(float).eps
-        if not self.isrot:
-            self.sin_rot = 0
-            self.cos_rot = 1
-            angle = None
-        else:
-            angle = (self.cos_rot, self.sin_rot)
+        self.isrot = (np.abs(sin_rot)**2) < np.finfo(float).eps
 
         #This is a sanity check for me. I suggest to keep it while we are testing that thing, but ultimately, it can go.
-        assert (1 - self.sin_rot ** 2 - self.cos_rot ** 2) < np.finfo(float).eps
+        assert (1 - sin_rot ** 2 - cos_rot ** 2) < np.finfo(float).eps
+
+        #Fast shape
+        self._fft_shape = fft._get_fft_shape(model_frame.psfs, np.zeros(model_frame.shape), padding=3,
+                                             axes=[-2, -1], max=True)
 
         # Get pixel coordinates in each frame.
         coord_lr, coord_hr, coordhr_over = resampling.match_patches(model_frame.shape, self.frame.shape,
@@ -458,43 +367,58 @@ class LowResObservation(Observation):
         #Coordinates for all model frame pixels
         self.frame_coord = (np.array(range(model_frame.Ny)), np.array(range(model_frame.Nx)))
 
-        diff_psf = self.build_diffkernel(model_frame, angle)
+        center_y = (np.max(self._coord_hr[0]) - np.min(self._coord_hr[0])+1)/2
+        center_x = (np.max(self._coord_hr[1]) - np.min(self._coord_hr[1])+1)/2
+
+        #Fourier inverse of the high resolution psf
+        inv_psf = 1./model_frame.psfs.fft(self._fft_shape, (1,2))
+
+        diff_psf = fft.Fourier.from_fft(inv_psf, self._fft_shape,  (tuple([1])+tuple(self._fft_shape)), (1,2))
+
+        #FFT of the low resolution psfs
+        self.frame.psfs.fft(self._fft_shape, (-2,-1))
+
+        import matplotlib.pyplot as plt
+        plt.imshow(self.frame.psfs._fft[((256, 256), (-2, -1))].real[0])
+        plt.show()
         # 1D convolutions convolutions of the model are done along the smaller axis, therefore,
         # psf is convolved along the frame's longer axis.
         # the smaller frame axis:
         self.small_axis = (self.frame.Nx <= self.frame.Ny)
 
-        self._fft_shape = fft._get_fft_shape(diff_psf, np.zeros(model_frame.shape), padding=3,
-                                             axes=[-2, -1])
+
         if self.isrot:
 
             #Unrotated coordinates:
-            Y_unrot = (self._coord_hr[0] * self.cos_rot + self._coord_hr[1] * self.sin_rot).reshape(self.lr_shape)
-            X_unrot = (self._coord_hr[1] * self.cos_rot - self._coord_hr[0] * self.sin_rot).reshape(self.lr_shape)
+            Y_unrot = ((self._coord_hr[0] - center_y) * cos_rot +
+                       (self._coord_hr[1] - center_x) * sin_rot).reshape(self.lr_shape)
+            X_unrot = ((self._coord_hr[1] - center_x) * cos_rot -
+                       (self._coord_hr[0] - center_y) * sin_rot).reshape(self.lr_shape)
 
             #Removing redundancy
-            self.Y_unrot = Y_unrot[:, 0]
-            self.X_unrot = X_unrot[0, :]
+            Y_unrot = Y_unrot[:, 0]
+            X_unrot = X_unrot[0, :]
 
             if self.small_axis:
-                shifts = [self.Y_unrot * self.cos_rot, self.Y_unrot * self.sin_rot]
+                self.shifts = [Y_unrot * cos_rot, Y_unrot * sin_rot]
+                self.other_shifts = [-sin_rot * X_unrot, cos_rot * X_unrot]
             else:
-                shifts = [-self.sin_rot * self.X_unrot, self.cos_rot * self.X_unrot]
+                self.shifts = [-sin_rot * X_unrot, cos_rot * X_unrot]
+                self.other_shifts = [Y_unrot * cos_rot, Y_unrot * sin_rot]
 
             axes = (0,1)
 
         #I should probably get rid of the 1-D case.
         else:
-            # Padding the psf to the fast_shape size
-            pady = np.ceil((self._fft_shape[0] - diff_psf.shape[1]) / 2.).astype(int)
-            padx = np.ceil((self._fft_shape[1] - diff_psf.shape[2]) / 2.).astype(int)
-            diff_psf = fft.Fourier(np.pad(diff_psf.image, ((0, 0), (pady, pady), (padx, padx)), 'constant'))
 
             axes = [int(not self.small_axis)]
-            shifts = self._coord_hr
+            self.shifts = np.array(self._coord_hr)
+
+            self.shifts[0] -= center_y
+            self.shifts[1] -= center_x
 
         # Computes the resampling/convolution matrix
-        resconv_op = self.sinc_shift(diff_psf, shifts, axes, int(not self.small_axis))
+        resconv_op = sinc_shift(diff_psf, self.shifts, self._fft_shape, axes, int(not self.small_axis))
 
         self._resconv_op = np.array(resconv_op*(model_frame.Ny * model_frame.Nx) / (self.frame.Ny * self.frame.Nx),
                                     dtype=self.frame.dtype)
@@ -514,30 +438,27 @@ class LowResObservation(Observation):
             The convolved and resampled `model` in the observation frame.
         """
         # Padding the psf to the fast_shape size
-        pady = np.ceil((self._fft_shape[0] - model.shape[1]) / 2.).astype(int)
-        padx = np.ceil((self._fft_shape[1] - model.shape[2]) / 2.).astype(int)
-        model_ = fft.Fourier(np.pad(model[self._band_slice, :, :], ((0, 0), (pady, pady), (padx, padx)), 'constant'))
-
+        model_ = fft.Fourier(fft._pad(model[self._band_slice, :, :], self._fft_shape, axes = (-2,-1)))
         model_image = []
         if self.isrot:
-            if self.small_axis:
-                model_conv = self.sinc_shift(model_, [-self.sin_rot * self.X_unrot, self.cos_rot * self.X_unrot],
-                                             (0,1), int(self.small_axis))
-            else:
-                model_conv = self.sinc_shift(model_, [self.cos_rot * self.Y_unrot, self.sin_rot * self.Y_unrot],
-                                                  (0,1), int(self.small_axis))
-
+            axes = (0,1)
+            sum_axis = int(self.small_axis)
 
         else:
             #1-D convolution of the model. Here sign is -1 because the model has to be shifted in the direction
             # opposite to the shift as if applied to the PSF.
             axes = [int(self.small_axis)]
-            model_conv = self.sinc_shift(model_, self._coord_hr, axes, int(self.small_axis))
+            sum_axis = int(self.small_axis)
+
+        model_conv = sinc_shift(model_, self.shifts, self._fft_shape, axes, sum_axis)
 
         model_conv = model_conv.reshape(*model_conv.shape[:2], -1)
+
         for c in range(self.frame.C):
-            model_image.append((model_conv[c] @ self._resconv_op[c].T).T)
-        return np.array(model_image, dtype=self.frame.dtype)
+            model_image.append((model_conv[c] @ self._resconv_op[0].T).T)
+        lr_model = fft.Fourier(np.array(model_image, dtype=self.frame.dtype)[:,:,::-1])
+
+        return fft.convolve(lr_model, self.frame.psfs, axes = (-2,-1)).image
 
     def render(self, model):
         """Resample and convolve a model in the observation frame for display only!
@@ -555,6 +476,7 @@ class LowResObservation(Observation):
         img[:, np.min(self._coord_lr[0]).astype(int):np.max(self._coord_lr[0]).astype(int) + 1,
         np.min(self._coord_lr[1]).astype(int):np.max(self._coord_lr[1]).astype(int) + 1] = \
             self._render(model)
+
         return img
 
     def get_loss(self, model):
@@ -573,6 +495,7 @@ class LowResObservation(Observation):
 
         min_lr = [np.min(self._coord_lr[0]).astype(int), np.min(self._coord_lr[1]).astype(int)]
         max_lr = [np.max(self._coord_lr[0]).astype(int), np.max(self._coord_lr[1]).astype(int)]
+
         return 0.5 * np.sum((self.weights * (
                 model_ -
                 self.images[:, min_lr[0]:max_lr[0] + 1, min_lr[1]:max_lr[1] + 1])) ** 2)

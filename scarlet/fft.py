@@ -246,8 +246,8 @@ class Fourier(object):
         # the shapes for the new axes
 
         fft_kernels = {
-            tuple([s for idx, s in enumerate(key[0]) if key[1][idx] not in removed]) +\
-            tuple([a for ida, a in enumerate(key[1]) if key[1][ida] not in removed]): kernel[index]
+            (tuple([s for idx, s in enumerate(key[0]) if key[1][idx] not in removed]),
+            tuple([a for ida, a in enumerate(key[1]) if key[1][ida] not in removed])): kernel[index]
             for key, kernel in self._fft.items()
         }
         return Fourier(self.image[index], fft_kernels)
