@@ -1,3 +1,46 @@
+0.6 (in development)
+--------------------
+
+General
+^^^^^^^
+None yet
+
+New Features
+^^^^^^^^^^^^
+- `Fourier` class is introduced to do PSF convolutions.
+  This class makes it more efficient to do the bookkeeping involved with calculating FFTs to
+  different shapes. It should be relatively transparent to the user except for the changes mentioned below
+  in API Changes.
+
+- `psf.generate_psf_image` now returns an actual integrated image.
+  Previous versions of scarlet generated a sampled image, meaning the specified PSF function was sampled
+  at the pixel locations centered on the central pixel. The new behavior is to use the 2D trapezoid rule
+  to integrate over a subsampled version of each pixel and return an integrated PSF, similar to one
+  that would be generated from a CCD image. This also changes the meaning of the morphology and model,
+  which is now a true image as opposed to a sampled version of the image.
+
+- `ExtendedSource`s have an improved initialization created by deconvolving the initial morphology
+  used by the previous version of scarlet in an attempt to better match the model PSF.
+  The previous morphology was initialized with the observation PSFs, making it too wide in each band
+  and taking extra time to converge. The new initialization gives better convergence in fewer steps.
+
+API Changes
+^^^^^^^^^^^
+- When looking at `Frame.psfs` (or `Observation.Frame.psfs`)
+  the result will now be a `Fourier` object and the `Fourier.image` method needs to be called
+  in order to access the PSF image cube.
+
+- `psf.moffat`, `psf.gaussian`, and `psf.double_gaussian` now accept
+  `y` and `x`, the coordinates in the y-direction and
+  coordinates in the x-direction instead of the 2D coordinate matrices `coords=Y, X`.
+
+- `generate_psf_image` now accepts an additional `normalization` parameter to optionally normalize
+  an image.
+
+- `ExtendedSource` now accepts a `sn_weighted_psf` parameter to decide whether to use the PSF with
+  the best signal to noise or use the narrowest PSF. This parameter will likely be removed in the
+  future if one of the two methods proves to work better in all/most circumstances.
+
 
 0.5 (2019-06-26)
 ---------------
@@ -8,7 +51,6 @@ General
 - Completely restructured code, including using `autograd` package to calculate gradients.
 - PSF convolutions are now performed on the model of the entire blend as opposed to
   individually for each source.
-- It is possible to perform deblending on images with different orientations and resolutions.
 - `Blend` no longer fits for source positions. Instead it is up to the user to implement a
   centering algorithm, such as centroiding or the `scarlet.update.fix_pixel_center`.
 - Updates to all of the docs and tutorials to match the new API.
@@ -34,6 +76,7 @@ New Features
   resolutions.
 - `Frame` issues warnings when PSF is not specified or not normalized.
 - `Frame.channels` is used to identify channels in multiple observations.
+- PSF convolutions and ffts of image cubes are performed using ndimensional fft along selected axes for better performance.
 
 API Changes
 ^^^^^^^^^^^
@@ -57,6 +100,8 @@ API Changes
 - Sources and components are no longer centered in a small patch that is reprojected
   into the model frame. Instead components can exist anywhere on an image and constraints that
   require a center, such as symmetry and monotonicity, can use the new `uncentered_operator` method.
+- `make_operator` is now a method of the `LowResObservation` class as should be.
+
 
 0.45 (2019-3-27)
 ----------------

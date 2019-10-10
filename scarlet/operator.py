@@ -1,8 +1,11 @@
 from functools import partial
 
-import autograd.numpy as np
+import numpy as np
 from proxmin.operators import prox_unity_plus
 from proxmin.utils import MatrixAdapter
+
+from . import observation
+from scipy import fftpack
 
 from .cache import Cache
 
@@ -260,39 +263,44 @@ def prox_kspace_symmetry(X, step, shift=None, padding=10):
     """
     # Record the morph shape
     shape = X.shape
-    dy, dx = shift
-    padding = np.max(X.shape) + padding // 2
-    edges = ((padding, padding), (padding, padding))
-    corner = (padding, padding)
-    zeroMask = X <= 0
-    X = np.pad(X, edges, 'constant')
+    #fast shapes for acceleration
+    _fftpack_shape = [fftpack.helper.next_fast_len(d) for d in ((np.array(X.shape)+padding))]
 
-    freq_x = np.fft.fftfreq(X.shape[1])
-    freq_y = np.fft.fftfreq(X.shape[0])
+    dy, dx = shift
+    #padding with fast shape
+    padding = (np.array(_fftpack_shape) - X.shape+padding)//2
+
+    zeroMask = X <= 0
+    X = np.pad(X, ((padding[0], padding[0]),(padding[1], padding[1])), 'constant')
 
     # Transform to k space
     X_fft = np.fft.fftn(np.fft.ifftshift(X))
 
+    freq_x = np.fft.fftfreq(X_fft.shape[1])
+    freq_y = np.fft.fftfreq(X_fft.shape[0])
+
     # Shift the signal to recenter it, negative because math is opposite from
     # pixel direction
-    shifter = np.outer(np.exp(-1j*2*np.pi*freq_y*-(dy)),
-                       np.exp(-1j*2*np.pi*freq_x*-(dx)))
-    inv_shifter = np.outer(np.exp(-1j*2*np.pi*freq_y*(dy)),
-                           np.exp(-1j*2*np.pi*freq_x*(dx)))
-    result_fft = X_fft*shifter
+    shifter = np.outer(np.exp(-1j * 2 * np.pi * freq_y * -(dy)),
+                       np.exp(-1j * 2 * np.pi * freq_x * -(dx)))
+    inv_shifter = np.outer(np.exp(-1j * 2 * np.pi * freq_y * (dy)),
+                           np.exp(-1j * 2 * np.pi * freq_x * (dx)))
+    result_fft = X_fft * shifter
 
     # symmeterize
     result_fft = result_fft.real
 
     # Shift back
-    result_fft = result_fft*inv_shifter
+    result_fft = result_fft * inv_shifter
 
     # Transform to real space
     result = np.fft.fftshift(np.fft.ifftn(result_fft))
     # Return the unpadded transform
-    result = np.real(result[corner[0]:corner[0]+shape[0], corner[1]:corner[1]+shape[1]])
+    result = observation._centered(np.real(result), shape)
     result[zeroMask] = 0
     assert result.shape == shape
+
+
     return result
 
 
