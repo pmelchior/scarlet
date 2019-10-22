@@ -1,10 +1,10 @@
 import autograd.numpy as np
-import logging
+import logging, proxmin
 logger = logging.getLogger("scarlet.source")
 
 from . import operator
 from . import update
-from .component import Component, ComponentTree, Parameter
+from .component import *
 from .interpolation import get_projection_slices
 
 
@@ -225,7 +225,7 @@ def init_multicomponent_source(sky_coord, frame, observation, bg_rms, flux_perce
     return seds, morphs
 
 
-class RandomSource(Component):
+class RandomSource(FactorizedComponent):
     """Sources with uniform random morphology.
 
     For cases with no well-defined spatial shape, this source initializes
@@ -250,8 +250,9 @@ class RandomSource(Component):
         else:
             sed = get_best_fit_seds(morph[None], frame, observation)[0]
 
-        sed = Parameter(sed, name="sed")
-        morph = Parameter(morph, name="morph")
+        step = lambda X, it: 0.1*X.mean(axis=0)
+        sed = Parameter(sed, name="sed", step=step, constraint=proxmin.operators.prox_plus)
+        morph = Parameter(morph, name="morph", step=step, constraint=proxmin.operators.prox_plus)
 
         super().__init__(frame, sed, morph)
 

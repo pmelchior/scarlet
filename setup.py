@@ -131,7 +131,7 @@ class BuildExt(build_ext):
         build_ext.build_extensions(self)
 
 
-install_requires = ['numpy', 'proxmin>=0.5.5', 'autograd']
+install_requires = ['numpy', 'proxmin>=0.6.2', 'autograd']
 # Only require the pybind11 and peigen packages if
 # the C++ headers are not already installed
 if pybind11_path is None:

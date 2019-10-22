@@ -7,10 +7,11 @@ import pickle
 logger = logging.getLogger("scarlet.component")
 
 class Parameter(np.ndarray):
-    def __new__(cls, array, prior=None, step=0, converged=False, fixed=False, **kwargs):
+    def __new__(cls, array, prior=None, constraint=None, step=0, converged=False, fixed=False, **kwargs):
         obj = np.asarray(array, dtype=array.dtype).view(cls)
         obj.prior = prior
-        obj.step = 0
+        obj.constraint = constraint
+        obj.step = step
         obj.converged = converged
         obj.fixed = fixed
         return obj
@@ -18,6 +19,7 @@ class Parameter(np.ndarray):
     def __array_finalize__(self, obj):
         if obj is None: return
         self.prior = getattr(obj, 'prior', None)
+        self.constraint = getattr(obj, 'constraint', None)
         self.step = getattr(obj, 'step_size', 0)
         self.converged = getattr(obj, 'converged', False)
         self.fixed = getattr(obj, 'fixed', False)
@@ -26,45 +28,32 @@ class Parameter(np.ndarray):
     def _data(self):
         return self.view(np.ndarray)
 
-class SEDParameter(Parameter):
-    pass
-
-class MorphParameter(Parameter):
-    pass
-
-ArrayBox.register(SEDParameter)
-ArrayBox.register(MorphParameter)
-VSpace.register(SEDParameter, vspace_maker=VSpace.mappings[np.ndarray])
-VSpace.register(MorphParameter, vspace_maker=VSpace.mappings[np.ndarray])
+ArrayBox.register(Parameter)
+VSpace.register(Parameter, vspace_maker=VSpace.mappings[np.ndarray])
 
 
 class Component():
     """A single component in a blend.
 
-    This class acts as base for building complex :class:`scarlet.source.Source`.
+    This class acts as base for building a complex :class:`scarlet.blend.Blend`.
 
     Parameters
     ----------
     frame: `~scarlet.Frame`
         The spectral and spatial characteristics of this component.
-    sed: `~scarlet.Parameter`
-        1D array (bands) of the initial SED.
-    morph: `~scarlet.Parameter`
-        Image (Height, Width) of the initial morphology.
+    parameters: list of `~scarlet.Parameter`
     """
 
-    def __init__(self, frame, sed, morph):
+    def __init__(self, frame, *parameters):
         self._frame = frame
 
-        # set sed and morph
-        if isinstance(sed, SEDParameter):
-            self._sed = sed
+        if hasattr(parameters, '__iter__'):
+            for p in parameters:
+                isinstance(p, Parameter)
+            self._parameters = parameters
         else:
-            self._sed = SEDParameter(sed.copy())
-        if isinstance(morph, MorphParameter):
-            self._morph = morph
-        else:
-            self._morph = MorphParameter(morph.copy())
+            assert isinstance(parameters, Parameter)
+            self._parameters = tuple(parameters,)
 
         # Properties used for indexing in the ComponentTree
         self._index = None
@@ -93,48 +82,27 @@ class Component():
         return self._frame
 
     @property
-    def sed(self):
-        """Numpy view of the component SED
-        """
-        return self._sed._data
-
-    @property
-    def morph(self):
-        """Numpy view of the component morphology
-        """
-        return self._morph._data
-
-    @property
     def parameters(self):
-        return [ p for p in [self._sed, self._morph] if not p.fixed ]
+        return [ p for p in self._parameters if not p.fixed ]
 
-    def get_model(self, *params):
+    def get_model(self, *parameters):
         """Get the model for this component.
 
         Parameters
         ----------
-        params: tuple of optimimzation parameters
+        parameters: tuple of optimimzation parameters
 
         Returns
         -------
         model: array
-            (Bands, Height, Width) image of the model
+            (Channels, Height, Width) image of the model
         """
-        sed, morph = self.sed, self.morph
-
-        # if params are set they are not Parameters, but autograd ArrayBoxes
-        # need to access the wrapped class with _value
-        for p in params:
-            if isinstance(p._value, SEDParameter):
-                sed = p
-            if isinstance(p._value, MorphParameter):
-                morph = p
-        return sed[:, None, None] * morph[None, :, :]
+        pass
 
     def get_flux(self):
         """Get flux in every band
         """
-        return self.morph.sum() * self.sed
+        return self.get_model().sum(axis=(1,2))
 
     def update(self):
         """Update the component
@@ -161,6 +129,87 @@ class Component():
     def load(cls, filename):
         fp = open(filename, "rb")
         return pickle.load(fp)
+
+
+class FactorizedComponent(Component):
+    """A single component in a blend.
+
+    Uses the non-parametric factorization sed x morphology.
+
+    Parameters
+    ----------
+    frame: `~scarlet.Frame`
+        The spectral and spatial characteristics of this component.
+    sed: `~scarlet.Parameter`
+        1D array (channels) of the initial SED.
+    morph: `~scarlet.Parameter`
+        Image (Height, Width) of the initial morphology.
+    """
+    def __init__(self, frame, sed, morph):
+        self._sed = sed
+        self._morph = morph
+        parameters = (self._sed, self._morph)
+        super().__init__(frame, *parameters)
+
+    @property
+    def sed(self):
+        """Numpy view of the component SED
+        """
+        return self._sed._data
+
+    @property
+    def morph(self):
+        """Numpy view of the component morphology
+        """
+        return self._morph._data
+
+    def get_model(self, *parameters):
+        """Get the model for this component.
+
+        Parameters
+        ----------
+        parameters: tuple of optimimzation parameters
+
+        Returns
+        -------
+        model: array
+            (Channels, Height, Width) image of the model
+        """
+        sed, morph = self.sed, self.morph
+
+        # if params are set they are not Parameters, but autograd ArrayBoxes
+        # need to access the wrapped class with _value
+        for p in parameters:
+            if p._value is self._sed:
+                sed = p
+            if p._value is self._morph:
+                morph = p
+        return sed[:, None, None] * morph[None, :, :]
+
+    def get_flux(self):
+        """Get flux in every band
+        """
+        return self.morph.sum() * self.sed
+
+
+class HyperComponent(Component):
+    """A single component in a blend.
+
+    Uses full cube parameterization.
+
+    Parameters
+    ----------
+    frame: `~scarlet.Frame`
+        The spectral and spatial characteristics of this component.
+    cube: `~scarlet.Parameter`
+        3D array (C, Height, Width) of the initial data cube.
+    """
+    def __init__(self, frame, cube):
+        self._cube = cube
+        self._morph = morph
+        parameters = (self._cube,)
+        super().__init__(frame, *parameters)
+
 
 class ComponentTree():
     """Base class for hierarchical collections of Components.
