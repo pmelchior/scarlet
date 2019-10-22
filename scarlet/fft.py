@@ -169,13 +169,14 @@ class Fourier(object):
         """
         if axes is None:
             axes = range(len(image_fft))
+        all_axes = range(len(image_shape))
         image = np.fft.irfftn(image_fft, fft_shape, axes=axes)
         # Shift the center of the image from the bottom left to the center
         image = np.fft.fftshift(image, axes=axes)
         # Trim the image to remove the padding added
         # to reduce fft artifacts
         image = _centered(image, image_shape)
-        key = (tuple(fft_shape), tuple(axes))
+        key = (tuple(fft_shape), tuple(axes), tuple(all_axes))
 
         return Fourier(image, {key: image_fft})
 
@@ -196,8 +197,8 @@ class Fourier(object):
             iter(axes)
         except TypeError:
             axes = (axes, )
-
-        fft_key = (tuple(fft_shape), tuple(axes))
+        all_axes = range(len(self.image.shape))
+        fft_key = (tuple(fft_shape), tuple(axes), tuple(all_axes))
 
         # If this is the first time calling `fft` for this shape,
         # generate the FFT.
@@ -253,7 +254,8 @@ class Fourier(object):
 
         fft_kernels = {
             (tuple([s for idx, s in enumerate(key[0]) if key[1][idx] not in removed]),
-            tuple([a for ida, a in enumerate(key[1]) if key[1][ida] not in removed])): kernel[index]
+            tuple([a for ida, a in enumerate(key[1]) if key[1][ida] not in removed]),
+            tuple([aa for idaa, aa in enumerate(key[2]) if key[2][idaa] not in removed])): kernel[index]
             for key, kernel in self._fft.items()
         }
         return Fourier(self.image[index], fft_kernels)
