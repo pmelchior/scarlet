@@ -98,7 +98,7 @@ class TestFourier(object):
         # Multiband observation PSF
         observation = np.array([gaussian(sigma=1+.3*n).image for n in range(5)])
 
-        psf2 = fft.Fourier(observation, axes=(1, 2))
+        psf2 = fft.Fourier(observation)
 
         # Nawrrow to wide
         kernel_1to2 = fft.match_psfs(psf2, psf1)
@@ -108,5 +108,6 @@ class TestFourier(object):
         # Wide to narrow
         kernel_2to1 = fft.match_psfs(psf1, psf2)
         image = fft.convolve(kernel_2to1, psf2).image
+
         for img in image:
             assert_almost_equal(img, psf1.image[0])
