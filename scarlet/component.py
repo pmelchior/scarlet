@@ -192,7 +192,67 @@ class FactorizedComponent(Component):
         return self.morph.sum() * self.sed
 
 
-class HyperComponent(Component):
+class FunctionComponent(FactorizedComponent):
+    """A single component in a blend.
+
+    Uses the non-parametric sed x morphology, with the morphology specified
+    by a functional expression.
+
+    Parameters
+    ----------
+    frame: `~scarlet.Frame`
+        The spectral and spatial characteristics of this component.
+    sed: `~scarlet.Parameter`
+        1D array (channels) of the initial SED.
+    fparams: `~scarlet.Parameter`
+        Parameters of the initial morphology.
+    func: `autograd` function
+        Signature: func(*fparams, y=None, x=None) -> Image (Height, Width)
+    """
+    def __init__(self, frame, sed, fparams, func):
+        self._sed = sed
+        self._fparams = fparams
+        parameters = (self._sed, self._fparams)
+        super().__init__(frame, *parameters)
+
+        y = np.arange(frame.shape[1])
+        x = np.arange(frame.shape[2])
+        from functools import partial
+        self._func = partial(func, y=y, x=x)
+        self._morph = self._func(*self._fparams)
+
+    @property
+    def morph(self):
+        """Numpy view of the component morphology
+        """
+        return self._morph
+
+    def get_model(self, *parameters):
+        """Get the model for this component.
+
+        Parameters
+        ----------
+        parameters: tuple of optimimzation parameters
+
+        Returns
+        -------
+        model: array
+            (Channels, Height, Width) image of the model
+        """
+        sed, morph = self.sed, self.morph
+
+        # if params are set they are not Parameters, but autograd ArrayBoxes
+        # need to access the wrapped class with _value
+        for p in parameters:
+            if p._value is self._sed:
+                sed = p
+            if p._value is self._fparams:
+                morph = self._func(*p)
+                self._morph[:,:] = morph._value
+        return sed[:, None, None] * morph[None, :, :]
+
+
+class CubeComponent(Component):
     """A single component in a blend.
 
     Uses full cube parameterization.

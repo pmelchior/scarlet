@@ -224,6 +224,7 @@ def init_multicomponent_source(sky_coord, frame, observation, bg_rms, flux_perce
 
     return seds, morphs
 
+default_step = lambda X, it: 0.1*X.mean(axis=0)
 
 class RandomSource(FactorizedComponent):
     """Sources with uniform random morphology.
@@ -250,23 +251,23 @@ class RandomSource(FactorizedComponent):
         else:
             sed = get_best_fit_seds(morph[None], frame, observation)[0]
 
-        step = lambda X, it: 0.1*X.mean(axis=0)
-        sed = Parameter(sed, name="sed", step=step, constraint=proxmin.operators.prox_plus)
-        morph = Parameter(morph, name="morph", step=step, constraint=proxmin.operators.prox_plus)
+        sed = Parameter(sed, name="sed", step=default_step, constraint=proxmin.operators.prox_plus)
+        morph = Parameter(morph, name="morph", step=default_step, constraint=proxmin.operators.prox_plus)
 
         super().__init__(frame, sed, morph)
 
 
-class PointSource(Component):
+def gauss_func(yc, xc, sigma=1, x=None, y=None):
+    amplitude = 1/(np.pi**2*sigma**2)
+    return amplitude * np.exp(-(yc-y)**2/(2*sigma**2))[:,None] * np.exp(-(xc-x)**2/(2*sigma**2))[None,:]
+
+class PointSource(FunctionComponent):
     """Source intialized with a single pixel
 
     Point sources are initialized with the SED of the center pixel,
-    and the morphology of a single pixel (the center) turned on.
-    While the source can have any `constraints`, the default constraints are
-    symmetry and monotonicity.
+    and the morphology taken from `frame.psfs`, centered at `sky_coord`.
     """
-    def __init__(self, frame, sky_coord, observation, symmetric=True, monotonic=True,
-                 center_step=5, delay_thresh=10):
+    def __init__(self, frame, sky_coord, observation, func):
         """Source intialized with a single pixel
 
         Parameters
@@ -277,88 +278,20 @@ class PointSource(Component):
             Center of the source
         observation: list of `~scarlet.Observation`
             Observation to initialize this source
-        symmetric: bool
-            Whether or not the object is forced to be symmetric
-        monotonic: bool
-            Whether or not the object is forced to be monotonically decreasing
-        center_step: int
-            Number of steps to skip between centering routines
-        delay_thresh: int
-            Number of steps to skip before turning on thresholding.
-            This is useful for point sources because it allows them to grow
-            slightly before removing pixels with low significance.
         """
-        # this ignores any broadening from the PSFs ...
         C, Ny, Nx = frame.shape
-        morph = np.zeros((Ny, Nx), observation.images.dtype)
-        pixel = frame.get_pixel(sky_coord)
-        if frame.psfs is None:
-            # Use a single pixel if there is no target PSF
-            morph[pixel] = 1
-        else:
-            # A point source is a function of the target PSF
-            assert len(frame.psfs[0].shape) == 2
-            py, px = pixel
-            sy, sx = (np.array(frame.psfs[0].shape) - 1) // 2
-            cy, cx = (np.array(morph.shape) - 1) // 2
-            yx0 = int(py - cy - sy), int(px - cx - sx)
-            bb, ibb, _ = get_projection_slices(frame.psfs[0], morph.shape, yx0)
-            morph[bb] = frame.psfs[0][ibb]
+        self.pixel_center = np.array(frame.get_pixel(sky_coord), dtype=np.float)
 
-        self.pixel_center = pixel
         pixel = observation.frame.get_pixel(sky_coord)
         sed = observation.images[:, pixel[0], pixel[1]].copy()
         if observation.frame.psfs is not None:
             # Account for the PSF in the intensity
             sed /= observation.frame.psfs.max(axis=(1, 2))
 
-        sed = Parameter(sed, name="sed")
-        morph = Parameter(morph, name="morph")
+        sed = Parameter(sed, name="sed", step=default_step, constraint=proxmin.operators.prox_plus)
+        center = Parameter(self.pixel_center, step=lambda *X, it: 1e-3)
 
-        super().__init__(frame, sed, morph)
-        self.symmetric = symmetric
-        self.monotonic = monotonic
-        self.center_step = center_step
-        self.delay_thresh = delay_thresh
-        self.update()
-
-    def update(self):
-        """Default update parameters for an ExtendedSource
-
-        This method can be overwritten if a different set of constraints
-        or update functions is desired.
-        """
-        try:
-            self.update_it += 1
-        except AttributeError:
-            self.update_it = 0
-
-        # Update the central pixel location (pixel_center)
-        update.fit_pixel_center(self)
-        # Thresholding needs to be fixed (DM-10190)
-        # if it > self.delay_thresh:
-        #     update.threshold(self)
-
-        # If there is a threshold bounding box, use it
-        if hasattr(self, "bboxes") and "thresh" in self.bboxes:
-            bbox = self.bboxes["thresh"]
-        else:
-            bbox = None
-
-        if self.symmetric:
-            # Update the centroid position
-            if self.update_it % 5 == 0:
-                update.psf_weighted_centroid(self)
-            # make the morphology perfectly symmetric
-            update.symmetric(self, algorithm="kspace", bbox=bbox)
-
-        if self.monotonic:
-            # make the morphology monotonically decreasing
-            update.monotonic(self, self.pixel_center, bbox=bbox)
-
-        update.positive(self)  # Make the SED and morph non-negative
-        update.normalized(self)  # Use MORPH_MAX normalization
-        return self
+        super().__init__(frame, sed, center, func)
 
 
 class ExtendedSource(PointSource):
