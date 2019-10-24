@@ -5,7 +5,6 @@ logger = logging.getLogger("scarlet.source")
 from . import operator
 from . import update
 from .component import *
-from .interpolation import get_projection_slices
 
 
 class SourceInitError(Exception):
@@ -258,7 +257,8 @@ class RandomSource(FactorizedComponent):
 
 
 def gauss_func(yc, xc, sigma=1, x=None, y=None):
-    amplitude = 1/(np.pi**2*sigma**2)
+    # Smax normalization
+    amplitude = 1 #/(np.pi**2*sigma**2)
     return amplitude * np.exp(-(yc-y)**2/(2*sigma**2))[:,None] * np.exp(-(xc-x)**2/(2*sigma**2))[None,:]
 
 class PointSource(FunctionComponent):
@@ -282,21 +282,23 @@ class PointSource(FunctionComponent):
         C, Ny, Nx = frame.shape
         self.pixel_center = np.array(frame.get_pixel(sky_coord), dtype=np.float)
 
+        # initialize SED from sky_coord
         pixel = observation.frame.get_pixel(sky_coord)
         sed = observation.images[:, pixel[0], pixel[1]].copy()
         if observation.frame.psfs is not None:
             # Account for the PSF in the intensity
             sed /= observation.frame.psfs.max(axis=(1, 2))
 
+        # set up parameters
         sed = Parameter(sed, name="sed", step=default_step, constraint=proxmin.operators.prox_plus)
         center = Parameter(self.pixel_center, step=lambda *X, it: 1e-3)
 
         super().__init__(frame, sed, center, func)
 
 
-class ExtendedSource(PointSource):
+class ExtendedSource(FactorizedComponent):
     def __init__(self, frame, sky_coord, observation, bg_rms, thresh=1,
-                 symmetric=True, monotonic=True, center_step=5, delay_thresh=10):
+                 symmetric=True, monotonic=True):
         """Extended source intialized to match a set of observations
 
         Parameters
@@ -323,15 +325,22 @@ class ExtendedSource(PointSource):
         self.coords = sky_coord
         center = frame.get_pixel(sky_coord)
         self.pixel_center = center
-        self.center_step = center_step
-        self.delay_thresh = delay_thresh
 
         sed, morph = init_extended_source(sky_coord, frame, observation, bg_rms,
                                           thresh, True, monotonic)
-        sed = Parameter(sed, name="sed")
-        morph = Parameter(morph, name="morph")
-        Component.__init__(self, frame, sed, morph)
-        self.update()
+        sed = Parameter(sed, name="sed", step=default_step, constraint=proxmin.operators.prox_plus)
+
+        morph_constraint = ConstraintChain(
+            SymmetryConstraint(center, shape),
+            MonotonicityConstraint(center, shape),
+            PositivityConstraint(),
+            CenterOnConstraint(center),
+            NormalizationConstraint("max", axis=(0,1)),
+            repeat=1
+        )
+        morph = Parameter(morph, name="morph", step=0.001, constraint=morph_constraint)
+
+        super().__init__(frame, sed, morph)
 
 
 class CombinedExtendedSource(PointSource):
