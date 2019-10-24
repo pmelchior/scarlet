@@ -1,5 +1,5 @@
-[![](https://travis-ci.org/fred3m/scarlet.svg?branch=master)](https://travis-ci.org/fred3m/scarlet)
-[![](https://img.shields.io/github/license/fred3m/scarlet.svg)](https://github.com/fred3m/scarlet/blob/master/LICENSE.md)
+[![](https://travis-ci.org/pmelchior/scarlet.svg?branch=master)](https://travis-ci.org/pmelchior/scarlet)
+[![](https://img.shields.io/github/license/pmelchior/scarlet.svg)](https://github.com/pmelchior/scarlet/blob/master/LICENSE.md)
 [![DOI](https://img.shields.io/badge/DOI-10.1016%2Fj.ascom.2018.07.001-blue.svg)](https://doi.org/10.1016/j.ascom.2018.07.001)
 [![arXiv](https://img.shields.io/badge/arxiv-1802.10157-red.svg)](https://arxiv.org/abs/1802.10157)
 
@@ -7,7 +7,7 @@
 
 This package performs source separation (aka "deblending") on multi-band images. It's geared towards optical astronomy, where scenes are composed of stars and galaxies, but it is straightforward to apply it to other imaging data.
 
-**For the full documentation see [the docs](https://fred3m.github.io/scarlet/).**
+**For the full documentation see [the docs](https://pmelchior.github.io/scarlet/).**
 
 Separation is achieved through a constrained matrix factorization, which models each source with a Spectral Energy Distribution (SED) and a non-parametric morphology, or multiple such components per source. In astronomy jargon, the code performs forced photometry (with PSF matching if needed) using an optimal weight function given by the signal-to-noise weighted morphology across bands. The approach works well if the sources in the scene have different colors and can be further strengthened by imposing various additional constraints/priors on each source.
 

@@ -1,25 +1,13 @@
 import autograd.numpy as np
 from scipy import fftpack
 
+from . import interpolation
+from . import fft
 from . import resampling
 
 import logging
 
 logger = logging.getLogger("scarlet.observation")
-
-
-def _centered(arr, newshape):
-    """Return the center newshape portion of the array.
-
-    This function is used by `fft_convolve` to remove
-    the zero padded region of the convolution.
-    """
-    newshape = np.asarray(newshape)
-    currshape = np.array(arr.shape)
-    startind = (currshape - newshape) // 2
-    endind = startind + newshape
-    myslice = [slice(startind[k], endind[k]) for k in range(len(endind))]
-    return arr[tuple(myslice)]
 
 
 class Frame():
@@ -35,8 +23,10 @@ class Frame():
         PSF in each band
     channels: list of hashable elements
         Names/identifiers of spectral channels
+    dtype: `numpy.dtype`
+        Dtype to represent the data.
     """
-    def __init__(self, shape, wcs=None, psfs=None, channels=None):
+    def __init__(self, shape, wcs=None, psfs=None, channels=None, dtype=np.float32):
         assert len(shape) == 3
         self._shape = tuple(shape)
         self.wcs = wcs
@@ -44,14 +34,24 @@ class Frame():
         if psfs is None:
             logger.warning('No PSFs specified. Possible, but dangerous!')
         else:
-            assert len(psfs) == 1 or len(psfs) == shape[0], 'PSFs need to have shape (1,Ny,Nx) for Blend and (B,Ny,Nx) for Observation'
+            msg = 'PSFs need to have shape (1,Ny,Nx) for Blend and (B,Ny,Nx) for Observation'
+            assert len(psfs) == 1 or len(psfs) == shape[0], msg
+            if not isinstance(psfs, fft.Fourier):
+                psfs = fft.Fourier(psfs)
             if not np.allclose(psfs.sum(axis=(1, 2)), 1):
                 logger.warning('PSFs not normalized. Normalizing now..')
-                psfs /= psfs.sum(axis=(1, 2))[:,None,None]
+                psfs.normalize()
+
+            if dtype != psfs.image.dtype:
+                msg = "Dtypes of PSFs and Frame different. Casting PSFs to {}".format(dtype)
+                logger.warning(msg)
+                psfs.update_dtype(dtype)
+
         self._psfs = psfs
 
         assert channels is None or len(channels) == shape[0]
         self.channels = channels
+        self.dtype = dtype
 
     @property
     def C(self):
@@ -119,8 +119,7 @@ class Observation():
         prevent artifacts from the FFT.
     """
 
-    def __init__(self, images, psfs=None, weights=None, wcs=None, channels=None,
-                 padding=10):
+    def __init__(self, images, psfs=None, weights=None, wcs=None, channels=None, padding=10):
         """Create an Observation
 
         Parameters
@@ -143,7 +142,7 @@ class Observation():
             half the width of the PSF, for FFTs. This is needed to
             prevent artifacts from the FFT.
         """
-        self.frame = Frame(images.shape, wcs=wcs, psfs=psfs, channels=channels)
+        self.frame = Frame(images.shape, wcs=wcs, psfs=psfs, channels=channels, dtype=images.dtype)
 
         self.images = np.array(images)
         if weights is not None:
@@ -170,58 +169,36 @@ class Observation():
         None
         """
 
+        if self.frame.dtype != model_frame.dtype:
+            msg = "Dtypes of model and observation different. Casting observation to {}"
+            msg = msg.format(model_frame.dtype)
+            logger.warning(msg)
+            self.frame.dtype = model_frame.dtype
+            self.images = self.images.astype(model_frame.dtype)
+            if type(self.weights) is np.ndarray:
+                self.weights = self.weights.astype(model_frame.dtype)
+            if self.frame._psfs is not None:
+                self.frame.psfs.update_dtype(model_frame.dtype)
+
         #  channels of model that are represented in this observation
         self._band_slice = slice(None)
         if self.frame.channels is not model_frame.channels:
             assert self.frame.channels is not None and model_frame.channels is not None
             bmin = model_frame.channels.index(self.frame.channels[0])
             bmax = model_frame.channels.index(self.frame.channels[-1])
-            self._band_slice = slice(bmin, bmax+1)
+            self._band_slice = slice(bmin, bmax + 1)
 
-        self._diff_kernels_fft = None
+        self._diff_kernels = None
         if self.frame.psfs is not model_frame.psfs:
             assert self.frame.psfs is not None and model_frame.psfs is not None
-            # First we setup the parameters for the model -> observation FFTs
-            # Make the PSF stamp wider due to errors when matching PSFs
-            psf_shape = np.array(self.frame.psfs[0].shape) + self._padding
-            shape = np.array(model_frame.shape[1:]) + psf_shape - 1
-            # Choose the optimal shape for FFTPack DFT
-            self._fftpack_shape = [fftpack.helper.next_fast_len(d) for d in shape]
-            # autograd.numpy.fft does not currently work
-            # if the last dimension is odd
-            while self._fftpack_shape[-1] % 2 != 0:
-                _shape = self._fftpack_shape[-1] + 1
-                self._fftpack_shape[-1] = fftpack.helper.next_fast_len(_shape)
-            # Store the pre-fftpack optimization slices
-            self._slices = tuple([slice(s) for s in shape])
-
-            # Now we setup the parameters for the psf -> kernel FFTs
-            shape = np.array(model_frame.psfs[0].shape) + np.array(self.frame.psfs[0].shape) - 1
-            _fftpack_shape = [fftpack.helper.next_fast_len(d) for d in shape]
-            # Deconvolve the target PSF
-            target_fft = np.fft.rfftn(model_frame.psfs[0], _fftpack_shape)
-
-            # Match the PSF in each band
-            _diff_kernels_fft = []
-            for psf in self.frame.psfs:
-                _psf_fft = np.fft.rfftn(psf, _fftpack_shape)
-                kernel = np.fft.fftshift(np.fft.irfftn(_psf_fft / target_fft, _fftpack_shape))
-                kernel *= model_frame.psfs[0].sum()
-                if kernel.shape[0] % 2 == 0:
-                    kernel = kernel[1:, 1:]
-                kernel = _centered(kernel, psf_shape)
-                _diff_kernels_fft.append(np.fft.rfftn(kernel, self._fftpack_shape))
-
-            self._diff_kernels_fft = np.array(_diff_kernels_fft)
+            self._diff_kernels = fft.match_psfs(self.frame.psfs, model_frame.psfs)
 
         return self
 
-    def _convolve_band(self, model, diff_kernel_fft):
+    def _convolve(self, model):
         """Convolve the model in a single band
         """
-        model_fft = np.fft.rfftn(model, self._fftpack_shape)
-        convolved = np.fft.irfftn(model_fft * diff_kernel_fft, self._fftpack_shape)[self._slices]
-        return _centered(convolved, model.shape)
+        return fft.convolve(fft.Fourier(model), self._diff_kernels, axes=(1, 2)).image
 
     def render(self, model):
         """Convolve a model to the observation frame
@@ -236,10 +213,9 @@ class Observation():
         model_: array
             The convolved `model` in the observation frame
         """
-        model_ = model[self._band_slice,:,:]
-
-        if self._diff_kernels_fft is not None:
-            model_ = np.array([self._convolve_band(model_[c], self._diff_kernels_fft[c]) for c in range(self.frame.C)])
+        model_ = model[self._band_slice, :, :]
+        if self._diff_kernels is not None:
+            model_ = self._convolve(model_)
 
         return model_
 
@@ -265,21 +241,178 @@ class Observation():
 
 class LowResObservation(Observation):
 
-    def __init__(self, images, wcs=None, psfs=None, weights=None, channels=None, padding=3):
+    def __init__(self, images, wcs=None, psfs=None, weights=None, channels=None, padding=3, operator = 'exact'):
 
         assert wcs is not None, "WCS is necessary for LowResObservation"
         assert psfs is not None, "PSFs are necessary for LowResObservation"
+        assert operator in ['exact', 'bilinear', 'SVD']
 
-        self.frame = Frame(images.shape, wcs=wcs, psfs=psfs, channels=channels)
-        self.images = np.array(images)
-        self._padding = padding
+        super().__init__(images, wcs=wcs, psfs=psfs, weights=weights, channels=channels, padding=padding)
 
-        if weights is not None:
-            self.weights = np.array(weights)
+    def match_psfs(self, psf_hr, wcs_hr, angle):
+        '''psf matching between different dataset
+        Matches PSFS at different resolutions by interpolating psf_lr on the same grid as psf_hr
+        Parameters
+        ----------
+        psf_hr: array
+            centered psf of the high resolution scene
+        psf_lr: array
+            centered psf of the low resolution scene
+        wcs_hr: WCS object
+            wcs of the high resolution scene
+        wcs_lr: WCS object
+            wcs of the low resolution scene
+        angle: tuple
+            the cos and sin of the rotation angle between frames
+        Returns
+        -------
+        psf_match_hr: array
+            high rresolution psf at mactching size
+        psf_match_lr: array
+            low resolution psf at matching size and resolution
+        '''
+
+        psf_lr = self.frame.psfs.image
+        wcs_lr = self.frame.wcs
+
+        ny_hr, nx_hr = psf_hr.shape
+        npsf_bands, ny_lr, nx_lr = psf_lr.shape
+
+        # Createsa wcs for psfs centered around the frame center
+        psf_wcs_hr = wcs_hr.deepcopy()
+        psf_wcs_lr = wcs_lr.deepcopy()
+
+        if psf_wcs_hr.naxis == 2:
+            psf_wcs_hr.wcs.crval = 0., 0.
+            psf_wcs_hr.wcs.crpix = ny_hr / 2.+1, nx_hr / 2.+1
+        elif psf_wcs_hr.naxis == 3:
+            psf_wcs_hr.wcs.crval = 0., 0., 0.
+            psf_wcs_hr.wcs.crpix = ny_hr / 2+1, nx_hr / 2.+1, 0.
+        if psf_wcs_lr.naxis == 2:
+            psf_wcs_lr.wcs.crval = 0., 0.
+            psf_wcs_lr.wcs.crpix = ny_lr / 2.+1, nx_lr / 2.+1
+        elif psf_wcs_lr.naxis == 3:
+            psf_wcs_lr.wcs.crval = 0., 0., 0.
+            psf_wcs_lr.wcs.crpix = ny_lr / 2.+1, nx_lr / 2.+1, 0
+
+        pcoordlr_lr, pcoordlr_hr, coordover_hr = resampling.match_patches(psf_hr.shape, psf_lr.data.shape[1:],
+                                                                    psf_wcs_hr, psf_wcs_lr, isrot = False, psf = True)
+
+        npsf_y = np.max(coordover_hr[0])-np.min(coordover_hr[0])+1
+        npsf_x = np.max(coordover_hr[1])-np.min(coordover_hr[1])+1
+
+        psf_valid = psf_lr[:,pcoordlr_lr[0].min():pcoordlr_lr[1].max()+1,pcoordlr_lr[1].min():pcoordlr_lr[1].max()+1]\
+
+        psf_match_lr = interpolation.sinc_interp(psf_valid, coordover_hr, pcoordlr_hr, angle = angle)
+
+        psf_match_hr = psf_hr[coordover_hr[0].min():coordover_hr[0].max()+1,
+                       coordover_hr[1].min():coordover_hr[1].max()+1].reshape(npsf_y, npsf_x)
+
+        assert np.shape(psf_match_lr[0]) == np.shape(psf_match_hr)
+
+        psf_match_hr /= np.sum(psf_match_hr)
+        psf_match_lr /= np.sum(psf_match_lr)
+        return psf_match_hr[np.newaxis, :], psf_match_lr
+
+    def build_diffkernel(self, model_frame, angle):
+        '''Builds the differential convolution kernel between the observation and the frame psfs
+
+        Parameters
+        ----------
+        model_frame: Frame object
+            the frame of the model (hehehe)
+        angle: tuple
+            tuple of the cos and sin of the rotation angle between frames.
+        Returns
+        -------
+        diff_psf: array
+            the differential psf between observation and frame psfs.
+        '''
+        # Compute diff kernel at hr
+        whr = model_frame.wcs
+
+        # Reference PSF
+        _target = model_frame.psfs.image[0, :, :]
+
+        # Computes spatially matching observation and target psfs. The observation psf is also resampled \\
+        # to the model frame resolution
+        new_target, observed_psfs = self.match_psfs(_target, whr, angle)
+
+        diff_psf = fft.match_psfs(fft.Fourier(observed_psfs), fft.Fourier(new_target))
+
+        return diff_psf
+
+    def sinc_shift(self, imgs, shifts, axes, sum_axis):
+        '''Performs 2 1D sinc convolutions and shifting along one rotated axis in Fourier space.
+
+        Parameters
+        ----------
+        imgs: Fourier
+            a Fourier object of 2D images to sinc convolve and shift
+            to the adequate shape.
+        shifts: array
+            an array of the shift values for each line and columns of images in imgs
+        axes: array
+            Optional argument that specifies the axes along which to apply sinc convolution.
+        sum_axis: int
+            axis along which the summation is performed. If axes is of length one, sum_axis should correspond to axes.
+        Returns
+        -------
+        result: array
+            the shifted and sinc convolved array in configuration space
+        '''
+        # fft
+        axes = tuple(np.array(axes)-1)
+        sum_axis-=1
+        fft_shape = np.array(self._fft_shape)[tuple([axes])]
+        imgs_fft = imgs.fft(fft_shape, np.array(axes)+1)
+        transformed_shape = np.array(imgs_fft.shape[1:])
+        transformed_shape[tuple([axes])] = fft_shape
+
+        # frequency sampling
+        if len(axes) == 1:
+            shifter = np.array(interpolation.mk_shifter(self._fft_shape, real = True))
         else:
-            self.weights = 1
+            shifter = np.array(interpolation.mk_shifter(self._fft_shape))
+
+        shishift = []
+        for ax in axes:
+            shishift.append(shifter[ax][np.newaxis, :] ** shifts[ax][:, np.newaxis])
+        # convolution by sinc: setting to zero all coefficients > n//2 along the desired axis:
+        if len(axes) == 1:
+            shishift[0][:, shishift[0].shape[1] // 4:-shishift[0].shape[1] // 4] = 0
+        else:
+            shishift[sum_axis][:, shishift[sum_axis].shape[1] // 4:-shishift[sum_axis].shape[1] // 4] = 0
+        # Shift
+        if 0 in axes:
+            imgs_shiftfft = imgs_fft[:, np.newaxis, :, :] * shishift[0][np.newaxis, :, :, np.newaxis]
+            # Shift along the x-axis
+            if 1 in axes:
+                #apply shifts and sinc
+                imgs_shiftfft = imgs_shiftfft * shishift[1][np.newaxis, :, np.newaxis, :]
+
+        elif 1 in axes:
+            #Apply shifts and sinc
+            imgs_shiftfft = imgs_fft[:, np.newaxis, :, :] * shishift[0][np.newaxis, :, np.newaxis, :]
+
+        # Inverse Fourier transform.
+        inv_shape = tuple(imgs_shiftfft.shape[:2]) + tuple(transformed_shape)
+        #The n-dimensional transform could pose problem for very large images, but I am not sure it is a regime we should care about
+        op = fft.Fourier.from_fft(imgs_shiftfft, fft_shape, inv_shape, np.array(axes)+len(imgs_shiftfft.shape)-2).image
+
+        return op
 
     def match(self, model_frame):
+
+        if self.frame.dtype != model_frame.dtype:
+            msg = "Dtypes of model and observation different. Casting observation to {}"
+            logger.warning(msg.format(model_frame.dtype))
+            self.frame.dtype = model_frame.dtype
+            self.images = self.images.astype(model_frame.dtype)
+            if type(self.weights) is np.ndarray:
+                self.weights = self.weights.astype(model_frame.dtype)
+            if self.frame._psfs is not None:
+                self.frame._psfs.update_dtype(model_frame.dtype)
 
         #  channels of model that are represented in this observation
         self._band_slice = slice(None)
@@ -288,89 +421,168 @@ class LowResObservation(Observation):
             bmax = model_frame.channels.index(self.frame.channels[-1])
             self._band_slice = slice(bmin, bmax+1)
 
+        #Affine transform
+        try :
+            model_affine = model_frame.wcs.wcs.pc
+        except AttributeError:
+            model_affine = model_frame.wcs.cd
+        try:
+            self_affine = self.frame.wcs.wcs.pc
+        except AttributeError:
+            self_affine = self.frame.wcs.cd
+
+        model_pix = np.sqrt(np.abs(model_affine[0,0])*np.abs(model_affine[1,1]-model_affine[0,1]*model_affine[1,0]))
+        self_pix = np.sqrt(np.abs(self_affine[0,0])*np.abs(self_affine[1,1]-self_affine[0,1]*self_affine[1,0]))
+        #Vector giving the direction of the x-axis of each frame
+        self_framevector = np.sum(self_affine, axis=0)[:2]/self_pix
+        model_framevector = np.sum(model_affine, axis=0)[:2]/model_pix
+        #normalisation
+        self_framevector /= np.sum(self_framevector**2)**0.5
+        model_framevector /= np.sum(model_framevector**2)**0.5
+
+        # sin of the angle between datasets (normalised cross product)
+        self.sin_rot = np.cross(self_framevector, model_framevector)
+        # cos of the angle. (normalised scalar product)
+        self.cos_rot = np.dot(self_framevector, model_framevector)
+        #Is the angle larger than machine precision?
+        self.isrot = (np.abs(self.sin_rot)**2) > np.finfo(float).eps
+        if not self.isrot:
+            self.sin_rot = 0
+            self.cos_rot = 1
+            angle = None
+        else:
+            angle = (self.cos_rot, self.sin_rot)
+
         # Get pixel coordinates in each frame.
-        mask, coord_lr, coord_hr = resampling.match_patches(model_frame.shape, self.frame.shape, model_frame.wcs, self.frame.wcs)
+        coord_lr, coord_hr, coordhr_over = resampling.match_patches(model_frame.shape, self.frame.shape,
+                                                                    model_frame.wcs, self.frame.wcs, isrot = self.isrot)
+
+        #shape of the low resolutino image in the overlap or union
+        self.lr_shape = (np.max(coord_lr[0])-np.min(coord_lr[0])+1,np.max(coord_lr[1])-np.min(coord_lr[1])+1)
+
+        #Coordinates of overlapping low resolutions pixels at low resolution
         self._coord_lr = coord_lr
+        #Coordinates of overlaping low resolution pixels in high resolution frame
         self._coord_hr = coord_hr
-        self._mask = mask
+        #Coordinates for all model frame pixels
+        self.frame_coord = (np.array(range(model_frame.Ny)), np.array(range(model_frame.Nx)))
 
-        # Compute diff kernel at hr
+        center_y = (np.max(self._coord_hr[0]) - np.min(self._coord_hr[0]) + 1) / 2
+        center_x = (np.max(self._coord_hr[1]) - np.min(self._coord_hr[1]) + 1) / 2
 
-        whr = model_frame.wcs
-        wlr = self.frame.wcs
+        diff_psf = self.build_diffkernel(model_frame, angle)
 
-        # Reference PSF
-        _target = model_frame.psfs[0, :, :]
-        _shape = model_frame.shape
+        # 1D convolutions convolutions of the model are done along the smaller axis, therefore,
+        # psf is convolved along the frame's longer axis.
+        # the smaller frame axis:
+        self.small_axis = (self.frame.Nx <= self.frame.Ny)
 
-        resconv_op = []
-        for _psf in self.frame.psfs:
-            # Computes spatially matching observation and target psfs. The observation psf is also resampled to the model frame resolution
-            new_target, observed_psf = resampling.match_psfs(_target, _psf, whr, wlr)
-            # Computes the diff kernel in Fourier
-            target_fft = np.fft.fft2(np.fft.ifftshift(new_target))
-            observed_fft = np.fft.fft2(np.fft.ifftshift(observed_psf))
-            kernel_fft = np.zeros(target_fft.shape)
-            sel = target_fft != 0
-            kernel_fft[sel] = observed_fft[sel] / target_fft[sel]
-            kernel = np.fft.ifft2(kernel_fft)
-            kernel = np.fft.fftshift(np.real(kernel))
-            diff_psf = kernel / kernel.max()
+        self._fft_shape = fft._get_fft_shape(model_frame.psfs, np.zeros(model_frame.shape), padding=3,
+                                             axes=[-2, -1], max=True)
+        diff_psf = fft.Fourier(fft._pad(diff_psf.image, self._fft_shape, axes = (1,2)))
+        if self.isrot:
 
-            # Computes the resampling/convolution matrix
-            resconv_op.append(resampling.make_operator(_shape, coord_hr, diff_psf))
+            #Unrotated coordinates:
+            Y_unrot = ((self._coord_hr[0] - center_y) * self.cos_rot +
+                       (self._coord_hr[1] - center_x) * self.sin_rot).reshape(self.lr_shape)
+            X_unrot = ((self._coord_hr[1] - center_x) * self.cos_rot -
+                       (self._coord_hr[0] - center_y) * self.sin_rot).reshape(self.lr_shape)
 
-        self._resconv_op = np.array(resconv_op)
+            #Removing redundancy
+            self.Y_unrot = Y_unrot[:, 0]
+            self.X_unrot = X_unrot[0, :]
+
+            if self.small_axis:
+                self.shifts = [self.Y_unrot * self.cos_rot, self.Y_unrot * self.sin_rot]
+                self.other_shifts = [-self.sin_rot * self.X_unrot, self.cos_rot * self.X_unrot]
+            else:
+                self.shifts = [-self.sin_rot * self.X_unrot, self.cos_rot * self.X_unrot]
+                self.other_shifts = [self.Y_unrot * self.cos_rot, self.Y_unrot * self.sin_rot]
+
+            axes = (1,2)
+
+        #1-D case.
+        else:
+
+            axes = [int(not self.small_axis)+1]
+            self.shifts = np.array(self._coord_hr)
+
+            self.shifts[0] -= center_y
+            self.shifts[1] -= center_x
+
+            self.other_shifts = np.copy(self.shifts)
+
+        # Computes the resampling/convolution matrix
+        resconv_op = self.sinc_shift(diff_psf, self.shifts, axes, int(not self.small_axis)+1)
+
+        self._resconv_op = np.array(resconv_op, dtype=self.frame.dtype)*(self_pix/model_pix)**2
+        self._resconv_op = self._resconv_op.reshape(*self._resconv_op.shape[:2], -1)
 
         return self
 
-    @property
-    def matching_mask(self):
-        return self._mask
 
     def _render(self, model):
         """Resample and convolve a model in the observation frame
-
         Parameters
         ----------
         model: array
             The model in some other data frame.
-
         Returns
         -------
         model_: array
             The convolved and resampled `model` in the observation frame.
         """
-        model_ = model[self._band_slice,:,:]
-        model_ = np.array([np.dot(model_[c].flatten(), self._resconv_op[c]) for c in range(self.frame.C)])
+        # Padding the psf to the fast_shape size
+        model_ = fft.Fourier(fft._pad(model[self._band_slice, :, :], self._fft_shape, axes=(-2, -1)))
 
-        return model_
+        model_image = []
+        if self.isrot:
+            axes = (1,2)
+            sum_axis = int(self.small_axis)+1
+
+        else:
+            axes = [int(self.small_axis)+1]
+            sum_axis = int(self.small_axis)+1
+
+
+        model_conv = self.sinc_shift(model_, self.other_shifts, axes, sum_axis)
+
+        model_conv = model_conv.reshape(*model_conv.shape[:2], -1)
+        if self.small_axis:
+            for c in range(self.frame.C):
+                model_image.append((model_conv[c] @ self._resconv_op[c].T).T)
+            return np.array(model_image, dtype=self.frame.dtype)[:, :, ::-1]
+        else:
+            for c in range(self.frame.C):
+                model_image.append((model_conv[c] @ self._resconv_op[c].T))
+            return np.array(model_image, dtype=self.frame.dtype)[:, ::-1, :]
+
 
     def render(self, model):
-        """Resample and convolve a model in the observation frame
-
+        """Resample and convolve a model in the observation frame for display only!
         Parameters
         ----------
         model: array
             The model in some other data frame.
-
         Returns
         -------
         model_: array
             The convolved and resampled `model` in the observation frame.
         """
         img = np.zeros(self.frame.shape)
-        img[:, self._coord_lr[0], self._coord_lr[1]] = self._render(model)
+
+        img[:, np.min(self._coord_lr[0]).astype(int):np.max(self._coord_lr[0]).astype(int) + 1,
+        np.min(self._coord_lr[1]).astype(int):np.max(self._coord_lr[1]).astype(int) + 1] = \
+            self._render(model)
+
         return img
 
     def get_loss(self, model):
         """Computes the loss/fidelity of a given model wrt to the observation
-
         Parameters
         ----------
         model: array
             A model from `Blend`
-
         Returns
         -------
         loss: float
@@ -379,5 +591,9 @@ class LowResObservation(Observation):
 
         model_ = self._render(model)
 
+        min_lr = [np.min(self._coord_lr[0]).astype(int), np.min(self._coord_lr[1]).astype(int)]
+        max_lr = [np.max(self._coord_lr[0]).astype(int), np.max(self._coord_lr[1]).astype(int)]
+
         return 0.5 * np.sum((self.weights * (
-                model_ - self.images[:, self._coord_lr[0].astype(int), self._coord_lr[1].astype(int)])) ** 2)
+                model_ -
+                self.images[:, min_lr[0]:max_lr[0] + 1, min_lr[1]:max_lr[1] + 1])) ** 2)

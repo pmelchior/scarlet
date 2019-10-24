@@ -14,39 +14,6 @@ class UpdateComponent(scarlet.Component):
 
 
 class TestComponent(object):
-    def test_init(self):
-        # Minimal init
-        sed = np.arange(5)
-        morph = np.arange(20).reshape(4, 5)
-        shape = (len(sed), morph.shape[0], morph.shape[1])
-        frame = scarlet.Frame(shape)
-        component = scarlet.Component(frame, sed, morph)
-
-        assert_array_equal(component.sed, sed)
-        assert_array_equal(component.morph, morph)
-        assert component._index is None
-        assert component._parent is None
-        assert isinstance(component._morph, scarlet.Parameter)
-        assert isinstance(component._sed, scarlet.Parameter)
-
-        # explicitly set sed and morph fixed
-        sed = scarlet.SEDParameter(sed, fixed=True)
-        morph = scarlet.MorphParameter(morph, fixed=False)
-        component = scarlet.Component(frame, sed, morph)
-        assert component._sed.fixed is True
-        assert component._morph.fixed is False
-
-    def test_properties(self):
-        sed = np.arange(5)
-        morph = np.arange(20).reshape(4, 5)
-        shape = (len(sed), morph.shape[0], morph.shape[1])
-        frame = scarlet.Frame(shape)
-        component = scarlet.Component(frame, sed, morph)
-
-        assert component.frame.C == 5
-        assert component.frame.Ny == 4
-        assert component.frame.Nx == 5
-        assert component.coord is None
 
     def test_methods(self):
         # get_model
@@ -58,6 +25,17 @@ class TestComponent(object):
         model = component.get_model()
         truth = sed[:, None, None] * morph[None, :, :]
         assert_array_equal(model, truth)
+
+        other_sed = np.ones_like(sed)
+        other_morph = morph + 10
+        other_truth = other_sed[:, None, None] * other_morph[None, :, :]
+        model = component.get_model()
+        other_model = component.get_model(other_sed, other_morph)
+        assert_array_equal(model, truth)
+        assert_array_equal(other_model, other_truth)
+
+
+        # TODO: test component with partial parameter list (issue #121)
 
         # get_flux
         flux = component.get_flux()
@@ -73,17 +51,15 @@ class TestComponent(object):
         assert component.frame.Nx == 5
         assert component.coord is None
 
-    def test_prior(self):
-        pass
 
 class TestComponentTree(object):
     def test_init(self):
         shape = (5, 5, 5)
         frame = scarlet.Frame(shape)
-        sed1 = np.arange(shape[0], dtype=float)
+        sed1 = np.arange(shape[0], dtype=frame.dtype)
         sed2 = np.ones_like(sed1)
-        sed3 = np.arange(shape[0], dtype=float)[::-1]
-        morph1 = np.arange(shape[1]*shape[2], dtype=float).reshape(shape[1], shape[2])
+        sed3 = np.arange(shape[0], dtype=frame.dtype)[::-1]
+        morph1 = np.arange(shape[1]*shape[2], dtype=frame.dtype).reshape(shape[1], shape[2])
         morph2 = np.zeros_like(morph1)
         morph2[1:-1, 1:-1] = [[1, 2, 1], [2, 4, 2], [1, 2, 1]]
         morph3 = np.ones_like(morph1)
@@ -114,8 +90,8 @@ class TestComponentTree(object):
         assert_array_equal(tree2.components, (c1, c2, c3))
         assert_array_equal(tree1.sources, (c1, c2))
         assert_array_equal(tree2.sources, (tree1, c3))
-        assert tree1.n_nodes == 2
-        assert tree2.n_nodes == 2
+        assert tree1.n_sources == 2
+        assert tree2.n_sources == 2
 
         # shapes
         assert tree1.K == 2
@@ -150,10 +126,10 @@ class TestComponentTree(object):
         assert_array_equal(tflux2, flux1 + flux2 + flux3)
 
     def test_items(self):
-        sed = np.arange(3, dtype=float)
-        morph = np.arange(25, dtype=float).reshape(5, 5)
-        shape = (len(sed), morph.shape[0], morph.shape[1])
+        shape = (3, 5, 5)
         frame = scarlet.Frame(shape)
+        sed = np.arange(3, dtype=frame.dtype)
+        morph = np.arange(25, dtype=frame.dtype).reshape(5, 5)
         c1 = UpdateComponent(frame=frame, sed=sed, morph=morph)
         c2 = UpdateComponent(frame=frame, sed=sed, morph=morph)
         c3 = UpdateComponent(frame=frame, sed=sed, morph=morph)
@@ -165,17 +141,17 @@ class TestComponentTree(object):
         # Test iadd
         tree1 += tree2
         assert tree1.n_components == 4
-        assert tree1.n_nodes == 4
+        assert tree1.n_sources == 4
         assert tree1.components == (c1, c2, c3, c4)
         assert tree1.sources == (c1, c2, c3, c4)
 
         tree1 += c5
         assert tree1.n_components == 5
-        assert tree1.n_nodes == 5
+        assert tree1.n_sources == 5
         assert tree1.components == (c1, c2, c3, c4, c5)
         assert tree1.sources == (c1, c2, c3, c4, c5)
         assert tree2.n_components == 2
-        assert tree2.n_nodes == 2
+        assert tree2.n_sources == 2
         assert tree2.components == (c3, c4)
         assert tree2.sources == (c3, c4)
 

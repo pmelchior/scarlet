@@ -1,10 +1,13 @@
 import autograd.numpy as np
-import logging, proxmin
-logger = logging.getLogger("scarlet.source")
 
 from . import operator
 from . import update
-from .component import *
+from . import measurement
+from .interpolation import get_projection_slices
+from .psf import generate_psf_image, gaussian
+
+import logging
+logger = logging.getLogger("scarlet.source")
 
 
 class SourceInitError(Exception):
@@ -14,33 +17,54 @@ class SourceInitError(Exception):
 
 
 def get_pixel_sed(sky_coord, observation):
-    """Get the SED at `position` in `img`
+    """Get the SED at `sky_coord` in `observation`
 
     Parameters
     ----------
     sky_coord: tuple
-        Center of the source
+        Position in the observation
     observation: `~scarlet.Observation`
         Observation to extract SED from.
 
     Returns
     -------
     SED: `~numpy.array`
-        SED for a single source
     """
 
     pixel = observation.frame.get_pixel(sky_coord)
     sed = observation.images[:, pixel[0], pixel[1]].copy()
+    return sed
+
+
+def get_psf_sed(sky_coord, observation, frame):
+    """Get SED for a point source at `sky_coord` in `observation`
+
+    Identical to `get_pixel_sed`, but corrects for the different
+    peak values of the observed seds to approximately correct for PSF
+    width variations between channels.
+
+    Parameters
+    ----------
+    sky_coord: tuple
+        Position in the observation
+    observation: `~scarlet.Observation`
+        Observation to extract SED from.
+    frame: `~scarlet.Frame`
+        Frame of the model
+
+    Returns
+    -------
+    SED: `~numpy.array`
+    """
+    sed = get_pixel_sed(sky_coord, observation)
+
+    # approx. correct PSF width variations from SED by normalizing heights
     if observation.frame.psfs is not None:
         # Account for the PSF in the intensity
         sed /= observation.frame.psfs.max(axis=(1, 2))
 
-    if np.all(sed[-1] <= 0):
-        # If the flux in all channels is  <=0,
-        # the new sed will be filled with NaN values,
-        # which will cause the code to crash later
-        msg = "Zero or negative flux at y={0}, x={1}"
-        raise SourceInitError(msg.format(*sky_coord))
+    if frame.psfs is not None:
+        sed = sed * frame.psfs[0].max()
 
     return sed
 
@@ -59,6 +83,10 @@ def get_best_fit_seds(morphs, frame, observation):
         The frame of the model
     observation: `~scarlet.Observation`
         Observation to extract SEDs from.
+
+    Returns
+    -------
+    SED: `~numpy.array`
     """
     K = len(morphs)
     _morph = morphs.reshape(K, -1)
@@ -66,6 +94,7 @@ def get_best_fit_seds(morphs, frame, observation):
     data = images.reshape(observation.frame.C, -1)
     seds = np.dot(np.linalg.inv(np.dot(_morph, _morph.T)), np.dot(_morph, data.T))
     return seds
+
 
 def build_detection_coadd(sed, bg_rms, observation, thresh=1):
     """Build a channel weighted coadd to use for source detection
@@ -93,12 +122,15 @@ def build_detection_coadd(sed, bg_rms, observation, thresh=1):
     if np.any(bg_rms <= 0):
         raise ValueError("bg_rms must be greater than zero in all channels")
 
-    weights = np.array([sed[c] / bg_rms[c] ** 2 for c in range(C)])
-    jacobian = np.array([sed[c] ** 2 / bg_rms[c] ** 2 for c in range(C)]).sum()
-    detect = np.einsum('i,i...', weights, observation.images) / jacobian
+    positive = [ c for c in range(C) if sed[c] > 0 ]
+    positive_img = [observation.images[c] for c in positive]
+    positive_bgrms = np.array([bg_rms[c] for c in positive])
+    weights = np.array([sed[c] / bg_rms[c] ** 2 for c in positive])
+    jacobian = np.array([sed[c] ** 2 / bg_rms[c] ** 2 for c in positive]).sum()
+    detect = np.einsum('i,i...', weights, positive_img) / jacobian
 
     # thresh is multiple above the rms of detect (weighted variance across channels)
-    bg_cutoff = thresh * np.sqrt((weights ** 2 * bg_rms ** 2).sum()) / jacobian
+    bg_cutoff = thresh * np.sqrt((weights ** 2 * positive_bgrms ** 2).sum()) / jacobian
     return detect, bg_cutoff
 
 
@@ -107,10 +139,18 @@ def init_extended_source(sky_coord, frame, observation, bg_rms,
     """Initialize the source that is symmetric and monotonic
     See `ExtendedSource` for a description of the parameters
     """
-    # determine initial SED from peak position
-    sed = get_pixel_sed(sky_coord, observation)  # amplitude is in sed
-    if frame.psfs is not None:
-        sed = sed * frame.psfs[0].max()
+    # determine initial SED from peak position, accounting for PSF changes
+    sed = get_psf_sed(sky_coord, observation, frame)
+
+    if np.any(sed <= 0):
+        # If the flux in all channels is  <=0,
+        # the new sed will be filled with NaN values,
+        # which will cause the code to crash later
+        msg = "Zero or negative SED {} at y={}, x={}".format(sed, *sky_coord)
+        if np.all(sed <= 0):
+            logger.warning(msg)
+        else:
+            logger.info(msg)
 
     morph, bg_cutoff = build_detection_coadd(sed, bg_rms, observation, thresh)
     center = frame.get_pixel(sky_coord)
@@ -153,11 +193,22 @@ def init_combined_extended_source(sky_coord, frame, observations, bg_rms, obs_id
 
     seds = []
     for obs in observations:
-        _sed = get_pixel_sed(sky_coord, obs)
+        _sed = get_psf_sed(sky_coord, obs, frame)
         seds.append(_sed)
     sed = np.concatenate(seds).flatten()
 
-    morph, bg_cutoff = build_detection_coadd(seds[obs_idx], bg_rms[obs_idx], observations[obs_idx], thresh)  # amplitude is in sed
+    if np.any(sed <= 0):
+        # If the flux in all channels is  <=0,
+        # the new sed will be filled with NaN values,
+        # which will cause the code to crash later
+        msg = "Zero or negative SED {} at y={}, x={}".format(sed, *sky_coord)
+        if np.all(sed <= 0):
+            logger.warning(msg)
+        else:
+            logger.info(msg)
+
+    morph, bg_cutoff = build_detection_coadd(seds[obs_idx], bg_rms[obs_idx], observations[obs_idx],
+                                             thresh)  # amplitude is in sed
 
     center = frame.get_pixel(sky_coord)
 
@@ -180,9 +231,9 @@ def init_combined_extended_source(sky_coord, frame, observations, bg_rms, obs_id
 
     # normalize to unity at peak pixel
     cy, cx = center
-
     center_morph = morph[np.int(cy), np.int(cx)]
     morph /= center_morph
+
     return sed, morph
 
 
@@ -216,10 +267,24 @@ def init_multicomponent_source(sky_coord, frame, observation, bg_rms, flux_perce
 
     # renormalize morphs: initially Smax
     for k in range(K):
+        if np.all(morphs[k] <= 0):
+            msg = "Zero or negative morphology for component {} at y={}, x={}"
+            logger.warning(msg.format(k, *skycoords))
         morphs[k] /= morphs[k].max()
 
     # optimal SEDs given the morphologies, assuming img only has that source
     seds = get_best_fit_seds(morphs, frame, observation)
+
+    for k in range(K):
+        if np.any(seds[k] <= 0):
+            # If the flux in all channels is  <=0,
+            # the new sed will be filled with NaN values,
+            # which will cause the code to crash later
+            msg = "Zero or negative SED {} for component {} at y={}, x={}".format(seds[k], k, *sky_coord)
+            if np.all(sed <= 0):
+                logger.warning(msg)
+            else:
+                logger.info(msg)
 
     return seds, morphs
 
@@ -397,8 +462,9 @@ class MultiComponentSource(ComponentTree):
     The SED for all components is calculated as the best fit of the multi-component
     morphology to the multi-channel image in the region of the source.
     """
+
     def __init__(self, frame, sky_coord, observation, bg_rms, thresh=1, flux_percentiles=None,
-                 symmetric=True, monotonic=True):
+                 symmetric=True, monotonic=True, center_step=5, delay_thresh=10, **component_kwargs):
         """Create multi-component extended source.
 
         Parameters
@@ -424,34 +490,65 @@ class MultiComponentSource(ComponentTree):
             Whether or not to make the object monotonically decrease
             in flux from the center.
         """
+        self.symmetric = symmetric
+        self.monotonic = monotonic
+        self.pixel_center = frame.get_pixel(sky_coord)
+        self.center_step = center_step
+        self.delay_thresh = delay_thresh
+
         seds, morphs = init_multicomponent_source(sky_coord, frame, observation, bg_rms, flux_percentiles,
-                                                  thresh, symmetric, monotonic)
+                                                          thresh, symmetric, monotonic)
 
-        class MultiComponent(Component):
-            def __init__(self, frame, sed, morph, symmetric, monotonic):
-                self.symmetric = symmetric
-                self.monotonic = monotonic
-                self.pixel_center = frame.get_pixel(sky_coord)
-                sed = Parameter(sed, name="sed")
-                morph = Parameter(morph, name="morph")
-                super().__init__(frame, sed, morph)
-
-            def update(self):
-                if self.symmetric:
-                    update.symmetric_fit_center(self)  # update the center position
-                    center = self.coords
-                    update.symmetric(self, center)  # make the morph perfectly symmetric
-                elif self.monotonic:
-                    update.fit_pixel_center(self)
-                    center = self.pixel_center
-                if self.monotonic:
-                    update.monotonic(self, center)  # make the morph monotonically decreasing
-                update.positive(self)  # Make the SED and morph non-negative
-                update.normalized(self, type='morph_max')
-                return self
-
-        components = [
-            MultiComponent(frame, seds[k], morphs[k], symmetric, monotonic)
-            for k in range(len(seds))
-        ]
+        components = [ Component(frame, seds[k], morphs[k]) for k in range(len(seds)) ]
         super().__init__(components)
+
+        # create PSF as weight for centroid measurements
+        if self.symmetric:
+            if self.frame.psfs is None:
+                shape = (41, 41)
+                psf = generate_psf_image(gaussian, shape, amplitude=1, sigma=.9, normalize=False).image
+                psf /= psf.max()
+                self._centroid_weight = psf
+            else:
+                self._centroid_weight = self.frame.psfs[0].image
+
+        # ensure adherence to constraints
+        self.update()
+
+    def update(self):
+
+        if self._parent is None:
+            it = 0
+        else:
+            it = self._parent.it
+
+        # Update the central pixel location (pixel_center)
+        # use the flux weighted mean of all components
+        _morph = np.sum([c.morph * c.sed.sum() for c in self], axis=0)
+
+        self.pixel_center = measurement.max_pixel(_morph, self.pixel_center)
+
+        # Thresholding needs to be fixed (DM-10190)
+        # if it > self.delay_thresh:
+        #   for c in self:
+        #       update.threshold(c)
+
+        # If there is a threshold bounding box, use it
+        if hasattr(self, "bboxes") and "thresh" in self.bboxes:
+            bbox = self.bboxes["thresh"]
+        else:
+            bbox = None
+
+        if self.symmetric and it % 5 == 0:
+            # Update the centroid position
+            self.pixel_center, self.shift = measurement.psf_weighted_centroid(_morph, self._centroid_weight, self.pixel_center)
+
+        for c in self.components:
+            if self.symmetric:
+                update.symmetric(c, self.pixel_center, algorithm="kspace", bbox=bbox)
+            if self.monotonic:
+                update.monotonic(c, self.pixel_center, bbox=bbox)
+            update.positive(c)
+            update.normalized(c, type='morph_max')
+
+        return self

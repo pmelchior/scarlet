@@ -1,8 +1,11 @@
 from functools import partial
 
-import autograd.numpy as np
+import numpy as np
 from proxmin.operators import prox_unity_plus
 from proxmin.utils import MatrixAdapter
+
+from . import fft
+from . import interpolation
 
 from .cache import Cache
 
@@ -247,7 +250,6 @@ def prox_soft_symmetry(X, step, strength=1):
     X[:] = 0.5 * strength * (X+Xs) + (1-strength) * X
     return X
 
-
 def prox_kspace_symmetry(X, step, shift=None, padding=10):
     """Symmetry in Fourier Space
 
@@ -258,42 +260,32 @@ def prox_kspace_symmetry(X, step, shift=None, padding=10):
     the imaginary part is discarded, shited back to its original position,
     then transformed back to real space.
     """
-    # Record the morph shape
-    shape = X.shape
+    # Get fast shapes
+    fft_shape = fft._get_fft_shape(X, X, padding=padding)
     dy, dx = shift
-    padding = np.max(X.shape) + padding // 2
-    edges = ((padding, padding), (padding, padding))
-    corner = (padding, padding)
-    zeroMask = X <= 0
-    X = np.pad(X, edges, 'constant')
 
-    freq_x = np.fft.fftfreq(X.shape[1])
-    freq_y = np.fft.fftfreq(X.shape[0])
+    X = fft.Fourier(X)
+    X_fft = X.fft(fft_shape, (0,1))
 
-    # Transform to k space
-    X_fft = np.fft.fftn(np.fft.ifftshift(X))
+    zeroMask = X.image <= 0
 
-    # Shift the signal to recenter it, negative because math is opposite from
-    # pixel direction
-    shifter = np.outer(np.exp(-1j*2*np.pi*freq_y*-(dy)),
-                       np.exp(-1j*2*np.pi*freq_x*-(dx)))
-    inv_shifter = np.outer(np.exp(-1j*2*np.pi*freq_y*(dy)),
-                           np.exp(-1j*2*np.pi*freq_x*(dx)))
-    result_fft = X_fft*shifter
+    #Compute shift operator
+    shifter_y, shifter_x = interpolation.mk_shifter(fft_shape)
+    #Apply shift in Fourier
+    result_fft = X_fft * shifter_y[:, np.newaxis] ** (-dy)
+    result_fft *= shifter_x[np.newaxis, :] ** (-dx)
 
-    # symmeterize
+    #symmetrize
     result_fft = result_fft.real
 
-    # Shift back
-    result_fft = result_fft*inv_shifter
+    #Unshift
+    result_fft = result_fft * shifter_y[:, np.newaxis] ** dy
+    result_fft = result_fft * shifter_x[np.newaxis, :] ** dx
 
-    # Transform to real space
-    result = np.fft.fftshift(np.fft.ifftn(result_fft))
-    # Return the unpadded transform
-    result = np.real(result[corner[0]:corner[0]+shape[0], corner[1]:corner[1]+shape[1]])
-    result[zeroMask] = 0
-    assert result.shape == shape
-    return result
+    result = fft.Fourier.from_fft(result_fft, fft_shape, X.image.shape, [0,1])
+
+    result.image[zeroMask] = 0
+    return np.real(result.image)
 
 
 def prox_uncentered_symmetry(X, step, center=None, algorithm="kspace", fill=None, shift=None, strength=.5):

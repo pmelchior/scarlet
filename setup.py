@@ -131,7 +131,8 @@ class BuildExt(build_ext):
         build_ext.build_extensions(self)
 
 
-install_requires = ['numpy', 'proxmin>=0.6.2', 'autograd']
+
+install_requires = ['numpy', 'proxmin>=0.6.2', 'autograd>=1.3']
 # Only require the pybind11 and peigen packages if
 # the C++ headers are not already installed
 if pybind11_path is None:
@@ -147,7 +148,7 @@ setup(
     description='Blind Source Separation using proximal matrix factorization',
     author='Fred Moolekamp and Peter Melchior',
     author_email='fred.moolekamp@gmail.com',
-    url='https://github.com/fred3m/scarlet',
+    url='https://github.com/pmelchior/scarlet',
     keywords=['astro', 'deblending', 'photometry', 'nmf'],
     ext_modules=ext_modules,
     install_requires=install_requires,

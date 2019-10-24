@@ -1,4 +1,6 @@
-import autograd.numpy as np
+import numpy as np
+from .cache import Cache
+from . import fft
 
 
 def get_projection_slices(image, shape, yx0=None):
@@ -206,7 +208,7 @@ def cubic_spline(dx, a=1, b=0):
     x = np.abs(dx - window)
     result = np.piecewise(x,
                           [x <= 1, (x > 1) & (x < 2)],
-                          [lambda x:inner(x), lambda x:outer(x)])
+                          [lambda x: inner(x), lambda x: outer(x)])
 
     return result, np.array(window).astype(int)
 
@@ -264,7 +266,7 @@ def quintic_spline(dx, dtype=np.float64):
     x = np.abs(dx - window)
     result = np.piecewise(x,
                           [x <= 1, (x > 1) & (x <= 2), (x > 2) & (x <= 3)],
-                          [lambda x:inner(x), lambda x:middle(x), lambda x:outer(x)])
+                          [lambda x: inner(x), lambda x: middle(x), lambda x: outer(x)])
     return result, window
 
 
@@ -297,16 +299,60 @@ def get_separable_kernel(dy, dx, kernel=lanczos, **kwargs):
     return kyx, y_window, x_window
 
 
-def sinc_interp(coord_hr, coord_lr, sample_lr):
+def mk_shifter(shape, real = False):
+    ''' Performs shifts in the Fourier domain on Fourier objects
+
+    Parameters:
+    -----------
+    shape: array
+        shape of the 2-D array to shift
+    real: bool
+        if true, the frequencies are all returned for real transforms (all dimension are half of the shape).
+        if False, only the last dimension is considered a real transform.
+    Returns:
+    --------
+    result: Fourier
+        A Fourier object with shifted arrays
+    '''
+
+    #Name of the chached shifts.
+    name = 'mk_shifter'
+    key = shape[0], shape[1]
+
+    try:
+        shift_y, shift_x = Cache.check(name, key)
+        shifters = (shift_y, shift_x)
+    except KeyError:
+        freq_x = np.fft.rfftfreq(shape[1])
+        if real is True:
+            freq_y = np.fft.rfftfreq(shape[0])
+        else:
+            freq_y = np.fft.fftfreq(shape[0])
+        # Shift the signal to recenter it, negative because math is opposite from
+        # pixel direction
+        shift_y = np.exp(-1j * 2 * np.pi * freq_y)
+        shift_x = np.exp(-1j * 2 * np.pi * freq_x)
+
+        shifters = (shift_y, shift_x)
+
+    Cache.set(name, key, shifters)
+
+    return shifters
+
+def sinc_interp(images, coord_hr, coord_lr, angle = None, padding = 3):
     '''
     Parameters
     ----------
+    image: array
+        image whose pixels are at positions coord_lr
     coord_hr: array (2xN)
         Coordinates of the high resolution grid
     coord_lr: array (2xM)
         Coordinates of the low resolution grid
-    sample_lr: array (N)
-        Sample at positions coord_hr
+    angle: float
+        rotation angle between coordinate sets coord_hr and coord_lr
+    padding: int
+        value of zero padding for fft
     Returns
     -------
         result:  interpolated  samples at positions coord_hr
@@ -314,10 +360,49 @@ def sinc_interp(coord_hr, coord_lr, sample_lr):
     y_hr, x_hr = coord_hr
     y_lr, x_lr = coord_lr
     hy = np.abs(y_lr[1] - y_lr[0])
-    hx = np.abs(x_lr[np.int(np.sqrt(np.size(x_lr))) + 1] - x_lr[0])
+    hx = np.abs(x_lr[1] - x_lr[0])
 
     assert hy != 0
-    return np.array([sample_lr * sinc2D((y_hr[:, np.newaxis] - y_lr) / (hy), (x_hr[:, np.newaxis] - x_lr) / (hx))]).sum(axis=2)
+    assert hx != 0
+
+    if angle is None:
+        result = [np.dot(np.dot(np.sinc((y_lr[np.newaxis, :]-y_hr[:, np.newaxis]) / hy),image.T),
+                                        np.sinc((x_lr[:, np.newaxis]-x_hr[np.newaxis,:])/ hx) ) for image in images]
+        return np.array(result)
+
+    cos = angle[0]
+    sin = angle[1]
+
+    fft_shape = fft._get_fft_shape(images, images, padding=padding, axes = [1, 2])
+
+    X = fft.Fourier(images)
+    #Fourier transform
+    X_fft = X.fft(fft_shape, (1, 2))
+
+    #Shift elementary kernel
+    shifter_y, shifter_x = mk_shifter(fft_shape)
+    #Shifts values
+    shift_y = shifter_y[np.newaxis, :] ** (-y_hr[:, np.newaxis] * cos/hy)
+    shift_x = shifter_x[np.newaxis, :] ** (-y_hr[:, np.newaxis] * sin/hx)
+    #Apply shifts
+    result_fft = X_fft[:, np.newaxis, :, :] * shift_y[np.newaxis, :, :, np.newaxis]
+    result_fft = result_fft * shift_x[np.newaxis, :, np.newaxis, :]
+
+    #Shape of the expected array
+    result_shape = np.array([result_fft.shape[0], result_fft.shape[1], X.image.shape[1], X.image.shape[2]])
+    #Shifts applied in one direction
+    result_shift = fft.Fourier.from_fft(result_fft, fft_shape, result_shape, [2, 3])
+    #sinc kernels
+    shy = np.sinc((y_lr[np.newaxis, :] + x_hr[:, np.newaxis] * sin)/hy)
+    shx = np.sinc((x_lr[np.newaxis, :] - x_hr[:, np.newaxis] * cos)/hx)
+
+    #Sinc kernels in both direction
+    result_y = (result_shift.image[:, :, np.newaxis,:, :] *
+                shy[np.newaxis, np.newaxis, :, :, np.newaxis]).sum(axis = -2)
+    result = (result_y * shx[np.newaxis,np.newaxis,:, :]).sum(axis = -1)
+
+    return result
+
 
 
 def fft_resample(img, dy, dx, kernel=lanczos, **kwargs):
@@ -415,4 +500,53 @@ def sinc2D(y, x):
     result: array
         2-D sinc evaluated in x and y
     '''
-    return np.sinc(y) * np.sinc(x)
+    return np.dot(np.sinc(y), np.sinc(x))
+
+
+def subsample_function(y, x, f, dNy, dNx=None, dy=None, dx=None):
+    """Subsample a function
+    Given the expected pixel grid of a function, subsample that function
+    at a grid subdivided in x by `dNx` and y by `dNy`.
+    """
+    # Use the spacing between x values to define the subsampled regions
+    if dx is None:
+        dx = x[1] - x[0]
+    if dy is None:
+        dy = y[1] - y[0]
+    if dNx is None:
+        dNx = dNy
+    assert dNy % 2 == 0, "dNy must be even, received {0}".format(dNy)
+    assert dNx % 2 == 0, "dNx must be even, received {0}".format(dNx)
+    assert np.all(np.isclose(x[1:]-x[:-1], x[1] - x[0])), "x must have equal spacing"
+    assert np.all(np.isclose(y[1:]-y[:-1], y[1] - y[0])), "y must have equal spacing"
+
+    # Create the subsampled interval and use it to sample `f`
+    _x = np.linspace(x[0]-dx/2, x[-1]+dx/2, len(x)*dNx+1)
+    _y = np.linspace(y[0]-dy/2, y[-1]+dy/2, len(y)*dNy+1)
+    return f(_y, _x), _y, _x
+
+
+def apply_2D_trapezoid_rule(y, x, f, dNy, dNx=None, dy=None, dx=None):
+    """Use the trapezoid rule to integrate over a subsampled function
+    2D implementation of the trapezoid rule.
+    See `apply_trapezoid_rule` for a description, with the difference
+    that `f` is a function `f(y,x)`, where we note the c ++`(y,x)` ordering.
+    """
+    if dy is None:
+        dy = y[1] - y[0]
+    if dx is None:
+        dx = x[1] - x[0]
+    if dNx is None:
+        dNx = dNy
+    z, _y, _x = subsample_function(y, x, f, dNy, dNx, dy, dx)
+
+    # Calculate the volume of each sub region
+    dz = 0.4 * (z[:-1, :-1] + z[1:, :-1] + z[:-1, 1:] + z[1:, 1:])
+    volumes = dy * dx * dz / dNy / dNx
+
+    # Sum up the sub regions around each point to
+    # give it the same shape as the original `(y,x)`
+    _dNy = len(_y) // dNy
+    _dNx = len(_x) // dNx
+    volumes = np.array(np.split(np.array(np.split(volumes, _dNx, axis=1)), _dNy, axis=1)).sum(axis=(2, 3))
+    return volumes

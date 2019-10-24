@@ -3,6 +3,7 @@ import numpy as np
 
 import scarlet
 import scarlet.update as update
+import scarlet.measurement as measurement
 from scarlet.cache import Cache
 
 
@@ -12,55 +13,41 @@ class TestUpdate(object):
         morph[4, 7] = 1
         morph[11, 9] = 2
         # Use the default window, which misses the higher point
-        center = update._fit_pixel_center(morph, (5, 5))
+        center = measurement.max_pixel(morph, (5, 5))
         np.testing.assert_array_equal([4, 7], center)
 
         # Make window wider and test again
-        center = update._fit_pixel_center(morph, (5, 5), window=tuple([slice(0, 15)] * 2))
+        center = measurement.max_pixel(morph, (5, 5), window=tuple([slice(0, 15)] * 2))
         np.testing.assert_array_equal([11, 9], center)
 
-        # Same tests but using the component
-        sed = np.array([1, 0, 2, 4, 10])
-        shape = (len(sed), morph.shape[0], morph.shape[1])
-        frame = scarlet.Frame(shape)
-
-        src = scarlet.Component(frame, sed, morph)
-        src.pixel_center = (5, 5)
-        update.fit_pixel_center(src)
-        np.testing.assert_array_equal([4, 7], src.pixel_center)
-
-        src = scarlet.Component(frame, sed, morph)
-        src.pixel_center = (5, 5)
-        update.fit_pixel_center(src, window=tuple([slice(0, 15)] * 2))
-        np.testing.assert_array_equal([11, 9], src.pixel_center)
-
     def test_non_negativity(self):
-        sed = np.array([-.1, .1, 4, -.2, .2, 0])
-        morph = np.array([[-1, -.5, -1], [.1, 2, .3], [-.5, .3, 0]])
-        shape = (len(sed), morph.shape[0], morph.shape[1])
+        shape = (6, 3, 3)
         frame = scarlet.Frame(shape)
+        sed = np.array([-.1, .1, 4, -.2, .2, 0], dtype=frame.dtype)
+        morph = np.array([[-1, -.5, -1], [.1, 2, .3], [-.5, .3, 0]], dtype=frame.dtype)
 
         # Test SED only
         src = scarlet.Component(frame, sed, morph)
         update.positive_sed(src)
-        np.testing.assert_array_equal(src.sed, [0, .1, 4, 0, .2, 0])
+        np.testing.assert_array_almost_equal(src.sed, [0, .1, 4, 0, .2, 0])
         np.testing.assert_array_equal(src.morph, morph)
         # Test morph only
         src = scarlet.Component(frame, sed, morph)
         update.positive_morph(src)
         np.testing.assert_array_equal(src.sed, sed)
-        np.testing.assert_array_equal(src.morph, [[0, 0, 0], [.1, 2, .3], [0, .3, 0]])
+        np.testing.assert_array_almost_equal(src.morph, [[0, 0, 0], [.1, 2, .3], [0, .3, 0]])
+
         # Test SED and morph
         src = scarlet.Component(frame, sed, morph)
         update.positive(src)
-        np.testing.assert_array_equal(src.sed, [0, .1, 4, 0, .2, 0])
-        np.testing.assert_array_equal(src.morph, [[0, 0, 0], [.1, 2, .3], [0, .3, 0]])
+        np.testing.assert_array_almost_equal(src.sed, [0, .1, 4, 0, .2, 0])
+        np.testing.assert_array_almost_equal(src.morph, [[0, 0, 0], [.1, 2, .3], [0, .3, 0]])
 
     def test_normalized(self):
         shape = (6, 5, 5)
         frame = scarlet.Frame(shape)
-        sed = np.arange(shape[0], dtype=float)
-        morph = np.arange(shape[1]*shape[2], dtype=float).reshape(shape[1], shape[2])
+        sed = np.arange(shape[0], dtype=frame.dtype)
+        morph = np.arange(shape[1]*shape[2], dtype=frame.dtype).reshape(shape[1], shape[2])
 
         # Test SED normalization
         src = scarlet.Component(frame, sed, morph)
@@ -112,13 +99,14 @@ class TestUpdate(object):
         noise = np.random.rand(21, 21)*2  # noise background to eliminate
         signal = np.zeros(noise.shape)
         func = scarlet.psf.gaussian
-        signal[7:14, 7:14] = scarlet.psf.generate_psf_image(func, (21, 21), amplitude=10, sigma=3)[7:14, 7:14]
+        signal[7:14, 7:14] = scarlet.psf.generate_psf_image(func, (21, 21), normalize=False,
+                                                            amplitude=10, sigma=3)[7:14, 7:14].image
         morph = signal + noise
         sed = np.arange(5)
         shape = (len(sed), morph.shape[0], morph.shape[1])
         frame = scarlet.Frame(shape)
-        src = scarlet.Component(frame, sed, morph)
-        thresh, _ = update._threshold(src.morph)
+        src = scarlet.Component(frame, sed.copy(), morph.copy())
+        thresh, _ = measurement.threshold(src.morph)
         true_morph = np.zeros(morph.shape)
         true_morph[7:14, 7:14] = morph[7:14, 7:14]
         update.threshold(src)
@@ -128,7 +116,7 @@ class TestUpdate(object):
 
     def test_monotonic(self):
         shape = (6, 5, 5)
-        frame = scarlet.Frame(shape)
+        frame = scarlet.Frame(shape, dtype=np.float64)
         sed = np.arange(shape[0])
         morph = np.arange(shape[1]*shape[2], dtype=float).reshape(shape[1], shape[2])
 
@@ -188,14 +176,14 @@ class TestUpdate(object):
         # Centered symmetry
         src = scarlet.Component(frame, sed, morph)
         src.pixel_center = (2, 2)
-        update.symmetric(src)
+        update.symmetric(src, src.pixel_center)
         result = np.ones_like(morph) * 12
         np.testing.assert_array_equal(src.morph, result)
 
         # Centered symmetry at half strength
         src = scarlet.Component(frame, sed, morph)
         src.pixel_center = (2, 2)
-        update.symmetric(src, strength=.5, algorithm="soft")
+        update.symmetric(src, src.pixel_center, strength=.5, algorithm="soft")
         result = [[6.0, 6.5, 7.0, 7.5, 8.0],
                   [8.5, 9.0, 9.5, 10.0, 10.5],
                   [11.0, 11.5, 12.0, 12.5, 13.0],
@@ -206,7 +194,7 @@ class TestUpdate(object):
         # Uncentered symmetry
         src = scarlet.Component(frame, sed, morph)
         src.pixel_center = (1, 1)
-        update.symmetric(src)
+        update.symmetric(src, src.pixel_center)
         result = morph.copy()
         result[:3, :3] = 6
         np.testing.assert_array_equal(src.morph, result)
