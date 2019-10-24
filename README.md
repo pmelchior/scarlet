@@ -1,5 +1,5 @@
-[![](https://travis-ci.org/fred3m/scarlet.svg?branch=master)](https://travis-ci.org/fred3m/scarlet)
-[![](https://img.shields.io/github/license/fred3m/scarlet.svg)](https://github.com/fred3m/scarlet/blob/master/LICENSE.md)
+[![](https://travis-ci.org/pmelchior/scarlet.svg?branch=master)](https://travis-ci.org/pmelchior/scarlet)
+[![](https://img.shields.io/github/license/pmelchior/scarlet.svg)](https://github.com/pmelchior/scarlet/blob/master/LICENSE.md)
 [![DOI](https://img.shields.io/badge/DOI-10.1016%2Fj.ascom.2018.07.001-blue.svg)](https://doi.org/10.1016/j.ascom.2018.07.001)
 [![arXiv](https://img.shields.io/badge/arxiv-1802.10157-red.svg)](https://arxiv.org/abs/1802.10157)
 
