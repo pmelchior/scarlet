@@ -308,7 +308,7 @@ class PointSource(FunctionComponent):
             Observation(s) to initialize this source
         """
         C, Ny, Nx = frame.shape
-        self.pixel_center = np.array(frame.get_pixel(sky_coord), dtype=np.float)
+        self.pixel_center = np.array(frame.get_pixel(sky_coord))
 
         # initialize SED from sky_coord
         try:
@@ -341,7 +341,7 @@ class PointSource(FunctionComponent):
         super().__init__(frame, sed, center, func)
 
 
-class ExtendedSource(FactorizedComponent):
+class ExtendedSource(ShiftedFactorizedComponent):
     def __init__(self, frame, sky_coord, observations, obs_idx=0, thresh=0.1,
                  symmetric=True, monotonic=True):
         """Extended source intialized to match a set of observations
@@ -369,8 +369,10 @@ class ExtendedSource(FactorizedComponent):
         self.symmetric = symmetric
         self.monotonic = monotonic
         self.coords = sky_coord
-        center = frame.get_pixel(sky_coord)
-        self.pixel_center = center
+        center = np.array(frame.get_pixel(sky_coord), dtype='float')
+        self.pixel_center = tuple(np.round(center))
+
+        shift = Parameter(center - self.pixel_center, name="shift", step=1e-4)
 
         sed, morph = init_extended_source(sky_coord, frame, observations, obs_idx=obs_idx,
                                           thresh=thresh, symmetric=True, monotonic=monotonic)
@@ -379,19 +381,19 @@ class ExtendedSource(FactorizedComponent):
         morph_constraint = ConstraintChain(
             # most astronomical sources have 2-fold rotation
             # symmetry around their center ...
-            SymmetryConstraint(center),
+            SymmetryConstraint(self.pixel_center),
             # ... are monotonically decreasing from their center
-            MonotonicityConstraint(center),
+            MonotonicityConstraint(self.pixel_center),
             # ... and are positive emitters
             PositivityConstraint(),
             # prevent a weak source from disappearing entirely
-            CenterOnConstraint(center),
+            CenterOnConstraint(self.pixel_center),
             # break degeneracies between sed and morphology
             NormalizationConstraint("max")
         )
         morph = Parameter(morph, name="morph", step=1e-2, constraint=morph_constraint)
 
-        super().__init__(frame, sed, morph)
+        super().__init__(frame, shift, sed, morph)
 
 
 class CombinedExtendedSource(PointSource):

@@ -1,5 +1,6 @@
 from .parameter import *
-
+from . import fft
+from . import interpolation
 import pickle
 import autograd.numpy as np
 
@@ -166,6 +167,99 @@ class FactorizedComponent(Component):
         """
         return self.morph.sum() * self.sed
 
+
+class ShiftedFactorizedComponent(Component):
+    """A single component in a blend.
+
+    Uses the non-parametric factorization sed x morphology with additional
+    optimization of the center shift.
+    This is important when constraints require accurate centering
+    (e.g. symmetry and monotonicity).
+
+    Parameters
+    ----------
+    frame: `~scarlet.Frame`
+        The spectral and spatial characteristics of this component.
+    shift: `~scarlet.Parameter`
+        2D position for the shift of the center
+    sed: `~scarlet.Parameter`
+        array (Channels) of the initial SED.
+    morph: `~scarlet.Parameter`
+        Image (Height, Width) of the initial morphology.
+    """
+    def __init__(self, frame, shift, sed, morph):
+        self._shift = shift
+        self._sed = sed
+        self._morph = morph
+        parameters = (self._shift, self._sed, self._morph)
+        super().__init__(frame, *parameters)
+
+    @property
+    def shift(self):
+        """Numpy view of the component center
+        """
+        return self._shift._data
+
+    @property
+    def sed(self):
+        """Numpy view of the component SED
+        """
+        return self._sed._data
+
+    @property
+    def morph(self):
+        """Numpy view of the component morphology
+        """
+        return self._shift_morph(self._shift._data, self._morph._data)
+
+    def get_flux(self):
+        """Get flux in every band
+        """
+        return self.morph.sum() * self.sed
+
+    def get_model(self, *parameters):
+        """Get the model for this component.
+
+        Parameters
+        ----------
+        parameters: tuple of optimimzation parameters
+
+        Returns
+        -------
+        model: array
+            (Channels, Height, Width) image of the model
+        """
+        shift, sed, morph = self.shift, self.sed, self.morph
+
+        # if params are set they are not Parameters, but autograd ArrayBoxes
+        # need to access the wrapped class with _value
+        for p in parameters:
+            if p._value is self._shift:
+                shift = p
+            if p._value is self._sed:
+                sed = p
+            if p._value is self._morph:
+                morph = p
+            morph = self._shift_morph(shift, morph)
+            #self._morph[:,:] = morph._value
+        return sed[:, None, None] * morph[None, :, :]
+
+    def _shift_morph(self, shift, X):
+        padding = 10
+        fft_shape = fft._get_fft_shape(X, X, padding=padding)
+        X = fft.Fourier(X)
+        X_fft = X.fft(fft_shape, (0,1))
+        #zeroMask = X.image <= 0
+
+        shifter_y, shifter_x = interpolation.mk_shifter(fft_shape)
+        # Apply shift in Fourier
+        result_fft = X_fft * shifter_y[:, np.newaxis] ** (-shift[0])
+        result_fft *= shifter_x[np.newaxis, :] ** (-shift[1])
+
+        X = fft.Fourier.from_fft(result_fft, fft_shape, X.image.shape, [0,1])
+
+        #X.image[zeroMask] = 0
+        return np.real(X.image)
 
 class FunctionComponent(FactorizedComponent):
     """A single component in a blend.

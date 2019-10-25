@@ -210,7 +210,7 @@ class SymmetryConstraint(Constraint):
     See `~scarlet.operator.prox_uncentered_symmetry`
     for a description of the parameters.
     """
-    def __init__(self, pixel_center, bbox=None, fill=None, shift=None, strength=.5):
+    def __init__(self, pixel_center, bbox=None, fill=None, shift=None, strength=1):
         self.pixel_center = pixel_center
         self.bbox = bbox
         self.fill = fill
@@ -232,7 +232,7 @@ class SymmetryConstraint(Constraint):
         morph = morph.copy()
 
         # apply the prox
-        operator.prox_uncentered_symmetry(morph, step, center, "kspace", self.fill, self.shift, self.strength)
+        operator.prox_uncentered_symmetry(morph, step, center, "soft", self.fill, self.shift, self.strength)
 
         # apply the bbox
         if self.bbox is not None:
@@ -251,7 +251,8 @@ class CenterOnConstraint(Constraint):
         self.tiny = tiny
 
     def __call__(self, X, step):
-        X[tuple(self.pixel_center)] = max(X[tuple(self.pixel_center)], self.tiny)
+        center = tuple(np.round(np.array(self.pixel_center)).astype('int'))
+        X[center] = max(X[center], self.tiny)
         return X
 
 class AllOnConstraint(Constraint):
