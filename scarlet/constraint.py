@@ -251,7 +251,7 @@ class CenterOnConstraint(Constraint):
         self.tiny = tiny
 
     def __call__(self, X, step):
-        X[tuple(self.pixel_center)] = self.tiny
+        X[tuple(self.pixel_center)] = max(X[tuple(self.pixel_center)], self.tiny)
         return X
 
 class AllOnConstraint(Constraint):
@@ -261,5 +261,5 @@ class AllOnConstraint(Constraint):
         self.tiny = tiny
 
     def __call__(self, X, step):
-        X += self.tiny
+        X = np.maximum(X, self.tiny)
         return X
