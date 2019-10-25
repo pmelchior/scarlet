@@ -146,32 +146,6 @@ def prox_cone(X, step, G=None):
     return X
 
 
-def prox_center_on(X, step, tiny=1e-10):
-    """Ensure that the central pixel has positive flux
-
-    Make sure that the center pixel as at least some amount of flux
-    otherwise centering will go off rails
-    """
-    cy = X.shape[0] // 2
-    cx = X.shape[1] // 2
-    X[cy, cx] = max(X[cy, cx], tiny)
-    return X
-
-
-def prox_sed_on(X, step, tiny=1e-10):
-    """Ensure that the SED has some flux.
-
-    This is used when S is normalized and A is
-    not to prevent a source from having no flux,
-    which is known to break the centering algorithm.
-    Once we put in a check to ensure that the difference
-    image has a dipole this operator will be rendered unecessary
-    """
-    if np.all(X <= 0):
-        X[:] = tiny
-    return X
-
-
 def uncentered_operator(X, func, center=None, fill=None, **kwargs):
     """Only apply the operator on a centered patch
 

@@ -1,10 +1,13 @@
-import autograd.numpy as np
-
+import proxmin
+from .constraint import *
+from .component import *
 from . import operator
-from . import update
 from . import measurement
 from .interpolation import get_projection_slices
 from .psf import generate_psf_image, gaussian
+
+# make sure that import * above doesn't import its own numpy
+import autograd.numpy as np
 
 import logging
 logger = logging.getLogger("scarlet.source")
@@ -315,8 +318,9 @@ class RandomSource(FactorizedComponent):
         else:
             sed = get_best_fit_seds(morph[None], frame, observation)[0]
 
-        sed = Parameter(sed, name="sed", step=default_step, constraint=proxmin.operators.prox_plus)
-        morph = Parameter(morph, name="morph", step=default_step, constraint=proxmin.operators.prox_plus)
+        constraint = PositivityConstraint()
+        sed = Parameter(sed, name="sed", step=default_step, constraint=constraint)
+        morph = Parameter(morph, name="morph", step=default_step, constraint=constraint)
 
         super().__init__(frame, sed, morph)
 
@@ -355,8 +359,8 @@ class PointSource(FunctionComponent):
             sed /= observation.frame.psfs.max(axis=(1, 2))
 
         # set up parameters
-        sed = Parameter(sed, name="sed", step=default_step, constraint=proxmin.operators.prox_plus)
-        center = Parameter(self.pixel_center, step=lambda *X, it: 1e-3)
+        sed = Parameter(sed, name="sed", step=default_step, constraint=PositivityConstraint())
+        center = Parameter(self.pixel_center, name="center", step=1e-3)
 
         super().__init__(frame, sed, center, func)
 
@@ -393,17 +397,22 @@ class ExtendedSource(FactorizedComponent):
 
         sed, morph = init_extended_source(sky_coord, frame, observation, bg_rms,
                                           thresh, True, monotonic)
-        sed = Parameter(sed, name="sed", step=default_step, constraint=proxmin.operators.prox_plus)
+        sed = Parameter(sed, name="sed", step=lambda x, it: 1e-3*x.mean(), constraint=PositivityConstraint())
 
         morph_constraint = ConstraintChain(
-            SymmetryConstraint(center, shape),
-            MonotonicityConstraint(center, shape),
+            # most astronomical sources have 2-fold rotation
+            # symmetry around their center ...
+            SymmetryConstraint(center),
+            # ... are monotonically decreasing from their center
+            MonotonicityConstraint(center),
+            # ... and are positive emitters
             PositivityConstraint(),
+            # prevent a weak source from disappearing entirely
             CenterOnConstraint(center),
-            NormalizationConstraint("max", axis=(0,1)),
-            repeat=1
+            # break degeneracies between sed and morphology
+            NormalizationConstraint("max")
         )
-        morph = Parameter(morph, name="morph", step=0.001, constraint=morph_constraint)
+        morph = Parameter(morph, name="morph", step=1e-2, constraint=morph_constraint)
 
         super().__init__(frame, sed, morph)
 
