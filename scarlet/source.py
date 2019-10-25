@@ -137,52 +137,8 @@ def build_detection_coadd(sed, bg_rms, observation, thresh=1):
     return detect, bg_cutoff
 
 
-def init_extended_source(sky_coord, frame, observation, bg_rms,
-                         thresh=1., symmetric=True, monotonic=True):
-    """Initialize the source that is symmetric and monotonic
-    See `ExtendedSource` for a description of the parameters
-    """
-    # determine initial SED from peak position, accounting for PSF changes
-    sed = get_psf_sed(sky_coord, observation, frame)
-
-    if np.any(sed <= 0):
-        # If the flux in all channels is  <=0,
-        # the new sed will be filled with NaN values,
-        # which will cause the code to crash later
-        msg = "Zero or negative SED {} at y={}, x={}".format(sed, *sky_coord)
-        if np.all(sed <= 0):
-            logger.warning(msg)
-        else:
-            logger.info(msg)
-
-    morph, bg_cutoff = build_detection_coadd(sed, bg_rms, observation, thresh)
-    center = frame.get_pixel(sky_coord)
-
-    # Apply the necessary constraints
-    if symmetric:
-        morph = operator.prox_uncentered_symmetry(morph, 0, center=center, algorithm="sdss")
-    if monotonic:
-        # use finite thresh to remove flat bridges
-        prox_monotonic = operator.prox_strict_monotonic(morph.shape, use_nearest=False,
-                                                        center=center, thresh=.1)
-        morph = prox_monotonic(morph, 0).reshape(morph.shape)
-
-    # trim morph to pixels above threshold
-    mask = morph > bg_cutoff
-    if mask.sum() == 0:
-        msg = "No flux above threshold={2} for source at y={0} x={1}"
-        raise SourceInitError(msg.format(*sky_coord, bg_cutoff))
-    morph[~mask] = 0
-
-    # normalize to unity at peak pixel
-    cy, cx = np.array(center).astype(int)
-    center_morph = morph[cy, cx]
-    morph /= center_morph
-    return sed, morph
-
-
-def init_combined_extended_source(sky_coord, frame, observations, bg_rms, obs_idx=0,
-                                  thresh=1., symmetric=True, monotonic=True):
+def init_extended_source(sky_coord, frame, observations, obs_idx=0,
+                                  thresh=1, symmetric=True, monotonic=True):
     """Initialize the source that is symmetric and monotonic
     See `ExtendedSource` for a description of the parameters
     """
@@ -210,19 +166,24 @@ def init_combined_extended_source(sky_coord, frame, observations, bg_rms, obs_id
         else:
             logger.info(msg)
 
-    morph, bg_cutoff = build_detection_coadd(seds[obs_idx], bg_rms[obs_idx], observations[obs_idx],
-                                             thresh)  # amplitude is in sed
+    # which observation to use for detection and morphology
+    obs_ = observations[obs_idx]
+    try:
+        bg_rms = np.array([ 1 / np.sqrt(w[w > 0].mean()) for w in obs_.weights])
+    except:
+        raise AttributeError("Observation.weights missing! Please set inverse variance weights")
+    morph, bg_cutoff = build_detection_coadd(seds[obs_idx], bg_rms, obs_, thresh)
 
-    center = frame.get_pixel(sky_coord)
 
     # Apply the necessary constraints
+    center = frame.get_pixel(sky_coord)
     if symmetric:
         morph = operator.prox_uncentered_symmetry(morph, 0, center=center, algorithm="sdss")
 
     if monotonic:
         # use finite thresh to remove flat bridges
         prox_monotonic = operator.prox_strict_monotonic(morph.shape, use_nearest=False,
-                                                        center=center, thresh=.1)
+                                                        center=center, thresh=thresh)
         morph = prox_monotonic(morph, 0).reshape(morph.shape)
 
     # trim morph to pixels above threshold
@@ -233,8 +194,8 @@ def init_combined_extended_source(sky_coord, frame, observations, bg_rms, obs_id
     morph[~mask] = 0
 
     # normalize to unity at peak pixel
-    cy, cx = center
-    center_morph = morph[np.int(cy), np.int(cx)]
+    cy, cx = np.array(center).astype(int)
+    center_morph = morph[cy, cx]
     morph /= center_morph
 
     return sed, morph
@@ -336,7 +297,7 @@ class PointSource(FunctionComponent):
     Point sources are initialized with the SED of the center pixel,
     and the morphology taken from `frame.psfs`, centered at `sky_coord`.
     """
-    def __init__(self, frame, sky_coord, observation, func):
+    def __init__(self, frame, sky_coord, observations, func=None):
         """Source intialized with a single pixel
 
         Parameters
@@ -345,18 +306,35 @@ class PointSource(FunctionComponent):
             The frame of the model
         sky_coord: tuple
             Center of the source
-        observation: list of `~scarlet.Observation`
-            Observation to initialize this source
+        observations: instance or list of `~scarlet.Observation`
+            Observation(s) to initialize this source
         """
         C, Ny, Nx = frame.shape
         self.pixel_center = np.array(frame.get_pixel(sky_coord), dtype=np.float)
 
         # initialize SED from sky_coord
-        pixel = observation.frame.get_pixel(sky_coord)
-        sed = observation.images[:, pixel[0], pixel[1]].copy()
-        if observation.frame.psfs is not None:
-            # Account for the PSF in the intensity
-            sed /= observation.frame.psfs.max(axis=(1, 2))
+        try:
+            iter(observations)
+        except TypeError:
+            observations = [observations]
+
+        # determine initial SED from peak position
+        # SED in the frame for source detection
+        seds = []
+        for obs in observations:
+            _sed = get_psf_sed(sky_coord, obs, frame)
+            seds.append(_sed)
+        sed = np.concatenate(seds).flatten()
+
+        if np.any(sed <= 0):
+            # If the flux in all channels is  <=0,
+            # the new sed will be filled with NaN values,
+            # which will cause the code to crash later
+            msg = "Zero or negative SED {} at y={}, x={}".format(sed, *sky_coord)
+            if np.all(sed <= 0):
+                logger.warning(msg)
+            else:
+                logger.info(msg)
 
         # set up parameters
         sed = Parameter(sed, name="sed", step=default_step, constraint=PositivityConstraint())
@@ -366,7 +344,7 @@ class PointSource(FunctionComponent):
 
 
 class ExtendedSource(FactorizedComponent):
-    def __init__(self, frame, sky_coord, observation, bg_rms, thresh=1,
+    def __init__(self, frame, sky_coord, observations, obs_idx=0, thresh=0.1,
                  symmetric=True, monotonic=True):
         """Extended source intialized to match a set of observations
 
@@ -376,10 +354,11 @@ class ExtendedSource(FactorizedComponent):
             The frame of the model
         sky_coord: tuple
             Center of the source
-        observation: `~scarlet.observation.Observation`
-            Observation to initialize this source.
-        bg_rms: array
-            Background RMS in each channel in observation.
+        observations: instance or list of `~scarlet.observation.Observation`
+            Observation(s) to initialize this source.
+        obs_idx: int
+            Index of the observation in `observations` to
+            initialize the morphology.
         thresh: `float`
             Multiple of the backround RMS used as a
             flux cutoff for morphology initialization.
@@ -395,8 +374,8 @@ class ExtendedSource(FactorizedComponent):
         center = frame.get_pixel(sky_coord)
         self.pixel_center = center
 
-        sed, morph = init_extended_source(sky_coord, frame, observation, bg_rms,
-                                          thresh, True, monotonic)
+        sed, morph = init_extended_source(sky_coord, frame, observation, obs_idx=obs_idx,
+                                          thresh=thresh, symmetric=True, monotonic=monotonic)
         sed = Parameter(sed, name="sed", step=lambda x, it: 1e-3*x.mean(), constraint=PositivityConstraint())
 
         morph_constraint = ConstraintChain(
