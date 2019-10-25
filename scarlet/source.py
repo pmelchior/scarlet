@@ -3,10 +3,9 @@ from .constraint import *
 from .component import *
 from . import operator
 from . import measurement
-from .interpolation import get_projection_slices
 from .psf import generate_psf_image, gaussian
 
-# make sure that import * above doesn't import its own numpy
+# make sure that import * above doesn't import its own stock numpy
 import autograd.numpy as np
 
 import logging
@@ -252,7 +251,6 @@ def init_multicomponent_source(sky_coord, frame, observation, bg_rms, flux_perce
 
     return seds, morphs
 
-default_step = lambda X, it: 0.1*X.mean(axis=0)
 
 class RandomSource(FactorizedComponent):
     """Sources with uniform random morphology.
@@ -374,7 +372,7 @@ class ExtendedSource(FactorizedComponent):
         center = frame.get_pixel(sky_coord)
         self.pixel_center = center
 
-        sed, morph = init_extended_source(sky_coord, frame, observation, obs_idx=obs_idx,
+        sed, morph = init_extended_source(sky_coord, frame, observations, obs_idx=obs_idx,
                                           thresh=thresh, symmetric=True, monotonic=monotonic)
         sed = Parameter(sed, name="sed", step=lambda x, it: 1e-3*x.mean(), constraint=PositivityConstraint())
 

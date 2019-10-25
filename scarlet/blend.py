@@ -67,7 +67,12 @@ class Blend(ComponentTree):
         _prox = tuple(x.constraint for x in X)
         self.mse = []
 
-        converged, g, v = proxmin.adaprox(X, _grad, _step, prox=_prox, max_iter=max_iter, e_rel=e_rel, **alg_kwargs)
+        # good defaults for adaprox
+        scheme = alg_kwargs.pop('scheme', 'padam')
+        p = alg_kwargs.pop('p', 0.4)
+        prox_max_iter = alg_kwargs.pop('prox_max_iter', 10)
+
+        converged, g, v = proxmin.adaprox(X, _grad, _step, prox=_prox, max_iter=max_iter, e_rel=e_rel, scheme=scheme, p=p, prox_max_iter=prox_max_iter, **alg_kwargs)
         # TODO: store v as error estimate
 
         return self

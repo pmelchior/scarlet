@@ -1,6 +1,7 @@
 from . import operator
 from .bbox import *
 from .constraint import *
+from .parameter import *
 from .component import *
 from .source import *
 from .observation import *
