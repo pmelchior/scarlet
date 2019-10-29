@@ -6,20 +6,10 @@ from proxmin.utils import MatrixAdapter
 
 from . import fft
 from . import interpolation
-
 from .cache import Cache
-
 
 import logging
 logger = logging.getLogger("scarlet.operator")
-
-
-def prox_max_unity(X, step):
-    """Normalize X so that it's max value is unity."""
-    norm = X.max()
-    X[:] = X/norm
-    return X
-
 
 def _prox_strict_monotonic(X, step, ref_idx, dist_idx, thresh=0):
     """Force an intensity profile to be monotonic based on nearest neighbor
@@ -220,9 +210,10 @@ def prox_soft_symmetry(X, step, strength=1):
     1  being completely symmetric, the user can customize
     the level of symmetry required for a component
     """
-    Xs = np.fliplr(np.flipud(X))
-    X[:] = 0.5 * strength * (X+Xs) + (1-strength) * X
-    return X
+    X = np.pad(X, ((0,1), (0,1)), mode='constant', constant_values=0)
+    Xs =  np.fliplr(np.flipud(X))
+    X = 0.5 * strength * (X+Xs) + (1-strength) * X
+    return X[:-1,:-1]
 
 def prox_kspace_symmetry(X, step, shift=None, padding=10):
     """Symmetry in Fourier Space

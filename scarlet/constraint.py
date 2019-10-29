@@ -6,7 +6,6 @@ import proxmin
 from . import interpolation
 from . import operator
 from . import measurement
-from .bbox import trim
 from .cache import Cache
 
 class Constraint:
@@ -143,12 +142,6 @@ def ThresholdConstraint(component):
     def __call__(self, X, step):
         thresh, _bins = measurement.threshold(X)
         X[X < thresh] = 0
-
-        # # TODO: bbox treatment must be at source level, not inside of the constraint
-        # bbox = trim(component.morph)
-        # if not hasattr(component, "bboxes"):
-        #     component.bboxes = {}
-        # component.bboxes["thresh"] = bbox
         return X
 
 class MonotonicityConstraint(Constraint):
@@ -157,26 +150,13 @@ class MonotonicityConstraint(Constraint):
     See `~scarlet.operator.prox_monotonic`
     for a description of the other parameters.
     """
-    def __init__(self, pixel_center, use_nearest=False, thresh=0, bbox=None):
-        self.pixel_center = pixel_center
+    def __init__(self, use_nearest=False, thresh=0):
         self.use_nearest = use_nearest
         self.thresh = thresh
-        self.bbox = bbox
 
-    def __call__(self, X, step):
-
-        if self.bbox is not None:
-            # Only apply monotonicity to the pixels inside the bounding box
-            morph = X[self.bbox.slices]
-            shape = morph.shape
-            if shape[0] <= 1 or shape[1] <= 1:
-                return X
-            center = self.pixel_center[0]-self.bbox.bottom, self.pixel_center[1]-self.bbox.left
-        else:
-            morph = X
-            shape = X.shape[-2:]
-            center = self.pixel_center
-        morph = morph.copy()
+    def __call__(self, morph, step):
+        shape = morph.shape
+        center = (shape[0] // 2, shape[1] // 2)
 
         # get prox from the cache
         prox_name = "operator.prox_strict_monotonic"
@@ -186,22 +166,12 @@ class MonotonicityConstraint(Constraint):
         try:
             prox = Cache.check(prox_name, key)
         except KeyError:
-            prox = operator.prox_strict_monotonic(shape, use_nearest=self.use_nearest,
-                                                      thresh=self.thresh, center=center)
+            prox = operator.prox_strict_monotonic(shape, use_nearest=self.use_nearest,thresh=self.thresh, center=center)
 
             Cache.set(prox_name, key, prox)
 
         # apply the prox
-        prox(morph, step)
-
-        # apply the bbox
-        if self.bbox is not None:
-            X[:] = np.zeros(X.shape, dtype=X.dtype)
-            X[self.bbox.slices] = morph
-        else:
-            X[:] = morph
-
-        return X
+        return prox(morph, step)
 
 
 class SymmetryConstraint(Constraint):
@@ -210,50 +180,24 @@ class SymmetryConstraint(Constraint):
     See `~scarlet.operator.prox_uncentered_symmetry`
     for a description of the parameters.
     """
-    def __init__(self, pixel_center, bbox=None, fill=None, shift=None, strength=1):
-        self.pixel_center = pixel_center
-        self.bbox = bbox
-        self.fill = fill
-        self.shift = shift
+    def __init__(self, strength=1):
         self.strength = strength
 
-    def __call__(self, X, step):
-        if self.bbox is not None:
-            # Only apply monotonicity to the pixels inside the bounding box
-            morph = X[self.bbox.slices]
-            shape = morph.shape
-            if shape[0] <= 1 or shape[1] <= 1:
-                return X
-            center = self.pixel_center[0]-self.bbox.bottom, self.pixel_center[1]-self.bbox.left
-        else:
-            morph = X
-            shape = X.shape[-2:]
-            center = self.pixel_center
-        morph = morph.copy()
+    def __call__(self, morph, step):
+        return operator.prox_soft_symmetry(morph, step, strength=self.strength)
 
-        # apply the prox
-        operator.prox_uncentered_symmetry(morph, step, center, "soft", self.fill, self.shift, self.strength)
-
-        # apply the bbox
-        if self.bbox is not None:
-            X[:] = np.zeros(X.shape, dtype=X.dtype)
-            X[self.bbox.slices] = morph
-        else:
-            X[:] = morph
-
-        return X
 
 class CenterOnConstraint(Constraint):
     """Sets the center pixel to a tiny non-zero value
     """
-    def __init__(self, pixel_center, tiny=1e-6):
-        self.pixel_center = pixel_center
+    def __init__(self, tiny=1e-6):
         self.tiny = tiny
 
-    def __call__(self, X, step):
-        center = tuple(np.round(np.array(self.pixel_center)).astype('int'))
-        X[center] = max(X[center], self.tiny)
-        return X
+    def __call__(self, morph, step):
+        shape = morph.shape
+        center = (shape[0] // 2, shape[1] // 2)
+        morph[center] = max(morph[center], self.tiny)
+        return morph
 
 class AllOnConstraint(Constraint):
     """Add to all elements a tiny non-zero value

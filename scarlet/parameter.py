@@ -1,6 +1,7 @@
 import autograd.numpy as np
 from autograd.numpy.numpy_boxes import ArrayBox
 from autograd.core import VSpace
+from functools import partial
 
 class Parameter(np.ndarray):
     def __new__(cls, array, prior=None, constraint=None, step=0, converged=False, fixed=False, **kwargs):
@@ -27,4 +28,5 @@ class Parameter(np.ndarray):
 ArrayBox.register(Parameter)
 VSpace.register(Parameter, vspace_maker=VSpace.mappings[np.ndarray])
 
-default_step = lambda X, it: 0.1*X.mean(axis=0)
+relative_step = lambda X, it, factor: factor*X.mean(axis=0)
+default_step = partial(relative_step, factor=0.1)

@@ -1,6 +1,7 @@
 import proxmin
 from .constraint import *
 from .component import *
+from .bbox import *
 from . import operator
 from . import measurement
 from .psf import generate_psf_image, gaussian
@@ -347,7 +348,7 @@ class PointSource(FunctionComponent):
         super().__init__(frame, sed, center, func)
 
 
-class ExtendedSource(ShiftedFactorizedComponent):
+class ExtendedSource(FactorizedComponent):
     def __init__(self, frame, sky_coord, observations, obs_idx=0, thresh=0.1,
                  symmetric=True, monotonic=True):
         """Extended source intialized to match a set of observations
@@ -374,11 +375,10 @@ class ExtendedSource(ShiftedFactorizedComponent):
         """
         self.symmetric = symmetric
         self.monotonic = monotonic
-        self.coords = sky_coord
-        center = np.array(frame.get_pixel(sky_coord), dtype='float')
-        self.pixel_center = tuple(np.round(center))
+        self.center = np.array(frame.get_pixel(sky_coord), dtype='float')
+        pixel_center = tuple(np.floor(self.center).astype('int'))
 
-        shift = Parameter(center - self.pixel_center, name="shift", step=1e-4)
+        shift = Parameter(self.center - pixel_center, name="shift", step=1e-4)
 
         # initialize from observation
         sed, morph = init_extended_source(sky_coord, frame, observations,
@@ -387,29 +387,54 @@ class ExtendedSource(ShiftedFactorizedComponent):
             symmetric=True,
             monotonic=monotonic)
 
-        sed = Parameter(sed, name="sed", step=lambda x, it: 1e-3*x.mean(), constraint=PositivityConstraint())
+        sed = Parameter(sed, name="sed", step=partial(relative_step, factor=1e-3), constraint=PositivityConstraint())
+
+        # trim the morphology, create the constraints
+        bbox = Box.from_data(morph)
+        if bbox.width % 2 == 1:
+            bbox.width -= 1
+        if bbox.height % 2 == 1:
+            bbox.height -= 1
+        slices = bbox.slices
+        morph = morph[bbox.slices]
+
+        # height, width = bbox.height, bbox.width
+        # pick nearest power of 2, min 32
+        #         sizes =
+        #
+        #         def find_next_source_size(size):
+        # from numpy import where
+        # # find first element not smaller than size
+        # idx = where(source_sizes >= size)
+        # # if not possible, use largest element
+        # if len(idx):
+        #     idx = idx[0][0]
+        # else:
+        #     idx = -1
+        # return source_sizes[idx]
 
         constraints = []
         if symmetric:
             # most astronomical sources have 2-fold rotation
             # symmetry around their center ...
-            constraints.append(SymmetryConstraint(self.pixel_center))
+            constraints.append(SymmetryConstraint())
         if monotonic:
             # ... are monotonically decreasing from their center
-            constraints.append(MonotonicityConstraint(self.pixel_center))
+            constraints.append(MonotonicityConstraint())
 
         constraints += [
             # ... and are positive emitters
             PositivityConstraint(),
             # prevent a weak source from disappearing entirely
-            CenterOnConstraint(self.pixel_center),
+            CenterOnConstraint(),
             # break degeneracies between sed and morphology
             NormalizationConstraint("max")
         ]
         morph_constraint = ConstraintChain(*constraints)
+
         morph = Parameter(morph, name="morph", step=1e-2, constraint=morph_constraint)
 
-        super().__init__(frame, shift, sed, morph)
+        super().__init__(frame, sed, morph, bbox=bbox, shift=shift)
 
 
 class MultiComponentSource(ComponentTree):
@@ -490,7 +515,7 @@ class MultiComponentSource(ComponentTree):
 
         components = []
         for k in range(len(seds)):
-            sed = Parameter(seds[k], name="sed", step=lambda x, it: 1e-3*x.mean(), constraint=PositivityConstraint())
+            sed = Parameter(seds[k], name="sed", step=partial(relative_step, factor=1e-3), constraint=PositivityConstraint())
             morph = Parameter(morphs[k], name="morph", step=1e-2, constraint=morph_constraint)
             components.append(ShiftedFactorizedComponent(frame, shift, sed, morph))
             components[-1].pixel_center = self.pixel_center

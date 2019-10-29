@@ -120,11 +120,20 @@ class FactorizedComponent(Component):
         1D array (channels) of the initial SED.
     morph: `~scarlet.Parameter`
         Image (Height, Width) of the initial morphology.
+    bbox: `~scarlet.Box`
+        Spatial bounding box of the morphology.
+    shift: `~scarlet.Parameter`
+        2D position for the shift of the center
     """
-    def __init__(self, frame, sed, morph):
+    def __init__(self, frame, sed, morph, bbox=None, shift=None):
         self._sed = sed
         self._morph = morph
-        parameters = (self._sed, self._morph)
+        self.bbox = bbox
+        if shift is None:
+            parameters = (self._sed, self._morph)
+        else:
+            self._shift = shift
+            parameters = (self._shift, self._sed, self._morph)
         super().__init__(frame, *parameters)
 
     @property
@@ -137,85 +146,17 @@ class FactorizedComponent(Component):
     def morph(self):
         """Numpy view of the component morphology
         """
-        return self._morph._data
-
-    def get_model(self, *parameters):
-        """Get the model for this component.
-
-        Parameters
-        ----------
-        parameters: tuple of optimimzation parameters
-
-        Returns
-        -------
-        model: array
-            (Channels, Height, Width) image of the model
-        """
-        sed, morph = self.sed, self.morph
-
-        # if params are set they are not Parameters, but autograd ArrayBoxes
-        # need to access the wrapped class with _value
-        for p in parameters:
-            if p._value is self._sed:
-                sed = p
-            if p._value is self._morph:
-                morph = p
-        return sed[:, None, None] * morph[None, :, :]
-
-    def get_flux(self):
-        """Get flux in every band
-        """
-        return self.morph.sum() * self.sed
-
-
-class ShiftedFactorizedComponent(Component):
-    """A single component in a blend.
-
-    Uses the non-parametric factorization sed x morphology with additional
-    optimization of the center shift.
-    This is important when constraints require accurate centering
-    (e.g. symmetry and monotonicity).
-
-    Parameters
-    ----------
-    frame: `~scarlet.Frame`
-        The spectral and spatial characteristics of this component.
-    shift: `~scarlet.Parameter`
-        2D position for the shift of the center
-    sed: `~scarlet.Parameter`
-        array (Channels) of the initial SED.
-    morph: `~scarlet.Parameter`
-        Image (Height, Width) of the initial morphology.
-    """
-    def __init__(self, frame, shift, sed, morph):
-        self._shift = shift
-        self._sed = sed
-        self._morph = morph
-        parameters = (self._shift, self._sed, self._morph)
-        super().__init__(frame, *parameters)
+        if self.bbox is not None:
+            return self._pad_morph(self._shift_morph(self.shift, self._morph._data))
+        return self._shift_morph(self.shift, self._morph._data)
 
     @property
     def shift(self):
         """Numpy view of the component center
         """
-        return self._shift._data
-
-    @property
-    def sed(self):
-        """Numpy view of the component SED
-        """
-        return self._sed._data
-
-    @property
-    def morph(self):
-        """Numpy view of the component morphology
-        """
-        return self._shift_morph(self._shift._data, self._morph._data)
-
-    def get_flux(self):
-        """Get flux in every band
-        """
-        return self.morph.sum() * self.sed
+        if self._shift is not None:
+            return self._shift._data
+        return None
 
     def get_model(self, *parameters):
         """Get the model for this component.
@@ -229,7 +170,7 @@ class ShiftedFactorizedComponent(Component):
         model: array
             (Channels, Height, Width) image of the model
         """
-        shift, sed, morph = self.shift, self.sed, self.morph
+        shift, sed, morph = self.shift, self.sed, None
 
         # if params are set they are not Parameters, but autograd ArrayBoxes
         # need to access the wrapped class with _value
@@ -239,27 +180,42 @@ class ShiftedFactorizedComponent(Component):
             if p._value is self._sed:
                 sed = p
             if p._value is self._morph:
-                morph = p
-            morph = self._shift_morph(shift, morph)
-            #self._morph[:,:] = morph._value
+                morph =  self._pad_morph(self._shift_morph(shift, p))
+
+        if morph is None:
+            morph =  self._pad_morph(self._shift_morph(shift, self._morph._data))
+
         return sed[:, None, None] * morph[None, :, :]
 
-    def _shift_morph(self, shift, X):
-        padding = 10
-        fft_shape = fft._get_fft_shape(X, X, padding=padding)
-        X = fft.Fourier(X)
-        X_fft = X.fft(fft_shape, (0,1))
-        #zeroMask = X.image <= 0
+    def _pad_morph(self, morph):
+        if self.bbox is not None:
+            pad_width = (
+            (self.bbox.bottom, self.frame.shape[1] - self.bbox.top),
+            (self.bbox.left, self.frame.shape[2] - self.bbox.right))
+            return np.pad(morph, pad_width, mode='constant', constant_values=0)
+        return morph
 
-        shifter_y, shifter_x = interpolation.mk_shifter(fft_shape)
-        # Apply shift in Fourier
-        result_fft = X_fft * shifter_y[:, np.newaxis] ** (-shift[0])
-        result_fft *= shifter_x[np.newaxis, :] ** (-shift[1])
+    def _shift_morph(self, shift, morph):
+        if shift is not None:
+            padding = 10
+            fft_shape = fft._get_fft_shape(morph, morph, padding=padding)
+            X = fft.Fourier(morph)
+            X_fft = X.fft(fft_shape, (0,1))
 
-        X = fft.Fourier.from_fft(result_fft, fft_shape, X.image.shape, [0,1])
+            # Apply shift in Fourier
+            shifter_y, shifter_x = interpolation.mk_shifter(fft_shape)
+            result_fft = X_fft * shifter_y[:, np.newaxis] ** (-shift[0])
+            result_fft *= shifter_x[np.newaxis, :] ** (-shift[1])
 
-        #X.image[zeroMask] = 0
-        return np.real(X.image)
+            X = fft.Fourier.from_fft(result_fft, fft_shape, X.shape, [0,1])
+            return np.real(X.image)
+        return morph
+
+    def get_flux(self):
+        """Get flux in every band
+        """
+        return self.morph.sum() * self.sed
+
 
 class FunctionComponent(FactorizedComponent):
     """A single component in a blend.

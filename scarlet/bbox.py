@@ -46,7 +46,30 @@ class Box(object):
         result: `Box`
             A new box bounded by the input bounds.
         """
-        return Box((bottom, left), top+1-bottom, right+1-left)
+        return Box((bottom, left), top-bottom, right-left)
+
+    @staticmethod
+    def from_data(X, min_value=0):
+        """Define range of `X` above `min_value`
+
+        Parameters
+        ----------
+        X: tensor or array
+            Data to threshold
+        min_value: float
+            Minimum value of the result.
+
+        Returns
+        -------
+        bbox: `Box`
+            Bounding box for the thresholded `X` (bottom, top, left, right)
+        """
+        nonzero = np.where(X > min_value)
+        left = nonzero[1].min()
+        right = nonzero[1].max()
+        bottom = nonzero[0].min()
+        top = nonzero[0].max()
+        return Box.from_bounds(bottom, top, left, right)
 
     @property
     def is_empty(self):
@@ -86,7 +109,7 @@ class Box(object):
         """
         if self.is_empty:
             return None
-        return self.yx0[0] + self.height - 1
+        return self.yx0[0] + self.height
 
     @property
     def right(self):
@@ -94,7 +117,7 @@ class Box(object):
         """
         if self.is_empty:
             return None
-        return self.yx0[1] + self.width - 1
+        return self.yx0[1] + self.width
 
     @property
     def shape(self):
@@ -165,31 +188,6 @@ class Box(object):
             self.top == other.top,
             self.bottom == other.bottom,
         ])
-
-
-def trim(X, min_value=0):
-    """Trim a tensor or array
-
-    Parameters
-    ----------
-    X: tensor or array
-        2D Matrix to trim
-    min_value: float
-        Minimum value of the result.
-        `X` will be trimmed so that all values
-        over `min_value` are contained in the result.
-
-    Returns
-    -------
-    bbox: `Box`
-        Bounding box for the trimmed `result` (bottom, top, left, right)
-    """
-    nonzero = np.where(X > min_value)
-    left = nonzero[1].min()
-    right = nonzero[1].max()
-    bottom = nonzero[0].min()
-    top = nonzero[0].max()
-    return Box.from_bounds(bottom, top, left, right)
 
 
 def flux_at_edge(X, min_value=0):
