@@ -315,7 +315,7 @@ class PointSource(FunctionComponent):
             Observation(s) to initialize this source
         """
         C, Ny, Nx = frame.shape
-        self.pixel_center = np.array(frame.get_pixel(sky_coord))
+        self.center = np.array(frame.get_pixel(sky_coord))
 
         # initialize SED from sky_coord
         try:
@@ -343,14 +343,14 @@ class PointSource(FunctionComponent):
 
         # set up parameters
         sed = Parameter(sed, name="sed", step=default_step, constraint=PositivityConstraint())
-        center = Parameter(self.pixel_center, name="center", step=1e-3)
+        center = Parameter(self.center, name="center", step=1e-3)
 
         super().__init__(frame, sed, center, func)
 
 
 class ExtendedSource(FactorizedComponent):
     def __init__(self, frame, sky_coord, observations, obs_idx=0, thresh=0.1,
-                 symmetric=True, monotonic=True):
+                 symmetric=True, monotonic=True, shifting=False):
         """Extended source intialized to match a set of observations
 
         Parameters
@@ -372,13 +372,18 @@ class ExtendedSource(FactorizedComponent):
         monotonic: `bool`
             Whether or not to make the object monotonically decrease
             in flux from the center.
+        shifting: `bool`
+            Whether or not a subpixel shift is added as optimization parameter
         """
         self.symmetric = symmetric
         self.monotonic = monotonic
-        self.center = np.array(frame.get_pixel(sky_coord), dtype='float')
-        pixel_center = tuple(np.round(self.center).astype('int'))
+        center = np.array(frame.get_pixel(sky_coord), dtype='float')
+        self.pixel_center = tuple(np.round(center).astype('int'))
 
-        shift = Parameter(self.center - pixel_center, name="shift", step=1e-4)
+        if shifting:
+            shift = Parameter(center - self.pixel_center, name="shift", step=1e-4)
+        else:
+            shift = None
 
         # initialize from observation
         sed, morph = init_extended_source(sky_coord, frame, observations,
@@ -391,32 +396,32 @@ class ExtendedSource(FactorizedComponent):
 
         # trim the morphology
         bbox = Box.from_data(morph, min_value=0)
-        size = 2 * max((pixel_center[0]-bbox.bottom, bbox.top - pixel_center[0],
-                        pixel_center[1]-bbox.left, bbox.right - pixel_center[1]))
+        size = 2 * max((self.pixel_center[0] - bbox.bottom, bbox.top - self.pixel_center[0],
+                        self.pixel_center[1] - bbox.left, bbox.right - self.pixel_center[1]))
         boxsize = 8
         while boxsize < size:
             boxsize *= 2
-        bottom = pixel_center[0] - boxsize // 2
-        top = pixel_center[0] + boxsize // 2
-        left = pixel_center[1] - boxsize // 2
-        right = pixel_center[1] + boxsize // 2
+        bottom = self.pixel_center[0] - boxsize // 2
+        top = self.pixel_center[0] + boxsize // 2
+        left = self.pixel_center[1] - boxsize // 2
+        right = self.pixel_center[1] + boxsize // 2
         bbox = Box.from_bounds(bottom, top, left, right)
         morph = bbox.image_to_box(morph)
 
         constraints = []
         if monotonic:
-            # ... are monotonically decreasing from their center
+            # most astronomical sources are monotonically decreasing
+            # from their center
             constraints.append(MonotonicityConstraint())
         if symmetric:
-            # most astronomical sources have 2-fold rotation
-            # symmetry around their center ...
+            # have 2-fold rotation symmetry around their center ...
             constraints.append(SymmetryConstraint())
 
         constraints += [
             # ... and are positive emitters
             PositivityConstraint(),
             # prevent a weak source from disappearing entirely
-            CenterOnConstraint(),
+            #CenterOnConstraint(),
             # break degeneracies between sed and morphology
             NormalizationConstraint("max")
         ]
@@ -426,6 +431,12 @@ class ExtendedSource(FactorizedComponent):
 
         super().__init__(frame, sed, morph, bbox=bbox, shift=shift)
 
+    @property
+    def center(self):
+        if len(self.parameters) == 3:
+            return self.pixel_center + self.shift
+        else:
+            return self.pixel_center
 
 class MultiComponentSource(ComponentTree):
     """Extended source with multiple components layered vertically.
@@ -441,7 +452,7 @@ class MultiComponentSource(ComponentTree):
     """
 
     def __init__(self, frame, sky_coord, observations, obs_idx=0, thresh=0.1, flux_percentiles=None,
-                 symmetric=True, monotonic=True):
+                 symmetric=True, monotonic=True, shifting=False):
         """Create multi-component extended source.
 
         Parameters
@@ -467,14 +478,19 @@ class MultiComponentSource(ComponentTree):
         monotonic: `bool`
             Whether or not to make the object monotonically decrease
             in flux from the center.
+        shifting: `bool`
+            Whether or not a subpixel shift is added as optimization parameter
         """
         self.symmetric = symmetric
         self.monotonic = monotonic
         self.coords = sky_coord
         center = np.array(frame.get_pixel(sky_coord), dtype='float')
-        self.pixel_center = tuple(np.round(center))
+        self.pixel_center = tuple(np.round(center).astype('int'))
 
-        shift = Parameter(center - self.pixel_center, name="shift", step=1e-4)
+        if shifting:
+            shift = Parameter(center - self.pixel_center, name="shift", step=1e-4)
+        else:
+            shift = None
 
         # initialize from observation
         seds, morphs = init_multicomponent_source(sky_coord, frame, observations,
@@ -484,20 +500,35 @@ class MultiComponentSource(ComponentTree):
             symmetric=symmetric,
             monotonic=monotonic)
 
-        constraints = []
-        if symmetric:
-            # most astronomical sources have 2-fold rotation
-            # symmetry around their center ...
-            constraints.append(SymmetryConstraint(self.pixel_center))
-        if monotonic:
-            # ... are monotonically decreasing from their center
-            constraints.append(MonotonicityConstraint(self.pixel_center))
+        # trim the morphology
+        bbox = Box.from_data(morphs[0], min_value=0)
+        size = 2 * max((self.pixel_center[0] - bbox.bottom, bbox.top - self.pixel_center[0],
+                        self.pixel_center[1] - bbox.left, bbox.right - self.pixel_center[1]))
+        boxsize = 8
+        while boxsize < size:
+            boxsize *= 2
+        bottom = self.pixel_center[0] - boxsize // 2
+        top = self.pixel_center[0] + boxsize // 2
+        left = self.pixel_center[1] - boxsize // 2
+        right = self.pixel_center[1] + boxsize // 2
+        bbox = Box.from_bounds(bottom, top, left, right)
+        morphs = list([m for m in morphs])
+        for k in range(len(seds)):
+            morphs[k] = bbox.image_to_box(morphs[k])
 
+        constraints = []
+        if monotonic:
+            # most astronomical sources are monotonically decreasing
+            # from their center
+            constraints.append(MonotonicityConstraint())
+        if symmetric:
+            # have 2-fold rotation symmetry around their center ...
+            constraints.append(SymmetryConstraint())
         constraints += [
             # ... and are positive emitters
             PositivityConstraint(),
             # prevent a weak source from disappearing entirely
-            CenterOnConstraint(self.pixel_center),
+            CenterOnConstraint(),
             # break degeneracies between sed and morphology
             NormalizationConstraint("max")
         ]
@@ -507,6 +538,14 @@ class MultiComponentSource(ComponentTree):
         for k in range(len(seds)):
             sed = Parameter(seds[k], name="sed", step=partial(relative_step, factor=1e-3), constraint=PositivityConstraint())
             morph = Parameter(morphs[k], name="morph", step=1e-2, constraint=morph_constraint)
-            components.append(ShiftedFactorizedComponent(frame, shift, sed, morph))
+            components.append(FactorizedComponent(frame, sed, morph, bbox=bbox, shift=shift))
             components[-1].pixel_center = self.pixel_center
         super().__init__(components)
+
+    @property
+    def center(self):
+        c = self.components[0]
+        if len(c.parameters) == 3:
+            return self.pixel_center + self.shift
+        else:
+            return self.pixel_center

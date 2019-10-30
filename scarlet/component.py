@@ -129,11 +129,11 @@ class FactorizedComponent(Component):
     def __init__(self, frame, sed, morph, bbox=None, shift=None):
         self._sed = sed
         self._morph = morph
+        self._shift = shift
         self.bbox = bbox
         if shift is None:
             parameters = (self._sed, self._morph)
         else:
-            self._shift = shift
             parameters = (self._shift, self._sed, self._morph)
         super().__init__(frame, *parameters)
 
