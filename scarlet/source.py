@@ -376,7 +376,7 @@ class ExtendedSource(FactorizedComponent):
         self.symmetric = symmetric
         self.monotonic = monotonic
         self.center = np.array(frame.get_pixel(sky_coord), dtype='float')
-        pixel_center = tuple(np.floor(self.center).astype('int'))
+        pixel_center = tuple(np.round(self.center).astype('int'))
 
         shift = Parameter(self.center - pixel_center, name="shift", step=1e-4)
 
@@ -389,38 +389,28 @@ class ExtendedSource(FactorizedComponent):
 
         sed = Parameter(sed, name="sed", step=partial(relative_step, factor=1e-3), constraint=PositivityConstraint())
 
-        # trim the morphology, create the constraints
-        bbox = Box.from_data(morph)
-        if bbox.width % 2 == 1:
-            bbox.width -= 1
-        if bbox.height % 2 == 1:
-            bbox.height -= 1
-        slices = bbox.slices
-        morph = morph[bbox.slices]
-
-        # height, width = bbox.height, bbox.width
-        # pick nearest power of 2, min 32
-        #         sizes =
-        #
-        #         def find_next_source_size(size):
-        # from numpy import where
-        # # find first element not smaller than size
-        # idx = where(source_sizes >= size)
-        # # if not possible, use largest element
-        # if len(idx):
-        #     idx = idx[0][0]
-        # else:
-        #     idx = -1
-        # return source_sizes[idx]
+        # trim the morphology
+        bbox = Box.from_data(morph, min_value=0)
+        size = 2 * max((pixel_center[0]-bbox.bottom, bbox.top - pixel_center[0],
+                        pixel_center[1]-bbox.left, bbox.right - pixel_center[1]))
+        boxsize = 8
+        while boxsize < size:
+            boxsize *= 2
+        bottom = pixel_center[0] - boxsize // 2
+        top = pixel_center[0] + boxsize // 2
+        left = pixel_center[1] - boxsize // 2
+        right = pixel_center[1] + boxsize // 2
+        bbox = Box.from_bounds(bottom, top, left, right)
+        morph = bbox.image_to_box(morph)
 
         constraints = []
+        if monotonic:
+            # ... are monotonically decreasing from their center
+            constraints.append(MonotonicityConstraint())
         if symmetric:
             # most astronomical sources have 2-fold rotation
             # symmetry around their center ...
             constraints.append(SymmetryConstraint())
-        if monotonic:
-            # ... are monotonically decreasing from their center
-            constraints.append(MonotonicityConstraint())
 
         constraints += [
             # ... and are positive emitters

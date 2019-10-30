@@ -41,6 +41,7 @@ class Blend(ComponentTree):
         except TypeError:
             observations = (observations,)
         self.observations = observations
+        self.loss = []
 
     def fit(self, max_iter=200, e_rel=1e-3, **alg_kwargs):
         """Fit the model for each source to the data
@@ -65,7 +66,6 @@ class Blend(ComponentTree):
         _grad = lambda *X: tuple(l + p for l,p in zip(grad_logL(*X), grad_logP(*X)))
         _step = lambda *X, it: tuple(x.step(x, it=it) if hasattr(x.step, "__call__") else x.step for x in X)
         _prox = tuple(x.constraint for x in X)
-        self.mse = []
 
         # good defaults for adaprox
         scheme = alg_kwargs.pop('scheme', 'padam')
@@ -90,5 +90,5 @@ class Blend(ComponentTree):
         total_loss = 0
         for observation in self.observations:
             total_loss = total_loss + observation.get_loss(model)
-        self.mse.append(total_loss._value)
+        self.loss.append(total_loss._value)
         return total_loss

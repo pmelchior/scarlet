@@ -27,6 +27,38 @@ class Box(object):
             self.width = width
 
     @staticmethod
+    def from_shape(shape):
+        """Initialize a box to cover `image`
+
+        Parameters
+        ----------
+        shape: tuple
+            2D (Height, Width)
+
+        Returns
+        -------
+        bbox: `Box`
+            A new box bounded by the shape.
+        """
+        return Box((0,0), *shape)
+
+    @staticmethod
+    def from_image(image):
+        """Initialize a box to cover `image`
+
+        Parameters
+        ----------
+        image: array-like
+            2D image
+
+        Returns
+        -------
+        bbox: `Box`
+            A new box bounded by the image.
+        """
+        return Box.from_shape(image.shape)
+
+    @staticmethod
     def from_bounds(bottom, top, left, right):
         """Initialize a box from its bounds
 
@@ -43,7 +75,7 @@ class Box(object):
 
         Returns
         -------
-        result: `Box`
+        bbox: `Box`
             A new box bounded by the input bounds.
         """
         return Box((bottom, left), top-bottom, right-left)
@@ -54,7 +86,7 @@ class Box(object):
 
         Parameters
         ----------
-        X: tensor or array
+        X: array-like
             Data to threshold
         min_value: float
             Minimum value of the result.
@@ -77,15 +109,45 @@ class Box(object):
         """
         return self.width == 0 or self.height == 0
 
-    @property
-    def slices(self):
+    def slices_for(self, im_or_shape):
         """Slices for this bounding box
         """
-        if self.is_empty:
+        if hasattr(im_or_shape, 'shape'):
+            shape = im_or_shape.shape
+        else:
+            shape = im_or_shape
+
+        im_box = Box.from_shape(shape)
+        overlap = self & im_box
+        if overlap.is_empty:
             return slice(0, 0), slice(0, 0)
-        bottom, left = self.yx0
-        top, right = bottom + self.height, left + self.width
-        return slice(bottom, top), slice(left, right)
+        return slice(overlap.bottom, overlap.top), slice(overlap.left, overlap.right)
+
+    def image_to_box(self, image, box=None):
+        imbox = Box.from_image(image)
+
+        if box is None:
+            box = np.zeros(self.shape)
+        assert box.shape == self.shape
+        boxbox = Box.from_image(box)
+
+        # imbox now in the frame of this bbox (i.e. of box)
+        imbox -= self.yx0
+        overlap = imbox & boxbox
+
+        box[overlap.slices_for(box)] = image[self.slices_for(image)]
+        return box
+
+    def box_to_image(self, box, image):
+        imbox = Box.from_image(image)
+        boxbox = Box.from_image(box)
+
+        # imbox now in the frame of this bbox (i.e. of box)
+        imbox -= self.yx0
+        overlap = imbox & boxbox
+
+        image[self.slices_for(image)] = box[overlap.slices_for(box)]
+        return image
 
     @property
     def bottom(self):
@@ -177,6 +239,15 @@ class Box(object):
     def __repr__(self):
         result = "<Box yx0={0}, height={1}, width={2}>"
         return result.format(self.yx0, self.height, self.width)
+
+    def __iadd__(self, yx):
+        self.yx0 = (self.yx0[0] + yx[0], self.yx0[1] + yx[1])
+        return self
+
+    def __isub__(self, yx):
+        self.yx0 = (self.yx0[0] - yx[0], self.yx0[1] - yx[1])
+        return self
+
 
     def copy(self):
         return Box((self.yx0[0], self.yx0[1]), self.height, self.width)
