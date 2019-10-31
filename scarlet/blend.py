@@ -73,8 +73,12 @@ class Blend(ComponentTree):
         prox_max_iter = alg_kwargs.pop('prox_max_iter', 10)
         eps = alg_kwargs.pop('eps', 1e-8)
 
-        converged, g, v = proxmin.adaprox(X, _grad, _step, prox=_prox, max_iter=max_iter, e_rel=e_rel, scheme=scheme, p=p, prox_max_iter=prox_max_iter, **alg_kwargs)
-        # TODO: store v as error estimate
+        converged, G, V = proxmin.adaprox(X, _grad, _step, prox=_prox, max_iter=max_iter, e_rel=e_rel, scheme=scheme, p=p, prox_max_iter=prox_max_iter, **alg_kwargs)
+
+        # set convergence and standard deviation from optimizer 
+        for p,c,g,v in zip(X, converged, G, V):
+            p.converged = c
+            p.std = 1/np.sqrt(v) # this is rough estimate!
 
         return self
 

@@ -4,12 +4,13 @@ from autograd.core import VSpace
 from functools import partial
 
 class Parameter(np.ndarray):
-    def __new__(cls, array, prior=None, constraint=None, step=0, converged=False, fixed=False, **kwargs):
+    def __new__(cls, array, prior=None, constraint=None, step=0, converged=False, std=None, fixed=False, **kwargs):
         obj = np.asarray(array, dtype=array.dtype).view(cls)
         obj.prior = prior
         obj.constraint = constraint
         obj.step = step
         obj.converged = converged
+        obj.std = std
         obj.fixed = fixed
         return obj
 
@@ -19,6 +20,7 @@ class Parameter(np.ndarray):
         self.constraint = getattr(obj, 'constraint', None)
         self.step = getattr(obj, 'step_size', 0)
         self.converged = getattr(obj, 'converged', False)
+        self.std = getattr(obj, 'std', None)
         self.fixed = getattr(obj, 'fixed', False)
 
     @property
