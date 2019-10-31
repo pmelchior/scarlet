@@ -137,6 +137,12 @@ class FactorizedComponent(Component):
             parameters = (self._shift, self._sed, self._morph)
         super().__init__(frame, *parameters)
 
+        # store shifting structures
+        if shift is not None:
+            padding = 10
+            self.fft_shape = fft._get_fft_shape(morph, morph, padding=padding)
+            self.shifter_y, self.shifter_x = interpolation.mk_shifter(self.fft_shape)
+
         # store padding and slicing structures
         if self.bbox is not None:
             assert isinstance(self.bbox, Box)
@@ -220,17 +226,13 @@ class FactorizedComponent(Component):
 
     def _shift_morph(self, shift, morph):
         if shift is not None:
-            padding = 10
-            fft_shape = fft._get_fft_shape(morph, morph, padding=padding)
             X = fft.Fourier(morph)
-            X_fft = X.fft(fft_shape, (0,1))
+            X_fft = X.fft(self.fft_shape, (0,1))
 
             # Apply shift in Fourier
-            shifter_y, shifter_x = interpolation.mk_shifter(fft_shape)
-            result_fft = X_fft * shifter_y[:, np.newaxis] ** (-shift[0])
-            result_fft *= shifter_x[np.newaxis, :] ** (-shift[1])
+            result_fft = X_fft * (self.shifter_y[:, None] ** shift[0]) * (self.shifter_x[None, :] ** shift[1])
 
-            X = fft.Fourier.from_fft(result_fft, fft_shape, X.shape, [0,1])
+            X = fft.Fourier.from_fft(result_fft, self.fft_shape, X.shape, [0,1])
             return np.real(X.image)
         return morph
 

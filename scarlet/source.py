@@ -512,9 +512,9 @@ class MultiComponentSource(ComponentTree):
         left = self.pixel_center[1] - boxsize // 2
         right = self.pixel_center[1] + boxsize // 2
         bbox = Box.from_bounds(bottom, top, left, right)
-        morphs = list([m for m in morphs])
-        for k in range(len(seds)):
-            morphs[k] = bbox.image_to_box(morphs[k])
+        morphs_ = []
+        for k in range(len(morphs)):
+            morphs_.append(bbox.image_to_box(morphs[k]))
 
         constraints = []
         if monotonic:
@@ -536,16 +536,21 @@ class MultiComponentSource(ComponentTree):
 
         components = []
         for k in range(len(seds)):
-            sed = Parameter(seds[k], name="sed", step=partial(relative_step, factor=1e-3), constraint=PositivityConstraint())
-            morph = Parameter(morphs[k], name="morph", step=1e-2, constraint=morph_constraint)
+            sed = Parameter(seds[k], name="sed", step=partial(relative_step, factor=1e-2), constraint=PositivityConstraint())
+            morph = Parameter(morphs_[k], name="morph", step=1e-2, constraint=morph_constraint)
             components.append(FactorizedComponent(frame, sed, morph, bbox=bbox, shift=shift))
             components[-1].pixel_center = self.pixel_center
         super().__init__(components)
 
     @property
+    def shift(self):
+        c = self.components[0]
+        return c.shift
+
+    @property
     def center(self):
         c = self.components[0]
         if len(c.parameters) == 3:
-            return self.pixel_center + self.shift
+            return self.pixel_center + c.shift
         else:
             return self.pixel_center

@@ -248,7 +248,6 @@ class Box(object):
         self.yx0 = (self.yx0[0] - yx[0], self.yx0[1] - yx[1])
         return self
 
-
     def copy(self):
         return Box((self.yx0[0], self.yx0[1]), self.height, self.width)
 
