@@ -13,12 +13,6 @@ import logging
 logger = logging.getLogger("scarlet.source")
 
 
-class SourceInitError(Exception):
-    """Error during source initialization
-    """
-    pass
-
-
 def get_pixel_sed(sky_coord, observation):
     """Get the SED at `sky_coord` in `observation`
 
@@ -156,15 +150,10 @@ def init_extended_source(sky_coord, frame, observations, obs_idx=0,
         seds.append(_sed)
     sed = np.concatenate(seds).flatten()
 
-    if np.any(sed <= 0):
+    if np.all(sed <= 0):
         # If the flux in all channels is  <=0,
-        # the new sed will be filled with NaN values,
-        # which will cause the code to crash later
         msg = "Zero or negative SED {} at y={}, x={}".format(sed, *sky_coord)
-        if np.all(sed <= 0):
-            logger.warning(msg)
-        else:
-            logger.info(msg)
+        logger.warning(msg)
 
     # which observation to use for detection and morphology
     obs_ = observations[obs_idx]
@@ -173,7 +162,6 @@ def init_extended_source(sky_coord, frame, observations, obs_idx=0,
     except:
         raise AttributeError("Observation.weights missing! Please set inverse variance weights")
     morph, bg_cutoff = build_detection_coadd(seds[obs_idx], bg_rms, obs_, thresh)
-
 
     # Apply the necessary constraints
     center = frame.get_pixel(sky_coord)
@@ -189,8 +177,8 @@ def init_extended_source(sky_coord, frame, observations, obs_idx=0,
     # trim morph to pixels above threshold
     mask = morph > bg_cutoff
     if mask.sum() == 0:
-        msg = "No flux above threshold={2} for source at y={0} x={1}"
-        raise SourceInitError(msg.format(*center, bg_cutoff))
+        msg = "No flux above threshold={2} for source at y={0} x={1}".format(*center, bg_cutoff)
+        logger.warning(msg)
     morph[~mask] = 0
 
     # normalize to unity at peak pixel
@@ -246,15 +234,12 @@ def init_multicomponent_source(sky_coord, frame, observations, obs_idx=0, flux_p
     seds = get_best_fit_seds(morphs, frame, observations[obs_idx])
 
     for k in range(K):
-        if np.any(seds[k] <= 0):
+        if np.all(seds[k] <= 0):
             # If the flux in all channels is  <=0,
             # the new sed will be filled with NaN values,
             # which will cause the code to crash later
             msg = "Zero or negative SED {} for component {} at y={}, x={}".format(seds[k], k, *sky_coord)
-            if np.all(sed <= 0):
-                logger.warning(msg)
-            else:
-                logger.info(msg)
+            logger.warning(msg)
 
     return seds, morphs
 
