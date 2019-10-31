@@ -1,3 +1,4 @@
+import numpy.ma as ma
 import autograd.numpy as np
 from autograd import grad
 import proxmin
@@ -79,7 +80,7 @@ class Blend(ComponentTree):
         # set convergence and standard deviation from optimizer
         for p,c,g,v in zip(X, converged, G, V):
             p.converged = c
-            p.std = 1/np.sqrt(v) # this is rough estimate!
+            p.std = 1/np.sqrt(ma.masked_equal(v, 0)) # this is rough estimate!
 
         return self
 
@@ -102,6 +103,8 @@ class Blend(ComponentTree):
     def _convergence_callback(self, *parameters, it=None, f_rel=1e-3, callback=None):
         if it > 1 and abs(self.loss[-2] - self.loss[-1]) < f_rel * self.loss[-1]:
             raise StopIteration("scarlet.Blend.fit() converged")
+
+        self.update()
 
         if callback is not None:
             callback(*parameters, it=it)
