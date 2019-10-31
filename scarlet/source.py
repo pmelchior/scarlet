@@ -315,7 +315,7 @@ class PointSource(FunctionComponent):
             Observation(s) to initialize this source
         """
         C, Ny, Nx = frame.shape
-        self.center = np.array(frame.get_pixel(sky_coord))
+        self.center = np.array(frame.get_pixel(sky_coord), dtype='float')
 
         # initialize SED from sky_coord
         try:
@@ -342,8 +342,8 @@ class PointSource(FunctionComponent):
                 logger.info(msg)
 
         # set up parameters
-        sed = Parameter(sed, name="sed", step=default_step, constraint=PositivityConstraint())
-        center = Parameter(self.center, name="center", step=1e-3)
+        sed = Parameter(sed, name="sed", step=partial(relative_step, factor=1e-3), constraint=PositivityConstraint())
+        center = Parameter(self.center, name="center", step=1e-4)
 
         super().__init__(frame, sed, center, func)
 
@@ -427,7 +427,7 @@ class ExtendedSource(FactorizedComponent):
         ]
         morph_constraint = ConstraintChain(*constraints)
 
-        morph = Parameter(morph, name="morph", step=1e-2, constraint=morph_constraint)
+        morph = Parameter(morph, name="morph", step=1e-3, constraint=morph_constraint)
 
         super().__init__(frame, sed, morph, bbox=bbox, shift=shift)
 
@@ -537,7 +537,7 @@ class MultiComponentSource(ComponentTree):
         components = []
         for k in range(len(seds)):
             sed = Parameter(seds[k], name="sed", step=partial(relative_step, factor=1e-2), constraint=PositivityConstraint())
-            morph = Parameter(morphs_[k], name="morph", step=1e-2, constraint=morph_constraint)
+            morph = Parameter(morphs_[k], name="morph", step=1e-3, constraint=morph_constraint)
             components.append(FactorizedComponent(frame, sed, morph, bbox=bbox, shift=shift))
             components[-1].pixel_center = self.pixel_center
         super().__init__(components)

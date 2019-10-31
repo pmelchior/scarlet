@@ -1,11 +1,11 @@
 import autograd.numpy as np
 from autograd import grad
 import proxmin
+from functools import partial
 
 from .component import ComponentTree
 
 import logging
-
 logger = logging.getLogger("scarlet.blend")
 
 
@@ -43,7 +43,7 @@ class Blend(ComponentTree):
         self.observations = observations
         self.loss = []
 
-    def fit(self, max_iter=200, e_rel=1e-3, **alg_kwargs):
+    def fit(self, max_iter=200, e_rel=1e-3, f_rel=1e-4, **alg_kwargs):
         """Fit the model for each source to the data
 
         Parameters
@@ -69,13 +69,14 @@ class Blend(ComponentTree):
 
         # good defaults for adaprox
         scheme = alg_kwargs.pop('scheme', 'padam')
-        p = alg_kwargs.pop('p', 0.4)
+        p = alg_kwargs.pop('p', 0.2)
         prox_max_iter = alg_kwargs.pop('prox_max_iter', 10)
         eps = alg_kwargs.pop('eps', 1e-8)
+        callback = partial(self._convergence_callback, f_rel=f_rel, callback=alg_kwargs.pop('callback', None))
 
-        converged, G, V = proxmin.adaprox(X, _grad, _step, prox=_prox, max_iter=max_iter, e_rel=e_rel, scheme=scheme, p=p, prox_max_iter=prox_max_iter, **alg_kwargs)
+        converged, G, V = proxmin.adaprox(X, _grad, _step, prox=_prox, max_iter=max_iter, e_rel=e_rel, scheme=scheme, p=p, prox_max_iter=prox_max_iter, callback=callback, **alg_kwargs)
 
-        # set convergence and standard deviation from optimizer 
+        # set convergence and standard deviation from optimizer
         for p,c,g,v in zip(X, converged, G, V):
             p.converged = c
             p.std = 1/np.sqrt(v) # this is rough estimate!
@@ -97,3 +98,10 @@ class Blend(ComponentTree):
             total_loss = total_loss + observation.get_loss(model)
         self.loss.append(total_loss._value)
         return total_loss
+
+    def _convergence_callback(self, *parameters, it=None, f_rel=1e-3, callback=None):
+        if it > 1 and abs(self.loss[-2] - self.loss[-1]) < f_rel * self.loss[-1]:
+            raise StopIteration("scarlet.Blend.fit() converged")
+
+        if callback is not None:
+            callback(*parameters, it=it)
