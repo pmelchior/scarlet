@@ -265,11 +265,8 @@ class FunctionComponent(FactorizedComponent):
         parameters = (self._sed, self._fparams)
         super().__init__(frame, *parameters)
 
-        y = np.arange(frame.shape[1])
-        x = np.arange(frame.shape[2])
-        from functools import partial
-        self._func = partial(func, y=y, x=x)
-        self._morph = self._func(*self._fparams)
+        self.func = func
+        self._morph = self.func(*self._fparams)
 
     @property
     def morph(self):
@@ -297,7 +294,7 @@ class FunctionComponent(FactorizedComponent):
             if p._value is self._sed:
                 sed = p
             if p._value is self._fparams:
-                morph = self._func(*p)
+                morph = self.func(*p)
                 self._morph[:,:] = morph._value
         return sed[:, None, None] * morph[None, :, :]
 

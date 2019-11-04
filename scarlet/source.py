@@ -4,7 +4,6 @@ from .component import *
 from .bbox import *
 from . import operator
 from . import measurement
-from .psf import generate_psf_image, gaussian
 
 # make sure that import * above doesn't import its own stock numpy
 import autograd.numpy as np
@@ -56,12 +55,12 @@ def get_psf_sed(sky_coord, observation, frame):
     sed = get_pixel_sed(sky_coord, observation)
 
     # approx. correct PSF width variations from SED by normalizing heights
-    if observation.frame.psfs is not None:
+    if observation.frame.psf is not None:
         # Account for the PSF in the intensity
-        sed /= observation.frame.psfs.max(axis=(1, 2))
+        sed /= observation.frame.psf.image.max(axis=(1, 2))
 
-    if frame.psfs is not None:
-        sed = sed * frame.psfs[0].max()
+    if frame.psf is not None:
+        sed = sed * frame.psf.image[0].max()
 
     return sed
 
@@ -276,10 +275,6 @@ class RandomSource(FactorizedComponent):
         super().__init__(frame, sed, morph)
 
 
-def gauss_func(yc, xc, sigma=1, x=None, y=None):
-    # Smax normalization
-    amplitude = 1 #/(np.pi**2*sigma**2)
-    return amplitude * np.exp(-(yc-y)**2/(2*sigma**2))[:,None] * np.exp(-(xc-x)**2/(2*sigma**2))[None,:]
 
 class PointSource(FunctionComponent):
     """Source intialized with a single pixel
@@ -287,7 +282,7 @@ class PointSource(FunctionComponent):
     Point sources are initialized with the SED of the center pixel,
     and the morphology taken from `frame.psfs`, centered at `sky_coord`.
     """
-    def __init__(self, frame, sky_coord, observations, func=None):
+    def __init__(self, frame, sky_coord, observations):
         """Source intialized with a single pixel
 
         Parameters
@@ -330,7 +325,10 @@ class PointSource(FunctionComponent):
         sed = Parameter(sed, name="sed", step=partial(relative_step, factor=1e-3), constraint=PositivityConstraint())
         center = Parameter(self.center, name="center", step=1e-4)
 
-        super().__init__(frame, sed, center, func)
+        _psf_wrapper = lambda *parameters: frame.psf.__call__(*parameters)[0]
+        
+        super().__init__(frame, sed, center, _psf_wrapper)
+
 
 
 class ExtendedSource(FactorizedComponent):

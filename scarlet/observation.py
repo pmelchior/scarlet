@@ -1,102 +1,13 @@
 import autograd.numpy as np
 from scipy import fftpack
 
+from .frame import Frame
 from . import interpolation
 from . import fft
 from . import resampling
 
 import logging
-
 logger = logging.getLogger("scarlet.observation")
-
-
-class Frame():
-    """Spatial and spectral characteristics of the data
-
-    Attributes
-    ----------
-    shape: tuple
-        (channels, Ny, Nx) shape of the model image
-    wcs: TBD
-        World Coordinates
-    psfs: array or tensor
-        PSF in each band
-    channels: list of hashable elements
-        Names/identifiers of spectral channels
-    dtype: `numpy.dtype`
-        Dtype to represent the data.
-    """
-    def __init__(self, shape, wcs=None, psfs=None, channels=None, dtype=np.float32):
-        assert len(shape) == 3
-        self._shape = tuple(shape)
-        self.wcs = wcs
-
-        if psfs is None:
-            logger.warning('No PSFs specified. Possible, but dangerous!')
-        else:
-            msg = 'PSFs need to have shape (1,Ny,Nx) for Blend and (B,Ny,Nx) for Observation'
-            assert len(psfs) == 1 or len(psfs) == shape[0], msg
-            if not isinstance(psfs, fft.Fourier):
-                psfs = fft.Fourier(psfs)
-            if not np.allclose(psfs.sum(axis=(1, 2)), 1):
-                logger.warning('PSFs not normalized. Normalizing now..')
-                psfs.normalize()
-
-            if dtype != psfs.image.dtype:
-                msg = "Dtypes of PSFs and Frame different. Casting PSFs to {}".format(dtype)
-                logger.warning(msg)
-                psfs.update_dtype(dtype)
-
-        self._psfs = psfs
-
-        assert channels is None or len(channels) == shape[0]
-        self.channels = channels
-        self.dtype = dtype
-
-    @property
-    def C(self):
-        """Number of channels in the model
-        """
-        return self._shape[0]
-
-    @property
-    def Ny(self):
-        """Number of pixel in the y-direction
-        """
-        return self._shape[1]
-
-    @property
-    def Nx(self):
-        """Number of pixels in the x-direction
-        """
-        return self._shape[2]
-
-    @property
-    def shape(self):
-        """Shape of the model.
-        """
-        return self._shape
-
-    @property
-    def psfs(self):
-        return self._psfs
-
-    def get_pixel(self, sky_coord):
-        """Get the pixel coordinate from a world coordinate
-        If there is no WCS associated with the `Scene`,
-        meaning the data frame and model frame are the same,
-        then this just returns the `sky_coord`
-        """
-        if self.wcs is not None:
-            if self.wcs.naxis == 3:
-                coord = self.wcs.wcs_world2pix(sky_coord[0], sky_coord[1], 0, 0)
-            elif self.wcs.naxis == 2:
-                coord = self.wcs.wcs_world2pix(sky_coord[0], sky_coord[1], 0)
-            else:
-                raise ValueError("Invalid number of wcs dimensions: {0}".format(self.wcs.naxis))
-            return (int(coord[0].item()), int(coord[1].item()))
-
-        return tuple(int(coord) for coord in sky_coord)
 
 
 class Observation():
@@ -119,14 +30,14 @@ class Observation():
         prevent artifacts from the FFT.
     """
 
-    def __init__(self, images, psfs=None, weights=None, wcs=None, channels=None, padding=10):
+    def __init__(self, images, psf=None, weights=None, wcs=None, channels=None, padding=10):
         """Create an Observation
 
         Parameters
         ---------
         images: array or tensor
             3D data cube (channels, Ny, Nx) of the image in each band.
-        psfs: array or tensor
+        psf: array or tensor
             PSF for each band in `images`.
         weights: array or tensor
             Weight for each pixel in `images`.
@@ -142,7 +53,7 @@ class Observation():
             half the width of the PSF, for FFTs. This is needed to
             prevent artifacts from the FFT.
         """
-        self.frame = Frame(images.shape, wcs=wcs, psfs=psfs, channels=channels, dtype=images.dtype)
+        self.frame = Frame(images.shape, wcs=wcs, psf=psf, channels=channels, dtype=images.dtype)
 
         self.images = np.array(images)
         if weights is not None:
@@ -177,8 +88,6 @@ class Observation():
             self.images = self.images.astype(model_frame.dtype)
             if type(self.weights) is np.ndarray:
                 self.weights = self.weights.astype(model_frame.dtype)
-            if self.frame._psfs is not None:
-                self.frame.psfs.update_dtype(model_frame.dtype)
 
         #  channels of model that are represented in this observation
         self._band_slice = slice(None)
@@ -189,9 +98,11 @@ class Observation():
             self._band_slice = slice(bmin, bmax + 1)
 
         self._diff_kernels = None
-        if self.frame.psfs is not model_frame.psfs:
-            assert self.frame.psfs is not None and model_frame.psfs is not None
-            self._diff_kernels = fft.match_psfs(self.frame.psfs, model_frame.psfs)
+        if self.frame.psf is not model_frame.psf:
+            assert self.frame.psf is not None and model_frame.psf is not None
+            psf = fft.Fourier(self.frame.psf.update_dtype(model_frame.dtype).image)
+            model_psf = fft.Fourier(model_frame.psf.update_dtype(model_frame.dtype).image)
+            self._diff_kernels = fft.match_psfs(psf, model_psf)
 
         return self
 
@@ -241,13 +152,13 @@ class Observation():
 
 class LowResObservation(Observation):
 
-    def __init__(self, images, wcs=None, psfs=None, weights=None, channels=None, padding=3, operator = 'exact'):
+    def __init__(self, images, wcs=None, psf=None, weights=None, channels=None, padding=3, operator = 'exact'):
 
         assert wcs is not None, "WCS is necessary for LowResObservation"
-        assert psfs is not None, "PSFs are necessary for LowResObservation"
+        assert psf is not None, "PSF is necessary for LowResObservation"
         assert operator in ['exact', 'bilinear', 'SVD']
 
-        super().__init__(images, wcs=wcs, psfs=psfs, weights=weights, channels=channels, padding=padding)
+        super().__init__(images, wcs=wcs, psf=psf, weights=weights, channels=channels, padding=padding)
 
     def match_psfs(self, psf_hr, wcs_hr, angle):
         '''psf matching between different dataset
@@ -272,13 +183,13 @@ class LowResObservation(Observation):
             low resolution psf at matching size and resolution
         '''
 
-        psf_lr = self.frame.psfs.image
+        psf_lr = self.frame.psf.image
         wcs_lr = self.frame.wcs
 
         ny_hr, nx_hr = psf_hr.shape
         npsf_bands, ny_lr, nx_lr = psf_lr.shape
 
-        # Createsa wcs for psfs centered around the frame center
+        # Createsa wcs for psf centered around the frame center
         psf_wcs_hr = wcs_hr.deepcopy()
         psf_wcs_lr = wcs_lr.deepcopy()
 
@@ -332,7 +243,7 @@ class LowResObservation(Observation):
         whr = model_frame.wcs
 
         # Reference PSF
-        _target = model_frame.psfs.image[0, :, :]
+        _target = model_frame.psf.image[0, :, :]
 
         # Computes spatially matching observation and target psfs. The observation psf is also resampled \\
         # to the model frame resolution
@@ -411,8 +322,8 @@ class LowResObservation(Observation):
             self.images = self.images.astype(model_frame.dtype)
             if type(self.weights) is np.ndarray:
                 self.weights = self.weights.astype(model_frame.dtype)
-            if self.frame._psfs is not None:
-                self.frame._psfs.update_dtype(model_frame.dtype)
+            if self.frame._psf is not None:
+                self.frame._psf.update_dtype(model_frame.dtype)
 
         #  channels of model that are represented in this observation
         self._band_slice = slice(None)
@@ -477,7 +388,7 @@ class LowResObservation(Observation):
         # the smaller frame axis:
         self.small_axis = (self.frame.Nx <= self.frame.Ny)
 
-        self._fft_shape = fft._get_fft_shape(model_frame.psfs, np.zeros(model_frame.shape), padding=3,
+        self._fft_shape = fft._get_fft_shape(model_frame.psf, np.zeros(model_frame.shape), padding=3,
                                              axes=[-2, -1], max=True)
         diff_psf = fft.Fourier(fft._pad(diff_psf.image, self._fft_shape, axes = (1,2)))
         if self.isrot:
