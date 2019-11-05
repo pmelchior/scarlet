@@ -27,13 +27,14 @@ class Frame():
 
         if psf is None:
             logger.warning('No PSF specified. Possible, but dangerous!')
+            self._psf = None
         else:
-            assert isinstance(psf, PSF)
-            if psf._func is None:
-                assert psf.shape[0] == shape[0], "PSF image must have the same channels as Frame"
+            if isinstance(psf, PSF):
+                self._psf = psf
             else:
-                psf.shape = (1, shape[1], shape[2])
-        self._psf = psf
+                self._psf = PSF(psf)
+            if self._psf._func is not None:
+                self._psf.shape = (None, shape[1], shape[2])
 
         assert channels is None or len(channels) == shape[0]
         self.channels = channels

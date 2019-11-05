@@ -32,7 +32,7 @@ def moffat(y, x, alpha=4.7, beta=1.5, shape=None):
     Y = np.arange(shape[2])
     X, Y = np.meshgrid(X, Y)
     # TODO: has not pixel-integration formula
-    return ((1+((X-x)**2+(Y-y)**2)/alpha**2)**-beta).reshape(shape)
+    return ((1+((X-x)**2+(Y-y)**2)/alpha**2)**-beta)[None,:,:]
 
 def gaussian(y, x, sigma=1, integrate=True, shape=None):
     """Circular Gaussian Function
@@ -65,7 +65,7 @@ def gaussian(y, x, sigma=1, integrate=True, shape=None):
         sqrt2 = np.sqrt(2)
         f = lambda x: np.sqrt(np.pi/2) * sigma * (scipy.special.erf((0.5 - x)/(sqrt2 * sigma)) + scipy.special.erf((2*x + 1)/(2*sqrt2*sigma)))
 
-    return (f(Y-y)[:,None] * f(X-x)[None,:]).reshape(shape)
+    return (f(Y-y)[:,None] * f(X-x)[None,:])[None,:,:]
 
 
 class PSF:
@@ -88,6 +88,8 @@ class PSF:
     def __call__(self, y, x, shape=None):
         if shape is None:
             shape = self.shape
+        assert shape is not None, "Set PSF.shape first"
+
         if self._func is not None:
             # TODO: connect to oversampling
             return self._func(y, x, shape=shape)
@@ -96,6 +98,7 @@ class PSF:
     @property
     def image(self):
         if self._image is None:
+            assert self.shape is not None, "Set PSF.shape first"
             y, x = self.shape[1] // 2, self.shape[2] // 2
             self._image = self.__call__(y, x)
             self.normalize()

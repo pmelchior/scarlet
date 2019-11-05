@@ -326,7 +326,7 @@ class PointSource(FunctionComponent):
         center = Parameter(self.center, name="center", step=1e-4)
 
         _psf_wrapper = lambda *parameters: frame.psf.__call__(*parameters)[0]
-        
+
         super().__init__(frame, sed, center, _psf_wrapper)
 
 
