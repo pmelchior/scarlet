@@ -1,6 +1,5 @@
 import autograd.numpy as np
-from functools import partial
-from .interpolation import apply_2D_trapezoid_rule
+import autograd.scipy as scipy
 
 def moffat(y, x, alpha=4.7, beta=1.5, shape=None):
     """Symmetric 2D Moffat function
@@ -32,9 +31,10 @@ def moffat(y, x, alpha=4.7, beta=1.5, shape=None):
     X = np.arange(shape[1])
     Y = np.arange(shape[2])
     X, Y = np.meshgrid(X, Y)
+    # TODO: has not pixel-integration formula
     return ((1+((X-x)**2+(Y-y)**2)/alpha**2)**-beta).reshape(shape)
 
-def gaussian(y, x, sigma=1, shape=None):
+def gaussian(y, x, sigma=1, integrate=True, shape=None):
     """Circular Gaussian Function
 
     Parameters
@@ -45,6 +45,8 @@ def gaussian(y, x, sigma=1, shape=None):
         Horizontal coordinate of the center
     sigma: float
         Standard deviation of the gaussian
+    integrate: bool
+        Whether pixel integration is performed
     shape: tuple
         Shape of the resulting array, typically `(C, Height, Width)`
         Note `C=None` is expected for model PSFs
@@ -57,7 +59,13 @@ def gaussian(y, x, sigma=1, shape=None):
     """
     Y = np.arange(shape[1])
     X = np.arange(shape[2])
-    return (np.exp(-(y-Y)**2/(2*sigma**2))[:,None] * np.exp(-(x-X)**2/(2*sigma**2))).reshape(shape)
+    if not integrate:
+        f = lambda X: np.exp(-X**2/(2*sigma**2))
+    else:
+        sqrt2 = np.sqrt(2)
+        f = lambda x: np.sqrt(np.pi/2) * sigma * (scipy.special.erf((0.5 - x)/(sqrt2 * sigma)) + scipy.special.erf((2*x + 1)/(2*sqrt2*sigma)))
+
+    return (f(Y-y)[:,None] * f(X-x)[None,:]).reshape(shape)
 
 
 class PSF:
@@ -102,40 +110,3 @@ class PSF:
         if self.image.dtype != dtype:
             self._image = self._image.astype(dtype)
         return self
-        
-
-def generate_psf_image(func, shape, subsamples=10, normalize=True, **kwargs):
-    """Generate a PSF image based on a function and shape
-
-    This function uses a subdivided pixel scale to sample `func` at
-    higher frequencies and uses the trapezoid rule to estimate the integral
-    in each subsampled region. The subsampled pixel are then summed to
-    give the estimated integration values for each pixel at the scale requested
-    by `shape`.
-
-    Parameters
-    ----------
-    shape: tuple
-        Expected shape of the output image.
-    subsamples: int
-        Number of pixels to subdivide each output pixel for
-        a more accurate integration.
-    normalize: bool
-        Whether or not to normalize the PSF.
-    kwargs: keyword arguments
-        Keyword arguments to pass to `func`.
-
-    Returns
-    -------
-    result: array
-        Integrated image generated
-    """
-    ry, rx = np.array(shape) // 2
-
-    y = np.linspace(-ry, ry, shape[0])
-    x = np.linspace(-rx, rx, shape[1])
-    f = partial(func, **kwargs)
-    result = apply_2D_trapezoid_rule(y, x, f, subsamples)
-    if normalize:
-        result /= result.sum()
-    return result
