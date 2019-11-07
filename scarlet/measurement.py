@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def max_pixel(morph, center=None, window=None):
     """Use the pixel with the maximum flux as the center
 
@@ -22,7 +23,10 @@ def max_pixel(morph, center=None, window=None):
     cy, cx = np.int(center[0]), np.int(center[1])
 
     if window is None:
-        window = slice(cy-2, cy+3), slice(cx-2, cx+3)
+        ymax = morph.shape[0] - 1
+        xmax = morph.shape[1] - 1
+        window = (slice(np.max([cy-2, 0]), np.min([cy+3, ymax])),
+                  slice(np.max([cx-2, 0]), np.max([cx+3, xmax])))
 
     _morph = morph[window]
     yx0 = np.array([window[0].start, window[1].start])
