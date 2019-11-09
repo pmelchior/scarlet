@@ -54,6 +54,7 @@ class Constraint:
             return self.f(X, step)
         return X
 
+
 class ConstraintChain:
     """A ordered list of `Constraint`s.
 
@@ -77,11 +78,13 @@ class ConstraintChain:
                 X = c(X, step)
         return X
 
+
 class PositivityConstraint(Constraint):
     """Allow only non-negative elements.
     """
     def __init__(self):
         super().__init__(proxmin.operators.prox_plus)
+
 
 class NormalizationConstraint(Constraint):
     def __init__(self, type='sum'):
@@ -105,7 +108,7 @@ class NormalizationConstraint(Constraint):
         return X
 
 
-def L0Constraint(Constraint):
+class L0Constraint(Constraint):
     def __init__(self, thresh):
         """L0 norm (sparsity) penalty
 
@@ -116,7 +119,7 @@ def L0Constraint(Constraint):
         super().__init__(partial(proxmin.operators.prox_hard, thresh=thresh))
 
 
-def L1Constraint(Constraint):
+class L1Constraint(Constraint):
     def __init__(self, thresh):
         """L1 norm (sparsity) penalty
 
@@ -127,7 +130,7 @@ def L1Constraint(Constraint):
         super().__init__(partial(proxmin.operators.prox_soft, thresh=thresh))
 
 
-def ThresholdConstraint(component):
+class ThresholdConstraint(component):
     """Set a cutoff threshold for pixels below the noise
 
     Use the log histogram of pixel values to determine when the
