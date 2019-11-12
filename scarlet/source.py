@@ -170,7 +170,7 @@ def init_extended_source(sky_coord, frame, observations, obs_idx=0,
     if monotonic:
         # use finite thresh to remove flat bridges
         prox_monotonic = operator.prox_strict_monotonic(morph.shape, use_nearest=False,
-                                                        center=center, thresh=thresh)
+                                                        center=center, thresh=0.1)
         morph = prox_monotonic(morph, 0).reshape(morph.shape)
 
     # trim morph to pixels above threshold
@@ -322,8 +322,8 @@ class PointSource(FunctionComponent):
                 logger.info(msg)
 
         # set up parameters
-        sed = Parameter(sed, name="sed", step=partial(relative_step, factor=1e-3), constraint=PositivityConstraint())
-        center = Parameter(self.center, name="center", step=1e-4)
+        sed = Parameter(sed, name="sed", step=partial(relative_step, factor=1e-1), constraint=PositivityConstraint())
+        center = Parameter(self.center, name="center", step=1e-1)
 
         _psf_wrapper = lambda *parameters: frame.psf.__call__(*parameters)[0]
 
@@ -332,7 +332,7 @@ class PointSource(FunctionComponent):
 
 
 class ExtendedSource(FactorizedComponent):
-    def __init__(self, frame, sky_coord, observations, obs_idx=0, thresh=0.1,
+    def __init__(self, frame, sky_coord, observations, obs_idx=0, thresh=3,
                  symmetric=True, monotonic=True, shifting=False):
         """Extended source intialized to match a set of observations
 
@@ -364,7 +364,7 @@ class ExtendedSource(FactorizedComponent):
         self.pixel_center = tuple(np.round(center).astype('int'))
 
         if shifting:
-            shift = Parameter(center - self.pixel_center, name="shift", step=1e-4)
+            shift = Parameter(center - self.pixel_center, name="shift", step=1e-1)
         else:
             shift = None
 
@@ -375,7 +375,7 @@ class ExtendedSource(FactorizedComponent):
             symmetric=True,
             monotonic=monotonic)
 
-        sed = Parameter(sed, name="sed", step=partial(relative_step, factor=1e-3), constraint=PositivityConstraint())
+        sed = Parameter(sed, name="sed", step=partial(relative_step, factor=1e-2), constraint=PositivityConstraint())
 
         # trim the morphology
         bbox = Box.from_data(morph, min_value=0)
@@ -410,7 +410,7 @@ class ExtendedSource(FactorizedComponent):
         ]
         morph_constraint = ConstraintChain(*constraints)
 
-        morph = Parameter(morph, name="morph", step=1e-3, constraint=morph_constraint)
+        morph = Parameter(morph, name="morph", step=1e-2, constraint=morph_constraint)
 
         super().__init__(frame, sed, morph, bbox=bbox, shift=shift)
 
@@ -471,7 +471,7 @@ class MultiComponentSource(ComponentTree):
         self.pixel_center = tuple(np.round(center).astype('int'))
 
         if shifting:
-            shift = Parameter(center - self.pixel_center, name="shift", step=1e-4)
+            shift = Parameter(center - self.pixel_center, name="shift", step=1e-1)
         else:
             shift = None
 
@@ -519,8 +519,8 @@ class MultiComponentSource(ComponentTree):
 
         components = []
         for k in range(len(seds)):
-            sed = Parameter(seds[k], name="sed", step=partial(relative_step, factor=1e-2), constraint=PositivityConstraint())
-            morph = Parameter(morphs_[k], name="morph", step=1e-3, constraint=morph_constraint)
+            sed = Parameter(seds[k], name="sed", step=partial(relative_step, factor=1e-1), constraint=PositivityConstraint())
+            morph = Parameter(morphs_[k], name="morph", step=1e-2, constraint=morph_constraint)
             components.append(FactorizedComponent(frame, sed, morph, bbox=bbox, shift=shift))
             components[-1].pixel_center = self.pixel_center
         super().__init__(components)

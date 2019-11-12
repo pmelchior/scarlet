@@ -130,7 +130,7 @@ class L1Constraint(Constraint):
         super().__init__(partial(proxmin.operators.prox_soft, thresh=thresh))
 
 
-class ThresholdConstraint(component):
+class ThresholdConstraint(Constraint):
     """Set a cutoff threshold for pixels below the noise
 
     Use the log histogram of pixel values to determine when the

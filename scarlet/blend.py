@@ -69,13 +69,12 @@ class Blend(ComponentTree):
         _prox = tuple(x.constraint for x in X)
 
         # good defaults for adaprox
-        scheme = alg_kwargs.pop('scheme', 'padam')
-        p = alg_kwargs.pop('p', 0.2)
+        scheme = alg_kwargs.pop('scheme', 'amsgrad')
         prox_max_iter = alg_kwargs.pop('prox_max_iter', 10)
         eps = alg_kwargs.pop('eps', 1e-8)
         callback = partial(self._convergence_callback, f_rel=f_rel, callback=alg_kwargs.pop('callback', None))
 
-        converged, G, V = proxmin.adaprox(X, _grad, _step, prox=_prox, max_iter=max_iter, e_rel=e_rel, scheme=scheme, p=p, prox_max_iter=prox_max_iter, callback=callback, **alg_kwargs)
+        converged, G, V = proxmin.adaprox(X, _grad, _step, prox=_prox, max_iter=max_iter, e_rel=e_rel, scheme=scheme, prox_max_iter=prox_max_iter, callback=callback, **alg_kwargs)
 
         # set convergence and standard deviation from optimizer
         for p,c,g,v in zip(X, converged, G, V):
