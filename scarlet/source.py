@@ -178,12 +178,12 @@ def init_extended_source(sky_coord, frame, observations, obs_idx=0,
     if mask.sum() == 0:
         msg = "No flux above threshold={2} for source at y={0} x={1}".format(*center, bg_cutoff)
         logger.warning(msg)
-    morph[~mask] = 0
-
-    # normalize to unity at peak pixel
-    cy, cx = np.array(center).astype(int)
-    center_morph = morph[cy, cx]
-    morph /= center_morph
+    else:
+        morph[~mask] = 0
+        # normalize to unity at peak pixel
+        cy, cx = np.array(center).astype(int)
+        center_morph = morph[cy, cx]
+        morph /= center_morph
 
     return sed, morph
 
@@ -381,7 +381,7 @@ class ExtendedSource(FactorizedComponent):
         bbox = Box.from_data(morph, min_value=0)
         size = 2 * max((self.pixel_center[0] - bbox.bottom, bbox.top - self.pixel_center[0],
                         self.pixel_center[1] - bbox.left, bbox.right - self.pixel_center[1]))
-        boxsize = 8
+        boxsize = 16
         while boxsize < size:
             boxsize *= 2
         bottom = self.pixel_center[0] - boxsize // 2

@@ -96,11 +96,15 @@ class Box(object):
         bbox: `Box`
             Bounding box for the thresholded `X` (bottom, top, left, right)
         """
-        nonzero = np.where(X > min_value)
-        left = nonzero[1].min()
-        right = nonzero[1].max()
-        bottom = nonzero[0].min()
-        top = nonzero[0].max()
+        sel = X > min_value
+        if sel.any():
+            nonzero = np.where(sel)
+            left = nonzero[1].min()
+            right = nonzero[1].max()
+            bottom = nonzero[0].min()
+            top = nonzero[0].max()
+        else:
+            left = right = bottom = top = 0
         return Box.from_bounds(bottom, top, left, right)
 
     @property
