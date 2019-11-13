@@ -65,7 +65,7 @@ def get_psf_sed(sky_coord, observation, frame):
     return sed
 
 
-def get_best_fit_seds(morphs, frame, observation):
+def get_best_fit_seds(morphs, frame, images):
     """Calculate best fitting SED for multiple components.
 
     Solves min_A ||img - AS||^2 for the SED matrix A,
@@ -77,7 +77,7 @@ def get_best_fit_seds(morphs, frame, observation):
         Morphology for each component in the source.
     frame: `scarlet.observation.frame`
         The frame of the model
-    observation: `~scarlet.Observation`
+    images: array
         Observation to extract SEDs from.
 
     Returns
@@ -86,13 +86,12 @@ def get_best_fit_seds(morphs, frame, observation):
     """
     K = len(morphs)
     _morph = morphs.reshape(K, -1)
-    images = observation.images
-    data = images.reshape(observation.frame.C, -1)
+    data = images.reshape(images.shape[0], -1)
     seds = np.dot(np.linalg.inv(np.dot(_morph, _morph.T)), np.dot(_morph, data.T))
     return seds
 
 
-def build_detection_coadd(sed, bg_rms, observation, thresh=1):
+def build_detection_coadd(sed, bg_rms, observation):
     """Build a channel weighted coadd to use for source detection
 
     Parameters
@@ -103,9 +102,6 @@ def build_detection_coadd(sed, bg_rms, observation, thresh=1):
         Background RMS in each channel in observation.
     observation: `~scarlet.observation.Observation`
         Observation to use for the coadd.
-    thresh: `float`
-        Multiple of the backround RMS used as a
-        flux cutoff.
 
     Returns
     -------
@@ -126,7 +122,7 @@ def build_detection_coadd(sed, bg_rms, observation, thresh=1):
     detect = np.einsum('i,i...', weights, positive_img) / jacobian
 
     # thresh is multiple above the rms of detect (weighted variance across channels)
-    bg_cutoff = thresh * np.sqrt((weights ** 2 * positive_bgrms ** 2).sum()) / jacobian
+    bg_cutoff = np.sqrt((weights ** 2 * positive_bgrms ** 2).sum()) / jacobian
     return detect, bg_cutoff
 
 
@@ -160,7 +156,7 @@ def init_extended_source(sky_coord, frame, observations, obs_idx=0,
         bg_rms = np.array([ 1 / np.sqrt(w[w > 0].mean()) for w in obs_.weights])
     except:
         raise AttributeError("Observation.weights missing! Please set inverse variance weights")
-    morph, bg_cutoff = build_detection_coadd(seds[obs_idx], bg_rms, obs_, thresh)
+    morph, bg_cutoff = build_detection_coadd(seds[obs_idx], bg_rms, obs_)
 
     # Apply the necessary constraints
     center = frame.get_pixel(sky_coord)
@@ -174,18 +170,39 @@ def init_extended_source(sky_coord, frame, observations, obs_idx=0,
         morph = prox_monotonic(morph, 0).reshape(morph.shape)
 
     # trim morph to pixels above threshold
-    mask = morph > bg_cutoff
-    if mask.sum() == 0:
-        msg = "No flux above threshold={2} for source at y={0} x={1}".format(*center, bg_cutoff)
-        logger.warning(msg)
-    else:
+    mask = morph > bg_cutoff * thresh
+    boxsize = 16
+    pixel_center = frame.get_pixel(sky_coord)
+    if mask.sum() > 0:
         morph[~mask] = 0
+
         # normalize to unity at peak pixel
         cy, cx = np.array(center).astype(int)
         center_morph = morph[cy, cx]
         morph /= center_morph
+        flag = False
 
-    return sed, morph
+        # find fitting bbox
+        bbox = Box.from_data(morph, min_value=0)
+        boxsize = 16
+        if not bbox.is_empty and not flag:
+            size = 2 * max((pixel_center[0] - bbox.bottom, bbox.top - pixel_center[0],
+                            pixel_center[1] - bbox.left, bbox.right - pixel_center[1]))
+            while boxsize < size:
+                boxsize *= 2
+    else:
+        msg = "No flux above threshold for source at y={0} x={1}".format(*center)
+        logger.warning(msg)
+
+    # define bbox and trim to bbox
+    bottom = pixel_center[0] - boxsize // 2
+    top = pixel_center[0] + boxsize // 2
+    left = pixel_center[1] - boxsize // 2
+    right = pixel_center[1] + boxsize // 2
+    bbox = Box.from_bounds(bottom, top, left, right)
+    morph = bbox.image_to_box(morph)
+
+    return sed, morph, bbox
 
 
 def init_multicomponent_source(sky_coord, frame, observations, obs_idx=0, flux_percentiles=None,
@@ -202,7 +219,7 @@ def init_multicomponent_source(sky_coord, frame, observations, obs_idx=0, flux_p
         flux_percentiles = [25]
 
     # Initialize the first component as an extended source
-    sed, morph = init_extended_source(sky_coord, frame, observations, obs_idx=obs_idx,
+    sed, morph, bbox = init_extended_source(sky_coord, frame, observations, obs_idx=obs_idx,
                                       thresh=thresh, symmetric=symmetric, monotonic=monotonic)
     # create a list of components from base morph by layering them on top of
     # each other so that they sum up to morph
@@ -230,7 +247,8 @@ def init_multicomponent_source(sky_coord, frame, observations, obs_idx=0, flux_p
         morphs[k] /= morphs[k].max()
 
     # optimal SEDs given the morphologies, assuming img only has that source
-    seds = get_best_fit_seds(morphs, frame, observations[obs_idx])
+    boxed_img = bbox.image_to_box(observations[obs_idx].images)
+    seds = get_best_fit_seds(morphs, frame, boxed_img)
 
     for k in range(K):
         if np.all(seds[k] <= 0):
@@ -240,7 +258,7 @@ def init_multicomponent_source(sky_coord, frame, observations, obs_idx=0, flux_p
             msg = "Zero or negative SED {} for component {} at y={}, x={}".format(seds[k], k, *sky_coord)
             logger.warning(msg)
 
-    return seds, morphs
+    return seds, morphs, bbox
 
 
 class RandomSource(FactorizedComponent):
@@ -322,7 +340,7 @@ class PointSource(FunctionComponent):
                 logger.info(msg)
 
         # set up parameters
-        sed = Parameter(sed, name="sed", step=partial(relative_step, factor=1e-1), constraint=PositivityConstraint())
+        sed = Parameter(sed, name="sed", step=partial(relative_step, factor=1e-2), constraint=PositivityConstraint())
         center = Parameter(self.center, name="center", step=1e-1)
 
         _psf_wrapper = lambda *parameters: frame.psf.__call__(*parameters)[0]
@@ -332,7 +350,7 @@ class PointSource(FunctionComponent):
 
 
 class ExtendedSource(FactorizedComponent):
-    def __init__(self, frame, sky_coord, observations, obs_idx=0, thresh=3,
+    def __init__(self, frame, sky_coord, observations, obs_idx=0, thresh=1.,
                  symmetric=True, monotonic=True, shifting=False):
         """Extended source intialized to match a set of observations
 
@@ -369,27 +387,13 @@ class ExtendedSource(FactorizedComponent):
             shift = None
 
         # initialize from observation
-        sed, morph = init_extended_source(sky_coord, frame, observations,
+        sed, morph, bbox = init_extended_source(sky_coord, frame, observations,
             obs_idx=obs_idx,
             thresh=thresh,
             symmetric=True,
             monotonic=monotonic)
 
         sed = Parameter(sed, name="sed", step=partial(relative_step, factor=1e-2), constraint=PositivityConstraint())
-
-        # trim the morphology
-        bbox = Box.from_data(morph, min_value=0)
-        size = 2 * max((self.pixel_center[0] - bbox.bottom, bbox.top - self.pixel_center[0],
-                        self.pixel_center[1] - bbox.left, bbox.right - self.pixel_center[1]))
-        boxsize = 16
-        while boxsize < size:
-            boxsize *= 2
-        bottom = self.pixel_center[0] - boxsize // 2
-        top = self.pixel_center[0] + boxsize // 2
-        left = self.pixel_center[1] - boxsize // 2
-        right = self.pixel_center[1] + boxsize // 2
-        bbox = Box.from_bounds(bottom, top, left, right)
-        morph = bbox.image_to_box(morph)
 
         constraints = []
         if monotonic:
@@ -434,7 +438,7 @@ class MultiComponentSource(ComponentTree):
     morphology to the multi-channel image in the region of the source.
     """
 
-    def __init__(self, frame, sky_coord, observations, obs_idx=0, thresh=0.1, flux_percentiles=None,
+    def __init__(self, frame, sky_coord, observations, obs_idx=0, thresh=1., flux_percentiles=None,
                  symmetric=True, monotonic=True, shifting=False):
         """Create multi-component extended source.
 
@@ -476,28 +480,12 @@ class MultiComponentSource(ComponentTree):
             shift = None
 
         # initialize from observation
-        seds, morphs = init_multicomponent_source(sky_coord, frame, observations,
+        seds, morphs, bbox = init_multicomponent_source(sky_coord, frame, observations,
             obs_idx=obs_idx,
             flux_percentiles=flux_percentiles,
             thresh=thresh,
-            symmetric=symmetric,
+            symmetric=True,
             monotonic=monotonic)
-
-        # trim the morphology
-        bbox = Box.from_data(morphs[0], min_value=0)
-        size = 2 * max((self.pixel_center[0] - bbox.bottom, bbox.top - self.pixel_center[0],
-                        self.pixel_center[1] - bbox.left, bbox.right - self.pixel_center[1]))
-        boxsize = 8
-        while boxsize < size:
-            boxsize *= 2
-        bottom = self.pixel_center[0] - boxsize // 2
-        top = self.pixel_center[0] + boxsize // 2
-        left = self.pixel_center[1] - boxsize // 2
-        right = self.pixel_center[1] + boxsize // 2
-        bbox = Box.from_bounds(bottom, top, left, right)
-        morphs_ = []
-        for k in range(len(morphs)):
-            morphs_.append(bbox.image_to_box(morphs[k]))
 
         constraints = []
         if monotonic:
@@ -520,7 +508,7 @@ class MultiComponentSource(ComponentTree):
         components = []
         for k in range(len(seds)):
             sed = Parameter(seds[k], name="sed", step=partial(relative_step, factor=1e-1), constraint=PositivityConstraint())
-            morph = Parameter(morphs_[k], name="morph", step=1e-2, constraint=morph_constraint)
+            morph = Parameter(morphs[k], name="morph", step=1e-2, constraint=morph_constraint)
             components.append(FactorizedComponent(frame, sed, morph, bbox=bbox, shift=shift))
             components[-1].pixel_center = self.pixel_center
         super().__init__(components)

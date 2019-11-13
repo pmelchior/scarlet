@@ -40,7 +40,12 @@ class Box(object):
         bbox: `Box`
             A new box bounded by the shape.
         """
-        return Box((0,0), *shape)
+        if len(shape) == 2:
+            return Box((0,0), *shape)
+        elif len(shape) == 3:
+            return Box((0,0), *(shape[1:]))
+        else:
+            raise AttributeError("Shape needs to be for 2D or 3D")
 
     @staticmethod
     def from_image(image):
@@ -120,25 +125,34 @@ class Box(object):
             shape = im_or_shape.shape
         else:
             shape = im_or_shape
+        assert len(shape) in [2,3]
 
         im_box = Box.from_shape(shape)
         overlap = self & im_box
         if overlap.is_empty:
-            return slice(0, 0), slice(0, 0)
-        return slice(overlap.bottom, overlap.top), slice(overlap.left, overlap.right)
+            yslice, xslice = slice(0, 0), slice(0, 0)
+        else:
+            yslice, xslice = slice(overlap.bottom, overlap.top), slice(overlap.left, overlap.right)
+
+        if len(shape) == 2:
+            return yslice, xslice
+        else:
+            return slice(None), yslice, xslice
 
     def image_to_box(self, image, box=None):
         imbox = Box.from_image(image)
 
         if box is None:
-            box = np.zeros(self.shape)
-        assert box.shape == self.shape
+            if len(image.shape) == 2:
+                box = np.zeros(self.shape)
+            else:
+                box = np.zeros(tuple((image.shape[0], *self.shape)))
+        assert box.shape[-2:] == self.shape
         boxbox = Box.from_image(box)
 
         # imbox now in the frame of this bbox (i.e. of box)
         imbox -= self.yx0
         overlap = imbox & boxbox
-
         box[overlap.slices_for(box)] = image[self.slices_for(image)]
         return box
 
@@ -238,7 +252,7 @@ class Box(object):
         return Box.from_bounds(bottom, top, left, right)
 
     def __str__(self):
-        return "(({0}, {1}), ({2}, {3}))".format(self.bottom, self.top, self.left, self.right)
+        return "Box({0}, {1}, {2}, {3})".format(self.bottom, self.top, self.left, self.right)
 
     def __repr__(self):
         result = "<Box yx0={0}, height={1}, width={2}>"
