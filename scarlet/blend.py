@@ -100,7 +100,7 @@ class Blend(ComponentTree):
         return total_loss
 
     def _convergence_callback(self, *parameters, it=None, f_rel=1e-3, callback=None):
-        if it > 1 and abs(self.loss[-2] - self.loss[-1]) < f_rel * self.loss[-1]:
+        if it > 1 and abs(self.loss[-2] - self.loss[-1]) < f_rel * np.abs(self.loss[-1]):
             raise StopIteration("scarlet.Blend.fit() converged")
 
         self.update()

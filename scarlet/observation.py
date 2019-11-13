@@ -147,7 +147,14 @@ class Observation():
 
         model = self.render(model)
 
-        return 0.5 * np.sum((self.weights * (model - self.images)) ** 2)
+        # normalization of the single-pixel likelihood:
+        # 1 / [(2pi)^1/2 (sigma^2)^1/2]
+        # with inverse variance weights: sigma^2 = 1/weight
+        # full likelihood is sum over all data samples: pixel in images
+        # NOTE: this assumes that all pixels are used in likelihood!
+        log_norm = np.prod(self.images.shape) / 2 * np.log(2*np.pi) + np.sum(np.log(1 / self.weights)) / 2
+
+        return log_norm + np.sum(self.weights * (model - self.images)** 2) / 2
 
 
 class LowResObservation(Observation):
@@ -505,6 +512,11 @@ class LowResObservation(Observation):
         min_lr = [np.min(self._coord_lr[0]).astype(int), np.min(self._coord_lr[1]).astype(int)]
         max_lr = [np.max(self._coord_lr[0]).astype(int), np.max(self._coord_lr[1]).astype(int)]
 
-        return 0.5 * np.sum((self.weights * (
+        # TODO: proper normalization of logL
+        # and selection of weights and image with a bbox to select and determine number
+        # of data samples
+        log_norm = 0
+
+        return log_norm + 0.5 * np.sum(self.weights * (
                 model_ -
-                self.images[:, min_lr[0]:max_lr[0] + 1, min_lr[1]:max_lr[1] + 1])) ** 2)
+                self.images[:, min_lr[0]:max_lr[0] + 1, min_lr[1]:max_lr[1] + 1]) ** 2)

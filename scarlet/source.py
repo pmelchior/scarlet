@@ -287,8 +287,8 @@ class RandomSource(FactorizedComponent):
             sed = get_best_fit_seds(morph[None], frame, observation)[0]
 
         constraint = PositivityConstraint()
-        sed = Parameter(sed, name="sed", step=default_step, constraint=constraint)
-        morph = Parameter(morph, name="morph", step=default_step, constraint=constraint)
+        sed = Parameter(sed, step=default_step, constraint=constraint)
+        morph = Parameter(morph, step=default_step, constraint=constraint)
 
         super().__init__(frame, sed, morph)
 
@@ -340,8 +340,8 @@ class PointSource(FunctionComponent):
                 logger.info(msg)
 
         # set up parameters
-        sed = Parameter(sed, name="sed", step=partial(relative_step, factor=1e-2), constraint=PositivityConstraint())
-        center = Parameter(self.center, name="center", step=1e-1)
+        sed = Parameter(sed, step=partial(relative_step, factor=1e-2), constraint=PositivityConstraint())
+        center = Parameter(self.center, step=1e-1)
 
         _psf_wrapper = lambda *parameters: frame.psf.__call__(*parameters)[0]
 
@@ -382,7 +382,7 @@ class ExtendedSource(FactorizedComponent):
         self.pixel_center = tuple(np.round(center).astype('int'))
 
         if shifting:
-            shift = Parameter(center - self.pixel_center, name="shift", step=1e-1)
+            shift = Parameter(center - self.pixel_center, step=1e-1)
         else:
             shift = None
 
@@ -393,7 +393,7 @@ class ExtendedSource(FactorizedComponent):
             symmetric=True,
             monotonic=monotonic)
 
-        sed = Parameter(sed, name="sed", step=partial(relative_step, factor=1e-2), constraint=PositivityConstraint())
+        sed = Parameter(sed, step=partial(relative_step, factor=1e-2), constraint=PositivityConstraint())
 
         constraints = []
         if monotonic:
@@ -414,7 +414,7 @@ class ExtendedSource(FactorizedComponent):
         ]
         morph_constraint = ConstraintChain(*constraints)
 
-        morph = Parameter(morph, name="morph", step=1e-2, constraint=morph_constraint)
+        morph = Parameter(morph, step=1e-2, constraint=morph_constraint)
 
         super().__init__(frame, sed, morph, bbox=bbox, shift=shift)
 
@@ -475,7 +475,7 @@ class MultiComponentSource(ComponentTree):
         self.pixel_center = tuple(np.round(center).astype('int'))
 
         if shifting:
-            shift = Parameter(center - self.pixel_center, name="shift", step=1e-1)
+            shift = Parameter(center - self.pixel_center, step=1e-1)
         else:
             shift = None
 
@@ -507,8 +507,8 @@ class MultiComponentSource(ComponentTree):
 
         components = []
         for k in range(len(seds)):
-            sed = Parameter(seds[k], name="sed", step=partial(relative_step, factor=1e-1), constraint=PositivityConstraint())
-            morph = Parameter(morphs[k], name="morph", step=1e-2, constraint=morph_constraint)
+            sed = Parameter(seds[k], step=partial(relative_step, factor=1e-1), constraint=PositivityConstraint())
+            morph = Parameter(morphs[k], step=1e-2, constraint=morph_constraint)
             components.append(FactorizedComponent(frame, sed, morph, bbox=bbox, shift=shift))
             components[-1].pixel_center = self.pixel_center
         super().__init__(components)
