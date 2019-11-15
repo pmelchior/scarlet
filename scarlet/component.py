@@ -76,11 +76,6 @@ class Component():
         """
         pass
 
-    def get_flux(self):
-        """Get flux in every band
-        """
-        return self.get_model().sum(axis=(1,2))
-
     def __getstate__(self):
         # needed for pickling to understand what to save
         return tuple([self._sed.copy(), self._morph.copy()])
@@ -226,11 +221,6 @@ class FactorizedComponent(Component):
             X = fft.Fourier.from_fft(result_fft, self.fft_shape, X.shape, [0,1])
             return np.real(X.image)
         return morph
-
-    def get_flux(self):
-        """Get flux in every band
-        """
-        return self.morph.sum() * self.sed
 
 
 class FunctionComponent(FactorizedComponent):
@@ -448,16 +438,6 @@ class ComponentTree():
             for c in self.components:
                 model = model + c.get_model()
 
-        return model
-
-    def get_flux(self):
-        """Get the total flux for all the components in the tree
-        """
-        for k, component in enumerate(self.components):
-            if k == 0:
-                model = component.get_flux()
-            else:
-                model += component.get_flux()
         return model
 
     def __iadd__(self, c):

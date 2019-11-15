@@ -5,7 +5,6 @@ import proxmin
 
 from . import interpolation
 from . import operator
-from . import measurement
 from .cache import Cache
 
 class Constraint:
@@ -143,9 +142,26 @@ class ThresholdConstraint(Constraint):
     in `component.bboxes["thresh"]`.
     """
     def __call__(self, X, step):
-        thresh, _bins = measurement.threshold(X)
+        thresh, _bins = self.threshold(X)
         X[X < thresh] = 0
         return X
+
+    def threshold(self, morph):
+        """Find the threshold value for a given morphology
+        """
+        _morph = morph[morph > 0]
+        _bins = 50
+        # Decrease the bin size for sources with a small number of pixels
+        if _morph.size < 500:
+            _bins = max(np.int(_morph.size/10), 1)
+            if _bins == 1:
+                return 0, _bins
+        hist, bins = np.histogram(np.log10(_morph).reshape(-1), _bins)
+        cutoff = np.where(hist == 0)[0]
+        # If all of the pixels are used there is no need to threshold
+        if len(cutoff) == 0:
+            return 0, _bins
+        return 10**bins[cutoff[-1]], _bins
 
 class MonotonicityConstraint(Constraint):
     """Make morphology monotonically decrease from the center

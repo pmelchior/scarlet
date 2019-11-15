@@ -1,4 +1,3 @@
-from . import operator
 from .bbox import *
 from .constraint import *
 from .parameter import *
@@ -8,3 +7,5 @@ from .psf import *
 from .frame import *
 from .observation import *
 from .blend import *
+from . import operator
+from . import  measure

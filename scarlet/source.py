@@ -3,7 +3,6 @@ from .constraint import *
 from .component import *
 from .bbox import *
 from . import operator
-from . import measurement
 
 # make sure that import * above doesn't import its own stock numpy
 import autograd.numpy as np
