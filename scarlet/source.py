@@ -391,7 +391,7 @@ class ExtendedSource(FactorizedComponent):
             obs_idx=obs_idx,
             thresh=thresh,
             symmetric=True,
-            monotonic=monotonic)
+            monotonic=True)
 
         sed = Parameter(sed, step=partial(relative_step, factor=1e-2), constraint=PositivityConstraint())
 
@@ -485,7 +485,7 @@ class MultiComponentSource(ComponentTree):
             flux_percentiles=flux_percentiles,
             thresh=thresh,
             symmetric=True,
-            monotonic=monotonic)
+            monotonic=True)
 
         constraints = []
         if monotonic:

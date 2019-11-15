@@ -76,11 +76,28 @@ class Frame():
         """
         if self.wcs is not None:
             if self.wcs.naxis == 3:
-                coord = self.wcs.wcs_world2pix(sky_coord[0], sky_coord[1], 0, 0)
+                coord = self.wcs.wcs_world2pix(*sky_coord, 0, 0)
             elif self.wcs.naxis == 2:
-                coord = self.wcs.wcs_world2pix(sky_coord[0], sky_coord[1], 0)
+                coord = self.wcs.wcs_world2pix(*sky_coord, 0)
             else:
                 raise ValueError("Invalid number of wcs dimensions: {0}".format(self.wcs.naxis))
-            return (int(coord[0].item()), int(coord[1].item()))
+            return tuple(int(c.item()) for c in coord)
 
         return tuple(int(coord) for coord in sky_coord)
+
+    def get_sky_coord(self, pixel):
+        """Get the world coordinate for a pixel coordinate
+        If there is no WCS associated with the `Scene`,
+        meaning the data frame and model frame are the same,
+        then this just returns the `sky_coord`
+        """
+        if self.wcs is not None:
+            if self.wcs.naxis == 3:
+                coord = self.wcs.wcs_pix2world(*pixel, 0, 0)
+            elif self.wcs.naxis == 2:
+                coord = self.wcs.wcs_pix2world(*pixel, 0)
+            else:
+                raise ValueError("Invalid number of wcs dimensions: {0}".format(self.wcs.naxis))
+            return tuple(c.item() for c in coord)
+
+        return tuple(pixel)

@@ -5,6 +5,7 @@ from .frame import Frame
 from . import interpolation
 from . import fft
 from . import resampling
+from .bbox import Box
 
 import logging
 logger = logging.getLogger("scarlet.observation")
@@ -55,9 +56,9 @@ class Observation():
         """
         self.frame = Frame(images.shape, wcs=wcs, psf=psf, channels=channels, dtype=images.dtype)
 
-        self.images = np.array(images)
+        self.images = images
         if weights is not None:
-            self.weights = np.array(weights)
+            self.weights = weights
         else:
             self.weights = 1
 
@@ -79,15 +80,18 @@ class Observation():
         -------
         None
         """
+        # find the box that contained this obs in model_frame
+        yx0 = model_frame.get_pixel(self.frame.get_sky_coord((0,0)))
+        self.bbox = Box(yx0, *self.images.shape[1:])
 
         if self.frame.dtype != model_frame.dtype:
             msg = "Dtypes of model and observation different. Casting observation to {}"
             msg = msg.format(model_frame.dtype)
             logger.warning(msg)
             self.frame.dtype = model_frame.dtype
-            self.images = self.images.astype(model_frame.dtype)
+            self.images = self.images.copy().astype(model_frame.dtype)
             if type(self.weights) is np.ndarray:
-                self.weights = self.weights.astype(model_frame.dtype)
+                self.weights = self.weights.copy().astype(model_frame.dtype)
 
         #  channels of model that are represented in this observation
         self._band_slice = slice(None)
@@ -145,16 +149,19 @@ class Observation():
             given the image data
         """
 
-        model = self.render(model)
+        model_ = self.render(model)
+        slices = self.bbox.slices_for(self.images)
+        images_ = self.images[slices]
+        weights_ = self.weights[slices]
 
         # normalization of the single-pixel likelihood:
         # 1 / [(2pi)^1/2 (sigma^2)^1/2]
         # with inverse variance weights: sigma^2 = 1/weight
         # full likelihood is sum over all data samples: pixel in images
         # NOTE: this assumes that all pixels are used in likelihood!
-        log_norm = np.prod(self.images.shape) / 2 * np.log(2*np.pi) + np.sum(np.log(1 / self.weights)) / 2
+        log_norm = np.prod(images_.shape) / 2 * np.log(2*np.pi) + np.sum(np.log(1 / self.weights)) / 2
 
-        return log_norm + np.sum(self.weights * (model - self.images)** 2) / 2
+        return log_norm + np.sum(weights_ * (model_ - images_)** 2) / 2
 
 
 class LowResObservation(Observation):
@@ -326,9 +333,9 @@ class LowResObservation(Observation):
             msg = "Dtypes of model and observation different. Casting observation to {}"
             logger.warning(msg.format(model_frame.dtype))
             self.frame.dtype = model_frame.dtype
-            self.images = self.images.astype(model_frame.dtype)
+            self.images = self.images.copy().astype(model_frame.dtype)
             if type(self.weights) is np.ndarray:
-                self.weights = self.weights.astype(model_frame.dtype)
+                self.weights = self.weights.copy().astype(model_frame.dtype)
             if self.frame._psf is not None:
                 self.frame._psf.update_dtype(model_frame.dtype)
 
@@ -378,15 +385,16 @@ class LowResObservation(Observation):
         #shape of the low resolutino image in the overlap or union
         self.lr_shape = (np.max(coord_lr[0])-np.min(coord_lr[0])+1,np.max(coord_lr[1])-np.min(coord_lr[1])+1)
 
-        #Coordinates of overlapping low resolutions pixels at low resolution
-        self._coord_lr = coord_lr
-        #Coordinates of overlaping low resolution pixels in high resolution frame
-        self._coord_hr = coord_hr
+        #BBox of the low resolution pixels in model frame
+        self.bbox = Box.from_bounds(np.min(coord_lr[0]).astype(int),
+                        np.max(coord_lr[0]).astype(int) + 1,
+                        np.min(coord_lr[1]).astype(int),
+                        np.max(coord_lr[1]).astype(int) + 1)
         #Coordinates for all model frame pixels
         self.frame_coord = (np.array(range(model_frame.Ny)), np.array(range(model_frame.Nx)))
 
-        center_y = (np.max(self._coord_hr[0]) - np.min(self._coord_hr[0]) + 1) / 2
-        center_x = (np.max(self._coord_hr[1]) - np.min(self._coord_hr[1]) + 1) / 2
+        center_y = (np.max(coord_hr[0]) - np.min(coord_hr[0]) + 1) / 2
+        center_x = (np.max(coord_hr[1]) - np.min(coord_hr[1]) + 1) / 2
 
         diff_psf = self.build_diffkernel(model_frame, angle)
 
@@ -401,10 +409,10 @@ class LowResObservation(Observation):
         if self.isrot:
 
             #Unrotated coordinates:
-            Y_unrot = ((self._coord_hr[0] - center_y) * self.cos_rot +
-                       (self._coord_hr[1] - center_x) * self.sin_rot).reshape(self.lr_shape)
-            X_unrot = ((self._coord_hr[1] - center_x) * self.cos_rot -
-                       (self._coord_hr[0] - center_y) * self.sin_rot).reshape(self.lr_shape)
+            Y_unrot = ((coord_hr[0] - center_y) * self.cos_rot +
+                       (coord_hr[1] - center_x) * self.sin_rot).reshape(self.lr_shape)
+            X_unrot = ((coord_hr[1] - center_x) * self.cos_rot -
+                       (coord_hr[0] - center_y) * self.sin_rot).reshape(self.lr_shape)
 
             #Removing redundancy
             self.Y_unrot = Y_unrot[:, 0]
@@ -423,7 +431,7 @@ class LowResObservation(Observation):
         else:
 
             axes = [int(not self.small_axis)+1]
-            self.shifts = np.array(self._coord_hr)
+            self.shifts = np.array(coord_hr)
 
             self.shifts[0] -= center_y
             self.shifts[1] -= center_x
@@ -487,13 +495,10 @@ class LowResObservation(Observation):
         model_: array
             The convolved and resampled `model` in the observation frame.
         """
-        img = np.zeros(self.frame.shape)
-
-        img[:, np.min(self._coord_lr[0]).astype(int):np.max(self._coord_lr[0]).astype(int) + 1,
-        np.min(self._coord_lr[1]).astype(int):np.max(self._coord_lr[1]).astype(int) + 1] = \
-            self._render(model)
-
-        return img
+        model_ = np.zeros(self.frame.shape)
+        slices = self.bbox.slices_for(model_)
+        model_[slices] = self._render(model)
+        return model_
 
     def get_loss(self, model):
         """Computes the loss/fidelity of a given model wrt to the observation
@@ -508,15 +513,11 @@ class LowResObservation(Observation):
         """
 
         model_ = self._render(model)
+        slices = self.bbox.slices_for(self.images)
+        images_ = self.images[slices]
+        weights_ = self.weights[slices]
 
-        min_lr = [np.min(self._coord_lr[0]).astype(int), np.min(self._coord_lr[1]).astype(int)]
-        max_lr = [np.max(self._coord_lr[0]).astype(int), np.max(self._coord_lr[1]).astype(int)]
+        # properly normalized likelihood
+        log_norm = np.prod(images_.shape) / 2 * np.log(2*np.pi) + np.sum(np.log(1 / weights_)) / 2
 
-        # TODO: proper normalization of logL
-        # and selection of weights and image with a bbox to select and determine number
-        # of data samples
-        log_norm = 0
-
-        return log_norm + 0.5 * np.sum(self.weights * (
-                model_ -
-                self.images[:, min_lr[0]:max_lr[0] + 1, min_lr[1]:max_lr[1] + 1]) ** 2)
+        return log_norm + 0.5 * np.sum(weights_ * (model_ - images_) ** 2)
