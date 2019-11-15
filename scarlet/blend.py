@@ -103,7 +103,5 @@ class Blend(ComponentTree):
         if it > 1 and abs(self.loss[-2] - self.loss[-1]) < f_rel * np.abs(self.loss[-1]):
             raise StopIteration("scarlet.Blend.fit() converged")
 
-        self.update()
-
         if callback is not None:
             callback(*parameters, it=it)

@@ -81,15 +81,6 @@ class Component():
         """
         return self.get_model().sum(axis=(1,2))
 
-    def update(self):
-        """Update the component
-
-        This method can be overwritten in inherited classes to
-        run proximal operators or other component update functions
-        that will be executed during fitting.
-        """
-        return self
-
     def __getstate__(self):
         # needed for pickling to understand what to save
         return tuple([self._sed.copy(), self._morph.copy()])
@@ -468,16 +459,6 @@ class ComponentTree():
             else:
                 model += component.get_flux()
         return model
-
-    def update(self):
-        """Update each component
-
-        This method may be overwritten in inherited classes to
-        perform updates on multiple components at once
-        (for example separating a buldge and disk).
-        """
-        for node in self._tree:
-            node.update()
 
     def __iadd__(self, c):
         """Add another component or tree.
