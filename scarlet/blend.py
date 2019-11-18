@@ -61,27 +61,9 @@ class Blend(ComponentTree):
         X = self.parameters
         n_params = len(X)
 
-        priors = [p.prior for p in x if p.prior is not None]
-        batch_size = len(priors)
-        if batch_size > 0:
-            import tensorflow as tf
-            # We are assuming that the same stamp size is used for all priors
-            stamp_size = priors[0].stamp_size
-
-            inx = tf.placeholder(shape=[batch_size, stamp_size, stamp_size, 1],
-                                 dtype=tf.float32)
-            splits = tf.split(inx, num_or_size_splits=batch_size)
-            grad_prior = tf.concat([p.grad(s) for p,s in zip(priors, splits)],axis=0)
-
-            self.sess = tf.Session()
-            self.sess.run(tf.global_variables_initializer())
-
-            self._compute_grad_prior = lambda x: self.sess.run(grad_prior, feed_dict={inx: x})
-
         # compute the backward gradient tree
-        grad_logL = grad(self._loss, tuple(range(n_params)))
-        grad_logP = lambda *X: tuple(x.prior(x.view(np.ndarray)) if x.prior is not None else 0 for x in X)
-        _grad = lambda *X: tuple(l + p for l,p in zip(grad_logL(*X), grad_logP(*X)))
+        _grad_logL = grad(self._loss, tuple(range(n_params)))
+        _grad = lambda *X: tuple(l + p for l,p in zip(_grad_logL(*X), self._grad_logP(*X)))
         _step = lambda *X, it: tuple(x.step(x, it=it) if hasattr(x.step, "__call__") else x.step for x in X)
         _prox = tuple(x.constraint for x in X)
 
@@ -124,38 +106,20 @@ class Blend(ComponentTree):
             callback(*parameters, it=it)
 
 
-    def _grad_prior(self, *parameters):
-        # TODO: could use collecting identical priors to run on mini-batches
-        #return [ p.prior(p.view(np.ndarray)) if p.prior is not None else 0 for p in parameters ]
-        batch = []
-        for p in parameters:
+    def _grad_logP(self, *parameters):
+        priors = {}
+        grads = [0,] * len(parameters)
+        for k,p in enumerate(parameters):
             if p.prior is not None:
-                bbox, padding = p.get_centered_ROI(p.prior.stamp_size)
-                roi = np.pad(p[bbox.slices], padding, mode='constant')
-                batch.append(roi.reshape((1, p.prior.stamp_size, p.prior.stamp_size, 1)))
+                priors[p.prior] = priors.get(p.prior, []) + [k]
 
-        if len(batch) == 0:
-            return [0,]*len(parameters)
-
-        # Concatenate stamps and feed them to the network
-        batch = self._compute_grad_prior(np.concatenate(batch, axis=0).astype('float32'))
-
-        # Extract the results and interleave 0s for parameters not affected by
-        # prior
-        grad_prior = []
-        ind = 0
-        for p in parameters:
-            if p.prior is not None:
-                gp = np.zeros(p.shape, dtype=p.dtype)
-                bbox, padding = p.get_centered_ROI(p.prior.stamp_size)
-                (bottom, top), (left, right) = padding
-                top = None if top == 0 else -top
-                right = None if right == 0 else -right
-
-                gp[bbox.slices] = batch[ind][bottom:top, left:right][:,:,0]
-                ind += 1
-                grad_prior.append(gp)
+        for prior, ks in priors:
+            if prior.use_batch:
+                batch = np.stack([parameters[k].view(np.ndarray) for k in ks], axis=0)
+                grads_ = prior.grad(batch)
+                for i,k in enumerate(ks):
+                    grads[k] = grads_[i]
             else:
-                grad_prior.append(0)
-
-        return grad_prior
+                for k in ks:
+                    grads[k] = prior.grad(parameters[k].view(np.ndarray))
+        return grads
