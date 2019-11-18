@@ -30,7 +30,7 @@ Getting Started
    quickstart
    user_docs
    tutorials
-   api_docs
+   api/scarlet
 
 Change Log
 ==========
