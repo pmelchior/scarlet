@@ -336,13 +336,13 @@ class LowResObservation(Observation):
 
         # Computes spatially matching observation and target psfs. The observation psf is also resampled \\
         # to the model frame resolution
-        new_target, observed_psfs = self.match_psfs(_target, whr, angle)
 
+        new_target, observed_psfs = self.match_psfs(_target, angle)
         diff_psf = fft.match_psfs(fft.Fourier(observed_psfs), fft.Fourier(new_target))
 
         return diff_psf
 
-    def sinc_shift(self, imgs, shifts, axes, sum_axis):
+    def sinc_shift(self, imgs, shifts, axes):
         '''Performs 2 1D sinc convolutions and shifting along one rotated axis in Fourier space.
 
         Parameters
@@ -354,8 +354,6 @@ class LowResObservation(Observation):
             an array of the shift values for each line and columns of images in imgs
         axes: array
             Optional argument that specifies the axes along which to apply sinc convolution.
-        sum_axis: int
-            axis along which the summation is performed. If axes is of length one, sum_axis should correspond to axes.
         Returns
         -------
         result: array
@@ -363,7 +361,6 @@ class LowResObservation(Observation):
         '''
         # fft
         axes = tuple(np.array(axes)-1)
-        sum_axis-=1
         fft_shape = np.array(self._fft_shape)[tuple([axes])]
         imgs_fft = imgs.fft(fft_shape, np.array(axes)+1)
         transformed_shape = np.array(imgs_fft.shape[1:])
@@ -377,12 +374,8 @@ class LowResObservation(Observation):
 
         shishift = []
         for ax in axes:
-            shishift.append(shifter[ax][np.newaxis, :] ** shifts[ax][:, np.newaxis])
-        # convolution by sinc: setting to zero all coefficients > n//2 along the desired axis:
-        if len(axes) == 1:
-            shishift[0][:, shishift[0].shape[1] // 4:-shishift[0].shape[1] // 4] = 0
-        else:
-            shishift[sum_axis][:, shishift[sum_axis].shape[1] // 4:-shishift[sum_axis].shape[1] // 4] = 0
+            shishift.append(np.exp(shifter[ax][np.newaxis, :] * shifts[ax][:, np.newaxis]))
+
         # Shift
         if 0 in axes:
             imgs_shiftfft = imgs_fft[:, np.newaxis, :, :] * shishift[0][np.newaxis, :, :, np.newaxis]
@@ -397,6 +390,7 @@ class LowResObservation(Observation):
 
         # Inverse Fourier transform.
         inv_shape = tuple(imgs_shiftfft.shape[:2]) + tuple(transformed_shape)
+        print(np.array(axes)+len(imgs_shiftfft.shape)-2)
         #The n-dimensional transform could pose problem for very large images, but I am not sure it is a regime we should care about
         op = fft.Fourier.from_fft(imgs_shiftfft, fft_shape, inv_shape, np.array(axes)+len(imgs_shiftfft.shape)-2).image
 
@@ -455,7 +449,8 @@ class LowResObservation(Observation):
 
         # Get pixel coordinates in each frame.
         coord_lr, coord_hr, coordhr_over = resampling.match_patches(model_frame.shape, self.frame.shape,
-                                                                    model_frame.wcs, self.frame.wcs, isrot = self.isrot)
+                                                                    model_frame.wcs, self.frame.wcs,
+                                                                    perimeter = 'union', isrot = self.isrot)
 
         #shape of the low resolutino image in the overlap or union
         self.lr_shape = (np.max(coord_lr[0])-np.min(coord_lr[0])+1,np.max(coord_lr[1])-np.min(coord_lr[1])+1)
@@ -467,9 +462,6 @@ class LowResObservation(Observation):
         #Coordinates for all model frame pixels
         self.frame_coord = (np.array(range(model_frame.Ny)), np.array(range(model_frame.Nx)))
 
-        center_y = (np.max(self._coord_hr[0]) - np.min(self._coord_hr[0]) + 1) / 2
-        center_x = (np.max(self._coord_hr[1]) - np.min(self._coord_hr[1]) + 1) / 2
-
         diff_psf = self.build_diffkernel(model_frame, angle)
 
         # 1D convolutions convolutions of the model are done along the smaller axis, therefore,
@@ -479,7 +471,11 @@ class LowResObservation(Observation):
 
         self._fft_shape = fft._get_fft_shape(model_frame.psfs, np.zeros(model_frame.shape), padding=3,
                                              axes=[-2, -1], max=True)
-        diff_psf = fft.Fourier(fft._pad(diff_psf.image, self._fft_shape, axes = (1,2)))
+
+        center_y = model_frame.Ny/2.#model_frame.wcs.wcs.crpix[0]
+        center_x = model_frame.Nx/2.#self.h#model_frame.wcs.wcs.crpix[1]
+
+        self.diff_psf = fft.Fourier(fft._pad(diff_psf.image, self._fft_shape, axes = (1,2)))
         if self.isrot:
 
             #Unrotated coordinates:
@@ -513,7 +509,8 @@ class LowResObservation(Observation):
             self.other_shifts = np.copy(self.shifts)
 
         # Computes the resampling/convolution matrix
-        resconv_op = self.sinc_shift(diff_psf, self.shifts, axes, int(not self.small_axis)+1)
+
+        resconv_op = self.sinc_shift(self.diff_psf, self.shifts, axes)
 
         self._resconv_op = np.array(resconv_op, dtype=self.frame.dtype)*(self_pix/model_pix)**2
         self._resconv_op = self._resconv_op.reshape(*self._resconv_op.shape[:2], -1)
@@ -538,16 +535,13 @@ class LowResObservation(Observation):
         model_image = []
         if self.isrot:
             axes = (1,2)
-            sum_axis = int(self.small_axis)+1
 
         else:
             axes = [int(self.small_axis)+1]
-            sum_axis = int(self.small_axis)+1
 
+        model_conv = self.sinc_shift(model_, self.other_shifts, axes)
 
-        model_conv = self.sinc_shift(model_, self.other_shifts, axes, sum_axis)
-
-        model_conv = model_conv.reshape(*model_conv.shape[:2], -1)
+        model_conv = model_conv.reshape(*model_conv.shape[:2], -2)
         if self.small_axis:
             for c in range(self.frame.C):
                 model_image.append((model_conv[c] @ self._resconv_op[c].T).T)

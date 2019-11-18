@@ -1,6 +1,7 @@
 import numpy as np
+import matplotlib.pyplot as plt
 
-def match_patches(shape_hr, shape_lr, wcs_hr, wcs_lr, isrot = True, perimeter  = 'overlap', psf = False):
+def match_patches(shape_hr, shape_lr, wcs_hr, wcs_lr, isrot = True, perimeter  = 'overlap'):
     '''Matches datasets at different resolutions
 
     Finds the region of overlap between two datasets and creates a mask for the region as well as the pixel coordinates
@@ -26,8 +27,6 @@ def match_patches(shape_hr, shape_lr, wcs_hr, wcs_lr, isrot = True, perimeter  =
     '''
 
     assert perimeter in ['overlap', 'union'], 'perimeter should be either overlap or union.'
-    if psf == True:
-        perimeter == 'overlap'
 
     if np.size(shape_hr) == 3:
         B_hr, Ny_hr, Nx_hr = shape_hr
@@ -45,8 +44,6 @@ def match_patches(shape_hr, shape_lr, wcs_hr, wcs_lr, isrot = True, perimeter  =
 
     assert wcs_hr != None
     assert wcs_lr != None
-
-
 
     y_hr, x_hr = np.array(range(Ny_hr)), np.array(range(Nx_hr))
 
@@ -85,6 +82,7 @@ def match_patches(shape_hr, shape_lr, wcs_hr, wcs_lr, isrot = True, perimeter  =
         x_lr, y_lr = wcs_lr.all_world2pix(ra_hr, dec_hr, 0, ra_dec_order=True)
     elif np.size(wcs_lr.array_shape) == 3:
         x_lr, y_lr, _ = wcs_lr.all_world2pix(ra_hr, dec_hr, 0, 0, ra_dec_order=True)
+
 
     #mask of low resolution pixels at high resolution in the overlap:
     over_lr = ((X_hr >= 0) * (X_hr < Nx_hr+1) * (Y_hr >= 0) * (Y_hr < Ny_hr+1))

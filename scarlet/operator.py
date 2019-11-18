@@ -272,15 +272,15 @@ def prox_kspace_symmetry(X, step, shift=None, padding=10):
     #Compute shift operator
     shifter_y, shifter_x = interpolation.mk_shifter(fft_shape)
     #Apply shift in Fourier
-    result_fft = X_fft * shifter_y[:, np.newaxis] ** (-dy)
-    result_fft *= shifter_x[np.newaxis, :] ** (-dx)
+    result_fft = X_fft * np.exp(shifter_y[:, np.newaxis] * (-dy))
+    result_fft *= np.exp(shifter_x[np.newaxis, :] * (-dx))
 
     #symmetrize
     result_fft = result_fft.real
 
     #Unshift
-    result_fft = result_fft * shifter_y[:, np.newaxis] ** dy
-    result_fft = result_fft * shifter_x[np.newaxis, :] ** dx
+    result_fft = result_fft * np.exp(shifter_y[:, np.newaxis] * dy)
+    result_fft = result_fft * np.exp(shifter_x[np.newaxis, :] * dx)
 
     result = fft.Fourier.from_fft(result_fft, fft_shape, X.image.shape, [0,1])
 
