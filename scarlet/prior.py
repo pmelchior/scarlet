@@ -62,7 +62,7 @@ try:
                 inx = tf.placeholder(shape=[batch_size, self.stamp_size, self.stamp_size, 1],
                                      dtype=tf.float32)
                 splits = tf.split(inx, num_or_size_splits=batch_size)
-                grad_prior = tf.concat([-sel.module(s, as_dict=True)['grads'] for s in splits], axis=0)
+                grad_prior = tf.concat([-self.module(s, as_dict=True)['grads'] for s in splits], axis=0)
                 compute_grad_prior = lambda x: self.sess.run(grad_prior, feed_dict={inx: x})
                 return compute_grad_prior(*X)
 
