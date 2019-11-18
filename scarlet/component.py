@@ -168,12 +168,23 @@ class FactorizedComponent(Component):
         return self._shift_morph(self.shift, self._morph._data)
 
     @property
+<<<<<<< HEAD
     def shift(self):
         """Numpy view of the component center
         """
         if self._shift is not None:
             return self._shift._data
         return None
+=======
+    def pixel_center(self):
+        """ Pixel center of component
+        """
+        return self._morph.pixel_center
+
+    @property
+    def parameters(self):
+        return [ p for p in [self._sed, self._morph] if not p.fixed ]
+>>>>>>> pixelcnn
 
     def get_model(self, *parameters):
         """Get the model for this component.
