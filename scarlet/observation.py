@@ -372,6 +372,9 @@ class LowResObservation(Observation):
         else:
             shifter = np.array(interpolation.mk_shifter(self._fft_shape))
 
+        shishift = []
+        for ax in axes:
+            shishift.append(np.exp(shifter[ax][np.newaxis, :] * shifts[ax][:, np.newaxis]))
         # Shift
         if 0 in axes:
             # Fourier shift
@@ -395,8 +398,12 @@ class LowResObservation(Observation):
             fft_axes = [len(imgs_shiftfft.shape)-2]
 
         # Inverse Fourier transform.
-        # The n-dimensional transform could pose problem for very large images
-        op = fft.Fourier.from_fft(imgs_shiftfft, fft_shape, inv_shape, fft_axes).image
+
+        inv_shape = tuple(imgs_shiftfft.shape[:2]) + tuple(transformed_shape)
+
+        #The n-dimensional transform could pose problem for very large images, but I am not sure it is a regime we should care about
+        op = fft.Fourier.from_fft(imgs_shiftfft, fft_shape, inv_shape, np.array(axes)+len(imgs_shiftfft.shape)-2).image
+
         return op
 
     def match(self, model_frame):
@@ -515,6 +522,7 @@ class LowResObservation(Observation):
             self.other_shifts = np.copy(self.shifts)
 
         # Computes the resampling/convolution matrix
+        resconv_op = self.sinc_shift(self.diff_psf, self.shifts, axes)
 
         resconv_op = self.sinc_shift(self.diff_psf, self.shifts, axes)
 
@@ -557,18 +565,7 @@ class LowResObservation(Observation):
 
         model_conv = self.sinc_shift(model_, self.other_shifts, axes)
 
-        if self.isrot:
-            if self.small_axis:
-                model_conv = model_conv.reshape(*model_conv.shape[:2], -1)
-                for c in range(self.frame.C):
-                    model_image.append((model_conv[c] @ self._resconv_op[c].T).T)
-                return np.array(model_image, dtype=self.frame.dtype)[:, :, ::-1]
-            else:
-                model_conv = model_conv.reshape(*model_conv.shape[:2], -1)
-                for c in range(self.frame.C):
-                    model_image.append((model_conv[c] @ self._resconv_op[c].T))
-                return np.array(model_image, dtype=self.frame.dtype)[:, ::-1, :]
-
+        model_conv = model_conv.reshape(*model_conv.shape[:2], -2)
         if self.small_axis:
             model_conv = model_conv.reshape(model_conv.shape[0],-1,model_conv.shape[-1])
             for c in range(self.frame.C):
