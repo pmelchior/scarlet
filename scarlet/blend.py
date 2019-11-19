@@ -113,13 +113,9 @@ class Blend(ComponentTree):
             if p.prior is not None:
                 priors[p.prior] = priors.get(p.prior, []) + [k]
 
-        for prior, ks in priors:
-            if prior.use_batch:
-                batch = np.stack([parameters[k].view(np.ndarray) for k in ks], axis=0)
-                grads_ = prior.grad(batch)
-                for i,k in enumerate(ks):
-                    grads[k] = grads_[i]
-            else:
-                for k in ks:
-                    grads[k] = prior.grad(parameters[k].view(np.ndarray))
+        for prior, ks in priors.items():
+            batch = [parameters[k].view(np.ndarray) for k in ks]
+            grads_ = prior.grad(batch)
+            for i,k in enumerate(ks):
+                grads[k] = grads_[i]
         return grads

@@ -5,8 +5,6 @@ class Prior:
 
     Priors encode distributions of valid solutions for optimization parrameters.
     """
-    use_batch = False
-
     def __call__(self, *X):
         """Compute the log-likelihood of X under the prior
         """
@@ -24,7 +22,6 @@ try:
     import tensorflow_hub as hub
 
     class PixelCNNPrior(Prior):
-        use_batch = True
 
         def __init__(self, module_name, stamp_size=32):
             """
@@ -35,7 +32,6 @@ try:
             module_name: `str`
                 Path or URL of TF Hub module used to calculate a prior gradient.
             """
-            #TODO: read the stamp size from the module
             self.stamp_size = stamp_size
             self.module = hub.Module(module_name)
             self.sess = tf.Session()
@@ -44,7 +40,8 @@ try:
         def __call__(self, *X):
             """Compute the log-likelihood of X under the prior
             """
-            return self.module(*X)
+            single_shape = (1, self.stamp_size, self.stamp_size, 1)
+            return tuple([ self.module(x.reshape(single_shape), as_dict=True)['log_prob'].eval(session=self.sess) for x in X])
 
         def grad(self, *X):
             """
@@ -55,16 +52,16 @@ try:
             x: `tf.tensor`
                 4d Tensor containing the input image (s)
             """
-            #TODO: Standardize the keywords for the prior outputs
+            print ("prior", len(tuple(*X)), tuple(*X)[0].shape)
 
-            batch_size = len(X)
-            if batch_size > 0:
-                inx = tf.placeholder(shape=[batch_size, self.stamp_size, self.stamp_size, 1],
-                                     dtype=tf.float32)
-                splits = tf.split(inx, num_or_size_splits=batch_size)
-                grad_prior = tf.concat([-self.module(s, as_dict=True)['grads'] for s in splits], axis=0)
-                compute_grad_prior = lambda x: self.sess.run(grad_prior, feed_dict={inx: x})
-                return compute_grad_prior(*X)
+
+            single_shape = (1, self.stamp_size, self.stamp_size, 1)
+            x_shape = (self.stamp_size, self.stamp_size)
+            return tuple([self.module(x.reshape(single_shape), as_dict=True)['grads'].eval(session=self.sess).reshape(x_shape) for x in tuple(*X)])
+
+            # TODO: GPU deployment optimimzation: this below seems slower ...?
+            # grad_prior = tf.concat([-self.module(x.reshape(single_shape), as_dict=True)['grads'] for x in X], axis=0)
+            # return self.sess.run(grad_prior)
 
 except ImportError:
     pass

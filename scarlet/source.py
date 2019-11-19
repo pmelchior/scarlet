@@ -170,7 +170,8 @@ def init_extended_source(sky_coord, frame, observations, obs_idx=0,
 
     # trim morph to pixels above threshold
     mask = morph > bg_cutoff * thresh
-    boxsize = 16
+    # boxsize = 16
+    boxsize = 64
     pixel_center = frame.get_pixel(sky_coord)
     if mask.sum() > 0:
         morph[~mask] = 0
@@ -181,14 +182,14 @@ def init_extended_source(sky_coord, frame, observations, obs_idx=0,
         morph /= center_morph
         flag = False
 
-        # find fitting bbox
-        bbox = Box.from_data(morph, min_value=0)
-        boxsize = 16
-        if not bbox.is_empty and not flag:
-            size = 2 * max((pixel_center[0] - bbox.bottom, bbox.top - pixel_center[0],
-                            pixel_center[1] - bbox.left, bbox.right - pixel_center[1]))
-            while boxsize < size:
-                boxsize *= 2
+        # # find fitting bbox
+        # bbox = Box.from_data(morph, min_value=0)
+        # boxsize = 16
+        # if not bbox.is_empty and not flag:
+        #     size = 2 * max((pixel_center[0] - bbox.bottom, bbox.top - pixel_center[0],
+        #                     pixel_center[1] - bbox.left, bbox.right - pixel_center[1]))
+        #     while boxsize < size:
+        #         boxsize *= 2
     else:
         msg = "No flux above threshold for source at y={0} x={1}".format(*center)
         logger.warning(msg)
