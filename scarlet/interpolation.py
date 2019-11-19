@@ -331,8 +331,8 @@ def mk_shifter(shape, real = False):
 
         # Shift the signal to recenter it, negative because math is opposite from
         # pixel direction
-        shift_y = np.exp(-1j * 2 * np.pi * freq_y)
-        shift_x = np.exp(-1j * 2 * np.pi * freq_x)
+        shift_y = (-1j * 2 * np.pi * freq_y)
+        shift_x = (-1j * 2 * np.pi * freq_x)
 
         shifters = (shift_y, shift_x)
 
@@ -385,8 +385,8 @@ def sinc_interp(images, coord_hr, coord_lr, angle = None, padding = 3):
 
     #Shifts values
 
-    shift_y = shifter_y[np.newaxis, :] ** (-(y_hr[:, np.newaxis]) * cos)
-    shift_x = shifter_x[np.newaxis, :] ** (-(y_hr[:, np.newaxis]) * sin)
+    shift_y = np.exp(shifter_y[np.newaxis, :] * (-(y_hr[:, np.newaxis]) * cos))
+    shift_x = np.exp(shifter_x[np.newaxis, :] * (-(y_hr[:, np.newaxis]) * sin))
     #Apply shifts
     result_fft = X_fft[:, np.newaxis, :, :] * shift_y[np.newaxis, :, :, np.newaxis]
     result_fft = result_fft * shift_x[np.newaxis, :, np.newaxis, :]

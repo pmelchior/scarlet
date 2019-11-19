@@ -372,28 +372,31 @@ class LowResObservation(Observation):
         else:
             shifter = np.array(interpolation.mk_shifter(self._fft_shape))
 
-        shishift = []
-        for ax in axes:
-            shishift.append(np.exp(shifter[ax][np.newaxis, :] * shifts[ax][:, np.newaxis]))
-
         # Shift
         if 0 in axes:
-            imgs_shiftfft = imgs_fft[:, np.newaxis, :, :] * shishift[0][np.newaxis, :, :, np.newaxis]
+            # Fourier shift
+            shishift = np.exp(shifter[0][np.newaxis, :] * (shifts[0][:, np.newaxis]))
+            imgs_shiftfft = imgs_fft[:, np.newaxis, :, :] * shishift[np.newaxis, :, :, np.newaxis]
+            fft_axes = [len(imgs_shiftfft.shape) - 2]
             # Shift along the x-axis
             if 1 in axes:
-                #apply shifts and sinc
-                imgs_shiftfft = imgs_shiftfft * shishift[1][np.newaxis, :, np.newaxis, :]
+                # Fourier shift
+                shishift = np.exp(shifter[1][np.newaxis, :] * (shifts[1][:,np.newaxis]))
+                imgs_shiftfft = imgs_shiftfft * shishift[np.newaxis, :, np.newaxis, :]
+                fft_axes = np.array(axes)+len(imgs_shiftfft.shape)-2
+            inv_shape = tuple(imgs_shiftfft.shape[:2]) + tuple(transformed_shape)
+
 
         elif 1 in axes:
-            #Apply shifts and sinc
-            imgs_shiftfft = imgs_fft[:, np.newaxis, :, :] * shishift[0][np.newaxis, :, np.newaxis, :]
+            # Fourier shift
+            shishift = np.exp(shifter[1][:, np.newaxis] * (shifts[1][np.newaxis, :]))
+            imgs_shiftfft = imgs_fft[:, :, :, np.newaxis] * shishift[np.newaxis, np.newaxis, :, :]
+            inv_shape = tuple([imgs_shiftfft.shape[0]]) + tuple(transformed_shape) + tuple([imgs_shiftfft.shape[-1]])
+            fft_axes = [len(imgs_shiftfft.shape)-2]
 
         # Inverse Fourier transform.
-        inv_shape = tuple(imgs_shiftfft.shape[:2]) + tuple(transformed_shape)
-        print(np.array(axes)+len(imgs_shiftfft.shape)-2)
-        #The n-dimensional transform could pose problem for very large images, but I am not sure it is a regime we should care about
-        op = fft.Fourier.from_fft(imgs_shiftfft, fft_shape, inv_shape, np.array(axes)+len(imgs_shiftfft.shape)-2).image
-
+        # The n-dimensional transform could pose problem for very large images
+        op = fft.Fourier.from_fft(imgs_shiftfft, fft_shape, inv_shape, fft_axes).image
         return op
 
     def match(self, model_frame):
@@ -408,14 +411,14 @@ class LowResObservation(Observation):
             if self.frame._psfs is not None:
                 self.frame._psfs.update_dtype(model_frame.dtype)
 
-        #  channels of model that are represented in this observation
+        # channels of model that are represented in this observation
         self._band_slice = slice(None)
         if self.frame.channels is not model_frame.channels:
             bmin = model_frame.channels.index(self.frame.channels[0])
             bmax = model_frame.channels.index(self.frame.channels[-1])
             self._band_slice = slice(bmin, bmax+1)
 
-        #Affine transform
+        # Affine transform
         try :
             model_affine = model_frame.wcs.wcs.pc
         except AttributeError:
@@ -427,10 +430,13 @@ class LowResObservation(Observation):
 
         model_pix = np.sqrt(np.abs(model_affine[0,0])*np.abs(model_affine[1,1]-model_affine[0,1]*model_affine[1,0]))
         self_pix = np.sqrt(np.abs(self_affine[0,0])*np.abs(self_affine[1,1]-self_affine[0,1]*self_affine[1,0]))
+
+        # Pixel scale ratio
+        self.h = self_pix/model_pix
         #Vector giving the direction of the x-axis of each frame
         self_framevector = np.sum(self_affine, axis=0)[:2]/self_pix
         model_framevector = np.sum(model_affine, axis=0)[:2]/model_pix
-        #normalisation
+        # normalisation
         self_framevector /= np.sum(self_framevector**2)**0.5
         model_framevector /= np.sum(model_framevector**2)**0.5
 
@@ -438,7 +444,7 @@ class LowResObservation(Observation):
         self.sin_rot = np.cross(self_framevector, model_framevector)
         # cos of the angle. (normalised scalar product)
         self.cos_rot = np.dot(self_framevector, model_framevector)
-        #Is the angle larger than machine precision?
+        # Is the angle larger than machine precision?
         self.isrot = (np.abs(self.sin_rot)**2) > np.finfo(float).eps
         if not self.isrot:
             self.sin_rot = 0
@@ -452,14 +458,14 @@ class LowResObservation(Observation):
                                                                     model_frame.wcs, self.frame.wcs,
                                                                     perimeter = 'union', isrot = self.isrot)
 
-        #shape of the low resolutino image in the overlap or union
+        # shape of the low resolutino image in the overlap or union
         self.lr_shape = (np.max(coord_lr[0])-np.min(coord_lr[0])+1,np.max(coord_lr[1])-np.min(coord_lr[1])+1)
 
-        #Coordinates of overlapping low resolutions pixels at low resolution
+        # Coordinates of overlapping low resolutions pixels at low resolution
         self._coord_lr = coord_lr
-        #Coordinates of overlaping low resolution pixels in high resolution frame
+        # Coordinates of overlaping low resolution pixels in high resolution frame
         self._coord_hr = coord_hr
-        #Coordinates for all model frame pixels
+        # Coordinates for all model frame pixels
         self.frame_coord = (np.array(range(model_frame.Ny)), np.array(range(model_frame.Nx)))
 
         diff_psf = self.build_diffkernel(model_frame, angle)
@@ -472,8 +478,8 @@ class LowResObservation(Observation):
         self._fft_shape = fft._get_fft_shape(model_frame.psfs, np.zeros(model_frame.shape), padding=3,
                                              axes=[-2, -1], max=True)
 
-        center_y = model_frame.Ny/2.#model_frame.wcs.wcs.crpix[0]
-        center_x = model_frame.Nx/2.#self.h#model_frame.wcs.wcs.crpix[1]
+        center_y = model_frame.Ny/2.
+        center_x = model_frame.Nx/2.
 
         self.diff_psf = fft.Fourier(fft._pad(diff_psf.image, self._fft_shape, axes = (1,2)))
         if self.isrot:
@@ -512,10 +518,20 @@ class LowResObservation(Observation):
 
         resconv_op = self.sinc_shift(self.diff_psf, self.shifts, axes)
 
-        self._resconv_op = np.array(resconv_op, dtype=self.frame.dtype)*(self_pix/model_pix)**2
-        self._resconv_op = self._resconv_op.reshape(*self._resconv_op.shape[:2], -1)
 
-        return self
+        self._resconv_op = np.array(resconv_op, dtype=self.frame.dtype)*self.h**2
+
+        if self.isrot:
+            self._resconv_op = self._resconv_op.reshape(*self._resconv_op.shape[:2], -1)
+            return self
+        if self.small_axis:
+            self._resconv_op = self._resconv_op.reshape(*self._resconv_op.shape[:2], -1)
+            return self
+        else:
+            self._resconv_op = self._resconv_op.reshape(self._resconv_op.shape[0], -1, self._resconv_op.shape[-1])
+            return self
+
+
 
 
     def _render(self, model):
@@ -541,14 +557,28 @@ class LowResObservation(Observation):
 
         model_conv = self.sinc_shift(model_, self.other_shifts, axes)
 
-        model_conv = model_conv.reshape(*model_conv.shape[:2], -2)
+        if self.isrot:
+            if self.small_axis:
+                model_conv = model_conv.reshape(*model_conv.shape[:2], -1)
+                for c in range(self.frame.C):
+                    model_image.append((model_conv[c] @ self._resconv_op[c].T).T)
+                return np.array(model_image, dtype=self.frame.dtype)[:, :, ::-1]
+            else:
+                model_conv = model_conv.reshape(*model_conv.shape[:2], -1)
+                for c in range(self.frame.C):
+                    model_image.append((model_conv[c] @ self._resconv_op[c].T))
+                return np.array(model_image, dtype=self.frame.dtype)[:, ::-1, :]
+
         if self.small_axis:
+            model_conv = model_conv.reshape(model_conv.shape[0],-1,model_conv.shape[-1])
             for c in range(self.frame.C):
-                model_image.append((model_conv[c] @ self._resconv_op[c].T).T)
+                model_image.append((self._resconv_op[c] @ model_conv[c]))
             return np.array(model_image, dtype=self.frame.dtype)[:, :, ::-1]
         else:
+            model_conv = model_conv.reshape(*model_conv.shape[:2], -2)
             for c in range(self.frame.C):
-                model_image.append((model_conv[c] @ self._resconv_op[c].T))
+                print(model_conv.shape, self._resconv_op.shape)
+                model_image.append(( model_conv[c] @ self._resconv_op[c]))
             return np.array(model_image, dtype=self.frame.dtype)[:, ::-1, :]
 
 
