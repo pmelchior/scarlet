@@ -375,13 +375,13 @@ class LowResObservation(Observation):
         # Shift
         if 0 in axes:
             # Fourier shift
-            shishift = np.exp(shifter[0][np.newaxis, :] * (shifts[0][:, np.newaxis]))
+            shishift = np.exp(shifter[0][np.newaxis, :] * shifts[0][:, np.newaxis])
             imgs_shiftfft = imgs_fft[:, np.newaxis, :, :] * shishift[np.newaxis, :, :, np.newaxis]
             fft_axes = [len(imgs_shiftfft.shape) - 2]
             # Shift along the x-axis
             if 1 in axes:
                 # Fourier shift
-                shishift = np.exp(shifter[1][np.newaxis, :] * (shifts[1][:,np.newaxis]))
+                shishift = np.exp(shifter[1][np.newaxis, :] * shifts[1][:,np.newaxis])
                 imgs_shiftfft = imgs_shiftfft * shishift[np.newaxis, :, np.newaxis, :]
                 fft_axes = np.array(axes)+len(imgs_shiftfft.shape)-2
             inv_shape = tuple(imgs_shiftfft.shape[:2]) + tuple(transformed_shape)
@@ -389,7 +389,7 @@ class LowResObservation(Observation):
 
         elif 1 in axes:
             # Fourier shift
-            shishift = np.exp(shifter[1][:, np.newaxis] * (shifts[1][np.newaxis, :]))
+            shishift = np.exp(shifter[1][:, np.newaxis] * shifts[1][np.newaxis, :])
             imgs_shiftfft = imgs_fft[:, :, :, np.newaxis] * shishift[np.newaxis, np.newaxis, :, :]
             inv_shape = tuple([imgs_shiftfft.shape[0]]) + tuple(transformed_shape) + tuple([imgs_shiftfft.shape[-1]])
             fft_axes = [len(imgs_shiftfft.shape)-2]
@@ -556,31 +556,30 @@ class LowResObservation(Observation):
         else:
             axes = [int(self.small_axis)+1]
 
-        model_conv = self.sinc_shift(model_, self.other_shifts, axes)
+        model_conv = self.sinc_shift(model_, -self.other_shifts, axes)
 
         if self.isrot:
             if self.small_axis:
                 model_conv = model_conv.reshape(*model_conv.shape[:2], -1)
                 for c in range(self.frame.C):
                     model_image.append((model_conv[c] @ self._resconv_op[c].T).T)
-                return np.array(model_image, dtype=self.frame.dtype)[:, :, ::-1]
+                return np.array(model_image, dtype=self.frame.dtype)
             else:
                 model_conv = model_conv.reshape(*model_conv.shape[:2], -1)
                 for c in range(self.frame.C):
                     model_image.append((model_conv[c] @ self._resconv_op[c].T))
-                return np.array(model_image, dtype=self.frame.dtype)[:, ::-1, :]
+                return np.array(model_image, dtype=self.frame.dtype)
 
         if self.small_axis:
             model_conv = model_conv.reshape(model_conv.shape[0],-1,model_conv.shape[-1])
             for c in range(self.frame.C):
                 model_image.append((self._resconv_op[c] @ model_conv[c]))
-            return np.array(model_image, dtype=self.frame.dtype)[:, :, ::-1]
+            return np.array(model_image, dtype=self.frame.dtype)
         else:
             model_conv = model_conv.reshape(*model_conv.shape[:2], -2)
             for c in range(self.frame.C):
-                print(model_conv.shape, self._resconv_op.shape)
                 model_image.append(( model_conv[c] @ self._resconv_op[c]))
-            return np.array(model_image, dtype=self.frame.dtype)[:, ::-1, :]
+            return np.array(model_image, dtype=self.frame.dtype)
 
 
     def render(self, model):
