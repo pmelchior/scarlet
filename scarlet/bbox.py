@@ -37,7 +37,7 @@ class Box(object):
 
         Returns
         -------
-        bbox: `Box`
+        bbox: :class:`scarlet.bbox.Box`
             A new box bounded by the shape.
         """
         if len(shape) == 2:
@@ -58,7 +58,7 @@ class Box(object):
 
         Returns
         -------
-        bbox: `Box`
+        bbox: `:class:`scarlet.bbox.Box`
             A new box bounded by the image.
         """
         return Box.from_shape(image.shape)
@@ -80,7 +80,7 @@ class Box(object):
 
         Returns
         -------
-        bbox: `Box`
+        bbox: :class:`scarlet.bbox.Box`
             A new box bounded by the input bounds.
         """
         return Box((bottom, left), top-bottom, right-left)
@@ -98,7 +98,7 @@ class Box(object):
 
         Returns
         -------
-        bbox: `Box`
+        bbox: :class:`scarlet.bbox.Box`
             Bounding box for the thresholded `X` (bottom, top, left, right)
         """
         sel = X > min_value
@@ -119,7 +119,17 @@ class Box(object):
         return self.width == 0 or self.height == 0
 
     def slices_for(self, im_or_shape):
-        """Slices for this bounding box
+        """Slices for `im_or_shape` to be limited to this bounding box.
+
+        Parameters
+        ----------
+        im_or_shape: array or tuple
+            Array or shpae of the array to be sliced
+
+        Returns
+        -------
+        If shape is 2D: `slice_y`, `slice_x`
+        If shape is 3: `slice(None)`, `slice_y`, `slice_x`
         """
         if hasattr(im_or_shape, 'shape'):
             shape = im_or_shape.shape
@@ -140,6 +150,19 @@ class Box(object):
             return slice(None), yslice, xslice
 
     def image_to_box(self, image, box=None):
+        """Excize box described by this bbox from image
+
+        Parameters
+        ----------
+        image: array
+            Full origin image
+        box: array
+            Excized destination image
+
+        Returns
+        -------
+        box: array
+        """
         imbox = Box.from_image(image)
 
         if box is None:
@@ -157,6 +180,21 @@ class Box(object):
         return box
 
     def box_to_image(self, box, image):
+        """Insert `box` into `image` according to this bbox
+
+        Inverse operation to :func:`~scarlet.bbox.Box.image_to_box`.
+
+        Parameters
+        ----------
+        box: array
+            Excized box
+        image: array
+            Full image
+
+        Returns
+        -------
+        image: array
+        """
         imbox = Box.from_image(image)
         boxbox = Box.from_image(box)
 
@@ -266,7 +304,7 @@ class Box(object):
         self.yx0 = (self.yx0[0] - yx[0], self.yx0[1] - yx[1])
         return self
 
-    def copy(self):
+    def __copy__(self):
         return Box((self.yx0[0], self.yx0[1]), self.height, self.width)
 
     def __eq__(self, other):

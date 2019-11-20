@@ -43,7 +43,7 @@ API Changes
 
 
 0.5 (2019-06-26)
----------------
+----------------
 
 General
 ^^^^^^^
@@ -125,7 +125,7 @@ New Features
   bilinear, cubic spline, and Lanczos algorithms.
 
 0.4 (2019-2-15)
-----------------
+---------------
 
 General
 ^^^^^^^
