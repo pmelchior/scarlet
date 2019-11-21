@@ -115,8 +115,8 @@ class FactorizedComponent(Component):
     def __init__(self, frame, sed, morph, bbox=None, shift=None):
         self._sed = sed
         self._morph = morph
-        self._shift = shift
         self.bbox = bbox
+        self._shift = shift
         if shift is None:
             parameters = (self._sed, self._morph)
         else:
@@ -132,6 +132,7 @@ class FactorizedComponent(Component):
         # store padding and slicing structures
         if self.bbox is not None:
             assert isinstance(self.bbox, Box)
+            # TODO: full 3D bbox and slicing support
             # determine pad from box into full frame
             # yields superset of frame pixels
             # pad_width is ((before1, after1), (before2, after2)...)
@@ -294,10 +295,19 @@ class CubeComponent(Component):
     """
     def __init__(self, frame, cube):
         self._cube = cube
-        self._morph = morph
         parameters = (self._cube,)
         super().__init__(frame, *parameters)
 
+    @property
+    def cube (self):
+        return self._cube._data
+
+    def get_model(self, *parameters):
+        cube = self.cube
+        for p in parameters:
+            if p._value is self._cube:
+                cube = p
+        return cube
 
 class ComponentTree():
     """Base class for hierarchical collections of Components.
@@ -415,7 +425,7 @@ class ComponentTree():
         return pars
 
     def get_model(self, *params):
-        """Get the model this component tree
+        """Get the model of this component tree
 
         Parameters
         ----------

@@ -31,7 +31,7 @@ def moffat(y, x, alpha=4.7, beta=1.5, shape=None):
     X = np.arange(shape[1])
     Y = np.arange(shape[2])
     X, Y = np.meshgrid(X, Y)
-    # TODO: has not pixel-integration formula
+    # TODO: has no pixel-integration formula
     return ((1+((X-x)**2+(Y-y)**2)/alpha**2)**-beta)[None,:,:]
 
 def gaussian(y, x, sigma=1, integrate=True, shape=None):
@@ -75,8 +75,6 @@ class PSF:
             self.normalize()
             self._func = None
             self.shape = X.shape
-
-
         elif hasattr(X, '__call__'):
             self._image = None
             self._func = X
@@ -91,7 +89,6 @@ class PSF:
         assert shape is not None, "Set PSF.shape first"
 
         if self._func is not None:
-            # TODO: connect to oversampling
             return self._func(y, x, shape=shape)
         return None
 
