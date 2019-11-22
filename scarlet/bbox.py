@@ -1,51 +1,33 @@
 import numpy as np
 
 
-class Box(object):
+class Box:
     """Bounding Box for an object
 
-    This is just a container with convenience methods to generate
-    slices and properties for the portion of an array/tensor
-    contained in the bounding box.
+    A Bounding box describes the location of a data unit in the global/model coordinate
+    system. It is used to identify spatial and channel overlap and to map from model
+    to observed frames and back.
 
     Parameters
     ----------
-    yx0: tuple
+    origin: tuple
         Minimum (y,x) value of the box (lower left corner).
     height: int
         Height of the box.
     width: int
         Width of the box
     """
-    def __init__(self, yx0, height, width):
-        if width <= 0 or height <= 0:
-            self.yx0 = None
-            self.width = self.height = 0
-        else:
-            self.yx0 = yx0
-            self.height = height
-            self.width = width
-
-    @staticmethod
-    def from_shape(shape):
-        """Initialize a box to cover `image`
-
-        Parameters
-        ----------
-        shape: tuple
-            2D (Height, Width)
-
-        Returns
-        -------
-        bbox: `Box`
-            A new box bounded by the shape.
-        """
+    def __init__(self, shape, origin=(0,0,0)):
+        # bbox always in 3D
         if len(shape) == 2:
-            return Box((0,0), *shape)
-        elif len(shape) == 3:
-            return Box((0,0), *(shape[1:]))
-        else:
-            raise AttributeError("Shape needs to be for 2D or 3D")
+            shape = (0, *shape)
+        assert len(shape) == 3
+        self.shape = shape
+
+        if len(origin) == 2:
+            origin = (0, *origin)
+        assert len(origin) == 3
+        self.origin = origin
 
     @staticmethod
     def from_image(image):
@@ -58,13 +40,13 @@ class Box(object):
 
         Returns
         -------
-        bbox: `Box`
+        bbox: `:class:`scarlet.bbox.Box`
             A new box bounded by the image.
         """
-        return Box.from_shape(image.shape)
+        return Box(image.shape)
 
     @staticmethod
-    def from_bounds(bottom, top, left, right):
+    def from_bounds(front, back, bottom, top, left, right):
         """Initialize a box from its bounds
 
         Parameters
@@ -80,10 +62,16 @@ class Box(object):
 
         Returns
         -------
-        bbox: `Box`
+        bbox: :class:`scarlet.bbox.Box`
             A new box bounded by the input bounds.
         """
-        return Box((bottom, left), top-bottom, right-left)
+        if back < front:
+            back, front = front, back
+        if top < bottom:
+            top, bottom = bottom, top
+        if right < left:
+            right, left = left, right
+        return Box((back-front, top-bottom, right-left), origin=(front, bottom, left))
 
     @staticmethod
     def from_data(X, min_value=0):
@@ -98,28 +86,52 @@ class Box(object):
 
         Returns
         -------
-        bbox: `Box`
+        bbox: :class:`scarlet.bbox.Box`
             Bounding box for the thresholded `X` (bottom, top, left, right)
         """
         sel = X > min_value
         if sel.any():
             nonzero = np.where(sel)
-            left = nonzero[1].min()
-            right = nonzero[1].max()
-            bottom = nonzero[0].min()
-            top = nonzero[0].max()
+            bounds = []
+            for dim in range(len(X.shape)):
+                bounds.append(nonzero[dim].min())
+                bounds.append(nonzero[dim].max())
+            if len(X.shape) == 2:
+                bounds.insert(0,0)
+                bounds.insert(1,0)
         else:
-            left = right = bottom = top = 0
-        return Box.from_bounds(bottom, top, left, right)
+            bounds = [0,] * 6
+        return Box.from_bounds(*bounds)
 
     @property
     def is_empty(self):
-        """Whether the box has a width and height
+        """Whether the box has non-zero volume
         """
-        return self.width == 0 or self.height == 0
+        return any(np.array(self.shape) == 0)
+
+    def contains(self, p):
+        """Whether the box cotains a given point
+        """
+        if len(p) == 2:
+            p = (0,*p)
+
+        for d in range(len(self.shape)):
+            if p[d] < self.origin[d] or p[d] > self.origin[d] + self.shape[d]:
+                return False
+        return True
 
     def slices_for(self, im_or_shape):
-        """Slices for this bounding box
+        """Slices for `im_or_shape` to be limited to this bounding box.
+
+        Parameters
+        ----------
+        im_or_shape: array or tuple
+            Array or shpae of the array to be sliced
+
+        Returns
+        -------
+        If shape is 2D: `slice_y`, `slice_x`
+        If shape is 3: `slice(None)`, `slice_y`, `slice_x`
         """
         if hasattr(im_or_shape, 'shape'):
             shape = im_or_shape.shape
@@ -127,85 +139,122 @@ class Box(object):
             shape = im_or_shape
         assert len(shape) in [2,3]
 
-        im_box = Box.from_shape(shape)
+        im_box = Box(shape)
         overlap = self & im_box
-        if overlap.is_empty:
-            yslice, xslice = slice(0, 0), slice(0, 0)
-        else:
-            yslice, xslice = slice(overlap.bottom, overlap.top), slice(overlap.left, overlap.right)
+        zslice, yslice, xslice = slice(overlap.front, overlap.back), slice(overlap.bottom, overlap.top), slice(overlap.left, overlap.right)
 
         if len(shape) == 2:
             return yslice, xslice
         else:
-            return slice(None), yslice, xslice
+            return zslice, yslice, xslice
 
     def image_to_box(self, image, box=None):
+        """Excize box described by this bbox from image
+
+        Parameters
+        ----------
+        image: array
+            Full origin image
+        box: array
+            Excized destination image
+
+        Returns
+        -------
+        box: array
+        """
         imbox = Box.from_image(image)
 
         if box is None:
-            if len(image.shape) == 2:
+            if len(image.shape) == 3:
                 box = np.zeros(self.shape)
             else:
-                box = np.zeros(tuple((image.shape[0], *self.shape)))
-        assert box.shape[-2:] == self.shape
+                box = np.zeros(self.shape[1:])
         boxbox = Box.from_image(box)
 
         # imbox now in the frame of this bbox (i.e. of box)
-        imbox -= self.yx0
+        imbox -= self.origin
         overlap = imbox & boxbox
         box[overlap.slices_for(box)] = image[self.slices_for(image)]
         return box
 
     def box_to_image(self, box, image):
+        """Insert `box` into `image` according to this bbox
+
+        Inverse operation to :func:`~scarlet.bbox.Box.image_to_box`.
+
+        Parameters
+        ----------
+        box: array
+            Excized box
+        image: array
+            Full image
+
+        Returns
+        -------
+        image: array
+        """
         imbox = Box.from_image(image)
         boxbox = Box.from_image(box)
 
         # imbox now in the frame of this bbox (i.e. of box)
-        imbox -= self.yx0
+        imbox -= self.origin
         overlap = imbox & boxbox
-
         image[self.slices_for(image)] = box[overlap.slices_for(box)]
         return image
+
+    @property
+    def C(self):
+        """Number of channels in the model
+        """
+        return self.shape[0]
+
+    @property
+    def Ny(self):
+        """Number of pixel in the y-direction
+        """
+        return self.shape[1]
+
+    @property
+    def Nx(self):
+        """Number of pixels in the x-direction
+        """
+        return self.shape[2]
+
+    @property
+    def front(self):
+        """Minimum z value
+        """
+        return self.origin[0]
 
     @property
     def bottom(self):
         """Minimum y value
         """
-        if self.is_empty:
-            return None
-        return self.yx0[0]
+        return self.origin[1]
 
     @property
     def left(self):
         """Minimum x value
         """
-        if self.is_empty:
-            return None
-        return self.yx0[1]
+        return self.origin[2]
+
+    @property
+    def back(self):
+        """Maximum y value
+        """
+        return self.origin[0] + self.shape[0]
 
     @property
     def top(self):
         """Maximum y value
         """
-        if self.is_empty:
-            return None
-        return self.yx0[0] + self.height
+        return self.origin[1] + self.shape[1]
 
     @property
     def right(self):
         """Maximum x value
         """
-        if self.is_empty:
-            return None
-        return self.yx0[1] + self.width
-
-    @property
-    def shape(self):
-        """Shape of the image contained in this bounding box
-
-        This is really just (height, width).
-        """
-        return (self.height, self.width)
+        return self.origin[2] + self.shape[2]
 
     def __or__(self, other):
         """Union of two bounding boxes
@@ -220,11 +269,13 @@ class Box(object):
         result: `Box`
             The smallest rectangular box that contains *both* boxes.
         """
+        front = min(self.front, other.front)
+        back = max(self.back, other.back)
         bottom = min(self.bottom, other.bottom)
         top = max(self.top, other.top)
         left = min(self.left, other.left)
         right = max(self.right, other.right)
-        return Box.from_bounds(bottom, top, left, right)
+        return Box.from_bounds(front, back, bottom, top, left, right)
 
     def __and__(self, other):
         """Intersection of two bounding boxes
@@ -243,39 +294,34 @@ class Box(object):
             The rectangular box that is in the overlap region
             of both boxes.
         """
+        front = max(self.front, other.front)
+        back = min(self.back, other.back)
         bottom = max(self.bottom, other.bottom)
         top = min(self.top, other.top)
         left = max(self.left, other.left)
         right = min(self.right, other.right)
-        if top < bottom or right < left:
-            return Box((0, 0), width=0, height=0)
-        return Box.from_bounds(bottom, top, left, right)
+        return Box.from_bounds(front, back, bottom, top, left, right)
 
     def __str__(self):
-        return "Box({0}, {1}, {2}, {3})".format(self.bottom, self.top, self.left, self.right)
+        return "Box({0}..{1}, {2}..{3}, {4}..{5})".format(self.front, self.back, self.bottom, self.top, self.left, self.right)
 
     def __repr__(self):
-        result = "<Box yx0={0}, height={1}, width={2}>"
-        return result.format(self.yx0, self.height, self.width)
+        result = "<Box shape={1}, origin={0}>"
+        return result.format(self.shape, self.origin)
 
-    def __iadd__(self, yx):
-        self.yx0 = (self.yx0[0] + yx[0], self.yx0[1] + yx[1])
+    def __iadd__(self, offset):
+        self.origin = tuple([a + o for a,o in zip(self.origin, offset)])
         return self
 
-    def __isub__(self, yx):
-        self.yx0 = (self.yx0[0] - yx[0], self.yx0[1] - yx[1])
+    def __isub__(self, offset):
+        self.origin = tuple([a - o for a,o in zip(self.origin, offset)])
         return self
 
-    def copy(self):
-        return Box((self.yx0[0], self.yx0[1]), self.height, self.width)
+    def __copy__(self):
+        return Box(self.shape, offset=self.offset)
 
     def __eq__(self, other):
-        return all([
-            self.left == other.left,
-            self.right == other.right,
-            self.top == other.top,
-            self.bottom == other.bottom,
-        ])
+        return self.shape == other.shape and self.origin == other.origin
 
 
 def flux_at_edge(X, min_value=0):

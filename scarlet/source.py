@@ -179,12 +179,12 @@ def init_extended_source(sky_coord, frame, observations, obs_idx=0,
         cy, cx = np.array(center).astype(int)
         center_morph = morph[cy, cx]
         morph /= center_morph
-        flag = False
 
         # find fitting bbox
         bbox = Box.from_data(morph, min_value=0)
+        print (bbox)
         boxsize = 16
-        if not bbox.is_empty and not flag:
+        if bbox.contains(pixel_center):
             size = 2 * max((pixel_center[0] - bbox.bottom, bbox.top - pixel_center[0],
                             pixel_center[1] - bbox.left, bbox.right - pixel_center[1]))
             while boxsize < size:
@@ -198,7 +198,7 @@ def init_extended_source(sky_coord, frame, observations, obs_idx=0,
     top = pixel_center[0] + boxsize // 2
     left = pixel_center[1] - boxsize // 2
     right = pixel_center[1] + boxsize // 2
-    bbox = Box.from_bounds(bottom, top, left, right)
+    bbox = Box.from_bounds(0, len(sed), bottom, top, left, right)
     morph = bbox.image_to_box(morph)
 
     return sed, morph, bbox

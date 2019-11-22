@@ -81,26 +81,27 @@ class Observation():
         None
         """
         # find the box that contained this obs in model_frame
+        shape = self.images.shape
         yx0 = model_frame.get_pixel(self.frame.get_sky_coord((0,0)))
-        self.bbox = Box(yx0, *self.images.shape[1:])
+        #  channels of model that are represented in this observation
+        if self.frame.channels is model_frame.channels:
+            origin = (0,*yx0)
+        else:
+            assert self.frame.channels is not None and model_frame.channels is not None
+            cmin = model_frame.channels.index(self.frame.channels[0])
+            cmax = model_frame.channels.index(self.frame.channels[-1])
+            origin = (cmin, *yx0)
+        self.bbox = Box(shape, origin=origin)
+        self.slices = self.bbox.slices_for(self.images)
 
+        # check dtype consistency
         if self.frame.dtype != model_frame.dtype:
-            msg = "Dtypes of model and observation different. Casting observation to {}"
-            msg = msg.format(model_frame.dtype)
-            logger.warning(msg)
             self.frame.dtype = model_frame.dtype
             self.images = self.images.copy().astype(model_frame.dtype)
             if type(self.weights) is np.ndarray:
                 self.weights = self.weights.copy().astype(model_frame.dtype)
 
-        #  channels of model that are represented in this observation
-        self._band_slice = slice(None)
-        if self.frame.channels is not model_frame.channels:
-            assert self.frame.channels is not None and model_frame.channels is not None
-            bmin = model_frame.channels.index(self.frame.channels[0])
-            bmax = model_frame.channels.index(self.frame.channels[-1])
-            self._band_slice = slice(bmin, bmax + 1)
-
+        # constrcut diff kernels
         self._diff_kernels = None
         if self.frame.psf is not model_frame.psf:
             assert self.frame.psf is not None and model_frame.psf is not None
@@ -128,7 +129,8 @@ class Observation():
         model_: array
             The convolved `model` in the observation frame
         """
-        model_ = model[self._band_slice, :, :]
+
+        model_ = model[self.slices]
         if self._diff_kernels is not None:
             model_ = self._convolve(model_)
 
@@ -150,9 +152,8 @@ class Observation():
         """
 
         model_ = self.render(model)
-        slices = self.bbox.slices_for(self.images)
-        images_ = self.images[slices]
-        weights_ = self.weights[slices]
+        images_ = self.images[self.slices]
+        weights_ = self.weights[self.slices]
 
         # normalization of the single-pixel likelihood:
         # 1 / [(2pi)^1/2 (sigma^2)^1/2]

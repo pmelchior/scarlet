@@ -137,22 +137,24 @@ class FactorizedComponent(Component):
             # yields superset of frame pixels
             # pad_width is ((before1, after1), (before2, after2)...)
             self.pad_width = (
-            (max(0, self.bbox.bottom), max(0, self.frame.shape[1] - self.bbox.top)),
-            (max(0, self.bbox.left), max(0, self.frame.shape[2] - self.bbox.right)))
+            (max(0, self.bbox.front - self.frame.front), max(0, self.frame.back - self.bbox.back)),
+            (max(0, self.bbox.bottom - self.frame.bottom), max(0, self.frame.top - self.bbox.top)),
+            (max(0, self.bbox.left - self.frame.left), max(0, self.frame.right- self.bbox.right)))
 
             # get slicing of padded box so that the result covers
-            # exactly the model frame
-            padded_shape = list(self._morph.shape)
-            padded_shape[0] += self.pad_width[0][0] + self.pad_width[0][1]
-            padded_shape[1] += self.pad_width[1][0] + self.pad_width[1][1]
-            padded_box = Box.from_shape(padded_shape)
+            # all of the model frame
+            front = self.bbox.front - self.pad_width[0][0]
+            back = self.bbox.back + self.pad_width[0][1]
+            bottom = self.bbox.bottom - self.pad_width[1][0]
+            top = self.bbox.top + self.pad_width[1][1]
+            left = self.bbox.left - self.pad_width[2][0]
+            right = self.bbox.right + self.pad_width[2][1]
+            padded_box = Box.from_bounds(front, back, bottom, top, left, right)
 
-            model_box = Box.from_shape(self.frame.shape[1:])
-            padded_bottom = self.bbox.bottom - self.pad_width[0][0]
-            padded_left = self.bbox.left - self.pad_width[1][0]
-            model_box -= (padded_bottom, padded_left) # now in padded frame
+            model_box = self.frame
             overlap = model_box & padded_box
-            self.slices = overlap.slices_for(padded_shape)
+            overlap -= padded_box.origin # now in padded frame
+            self.slices = overlap.slices_for(padded_box.shape)
 
     @property
     def sed(self):
@@ -207,8 +209,8 @@ class FactorizedComponent(Component):
 
     def _pad_morph(self, morph):
         if self.bbox is not None:
-            padded = np.pad(morph, self.pad_width, mode='constant', constant_values=0)
-            return padded[self.slices]
+            padded = np.pad(morph, self.pad_width[1:], mode='constant', constant_values=0)
+            return padded[self.slices[1:]]
         return morph
 
     def _shift_morph(self, shift, morph):

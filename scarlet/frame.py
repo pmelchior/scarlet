@@ -1,10 +1,11 @@
 import numpy as np
 from .psf import PSF
+from .bbox import Box
 import logging
 logger = logging.getLogger("scarlet.frame")
 
 
-class Frame():
+class Frame(Box):
     """Spatial and spectral characteristics of the data
 
     Attributes
@@ -20,9 +21,13 @@ class Frame():
     dtype: `numpy.dtype`
         Dtype to represent the data.
     """
-    def __init__(self, shape, wcs=None, psf=None, channels=None, dtype=np.float32):
-        assert len(shape) == 3
-        self._shape = tuple(shape)
+    def __init__(self, shape_or_box, wcs=None, psf=None, channels=None, dtype=np.float32):
+
+        if isinstance(shape_or_box, Box):
+            self = shape_or_box
+        else:
+            super().__init__(shape_or_box)
+
         self.wcs = wcs
 
         if psf is None:
@@ -34,35 +39,12 @@ class Frame():
             else:
                 self._psf = PSF(psf)
             if self._psf._func is not None:
-                self._psf.shape = (None, shape[1], shape[2])
+                self._psf.shape = (None, self.shape[1], self.shape[2])
 
-        assert channels is None or len(channels) == shape[0]
+        assert channels is None or len(channels) == self.shape[0]
         self.channels = channels
         self.dtype = dtype
 
-    @property
-    def C(self):
-        """Number of channels in the model
-        """
-        return self._shape[0]
-
-    @property
-    def Ny(self):
-        """Number of pixel in the y-direction
-        """
-        return self._shape[1]
-
-    @property
-    def Nx(self):
-        """Number of pixels in the x-direction
-        """
-        return self._shape[2]
-
-    @property
-    def shape(self):
-        """Shape of the model.
-        """
-        return self._shape
 
     @property
     def psf(self):
