@@ -306,7 +306,7 @@ class Box:
         return "Box({0}..{1}, {2}..{3}, {4}..{5})".format(self.front, self.back, self.bottom, self.top, self.left, self.right)
 
     def __repr__(self):
-        result = "<Box shape={1}, origin={0}>"
+        result = "<Box shape={0}, origin={1}>"
         return result.format(self.shape, self.origin)
 
     def __iadd__(self, offset):

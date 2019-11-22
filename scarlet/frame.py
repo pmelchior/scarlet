@@ -38,8 +38,6 @@ class Frame(Box):
                 self._psf = psf
             else:
                 self._psf = PSF(psf)
-            if self._psf._func is not None:
-                self._psf.shape = (None, self.shape[1], self.shape[2])
 
         assert channels is None or len(channels) == self.shape[0]
         self.channels = channels

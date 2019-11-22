@@ -21,8 +21,8 @@ class Component():
     parameters: list of `~scarlet.Parameter`
     """
 
-    def __init__(self, frame, *parameters):
-        self._frame = frame
+    def __init__(self, frame, *parameters, bbox=None):
+        self.set_frame(frame, bbox=bbox)
 
         if hasattr(parameters, '__iter__'):
             for p in parameters:
@@ -40,7 +40,7 @@ class Component():
     def shape(self):
         """Shape of the image (Channel, Height, Width)
         """
-        return self._frame.shape
+        return self.bbox.shape
 
     @property
     def coord(self):
@@ -51,12 +51,6 @@ class Component():
                 return tuple(self._parent.coord) + (self._index,)
             else:
                 return (self._index,)
-
-    @property
-    def frame(self):
-        """The frame of this component
-        """
-        return self._frame
 
     @property
     def parameters(self):
@@ -75,6 +69,37 @@ class Component():
             (Channels, Height, Width) image of the model
         """
         pass
+
+    def set_frame(self, frame, bbox=None):
+        self.frame = frame
+        self.bbox = bbox
+
+        # store padding and slicing structures
+        if self.bbox is not None:
+            assert isinstance(self.bbox, Box)
+            # TODO: full 3D bbox and slicing support
+            # determine pad from box into full frame
+            # yields superset of frame pixels
+            # pad_width is ((before1, after1), (before2, after2)...)
+            self.pad_width = (
+            (max(0, self.bbox.front - self.frame.front), max(0, self.frame.back - self.bbox.back)),
+            (max(0, self.bbox.bottom - self.frame.bottom), max(0, self.frame.top - self.bbox.top)),
+            (max(0, self.bbox.left - self.frame.left), max(0, self.frame.right- self.bbox.right)))
+
+            # get slicing of padded box so that the result covers
+            # all of the model frame
+            front = self.bbox.front - self.pad_width[0][0]
+            back = self.bbox.back + self.pad_width[0][1]
+            bottom = self.bbox.bottom - self.pad_width[1][0]
+            top = self.bbox.top + self.pad_width[1][1]
+            left = self.bbox.left - self.pad_width[2][0]
+            right = self.bbox.right + self.pad_width[2][1]
+            padded_box = Box.from_bounds(front, back, bottom, top, left, right)
+
+            model_box = self.frame
+            overlap = model_box & padded_box
+            overlap -= padded_box.origin # now in padded frame
+            self.slices = overlap.slices_for(padded_box.shape)
 
     def __getstate__(self):
         # needed for pickling to understand what to save
@@ -115,13 +140,12 @@ class FactorizedComponent(Component):
     def __init__(self, frame, sed, morph, bbox=None, shift=None):
         self._sed = sed
         self._morph = morph
-        self.bbox = bbox
         self._shift = shift
         if shift is None:
             parameters = (self._sed, self._morph)
         else:
             parameters = (self._shift, self._sed, self._morph)
-        super().__init__(frame, *parameters)
+        super().__init__(frame, *parameters, bbox=bbox)
 
         # store shifting structures
         if shift is not None:
@@ -129,46 +153,17 @@ class FactorizedComponent(Component):
             self.fft_shape = fft._get_fft_shape(morph, morph, padding=padding)
             self.shifter_y, self.shifter_x = interpolation.mk_shifter(self.fft_shape)
 
-        # store padding and slicing structures
-        if self.bbox is not None:
-            assert isinstance(self.bbox, Box)
-            # TODO: full 3D bbox and slicing support
-            # determine pad from box into full frame
-            # yields superset of frame pixels
-            # pad_width is ((before1, after1), (before2, after2)...)
-            self.pad_width = (
-            (max(0, self.bbox.front - self.frame.front), max(0, self.frame.back - self.bbox.back)),
-            (max(0, self.bbox.bottom - self.frame.bottom), max(0, self.frame.top - self.bbox.top)),
-            (max(0, self.bbox.left - self.frame.left), max(0, self.frame.right- self.bbox.right)))
-
-            # get slicing of padded box so that the result covers
-            # all of the model frame
-            front = self.bbox.front - self.pad_width[0][0]
-            back = self.bbox.back + self.pad_width[0][1]
-            bottom = self.bbox.bottom - self.pad_width[1][0]
-            top = self.bbox.top + self.pad_width[1][1]
-            left = self.bbox.left - self.pad_width[2][0]
-            right = self.bbox.right + self.pad_width[2][1]
-            padded_box = Box.from_bounds(front, back, bottom, top, left, right)
-
-            model_box = self.frame
-            overlap = model_box & padded_box
-            overlap -= padded_box.origin # now in padded frame
-            self.slices = overlap.slices_for(padded_box.shape)
-
     @property
     def sed(self):
         """Numpy view of the component SED
         """
-        return self._sed._data
+        return self._pad_sed(self._sed._data)
 
     @property
     def morph(self):
         """Numpy view of the component morphology
         """
-        if self.bbox is not None:
-            return self._pad_morph(self._shift_morph(self.shift, self._morph._data))
-        return self._shift_morph(self.shift, self._morph._data)
+        return self._pad_morph(self._shift_morph(self.shift, self._morph._data))
 
     @property
     def shift(self):
@@ -207,10 +202,17 @@ class FactorizedComponent(Component):
 
         return sed[:, None, None] * morph[None, :, :]
 
+    def _pad_sed(self, sed):
+        if self.bbox is not None and self.pad_width[0] != (0,0):
+            padded = np.pad(sed, self.pad_width[0], mode='constant', constant_values=0)
+            return padded[self.slices[0]]
+        else:
+            return sed
+
     def _pad_morph(self, morph):
-        if self.bbox is not None:
-            padded = np.pad(morph, self.pad_width[1:], mode='constant', constant_values=0)
-            return padded[self.slices[1:]]
+        if self.bbox is not None and self.pad_width[1:] != ((0,0), (0,0)):
+                padded = np.pad(morph, self.pad_width[1:], mode='constant', constant_values=0)
+                return padded[self.slices[1:]]
         return morph
 
     def _shift_morph(self, shift, morph):
@@ -242,15 +244,17 @@ class FunctionComponent(FactorizedComponent):
         Parameters of the initial morphology.
     func: `autograd` function
         Signature: func(*fparams, y=None, x=None) -> Image (Height, Width)
+    bbox: `~scarlet.Box`
+        Spatial bounding box of the morphology.
     """
-    def __init__(self, frame, sed, fparams, func):
+    def __init__(self, frame, sed, fparams, func, bbox=None):
         self._sed = sed
         self._fparams = fparams
         parameters = (self._sed, self._fparams)
-        super().__init__(frame, *parameters)
+        super().__init__(frame, *parameters, bbox=bbox)
 
         self.func = func
-        self._morph = self.func(*self._fparams)
+        self._morph = self._pad_morph(self.func(*self._fparams))
 
     @property
     def morph(self):
@@ -278,7 +282,7 @@ class FunctionComponent(FactorizedComponent):
             if p._value is self._sed:
                 sed = p
             if p._value is self._fparams:
-                morph = self.func(*p)
+                morph = self._pad_morph(self.func(*p))
                 self._morph[:,:] = morph._value
         return sed[:, None, None] * morph[None, :, :]
 
@@ -302,14 +306,25 @@ class CubeComponent(Component):
 
     @property
     def cube (self):
-        return self._cube._data
+        return self._pad_cube(self._cube._data)
 
     def get_model(self, *parameters):
-        cube = self.cube
+        cube = None
         for p in parameters:
             if p._value is self._cube:
-                cube = p
+                cube = self._pad_cube(p)
+
+        if cube is None:
+            cube = self.cube
+
         return cube
+
+    def _pad_cube(self, cube):
+        if self.bbox is not None and self.pad_width != ((0,0), (0,0), (0,0)):
+            padded = np.pad(cube, self.pad_width, mode='constant', constant_values=0)
+            return padded[self.slices]
+        return cube
+
 
 class ComponentTree():
     """Base class for hierarchical collections of Components.

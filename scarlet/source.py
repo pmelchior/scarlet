@@ -125,6 +125,40 @@ def build_detection_coadd(sed, bg_rms, observation):
     return detect, bg_cutoff
 
 
+def trim_morphology(sky_coord, frame, morph, bg_cutoff, thresh):
+    # trim morph to pixels above threshold
+    mask = morph > bg_cutoff * thresh
+    boxsize = 16
+    pixel_center = frame.get_pixel(sky_coord)
+    if mask.sum() > 0:
+        morph[~mask] = 0
+
+        # normalize to unity at peak pixel
+        center_morph = morph[pixel_center[0], pixel_center[1]]
+        morph /= center_morph
+
+        # find fitting bbox
+        bbox = Box.from_data(morph, min_value=0)
+        boxsize = 16
+        if bbox.contains(pixel_center):
+            size = 2 * max((pixel_center[0] - bbox.bottom, bbox.top - pixel_center[0],
+                            pixel_center[1] - bbox.left, bbox.right - pixel_center[1]))
+            while boxsize < size:
+                boxsize *= 2
+    else:
+        msg = "No flux above threshold for source at y={0} x={1}".format(*center)
+        logger.warning(msg)
+
+    # define bbox and trim to bbox
+    bottom = pixel_center[0] - boxsize // 2
+    top = pixel_center[0] + boxsize // 2
+    left = pixel_center[1] - boxsize // 2
+    right = pixel_center[1] + boxsize // 2
+    bbox = Box.from_bounds(0, frame.C, bottom, top, left, right)
+    morph = bbox.image_to_box(morph)
+    return morph, bbox
+
+
 def init_extended_source(sky_coord, frame, observations, obs_idx=0,
                                   thresh=1, symmetric=True, monotonic=True):
     """Initialize the source that is symmetric and monotonic
@@ -168,39 +202,7 @@ def init_extended_source(sky_coord, frame, observations, obs_idx=0,
                                                         center=center, thresh=0.1)
         morph = prox_monotonic(morph, 0).reshape(morph.shape)
 
-    # trim morph to pixels above threshold
-    mask = morph > bg_cutoff * thresh
-    boxsize = 16
-    pixel_center = frame.get_pixel(sky_coord)
-    if mask.sum() > 0:
-        morph[~mask] = 0
-
-        # normalize to unity at peak pixel
-        cy, cx = np.array(center).astype(int)
-        center_morph = morph[cy, cx]
-        morph /= center_morph
-
-        # find fitting bbox
-        bbox = Box.from_data(morph, min_value=0)
-        print (bbox)
-        boxsize = 16
-        if bbox.contains(pixel_center):
-            size = 2 * max((pixel_center[0] - bbox.bottom, bbox.top - pixel_center[0],
-                            pixel_center[1] - bbox.left, bbox.right - pixel_center[1]))
-            while boxsize < size:
-                boxsize *= 2
-    else:
-        msg = "No flux above threshold for source at y={0} x={1}".format(*center)
-        logger.warning(msg)
-
-    # define bbox and trim to bbox
-    bottom = pixel_center[0] - boxsize // 2
-    top = pixel_center[0] + boxsize // 2
-    left = pixel_center[1] - boxsize // 2
-    right = pixel_center[1] + boxsize // 2
-    bbox = Box.from_bounds(0, len(sed), bottom, top, left, right)
-    morph = bbox.image_to_box(morph)
-
+    morph, bbox = trim_morphology(sky_coord, frame, morph, bg_cutoff, thresh)
     return sed, morph, bbox
 
 
@@ -342,9 +344,17 @@ class PointSource(FunctionComponent):
         sed = Parameter(sed, step=partial(relative_step, factor=1e-2), constraint=PositivityConstraint())
         center = Parameter(self.center, step=1e-1)
 
-        _psf_wrapper = lambda *parameters: frame.psf.__call__(*parameters)[0]
+        # define bbox
+        pixel_center = tuple(np.round(center).astype('int'))
+        front, back = 0, C
+        bottom = pixel_center[0] - frame.psf.shape[1]//2
+        top = pixel_center[0] + frame.psf.shape[1]//2
+        left = pixel_center[1] - frame.psf.shape[2]//2
+        right = pixel_center[1] + frame.psf.shape[2]//2
+        bbox = Box.from_bounds(front, back, bottom, top, left, right)
+        _psf_wrapper = lambda *parameters: frame.psf.__call__(*parameters, bbox=bbox)[0]
 
-        super().__init__(frame, sed, center, _psf_wrapper)
+        super().__init__(frame, sed, center, _psf_wrapper, bbox=bbox)
 
 
 
