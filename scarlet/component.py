@@ -22,7 +22,8 @@ class Component():
     """
 
     def __init__(self, frame, *parameters, bbox=None):
-        self.set_frame(frame, bbox=bbox)
+        self.bbox = bbox
+        self.set_frame(frame)
 
         if hasattr(parameters, '__iter__'):
             for p in parameters:
@@ -70,9 +71,8 @@ class Component():
         """
         pass
 
-    def set_frame(self, frame, bbox=None):
+    def set_frame(self, frame):
         self.frame = frame
-        self.bbox = bbox
 
         # store padding and slicing structures
         if self.bbox is not None:
@@ -466,6 +466,10 @@ class ComponentTree():
                 model = model + c.get_model()
 
         return model
+
+    def set_frame(self, frame):
+        for c in self.components:
+            c.set_frame(frame)
 
     def __iadd__(self, c):
         """Add another component or tree.

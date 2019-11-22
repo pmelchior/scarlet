@@ -523,6 +523,11 @@ class MultiComponentSource(ComponentTree):
         super().__init__(components)
 
     @property
+    def bbox(self):
+        c = self.components[0]
+        return c.bbox
+
+    @property
     def shift(self):
         c = self.components[0]
         return c.shift

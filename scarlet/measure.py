@@ -1,66 +1,44 @@
 import numpy as np
+from .component import *
 
-def model_to_box(model, bbox=None):
-    """Limit model to bbox
+def get_model(component):
+    frame_ = component.frame
+    component.set_frame(component.bbox)
+    model = component.get_model()
+    component.set_frame(frame_)
+    return model
 
-    Parameters
-    ----------
-    model: array
-        The model of a `scarlet.Component` or `scarlet.ComponentTree`
-    bbox: `scarlet.Box`
-        Optional only search within bbox
-    """
-    if bbox is None:
-        return model
-    else:
-        slices = bbox.slices_for(model)
-        return model[slices]
-
-def max_pixel(model, bbox=None):
+def max_pixel(component):
     """Determine pixel with maximum value
 
     Parameters
     ----------
-    model: array
-        The model of a `scarlet.Component` or `scarlet.ComponentTree`
-    bbox: `scarlet.Box`
-        Optional only search within bbox
+    component: `scarlet.Component` or `scarlet.ComponentTree`
+        Component to analyze
     """
-    model_ = model_to_box(model, bbox=bbox)
-    offset = np.array([0,0,0])
-    if bbox is not None:
-        offset = np.array([0,*bbox.yx0])
-    return tuple(np.unravel_index(np.argmax(model_), model_.shape) + offset)
+    model = get_model(component)
+    return tuple(np.unravel_index(np.argmax(model_), model.shape) + component.bbox.origin)
 
-def flux(model, bbox=None):
+def flux(component):
     """Determine flux in every channel
 
     Parameters
     ----------
-    model: array
-        The model of a `scarlet.Component` or `scarlet.ComponentTree`
-    bbox: `scarlet.Box`
-        Optional only search within bbox
+    component: `scarlet.Component` or `scarlet.ComponentTree`
+        Component to analyze
     """
-    model_ = model_to_box(model, bbox=bbox)
-    return model_.sum(axis=(1,2))
+    model = get_model(component)
+    return model.sum(axis=(1,2))
 
-def centroid(model, bbox=None):
+def centroid(component):
     """Determine centroid of model
 
     Parameters
     ----------
-    model: array
-        The model of a `scarlet.Component` or `scarlet.ComponentTree`
-    bbox: `scarlet.Box`
-        Optional only search within bbox
+    component: `scarlet.Component` or `scarlet.ComponentTree`
+        Component to analyze
     """
-    model_ = model_to_box(model, bbox=bbox)
-    offset = np.array([0,0,0])
-    if bbox is not None:
-        offset = np.array([0,*bbox.yx0])
-
-    # build the indices to use the the centroid calculation
-    indices = np.indices(model_.shape)
-    centroid = np.array([np.sum(ind*model_) for ind in indices]) / model_.sum()
-    return centroid + offset
+    model = get_model(component)
+    indices = np.indices(model.shape)
+    centroid = np.array([np.sum(ind*model) for ind in indices]) / model.sum()
+    return centroid + component.bbox.origin
