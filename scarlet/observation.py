@@ -92,7 +92,7 @@ class Observation():
             cmax = model_frame.channels.index(self.frame.channels[-1])
             origin = (cmin, *yx0)
         self.bbox = Box(shape, origin=origin)
-        self.slices = self.bbox.slices_for(self.images)
+        self.slices = self.bbox.slices_for(model_frame.shape)
 
         # check dtype consistency
         if self.frame.dtype != model_frame.dtype:
@@ -331,21 +331,11 @@ class LowResObservation(Observation):
     def match(self, model_frame):
 
         if self.frame.dtype != model_frame.dtype:
-            msg = "Dtypes of model and observation different. Casting observation to {}"
-            logger.warning(msg.format(model_frame.dtype))
-            self.frame.dtype = model_frame.dtype
             self.images = self.images.copy().astype(model_frame.dtype)
             if type(self.weights) is np.ndarray:
                 self.weights = self.weights.copy().astype(model_frame.dtype)
             if self.frame._psf is not None:
                 self.frame._psf.update_dtype(model_frame.dtype)
-
-        #  channels of model that are represented in this observation
-        self._band_slice = slice(None)
-        if self.frame.channels is not model_frame.channels:
-            bmin = model_frame.channels.index(self.frame.channels[0])
-            bmax = model_frame.channels.index(self.frame.channels[-1])
-            self._band_slice = slice(bmin, bmax+1)
 
         #Affine transform
         try :
@@ -386,11 +376,20 @@ class LowResObservation(Observation):
         #shape of the low resolutino image in the overlap or union
         self.lr_shape = (np.max(coord_lr[0])-np.min(coord_lr[0])+1,np.max(coord_lr[1])-np.min(coord_lr[1])+1)
 
-        #BBox of the low resolution pixels in model frame
-        self.bbox = Box.from_bounds(np.min(coord_lr[0]).astype(int),
+        # BBox of the low resolution pixels in model frame
+        #  1) channels of model that are represented in this observation
+        if self.frame.channels is not model_frame.channels:
+            cmin = model_frame.channels.index(self.frame.channels[0])
+            cmax = model_frame.channels.index(self.frame.channels[-1])
+        else:
+            cmin, cmax = 0, self.frame.C
+        # 2) use the bounds of coord_lr
+        self.bbox = Box.from_bounds(cmin, cmax + 1,
+                        np.min(coord_lr[0]).astype(int),
                         np.max(coord_lr[0]).astype(int) + 1,
                         np.min(coord_lr[1]).astype(int),
                         np.max(coord_lr[1]).astype(int) + 1)
+        self.slices = self.bbox.slices_for(model_frame.shape)
         #Coordinates for all model frame pixels
         self.frame_coord = (np.array(range(model_frame.Ny)), np.array(range(model_frame.Nx)))
 
@@ -460,7 +459,7 @@ class LowResObservation(Observation):
             The convolved and resampled `model` in the observation frame.
         """
         # Padding the psf to the fast_shape size
-        model_ = fft.Fourier(fft._pad(model[self._band_slice, :, :], self._fft_shape, axes=(-2, -1)))
+        model_ = fft.Fourier(fft._pad(model[self.slices[0], :, :], self._fft_shape, axes=(-2, -1)))
 
         model_image = []
         if self.isrot:
@@ -497,8 +496,7 @@ class LowResObservation(Observation):
             The convolved and resampled `model` in the observation frame.
         """
         model_ = np.zeros(self.frame.shape)
-        slices = self.bbox.slices_for(model_)
-        model_[slices] = self._render(model)
+        model_[self.slices] = self._render(model)
         return model_
 
     def get_loss(self, model):
@@ -514,9 +512,8 @@ class LowResObservation(Observation):
         """
 
         model_ = self._render(model)
-        slices = self.bbox.slices_for(self.images)
-        images_ = self.images[slices]
-        weights_ = self.weights[slices]
+        images_ = self.images[self.slices]
+        weights_ = self.weights[self.slices]
 
         # properly normalized likelihood
         log_norm = np.prod(images_.shape) / 2 * np.log(2*np.pi) + np.sum(np.log(1 / weights_)) / 2
