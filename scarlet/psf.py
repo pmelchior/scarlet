@@ -1,7 +1,8 @@
 import autograd.numpy as np
 import autograd.scipy as scipy
+from .bbox import Box
 
-def moffat(y, x, alpha=4.7, beta=1.5, shape=None):
+def moffat(y, x, alpha=4.7, beta=1.5, bbox=None):
     """Symmetric 2D Moffat function
 
     .. math::
@@ -18,9 +19,8 @@ def moffat(y, x, alpha=4.7, beta=1.5, shape=None):
         Core width
     beta: float
         Power-law index
-    shape: tuple
-        Shape of the resulting array, typically `(C, Height, Width)`
-        Note `C=None` is expected for model PSFs
+    bbox: Box
+        Bounding box over which to evaluate the function
 
     Returns
     -------
@@ -28,13 +28,13 @@ def moffat(y, x, alpha=4.7, beta=1.5, shape=None):
         A 2D circular gaussian sampled at the coordinates `(y_i, x_j)`
         for all i and j in `shape`.
     """
-    X = np.arange(shape[1])
-    Y = np.arange(shape[2])
+    Y = np.arange(bbox.shape[1]) + bbox.origin[1]
+    X = np.arange(bbox.shape[2]) + bbox.origin[2]
     X, Y = np.meshgrid(X, Y)
-    # TODO: has not pixel-integration formula
+    # TODO: has no pixel-integration formula
     return ((1+((X-x)**2+(Y-y)**2)/alpha**2)**-beta)[None,:,:]
 
-def gaussian(y, x, sigma=1, integrate=True, shape=None):
+def gaussian(y, x, sigma=1, integrate=True, bbox=None):
     """Circular Gaussian Function
 
     Parameters
@@ -47,9 +47,8 @@ def gaussian(y, x, sigma=1, integrate=True, shape=None):
         Standard deviation of the gaussian
     integrate: bool
         Whether pixel integration is performed
-    shape: tuple
-        Shape of the resulting array, typically `(C, Height, Width)`
-        Note `C=None` is expected for model PSFs
+    bbox: Box
+        Bounding box over which to evaluate the function
 
     Returns
     -------
@@ -57,8 +56,8 @@ def gaussian(y, x, sigma=1, integrate=True, shape=None):
         A 2D circular gaussian sampled at the coordinates `(y_i, x_j)`
         for all i and j in `shape`.
     """
-    Y = np.arange(shape[1])
-    X = np.arange(shape[2])
+    Y = np.arange(bbox.shape[1]) + bbox.origin[1]
+    X = np.arange(bbox.shape[2]) + bbox.origin[2]
     if not integrate:
         f = lambda X: np.exp(-X**2/(2*sigma**2))
     else:
@@ -69,30 +68,26 @@ def gaussian(y, x, sigma=1, integrate=True, shape=None):
 
 
 class PSF:
-    def __init__(self, X):
+    def __init__(self, X, shape=None):
         if hasattr(X, 'shape'):
             self._image = X.copy()
             self.normalize()
             self._func = None
             self.shape = X.shape
-
-
         elif hasattr(X, '__call__'):
+            assert shape is not None, "Fuctional PSFs must set shape argument"
             self._image = None
             self._func = X
-            self.shape = None
+            self.shape = shape
         else:
             msg = "A PSF must be initialized with either an image or function"
             raise ValueError(msg)
 
-    def __call__(self, y, x, shape=None):
-        if shape is None:
-            shape = self.shape
-        assert shape is not None, "Set PSF.shape first"
-
+    def __call__(self, y, x, bbox=None):
+        if bbox is None:
+            bbox = Box(self.shape)
         if self._func is not None:
-            # TODO: connect to oversampling
-            return self._func(y, x, shape=shape)
+            return self._func(y, x, bbox=bbox)
         return None
 
     @property
