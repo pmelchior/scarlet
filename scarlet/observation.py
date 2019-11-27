@@ -298,21 +298,20 @@ class LowResObservation(Observation):
         pcoordlr_lr, pcoordlr_hr, coordover_hr = resampling.match_patches(psf_hr.shape, psf_lr.data.shape[1:],
                                                                     psf_wcs_hr, psf_wcs_lr, isrot = False, psf = True)
 
-        npsf_y = np.max(coordover_hr[0])-np.min(coordover_hr[0])+1
-        npsf_x = np.max(coordover_hr[1])-np.min(coordover_hr[1])+1
-
         psf_valid = psf_lr[:,pcoordlr_lr[0].min():pcoordlr_lr[1].max()+1,pcoordlr_lr[1].min():pcoordlr_lr[1].max()+1]\
 
         psf_match_lr = interpolation.sinc_interp(psf_valid, coordover_hr, pcoordlr_hr, angle = angle)
 
-        psf_match_hr = psf_hr[coordover_hr[0].min():coordover_hr[0].max()+1,
-                       coordover_hr[1].min():coordover_hr[1].max()+1].reshape(npsf_y, npsf_x)
+        nx_target = ny_lr/self.h
+        if (nx_target % 2) == 0:
+            nx_target += 1
 
-        assert np.shape(psf_match_lr[0]) == np.shape(psf_match_hr)
+        assert np.shape(psf_match_lr[0]) == np.shape(psf_hr)
 
-        psf_match_hr /= np.sum(psf_match_hr)
+        psf_hr /= np.sum(psf_hr)
         psf_match_lr /= np.sum(psf_match_lr)
-        return psf_match_hr[np.newaxis, :], psf_match_lr
+
+        return psf_hr, psf_match_lr
 
     def build_diffkernel(self, model_frame, angle):
         '''Builds the differential convolution kernel between the observation and the frame psfs
@@ -478,8 +477,10 @@ class LowResObservation(Observation):
         self._fft_shape = fft._get_fft_shape(model_frame.psfs, np.zeros(model_frame.shape), padding=3,
                                              axes=[-2, -1], max=True)
 
-        center_y = model_frame.Ny/2.
-        center_x = model_frame.Nx/2.
+        center_y = np.int(self._fft_shape[0]/2.-(self._fft_shape[0]-model_frame.Ny)/2.) - \
+                   ((self._fft_shape[0] % 2) != 0) * ((model_frame.Ny % 2) == 0)
+        center_x = np.int(self._fft_shape[1]/2.-(self._fft_shape[1]-model_frame.Nx)/2.) - \
+                   ((self._fft_shape[1] % 2) != 0) * ((model_frame.Nx % 2) == 0)
 
         self.diff_psf = fft.Fourier(fft._pad(diff_psf.image, self._fft_shape, axes = (1,2)))
         if self.isrot:
@@ -495,15 +496,15 @@ class LowResObservation(Observation):
             self.X_unrot = X_unrot[0, :]
 
             if self.small_axis:
-                self.shifts = [self.Y_unrot * self.cos_rot, self.Y_unrot * self.sin_rot]
-                self.other_shifts = [-self.sin_rot * self.X_unrot, self.cos_rot * self.X_unrot]
+                self.shifts = np.array([self.Y_unrot * self.cos_rot, self.Y_unrot * self.sin_rot])
+                self.other_shifts = np.array([-self.sin_rot * self.X_unrot, self.cos_rot * self.X_unrot])
             else:
-                self.shifts = [-self.sin_rot * self.X_unrot, self.cos_rot * self.X_unrot]
-                self.other_shifts = [self.Y_unrot * self.cos_rot, self.Y_unrot * self.sin_rot]
+                self.shifts = np.array([-self.sin_rot * self.X_unrot, self.cos_rot * self.X_unrot])
+                self.other_shifts = np.array([self.Y_unrot * self.cos_rot, self.Y_unrot * self.sin_rot])
 
             axes = (1,2)
 
-        #1-D case.
+        #aligned case.
         else:
 
             axes = [int(not self.small_axis)+1]
@@ -557,28 +558,29 @@ class LowResObservation(Observation):
             axes = [int(self.small_axis)+1]
 
         model_conv = self.sinc_shift(model_, -self.other_shifts, axes)
-
+        #Transposes are all over the place to make arrays F-contiguous
         if self.isrot:
             if self.small_axis:
                 model_conv = model_conv.reshape(*model_conv.shape[:2], -1)
                 for c in range(self.frame.C):
-                    model_image.append((model_conv[c] @ self._resconv_op[c].T).T)
+                    model_image.append((self._resconv_op[c] @ model_conv[c].T))
                 return np.array(model_image, dtype=self.frame.dtype)
             else:
                 model_conv = model_conv.reshape(*model_conv.shape[:2], -1)
                 for c in range(self.frame.C):
-                    model_image.append((model_conv[c] @ self._resconv_op[c].T))
+                    model_image.append((self._resconv_op[c] @ model_conv[c].T).T)
                 return np.array(model_image, dtype=self.frame.dtype)
+
 
         if self.small_axis:
             model_conv = model_conv.reshape(model_conv.shape[0],-1,model_conv.shape[-1])
             for c in range(self.frame.C):
-                model_image.append((self._resconv_op[c] @ model_conv[c]))
+                model_image.append((model_conv[c].T @ self._resconv_op[c].T).T)
             return np.array(model_image, dtype=self.frame.dtype)
         else:
             model_conv = model_conv.reshape(*model_conv.shape[:2], -2)
             for c in range(self.frame.C):
-                model_image.append(( model_conv[c] @ self._resconv_op[c]))
+                model_image.append((self._resconv_op[c].T @ model_conv[c].T).T)
             return np.array(model_image, dtype=self.frame.dtype)
 
 
