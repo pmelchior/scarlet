@@ -16,7 +16,7 @@ Getting Started
 
    install
    quickstart
-   user_docs
+   concepts
    tutorials
    api/scarlet
 

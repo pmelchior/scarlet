@@ -74,7 +74,6 @@ You need to install several extra packages:
 Then navigate to the `docs` directory and type
 ::
 
-    python create_docs.py
     make html
 
 and a local copy of the current docs will be available in the `docs/_build/html` folder.

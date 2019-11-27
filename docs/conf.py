@@ -90,7 +90,6 @@ pygments_style = 'sphinx'
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = False
 
-
 # -- Options for HTML output ----------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
@@ -107,7 +106,7 @@ html_theme_options = {
     'github_button': True,
     'github_user': 'pmelchior',
     'github_repo': 'scarlet',
-    'github_type': 'watch'
+    'github_type': 'watch',
     }
 
 # Add any paths that contain custom static files (such as style sheets) here,
@@ -117,6 +116,9 @@ html_static_path = ['_static']
 html_logo = '_static/logo.svg'
 html_short_title = 'Source Separation by Constrained Matrix Factorization'
 htmls_show_sourcelink = False
+html_sourcelink_suffix = ''
+nbsphinx_execute = 'never'
+
 
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.
@@ -130,6 +132,8 @@ html_sidebars = {
         'searchbox.html',
     ]
 }
+
+html_baseurl = "api/"
 
 
 # -- Options for HTMLHelp output ------------------------------------------
