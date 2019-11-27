@@ -210,7 +210,7 @@ class FactorizedComponent(Component):
             return sed
 
     def _pad_morph(self, morph):
-        if self.bbox is not None and self.pad_width[1:] != ((0,0), (0,0)):
+        if self.bbox is not None:
                 padded = np.pad(morph, self.pad_width[1:], mode='constant', constant_values=0)
                 return padded[self.slices[1:]]
         return morph
