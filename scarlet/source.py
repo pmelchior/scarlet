@@ -352,9 +352,11 @@ class PointSource(FunctionComponent):
         left = pixel_center[1] - frame.psf.shape[2]//2
         right = pixel_center[1] + frame.psf.shape[2]//2
         bbox = Box.from_bounds(front, back, bottom, top, left, right)
-        _psf_wrapper = lambda *parameters: frame.psf.__call__(*parameters, bbox=bbox)[0]
 
-        super().__init__(frame, sed, center, _psf_wrapper, bbox=bbox)
+        super().__init__(frame, sed, center, self._psf_wrapper, bbox=bbox)
+
+    def _psf_wrapper(self, *parameters):
+        return self.frame.psf.__call__(*parameters, bbox=self.bbox)[0]
 
 
 

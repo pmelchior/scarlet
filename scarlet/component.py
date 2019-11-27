@@ -2,7 +2,7 @@ from .parameter import *
 from . import fft
 from . import interpolation
 from .bbox import Box
-import pickle
+import dill as pickle
 import autograd.numpy as np
 
 import logging
@@ -21,7 +21,7 @@ class Component():
     parameters: list of `~scarlet.Parameter`
     """
 
-    def __init__(self, frame, *parameters, bbox=None):
+    def __init__(self, frame, *parameters, bbox=None, **kwargs):
         self.bbox = bbox
         self.set_frame(frame)
 
@@ -32,6 +32,9 @@ class Component():
         else:
             assert isinstance(parameters, Parameter)
             self._parameters = tuple(parameters,)
+
+        # additional non-optimization parameters of component
+        self.kwargs = kwargs
 
         # Properties used for indexing in the ComponentTree
         self._index = None
@@ -103,20 +106,16 @@ class Component():
 
     def __getstate__(self):
         # needed for pickling to understand what to save
-        return tuple([self._sed.copy(), self._morph.copy()])
+        return tuple([self.frame, self.bbox, self._index, self._parent, self._parameters, self.kwargs])
 
     def __setstate__(self, state):
-        self._sed, self._morph = state
+        frame, self.bbox, self._index, self._parent, self._parameters, self.kwargs = state
+        self.set_frame(frame)
 
     def save(self, filename):
         fp = open(filename, "wb")
         pickle.dump(self, fp)
         fp.close()
-
-    @classmethod
-    def load(cls, filename):
-        fp = open(filename, "rb")
-        return pickle.load(fp)
 
 
 class FactorizedComponent(Component):
@@ -132,20 +131,17 @@ class FactorizedComponent(Component):
         1D array (channels) of the initial SED.
     morph: `~scarlet.Parameter`
         Image (Height, Width) of the initial morphology.
-    bbox: `~scarlet.Box`
-        Spatial bounding box of the morphology.
     shift: `~scarlet.Parameter`
         2D position for the shift of the center
+    bbox: `~scarlet.Box`
+        Spatial bounding box of the morphology.
     """
-    def __init__(self, frame, sed, morph, bbox=None, shift=None):
-        self._sed = sed
-        self._morph = morph
-        self._shift = shift
+    def __init__(self, frame, sed, morph, shift=None, bbox=None, **kwargs):
         if shift is None:
-            parameters = (self._sed, self._morph)
+            parameters = (sed, morph)
         else:
-            parameters = (self._shift, self._sed, self._morph)
-        super().__init__(frame, *parameters, bbox=bbox)
+            parameters = (sed, morph, shift)
+        super().__init__(frame, *parameters, bbox=bbox, **kwargs)
 
         # store shifting structures
         if shift is not None:
@@ -157,20 +153,20 @@ class FactorizedComponent(Component):
     def sed(self):
         """Numpy view of the component SED
         """
-        return self._pad_sed(self._sed._data)
+        return self._pad_sed(self._parameters[0]._data)
 
     @property
     def morph(self):
         """Numpy view of the component morphology
         """
-        return self._pad_morph(self._shift_morph(self.shift, self._morph._data))
+        return self._pad_morph(self._shift_morph(self.shift, self._parameters[1]._data))
 
     @property
     def shift(self):
         """Numpy view of the component center
         """
-        if self._shift is not None:
-            return self._shift._data
+        if len(self._parameters) == 3:
+            return self._parameters[2]._data
         return None
 
     def get_model(self, *parameters):
@@ -185,25 +181,34 @@ class FactorizedComponent(Component):
         model: array
             (Channels, Height, Width) image of the model
         """
-        shift, sed, morph = self.shift, self.sed, None
+        sed, morph, shift = None, None, None
 
         # if params are set they are not Parameters, but autograd ArrayBoxes
         # need to access the wrapped class with _value
         for p in parameters:
-            if p._value is self._shift:
-                shift = p
-            if p._value is self._sed:
+            if p._value is self._parameters[0]:
                 sed = p
-            if p._value is self._morph:
-                morph =  self._pad_morph(self._shift_morph(shift, p))
+            if p._value is self._parameters[1]:
+                morph = p
+            if len(self._parameters) == 3 and p._value is self._parameters[2]:
+                shift = p
+
+        if sed is None:
+            sed = self.sed
+
+        if shift is None:
+            shift = self.shift
 
         if morph is None:
-            morph =  self._pad_morph(self._shift_morph(shift, self._morph._data))
+            # dont' use self._morph because we could have shift as parameter
+            morph =  self._pad_morph(self._shift_morph(shift, self._parameters[1]._data))
+        else:
+            morph =  self._pad_morph(self._shift_morph(shift, morph))
 
         return sed[:, None, None] * morph[None, :, :]
 
     def _pad_sed(self, sed):
-        if self.bbox is not None and self.pad_width[0] != (0,0):
+        if self.bbox is not None:
             padded = np.pad(sed, self.pad_width[0], mode='constant', constant_values=0)
             return padded[self.slices[0]]
         else:
@@ -248,19 +253,21 @@ class FunctionComponent(FactorizedComponent):
         Spatial bounding box of the morphology.
     """
     def __init__(self, frame, sed, fparams, func, bbox=None):
-        self._sed = sed
-        self._fparams = fparams
-        parameters = (self._sed, self._fparams)
-        super().__init__(frame, *parameters, bbox=bbox)
-
-        self.func = func
-        self._morph = self._pad_morph(self.func(*self._fparams))
+        parameters = (sed, fparams)
+        super().__init__(frame, *parameters, bbox=bbox, func=func)
 
     @property
     def morph(self):
         """Numpy view of the component morphology
         """
-        return self._morph
+        try:
+            return self._morph
+        except AttributeError:
+            self._morph = self._pad_morph(self._func(*self._parameters[1]))
+            return self._morph
+
+    def _func(self, *parameters):
+        return self.kwargs['func'](*parameters)
 
     def get_model(self, *parameters):
         """Get the model for this component.
@@ -274,16 +281,24 @@ class FunctionComponent(FactorizedComponent):
         model: array
             (Channels, Height, Width) image of the model
         """
-        sed, morph = self.sed, self.morph
+        sed, fparams = None, None
 
         # if params are set they are not Parameters, but autograd ArrayBoxes
         # need to access the wrapped class with _value
         for p in parameters:
-            if p._value is self._sed:
+            if p._value is self._parameters[0]:
                 sed = p
-            if p._value is self._fparams:
-                morph = self._pad_morph(self.func(*p))
-                self._morph[:,:] = morph._value
+            if p._value is self._parameters[1]:
+                fparams = p
+
+        if sed is None:
+            sed = self.sed
+        if fparams is None:
+            morph = self.morph
+        else:
+            morph = self._pad_morph(self._func(*fparams))
+            self._morph = morph._value
+
         return sed[:, None, None] * morph[None, :, :]
 
 
@@ -300,18 +315,17 @@ class CubeComponent(Component):
         3D array (C, Height, Width) of the initial data cube.
     """
     def __init__(self, frame, cube):
-        self._cube = cube
-        parameters = (self._cube,)
+        parameters = (cube,)
         super().__init__(frame, *parameters)
 
     @property
     def cube (self):
-        return self._pad_cube(self._cube._data)
+        return self._pad_cube(self._parameters[0]._data)
 
     def get_model(self, *parameters):
         cube = None
         for p in parameters:
-            if p._value is self._cube:
+            if p._value is self._parameters[0]:
                 cube = self._pad_cube(p)
 
         if cube is None:
@@ -353,8 +367,6 @@ class ComponentTree():
             c._index = i
             c._parent = self
 
-        self._components = None
-
     @property
     def components(self):
         """Flattened tuple of all components in the tree.
@@ -364,7 +376,9 @@ class ComponentTree():
         times, this method will only return that component at its first
         encountered location
         """
-        if self._components is None:
+        try:
+            return self._components
+        except AttributeError:
             components = []
             for c in self._tree:
                 if isinstance(c, ComponentTree):
@@ -376,7 +390,7 @@ class ComponentTree():
                     if __c not in components:
                         components.append(__c)
             self._components = tuple(components)
-        return self._components
+            return self._components
 
     @property
     def n_components(self):
@@ -510,3 +524,21 @@ class ComponentTree():
             return self._tree[coord]
         else:
             raise NotImplementedError("coord needs to be index or list of indices")
+
+    def __getstate__(self):
+        # needed for pickling to understand what to save
+        state = [self._tree, self._index, self._parent]
+        return tuple(state)
+
+    def __setstate__(self, state):
+        self._tree, self._index, self._parent = state
+
+    def save(self, filename):
+        fp = open(filename, "wb")
+        pickle.dump(self, fp)
+        fp.close()
+
+
+def load(filename):
+    fp = open(filename, "rb")
+    return pickle.load(fp)
