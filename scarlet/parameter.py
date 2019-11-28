@@ -23,6 +23,19 @@ class Parameter(np.ndarray):
         self.std = getattr(obj, 'std', None)
         self.fixed = getattr(obj, 'fixed', False)
 
+    def __reduce__(self):
+        # Get the parent's __reduce__ tuple
+        pickled_state = super().__reduce__()
+        # Create our own tuple to pass to __setstate__, but append the __dict__ rather than individual members.
+        new_state = pickled_state[2] + (self.__dict__,)
+        # Return a tuple that replaces the parent's __setstate__ tuple with our own
+        return (pickled_state[0], pickled_state[1], new_state)
+
+    def __setstate__(self, state):
+        self.__dict__.update(state[-1])  # Update the internal dict from state
+        # Call the parent's __setstate__ with the other tuple elements.
+        super().__setstate__(state[0:-1])
+
     @property
     def _data(self):
         return self.view(np.ndarray)

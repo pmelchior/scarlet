@@ -483,10 +483,10 @@ class MultiComponentSource(ComponentTree):
         self.monotonic = monotonic
         self.coords = sky_coord
         center = np.array(frame.get_pixel(sky_coord), dtype='float')
-        self.pixel_center = tuple(np.round(center).astype('int'))
+        pixel_center = tuple(np.round(center).astype('int'))
 
         if shifting:
-            shift = Parameter(center - self.pixel_center, step=1e-1)
+            shift = Parameter(center - pixel_center, step=1e-1)
         else:
             shift = None
 
@@ -521,7 +521,7 @@ class MultiComponentSource(ComponentTree):
             sed = Parameter(seds[k], step=partial(relative_step, factor=1e-1), constraint=PositivityConstraint())
             morph = Parameter(morphs[k], step=1e-2, constraint=morph_constraint)
             components.append(FactorizedComponent(frame, sed, morph, bbox=bbox, shift=shift))
-            components[-1].pixel_center = self.pixel_center
+            components[-1].pixel_center = pixel_center
         super().__init__(components)
 
     @property
@@ -538,6 +538,6 @@ class MultiComponentSource(ComponentTree):
     def center(self):
         c = self.components[0]
         if len(c.parameters) == 3:
-            return self.pixel_center + c.shift
+            return c.pixel_center + c.shift
         else:
-            return self.pixel_center
+            return c.pixel_center

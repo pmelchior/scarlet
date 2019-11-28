@@ -2,7 +2,6 @@ from .parameter import *
 from . import fft
 from . import interpolation
 from .bbox import Box
-import dill as pickle
 import autograd.numpy as np
 
 import logging
@@ -74,6 +73,14 @@ class Component():
         """
         pass
 
+    def freeze(self):
+        for p in self._parameters:
+            p.fixed = True
+
+    def unfreeze(self):
+        for p in self._parameters:
+            p.fixed = False
+
     def set_frame(self, frame):
         self.frame = frame
 
@@ -104,18 +111,14 @@ class Component():
             overlap -= padded_box.origin # now in padded frame
             self.slices = overlap.slices_for(padded_box.shape)
 
-    def __getstate__(self):
-        # needed for pickling to understand what to save
-        return tuple([self.frame, self.bbox, self._index, self._parent, self._parameters, self.kwargs])
-
-    def __setstate__(self, state):
-        frame, self.bbox, self._index, self._parent, self._parameters, self.kwargs = state
-        self.set_frame(frame)
-
-    def save(self, filename):
-        fp = open(filename, "wb")
-        pickle.dump(self, fp)
-        fp.close()
+    # def __getstate__(self):
+    #     # needed for pickling to understand what to save
+    #     return tuple([self.frame, self.bbox, self._index, self._parent, self._parameters, self.kwargs])
+    #
+    # def __setstate__(self, state):
+    #     frame, self.bbox, self._index, self._parent, self._parameters, self.kwargs = state
+    #     self.set_frame(frame)
+    #
 
 
 class FactorizedComponent(Component):
@@ -379,18 +382,21 @@ class ComponentTree():
         try:
             return self._components
         except AttributeError:
-            components = []
-            for c in self._tree:
-                if isinstance(c, ComponentTree):
-                    _c = c.components
-                else:
-                    _c = [c]
-                # check uniqueness
-                for __c in _c:
-                    if __c not in components:
-                        components.append(__c)
-            self._components = tuple(components)
+            self._components = self._tree_to_components()
             return self._components
+
+    def _tree_to_components(self):
+        components = []
+        for c in self._tree:
+            if isinstance(c, ComponentTree):
+                _c = c.components
+            else:
+                _c = [c]
+            # check uniqueness
+            for __c in _c:
+                if __c not in components:
+                    components.append(__c)
+        return tuple(components)
 
     @property
     def n_components(self):
@@ -485,6 +491,14 @@ class ComponentTree():
         for c in self.components:
             c.set_frame(frame)
 
+    def freeze(self):
+        for c in self.components:
+            c.freeze()
+
+    def unfreeze(self):
+        for c in self.components:
+            c.unfreeze()
+
     def __iadd__(self, c):
         """Add another component or tree.
 
@@ -501,7 +515,7 @@ class ComponentTree():
             raise NotImplementedError("argument needs to be Component or ComponentTree")
         c._index = c_index
         c._parent = self
-        self._components = None
+        self._components = self._tree_to_components()
         return self
 
     def __getitem__(self, coord):
@@ -527,18 +541,8 @@ class ComponentTree():
 
     def __getstate__(self):
         # needed for pickling to understand what to save
-        state = [self._tree, self._index, self._parent]
-        return tuple(state)
+        return (self._tree, )
 
     def __setstate__(self, state):
-        self._tree, self._index, self._parent = state
-
-    def save(self, filename):
-        fp = open(filename, "wb")
-        pickle.dump(self, fp)
-        fp.close()
-
-
-def load(filename):
-    fp = open(filename, "rb")
-    return pickle.load(fp)
+        self._tree = state[0]
+        self._tree_to_components()
