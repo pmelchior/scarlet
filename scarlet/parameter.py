@@ -43,5 +43,5 @@ class Parameter(np.ndarray):
 ArrayBox.register(Parameter)
 VSpace.register(Parameter, vspace_maker=VSpace.mappings[np.ndarray])
 
-relative_step = lambda X, it, factor: factor*X.mean(axis=0)
-default_step = partial(relative_step, factor=0.1)
+def relative_step(X, it, factor=0.1):
+    return factor*X.mean(axis=0)

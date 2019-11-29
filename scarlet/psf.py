@@ -58,11 +58,13 @@ def gaussian(y, x, sigma=1, integrate=True, bbox=None):
     """
     Y = np.arange(bbox.shape[1]) + bbox.origin[1]
     X = np.arange(bbox.shape[2]) + bbox.origin[2]
-    if not integrate:
-        f = lambda X: np.exp(-X**2/(2*sigma**2))
-    else:
-        sqrt2 = np.sqrt(2)
-        f = lambda x: np.sqrt(np.pi/2) * sigma * (scipy.special.erf((0.5 - x)/(sqrt2 * sigma)) + scipy.special.erf((2*x + 1)/(2*sqrt2*sigma)))
+
+    def f(X):
+        if not integrate:
+            return np.exp(-X**2/(2*sigma**2))
+        else:
+            sqrt2 = np.sqrt(2)
+            return np.sqrt(np.pi/2) * sigma * (scipy.special.erf((0.5 - X)/(sqrt2 * sigma)) + scipy.special.erf((2*X + 1)/(2*sqrt2*sigma)))
 
     return (f(Y-y)[:,None] * f(X-x)[None,:])[None,:,:]
 

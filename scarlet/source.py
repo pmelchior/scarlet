@@ -263,14 +263,14 @@ def init_multicomponent_source(sky_coord, frame, observations, obs_idx=0, flux_p
 
 
 class RandomSource(FactorizedComponent):
-    """Sources with uniform random morphology.
+    """Sources with uniform random morphology and sed.
 
     For cases with no well-defined spatial shape, this source initializes
     a uniform random field and (optionally) matches the SED to match a given
     observation.
     """
     def __init__(self, frame, observation=None):
-        """Source intialized with a single pixel
+        """Source intialized as random field.
 
         Parameters
         ----------
@@ -288,8 +288,8 @@ class RandomSource(FactorizedComponent):
             sed = get_best_fit_seds(morph[None], frame, observation)[0]
 
         constraint = PositivityConstraint()
-        sed = Parameter(sed, step=default_step, constraint=constraint)
-        morph = Parameter(morph, step=default_step, constraint=constraint)
+        sed = Parameter(sed, step=relative_step, constraint=constraint)
+        morph = Parameter(morph, step=relative_step, constraint=constraint)
 
         super().__init__(frame, sed, morph)
 
