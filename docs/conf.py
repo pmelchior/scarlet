@@ -117,8 +117,7 @@ html_logo = '_static/logo.svg'
 html_short_title = 'Source Separation by Constrained Matrix Factorization'
 htmls_show_sourcelink = False
 html_sourcelink_suffix = ''
-nbsphinx_execute = 'never'
-
+nbsphinx_allow_errors = True
 
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.
