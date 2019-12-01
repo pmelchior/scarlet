@@ -1,6 +1,7 @@
 import numpy as np
 from astropy.visualization.lupton_rgb import LinearMapping, AsinhMapping
-
+import matplotlib.pyplot as plt
+from .component import ComponentTree
 
 def get_default_filter_weight(bands, channels=3):
     filter_weights = np.zeros((channels, bands))
@@ -149,8 +150,135 @@ def img_to_rgb(img, filter_weights=None, fill_value=0, norm=None):
     -------
     rgb: numpy array with dimensions (3, height, width) and dtype uint8
     """
-    RGB = img_to_channel(img)
+    RGB = img_to_channel(img, filter_weights=filter_weights)
     if norm is None:
         norm = LinearMapping(image=RGB)
     rgb = norm.make_rgb_image(*RGB)
     return rgb
+
+def show_scene(sources, observation=None, norm=None, filter_weights=None, show_observed=False, show_rendered=False, show_residual=False, label_sources=True, figsize=None):
+    if show_observed or show_rendered or show_residual:
+        assert observation is not None, "Provide matched observation to show observed frame"
+
+    panels = 1 + sum((show_observed, show_rendered, show_residual))
+    if figsize is None:
+        figsize = (3*panels, 3*len(list(sources)))
+    fig, ax = plt.subplots(1, panels, figsize=figsize)
+    if not hasattr(ax, '__iter__'):
+        ax = (ax,)
+
+    panel = 0
+    tree = ComponentTree(sources)
+    model = tree.get_model()
+    ax[panel].imshow(img_to_rgb(model, norm=norm, filter_weights=filter_weights))
+    ax[panel].set_title("Model")
+
+    if show_rendered or show_residual:
+        model = observation.render(model)
+
+    if show_rendered:
+        panel += 1
+        ax[panel].imshow(img_to_rgb(model, norm=norm, filter_weights=filter_weights))
+        ax[panel].set_title("Model Rendered")
+
+    if show_observed:
+        panel += 1
+        ax[panel].imshow(img_to_rgb(observation.images, norm=norm, filter_weights=filter_weights))
+        ax[panel].set_title("Observation")
+
+    if show_residual:
+        panel += 1
+        residual = observation.images - model
+        norm_ = LinearPercentileNorm(residual)
+        ax[panel].imshow(img_to_rgb(residual, norm=norm_, filter_weights=filter_weights))
+        ax[panel].set_title("Residual")
+
+    if label_sources:
+        for k, src in enumerate(sources):
+            if hasattr(src, 'center'):
+                center = np.array(src.center)
+                center_ = center - np.array(src.frame.origin[1:]) # observed coordinates
+            ax[0].text(*center[::-1], k, color='w')
+            for panel in range(1, panels):
+                ax[panel].text(*center_[::-1], k, color='w')
+
+    fig.tight_layout()
+    plt.close();
+    return fig
+
+def show_sources(sources, observation=None, norm=None, filter_weights=None, show_observed=False, show_rendered=False, show_sed=True, figsize=None):
+
+    if show_observed or show_rendered:
+        assert observation is not None, "Provide matched observation to show observed frame"
+
+    panels = 1 + sum((show_observed, show_rendered, show_sed))
+    if figsize is None:
+        figsize = (3*panels, 3*len(list(sources)))
+    fig, ax = plt.subplots(len(list(sources)), panels, figsize=figsize)
+    for k,src in enumerate(sources):
+
+        if hasattr(src, 'center'):
+            center = np.array(src.center)
+            # center in src bbox coordinates
+            if src.bbox is not None:
+                center_ = center - np.array(src.bbox.origin[1:])
+            else:
+                center_ = center
+            # center in observed coordinates
+            center__ = center - np.array(src.frame.origin[1:])
+        else:
+            center = None
+
+        panel = 0
+        frame_ = src.frame
+        src.set_frame(src.bbox)
+        if isinstance(src, ComponentTree):
+            model = 0
+            seds = []
+            for component in src:
+                model_ = component.get_model()
+                seds.append(model_.sum(axis=(1,2)))
+                model += model_
+        else:
+            model = src.get_model()
+            seds = [model.sum(axis=(1,2))]
+        src.set_frame(frame_)
+        ax[k][panel].imshow(img_to_rgb(model, norm=norm, filter_weights=filter_weights))
+        ax[k][panel].set_title("Model Source {}".format(k))
+        if center is not None:
+            ax[k][panel].plot(*center_[::-1], "wx", mew=1, ms=10)
+
+        if show_rendered:
+            panel += 1
+            model = src.get_model()
+            model = observation.render(model)
+            ax[k][panel].imshow(img_to_rgb(model, norm=norm, filter_weights=filter_weights))
+            ax[k][panel].set_xlim(src.bbox.left, src.bbox.right)
+            ax[k][panel].set_ylim(src.bbox.bottom, src.bbox.top)
+            ax[k][panel].set_title("Model Source {} Rendered".format(k))
+            if center is not None:
+                ax[k][panel].plot(*center__[::-1], "wx", mew=1, ms=10)
+
+        if show_observed:
+            panel += 1
+            ax[k][panel].imshow(img_to_rgb(observation.images, norm=norm, filter_weights=filter_weights))
+            ax[k][panel].set_xlim(src.bbox.left, src.bbox.right)
+            ax[k][panel].set_ylim(src.bbox.bottom, src.bbox.top)
+            ax[k][panel].set_title("Observation".format(k))
+            if center is not None:
+                ax[k][panel].plot(*center__[::-1], "wx", mew=1, ms=10)
+
+        if show_sed:
+            panel += 1
+            for sed in seds:
+                ax[k][panel].plot(sed)
+            ax[k][panel].set_xticks(range(len(sed)))
+            if hasattr(src.frame, 'channels'):
+                ax[k][panel].set_xticklabels(src.frame.channels)
+            ax[k][panel].set_title("SED")
+            ax[k][panel].set_xlabel("Channel")
+            ax[k][panel].set_ylabel("Intensity")
+
+    fig.tight_layout()
+    plt.close();
+    return fig

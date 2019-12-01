@@ -88,8 +88,8 @@ class Observation():
             origin = (0,*yx0)
         else:
             assert self.frame.channels is not None and model_frame.channels is not None
-            cmin = model_frame.channels.index(self.frame.channels[0])
-            cmax = model_frame.channels.index(self.frame.channels[-1])
+            cmin = list(model_frame.channels).index(self.frame.channels[0])
+            cmax = list(model_frame.channels).index(self.frame.channels[-1])
             origin = (cmin, *yx0)
         self.bbox = Box(shape, origin=origin)
         self.slices = self.bbox.slices_for(model_frame.shape)

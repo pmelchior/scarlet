@@ -264,10 +264,10 @@ class FunctionComponent(FactorizedComponent):
         """Numpy view of the component morphology
         """
         try:
-            return self._morph
+            return self._pad_morph(self._morph)
         except AttributeError:
-            self._morph = self._pad_morph(self._func(*self._parameters[1]))
-            return self._morph
+            self._morph = self._func(*self._parameters[1])
+            return self._pad_morph(self._morph)
 
     def _func(self, *parameters):
         return self.kwargs['func'](*parameters)
@@ -299,8 +299,9 @@ class FunctionComponent(FactorizedComponent):
         if fparams is None:
             morph = self.morph
         else:
-            morph = self._pad_morph(self._func(*fparams))
+            morph = self._func(*fparams)
             self._morph = morph._value
+            morph = self._pad_morph(morph)
 
         return sed[:, None, None] * morph[None, :, :]
 
@@ -337,7 +338,7 @@ class CubeComponent(Component):
         return cube
 
     def _pad_cube(self, cube):
-        if self.bbox is not None and self.pad_width != ((0,0), (0,0), (0,0)):
+        if self.bbox is not None:
             padded = np.pad(cube, self.pad_width, mode='constant', constant_values=0)
             return padded[self.slices]
         return cube
