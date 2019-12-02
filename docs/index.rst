@@ -15,8 +15,8 @@ Getting Started
    :maxdepth: 2
 
    install
-   quickstart
-   concepts
+   0-quickstart
+   1-concepts
    tutorials
    api/scarlet
 
