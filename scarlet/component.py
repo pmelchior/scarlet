@@ -111,15 +111,6 @@ class Component():
             overlap -= padded_box.origin # now in padded frame
             self.slices = overlap.slices_for(padded_box.shape)
 
-    # def __getstate__(self):
-    #     # needed for pickling to understand what to save
-    #     return tuple([self.frame, self.bbox, self._index, self._parent, self._parameters, self.kwargs])
-    #
-    # def __setstate__(self, state):
-    #     frame, self.bbox, self._index, self._parent, self._parameters, self.kwargs = state
-    #     self.set_frame(frame)
-    #
-
 
 class FactorizedComponent(Component):
     """A single component in a blend.
@@ -317,10 +308,12 @@ class CubeComponent(Component):
         The spectral and spatial characteristics of this component.
     cube: `~scarlet.Parameter`
         3D array (C, Height, Width) of the initial data cube.
+    bbox: `~scarlet.Box`
+        Spatial bounding box of the morphology.
     """
-    def __init__(self, frame, cube):
+    def __init__(self, frame, cube, bbox=None):
         parameters = (cube,)
-        super().__init__(frame, *parameters)
+        super().__init__(frame, *parameters, bbox=bbox)
 
     @property
     def cube (self):

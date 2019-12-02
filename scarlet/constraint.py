@@ -108,25 +108,32 @@ class NormalizationConstraint(Constraint):
 
 
 class L0Constraint(Constraint):
-    def __init__(self, thresh):
+    def __init__(self, thresh, type='relative'):
         """L0 norm (sparsity) penalty
 
         Parameters
         ----------
-        thresh: regularization strength
+        thresh: float
+            regularization strength
+        type: ['relative', 'absolute']
+            if the penalty is expressed in units of the function value (relative)
+            or in units of the variable X (absolute).
         """
-        super().__init__(partial(proxmin.operators.prox_hard, thresh=thresh))
+        super().__init__(partial(proxmin.operators.prox_hard, thresh=thresh, type=type))
 
 
 class L1Constraint(Constraint):
-    def __init__(self, thresh):
+    def __init__(self, thresh, type='relative'):
         """L1 norm (sparsity) penalty
 
         Parameters
         ----------
         thresh: regularization strength
+        type: ['relative', 'absolute']
+            if the penalty is expressed in units of the function value (relative)
+            or in units of the variable X (absolute).
         """
-        super().__init__(partial(proxmin.operators.prox_soft, thresh=thresh))
+        super().__init__(partial(proxmin.operators.prox_soft, thresh=thresh, type=type))
 
 
 class ThresholdConstraint(Constraint):
@@ -143,8 +150,7 @@ class ThresholdConstraint(Constraint):
     """
     def __call__(self, X, step):
         thresh, _bins = self.threshold(X)
-        X[X < thresh] = 0
-        return X
+        return proxmin.operators.prox_hard_plus(X, step, thresh=thresh, type='absolute')
 
     def threshold(self, morph):
         """Find the threshold value for a given morphology
@@ -221,7 +227,7 @@ class CenterOnConstraint(Constraint):
 class AllOnConstraint(Constraint):
     """Add to all elements a tiny non-zero value
     """
-    def __init__(self, iny=1e-6):
+    def __init__(self, tiny=1e-6):
         self.tiny = tiny
 
     def __call__(self, X, step):

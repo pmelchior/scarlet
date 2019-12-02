@@ -210,10 +210,19 @@ def prox_soft_symmetry(X, step, strength=1):
     1  being completely symmetric, the user can customize
     the level of symmetry required for a component
     """
-    X = np.pad(X, ((0,1), (0,1)), mode='constant', constant_values=0)
+    pads = [[0,0],[0,0]]
+    slices = [slice(None), slice(None)]
+    if X.shape[0] % 2 == 0:
+        pads[0][1] = 1
+        slices[0] = slice(0, X.shape[0])
+    if X.shape[1] % 2 == 0:
+        pads[1][1] = 1
+        slices[1] = slice(0, X.shape[1])
+
+    X = np.pad(X, pads, mode='constant', constant_values=0)
     Xs =  np.fliplr(np.flipud(X))
     X = 0.5 * strength * (X+Xs) + (1-strength) * X
-    return X[:-1,:-1]
+    return X[tuple(slices)]
 
 def prox_kspace_symmetry(X, step, shift=None, padding=10):
     """Symmetry in Fourier Space

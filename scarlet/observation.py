@@ -60,7 +60,8 @@ class Observation():
         if weights is not None:
             self.weights = weights
         else:
-            self.weights = 1
+            self.weights = np.ones(images.shape)
+        assert self.weights.shape == self.images.shape, "Weights needs to have same shape as images"
 
         self._padding = padding
 
