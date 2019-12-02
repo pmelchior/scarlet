@@ -50,7 +50,6 @@ class TestDocs:
         for dir in dirs:
             os.chdir(dir)
             files = sorted(glob.glob("*.ipynb"))
-            print(files)
             for filename in files:
                 errors = run_notebook(filename)
                 if errors is not None:
