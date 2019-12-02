@@ -45,11 +45,12 @@ def escape_ansi_control(error):
 
 class TestDocs:
     def test_docs(self):
-        dirs = '../docs/', '../docs/tutorials/'
+        dirs = 'docs/', 'docs/tutorials/'
         cwd = os.getcwd()
         for dir in dirs:
             os.chdir(dir)
-            files = glob.glob("*.ipynb")
+            files = sorted(glob.glob("*.ipynb"))
+            print(files)
             for filename in files:
                 errors = run_notebook(filename)
                 if errors is not None:
