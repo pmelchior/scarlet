@@ -27,3 +27,21 @@ script:
 # Calculate coverage
 #after_success:
 #  - coveralls --config_file .coveragerc
+
+# deploy to github pages
+cache:
+  directories:
+  - build
+  - dist
+
+before_deploy:
+  - cd docs && make html
+
+deploy:
+  provider: pages:git
+  cleanup: false
+  token: $github_token
+  local_dir: docs/_build/html/
+  edge: true
+  on:
+    branch: master

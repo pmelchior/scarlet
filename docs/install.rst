@@ -24,8 +24,9 @@ The easiest way is using a combination of `conda` and `pip` installers:
     conda install numpy scipy astropy pybind11
     pip install proxmin peigen autograd
 
+If you don't work with `conda`, `pip` alone will do as well.
 Then go to a directory that should hold the scarlet code and get the scarlet repository
-from github and build and install it:
+from github, and build and install it:
 
 ::
 
