@@ -29,11 +29,6 @@ script:
 #  - coveralls --config_file .coveragerc
 
 # deploy to github pages
-cache:
-  directories:
-  - build
-  - dist
-
 before_deploy:
   - cd docs && make html
 
