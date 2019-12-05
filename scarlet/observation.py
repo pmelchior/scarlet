@@ -1,5 +1,4 @@
 import autograd.numpy as np
-from scipy import fftpack
 
 from . import interpolation
 from . import fft
