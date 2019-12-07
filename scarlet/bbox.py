@@ -110,7 +110,7 @@ class Box:
         return any(np.array(self.shape) == 0)
 
     def contains(self, p):
-        """Whether the box cotains a given point
+        """Whether the box cotains a given coordinate `p`
         """
         if len(p) == 2:
             p = (0,*p)
@@ -126,7 +126,7 @@ class Box:
         Parameters
         ----------
         im_or_shape: array or tuple
-            Array or shpae of the array to be sliced
+            Array or shape of the array to be sliced
 
         Returns
         -------

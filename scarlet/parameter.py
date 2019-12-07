@@ -4,7 +4,29 @@ from autograd.core import VSpace
 from functools import partial
 
 class Parameter(np.ndarray):
-    def __new__(cls, array, prior=None, constraint=None, step=0, converged=False, std=None, fixed=False, **kwargs):
+    """Optimization parameter
+
+    Parameters
+    ----------
+    array: array-like
+        numpy array (type float) to hold parameter values
+    prior: `~scarlet.Prior`
+        Prior distribution for parameter
+    constraint: `~scarlet.Constraint`
+        Constraint on parameter
+    step: float or method
+        The step size for the parameter
+        If a method is used, it needs to have the signature
+            `step(X, it) -> float`
+        where `X` is the parameter value and `it` the iteration counter
+    converged: bool
+        Whether the parameter converged during optimimzation
+    std: array-like
+        Statistical error estimate, same shape as `array`
+    fixed: bool
+        Whether parameter is held fixed (excluded) during optimization
+    """
+    def __new__(cls, array, prior=None, constraint=None, step=0, converged=False, std=None, fixed=False):
         obj = np.asarray(array, dtype=array.dtype).view(cls)
         obj.prior = prior
         obj.constraint = constraint

@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 from .parameter import *
 from . import fft
 from . import interpolation
@@ -8,7 +9,7 @@ import logging
 logger = logging.getLogger("scarlet.component")
 
 
-class Component():
+class Component(ABC):
     """A single component in a blend.
 
     This class acts as base for building a complex :class:`scarlet.blend.Blend`.
@@ -59,6 +60,7 @@ class Component():
     def parameters(self):
         return [ p for p in self._parameters if not p.fixed ]
 
+    @abstractmethod
     def get_model(self, *parameters):
         """Get the model for this component.
 

@@ -55,7 +55,7 @@ class Constraint:
 
 
 class ConstraintChain:
-    """A ordered list of `Constraint`s.
+    """An ordered list of `Constraint`s.
 
     Uses the concept of alternating projections onto convex sets to find
     solutions that are feasible according to a list of constraints.

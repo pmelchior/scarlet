@@ -127,15 +127,15 @@ class Observation():
 
         Returns
         -------
-        model_: array
-            The convolved `model` in the observation frame
+        image_model: array
+            `model` mapped into the observation frame
         """
 
-        model_ = model[self.slices]
+        image_model = model[self.slices]
         if self._diff_kernels is not None:
-            model_ = self._convolve(model_)
+            image_model = self._convolve(image_model)
 
-        return model_
+        return image_model
 
     def get_loss(self, model):
         """Computes the loss/fidelity of a given model wrt to the observation
@@ -456,8 +456,8 @@ class LowResObservation(Observation):
             The model in some other data frame.
         Returns
         -------
-        model_: array
-            The convolved and resampled `model` in the observation frame.
+        image_model: array
+            `model` mapped into the observation frame
         """
         # Padding the psf to the fast_shape size
         model_ = fft.Fourier(fft._pad(model[self.slices[0], :, :], self._fft_shape, axes=(-2, -1)))
@@ -493,12 +493,12 @@ class LowResObservation(Observation):
             The model in some other data frame.
         Returns
         -------
-        model_: array
-            The convolved and resampled `model` in the observation frame.
+        image_model: array
+            `model` mapped into the observation frame
         """
-        model_ = np.zeros(self.frame.shape)
-        model_[self.slices] = self._render(model)
-        return model_
+        image_model = np.zeros(self.frame.shape)
+        image_model[self.slices] = self._render(model)
+        return image_model
 
     def get_loss(self, model):
         """Computes the loss/fidelity of a given model wrt to the observation
