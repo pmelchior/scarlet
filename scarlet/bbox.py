@@ -93,7 +93,7 @@ class Box:
             bounds = []
             for dim in range(len(X.shape)):
                 bounds.append(nonzero[dim].min())
-                bounds.append(nonzero[dim].max())
+                bounds.append(nonzero[dim].max() + 1)
             if len(X.shape) == 2:
                 bounds.insert(0,0)
                 bounds.insert(1,0)
@@ -314,21 +314,3 @@ class Box:
 
     def __eq__(self, other):
         return self.shape == other.shape and self.origin == other.origin
-
-
-def flux_at_edge(X, min_value=0):
-    """Determine if an edge of the input has flux above min_value
-
-    Parameters
-    ----------
-    X: tensor or array
-        2D matrix to evaluate
-    min_value: float
-        Minimum value to trigger a positive result.
-
-    Returns
-    -------
-    result: bool
-        Whether or not any edge pixels are above the minimum_value
-    """
-    return bool(max(X[:, 0].max(), X[:, -1].max(), X[0].max(), X[-1].max()) > min_value)
