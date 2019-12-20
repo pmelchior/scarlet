@@ -19,15 +19,18 @@ class Component(ABC):
     frame: `~scarlet.Frame`
         The spectral and spatial characteristics of this component.
     parameters: list of `~scarlet.Parameter`
+    bbox: `~scarlet.Box`
+        Spatial bounding box of the morphology.
+    kwargs: dict
+        Auxiliary information attached to this component.
     """
-
     def __init__(self, frame, *parameters, bbox=None, **kwargs):
         self.bbox = bbox
         self.set_frame(frame)
 
         if hasattr(parameters, '__iter__'):
             for p in parameters:
-                isinstance(p, Parameter)
+                assert isinstance(p, Parameter)
             self._parameters = parameters
         else:
             assert isinstance(parameters, Parameter)
@@ -58,11 +61,18 @@ class Component(ABC):
 
     @property
     def parameters(self):
+        """The list of non-fixed parameters
+
+        Returns
+        -------
+        list of parameters available for optimization
+        If `parameter.fixed == True`, the parameter will not returned here.
+        """
         return [ p for p in self._parameters if not p.fixed ]
 
     @abstractmethod
     def get_model(self, *parameters):
-        """Get the model for this component.
+        """Get the model for this component
 
         Parameters
         ----------
@@ -76,14 +86,34 @@ class Component(ABC):
         pass
 
     def freeze(self):
+        """Fix all parameters
+
+        The component will not provide optimizable parameters anymore.
+        """
         for p in self._parameters:
             p.fixed = True
 
     def unfreeze(self):
+        """Release all parameters
+
+        The component will provide *all* parameters as optimizable parameters.
+        Calling this function overrides previous setting of `parameter.fixed` for every
+        parameter of this component.
+        """
         for p in self._parameters:
             p.fixed = False
 
     def set_frame(self, frame):
+        """Sets the frame for this component.
+
+        Each component needs to know the properties of the Frame and, potentially, the
+        subvolume it covers.
+
+        Parameters
+        ----------
+        frame: `~scarlet.Frame`
+            Frame to adopt for this component
+        """
         self.frame = frame
 
         # store padding and slicing structures
@@ -159,7 +189,7 @@ class FactorizedComponent(Component):
 
     @property
     def shift(self):
-        """Numpy view of the component center
+        """Numpy view of the component shift
         """
         if len(self._parameters) == 3:
             return self._parameters[2]._data
@@ -452,6 +482,13 @@ class ComponentTree():
 
     @property
     def parameters(self):
+        """The list of non-fixed parameters
+
+        Returns
+        -------
+        list of parameters available for optimization
+        If `parameter.fixed == True`, the parameter will not returned here.
+        """
         pars = []
         for c in self.components:
             pars += c.parameters
@@ -484,14 +521,33 @@ class ComponentTree():
         return model
 
     def set_frame(self, frame):
+        """Set the frame for all components in the tree
+
+        see `~scarlet.Component.set_frame` for details.
+
+        Parameters
+        ----------
+        frame: `~scarlet.Frame`
+            Frame to adopt for this component
+        """
         for c in self.components:
             c.set_frame(frame)
 
     def freeze(self):
+        """Fix all parameters
+
+        The tree will not provide optimizable parameters anymore.
+        """
         for c in self.components:
             c.freeze()
 
     def unfreeze(self):
+        """Release all parameters
+
+        The tree will provide *all* parameters as optimizable parameters.
+        Calling this function overrides previous setting of `parameter.fixed` for every
+        parameter of this component tree.
+        """
         for c in self.components:
             c.unfreeze()
 

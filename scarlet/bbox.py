@@ -10,12 +10,10 @@ class Box:
 
     Parameters
     ----------
+    shape: tuple
+        Size of the box in depth,height,width
     origin: tuple
-        Minimum (y,x) value of the box (lower left corner).
-    height: int
-        Height of the box.
-    width: int
-        Width of the box
+        Minimum (z,y,x) value of the box (front low left corner).
     """
     def __init__(self, shape, origin=(0,0,0)):
         # bbox always in 3D
@@ -103,12 +101,6 @@ class Box:
             bounds = [0,] * 6
         return Box.from_bounds(*bounds)
 
-    @property
-    def is_empty(self):
-        """Whether the box has non-zero volume
-        """
-        return any(np.array(self.shape) == 0)
-
     def contains(self, p):
         """Whether the box cotains a given coordinate `p`
         """
@@ -148,58 +140,58 @@ class Box:
         else:
             return zslice, yslice, xslice
 
-    def image_to_box(self, image, box=None):
-        """Excize box described by this bbox from image
+    def extract_from(self, image, sub=None):
+        """Extract sub-image described by this bbox from image
 
         Parameters
         ----------
-        image: array
-            Full origin image
-        box: array
-            Excized destination image
-
-        Returns
-        -------
-        box: array
-        """
-        imbox = Box.from_image(image)
-
-        if box is None:
-            if len(image.shape) == 3:
-                box = np.zeros(self.shape)
-            else:
-                box = np.zeros(self.shape[1:])
-        boxbox = Box.from_image(box)
-
-        # imbox now in the frame of this bbox (i.e. of box)
-        imbox -= self.origin
-        overlap = imbox & boxbox
-        box[overlap.slices_for(box)] = image[self.slices_for(image)]
-        return box
-
-    def box_to_image(self, box, image):
-        """Insert `box` into `image` according to this bbox
-
-        Inverse operation to :func:`~scarlet.bbox.Box.image_to_box`.
-
-        Parameters
-        ----------
-        box: array
-            Excized box
         image: array
             Full image
+        sub: array
+            Extracted image
+
+        Returns
+        -------
+        sub: array
+        """
+        imbox = Box.from_image(image)
+
+        if sub is None:
+            if len(image.shape) == 3:
+                sub = np.zeros(self.shape)
+            else:
+                sub = np.zeros(self.shape[1:])
+        subbox = Box.from_image(sub)
+
+        # imbox now in the frame of this bbox (i.e. of box)
+        imbox -= self.origin
+        overlap = imbox & subbox
+        sub[overlap.slices_for(sub)] = image[self.slices_for(image)]
+        return sub
+
+    def insert_into(self, image, sub):
+        """Insert `sub` into `image` according to this bbox
+
+        Inverse operation to :func:`~scarlet.bbox.Box.extract_from`.
+
+        Parameters
+        ----------
+        image: array
+            Full image
+        sub: array
+            Extracted sub-image
 
         Returns
         -------
         image: array
         """
         imbox = Box.from_image(image)
-        boxbox = Box.from_image(box)
+        subbox = Box.from_image(sub)
 
         # imbox now in the frame of this bbox (i.e. of box)
         imbox -= self.origin
-        overlap = imbox & boxbox
-        image[self.slices_for(image)] = box[overlap.slices_for(box)]
+        overlap = imbox & subbox
+        image[self.slices_for(image)] = sub[overlap.slices_for(sub)]
         return image
 
     @property

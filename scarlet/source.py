@@ -155,7 +155,7 @@ def trim_morphology(sky_coord, frame, morph, bg_cutoff, thresh):
     left = pixel_center[1] - boxsize // 2
     right = pixel_center[1] + boxsize // 2
     bbox = Box.from_bounds(0, frame.C, bottom, top, left, right)
-    morph = bbox.image_to_box(morph)
+    morph = bbox.extract_from(morph)
     return morph, bbox
 
 
@@ -248,7 +248,7 @@ def init_multicomponent_source(sky_coord, frame, observations, obs_idx=0, flux_p
         morphs[k] /= morphs[k].max()
 
     # optimal SEDs given the morphologies, assuming img only has that source
-    boxed_img = bbox.image_to_box(observations[obs_idx].images)
+    boxed_img = bbox.extract_from(observations[obs_idx].images)
     seds = get_best_fit_seds(morphs, frame, boxed_img)
 
     for k in range(K):
@@ -328,7 +328,7 @@ class PointSource(FunctionComponent):
         for obs in observations:
             _sed = get_psf_sed(sky_coord, obs, frame)
             seds.append(_sed)
-        sed = np.concatenate(seds).flatten()
+        sed = np.concatenate(seds).reshape(-1)
 
         if np.any(sed <= 0):
             # If the flux in all channels is  <=0,
@@ -362,7 +362,7 @@ class PointSource(FunctionComponent):
 
 class ExtendedSource(FactorizedComponent):
     def __init__(self, frame, sky_coord, observations, obs_idx=0, thresh=1.,
-                 symmetric=True, monotonic=True, shifting=False):
+                 symmetric=False, monotonic=True, shifting=False):
         """Extended source intialized to match a set of observations
 
         Parameters

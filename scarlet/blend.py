@@ -47,12 +47,20 @@ class Blend(ComponentTree):
     def fit(self, max_iter=200, e_rel=1e-3, f_rel=1e-4, **alg_kwargs):
         """Fit the model for each source to the data
 
+        Note that two convergence criteria are specified:
+
+        * `e_rel` for the change of the norm of each parameter between two iterations
+        * `f_rel` for the change of the loss function
+
+
         Parameters
         ----------
         max_iter: int
-            Maximum number of iterations if the algorithm doesn't converge.
+            Maximum number of iterations if the algorithm doesn't converge
         e_rel: float
-            Relative error for convergence of each component.
+            Relative error for parameter convergence
+        f_rel: float
+            Relative error for functional convergence of the loss
         alg_kwargs: dict
             Keywords for the `proxmin.adaprox` optimizer
         """
@@ -74,10 +82,10 @@ class Blend(ComponentTree):
         eps = alg_kwargs.pop('eps', 1e-8)
         callback = partial(self._convergence_callback, f_rel=f_rel, callback=alg_kwargs.pop('callback', None))
 
-        converged, G, V = proxmin.adaprox(X, _grad, _step, prox=_prox, max_iter=max_iter, e_rel=e_rel, scheme=scheme, prox_max_iter=prox_max_iter, callback=callback, **alg_kwargs)
+        converged, grads, grad2s = proxmin.adaprox(X, _grad, _step, prox=_prox, max_iter=max_iter, e_rel=e_rel, scheme=scheme, prox_max_iter=prox_max_iter, callback=callback, **alg_kwargs)
 
         # set convergence and standard deviation from optimizer
-        for p,c,g,v in zip(X, converged, G, V):
+        for p,c,g,v in zip(X, converged, grads, grad2s):
             p.converged = c
             p.std = 1/np.sqrt(ma.masked_equal(v, 0)) # this is rough estimate!
 

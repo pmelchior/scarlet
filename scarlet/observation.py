@@ -31,15 +31,15 @@ class Observation():
         prevent artifacts from the FFT.
     """
 
-    def __init__(self, images, psf=None, weights=None, wcs=None, channels=None, padding=10):
+    def __init__(self, images, psfs=None, weights=None, wcs=None, channels=None, padding=10):
         """Create an Observation
 
         Parameters
         ---------
         images: array or tensor
-            3D data cube (channels, Ny, Nx) of the image in each band.
-        psf: array or tensor
-            PSF for each band in `images`.
+            3D data cube (Channel, Height, Width) of the image in each band.
+        psfs: `scarlet.PSF` or its arguments
+            PSF in each channel. Can be 3D cube of images stacked in channel direction.
         weights: array or tensor
             Weight for each pixel in `images`.
             If a set of masks exists for the observations then
@@ -54,7 +54,7 @@ class Observation():
             half the width of the PSF, for FFTs. This is needed to
             prevent artifacts from the FFT.
         """
-        self.frame = Frame(images.shape, wcs=wcs, psf=psf, channels=channels, dtype=images.dtype)
+        self.frame = Frame(images.shape, wcs=wcs, psfs=psfs, channels=channels, dtype=images.dtype)
 
         self.images = images
         if weights is not None:
@@ -168,13 +168,13 @@ class Observation():
 
 class LowResObservation(Observation):
 
-    def __init__(self, images, wcs=None, psf=None, weights=None, channels=None, padding=3, operator = 'exact'):
+    def __init__(self, images, wcs=None, psfs=None, weights=None, channels=None, padding=3, operator = 'exact'):
 
         assert wcs is not None, "WCS is necessary for LowResObservation"
-        assert psf is not None, "PSF is necessary for LowResObservation"
+        assert psfs is not None, "PSF is necessary for LowResObservation"
         assert operator in ['exact', 'bilinear', 'SVD']
 
-        super().__init__(images, wcs=wcs, psf=psf, weights=weights, channels=channels, padding=padding)
+        super().__init__(images, wcs=wcs, psfs=psfs, weights=weights, channels=channels, padding=padding)
 
     def match_psfs(self, psf_hr, wcs_hr, angle):
         '''psf matching between different dataset
@@ -335,8 +335,8 @@ class LowResObservation(Observation):
             self.images = self.images.copy().astype(model_frame.dtype)
             if type(self.weights) is np.ndarray:
                 self.weights = self.weights.copy().astype(model_frame.dtype)
-            if self.frame._psf is not None:
-                self.frame._psf.update_dtype(model_frame.dtype)
+            if self.frame._psfs is not None:
+                self.frame._psfs.update_dtype(model_frame.dtype)
 
         #Affine transform
         try :

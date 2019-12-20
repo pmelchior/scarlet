@@ -10,18 +10,18 @@ class Frame(Box):
 
     Attributes
     ----------
-    shape: tuple
-        (channels, Ny, Nx) shape of the model image
+    shape_or_box: tuple
+        shape tuple (Channel, Height, Width) or image/cube with a shape
     wcs: TBD
         World Coordinates
-    psf: `scarlet.PSF`
-        PSF in each band
+    psfs: `scarlet.PSF` or its arguments
+        PSF in each channel
     channels: list of hashable elements
         Names/identifiers of spectral channels
     dtype: `numpy.dtype`
         Dtype to represent the data.
     """
-    def __init__(self, shape_or_box, wcs=None, psf=None, channels=None, dtype=np.float32):
+    def __init__(self, shape_or_box, wcs=None, psfs=None, channels=None, dtype=np.float32):
 
         if isinstance(shape_or_box, Box):
             self = shape_or_box
@@ -30,14 +30,14 @@ class Frame(Box):
 
         self.wcs = wcs
 
-        if psf is None:
+        if psfs is None:
             logger.warning('No PSF specified. Possible, but dangerous!')
-            self._psf = None
+            self._psfs = None
         else:
-            if isinstance(psf, PSF):
-                self._psf = psf
+            if isinstance(psfs, PSF):
+                self._psfs = psfs
             else:
-                self._psf = PSF(psf)
+                self._psfs = PSF(psfs)
 
         assert channels is None or len(channels) == self.shape[0]
         self.channels = channels
@@ -46,13 +46,13 @@ class Frame(Box):
 
     @property
     def psf(self):
-        return self._psf
+        return self._psfs
 
     def get_pixel(self, sky_coord):
         """Get the pixel coordinate from a world coordinate
         If there is no WCS associated with the `Scene`,
         meaning the data frame and model frame are the same,
-        then this just returns the `sky_coord`
+        then this just returns `sky_coord`.
         """
         if self.wcs is not None:
             if self.wcs.naxis == 3:
@@ -69,7 +69,7 @@ class Frame(Box):
         """Get the world coordinate for a pixel coordinate
         If there is no WCS associated with the `Scene`,
         meaning the data frame and model frame are the same,
-        then this just returns the `sky_coord`
+        then this just returns `pixel`.
         """
         if self.wcs is not None:
             if self.wcs.naxis == 3:
