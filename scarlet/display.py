@@ -340,7 +340,7 @@ show_observed=False, show_rendered=False, show_sed=True, figsize=None):
             for sed in seds:
                 ax[k][panel].plot(sed)
             ax[k][panel].set_xticks(range(len(sed)))
-            if hasattr(src.frame, 'channels'):
+            if hasattr(src.frame, 'channels') and src.frame.channels is not None:
                 ax[k][panel].set_xticklabels(src.frame.channels)
             ax[k][panel].set_title("SED")
             ax[k][panel].set_xlabel("Channel")

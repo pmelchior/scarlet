@@ -12,3 +12,4 @@ include/
 docs/_build
 docs/api
 docs/_templates
+docs/hsc_cosmos_35.sca
