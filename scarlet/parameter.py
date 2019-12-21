@@ -62,6 +62,7 @@ class Parameter(np.ndarray):
     def _data(self):
         return self.view(np.ndarray)
 
+
 # autograd needs to consider Parameter a class that in can compute gradients for
 # in that regard, it behaves like an ordinary ndarray
 ArrayBox.register(Parameter)

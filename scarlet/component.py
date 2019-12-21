@@ -32,6 +32,7 @@ class Component(ABC):
         else:
             assert isinstance(parameters, Parameter)
             self._parameters = tuple(parameters,)
+        self.check_parameters()
 
         # additional non-optimization parameters of component
         self.kwargs = kwargs
@@ -140,6 +141,17 @@ class Component(ABC):
             overlap -= padded_box.origin # now in padded frame
             self.slices = overlap.slices_for(padded_box.shape)
 
+    def check_parameters(self):
+        """Check the all parameters have finite elements
+
+        Raises
+        ------
+        `ArithmeticError`
+        """
+        for k,p in enumerate(self._parameters):
+            if not np.isfinite(p).all():
+                msg = "Component {} Parameter {} is not finite:\n{}".format(self, k, p)
+                raise ArithmeticError(msg)
 
 class FactorizedComponent(Component):
     """A single component in a blend.
@@ -490,6 +502,16 @@ class ComponentTree():
         for c in self.components:
             pars += c.parameters
         return pars
+
+    def check_parameters(self):
+        """Check the all parameters have finite elements
+
+        Raises
+        ------
+        `ArithmeticError`
+        """
+        for c in self.components:
+            c.check_parameters()
 
     def get_model(self, *params):
         """Get the model of this component tree

@@ -81,7 +81,7 @@ class Blend(ComponentTree):
         scheme = alg_kwargs.pop('scheme', 'amsgrad')
         prox_max_iter = alg_kwargs.pop('prox_max_iter', 10)
         eps = alg_kwargs.pop('eps', 1e-8)
-        callback = partial(self._convergence_callback, f_rel=f_rel, callback=alg_kwargs.pop('callback', None))
+        callback = partial(self._callback, f_rel=f_rel, callback=alg_kwargs.pop('callback', None))
 
         converged, grads, grad2s = proxmin.adaprox(X, _grad, _step, prox=_prox, max_iter=max_iter, e_rel=e_rel, scheme=scheme, prox_max_iter=prox_max_iter, callback=callback, **alg_kwargs)
 
@@ -108,7 +108,11 @@ class Blend(ComponentTree):
         self.loss.append(total_loss._value)
         return total_loss
 
-    def _convergence_callback(self, *parameters, it=None, f_rel=1e-3, callback=None):
+    def _callback(self, *parameters, it=None, f_rel=1e-3, callback=None):
+
+        # raise ArithmeticError if some of the parameters have become inf/nan
+        self.check_parameters()
+
         if it > 1 and abs(self.loss[-2] - self.loss[-1]) < f_rel * np.abs(self.loss[-1]):
             raise StopIteration("scarlet.Blend.fit() converged")
 
