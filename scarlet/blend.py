@@ -6,9 +6,10 @@ from functools import partial
 
 from .component import ComponentTree
 
+# silence proxmin warning about non-convergence
 import logging
-logger = logging.getLogger("scarlet.blend")
-
+proxmin_logger = logging.getLogger("proxmin")
+proxmin_logger.setLevel(logging.ERROR)
 
 class Blend(ComponentTree):
     """The blended scene

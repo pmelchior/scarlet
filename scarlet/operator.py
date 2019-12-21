@@ -8,9 +8,6 @@ from . import fft
 from . import interpolation
 from .cache import Cache
 
-import logging
-logger = logging.getLogger("scarlet.operator")
-
 def _prox_strict_monotonic(X, step, ref_idx, dist_idx, thresh=0):
     """Force an intensity profile to be monotonic based on nearest neighbor
     """

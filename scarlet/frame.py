@@ -1,9 +1,9 @@
 import numpy as np
 from .psf import PSF
 from .bbox import Box
+
 import logging
 logger = logging.getLogger("scarlet.frame")
-
 
 class Frame(Box):
     """Spatial and spectral characteristics of the data

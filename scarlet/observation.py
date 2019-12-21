@@ -7,9 +7,6 @@ from . import fft
 from . import resampling
 from .bbox import Box
 
-import logging
-logger = logging.getLogger("scarlet.observation")
-
 
 class Observation():
     """Data and metadata for a single set of observations

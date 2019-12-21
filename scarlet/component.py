@@ -5,9 +5,6 @@ from . import interpolation
 from .bbox import Box
 import autograd.numpy as np
 
-import logging
-logger = logging.getLogger("scarlet.component")
-
 
 class Component(ABC):
     """A single component in a blend.
