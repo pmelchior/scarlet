@@ -8,6 +8,7 @@ from . import operator
 import autograd.numpy as np
 
 import logging
+
 logger = logging.getLogger("scarlet.source")
 
 
@@ -113,12 +114,12 @@ def build_detection_coadd(sed, bg_rms, observation):
     if np.any(bg_rms <= 0):
         raise ValueError("bg_rms must be greater than zero in all channels")
 
-    positive = [ c for c in range(C) if sed[c] > 0 ]
+    positive = [c for c in range(C) if sed[c] > 0]
     positive_img = [observation.images[c] for c in positive]
     positive_bgrms = np.array([bg_rms[c] for c in positive])
     weights = np.array([sed[c] / bg_rms[c] ** 2 for c in positive])
     jacobian = np.array([sed[c] ** 2 / bg_rms[c] ** 2 for c in positive]).sum()
-    detect = np.einsum('i,i...', weights, positive_img) / jacobian
+    detect = np.einsum("i,i...", weights, positive_img) / jacobian
 
     # thresh is multiple above the rms of detect (weighted variance across channels)
     bg_cutoff = np.sqrt((weights ** 2 * positive_bgrms ** 2).sum()) / jacobian
@@ -141,8 +142,14 @@ def trim_morphology(sky_coord, frame, morph, bg_cutoff, thresh):
         bbox = Box.from_data(morph, min_value=0)
         boxsize = 16
         if bbox.contains(pixel_center):
-            size = 2 * max((pixel_center[0] - bbox.bottom, bbox.top - pixel_center[0],
-                            pixel_center[1] - bbox.left, bbox.right - pixel_center[1]))
+            size = 2 * max(
+                (
+                    pixel_center[0] - bbox.bottom,
+                    bbox.top - pixel_center[0],
+                    pixel_center[1] - bbox.left,
+                    bbox.right - pixel_center[1],
+                )
+            )
             while boxsize < size:
                 boxsize *= 2
     else:
@@ -159,8 +166,9 @@ def trim_morphology(sky_coord, frame, morph, bg_cutoff, thresh):
     return morph, bbox
 
 
-def init_extended_source(sky_coord, frame, observations, obs_idx=0,
-                                  thresh=1, symmetric=True, monotonic=True):
+def init_extended_source(
+    sky_coord, frame, observations, obs_idx=0, thresh=1, symmetric=True, monotonic=True
+):
     """Initialize the source that is symmetric and monotonic
     See `ExtendedSource` for a description of the parameters
     """
@@ -186,28 +194,41 @@ def init_extended_source(sky_coord, frame, observations, obs_idx=0,
     # which observation to use for detection and morphology
     obs_ = observations[obs_idx]
     try:
-        bg_rms = np.array([ 1 / np.sqrt(w[w > 0].mean()) for w in obs_.weights])
+        bg_rms = np.array([1 / np.sqrt(w[w > 0].mean()) for w in obs_.weights])
     except:
-        raise AttributeError("Observation.weights missing! Please set inverse variance weights")
+        raise AttributeError(
+            "Observation.weights missing! Please set inverse variance weights"
+        )
     morph, bg_cutoff = build_detection_coadd(seds[obs_idx], bg_rms, obs_)
 
     # Apply the necessary constraints
     center = frame.get_pixel(sky_coord)
     if symmetric:
-        morph = operator.prox_uncentered_symmetry(morph, 0, center=center, algorithm="sdss")
+        morph = operator.prox_uncentered_symmetry(
+            morph, 0, center=center, algorithm="sdss"
+        )
 
     if monotonic:
         # use finite thresh to remove flat bridges
-        prox_monotonic = operator.prox_strict_monotonic(morph.shape, use_nearest=False,
-                                                        center=center, thresh=0.1)
+        prox_monotonic = operator.prox_strict_monotonic(
+            morph.shape, use_nearest=False, center=center, thresh=0.1
+        )
         morph = prox_monotonic(morph, 0).reshape(morph.shape)
 
     morph, bbox = trim_morphology(sky_coord, frame, morph, bg_cutoff, thresh)
     return sed, morph, bbox
 
 
-def init_multicomponent_source(sky_coord, frame, observations, obs_idx=0, flux_percentiles=None,
-                               thresh=1., symmetric=True, monotonic=True):
+def init_multicomponent_source(
+    sky_coord,
+    frame,
+    observations,
+    obs_idx=0,
+    flux_percentiles=None,
+    thresh=1.0,
+    symmetric=True,
+    monotonic=True,
+):
     """Initialize multiple components
     See `MultiComponentSource` for a description of the parameters
     """
@@ -220,8 +241,15 @@ def init_multicomponent_source(sky_coord, frame, observations, obs_idx=0, flux_p
         flux_percentiles = [25]
 
     # Initialize the first component as an extended source
-    sed, morph, bbox = init_extended_source(sky_coord, frame, observations, obs_idx=obs_idx,
-                                      thresh=thresh, symmetric=symmetric, monotonic=monotonic)
+    sed, morph, bbox = init_extended_source(
+        sky_coord,
+        frame,
+        observations,
+        obs_idx=obs_idx,
+        thresh=thresh,
+        symmetric=symmetric,
+        monotonic=monotonic,
+    )
     # create a list of components from base morph by layering them on top of
     # each other so that they sum up to morph
     K = len(flux_percentiles) + 1
@@ -256,7 +284,9 @@ def init_multicomponent_source(sky_coord, frame, observations, obs_idx=0, flux_p
             # If the flux in all channels is  <=0,
             # the new sed will be filled with NaN values,
             # which will cause the code to crash later
-            msg = "Zero or negative SED {} for component {} at y={}, x={}".format(seds[k], k, *sky_coord)
+            msg = "Zero or negative SED {} for component {} at y={}, x={}".format(
+                seds[k], k, *sky_coord
+            )
             logger.warning(msg)
 
     return seds, morphs, bbox
@@ -269,6 +299,7 @@ class RandomSource(FactorizedComponent):
     a uniform random field and (optionally) matches the SED to match a given
     observation.
     """
+
     def __init__(self, frame, observation=None):
         """Source intialized as random field.
 
@@ -294,13 +325,13 @@ class RandomSource(FactorizedComponent):
         super().__init__(frame, sed, morph)
 
 
-
 class PointSource(FunctionComponent):
     """Source intialized with a single pixel
 
     Point sources are initialized with the SED of the center pixel,
     and the morphology taken from `frame.psfs`, centered at `sky_coord`.
     """
+
     def __init__(self, frame, sky_coord, observations):
         """Source intialized with a single pixel
 
@@ -314,7 +345,7 @@ class PointSource(FunctionComponent):
             Observation(s) to initialize this source
         """
         C, Ny, Nx = frame.shape
-        self.center = np.array(frame.get_pixel(sky_coord), dtype='float')
+        self.center = np.array(frame.get_pixel(sky_coord), dtype="float")
 
         # initialize SED from sky_coord
         try:
@@ -341,16 +372,20 @@ class PointSource(FunctionComponent):
                 logger.info(msg)
 
         # set up parameters
-        sed = Parameter(sed, step=partial(relative_step, factor=1e-2), constraint=PositivityConstraint())
+        sed = Parameter(
+            sed,
+            step=partial(relative_step, factor=1e-2),
+            constraint=PositivityConstraint(),
+        )
         center = Parameter(self.center, step=1e-1)
 
         # define bbox
-        pixel_center = tuple(np.round(center).astype('int'))
+        pixel_center = tuple(np.round(center).astype("int"))
         front, back = 0, C
-        bottom = pixel_center[0] - frame.psf.shape[1]//2
-        top = pixel_center[0] + frame.psf.shape[1]//2
-        left = pixel_center[1] - frame.psf.shape[2]//2
-        right = pixel_center[1] + frame.psf.shape[2]//2
+        bottom = pixel_center[0] - frame.psf.shape[1] // 2
+        top = pixel_center[0] + frame.psf.shape[1] // 2
+        left = pixel_center[1] - frame.psf.shape[2] // 2
+        right = pixel_center[1] + frame.psf.shape[2] // 2
         bbox = Box.from_bounds(front, back, bottom, top, left, right)
 
         super().__init__(frame, sed, center, self._psf_wrapper, bbox=bbox)
@@ -359,10 +394,18 @@ class PointSource(FunctionComponent):
         return self.frame.psf.__call__(*parameters, bbox=self.bbox)[0]
 
 
-
 class ExtendedSource(FactorizedComponent):
-    def __init__(self, frame, sky_coord, observations, obs_idx=0, thresh=1.,
-                 symmetric=False, monotonic=True, shifting=False):
+    def __init__(
+        self,
+        frame,
+        sky_coord,
+        observations,
+        obs_idx=0,
+        thresh=1.0,
+        symmetric=False,
+        monotonic=True,
+        shifting=False,
+    ):
         """Extended source intialized to match a set of observations
 
         Parameters
@@ -389,8 +432,8 @@ class ExtendedSource(FactorizedComponent):
         """
         self.symmetric = symmetric
         self.monotonic = monotonic
-        center = np.array(frame.get_pixel(sky_coord), dtype='float')
-        self.pixel_center = tuple(np.round(center).astype('int'))
+        center = np.array(frame.get_pixel(sky_coord), dtype="float")
+        self.pixel_center = tuple(np.round(center).astype("int"))
 
         if shifting:
             shift = Parameter(center - self.pixel_center, step=1e-1)
@@ -398,13 +441,21 @@ class ExtendedSource(FactorizedComponent):
             shift = None
 
         # initialize from observation
-        sed, morph, bbox = init_extended_source(sky_coord, frame, observations,
+        sed, morph, bbox = init_extended_source(
+            sky_coord,
+            frame,
+            observations,
             obs_idx=obs_idx,
             thresh=thresh,
             symmetric=True,
-            monotonic=True)
+            monotonic=True,
+        )
 
-        sed = Parameter(sed, step=partial(relative_step, factor=1e-2), constraint=PositivityConstraint())
+        sed = Parameter(
+            sed,
+            step=partial(relative_step, factor=1e-2),
+            constraint=PositivityConstraint(),
+        )
 
         constraints = []
         if monotonic:
@@ -419,9 +470,9 @@ class ExtendedSource(FactorizedComponent):
             # ... and are positive emitters
             PositivityConstraint(),
             # prevent a weak source from disappearing entirely
-            #CenterOnConstraint(),
+            # CenterOnConstraint(),
             # break degeneracies between sed and morphology
-            NormalizationConstraint("max")
+            NormalizationConstraint("max"),
         ]
         morph_constraint = ConstraintChain(*constraints)
 
@@ -436,6 +487,7 @@ class ExtendedSource(FactorizedComponent):
         else:
             return self.pixel_center
 
+
 class MultiComponentSource(ComponentTree):
     """Extended source with multiple components layered vertically.
 
@@ -449,8 +501,18 @@ class MultiComponentSource(ComponentTree):
     morphology to the multi-channel image in the region of the source.
     """
 
-    def __init__(self, frame, sky_coord, observations, obs_idx=0, thresh=1., flux_percentiles=None,
-                 symmetric=True, monotonic=True, shifting=False):
+    def __init__(
+        self,
+        frame,
+        sky_coord,
+        observations,
+        obs_idx=0,
+        thresh=1.0,
+        flux_percentiles=None,
+        symmetric=True,
+        monotonic=True,
+        shifting=False,
+    ):
         """Create multi-component extended source.
 
         Parameters
@@ -482,8 +544,8 @@ class MultiComponentSource(ComponentTree):
         self.symmetric = symmetric
         self.monotonic = monotonic
         self.coords = sky_coord
-        center = np.array(frame.get_pixel(sky_coord), dtype='float')
-        pixel_center = tuple(np.round(center).astype('int'))
+        center = np.array(frame.get_pixel(sky_coord), dtype="float")
+        pixel_center = tuple(np.round(center).astype("int"))
 
         if shifting:
             shift = Parameter(center - pixel_center, step=1e-1)
@@ -491,12 +553,16 @@ class MultiComponentSource(ComponentTree):
             shift = None
 
         # initialize from observation
-        seds, morphs, bbox = init_multicomponent_source(sky_coord, frame, observations,
+        seds, morphs, bbox = init_multicomponent_source(
+            sky_coord,
+            frame,
+            observations,
             obs_idx=obs_idx,
             flux_percentiles=flux_percentiles,
             thresh=thresh,
             symmetric=True,
-            monotonic=True)
+            monotonic=True,
+        )
 
         constraints = []
         if monotonic:
@@ -512,15 +578,21 @@ class MultiComponentSource(ComponentTree):
             # prevent a weak source from disappearing entirely
             CenterOnConstraint(),
             # break degeneracies between sed and morphology
-            NormalizationConstraint("max")
+            NormalizationConstraint("max"),
         ]
         morph_constraint = ConstraintChain(*constraints)
 
         components = []
         for k in range(len(seds)):
-            sed = Parameter(seds[k], step=partial(relative_step, factor=1e-1), constraint=PositivityConstraint())
+            sed = Parameter(
+                seds[k],
+                step=partial(relative_step, factor=1e-1),
+                constraint=PositivityConstraint(),
+            )
             morph = Parameter(morphs[k], step=1e-2, constraint=morph_constraint)
-            components.append(FactorizedComponent(frame, sed, morph, bbox=bbox, shift=shift))
+            components.append(
+                FactorizedComponent(frame, sed, morph, bbox=bbox, shift=shift)
+            )
             components[-1].pixel_center = pixel_center
         super().__init__(components)
 

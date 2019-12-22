@@ -15,7 +15,8 @@ class Box:
     origin: tuple
         Minimum (z,y,x) value of the box (front low left corner).
     """
-    def __init__(self, shape, origin=(0,0,0)):
+
+    def __init__(self, shape, origin=(0, 0, 0)):
         # bbox always in 3D
         if len(shape) == 2:
             shape = (0, *shape)
@@ -69,7 +70,9 @@ class Box:
             top, bottom = bottom, top
         if right < left:
             right, left = left, right
-        return Box((back-front, top-bottom, right-left), origin=(front, bottom, left))
+        return Box(
+            (back - front, top - bottom, right - left), origin=(front, bottom, left)
+        )
 
     @staticmethod
     def from_data(X, min_value=0):
@@ -95,17 +98,17 @@ class Box:
                 bounds.append(nonzero[dim].min())
                 bounds.append(nonzero[dim].max() + 1)
             if len(X.shape) == 2:
-                bounds.insert(0,0)
-                bounds.insert(1,0)
+                bounds.insert(0, 0)
+                bounds.insert(1, 0)
         else:
-            bounds = [0,] * 6
+            bounds = [0] * 6
         return Box.from_bounds(*bounds)
 
     def contains(self, p):
         """Whether the box cotains a given coordinate `p`
         """
         if len(p) == 2:
-            p = (0,*p)
+            p = (0, *p)
 
         for d in range(len(self.shape)):
             if p[d] < self.origin[d] or p[d] > self.origin[d] + self.shape[d]:
@@ -125,15 +128,19 @@ class Box:
         If shape is 2D: `slice_y`, `slice_x`
         If shape is 3: `slice(None)`, `slice_y`, `slice_x`
         """
-        if hasattr(im_or_shape, 'shape'):
+        if hasattr(im_or_shape, "shape"):
             shape = im_or_shape.shape
         else:
             shape = im_or_shape
-        assert len(shape) in [2,3]
+        assert len(shape) in [2, 3]
 
         im_box = Box(shape)
         overlap = self & im_box
-        zslice, yslice, xslice = slice(overlap.front, overlap.back), slice(overlap.bottom, overlap.top), slice(overlap.left, overlap.right)
+        zslice, yslice, xslice = (
+            slice(overlap.front, overlap.back),
+            slice(overlap.bottom, overlap.top),
+            slice(overlap.left, overlap.right),
+        )
 
         if len(shape) == 2:
             return yslice, xslice
@@ -295,18 +302,20 @@ class Box:
         return Box.from_bounds(front, back, bottom, top, left, right)
 
     def __str__(self):
-        return "Box({0}..{1}, {2}..{3}, {4}..{5})".format(self.front, self.back, self.bottom, self.top, self.left, self.right)
+        return "Box({0}..{1}, {2}..{3}, {4}..{5})".format(
+            self.front, self.back, self.bottom, self.top, self.left, self.right
+        )
 
     def __repr__(self):
         result = "<Box shape={0}, origin={1}>"
         return result.format(self.shape, self.origin)
 
     def __iadd__(self, offset):
-        self.origin = tuple([a + o for a,o in zip(self.origin, offset)])
+        self.origin = tuple([a + o for a, o in zip(self.origin, offset)])
         return self
 
     def __isub__(self, offset):
-        self.origin = tuple([a - o for a,o in zip(self.origin, offset)])
+        self.origin = tuple([a - o for a, o in zip(self.origin, offset)])
         return self
 
     def __copy__(self):

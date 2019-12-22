@@ -2,6 +2,7 @@ import autograd.numpy as np
 import autograd.scipy as scipy
 from .bbox import Box
 
+
 def moffat(y, x, alpha=4.7, beta=1.5, bbox=None):
     """Symmetric 2D Moffat function
 
@@ -32,7 +33,8 @@ def moffat(y, x, alpha=4.7, beta=1.5, bbox=None):
     X = np.arange(bbox.shape[2]) + bbox.origin[2]
     X, Y = np.meshgrid(X, Y)
     # TODO: has no pixel-integration formula
-    return ((1+((X-x)**2+(Y-y)**2)/alpha**2)**-beta)[None,:,:]
+    return ((1 + ((X - x) ** 2 + (Y - y) ** 2) / alpha ** 2) ** -beta)[None, :, :]
+
 
 def gaussian(y, x, sigma=1, integrate=True, bbox=None):
     """Circular Gaussian Function
@@ -61,12 +63,19 @@ def gaussian(y, x, sigma=1, integrate=True, bbox=None):
 
     def f(X):
         if not integrate:
-            return np.exp(-X**2/(2*sigma**2))
+            return np.exp(-(X ** 2) / (2 * sigma ** 2))
         else:
             sqrt2 = np.sqrt(2)
-            return np.sqrt(np.pi/2) * sigma * (scipy.special.erf((0.5 - X)/(sqrt2 * sigma)) + scipy.special.erf((2*X + 1)/(2*sqrt2*sigma)))
+            return (
+                np.sqrt(np.pi / 2)
+                * sigma
+                * (
+                    scipy.special.erf((0.5 - X) / (sqrt2 * sigma))
+                    + scipy.special.erf((2 * X + 1) / (2 * sqrt2 * sigma))
+                )
+            )
 
-    return (f(Y-y)[:,None] * f(X-x)[None,:])[None,:,:]
+    return (f(Y - y)[:, None] * f(X - x)[None, :])[None, :, :]
 
 
 class PSF:
@@ -80,13 +89,14 @@ class PSF:
     shape: tuple
         Shape of the 2D image to generate an PSF image for. Only used if `X` is a method.
     """
+
     def __init__(self, X, shape=None):
-        if hasattr(X, 'shape'):
+        if hasattr(X, "shape"):
             self._image = X.copy()
             self.normalize()
             self._func = None
             self.shape = X.shape
-        elif hasattr(X, '__call__'):
+        elif hasattr(X, "__call__"):
             assert shape is not None, "Functional PSFs must set shape argument"
             self._image = None
             self._func = X

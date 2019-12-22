@@ -8,8 +8,10 @@ from .component import ComponentTree
 
 # silence proxmin warning about non-convergence
 import logging
+
 proxmin_logger = logging.getLogger("proxmin")
 proxmin_logger.setLevel(logging.ERROR)
+
 
 class Blend(ComponentTree):
     """The blended scene
@@ -72,23 +74,40 @@ class Blend(ComponentTree):
 
         # compute the backward gradient tree
         grad_logL = grad(self._loss, tuple(range(n_params)))
-        grad_logP = lambda *X: tuple(x.prior(x.view(np.ndarray)) if x.prior is not None else 0 for x in X)
-        _grad = lambda *X: tuple(l + p for l,p in zip(grad_logL(*X), grad_logP(*X)))
-        _step = lambda *X, it: tuple(x.step(x, it=it) if hasattr(x.step, "__call__") else x.step for x in X)
+        grad_logP = lambda *X: tuple(
+            x.prior(x.view(np.ndarray)) if x.prior is not None else 0 for x in X
+        )
+        _grad = lambda *X: tuple(l + p for l, p in zip(grad_logL(*X), grad_logP(*X)))
+        _step = lambda *X, it: tuple(
+            x.step(x, it=it) if hasattr(x.step, "__call__") else x.step for x in X
+        )
         _prox = tuple(x.constraint for x in X)
 
         # good defaults for adaprox
-        scheme = alg_kwargs.pop('scheme', 'amsgrad')
-        prox_max_iter = alg_kwargs.pop('prox_max_iter', 10)
-        eps = alg_kwargs.pop('eps', 1e-8)
-        callback = partial(self._callback, f_rel=f_rel, callback=alg_kwargs.pop('callback', None))
+        scheme = alg_kwargs.pop("scheme", "amsgrad")
+        prox_max_iter = alg_kwargs.pop("prox_max_iter", 10)
+        eps = alg_kwargs.pop("eps", 1e-8)
+        callback = partial(
+            self._callback, f_rel=f_rel, callback=alg_kwargs.pop("callback", None)
+        )
 
-        converged, grads, grad2s = proxmin.adaprox(X, _grad, _step, prox=_prox, max_iter=max_iter, e_rel=e_rel, scheme=scheme, prox_max_iter=prox_max_iter, callback=callback, **alg_kwargs)
+        converged, grads, grad2s = proxmin.adaprox(
+            X,
+            _grad,
+            _step,
+            prox=_prox,
+            max_iter=max_iter,
+            e_rel=e_rel,
+            scheme=scheme,
+            prox_max_iter=prox_max_iter,
+            callback=callback,
+            **alg_kwargs
+        )
 
         # set convergence and standard deviation from optimizer
-        for p,c,g,v in zip(X, converged, grads, grad2s):
+        for p, c, g, v in zip(X, converged, grads, grad2s):
             p.converged = c
-            p.std = 1/np.sqrt(ma.masked_equal(v, 0)) # this is rough estimate!
+            p.std = 1 / np.sqrt(ma.masked_equal(v, 0))  # this is rough estimate!
 
         return self
 
@@ -113,7 +132,9 @@ class Blend(ComponentTree):
         # raise ArithmeticError if some of the parameters have become inf/nan
         self.check_parameters()
 
-        if it > 1 and abs(self.loss[-2] - self.loss[-1]) < f_rel * np.abs(self.loss[-1]):
+        if it > 1 and abs(self.loss[-2] - self.loss[-1]) < f_rel * np.abs(
+            self.loss[-1]
+        ):
             raise StopIteration("scarlet.Blend.fit() converged")
 
         if callback is not None:

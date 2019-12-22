@@ -3,6 +3,7 @@ from astropy.visualization.lupton_rgb import LinearMapping, AsinhMapping
 import matplotlib.pyplot as plt
 from .component import ComponentTree
 
+
 def channels_to_rgb(channels):
     """Get the linear mapping of multiple channels to RGB channels
 
@@ -20,7 +21,9 @@ def channels_to_rgb(channels):
     -------
     array (3, channels) to map onto RGB
     """
-    assert channels in range(0,7), "No mapping has been implemented for more than {} channels".format(channels)
+    assert channels in range(
+        0, 7
+    ), "No mapping has been implemented for more than {} channels".format(channels)
 
     channel_map = np.zeros((3, channels))
     if channels == 1:
@@ -171,9 +174,18 @@ def img_to_rgb(img, channel_map=None, fill_value=0, norm=None):
     rgb = norm.make_rgb_image(*RGB)
     return rgb
 
-def show_scene(sources, observation=None, norm=None, channel_map=None,
-show_observed=False, show_rendered=False, show_residual=False, label_sources=True,
-figsize=None):
+
+def show_scene(
+    sources,
+    observation=None,
+    norm=None,
+    channel_map=None,
+    show_observed=False,
+    show_rendered=False,
+    show_residual=False,
+    label_sources=True,
+    figsize=None,
+):
     """Plot all sources to recreate the scence.
 
     The functions provides a fast way of evaluating the quality of the entire model,
@@ -201,13 +213,15 @@ figsize=None):
     matplotlib figure
     """
     if show_observed or show_rendered or show_residual:
-        assert observation is not None, "Provide matched observation to show observed frame"
+        assert (
+            observation is not None
+        ), "Provide matched observation to show observed frame"
 
     panels = 1 + sum((show_observed, show_rendered, show_residual))
     if figsize is None:
-        figsize = (3*panels, 3*len(list(sources)))
+        figsize = (3 * panels, 3 * len(list(sources)))
     fig, ax = plt.subplots(1, panels, figsize=figsize)
-    if not hasattr(ax, '__iter__'):
+    if not hasattr(ax, "__iter__"):
         ax = (ax,)
 
     panel = 0
@@ -226,7 +240,9 @@ figsize=None):
 
     if show_observed:
         panel += 1
-        ax[panel].imshow(img_to_rgb(observation.images, norm=norm, channel_map=channel_map))
+        ax[panel].imshow(
+            img_to_rgb(observation.images, norm=norm, channel_map=channel_map)
+        )
         ax[panel].set_title("Observation")
 
     if show_residual:
@@ -238,19 +254,30 @@ figsize=None):
 
     if label_sources:
         for k, src in enumerate(sources):
-            if hasattr(src, 'center'):
+            if hasattr(src, "center"):
                 center = np.array(src.center)
-                center_ = center - np.array(src.frame.origin[1:]) # observed coordinates
-            ax[0].text(*center[::-1], k, color='w')
+                center_ = center - np.array(
+                    src.frame.origin[1:]
+                )  # observed coordinates
+            ax[0].text(*center[::-1], k, color="w")
             for panel in range(1, panels):
-                ax[panel].text(*center_[::-1], k, color='w')
+                ax[panel].text(*center_[::-1], k, color="w")
 
     fig.tight_layout()
-    plt.close();
+    plt.close()
     return fig
 
-def show_sources(sources, observation=None, norm=None, channel_map=None,
-show_observed=False, show_rendered=False, show_sed=True, figsize=None):
+
+def show_sources(
+    sources,
+    observation=None,
+    norm=None,
+    channel_map=None,
+    show_observed=False,
+    show_rendered=False,
+    show_sed=True,
+    figsize=None,
+):
     """Plot each source individually.
 
     The functions provides an more detailed inspection of every source in the list.
@@ -276,15 +303,17 @@ show_observed=False, show_rendered=False, show_sed=True, figsize=None):
     matplotlib figure
     """
     if show_observed or show_rendered:
-        assert observation is not None, "Provide matched observation to show observed frame"
+        assert (
+            observation is not None
+        ), "Provide matched observation to show observed frame"
 
     panels = 1 + sum((show_observed, show_rendered, show_sed))
     if figsize is None:
-        figsize = (3*panels, 3*len(list(sources)))
+        figsize = (3 * panels, 3 * len(list(sources)))
     fig, ax = plt.subplots(len(list(sources)), panels, figsize=figsize)
-    for k,src in enumerate(sources):
+    for k, src in enumerate(sources):
 
-        if hasattr(src, 'center'):
+        if hasattr(src, "center"):
             center = np.array(src.center)
             # center in src bbox coordinates
             if src.bbox is not None:
@@ -304,11 +333,11 @@ show_observed=False, show_rendered=False, show_sed=True, figsize=None):
             seds = []
             for component in src:
                 model_ = component.get_model()
-                seds.append(model_.sum(axis=(1,2)))
+                seds.append(model_.sum(axis=(1, 2)))
                 model += model_
         else:
             model = src.get_model()
-            seds = [model.sum(axis=(1,2))]
+            seds = [model.sum(axis=(1, 2))]
         src.set_frame(frame_)
         ax[k][panel].imshow(img_to_rgb(model, norm=norm, channel_map=channel_map))
         ax[k][panel].set_title("Model Source {}".format(k))
@@ -328,7 +357,9 @@ show_observed=False, show_rendered=False, show_sed=True, figsize=None):
 
         if show_observed:
             panel += 1
-            ax[k][panel].imshow(img_to_rgb(observation.images, norm=norm, channel_map=channel_map))
+            ax[k][panel].imshow(
+                img_to_rgb(observation.images, norm=norm, channel_map=channel_map)
+            )
             ax[k][panel].set_xlim(src.bbox.left, src.bbox.right)
             ax[k][panel].set_ylim(src.bbox.bottom, src.bbox.top)
             ax[k][panel].set_title("Observation".format(k))
@@ -340,12 +371,12 @@ show_observed=False, show_rendered=False, show_sed=True, figsize=None):
             for sed in seds:
                 ax[k][panel].plot(sed)
             ax[k][panel].set_xticks(range(len(sed)))
-            if hasattr(src.frame, 'channels') and src.frame.channels is not None:
+            if hasattr(src.frame, "channels") and src.frame.channels is not None:
                 ax[k][panel].set_xticklabels(src.frame.channels)
             ax[k][panel].set_title("SED")
             ax[k][panel].set_xlabel("Channel")
             ax[k][panel].set_ylabel("Intensity")
 
     fig.tight_layout()
-    plt.close();
+    plt.close()
     return fig
