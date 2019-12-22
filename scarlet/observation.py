@@ -1,102 +1,11 @@
 import autograd.numpy as np
 from scipy import fftpack
 
+from .frame import Frame
 from . import interpolation
 from . import fft
 from . import resampling
-
-import logging
-
-logger = logging.getLogger("scarlet.observation")
-
-
-class Frame():
-    """Spatial and spectral characteristics of the data
-
-    Attributes
-    ----------
-    shape: tuple
-        (channels, Ny, Nx) shape of the model image
-    wcs: TBD
-        World Coordinates
-    psfs: array or tensor
-        PSF in each band
-    channels: list of hashable elements
-        Names/identifiers of spectral channels
-    dtype: `numpy.dtype`
-        Dtype to represent the data.
-    """
-    def __init__(self, shape, wcs=None, psfs=None, channels=None, dtype=np.float32):
-        assert len(shape) == 3
-        self._shape = tuple(shape)
-        self.wcs = wcs
-
-        if psfs is None:
-            logger.warning('No PSFs specified. Possible, but dangerous!')
-        else:
-            msg = 'PSFs need to have shape (1,Ny,Nx) for Blend and (B,Ny,Nx) for Observation'
-            assert len(psfs) == 1 or len(psfs) == shape[0], msg
-            if not isinstance(psfs, fft.Fourier):
-                psfs = fft.Fourier(psfs)
-            if not np.allclose(psfs.sum(axis=(1, 2)), 1):
-                logger.warning('PSFs not normalized. Normalizing now..')
-                psfs.normalize()
-
-            if dtype != psfs.image.dtype:
-                msg = "Dtypes of PSFs and Frame different. Casting PSFs to {}".format(dtype)
-                logger.warning(msg)
-                psfs.update_dtype(dtype)
-
-        self._psfs = psfs
-
-        assert channels is None or len(channels) == shape[0]
-        self.channels = channels
-        self.dtype = dtype
-
-    @property
-    def C(self):
-        """Number of channels in the model
-        """
-        return self._shape[0]
-
-    @property
-    def Ny(self):
-        """Number of pixel in the y-direction
-        """
-        return self._shape[1]
-
-    @property
-    def Nx(self):
-        """Number of pixels in the x-direction
-        """
-        return self._shape[2]
-
-    @property
-    def shape(self):
-        """Shape of the model.
-        """
-        return self._shape
-
-    @property
-    def psfs(self):
-        return self._psfs
-
-    def get_pixel(self, sky_coord):
-        """Get the pixel coordinate from a world coordinate
-        If there is no WCS associated with the `Scene`,
-        meaning the data frame and model frame are the same,
-        then this just returns the `sky_coord`
-        """
-        if self.wcs is not None:
-            if self.wcs.naxis == 3:
-                coord = self.wcs.wcs_world2pix(sky_coord[0], sky_coord[1], 0, 0)
-            elif self.wcs.naxis == 2:
-                coord = self.wcs.wcs_world2pix(sky_coord[0], sky_coord[1], 0)
-            else:
-                raise ValueError("Invalid number of wcs dimensions: {0}".format(self.wcs.naxis))
-            return (int(coord[0].item()), int(coord[1].item()))
-
-        return tuple(int(coord) for coord in sky_coord)
+from .bbox import Box
 
 
 class Observation():
@@ -125,9 +34,9 @@ class Observation():
         Parameters
         ---------
         images: array or tensor
-            3D data cube (channels, Ny, Nx) of the image in each band.
-        psfs: array or tensor
-            PSF for each band in `images`.
+            3D data cube (Channel, Height, Width) of the image in each band.
+        psfs: `scarlet.PSF` or its arguments
+            PSF in each channel. Can be 3D cube of images stacked in channel direction.
         weights: array or tensor
             Weight for each pixel in `images`.
             If a set of masks exists for the observations then
@@ -144,11 +53,12 @@ class Observation():
         """
         self.frame = Frame(images.shape, wcs=wcs, psfs=psfs, channels=channels, dtype=images.dtype)
 
-        self.images = np.array(images)
+        self.images = images
         if weights is not None:
-            self.weights = np.array(weights)
+            self.weights = weights
         else:
-            self.weights = 1
+            self.weights = np.ones(images.shape)
+        assert self.weights.shape == self.images.shape, "Weights needs to have same shape as images"
 
         self._padding = padding
 
@@ -168,30 +78,34 @@ class Observation():
         -------
         None
         """
-
-        if self.frame.dtype != model_frame.dtype:
-            msg = "Dtypes of model and observation different. Casting observation to {}"
-            msg = msg.format(model_frame.dtype)
-            logger.warning(msg)
-            self.frame.dtype = model_frame.dtype
-            self.images = self.images.astype(model_frame.dtype)
-            if type(self.weights) is np.ndarray:
-                self.weights = self.weights.astype(model_frame.dtype)
-            if self.frame._psfs is not None:
-                self.frame.psfs.update_dtype(model_frame.dtype)
-
+        # find the box that contained this obs in model_frame
+        shape = self.images.shape
+        yx0 = model_frame.get_pixel(self.frame.get_sky_coord((0,0)))
         #  channels of model that are represented in this observation
-        self._band_slice = slice(None)
-        if self.frame.channels is not model_frame.channels:
+        if self.frame.channels is model_frame.channels:
+            origin = (0,*yx0)
+        else:
             assert self.frame.channels is not None and model_frame.channels is not None
-            bmin = model_frame.channels.index(self.frame.channels[0])
-            bmax = model_frame.channels.index(self.frame.channels[-1])
-            self._band_slice = slice(bmin, bmax + 1)
+            cmin = list(model_frame.channels).index(self.frame.channels[0])
+            cmax = list(model_frame.channels).index(self.frame.channels[-1])
+            origin = (cmin, *yx0)
+        self.bbox = Box(shape, origin=origin)
+        self.slices = self.bbox.slices_for(model_frame.shape)
 
+        # check dtype consistency
+        if self.frame.dtype != model_frame.dtype:
+            self.frame.dtype = model_frame.dtype
+            self.images = self.images.copy().astype(model_frame.dtype)
+            if type(self.weights) is np.ndarray:
+                self.weights = self.weights.copy().astype(model_frame.dtype)
+
+        # constrcut diff kernels
         self._diff_kernels = None
-        if self.frame.psfs is not model_frame.psfs:
-            assert self.frame.psfs is not None and model_frame.psfs is not None
-            self._diff_kernels = fft.match_psfs(self.frame.psfs, model_frame.psfs)
+        if self.frame.psf is not model_frame.psf:
+            assert self.frame.psf is not None and model_frame.psf is not None
+            psf = fft.Fourier(self.frame.psf.update_dtype(model_frame.dtype).image)
+            model_psf = fft.Fourier(model_frame.psf.update_dtype(model_frame.dtype).image)
+            self._diff_kernels = fft.match_psfs(psf, model_psf)
 
         return self
 
@@ -210,14 +124,15 @@ class Observation():
 
         Returns
         -------
-        model_: array
-            The convolved `model` in the observation frame
+        image_model: array
+            `model` mapped into the observation frame
         """
-        model_ = model[self._band_slice, :, :]
-        if self._diff_kernels is not None:
-            model_ = self._convolve(model_)
 
-        return model_
+        image_model = model[self.slices]
+        if self._diff_kernels is not None:
+            image_model = self._convolve(image_model)
+
+        return image_model
 
     def get_loss(self, model):
         """Computes the loss/fidelity of a given model wrt to the observation
@@ -234,9 +149,18 @@ class Observation():
             given the image data
         """
 
-        model = self.render(model)
+        model_ = self.render(model)
+        images_ = self.images[self.slices]
+        weights_ = self.weights[self.slices]
 
-        return 0.5 * np.sum((self.weights * (model - self.images)) ** 2)
+        # normalization of the single-pixel likelihood:
+        # 1 / [(2pi)^1/2 (sigma^2)^1/2]
+        # with inverse variance weights: sigma^2 = 1/weight
+        # full likelihood is sum over all data samples: pixel in images
+        # NOTE: this assumes that all pixels are used in likelihood!
+        log_norm = np.prod(images_.shape) / 2 * np.log(2*np.pi) + np.sum(np.log(1 / self.weights)) / 2
+
+        return log_norm + np.sum(weights_ * (model_ - images_)** 2) / 2
 
 
 class LowResObservation(Observation):
@@ -244,7 +168,7 @@ class LowResObservation(Observation):
     def __init__(self, images, wcs=None, psfs=None, weights=None, channels=None, padding=3, operator = 'exact'):
 
         assert wcs is not None, "WCS is necessary for LowResObservation"
-        assert psfs is not None, "PSFs are necessary for LowResObservation"
+        assert psfs is not None, "PSF is necessary for LowResObservation"
         assert operator in ['exact', 'bilinear', 'SVD']
 
         super().__init__(images, wcs=wcs, psfs=psfs, weights=weights, channels=channels, padding=padding)
@@ -272,13 +196,13 @@ class LowResObservation(Observation):
             low resolution psf at matching size and resolution
         '''
 
-        psf_lr = self.frame.psfs.image
+        psf_lr = self.frame.psf.image
         wcs_lr = self.frame.wcs
 
         ny_hr, nx_hr = psf_hr.shape
         npsf_bands, ny_lr, nx_lr = psf_lr.shape
 
-        # Createsa wcs for psfs centered around the frame center
+        # Createsa wcs for psf centered around the frame center
         psf_wcs_hr = wcs_hr.deepcopy()
         psf_wcs_lr = wcs_lr.deepcopy()
 
@@ -332,7 +256,7 @@ class LowResObservation(Observation):
         whr = model_frame.wcs
 
         # Reference PSF
-        _target = model_frame.psfs.image[0, :, :]
+        _target = model_frame.psf.image[0, :, :]
 
         # Computes spatially matching observation and target psfs. The observation psf is also resampled \\
         # to the model frame resolution
@@ -405,21 +329,11 @@ class LowResObservation(Observation):
     def match(self, model_frame):
 
         if self.frame.dtype != model_frame.dtype:
-            msg = "Dtypes of model and observation different. Casting observation to {}"
-            logger.warning(msg.format(model_frame.dtype))
-            self.frame.dtype = model_frame.dtype
-            self.images = self.images.astype(model_frame.dtype)
+            self.images = self.images.copy().astype(model_frame.dtype)
             if type(self.weights) is np.ndarray:
-                self.weights = self.weights.astype(model_frame.dtype)
+                self.weights = self.weights.copy().astype(model_frame.dtype)
             if self.frame._psfs is not None:
                 self.frame._psfs.update_dtype(model_frame.dtype)
-
-        #  channels of model that are represented in this observation
-        self._band_slice = slice(None)
-        if self.frame.channels is not model_frame.channels:
-            bmin = model_frame.channels.index(self.frame.channels[0])
-            bmax = model_frame.channels.index(self.frame.channels[-1])
-            self._band_slice = slice(bmin, bmax+1)
 
         #Affine transform
         try :
@@ -460,15 +374,25 @@ class LowResObservation(Observation):
         #shape of the low resolutino image in the overlap or union
         self.lr_shape = (np.max(coord_lr[0])-np.min(coord_lr[0])+1,np.max(coord_lr[1])-np.min(coord_lr[1])+1)
 
-        #Coordinates of overlapping low resolutions pixels at low resolution
-        self._coord_lr = coord_lr
-        #Coordinates of overlaping low resolution pixels in high resolution frame
-        self._coord_hr = coord_hr
+        # BBox of the low resolution pixels in model frame
+        #  1) channels of model that are represented in this observation
+        if self.frame.channels is not model_frame.channels:
+            cmin = model_frame.channels.index(self.frame.channels[0])
+            cmax = model_frame.channels.index(self.frame.channels[-1])
+        else:
+            cmin, cmax = 0, self.frame.C
+        # 2) use the bounds of coord_lr
+        self.bbox = Box.from_bounds(cmin, cmax + 1,
+                        np.min(coord_lr[0]).astype(int),
+                        np.max(coord_lr[0]).astype(int) + 1,
+                        np.min(coord_lr[1]).astype(int),
+                        np.max(coord_lr[1]).astype(int) + 1)
+        self.slices = self.bbox.slices_for(model_frame.shape)
         #Coordinates for all model frame pixels
         self.frame_coord = (np.array(range(model_frame.Ny)), np.array(range(model_frame.Nx)))
 
-        center_y = (np.max(self._coord_hr[0]) - np.min(self._coord_hr[0]) + 1) / 2
-        center_x = (np.max(self._coord_hr[1]) - np.min(self._coord_hr[1]) + 1) / 2
+        center_y = (np.max(coord_hr[0]) - np.min(coord_hr[0]) + 1) / 2
+        center_x = (np.max(coord_hr[1]) - np.min(coord_hr[1]) + 1) / 2
 
         diff_psf = self.build_diffkernel(model_frame, angle)
 
@@ -477,16 +401,16 @@ class LowResObservation(Observation):
         # the smaller frame axis:
         self.small_axis = (self.frame.Nx <= self.frame.Ny)
 
-        self._fft_shape = fft._get_fft_shape(model_frame.psfs, np.zeros(model_frame.shape), padding=3,
+        self._fft_shape = fft._get_fft_shape(model_frame.psf, np.zeros(model_frame.shape), padding=3,
                                              axes=[-2, -1], max=True)
         diff_psf = fft.Fourier(fft._pad(diff_psf.image, self._fft_shape, axes = (1,2)))
         if self.isrot:
 
             #Unrotated coordinates:
-            Y_unrot = ((self._coord_hr[0] - center_y) * self.cos_rot +
-                       (self._coord_hr[1] - center_x) * self.sin_rot).reshape(self.lr_shape)
-            X_unrot = ((self._coord_hr[1] - center_x) * self.cos_rot -
-                       (self._coord_hr[0] - center_y) * self.sin_rot).reshape(self.lr_shape)
+            Y_unrot = ((coord_hr[0] - center_y) * self.cos_rot +
+                       (coord_hr[1] - center_x) * self.sin_rot).reshape(self.lr_shape)
+            X_unrot = ((coord_hr[1] - center_x) * self.cos_rot -
+                       (coord_hr[0] - center_y) * self.sin_rot).reshape(self.lr_shape)
 
             #Removing redundancy
             self.Y_unrot = Y_unrot[:, 0]
@@ -505,7 +429,7 @@ class LowResObservation(Observation):
         else:
 
             axes = [int(not self.small_axis)+1]
-            self.shifts = np.array(self._coord_hr)
+            self.shifts = np.array(coord_hr)
 
             self.shifts[0] -= center_y
             self.shifts[1] -= center_x
@@ -529,11 +453,11 @@ class LowResObservation(Observation):
             The model in some other data frame.
         Returns
         -------
-        model_: array
-            The convolved and resampled `model` in the observation frame.
+        image_model: array
+            `model` mapped into the observation frame
         """
         # Padding the psf to the fast_shape size
-        model_ = fft.Fourier(fft._pad(model[self._band_slice, :, :], self._fft_shape, axes=(-2, -1)))
+        model_ = fft.Fourier(fft._pad(model[self.slices[0], :, :], self._fft_shape, axes=(-2, -1)))
 
         model_image = []
         if self.isrot:
@@ -566,16 +490,12 @@ class LowResObservation(Observation):
             The model in some other data frame.
         Returns
         -------
-        model_: array
-            The convolved and resampled `model` in the observation frame.
+        image_model: array
+            `model` mapped into the observation frame
         """
-        img = np.zeros(self.frame.shape)
-
-        img[:, np.min(self._coord_lr[0]).astype(int):np.max(self._coord_lr[0]).astype(int) + 1,
-        np.min(self._coord_lr[1]).astype(int):np.max(self._coord_lr[1]).astype(int) + 1] = \
-            self._render(model)
-
-        return img
+        image_model = np.zeros(self.frame.shape)
+        image_model[self.slices] = self._render(model)
+        return image_model
 
     def get_loss(self, model):
         """Computes the loss/fidelity of a given model wrt to the observation
@@ -590,10 +510,10 @@ class LowResObservation(Observation):
         """
 
         model_ = self._render(model)
+        images_ = self.images[self.slices]
+        weights_ = self.weights[self.slices]
 
-        min_lr = [np.min(self._coord_lr[0]).astype(int), np.min(self._coord_lr[1]).astype(int)]
-        max_lr = [np.max(self._coord_lr[0]).astype(int), np.max(self._coord_lr[1]).astype(int)]
+        # properly normalized likelihood
+        log_norm = np.prod(images_.shape) / 2 * np.log(2*np.pi) + np.sum(np.log(1 / weights_)) / 2
 
-        return 0.5 * np.sum((self.weights * (
-                model_ -
-                self.images[:, min_lr[0]:max_lr[0] + 1, min_lr[1]:max_lr[1] + 1])) ** 2)
+        return log_norm + 0.5 * np.sum(weights_ * (model_ - images_) ** 2)

@@ -69,14 +69,28 @@ class TestCentering(object):
 
 
 class TestFourier(object):
+
+    def get_psfs(self, shape, sigmas):
+
+        shape_ = (None, *shape)
+        psfs = np.array([
+            scarlet.PSF(partial(scarlet.psf.gaussian, sigma=s), shape=shape_).image[0]
+            for s in sigmas
+        ])
+
+        psfs /= psfs.sum(axis=(1, 2))[:, None, None]
+        return psfs
+
+
     """Test the Fourier object"""
     def test_2D_psf_matching(self):
         """Test matching two 2D psfs
         """
         # Narrow PSF
-        psf1 = scarlet.psf.generate_psf_image(scarlet.psf.gaussian, (41, 41), sigma=1)
+        shape = (41,41)
+        psf1 = scarlet.fft.Fourier(self.get_psfs(shape, [1])[0])
         # Wide PSF
-        psf2 = scarlet.psf.generate_psf_image(scarlet.psf.gaussian, (41, 41), sigma=2)
+        psf2 = scarlet.fft.Fourier(self.get_psfs(shape, [2])[0])
 
         # Test narrow to wide
         kernel_1to2 = fft.match_psfs(psf2, psf1)
@@ -91,14 +105,11 @@ class TestFourier(object):
     def test_multiband_psf_matching(self):
         """Test matching two PSFs with a spectral dimension
         """
-        gaussian = partial(scarlet.psf.generate_psf_image, func=scarlet.psf.gaussian, shape=(41, 41))
-
-        # Single band target PSF
-        psf1 = gaussian(sigma=.9)[None, :, :]
-        # Multiband observation PSF
-        observation = np.array([gaussian(sigma=1+.3*n).image for n in range(5)])
-
-        psf2 = fft.Fourier(observation)
+        # Narrow PSF
+        shape = (41,41)
+        psf1 = scarlet.fft.Fourier(self.get_psfs(shape, [1]))
+        # Wide PSF
+        psf2 = scarlet.fft.Fourier(self.get_psfs(shape, [1,2,3]))
 
         # Nawrrow to wide
         kernel_1to2 = fft.match_psfs(psf2, psf1)

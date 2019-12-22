@@ -6,26 +6,13 @@ from proxmin.utils import MatrixAdapter
 
 from . import fft
 from . import interpolation
-
 from .cache import Cache
-
-
-import logging
-logger = logging.getLogger("scarlet.operator")
-
-
-def prox_max_unity(X, step):
-    """Normalize X so that it's max value is unity."""
-    norm = X.max()
-    X[:] = X/norm
-    return X
-
 
 def _prox_strict_monotonic(X, step, ref_idx, dist_idx, thresh=0):
     """Force an intensity profile to be monotonic based on nearest neighbor
     """
     from . import operators_pybind11
-    operators_pybind11.prox_monotonic(X.reshape(-1), step, ref_idx, dist_idx, thresh)
+    operators_pybind11.prox_monotonic(X.reshape(-1), ref_idx, dist_idx, thresh)
     return X
 
 
@@ -33,7 +20,7 @@ def _prox_weighted_monotonic(X, step, weights, didx, offsets, thresh=0):
     """Force an intensity profile to be monotonic based on weighting neighbors
     """
     from . import operators_pybind11
-    operators_pybind11.prox_weighted_monotonic(X.reshape(-1), step, weights, offsets, didx, thresh)
+    operators_pybind11.prox_weighted_monotonic(X.reshape(-1), weights, offsets, didx, thresh)
     return X
 
 
@@ -146,32 +133,6 @@ def prox_cone(X, step, G=None):
     return X
 
 
-def prox_center_on(X, step, tiny=1e-10):
-    """Ensure that the central pixel has positive flux
-
-    Make sure that the center pixel as at least some amount of flux
-    otherwise centering will go off rails
-    """
-    cy = X.shape[0] // 2
-    cx = X.shape[1] // 2
-    X[cy, cx] = max(X[cy, cx], tiny)
-    return X
-
-
-def prox_sed_on(X, step, tiny=1e-10):
-    """Ensure that the SED has some flux.
-
-    This is used when S is normalized and A is
-    not to prevent a source from having no flux,
-    which is known to break the centering algorithm.
-    Once we put in a check to ensure that the difference
-    image has a dipole this operator will be rendered unecessary
-    """
-    if np.all(X <= 0):
-        X[:] = tiny
-    return X
-
-
 def uncentered_operator(X, func, center=None, fill=None, **kwargs):
     """Only apply the operator on a centered patch
 
@@ -246,9 +207,19 @@ def prox_soft_symmetry(X, step, strength=1):
     1  being completely symmetric, the user can customize
     the level of symmetry required for a component
     """
-    Xs = np.fliplr(np.flipud(X))
-    X[:] = 0.5 * strength * (X+Xs) + (1-strength) * X
-    return X
+    pads = [[0,0],[0,0]]
+    slices = [slice(None), slice(None)]
+    if X.shape[0] % 2 == 0:
+        pads[0][1] = 1
+        slices[0] = slice(0, X.shape[0])
+    if X.shape[1] % 2 == 0:
+        pads[1][1] = 1
+        slices[1] = slice(0, X.shape[1])
+
+    X = np.pad(X, pads, mode='constant', constant_values=0)
+    Xs =  np.fliplr(np.flipud(X))
+    X = 0.5 * strength * (X+Xs) + (1-strength) * X
+    return X[tuple(slices)]
 
 def prox_kspace_symmetry(X, step, shift=None, padding=10):
     """Symmetry in Fourier Space

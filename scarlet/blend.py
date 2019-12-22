@@ -1,12 +1,15 @@
+import numpy.ma as ma
 import autograd.numpy as np
 from autograd import grad
+import proxmin
+from functools import partial
 
-from .component import ComponentTree, BlendFlag
+from .component import ComponentTree
 
+# silence proxmin warning about non-convergence
 import logging
-
-logger = logging.getLogger("scarlet.blend")
-
+proxmin_logger = logging.getLogger("proxmin")
+proxmin_logger.setLevel(logging.ERROR)
 
 class Blend(ComponentTree):
     """The blended scene
@@ -40,83 +43,54 @@ class Blend(ComponentTree):
         except TypeError:
             observations = (observations,)
         self.observations = observations
+        self.loss = []
 
-        n_params = 2 * self.K
-        self._grad = grad(self._loss, tuple(range(n_params)))
-        self.mse = []
-
-    @property
-    def it(self):
-        """Number of iterations run in the `fit` method
-        """
-        return len(self.mse)
-
-    @property
-    def converged(self):
-        """Whether the full Blend has converged within e_rel.
-
-        For convergence tests of individual components, check its `flags` member.
-        """
-        for c in self.components:
-            if (c.flags & (BlendFlag.SED_NOT_CONVERGED | BlendFlag.MORPH_NOT_CONVERGED)).value > 0:
-                return False
-        return True
-
-    def fit(self, max_iter=200, e_rel=1e-2, approximate_L=False):
+    def fit(self, max_iter=200, e_rel=1e-3, f_rel=1e-4, **alg_kwargs):
         """Fit the model for each source to the data
+
+        Note that two convergence criteria are specified:
+
+        * `e_rel` for the change of the norm of each parameter between two iterations
+        * `f_rel` for the change of the loss function
+
 
         Parameters
         ----------
         max_iter: int
-            Maximum number of iterations if the algorithm doesn't converge.
+            Maximum number of iterations if the algorithm doesn't converge
         e_rel: float
-            Relative error for convergence of each component.
-        approximate_L: bool
-            Whether or not to use a rough approximation of the
-            Lipschitz constants
+            Relative error for parameter convergence
+        f_rel: float
+            Relative error for functional convergence of the loss
+        alg_kwargs: dict
+            Keywords for the `proxmin.adaprox` optimizer
         """
 
-        for step in range(max_iter):
-            # Back propagate the gradients
-            self._backward()
+        # dynamically call parameters to allow for addition / fixing
+        X = self.parameters
+        n_params = len(X)
 
-            # Calculate the Lipschitz constants,
-            # which are needed to determine the step size for each component
-            self._set_lipschitz(approximate_L)
-            # Take the next gradient step for each component
-            for c in self.components:
-                c.L_sed = self.L_sed
-                c.L_morph = self.L_morph
-                c.backward_prior()
-                if not c.fix_sed:
-                    c._sed = c._sed - c.step_sed * c.sed_grad
-                    c.sed_grad = 0
-                if not c.fix_morph:
-                    c._morph = c._morph - c.step_morph * c.morph_grad
-                    c.morph_grad = 0
+        # compute the backward gradient tree
+        grad_logL = grad(self._loss, tuple(range(n_params)))
+        grad_logP = lambda *X: tuple(x.prior(x.view(np.ndarray)) if x.prior is not None else 0 for x in X)
+        _grad = lambda *X: tuple(l + p for l,p in zip(grad_logL(*X), grad_logP(*X)))
+        _step = lambda *X, it: tuple(x.step(x, it=it) if hasattr(x.step, "__call__") else x.step for x in X)
+        _prox = tuple(x.constraint for x in X)
 
-            # Call the update functions for all of the sources
-            self.update()
+        # good defaults for adaprox
+        scheme = alg_kwargs.pop('scheme', 'amsgrad')
+        prox_max_iter = alg_kwargs.pop('prox_max_iter', 10)
+        eps = alg_kwargs.pop('eps', 1e-8)
+        callback = partial(self._callback, f_rel=f_rel, callback=alg_kwargs.pop('callback', None))
 
-            if self._check_convergence(e_rel):
-                break
+        converged, grads, grad2s = proxmin.adaprox(X, _grad, _step, prox=_prox, max_iter=max_iter, e_rel=e_rel, scheme=scheme, prox_max_iter=prox_max_iter, callback=callback, **alg_kwargs)
 
+        # set convergence and standard deviation from optimizer
+        for p,c,g,v in zip(X, converged, grads, grad2s):
+            p.converged = c
+            p.std = 1/np.sqrt(ma.masked_equal(v, 0)) # this is rough estimate!
 
-    def _backward(self):
-        """Backpropagate the gradients for the seds and morphs
-        """
-        seds = [c.sed for c in self.components]
-        morphs = [c.morph for c in self.components]
-        parameters = seds + morphs
-        # This calculates the partial derivatives wrt
-        # all the seds and morphologies
-        gradients = self._grad(*parameters)
-        sed_gradients = gradients[:self.K]
-        morph_gradients = gradients[self.K:]
-        # set the sed and morphology gradients for each source
-        for k,c in enumerate(self.components):
-            c.sed_grad = sed_gradients[k]
-            c.morph_grad = morph_gradients[k]
+        return self
 
     def _loss(self, *parameters):
         """Loss function for autograd
@@ -126,98 +100,21 @@ class Blend(ComponentTree):
         function and update the gradient for each
         parameter
         """
-        # Unpack the seds and morphologies
-        seds = parameters[:self.K]
-        morphs = parameters[self.K:]
-
-        model = self.get_model(seds, morphs)
+        model = self.get_model(*parameters)
         # Caculate the total loss function from all of the observations
         total_loss = 0
         for observation in self.observations:
             total_loss = total_loss + observation.get_loss(model)
-        self.mse.append(total_loss._value)
+        self.loss.append(total_loss._value)
         return total_loss
 
-    def _check_convergence(self, e_rel):
-        """Check to see if all of the components have converged
+    def _callback(self, *parameters, it=None, f_rel=1e-3, callback=None):
 
-        The `flag` property of each component is updated to reflect
-        whether or not its SED and morphology have converged.
+        # raise ArithmeticError if some of the parameters have become inf/nan
+        self.check_parameters()
 
-        Parameters
-        ----------
-        e_rel: float
-            Relative error for convergence of each component.
+        if it > 1 and abs(self.loss[-2] - self.loss[-1]) < f_rel * np.abs(self.loss[-1]):
+            raise StopIteration("scarlet.Blend.fit() converged")
 
-        Returns
-        -------
-        converged: bool
-            Whether or not all of the components have converged.
-        """
-        e_rel2 = e_rel ** 2
-        if self.it > 1:
-            converged = True
-            for component in self.components:
-                # sed convergence
-                diff2 = ((component._last_sed - component.sed) ** 2).sum()
-                if diff2 <= e_rel2 * (component.sed ** 2).sum():
-                    component.flags &= ~BlendFlag.SED_NOT_CONVERGED
-                else:
-                    component.flags |= BlendFlag.SED_NOT_CONVERGED
-                    converged = False
-                # morph convergence
-                diff2 = ((component._last_morph - component.morph) ** 2).sum()
-                if diff2 <= e_rel2 * (component.morph ** 2).sum():
-                    component.flags &= ~BlendFlag.MORPH_NOT_CONVERGED
-                else:
-                    component.flags |= BlendFlag.MORPH_NOT_CONVERGED
-                    converged = False
-        else:
-            converged = False
-
-        # Store a copy of each SED and morphology for the
-        # convergence check in the next iteration
-        for c in self.components:
-            c._last_sed = c.sed.copy()
-            c._last_morph = c.morph.copy()
-
-        return converged
-
-    def _set_lipschitz(self, approximate_L):
-        """Update the Lipschitz constants from the observations
-        """
-        if approximate_L:
-            # spectral norm of S*S^T or A^T*A is of order the mean amplitude
-            # of their elements times the number of components
-            LA, LS = 0, 0
-            for c in self.components:
-                LS += (c.sed ** 2).sum().item()
-                LA += (c.morph ** 2).sum().item()
-
-            # if loss has increased from last iteration, increase L
-            # TODO: this is insufficient if the estimation above is miles off!
-            # Then: escalate the increase
-            if self.it > 1 and self.mse[-1] > self.mse[-2]:
-                LS *= 2
-                LA *= 2
-        else:
-            # This is still an approximation, but a less crude (albeit slower) one
-            C, Ny, Nx = self.frame.shape
-            seds = np.zeros((self.K, C), dtype=self.components[0].sed.dtype)
-            morphs = np.zeros((self.K, Ny, Nx), dtype=self.components[0].morph.dtype)
-            for k, component in enumerate(self.components):
-                seds[k] = component.sed
-                morphs[k] = component.morph
-            _S = morphs.reshape(morphs.shape[0], -1)
-            _SST = _S.dot(_S.T)
-            _ATA = seds.T.dot(seds)
-            # Lipschitz constant for A
-            LA = np.real(np.linalg.eigvals(_SST).max())
-            # Lipschitz constant for S
-            LS = np.real(np.linalg.eigvals(_ATA).max())
-
-        LA *= len(self.observations)
-        LS *= len(self.observations)
-
-        self.L_sed = LA
-        self.L_morph = LS
+        if callback is not None:
+            callback(*parameters, it=it)

@@ -213,33 +213,6 @@ class Fourier(object):
     def __len__(self):
         return len(self.image)
 
-    def normalize(self, axes = None):
-        """Normalize the image to sum to one
-        """
-        if axes is not None:
-            indices = [slice(None)] * len(self.shape)
-            for ax in axes:
-                indices[ax] = None
-        else:
-            indices = [None] * len(self.shape)
-        indices = tuple(indices)
-        normalization = 1/self._image.sum(axis=axes)
-        self._image *= normalization[indices]
-        for key, image_fft in self._fft.items():
-            self._fft[key] *= normalization[indices]
-
-    def update_dtype(self, dtype):
-        if self.image.dtype != dtype:
-            self._image = self._image.astype(dtype)
-            for key in self._fft:
-                self._fft[key] = self._fft[key].astype(dtype)
-
-    def sum(self, axis=None):
-        return self.image.sum(axis)
-
-    def max(self, axis=None):
-        return self.image.max(axis=axis)
-
     def __getitem__(self, index):
         # Make the index a tuple
         if not hasattr(index, "__getitem__"):

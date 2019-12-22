@@ -1,121 +1,51 @@
-try:
-    from enum import Flag, auto
-except ImportError:
-    from aenum import Flag, auto
-
+from abc import ABC, abstractmethod
+from .parameter import *
+from . import fft
+from . import interpolation
+from .bbox import Box
 import autograd.numpy as np
 
-import logging
 
-logger = logging.getLogger("scarlet.component")
-
-
-class BlendFlag(Flag):
-    """Flags that can be set by scarlet
-
-    Attributes
-    ----------
-    NONE:
-        There are no flags for this object.
-    SED_NOT_CONVERGED:
-        The SED has not yet converged.
-    MORPH_NOT_CONVERGED:
-        The morphology has not yet converged.
-    EDGE_PIXELS:
-        There is flux at the edge of the model,
-        meaning the shape and intensity of the source
-        might be incorrect.
-    NO_VALID_PIXELS:
-        All of the pixels of the source were below
-        the detection threshold.
-    """
-    NONE = 0
-    SED_NOT_CONVERGED = auto()
-    MORPH_NOT_CONVERGED = auto()
-    EDGE_PIXELS = auto()
-    NO_VALID_PIXELS = auto()
-
-
-class Prior():
-    """Differentiable Prior
-
-    Attributes
-    ----------
-    grad_func: `function`
-        Function used to create the gradient
-    L_func: `function`
-        Function used to calculate the Lipschitz constant
-        of the gradient.
-    """
-
-    def __init__(self, grad_func, L_func):
-        self._grad_func = grad_func
-        self._L_func = L_func
-        self.sed_grad = 0
-        self.morph_grad = 0
-
-    # can be overloaded but needs to set these 4 members
-    # for batch processing: cache results with c as key
-    def compute_grad(self, component):
-        """Calculate the gradient
-
-        This method is called by the `Component` that owns
-        it during fitting to calculate the gradient update
-        for the component due to the prior.
-        """
-        self.sed_grad, self.morph_grad = self._grad_func(component._sed, component._morph)
-        self.L_sed, self.L_morph = self._L_func(component._sed, component._morph)
-
-
-class Component():
+class Component(ABC):
     """A single component in a blend.
 
-    This class acts as base for building complex :class:`scarlet.source.Source`.
+    This class acts as base for building a complex :class:`scarlet.blend.Blend`.
 
     Parameters
     ----------
-    frame: a `~scarlet.Frame` instance
+    frame: `~scarlet.Frame`
         The spectral and spatial characteristics of this component.
-    sed: array
-        1D array (bands) of the initial SED.
-    morph: array
-        Data cube (Height, Width) of the initial morphology.
-    prior: list of `~scarlet.component.Prior`s
-        Prior that generates gradients for the component.
-    fix_sed: bool, default=`False`
-        Whether or not the SED is fixed, or can be updated
-    fix_morph: bool, default=`False`
-        Whether or not the morphology is fixed, or can be updated
+    parameters: list of `~scarlet.Parameter`
+    bbox: `~scarlet.Box`
+        Spatial bounding box of the morphology.
+    kwargs: dict
+        Auxiliary information attached to this component.
     """
+    def __init__(self, frame, *parameters, bbox=None, **kwargs):
+        self.bbox = bbox
+        self.set_frame(frame)
 
-    def __init__(self, frame, sed, morph, prior=None, fix_sed=False, fix_morph=False):
-        self._frame = frame
-        # set sed and morph
-        self._sed = np.array(sed, dtype=self._frame.dtype)
-        self._morph = np.array(morph, dtype=self._frame.dtype)
-        self.sed_grad = 0
-        self.morph_grad = 0
-        self.prior = prior
-        self.L_sed = 1
-        self.L_morph = 1
-        # Initially the component has not converged
-        self.flags = BlendFlag.SED_NOT_CONVERGED | BlendFlag.MORPH_NOT_CONVERGED
-        # Store the SED and morphology from the previous iteration
-        self._last_sed = np.zeros(sed.shape, dtype=sed.dtype)
-        self._last_morph = np.zeros(morph.shape, dtype=morph.dtype)
+        if hasattr(parameters, '__iter__'):
+            for p in parameters:
+                assert isinstance(p, Parameter)
+            self._parameters = parameters
+        else:
+            assert isinstance(parameters, Parameter)
+            self._parameters = tuple(parameters,)
+        self.check_parameters()
+
+        # additional non-optimization parameters of component
+        self.kwargs = kwargs
 
         # Properties used for indexing in the ComponentTree
         self._index = None
         self._parent = None
 
-        self.fix_sed = fix_sed
-        self.fix_morph = fix_morph
-
     @property
     def shape(self):
         """Shape of the image (Channel, Height, Width)
         """
-        return self._frame.shape
+        return self.bbox.shape
 
     @property
     def coord(self):
@@ -128,86 +58,324 @@ class Component():
                 return (self._index,)
 
     @property
-    def frame(self):
-        """The frame of this component
+    def parameters(self):
+        """The list of non-fixed parameters
+
+        Returns
+        -------
+        list of parameters available for optimization
+        If `parameter.fixed == True`, the parameter will not returned here.
         """
-        return self._frame
+        return [ p for p in self._parameters if not p.fixed ]
+
+    @abstractmethod
+    def get_model(self, *parameters):
+        """Get the model for this component
+
+        Parameters
+        ----------
+        parameters: tuple of optimimzation parameters
+
+        Returns
+        -------
+        model: array
+            (Channels, Height, Width) image of the model
+        """
+        pass
+
+    def freeze(self):
+        """Fix all parameters
+
+        The component will not provide optimizable parameters anymore.
+        """
+        for p in self._parameters:
+            p.fixed = True
+
+    def unfreeze(self):
+        """Release all parameters
+
+        The component will provide *all* parameters as optimizable parameters.
+        Calling this function overrides previous setting of `parameter.fixed` for every
+        parameter of this component.
+        """
+        for p in self._parameters:
+            p.fixed = False
+
+    def set_frame(self, frame):
+        """Sets the frame for this component.
+
+        Each component needs to know the properties of the Frame and, potentially, the
+        subvolume it covers.
+
+        Parameters
+        ----------
+        frame: `~scarlet.Frame`
+            Frame to adopt for this component
+        """
+        self.frame = frame
+
+        # store padding and slicing structures
+        if self.bbox is not None:
+            assert isinstance(self.bbox, Box)
+            # TODO: full 3D bbox and slicing support
+            # determine pad from box into full frame
+            # yields superset of frame pixels
+            # pad_width is ((before1, after1), (before2, after2)...)
+            self.pad_width = (
+            (max(0, self.bbox.front - self.frame.front), max(0, self.frame.back - self.bbox.back)),
+            (max(0, self.bbox.bottom - self.frame.bottom), max(0, self.frame.top - self.bbox.top)),
+            (max(0, self.bbox.left - self.frame.left), max(0, self.frame.right- self.bbox.right)))
+
+            # get slicing of padded box so that the result covers
+            # all of the model frame
+            front = self.bbox.front - self.pad_width[0][0]
+            back = self.bbox.back + self.pad_width[0][1]
+            bottom = self.bbox.bottom - self.pad_width[1][0]
+            top = self.bbox.top + self.pad_width[1][1]
+            left = self.bbox.left - self.pad_width[2][0]
+            right = self.bbox.right + self.pad_width[2][1]
+            padded_box = Box.from_bounds(front, back, bottom, top, left, right)
+
+            model_box = self.frame
+            overlap = model_box & padded_box
+            overlap -= padded_box.origin # now in padded frame
+            self.slices = overlap.slices_for(padded_box.shape)
+
+    def check_parameters(self):
+        """Check the all parameters have finite elements
+
+        Raises
+        ------
+        `ArithmeticError`
+        """
+        for k,p in enumerate(self._parameters):
+            if not np.isfinite(p).all():
+                msg = "Component {} Parameter {} is not finite:\n{}".format(self, k, p)
+                raise ArithmeticError(msg)
+
+class FactorizedComponent(Component):
+    """A single component in a blend.
+
+    Uses the non-parametric factorization sed x morphology.
+
+    Parameters
+    ----------
+    frame: `~scarlet.Frame`
+        The spectral and spatial characteristics of this component.
+    sed: `~scarlet.Parameter`
+        1D array (channels) of the initial SED.
+    morph: `~scarlet.Parameter`
+        Image (Height, Width) of the initial morphology.
+    shift: `~scarlet.Parameter`
+        2D position for the shift of the center
+    bbox: `~scarlet.Box`
+        Spatial bounding box of the morphology.
+    """
+    def __init__(self, frame, sed, morph, shift=None, bbox=None, **kwargs):
+        if shift is None:
+            parameters = (sed, morph)
+        else:
+            parameters = (sed, morph, shift)
+        super().__init__(frame, *parameters, bbox=bbox, **kwargs)
+
+        # store shifting structures
+        if shift is not None:
+            padding = 10
+            self.fft_shape = fft._get_fft_shape(morph, morph, padding=padding)
+            self.shifter_y, self.shifter_x = interpolation.mk_shifter(self.fft_shape)
 
     @property
     def sed(self):
         """Numpy view of the component SED
         """
-        return self._sed
+        return self._pad_sed(self._parameters[0]._data)
 
     @property
     def morph(self):
         """Numpy view of the component morphology
         """
-        return self._morph
+        return self._pad_morph(self._shift_morph(self.shift, self._parameters[1]._data))
 
-    def get_model(self, sed=None, morph=None):
+    @property
+    def shift(self):
+        """Numpy view of the component shift
+        """
+        if len(self._parameters) == 3:
+            return self._parameters[2]._data
+        return None
+
+    def get_model(self, *parameters):
         """Get the model for this component.
 
         Parameters
         ----------
-        sed: array
-            An sed to use in the model. If `sed` is `None`
-            then `self.sed` is used.
-        morph: array
-            A morphology to use in the model.
-            If `morph` is `None` then `self.morph`
-            is used.
+        parameters: tuple of optimimzation parameters
 
         Returns
         -------
-        model: array or tensor
-            (Bands, Height, Width) image of the model
+        model: array
+            (Channels, Height, Width) image of the model
         """
-        if sed is not None and morph is not None:
-            return sed[:, None, None] * morph[None, :, :]
-        elif sed is None and morph is None:
-            return self._sed[:, None, None] * self._morph[None, :, :]
-        raise ValueError("You need to supply `sed` and `morph` or neither")
+        sed, morph, shift = None, None, None
 
-    def get_flux(self):
-        """Get flux in every band
-        """
-        return self.morph.sum() * self.sed
+        # if params are set they are not Parameters, but autograd ArrayBoxes
+        # need to access the wrapped class with _value
+        for p in parameters:
+            if p._value is self._parameters[0]:
+                sed = p
+            if p._value is self._parameters[1]:
+                morph = p
+            if len(self._parameters) == 3 and p._value is self._parameters[2]:
+                shift = p
 
-    def backward_prior(self):
-        """Use the prior to update the gradient
-        """
-        if self.prior is not None:
-            self.prior.compute_grad(self)
-            if not self.fix_morph:
-                self.morph_grad += self.prior.morph_grad
-                self.L_morph += self.prior.L_morph
-            if not self.fix_sed:
-                self.sed_grad += self.prior.sed_grad
-                self.L_sed += self.prior.L_sed
+        if sed is None:
+            sed = self.sed
 
-    def update(self):
-        """Update the component
+        if shift is None:
+            shift = self.shift
 
-        This method can be overwritten in inherited classes to
-        run proximal operators or other component update functions
-        that will be executed during fitting.
-        """
-        return self
+        if morph is None:
+            # dont' use self._morph because we could have shift as parameter
+            morph =  self._pad_morph(self._shift_morph(shift, self._parameters[1]._data))
+        else:
+            morph =  self._pad_morph(self._shift_morph(shift, morph))
+
+        return sed[:, None, None] * morph[None, :, :]
+
+    def _pad_sed(self, sed):
+        if self.bbox is not None:
+            padded = np.pad(sed, self.pad_width[0], mode='constant', constant_values=0)
+            return padded[self.slices[0]]
+        else:
+            return sed
+
+    def _pad_morph(self, morph):
+        if self.bbox is not None:
+                padded = np.pad(morph, self.pad_width[1:], mode='constant', constant_values=0)
+                return padded[self.slices[1:]]
+        return morph
+
+    def _shift_morph(self, shift, morph):
+        if shift is not None:
+            X = fft.Fourier(morph)
+            X_fft = X.fft(self.fft_shape, (0,1))
+
+            # Apply shift in Fourier
+            result_fft = X_fft * (self.shifter_y[:, None] ** shift[0]) * (self.shifter_x[None, :] ** shift[1])
+
+            X = fft.Fourier.from_fft(result_fft, self.fft_shape, X.shape, [0,1])
+            return np.real(X.image)
+        return morph
+
+
+class FunctionComponent(FactorizedComponent):
+    """A single component in a blend.
+
+    Uses the non-parametric sed x morphology, with the morphology specified
+    by a functional expression.
+
+    Parameters
+    ----------
+    frame: `~scarlet.Frame`
+        The spectral and spatial characteristics of this component.
+    sed: `~scarlet.Parameter`
+        1D array (channels) of the initial SED.
+    fparams: `~scarlet.Parameter`
+        Parameters of the initial morphology.
+    func: `autograd` function
+        Signature: func(*fparams, y=None, x=None) -> Image (Height, Width)
+    bbox: `~scarlet.Box`
+        Spatial bounding box of the morphology.
+    """
+    def __init__(self, frame, sed, fparams, func, bbox=None):
+        parameters = (sed, fparams)
+        super().__init__(frame, *parameters, bbox=bbox, func=func)
 
     @property
-    def step_morph(self):
+    def morph(self):
+        """Numpy view of the component morphology
+        """
         try:
-            return 1 / self.L_morph
+            return self._pad_morph(self._morph)
         except AttributeError:
-            return None
+            self._morph = self._func(*self._parameters[1])
+            return self._pad_morph(self._morph)
+
+    def _func(self, *parameters):
+        return self.kwargs['func'](*parameters)
+
+    def get_model(self, *parameters):
+        """Get the model for this component.
+
+        Parameters
+        ----------
+        parameters: tuple of optimimzation parameters
+
+        Returns
+        -------
+        model: array
+            (Channels, Height, Width) image of the model
+        """
+        sed, fparams = None, None
+
+        # if params are set they are not Parameters, but autograd ArrayBoxes
+        # need to access the wrapped class with _value
+        for p in parameters:
+            if p._value is self._parameters[0]:
+                sed = p
+            if p._value is self._parameters[1]:
+                fparams = p
+
+        if sed is None:
+            sed = self.sed
+        if fparams is None:
+            morph = self.morph
+        else:
+            morph = self._func(*fparams)
+            self._morph = morph._value
+            morph = self._pad_morph(morph)
+
+        return sed[:, None, None] * morph[None, :, :]
+
+
+class CubeComponent(Component):
+    """A single component in a blend.
+
+    Uses full cube parameterization.
+
+    Parameters
+    ----------
+    frame: `~scarlet.Frame`
+        The spectral and spatial characteristics of this component.
+    cube: `~scarlet.Parameter`
+        3D array (C, Height, Width) of the initial data cube.
+    bbox: `~scarlet.Box`
+        Spatial bounding box of the morphology.
+    """
+    def __init__(self, frame, cube, bbox=None):
+        parameters = (cube,)
+        super().__init__(frame, *parameters, bbox=bbox)
 
     @property
-    def step_sed(self):
-        try:
-            return 1 / self.L_sed
-        except AttributeError:
-            return None
+    def cube (self):
+        return self._pad_cube(self._parameters[0]._data)
+
+    def get_model(self, *parameters):
+        cube = None
+        for p in parameters:
+            if p._value is self._parameters[0]:
+                cube = self._pad_cube(p)
+
+        if cube is None:
+            cube = self.cube
+
+        return cube
+
+    def _pad_cube(self, cube):
+        if self.bbox is not None:
+            padded = np.pad(cube, self.pad_width, mode='constant', constant_values=0)
+            return padded[self.slices]
+        return cube
 
 
 class ComponentTree():
@@ -237,8 +405,6 @@ class ComponentTree():
             c._index = i
             c._parent = self
 
-        self._components = None
-
     @property
     def components(self):
         """Flattened tuple of all components in the tree.
@@ -248,19 +414,24 @@ class ComponentTree():
         times, this method will only return that component at its first
         encountered location
         """
-        if self._components is None:
-            components = []
-            for c in self._tree:
-                if isinstance(c, ComponentTree):
-                    _c = c.components
-                else:
-                    _c = [c]
-                # check uniqueness
-                for __c in _c:
-                    if __c not in components:
-                        components.append(__c)
-            self._components = tuple(components)
-        return self._components
+        try:
+            return self._components
+        except AttributeError:
+            self._components = self._tree_to_components()
+            return self._components
+
+    def _tree_to_components(self):
+        components = []
+        for c in self._tree:
+            if isinstance(c, ComponentTree):
+                _c = c.components
+            else:
+                _c = [c]
+            # check uniqueness
+            for __c in _c:
+                if __c not in components:
+                    components.append(__c)
+        return tuple(components)
 
     @property
     def n_components(self):
@@ -318,53 +489,86 @@ class ComponentTree():
             else:
                 return (self._index,)
 
-    def get_model(self, seds=None, morphs=None):
-        """Get the model this component tree
+    @property
+    def parameters(self):
+        """The list of non-fixed parameters
+
+        Returns
+        -------
+        list of parameters available for optimization
+        If `parameter.fixed == True`, the parameter will not returned here.
+        """
+        pars = []
+        for c in self.components:
+            pars += c.parameters
+        return pars
+
+    def check_parameters(self):
+        """Check the all parameters have finite elements
+
+        Raises
+        ------
+        `ArithmeticError`
+        """
+        for c in self.components:
+            c.check_parameters()
+
+    def get_model(self, *params):
+        """Get the model of this component tree
 
         Parameters
         ----------
-        seds: list of arrays
-            Optional list of seds for each component in the tree.
-            If `seds` is `None` then `self.sed` is used for
-            each component.
-        morphs: list of arrays
-            Optional list of morphologies for each component in
-            the tree. If `morphs` is `None` then `self.morph`
-            is used for each component.
+        params: tuple of optimization parameters
 
         Returns
         -------
         model: array
             (Bands, Height, Width) data cube
         """
-        model = np.zeros(self.frame.shape, dtype=self.frame.dtype)
-        for k in range(self.K):
-            if seds is not None and morphs is not None:
-                model = model + self.components[k].get_model(seds[k], morphs[k])
-            else:
-                model = model + self.components[k].get_model()
+        model = np.zeros(self.frame.shape)
+        if len(params):
+            i = 0
+            for k,c in enumerate(self.components):
+                j = len(c.parameters)
+                p = params[i:i+j]
+                i += j
+                model = model + c.get_model(*p)
+        else:
+            for c in self.components:
+                model = model + c.get_model()
 
         return model
 
-    def get_flux(self):
-        """Get the total flux for all the components in the tree
-        """
-        for k, component in enumerate(self.components):
-            if k == 0:
-                model = component.get_flux()
-            else:
-                model += component.get_flux()
-        return model
+    def set_frame(self, frame):
+        """Set the frame for all components in the tree
 
-    def update(self):
-        """Update each component
+        see `~scarlet.Component.set_frame` for details.
 
-        This method may be overwritten in inherited classes to
-        perform updates on multiple components at once
-        (for example separating a buldge and disk).
+        Parameters
+        ----------
+        frame: `~scarlet.Frame`
+            Frame to adopt for this component
         """
-        for node in self._tree:
-            node.update()
+        for c in self.components:
+            c.set_frame(frame)
+
+    def freeze(self):
+        """Fix all parameters
+
+        The tree will not provide optimizable parameters anymore.
+        """
+        for c in self.components:
+            c.freeze()
+
+    def unfreeze(self):
+        """Release all parameters
+
+        The tree will provide *all* parameters as optimizable parameters.
+        Calling this function overrides previous setting of `parameter.fixed` for every
+        parameter of this component tree.
+        """
+        for c in self.components:
+            c.unfreeze()
 
     def __iadd__(self, c):
         """Add another component or tree.
@@ -382,7 +586,7 @@ class ComponentTree():
             raise NotImplementedError("argument needs to be Component or ComponentTree")
         c._index = c_index
         c._parent = self
-        self._components = None
+        self._components = self._tree_to_components()
         return self
 
     def __getitem__(self, coord):
@@ -405,3 +609,11 @@ class ComponentTree():
             return self._tree[coord]
         else:
             raise NotImplementedError("coord needs to be index or list of indices")
+
+    def __getstate__(self):
+        # needed for pickling to understand what to save
+        return (self._tree, )
+
+    def __setstate__(self, state):
+        self._tree = state[0]
+        self._tree_to_components()
