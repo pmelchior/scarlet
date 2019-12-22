@@ -1,154 +1,71 @@
 
-
 <!DOCTYPE html>
-<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
-<head>
-  <meta charset="utf-8">
-  
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  
-  <title>scarlet.interpolation &mdash; scarlet  documentation</title>
-  
 
-  
-  
-  
-  
-
-  
-
-  
-  
-    
-
-  
-
-  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
-  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>scarlet.interpolation &#8212; scarlet  documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "ignoreClass": "document", "processClass": "math|output_area"}})</script>
+    <link rel="canonical" href="api/_modules/scarlet/interpolation.html" />
     <link rel="index" title="Index" href="../../genindex.html" />
-    <link rel="search" title="Search" href="../../search.html" /> 
-
-  
-  <script src="../../_static/js/modernizr.min.js"></script>
-
-</head>
-
-<body class="wy-body-for-nav">
-
+    <link rel="search" title="Search" href="../../search.html" />
    
-  <div class="wy-grid-for-nav">
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
 
+  </head><body>
+  <div class="document">
     
-    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
-      <div class="wy-side-scroll">
-        <div class="wy-side-nav-search">
-          
-
-          
-            <a href="../../index.html" class="icon icon-home"> scarlet
-          
-
-          
-          </a>
-
-          
-            
-            
-          
-
-          
-<div role="search">
-  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
-    <input type="text" name="q" placeholder="Search docs" />
-    <input type="hidden" name="check_keywords" value="yes" />
-    <input type="hidden" name="area" value="default" />
-  </form>
-</div>
-
-          
-        </div>
-
-        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
-          
-            
-            
-              
-            
-            
-              <ul>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../index.html">
+              <img class="logo" src="../../_static/logo.svg" alt="Logo"/>
+            </a></p>
+<h3><a href="../../index.html">Table of Contents</a></h3>
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="../../install.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../quickstart.html">Quick Start Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../user_docs.html">User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../0-quickstart.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../1-concepts.html">Core Concepts</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../tutorials.html">Tutorials</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../api_docs.html">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/scarlet.html">API Documentation</a></li>
 </ul>
 
-            
-          
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
         </div>
       </div>
-    </nav>
-
-    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
-
-      
-      <nav class="wy-nav-top" aria-label="top navigation">
-        
-          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="../../index.html">scarlet</a>
-        
-      </nav>
-
-
-      <div class="wy-nav-content">
-        
-        <div class="rst-content">
-        
+      <div class="documentwrapper">
+        <div class="bodywrapper">
           
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<div role="navigation" aria-label="breadcrumbs navigation">
-
-  <ul class="wy-breadcrumbs">
-    
-      <li><a href="../../index.html">Docs</a> &raquo;</li>
-        
-          <li><a href="../index.html">Module code</a> &raquo;</li>
-        
-      <li>scarlet.interpolation</li>
-    
-    
-      <li class="wy-breadcrumbs-aside">
-        
-      </li>
-    
-  </ul>
-
-  
-  <hr/>
-</div>
-          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
-           <div itemprop="articleBody">
+          <div class="body" role="main">
             
   <h1>Source code for scarlet.interpolation</h1><div class="highlight"><pre>
 <span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">.cache</span> <span class="kn">import</span> <span class="n">Cache</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">fft</span>
 
 
-<div class="viewcode-block" id="get_projection_slices"><a class="viewcode-back" href="../../interpolation.html#scarlet.interpolation.get_projection_slices">[docs]</a><span class="k">def</span> <span class="nf">get_projection_slices</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">shape</span><span class="p">,</span> <span class="n">yx0</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<div class="viewcode-block" id="get_projection_slices"><a class="viewcode-back" href="../../api/scarlet.interpolation.html#scarlet.interpolation.get_projection_slices">[docs]</a><span class="k">def</span> <span class="nf">get_projection_slices</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">shape</span><span class="p">,</span> <span class="n">yx0</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Get slices needed to project an image</span>
 
 <span class="sd">    This method returns the bounding boxes needed to</span>
@@ -199,7 +116,7 @@
     <span class="k">return</span> <span class="p">(</span><span class="n">yslice</span><span class="p">,</span> <span class="n">xslice</span><span class="p">),</span> <span class="p">(</span><span class="n">iyslice</span><span class="p">,</span> <span class="n">ixslice</span><span class="p">),</span> <span class="p">(</span><span class="n">bottom</span><span class="p">,</span> <span class="n">top</span><span class="p">,</span> <span class="n">left</span><span class="p">,</span> <span class="n">right</span><span class="p">)</span></div>
 
 
-<div class="viewcode-block" id="project_image"><a class="viewcode-back" href="../../interpolation.html#scarlet.interpolation.project_image">[docs]</a><span class="k">def</span> <span class="nf">project_image</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">shape</span><span class="p">,</span> <span class="n">yx0</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<div class="viewcode-block" id="project_image"><a class="viewcode-back" href="../../api/scarlet.interpolation.html#scarlet.interpolation.project_image">[docs]</a><span class="k">def</span> <span class="nf">project_image</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">shape</span><span class="p">,</span> <span class="n">yx0</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Project an image centered in a larger image</span>
 
 <span class="sd">    The projection pads the image with zeros if</span>
@@ -229,7 +146,7 @@
     <span class="k">return</span> <span class="n">result</span></div>
 
 
-<div class="viewcode-block" id="common_projections"><a class="viewcode-back" href="../../interpolation.html#scarlet.interpolation.common_projections">[docs]</a><span class="k">def</span> <span class="nf">common_projections</span><span class="p">(</span><span class="n">img1</span><span class="p">,</span> <span class="n">img2</span><span class="p">):</span>
+<div class="viewcode-block" id="common_projections"><a class="viewcode-back" href="../../api/scarlet.interpolation.html#scarlet.interpolation.common_projections">[docs]</a><span class="k">def</span> <span class="nf">common_projections</span><span class="p">(</span><span class="n">img1</span><span class="p">,</span> <span class="n">img2</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Project two images to a common frame</span>
 
 <span class="sd">    It is assumed that the two images have the same center.</span>
@@ -256,7 +173,7 @@
     <span class="k">return</span> <span class="n">project_image</span><span class="p">(</span><span class="n">img1</span><span class="p">,</span> <span class="n">shape</span><span class="p">),</span> <span class="n">project_image</span><span class="p">(</span><span class="n">img2</span><span class="p">,</span> <span class="n">shape</span><span class="p">)</span></div>
 
 
-<div class="viewcode-block" id="fft_convolve"><a class="viewcode-back" href="../../interpolation.html#scarlet.interpolation.fft_convolve">[docs]</a><span class="k">def</span> <span class="nf">fft_convolve</span><span class="p">(</span><span class="o">*</span><span class="n">images</span><span class="p">):</span>
+<div class="viewcode-block" id="fft_convolve"><a class="viewcode-back" href="../../api/scarlet.interpolation.html#scarlet.interpolation.fft_convolve">[docs]</a><span class="k">def</span> <span class="nf">fft_convolve</span><span class="p">(</span><span class="o">*</span><span class="n">images</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Use FFT&#39;s to convove an image with a kernel</span>
 
 <span class="sd">    Parameters</span>
@@ -269,7 +186,7 @@
 <span class="sd">    result: array</span>
 <span class="sd">        The convolution in pixel space of `img` with `kernel`.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="kn">from</span> <span class="nn">autograd.numpy.numpy_boxes</span> <span class="k">import</span> <span class="n">ArrayBox</span>
+    <span class="kn">from</span> <span class="nn">autograd.numpy.numpy_boxes</span> <span class="kn">import</span> <span class="n">ArrayBox</span>
     <span class="n">Images</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">fft2</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">ifftshift</span><span class="p">(</span><span class="n">img</span><span class="p">))</span> <span class="k">for</span> <span class="n">img</span> <span class="ow">in</span> <span class="n">images</span><span class="p">]</span>
     <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">([</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">ArrayBox</span><span class="p">)</span> <span class="k">for</span> <span class="n">img</span> <span class="ow">in</span> <span class="n">images</span><span class="p">]):</span>
         <span class="n">Convolved</span> <span class="o">=</span> <span class="n">Images</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
@@ -281,7 +198,7 @@
     <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">fftshift</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">real</span><span class="p">(</span><span class="n">convolved</span><span class="p">))</span></div>
 
 
-<div class="viewcode-block" id="bilinear"><a class="viewcode-back" href="../../interpolation.html#scarlet.interpolation.bilinear">[docs]</a><span class="k">def</span> <span class="nf">bilinear</span><span class="p">(</span><span class="n">dx</span><span class="p">):</span>
+<div class="viewcode-block" id="bilinear"><a class="viewcode-back" href="../../api/scarlet.interpolation.html#scarlet.interpolation.bilinear">[docs]</a><span class="k">def</span> <span class="nf">bilinear</span><span class="p">(</span><span class="n">dx</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Bilinear interpolation kernel</span>
 
 <span class="sd">    Interpolate between neighboring pixels to shift</span>
@@ -310,7 +227,7 @@
     <span class="k">return</span> <span class="n">y</span><span class="p">,</span> <span class="n">window</span></div>
 
 
-<div class="viewcode-block" id="cubic_spline"><a class="viewcode-back" href="../../interpolation.html#scarlet.interpolation.cubic_spline">[docs]</a><span class="k">def</span> <span class="nf">cubic_spline</span><span class="p">(</span><span class="n">dx</span><span class="p">,</span> <span class="n">a</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">b</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+<div class="viewcode-block" id="cubic_spline"><a class="viewcode-back" href="../../api/scarlet.interpolation.html#scarlet.interpolation.cubic_spline">[docs]</a><span class="k">def</span> <span class="nf">cubic_spline</span><span class="p">(</span><span class="n">dx</span><span class="p">,</span> <span class="n">a</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">b</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Generate a cubix spline centered on `dx`.</span>
 
 <span class="sd">    Parameters</span>
@@ -358,7 +275,7 @@
     <span class="k">return</span> <span class="n">result</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">window</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span></div>
 
 
-<div class="viewcode-block" id="catmull_rom"><a class="viewcode-back" href="../../interpolation.html#scarlet.interpolation.catmull_rom">[docs]</a><span class="k">def</span> <span class="nf">catmull_rom</span><span class="p">(</span><span class="n">dx</span><span class="p">):</span>
+<div class="viewcode-block" id="catmull_rom"><a class="viewcode-back" href="../../api/scarlet.interpolation.html#scarlet.interpolation.catmull_rom">[docs]</a><span class="k">def</span> <span class="nf">catmull_rom</span><span class="p">(</span><span class="n">dx</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Cubic spline with a=0.5, b=0</span>
 
 <span class="sd">    See `cubic_spline` for details.</span>
@@ -366,7 +283,7 @@
     <span class="k">return</span> <span class="n">cubic_spline</span><span class="p">(</span><span class="n">dx</span><span class="p">,</span> <span class="n">a</span><span class="o">=.</span><span class="mi">5</span><span class="p">,</span> <span class="n">b</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span></div>
 
 
-<div class="viewcode-block" id="mitchel_netravali"><a class="viewcode-back" href="../../interpolation.html#scarlet.interpolation.mitchel_netravali">[docs]</a><span class="k">def</span> <span class="nf">mitchel_netravali</span><span class="p">(</span><span class="n">dx</span><span class="p">):</span>
+<div class="viewcode-block" id="mitchel_netravali"><a class="viewcode-back" href="../../api/scarlet.interpolation.html#scarlet.interpolation.mitchel_netravali">[docs]</a><span class="k">def</span> <span class="nf">mitchel_netravali</span><span class="p">(</span><span class="n">dx</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Cubic spline with a=1/3, b=1/3</span>
 
 <span class="sd">    See `cubic_spline` for details.</span>
@@ -375,7 +292,7 @@
     <span class="k">return</span> <span class="n">cubic_spline</span><span class="p">(</span><span class="n">dx</span><span class="p">,</span> <span class="n">a</span><span class="o">=</span><span class="n">ab</span><span class="p">,</span> <span class="n">b</span><span class="o">=</span><span class="n">ab</span><span class="p">)</span></div>
 
 
-<div class="viewcode-block" id="lanczos"><a class="viewcode-back" href="../../interpolation.html#scarlet.interpolation.lanczos">[docs]</a><span class="k">def</span> <span class="nf">lanczos</span><span class="p">(</span><span class="n">dx</span><span class="p">,</span> <span class="n">a</span><span class="o">=</span><span class="mi">3</span><span class="p">):</span>
+<div class="viewcode-block" id="lanczos"><a class="viewcode-back" href="../../api/scarlet.interpolation.html#scarlet.interpolation.lanczos">[docs]</a><span class="k">def</span> <span class="nf">lanczos</span><span class="p">(</span><span class="n">dx</span><span class="p">,</span> <span class="n">a</span><span class="o">=</span><span class="mi">3</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Lanczos kernel</span>
 
 <span class="sd">    Parameters</span>
@@ -397,7 +314,7 @@
     <span class="k">return</span> <span class="n">y</span><span class="p">,</span> <span class="n">window</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span></div>
 
 
-<span class="k">def</span> <span class="nf">quintic_spline</span><span class="p">(</span><span class="n">dx</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">):</span>
+<div class="viewcode-block" id="quintic_spline"><a class="viewcode-back" href="../../api/scarlet.interpolation.html#scarlet.interpolation.quintic_spline">[docs]</a><span class="k">def</span> <span class="nf">quintic_spline</span><span class="p">(</span><span class="n">dx</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">):</span>
     <span class="k">def</span> <span class="nf">inner</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
         <span class="k">return</span> <span class="mi">1</span> <span class="o">+</span> <span class="n">x</span> <span class="o">**</span> <span class="mi">3</span> <span class="o">/</span> <span class="mi">12</span> <span class="o">*</span> <span class="p">(</span><span class="o">-</span><span class="mi">95</span> <span class="o">+</span> <span class="mi">138</span> <span class="o">*</span> <span class="n">x</span> <span class="o">-</span> <span class="mi">55</span> <span class="o">*</span> <span class="n">x</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
 
@@ -412,10 +329,10 @@
     <span class="n">result</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">piecewise</span><span class="p">(</span><span class="n">x</span><span class="p">,</span>
                           <span class="p">[</span><span class="n">x</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">,</span> <span class="p">(</span><span class="n">x</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">x</span> <span class="o">&lt;=</span> <span class="mi">2</span><span class="p">),</span> <span class="p">(</span><span class="n">x</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">x</span> <span class="o">&lt;=</span> <span class="mi">3</span><span class="p">)],</span>
                           <span class="p">[</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">inner</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">middle</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">outer</span><span class="p">(</span><span class="n">x</span><span class="p">)])</span>
-    <span class="k">return</span> <span class="n">result</span><span class="p">,</span> <span class="n">window</span>
+    <span class="k">return</span> <span class="n">result</span><span class="p">,</span> <span class="n">window</span></div>
 
 
-<div class="viewcode-block" id="get_separable_kernel"><a class="viewcode-back" href="../../interpolation.html#scarlet.interpolation.get_separable_kernel">[docs]</a><span class="k">def</span> <span class="nf">get_separable_kernel</span><span class="p">(</span><span class="n">dy</span><span class="p">,</span> <span class="n">dx</span><span class="p">,</span> <span class="n">kernel</span><span class="o">=</span><span class="n">lanczos</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="get_separable_kernel"><a class="viewcode-back" href="../../api/scarlet.interpolation.html#scarlet.interpolation.get_separable_kernel">[docs]</a><span class="k">def</span> <span class="nf">get_separable_kernel</span><span class="p">(</span><span class="n">dy</span><span class="p">,</span> <span class="n">dx</span><span class="p">,</span> <span class="n">kernel</span><span class="o">=</span><span class="n">lanczos</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Create a 2D kernel from a 1D kernel separable in x and y</span>
 
 <span class="sd">    Parameters</span>
@@ -444,16 +361,60 @@
     <span class="k">return</span> <span class="n">kyx</span><span class="p">,</span> <span class="n">y_window</span><span class="p">,</span> <span class="n">x_window</span></div>
 
 
-<div class="viewcode-block" id="sinc_interp"><a class="viewcode-back" href="../../interpolation.html#scarlet.interpolation.sinc_interp">[docs]</a><span class="k">def</span> <span class="nf">sinc_interp</span><span class="p">(</span><span class="n">coord_hr</span><span class="p">,</span> <span class="n">coord_lr</span><span class="p">,</span> <span class="n">sample_lr</span><span class="p">):</span>
+<div class="viewcode-block" id="mk_shifter"><a class="viewcode-back" href="../../api/scarlet.interpolation.html#scarlet.interpolation.mk_shifter">[docs]</a><span class="k">def</span> <span class="nf">mk_shifter</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="n">real</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39; Performs shifts in the Fourier domain on Fourier objects</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">    -----------</span>
+<span class="sd">    shape: array</span>
+<span class="sd">        shape of the 2-D array to shift</span>
+<span class="sd">    real: bool</span>
+<span class="sd">        if true, the frequencies are all returned for real transforms (all dimension are half of the shape).</span>
+<span class="sd">        if False, only the last dimension is considered a real transform.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">    --------</span>
+<span class="sd">    result: Fourier</span>
+<span class="sd">        A Fourier object with shifted arrays</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="c1">#Name of the chached shifts.</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;mk_shifter&#39;</span>
+    <span class="n">key</span> <span class="o">=</span> <span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">shift_y</span><span class="p">,</span> <span class="n">shift_x</span> <span class="o">=</span> <span class="n">Cache</span><span class="o">.</span><span class="n">check</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
+        <span class="n">shifters</span> <span class="o">=</span> <span class="p">(</span><span class="n">shift_y</span><span class="p">,</span> <span class="n">shift_x</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+        <span class="n">freq_x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">rfftfreq</span><span class="p">(</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">real</span> <span class="ow">is</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="n">freq_y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">rfftfreq</span><span class="p">(</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">freq_y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">fftfreq</span><span class="p">(</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="c1"># Shift the signal to recenter it, negative because math is opposite from</span>
+        <span class="c1"># pixel direction</span>
+        <span class="n">shift_y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="n">j</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">freq_y</span><span class="p">)</span>
+        <span class="n">shift_x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="n">j</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">freq_x</span><span class="p">)</span>
+
+        <span class="n">shifters</span> <span class="o">=</span> <span class="p">(</span><span class="n">shift_y</span><span class="p">,</span> <span class="n">shift_x</span><span class="p">)</span>
+
+    <span class="n">Cache</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">shifters</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">shifters</span></div>
+
+<div class="viewcode-block" id="sinc_interp"><a class="viewcode-back" href="../../api/scarlet.interpolation.html#scarlet.interpolation.sinc_interp">[docs]</a><span class="k">def</span> <span class="nf">sinc_interp</span><span class="p">(</span><span class="n">images</span><span class="p">,</span> <span class="n">coord_hr</span><span class="p">,</span> <span class="n">coord_lr</span><span class="p">,</span> <span class="n">angle</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">padding</span> <span class="o">=</span> <span class="mi">3</span><span class="p">):</span>
     <span class="sd">&#39;&#39;&#39;</span>
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
+<span class="sd">    image: array</span>
+<span class="sd">        image whose pixels are at positions coord_lr</span>
 <span class="sd">    coord_hr: array (2xN)</span>
 <span class="sd">        Coordinates of the high resolution grid</span>
 <span class="sd">    coord_lr: array (2xM)</span>
 <span class="sd">        Coordinates of the low resolution grid</span>
-<span class="sd">    sample_lr: array (N)</span>
-<span class="sd">        Sample at positions coord_hr</span>
+<span class="sd">    angle: float</span>
+<span class="sd">        rotation angle between coordinate sets coord_hr and coord_lr</span>
+<span class="sd">    padding: int</span>
+<span class="sd">        value of zero padding for fft</span>
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
 <span class="sd">        result:  interpolated  samples at positions coord_hr</span>
@@ -466,11 +427,47 @@
     <span class="k">assert</span> <span class="n">hy</span> <span class="o">!=</span> <span class="mi">0</span>
     <span class="k">assert</span> <span class="n">hx</span> <span class="o">!=</span> <span class="mi">0</span>
 
-    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sinc</span><span class="p">((</span><span class="n">y_lr</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:]</span><span class="o">-</span><span class="n">y_hr</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">])</span> <span class="o">/</span> <span class="n">hy</span><span class="p">),</span><span class="n">sample</span><span class="o">.</span><span class="n">T</span><span class="p">),</span>
-                                        <span class="n">np</span><span class="o">.</span><span class="n">sinc</span><span class="p">((</span><span class="n">x_lr</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span><span class="o">-</span><span class="n">x_hr</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,:])</span><span class="o">/</span> <span class="n">hx</span><span class="p">)</span> <span class="p">)</span> <span class="k">for</span> <span class="n">sample</span> <span class="ow">in</span> <span class="n">sample_lr</span><span class="p">])</span></div>
+    <span class="k">if</span> <span class="n">angle</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sinc</span><span class="p">((</span><span class="n">y_lr</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:]</span><span class="o">-</span><span class="n">y_hr</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">])</span> <span class="o">/</span> <span class="n">hy</span><span class="p">),</span><span class="n">image</span><span class="o">.</span><span class="n">T</span><span class="p">),</span>
+                                        <span class="n">np</span><span class="o">.</span><span class="n">sinc</span><span class="p">((</span><span class="n">x_lr</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span><span class="o">-</span><span class="n">x_hr</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,:])</span><span class="o">/</span> <span class="n">hx</span><span class="p">)</span> <span class="p">)</span> <span class="k">for</span> <span class="n">image</span> <span class="ow">in</span> <span class="n">images</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+
+    <span class="n">cos</span> <span class="o">=</span> <span class="n">angle</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">sin</span> <span class="o">=</span> <span class="n">angle</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="n">fft_shape</span> <span class="o">=</span> <span class="n">fft</span><span class="o">.</span><span class="n">_get_fft_shape</span><span class="p">(</span><span class="n">images</span><span class="p">,</span> <span class="n">images</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="n">padding</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">])</span>
+
+    <span class="n">X</span> <span class="o">=</span> <span class="n">fft</span><span class="o">.</span><span class="n">Fourier</span><span class="p">(</span><span class="n">images</span><span class="p">)</span>
+    <span class="c1">#Fourier transform</span>
+    <span class="n">X_fft</span> <span class="o">=</span> <span class="n">X</span><span class="o">.</span><span class="n">fft</span><span class="p">(</span><span class="n">fft_shape</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+
+    <span class="c1">#Shift elementary kernel</span>
+    <span class="n">shifter_y</span><span class="p">,</span> <span class="n">shifter_x</span> <span class="o">=</span> <span class="n">mk_shifter</span><span class="p">(</span><span class="n">fft_shape</span><span class="p">)</span>
+    <span class="c1">#Shifts values</span>
+    <span class="n">shift_y</span> <span class="o">=</span> <span class="n">shifter_y</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:]</span> <span class="o">**</span> <span class="p">(</span><span class="o">-</span><span class="n">y_hr</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span> <span class="o">*</span> <span class="n">cos</span><span class="o">/</span><span class="n">hy</span><span class="p">)</span>
+    <span class="n">shift_x</span> <span class="o">=</span> <span class="n">shifter_x</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:]</span> <span class="o">**</span> <span class="p">(</span><span class="o">-</span><span class="n">y_hr</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span> <span class="o">*</span> <span class="n">sin</span><span class="o">/</span><span class="n">hx</span><span class="p">)</span>
+    <span class="c1">#Apply shifts</span>
+    <span class="n">result_fft</span> <span class="o">=</span> <span class="n">X_fft</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">*</span> <span class="n">shift_y</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span>
+    <span class="n">result_fft</span> <span class="o">=</span> <span class="n">result_fft</span> <span class="o">*</span> <span class="n">shift_x</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:]</span>
+
+    <span class="c1">#Shape of the expected array</span>
+    <span class="n">result_shape</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">result_fft</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">result_fft</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">X</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">X</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]])</span>
+    <span class="c1">#Shifts applied in one direction</span>
+    <span class="n">result_shift</span> <span class="o">=</span> <span class="n">fft</span><span class="o">.</span><span class="n">Fourier</span><span class="o">.</span><span class="n">from_fft</span><span class="p">(</span><span class="n">result_fft</span><span class="p">,</span> <span class="n">fft_shape</span><span class="p">,</span> <span class="n">result_shape</span><span class="p">,</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span>
+    <span class="c1">#sinc kernels</span>
+    <span class="n">shy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sinc</span><span class="p">((</span><span class="n">y_lr</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:]</span> <span class="o">+</span> <span class="n">x_hr</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span> <span class="o">*</span> <span class="n">sin</span><span class="p">)</span><span class="o">/</span><span class="n">hy</span><span class="p">)</span>
+    <span class="n">shx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sinc</span><span class="p">((</span><span class="n">x_lr</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:]</span> <span class="o">-</span> <span class="n">x_hr</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span> <span class="o">*</span> <span class="n">cos</span><span class="p">)</span><span class="o">/</span><span class="n">hx</span><span class="p">)</span>
+
+    <span class="c1">#Sinc kernels in both direction</span>
+    <span class="n">result_y</span> <span class="o">=</span> <span class="p">(</span><span class="n">result_shift</span><span class="o">.</span><span class="n">image</span><span class="p">[:,</span> <span class="p">:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,:,</span> <span class="p">:]</span> <span class="o">*</span>
+                <span class="n">shy</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">])</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span> <span class="o">=</span> <span class="o">-</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="p">(</span><span class="n">result_y</span> <span class="o">*</span> <span class="n">shx</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,:,</span> <span class="p">:])</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">result</span></div>
 
 
-<div class="viewcode-block" id="fft_resample"><a class="viewcode-back" href="../../interpolation.html#scarlet.interpolation.fft_resample">[docs]</a><span class="k">def</span> <span class="nf">fft_resample</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">dy</span><span class="p">,</span> <span class="n">dx</span><span class="p">,</span> <span class="n">kernel</span><span class="o">=</span><span class="n">lanczos</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+
+<div class="viewcode-block" id="fft_resample"><a class="viewcode-back" href="../../api/scarlet.interpolation.html#scarlet.interpolation.fft_resample">[docs]</a><span class="k">def</span> <span class="nf">fft_resample</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">dy</span><span class="p">,</span> <span class="n">dx</span><span class="p">,</span> <span class="n">kernel</span><span class="o">=</span><span class="n">lanczos</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Translate the image by a fraction of a pixel</span>
 
 <span class="sd">    This method uses FFT&#39;s to convolve the image with a</span>
@@ -513,7 +510,7 @@
     <span class="k">return</span> <span class="n">project_image</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span></div>
 
 
-<div class="viewcode-block" id="get_common_padding"><a class="viewcode-back" href="../../interpolation.html#scarlet.interpolation.get_common_padding">[docs]</a><span class="k">def</span> <span class="nf">get_common_padding</span><span class="p">(</span><span class="n">img1</span><span class="p">,</span> <span class="n">img2</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<div class="viewcode-block" id="get_common_padding"><a class="viewcode-back" href="../../api/scarlet.interpolation.html#scarlet.interpolation.get_common_padding">[docs]</a><span class="k">def</span> <span class="nf">get_common_padding</span><span class="p">(</span><span class="n">img1</span><span class="p">,</span> <span class="n">img2</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Project two images to a common frame</span>
 
 <span class="sd">    It is assumed that the two images have the same center.</span>
@@ -552,7 +549,7 @@
     <span class="k">return</span> <span class="n">get_padding</span><span class="p">(</span><span class="n">h1</span><span class="p">,</span> <span class="n">w1</span><span class="p">),</span> <span class="n">get_padding</span><span class="p">(</span><span class="n">h2</span><span class="p">,</span> <span class="n">w2</span><span class="p">)</span></div>
 
 
-<div class="viewcode-block" id="sinc2D"><a class="viewcode-back" href="../../interpolation.html#scarlet.interpolation.sinc2D">[docs]</a><span class="k">def</span> <span class="nf">sinc2D</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<div class="viewcode-block" id="sinc2D"><a class="viewcode-back" href="../../api/scarlet.interpolation.html#scarlet.interpolation.sinc2D">[docs]</a><span class="k">def</span> <span class="nf">sinc2D</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
     <span class="sd">&#39;&#39;&#39;</span>
 <span class="sd">    2-D sinc function based on the product of 2 1-D sincs</span>
 
@@ -568,7 +565,7 @@
     <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sinc</span><span class="p">(</span><span class="n">y</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">sinc</span><span class="p">(</span><span class="n">x</span><span class="p">))</span></div>
 
 
-<div class="viewcode-block" id="subsample_function"><a class="viewcode-back" href="../../interpolation.html#scarlet.interpolation.subsample_function">[docs]</a><span class="k">def</span> <span class="nf">subsample_function</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">dNy</span><span class="p">,</span> <span class="n">dNx</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dy</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dx</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<div class="viewcode-block" id="subsample_function"><a class="viewcode-back" href="../../api/scarlet.interpolation.html#scarlet.interpolation.subsample_function">[docs]</a><span class="k">def</span> <span class="nf">subsample_function</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">dNy</span><span class="p">,</span> <span class="n">dNx</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dy</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dx</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Subsample a function</span>
 <span class="sd">    Given the expected pixel grid of a function, subsample that function</span>
 <span class="sd">    at a grid subdivided in x by `dNx` and y by `dNy`.</span>
@@ -591,7 +588,7 @@
     <span class="k">return</span> <span class="n">f</span><span class="p">(</span><span class="n">_y</span><span class="p">,</span> <span class="n">_x</span><span class="p">),</span> <span class="n">_y</span><span class="p">,</span> <span class="n">_x</span></div>
 
 
-<div class="viewcode-block" id="apply_2D_trapezoid_rule"><a class="viewcode-back" href="../../interpolation.html#scarlet.interpolation.apply_2D_trapezoid_rule">[docs]</a><span class="k">def</span> <span class="nf">apply_2D_trapezoid_rule</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">dNy</span><span class="p">,</span> <span class="n">dNx</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dy</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dx</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<div class="viewcode-block" id="apply_2D_trapezoid_rule"><a class="viewcode-back" href="../../api/scarlet.interpolation.html#scarlet.interpolation.apply_2D_trapezoid_rule">[docs]</a><span class="k">def</span> <span class="nf">apply_2D_trapezoid_rule</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">dNy</span><span class="p">,</span> <span class="n">dNx</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dy</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dx</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Use the trapezoid rule to integrate over a subsampled function</span>
 <span class="sd">    2D implementation of the trapezoid rule.</span>
 <span class="sd">    See `apply_trapezoid_rule` for a description, with the difference</span>
@@ -617,54 +614,23 @@
     <span class="k">return</span> <span class="n">volumes</span></div>
 </pre></div>
 
-           </div>
-           
           </div>
-          <footer>
-  
-
-  <hr/>
-
-  <div role="contentinfo">
-    <p>
-        &copy; Copyright 2018, Fred Moolekamp and Peter Melchior
-
-    </p>
-  </div>
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
-
-</footer>
-
+          
         </div>
       </div>
-
-    </section>
-
+    <div class="clearer"></div>
   </div>
-  
-
-
-  
+    <div class="footer">
+      &copy;2018-2019, Fred Moolekamp and Peter Melchior.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.3.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
 
     
+
     
-      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
-        <script type="text/javascript" src="../../_static/jquery.js"></script>
-        <script type="text/javascript" src="../../_static/underscore.js"></script>
-        <script type="text/javascript" src="../../_static/doctools.js"></script>
-        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
-        <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "ignoreClass": "document", "processClass": "math|output_area"}})</script>
-    
-
-  
-
-  <script type="text/javascript" src="../../_static/js/theme.js"></script>
-
-  <script type="text/javascript">
-      jQuery(function () {
-          SphinxRtdTheme.Navigation.enable(true);
-      });
-  </script> 
-
-</body>
+  </body>
 </html>

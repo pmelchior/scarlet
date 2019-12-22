@@ -1,0 +1,319 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>scarlet.constraint &#8212; scarlet  documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "ignoreClass": "document", "processClass": "math|output_area"}})</script>
+    <link rel="canonical" href="api/_modules/scarlet/constraint.html" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../index.html">
+              <img class="logo" src="../../_static/logo.svg" alt="Logo"/>
+            </a></p>
+<h3><a href="../../index.html">Table of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../0-quickstart.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../1-concepts.html">Core Concepts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorials.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/scarlet.html">API Documentation</a></li>
+</ul>
+
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for scarlet.constraint</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">partial</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">proxmin</span>
+
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">interpolation</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">operator</span>
+<span class="kn">from</span> <span class="nn">.cache</span> <span class="kn">import</span> <span class="n">Cache</span>
+
+<div class="viewcode-block" id="Constraint"><a class="viewcode-back" href="../../api/scarlet.constraint.html#scarlet.constraint.Constraint">[docs]</a><span class="k">class</span> <span class="nc">Constraint</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Constraint base class</span>
+
+<span class="sd">    Constraints encode expected properties of the solution.</span>
+<span class="sd">    Mathematically, they are the consequence of adding potentially</span>
+<span class="sd">    non-differentiable penalty functions to the model fitting loss function.</span>
+
+<span class="sd">    As we use proximal gradient methods, all constraints act as proxmimal</span>
+<span class="sd">    operators, i.e. they need to have the following signature:</span>
+
+<span class="sd">        f(X, step) -&gt; X&#39;</span>
+
+<span class="sd">    where X&#39; is the closest point to X that satisfies the feasibility criterion</span>
+<span class="sd">    of the penalty function.</span>
+
+<span class="sd">    For reference, every operator of the `proxmin` package yields a valid</span>
+<span class="sd">    `Constraint`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">f</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Constraint base class</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        f: proximal mapping</span>
+<span class="sd">            Signature: f(X, step) -&gt; X&#39;</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">f</span> <span class="o">=</span> <span class="n">f</span>
+
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">step</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Proximal mapping</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        X: array</span>
+<span class="sd">            Optimimzation parameter</span>
+<span class="sd">        step: float or array of same shape as X</span>
+<span class="sd">            Step size for the proximal mapping</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        X&#39;: closest feasible match to X</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">f</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">f</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">step</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">X</span></div>
+
+
+<div class="viewcode-block" id="ConstraintChain"><a class="viewcode-back" href="../../api/scarlet.constraint.html#scarlet.constraint.ConstraintChain">[docs]</a><span class="k">class</span> <span class="nc">ConstraintChain</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;An ordered list of `Constraint`s.</span>
+
+<span class="sd">    Uses the concept of alternating projections onto convex sets to find</span>
+<span class="sd">    solutions that are feasible according to a list of constraints.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    constraints: list of `Constraint`</span>
+<span class="sd">    repeat: int</span>
+<span class="sd">        How often the constrain chain is repeated to ensure feasibility</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">constraints</span><span class="p">,</span> <span class="n">repeat</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">repeat</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="ow">and</span> <span class="n">repeat</span> <span class="o">&gt;=</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">constraints</span> <span class="o">=</span> <span class="n">constraints</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">repeat</span> <span class="o">=</span> <span class="n">repeat</span>
+
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">step</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">repeat</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">constraints</span><span class="p">:</span>
+                <span class="n">X</span> <span class="o">=</span> <span class="n">c</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">step</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">X</span></div>
+
+
+<div class="viewcode-block" id="PositivityConstraint"><a class="viewcode-back" href="../../api/scarlet.constraint.html#scarlet.constraint.PositivityConstraint">[docs]</a><span class="k">class</span> <span class="nc">PositivityConstraint</span><span class="p">(</span><span class="n">Constraint</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Allow only non-negative elements.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">proxmin</span><span class="o">.</span><span class="n">operators</span><span class="o">.</span><span class="n">prox_plus</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="NormalizationConstraint"><a class="viewcode-back" href="../../api/scarlet.constraint.html#scarlet.constraint.NormalizationConstraint">[docs]</a><span class="k">class</span> <span class="nc">NormalizationConstraint</span><span class="p">(</span><span class="n">Constraint</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;sum&#39;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Normalize X to unity.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        type: in [&#39;sum&#39;, &#39;max&#39;]</span>
+<span class="sd">            Whether the sum or the maximum is set to unity.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">type</span> <span class="o">=</span> <span class="nb">type</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+        <span class="k">assert</span> <span class="nb">type</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;sum&#39;</span><span class="p">,</span> <span class="s1">&#39;max&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">type</span> <span class="o">=</span> <span class="nb">type</span>
+
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">step</span><span class="p">):</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s2">&quot;sum&quot;</span><span class="p">:</span>
+            <span class="n">X</span> <span class="o">/=</span> <span class="n">X</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">X</span> <span class="o">/=</span> <span class="n">X</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">X</span></div>
+
+
+<div class="viewcode-block" id="L0Constraint"><a class="viewcode-back" href="../../api/scarlet.constraint.html#scarlet.constraint.L0Constraint">[docs]</a><span class="k">class</span> <span class="nc">L0Constraint</span><span class="p">(</span><span class="n">Constraint</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">thresh</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;relative&#39;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;L0 norm (sparsity) penalty</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        thresh: float</span>
+<span class="sd">            regularization strength</span>
+<span class="sd">        type: [&#39;relative&#39;, &#39;absolute&#39;]</span>
+<span class="sd">            if the penalty is expressed in units of the function value (relative)</span>
+<span class="sd">            or in units of the variable X (absolute).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">partial</span><span class="p">(</span><span class="n">proxmin</span><span class="o">.</span><span class="n">operators</span><span class="o">.</span><span class="n">prox_hard</span><span class="p">,</span> <span class="n">thresh</span><span class="o">=</span><span class="n">thresh</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">type</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="L1Constraint"><a class="viewcode-back" href="../../api/scarlet.constraint.html#scarlet.constraint.L1Constraint">[docs]</a><span class="k">class</span> <span class="nc">L1Constraint</span><span class="p">(</span><span class="n">Constraint</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">thresh</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;relative&#39;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;L1 norm (sparsity) penalty</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        thresh: regularization strength</span>
+<span class="sd">        type: [&#39;relative&#39;, &#39;absolute&#39;]</span>
+<span class="sd">            if the penalty is expressed in units of the function value (relative)</span>
+<span class="sd">            or in units of the variable X (absolute).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">partial</span><span class="p">(</span><span class="n">proxmin</span><span class="o">.</span><span class="n">operators</span><span class="o">.</span><span class="n">prox_soft</span><span class="p">,</span> <span class="n">thresh</span><span class="o">=</span><span class="n">thresh</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">type</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="ThresholdConstraint"><a class="viewcode-back" href="../../api/scarlet.constraint.html#scarlet.constraint.ThresholdConstraint">[docs]</a><span class="k">class</span> <span class="nc">ThresholdConstraint</span><span class="p">(</span><span class="n">Constraint</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Set a cutoff threshold for pixels below the noise</span>
+
+<span class="sd">    Use the log histogram of pixel values to determine when the</span>
+<span class="sd">    source is fitting noise. This function works well to prevent</span>
+<span class="sd">    faint sources from growing large footprints but for large</span>
+<span class="sd">    diffuse galaxies with a wide range of pixel values this</span>
+<span class="sd">    does not work as well.</span>
+
+<span class="sd">    The region that contains flux above the threshold is contained</span>
+<span class="sd">    in `component.bboxes[&quot;thresh&quot;]`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">step</span><span class="p">):</span>
+        <span class="n">thresh</span><span class="p">,</span> <span class="n">_bins</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">threshold</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">proxmin</span><span class="o">.</span><span class="n">operators</span><span class="o">.</span><span class="n">prox_hard_plus</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">step</span><span class="p">,</span> <span class="n">thresh</span><span class="o">=</span><span class="n">thresh</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;absolute&#39;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ThresholdConstraint.threshold"><a class="viewcode-back" href="../../api/scarlet.constraint.html#scarlet.constraint.ThresholdConstraint.threshold">[docs]</a>    <span class="k">def</span> <span class="nf">threshold</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">morph</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Find the threshold value for a given morphology</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">_morph</span> <span class="o">=</span> <span class="n">morph</span><span class="p">[</span><span class="n">morph</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]</span>
+        <span class="n">_bins</span> <span class="o">=</span> <span class="mi">50</span>
+        <span class="c1"># Decrease the bin size for sources with a small number of pixels</span>
+        <span class="k">if</span> <span class="n">_morph</span><span class="o">.</span><span class="n">size</span> <span class="o">&lt;</span> <span class="mi">500</span><span class="p">:</span>
+            <span class="n">_bins</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int</span><span class="p">(</span><span class="n">_morph</span><span class="o">.</span><span class="n">size</span><span class="o">/</span><span class="mi">10</span><span class="p">),</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">_bins</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="k">return</span> <span class="mi">0</span><span class="p">,</span> <span class="n">_bins</span>
+        <span class="n">hist</span><span class="p">,</span> <span class="n">bins</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">histogram</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">_morph</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">),</span> <span class="n">_bins</span><span class="p">)</span>
+        <span class="n">cutoff</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">hist</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="c1"># If all of the pixels are used there is no need to threshold</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">cutoff</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mi">0</span><span class="p">,</span> <span class="n">_bins</span>
+        <span class="k">return</span> <span class="mi">10</span><span class="o">**</span><span class="n">bins</span><span class="p">[</span><span class="n">cutoff</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]],</span> <span class="n">_bins</span></div></div>
+
+<div class="viewcode-block" id="MonotonicityConstraint"><a class="viewcode-back" href="../../api/scarlet.constraint.html#scarlet.constraint.MonotonicityConstraint">[docs]</a><span class="k">class</span> <span class="nc">MonotonicityConstraint</span><span class="p">(</span><span class="n">Constraint</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Make morphology monotonically decrease from the center</span>
+
+<span class="sd">    See `~scarlet.operator.prox_monotonic`</span>
+<span class="sd">    for a description of the other parameters.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">use_nearest</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">thresh</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">use_nearest</span> <span class="o">=</span> <span class="n">use_nearest</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">thresh</span> <span class="o">=</span> <span class="n">thresh</span>
+
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">morph</span><span class="p">,</span> <span class="n">step</span><span class="p">):</span>
+        <span class="n">shape</span> <span class="o">=</span> <span class="n">morph</span><span class="o">.</span><span class="n">shape</span>
+        <span class="n">center</span> <span class="o">=</span> <span class="p">(</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">//</span> <span class="mi">2</span><span class="p">,</span> <span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">//</span> <span class="mi">2</span><span class="p">)</span>
+
+        <span class="c1"># get prox from the cache</span>
+        <span class="n">prox_name</span> <span class="o">=</span> <span class="s2">&quot;operator.prox_strict_monotonic&quot;</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="n">center</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_nearest</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">thresh</span><span class="p">)</span>
+        <span class="c1"># The creation of this operator is expensive,</span>
+        <span class="c1"># so load it from memory if possible.</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">prox</span> <span class="o">=</span> <span class="n">Cache</span><span class="o">.</span><span class="n">check</span><span class="p">(</span><span class="n">prox_name</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="n">prox</span> <span class="o">=</span> <span class="n">operator</span><span class="o">.</span><span class="n">prox_strict_monotonic</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="n">use_nearest</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">use_nearest</span><span class="p">,</span><span class="n">thresh</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">thresh</span><span class="p">,</span> <span class="n">center</span><span class="o">=</span><span class="n">center</span><span class="p">)</span>
+
+            <span class="n">Cache</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">prox_name</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">prox</span><span class="p">)</span>
+
+        <span class="c1"># apply the prox</span>
+        <span class="k">return</span> <span class="n">prox</span><span class="p">(</span><span class="n">morph</span><span class="p">,</span> <span class="n">step</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="SymmetryConstraint"><a class="viewcode-back" href="../../api/scarlet.constraint.html#scarlet.constraint.SymmetryConstraint">[docs]</a><span class="k">class</span> <span class="nc">SymmetryConstraint</span><span class="p">(</span><span class="n">Constraint</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Make the source symmetric about its center</span>
+
+<span class="sd">    See `~scarlet.operator.prox_uncentered_symmetry`</span>
+<span class="sd">    for a description of the parameters.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strength</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">strength</span> <span class="o">=</span> <span class="n">strength</span>
+
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">morph</span><span class="p">,</span> <span class="n">step</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">operator</span><span class="o">.</span><span class="n">prox_soft_symmetry</span><span class="p">(</span><span class="n">morph</span><span class="p">,</span> <span class="n">step</span><span class="p">,</span> <span class="n">strength</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">strength</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="CenterOnConstraint"><a class="viewcode-back" href="../../api/scarlet.constraint.html#scarlet.constraint.CenterOnConstraint">[docs]</a><span class="k">class</span> <span class="nc">CenterOnConstraint</span><span class="p">(</span><span class="n">Constraint</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Sets the center pixel to a tiny non-zero value</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tiny</span><span class="o">=</span><span class="mf">1e-6</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tiny</span> <span class="o">=</span> <span class="n">tiny</span>
+
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">morph</span><span class="p">,</span> <span class="n">step</span><span class="p">):</span>
+        <span class="n">shape</span> <span class="o">=</span> <span class="n">morph</span><span class="o">.</span><span class="n">shape</span>
+        <span class="n">center</span> <span class="o">=</span> <span class="p">(</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">//</span> <span class="mi">2</span><span class="p">,</span> <span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">//</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="n">morph</span><span class="p">[</span><span class="n">center</span><span class="p">]</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">morph</span><span class="p">[</span><span class="n">center</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">tiny</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">morph</span></div>
+
+<div class="viewcode-block" id="AllOnConstraint"><a class="viewcode-back" href="../../api/scarlet.constraint.html#scarlet.constraint.AllOnConstraint">[docs]</a><span class="k">class</span> <span class="nc">AllOnConstraint</span><span class="p">(</span><span class="n">Constraint</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Add to all elements a tiny non-zero value</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tiny</span><span class="o">=</span><span class="mf">1e-6</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tiny</span> <span class="o">=</span> <span class="n">tiny</span>
+
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">step</span><span class="p">):</span>
+        <span class="n">X</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">tiny</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">X</span></div>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &copy;2018-2019, Fred Moolekamp and Peter Melchior.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.3.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

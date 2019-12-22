@@ -1,0 +1,358 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>scarlet.constraint &#8212; scarlet  documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "ignoreClass": "document", "processClass": "math|output_area"}})</script>
+    <link rel="canonical" href="api/api/scarlet.constraint.html" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="scarlet.display" href="scarlet.display.html" />
+    <link rel="prev" title="scarlet.component" href="scarlet.component.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../index.html">
+              <img class="logo" src="../_static/logo.svg" alt="Logo"/>
+            </a></p>
+<h3><a href="../index.html">Table of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../0-quickstart.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../1-concepts.html">Core Concepts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials.html">Tutorials</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="scarlet.html">API Documentation</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="scarlet.bbox.html">scarlet.bbox</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.blend.html">scarlet.blend</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.cache.html">scarlet.cache</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.component.html">scarlet.component</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">scarlet.constraint</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.display.html">scarlet.display</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.fft.html">scarlet.fft</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.frame.html">scarlet.frame</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.interpolation.html">scarlet.interpolation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.measure.html">scarlet.measure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.observation.html">scarlet.observation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.operator.html">scarlet.operator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.parameter.html">scarlet.parameter</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.psf.html">scarlet.psf</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.resampling.html">scarlet.resampling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.source.html">scarlet.source</a></li>
+</ul>
+</li>
+</ul>
+
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-scarlet.constraint">
+<span id="scarlet-constraint"></span><h1>scarlet.constraint<a class="headerlink" href="#module-scarlet.constraint" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="scarlet.constraint.AllOnConstraint">
+<em class="property">class </em><code class="sig-prename descclassname">scarlet.constraint.</code><code class="sig-name descname">AllOnConstraint</code><span class="sig-paren">(</span><em class="sig-param">tiny=1e-06</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/constraint.html#AllOnConstraint"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.constraint.AllOnConstraint" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#scarlet.constraint.Constraint" title="scarlet.constraint.Constraint"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.constraint.Constraint</span></code></a></p>
+<p>Add to all elements a tiny non-zero value</p>
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">__call__</span></code>(self, X, step)</p></td>
+<td><p>Proximal mapping</p></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="scarlet.constraint.CenterOnConstraint">
+<em class="property">class </em><code class="sig-prename descclassname">scarlet.constraint.</code><code class="sig-name descname">CenterOnConstraint</code><span class="sig-paren">(</span><em class="sig-param">tiny=1e-06</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/constraint.html#CenterOnConstraint"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.constraint.CenterOnConstraint" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#scarlet.constraint.Constraint" title="scarlet.constraint.Constraint"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.constraint.Constraint</span></code></a></p>
+<p>Sets the center pixel to a tiny non-zero value</p>
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">__call__</span></code>(self, morph, step)</p></td>
+<td><p>Proximal mapping</p></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="scarlet.constraint.Constraint">
+<em class="property">class </em><code class="sig-prename descclassname">scarlet.constraint.</code><code class="sig-name descname">Constraint</code><span class="sig-paren">(</span><em class="sig-param">f=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/constraint.html#Constraint"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.constraint.Constraint" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.8)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Constraint base class</p>
+<p>Constraints encode expected properties of the solution.
+Mathematically, they are the consequence of adding potentially
+non-differentiable penalty functions to the model fitting loss function.</p>
+<p>As we use proximal gradient methods, all constraints act as proxmimal
+operators, i.e. they need to have the following signature:</p>
+<blockquote>
+<div><p>f(X, step) -&gt; X’</p>
+</div></blockquote>
+<p>where X’ is the closest point to X that satisfies the feasibility criterion
+of the penalty function.</p>
+<p>For reference, every operator of the <cite>proxmin</cite> package yields a valid
+<cite>Constraint</cite>.</p>
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">__call__</span></code>(self, X, step)</p></td>
+<td><p>Proximal mapping</p></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="scarlet.constraint.ConstraintChain">
+<em class="property">class </em><code class="sig-prename descclassname">scarlet.constraint.</code><code class="sig-name descname">ConstraintChain</code><span class="sig-paren">(</span><em class="sig-param">*constraints</em>, <em class="sig-param">repeat=1</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/constraint.html#ConstraintChain"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.constraint.ConstraintChain" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.8)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>An ordered list of <a href="#id1"><span class="problematic" id="id2">`</span></a>Constraint`s.</p>
+<p>Uses the concept of alternating projections onto convex sets to find
+solutions that are feasible according to a list of constraints.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>constraints: list of `Constraint`</strong></dt><dd></dd>
+<dt><strong>repeat: int</strong></dt><dd><p>How often the constrain chain is repeated to ensure feasibility</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">__call__</span></code>(self, X, step)</p></td>
+<td><p>Call self as a function.</p></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="scarlet.constraint.L0Constraint">
+<em class="property">class </em><code class="sig-prename descclassname">scarlet.constraint.</code><code class="sig-name descname">L0Constraint</code><span class="sig-paren">(</span><em class="sig-param">thresh</em>, <em class="sig-param">type='relative'</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/constraint.html#L0Constraint"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.constraint.L0Constraint" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#scarlet.constraint.Constraint" title="scarlet.constraint.Constraint"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.constraint.Constraint</span></code></a></p>
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">__call__</span></code>(self, X, step)</p></td>
+<td><p>Proximal mapping</p></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="scarlet.constraint.L1Constraint">
+<em class="property">class </em><code class="sig-prename descclassname">scarlet.constraint.</code><code class="sig-name descname">L1Constraint</code><span class="sig-paren">(</span><em class="sig-param">thresh</em>, <em class="sig-param">type='relative'</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/constraint.html#L1Constraint"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.constraint.L1Constraint" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#scarlet.constraint.Constraint" title="scarlet.constraint.Constraint"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.constraint.Constraint</span></code></a></p>
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">__call__</span></code>(self, X, step)</p></td>
+<td><p>Proximal mapping</p></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="scarlet.constraint.MonotonicityConstraint">
+<em class="property">class </em><code class="sig-prename descclassname">scarlet.constraint.</code><code class="sig-name descname">MonotonicityConstraint</code><span class="sig-paren">(</span><em class="sig-param">use_nearest=False</em>, <em class="sig-param">thresh=0</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/constraint.html#MonotonicityConstraint"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.constraint.MonotonicityConstraint" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#scarlet.constraint.Constraint" title="scarlet.constraint.Constraint"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.constraint.Constraint</span></code></a></p>
+<p>Make morphology monotonically decrease from the center</p>
+<p>See <cite>~scarlet.operator.prox_monotonic</cite>
+for a description of the other parameters.</p>
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">__call__</span></code>(self, morph, step)</p></td>
+<td><p>Proximal mapping</p></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="scarlet.constraint.NormalizationConstraint">
+<em class="property">class </em><code class="sig-prename descclassname">scarlet.constraint.</code><code class="sig-name descname">NormalizationConstraint</code><span class="sig-paren">(</span><em class="sig-param">type='sum'</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/constraint.html#NormalizationConstraint"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.constraint.NormalizationConstraint" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#scarlet.constraint.Constraint" title="scarlet.constraint.Constraint"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.constraint.Constraint</span></code></a></p>
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">__call__</span></code>(self, X, step)</p></td>
+<td><p>Proximal mapping</p></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="scarlet.constraint.PositivityConstraint">
+<em class="property">class </em><code class="sig-prename descclassname">scarlet.constraint.</code><code class="sig-name descname">PositivityConstraint</code><a class="reference internal" href="../_modules/scarlet/constraint.html#PositivityConstraint"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.constraint.PositivityConstraint" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#scarlet.constraint.Constraint" title="scarlet.constraint.Constraint"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.constraint.Constraint</span></code></a></p>
+<p>Allow only non-negative elements.</p>
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">__call__</span></code>(self, X, step)</p></td>
+<td><p>Proximal mapping</p></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="scarlet.constraint.SymmetryConstraint">
+<em class="property">class </em><code class="sig-prename descclassname">scarlet.constraint.</code><code class="sig-name descname">SymmetryConstraint</code><span class="sig-paren">(</span><em class="sig-param">strength=1</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/constraint.html#SymmetryConstraint"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.constraint.SymmetryConstraint" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#scarlet.constraint.Constraint" title="scarlet.constraint.Constraint"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.constraint.Constraint</span></code></a></p>
+<p>Make the source symmetric about its center</p>
+<p>See <cite>~scarlet.operator.prox_uncentered_symmetry</cite>
+for a description of the parameters.</p>
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">__call__</span></code>(self, morph, step)</p></td>
+<td><p>Proximal mapping</p></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="scarlet.constraint.ThresholdConstraint">
+<em class="property">class </em><code class="sig-prename descclassname">scarlet.constraint.</code><code class="sig-name descname">ThresholdConstraint</code><span class="sig-paren">(</span><em class="sig-param">f=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/constraint.html#ThresholdConstraint"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.constraint.ThresholdConstraint" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#scarlet.constraint.Constraint" title="scarlet.constraint.Constraint"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.constraint.Constraint</span></code></a></p>
+<p>Set a cutoff threshold for pixels below the noise</p>
+<p>Use the log histogram of pixel values to determine when the
+source is fitting noise. This function works well to prevent
+faint sources from growing large footprints but for large
+diffuse galaxies with a wide range of pixel values this
+does not work as well.</p>
+<p>The region that contains flux above the threshold is contained
+in <cite>component.bboxes[“thresh”]</cite>.</p>
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">__call__</span></code>(self, X, step)</p></td>
+<td><p>Proximal mapping</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.constraint.ThresholdConstraint.threshold" title="scarlet.constraint.ThresholdConstraint.threshold"><code class="xref py py-obj docutils literal notranslate"><span class="pre">threshold</span></code></a>(self, morph)</p></td>
+<td><p>Find the threshold value for a given morphology</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="scarlet.constraint.ThresholdConstraint.threshold">
+<code class="sig-name descname">threshold</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">morph</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/constraint.html#ThresholdConstraint.threshold"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.constraint.ThresholdConstraint.threshold" title="Permalink to this definition">¶</a></dt>
+<dd><p>Find the threshold value for a given morphology</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &copy;2018-2019, Fred Moolekamp and Peter Melchior.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.3.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/api/scarlet.constraint.rst"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

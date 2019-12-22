@@ -1,0 +1,156 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>scarlet.measure &#8212; scarlet  documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "ignoreClass": "document", "processClass": "math|output_area"}})</script>
+    <link rel="canonical" href="api/api/scarlet.measure.html" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="scarlet.observation" href="scarlet.observation.html" />
+    <link rel="prev" title="scarlet.interpolation" href="scarlet.interpolation.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../index.html">
+              <img class="logo" src="../_static/logo.svg" alt="Logo"/>
+            </a></p>
+<h3><a href="../index.html">Table of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../0-quickstart.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../1-concepts.html">Core Concepts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials.html">Tutorials</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="scarlet.html">API Documentation</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="scarlet.bbox.html">scarlet.bbox</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.blend.html">scarlet.blend</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.cache.html">scarlet.cache</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.component.html">scarlet.component</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.constraint.html">scarlet.constraint</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.display.html">scarlet.display</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.fft.html">scarlet.fft</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.frame.html">scarlet.frame</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.interpolation.html">scarlet.interpolation</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">scarlet.measure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.observation.html">scarlet.observation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.operator.html">scarlet.operator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.parameter.html">scarlet.parameter</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.psf.html">scarlet.psf</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.resampling.html">scarlet.resampling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.source.html">scarlet.source</a></li>
+</ul>
+</li>
+</ul>
+
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-scarlet.measure">
+<span id="scarlet-measure"></span><h1>scarlet.measure<a class="headerlink" href="#module-scarlet.measure" title="Permalink to this headline">¶</a></h1>
+<dl class="function">
+<dt id="scarlet.measure.centroid">
+<code class="sig-prename descclassname">scarlet.measure.</code><code class="sig-name descname">centroid</code><span class="sig-paren">(</span><em class="sig-param">component</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/measure.html#centroid"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.measure.centroid" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine centroid of model</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>component: `scarlet.Component` or `scarlet.ComponentTree`</strong></dt><dd><p>Component to analyze</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="scarlet.measure.flux">
+<code class="sig-prename descclassname">scarlet.measure.</code><code class="sig-name descname">flux</code><span class="sig-paren">(</span><em class="sig-param">component</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/measure.html#flux"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.measure.flux" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine flux in every channel</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>component: `scarlet.Component` or `scarlet.ComponentTree`</strong></dt><dd><p>Component to analyze</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="scarlet.measure.get_model">
+<code class="sig-prename descclassname">scarlet.measure.</code><code class="sig-name descname">get_model</code><span class="sig-paren">(</span><em class="sig-param">component</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/measure.html#get_model"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.measure.get_model" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="scarlet.measure.max_pixel">
+<code class="sig-prename descclassname">scarlet.measure.</code><code class="sig-name descname">max_pixel</code><span class="sig-paren">(</span><em class="sig-param">component</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/measure.html#max_pixel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.measure.max_pixel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine pixel with maximum value</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>component: `scarlet.Component` or `scarlet.ComponentTree`</strong></dt><dd><p>Component to analyze</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &copy;2018-2019, Fred Moolekamp and Peter Melchior.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.3.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/api/scarlet.measure.rst"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

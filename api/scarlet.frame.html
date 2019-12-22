@@ -1,0 +1,191 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>scarlet.frame &#8212; scarlet  documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "ignoreClass": "document", "processClass": "math|output_area"}})</script>
+    <link rel="canonical" href="api/api/scarlet.frame.html" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="scarlet.interpolation" href="scarlet.interpolation.html" />
+    <link rel="prev" title="scarlet.fft" href="scarlet.fft.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../index.html">
+              <img class="logo" src="../_static/logo.svg" alt="Logo"/>
+            </a></p>
+<h3><a href="../index.html">Table of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../0-quickstart.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../1-concepts.html">Core Concepts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials.html">Tutorials</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="scarlet.html">API Documentation</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="scarlet.bbox.html">scarlet.bbox</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.blend.html">scarlet.blend</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.cache.html">scarlet.cache</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.component.html">scarlet.component</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.constraint.html">scarlet.constraint</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.display.html">scarlet.display</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.fft.html">scarlet.fft</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">scarlet.frame</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.interpolation.html">scarlet.interpolation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.measure.html">scarlet.measure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.observation.html">scarlet.observation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.operator.html">scarlet.operator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.parameter.html">scarlet.parameter</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.psf.html">scarlet.psf</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.resampling.html">scarlet.resampling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.source.html">scarlet.source</a></li>
+</ul>
+</li>
+</ul>
+
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-scarlet.frame">
+<span id="scarlet-frame"></span><h1>scarlet.frame<a class="headerlink" href="#module-scarlet.frame" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="scarlet.frame.Frame">
+<em class="property">class </em><code class="sig-prename descclassname">scarlet.frame.</code><code class="sig-name descname">Frame</code><span class="sig-paren">(</span><em class="sig-param">shape_or_box</em>, <em class="sig-param">wcs=None</em>, <em class="sig-param">psfs=None</em>, <em class="sig-param">channels=None</em>, <em class="sig-param">dtype=&lt;class 'numpy.float32'&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/frame.html#Frame"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.frame.Frame" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="scarlet.bbox.html#scarlet.bbox.Box" title="scarlet.bbox.Box"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.bbox.Box</span></code></a></p>
+<p>Spatial and spectral characteristics of the data</p>
+<dl class="field-list simple">
+<dt class="field-odd">Attributes</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>shape_or_box: tuple</strong></dt><dd><p>shape tuple (Channel, Height, Width) or image/cube with a shape</p>
+</dd>
+<dt><strong>wcs: TBD</strong></dt><dd><p>World Coordinates</p>
+</dd>
+<dt><strong>psfs: `scarlet.PSF` or its arguments</strong></dt><dd><p>PSF in each channel</p>
+</dd>
+<dt><strong>channels: list of hashable elements</strong></dt><dd><p>Names/identifiers of spectral channels</p>
+</dd>
+<dt><strong>dtype: `numpy.dtype`</strong></dt><dd><p>Dtype to represent the data.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">contains</span></code>(self, p)</p></td>
+<td><p>Whether the box cotains a given coordinate <cite>p</cite></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">extract_from</span></code>(self, image[, sub])</p></td>
+<td><p>Extract sub-image described by this bbox from image</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_bounds</span></code>(front, back, bottom, top, left, …)</p></td>
+<td><p>Initialize a box from its bounds</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_data</span></code>(X[, min_value])</p></td>
+<td><p>Define range of <cite>X</cite> above <cite>min_value</cite></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_image</span></code>(image)</p></td>
+<td><p>Initialize a box to cover <cite>image</cite></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.frame.Frame.get_pixel" title="scarlet.frame.Frame.get_pixel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_pixel</span></code></a>(self, sky_coord)</p></td>
+<td><p>Get the pixel coordinate from a world coordinate If there is no WCS associated with the <cite>Scene</cite>, meaning the data frame and model frame are the same, then this just returns <cite>sky_coord</cite>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.frame.Frame.get_sky_coord" title="scarlet.frame.Frame.get_sky_coord"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_sky_coord</span></code></a>(self, pixel)</p></td>
+<td><p>Get the world coordinate for a pixel coordinate If there is no WCS associated with the <cite>Scene</cite>, meaning the data frame and model frame are the same, then this just returns <cite>pixel</cite>.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">insert_into</span></code>(self, image, sub)</p></td>
+<td><p>Insert <cite>sub</cite> into <cite>image</cite> according to this bbox</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">slices_for</span></code>(self, im_or_shape)</p></td>
+<td><p>Slices for <cite>im_or_shape</cite> to be limited to this bounding box.</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="scarlet.frame.Frame.get_pixel">
+<code class="sig-name descname">get_pixel</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">sky_coord</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/frame.html#Frame.get_pixel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.frame.Frame.get_pixel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the pixel coordinate from a world coordinate
+If there is no WCS associated with the <cite>Scene</cite>,
+meaning the data frame and model frame are the same,
+then this just returns <cite>sky_coord</cite>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.frame.Frame.get_sky_coord">
+<code class="sig-name descname">get_sky_coord</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">pixel</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/frame.html#Frame.get_sky_coord"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.frame.Frame.get_sky_coord" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the world coordinate for a pixel coordinate
+If there is no WCS associated with the <cite>Scene</cite>,
+meaning the data frame and model frame are the same,
+then this just returns <cite>pixel</cite>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.frame.Frame.psf">
+<em class="property">property </em><code class="sig-name descname">psf</code><a class="headerlink" href="#scarlet.frame.Frame.psf" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &copy;2018-2019, Fred Moolekamp and Peter Melchior.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.3.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/api/scarlet.frame.rst"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

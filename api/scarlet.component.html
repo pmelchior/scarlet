@@ -1,0 +1,719 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>scarlet.component &#8212; scarlet  documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "ignoreClass": "document", "processClass": "math|output_area"}})</script>
+    <link rel="canonical" href="api/api/scarlet.component.html" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="scarlet.constraint" href="scarlet.constraint.html" />
+    <link rel="prev" title="scarlet.cache" href="scarlet.cache.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../index.html">
+              <img class="logo" src="../_static/logo.svg" alt="Logo"/>
+            </a></p>
+<h3><a href="../index.html">Table of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../0-quickstart.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../1-concepts.html">Core Concepts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials.html">Tutorials</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="scarlet.html">API Documentation</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="scarlet.bbox.html">scarlet.bbox</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.blend.html">scarlet.blend</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.cache.html">scarlet.cache</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">scarlet.component</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.constraint.html">scarlet.constraint</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.display.html">scarlet.display</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.fft.html">scarlet.fft</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.frame.html">scarlet.frame</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.interpolation.html">scarlet.interpolation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.measure.html">scarlet.measure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.observation.html">scarlet.observation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.operator.html">scarlet.operator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.parameter.html">scarlet.parameter</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.psf.html">scarlet.psf</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.resampling.html">scarlet.resampling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.source.html">scarlet.source</a></li>
+</ul>
+</li>
+</ul>
+
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-scarlet.component">
+<span id="scarlet-component"></span><h1>scarlet.component<a class="headerlink" href="#module-scarlet.component" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="scarlet.component.Component">
+<em class="property">class </em><code class="sig-prename descclassname">scarlet.component.</code><code class="sig-name descname">Component</code><span class="sig-paren">(</span><em class="sig-param">frame</em>, <em class="sig-param">*parameters</em>, <em class="sig-param">bbox=None</em>, <em class="sig-param">**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/component.html#Component"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.component.Component" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/abc.html#abc.ABC" title="(in Python v3.8)"><code class="xref py py-class docutils literal notranslate"><span class="pre">abc.ABC</span></code></a></p>
+<p>A single component in a blend.</p>
+<p>This class acts as base for building a complex <a class="reference internal" href="scarlet.blend.html#scarlet.blend.Blend" title="scarlet.blend.Blend"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.blend.Blend</span></code></a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>frame: `~scarlet.Frame`</strong></dt><dd><p>The spectral and spatial characteristics of this component.</p>
+</dd>
+<dt><strong>parameters: list of `~scarlet.Parameter`</strong></dt><dd></dd>
+<dt><strong>bbox: `~scarlet.Box`</strong></dt><dd><p>Spatial bounding box of the morphology.</p>
+</dd>
+<dt><strong>kwargs: dict</strong></dt><dd><p>Auxiliary information attached to this component.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Attributes</dt>
+<dd class="field-even"><dl class="simple">
+<dt><a class="reference internal" href="#scarlet.component.Component.coord" title="scarlet.component.Component.coord"><code class="xref py py-obj docutils literal notranslate"><span class="pre">coord</span></code></a></dt><dd><p>The coordinate in a <cite>~scarlet.component.ComponentTree</cite>.</p>
+</dd>
+<dt><a class="reference internal" href="#scarlet.component.Component.parameters" title="scarlet.component.Component.parameters"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parameters</span></code></a></dt><dd><p>The list of non-fixed parameters</p>
+</dd>
+<dt><a class="reference internal" href="#scarlet.component.Component.shape" title="scarlet.component.Component.shape"><code class="xref py py-obj docutils literal notranslate"><span class="pre">shape</span></code></a></dt><dd><p>Shape of the image (Channel, Height, Width)</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.component.Component.check_parameters" title="scarlet.component.Component.check_parameters"><code class="xref py py-obj docutils literal notranslate"><span class="pre">check_parameters</span></code></a>(self)</p></td>
+<td><p>Check the all parameters have finite elements</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.component.Component.freeze" title="scarlet.component.Component.freeze"><code class="xref py py-obj docutils literal notranslate"><span class="pre">freeze</span></code></a>(self)</p></td>
+<td><p>Fix all parameters</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.component.Component.get_model" title="scarlet.component.Component.get_model"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code></a>(self, \*parameters)</p></td>
+<td><p>Get the model for this component</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.component.Component.set_frame" title="scarlet.component.Component.set_frame"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_frame</span></code></a>(self, frame)</p></td>
+<td><p>Sets the frame for this component.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.component.Component.unfreeze" title="scarlet.component.Component.unfreeze"><code class="xref py py-obj docutils literal notranslate"><span class="pre">unfreeze</span></code></a>(self)</p></td>
+<td><p>Release all parameters</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="scarlet.component.Component.check_parameters">
+<code class="sig-name descname">check_parameters</code><span class="sig-paren">(</span><em class="sig-param">self</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/component.html#Component.check_parameters"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.component.Component.check_parameters" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check the all parameters have finite elements</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><cite>ArithmeticError</cite></dt><dd></dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.component.Component.coord">
+<em class="property">property </em><code class="sig-name descname">coord</code><a class="headerlink" href="#scarlet.component.Component.coord" title="Permalink to this definition">¶</a></dt>
+<dd><p>The coordinate in a <cite>~scarlet.component.ComponentTree</cite>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.component.Component.freeze">
+<code class="sig-name descname">freeze</code><span class="sig-paren">(</span><em class="sig-param">self</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/component.html#Component.freeze"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.component.Component.freeze" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fix all parameters</p>
+<p>The component will not provide optimizable parameters anymore.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.component.Component.get_model">
+<em class="property">abstract </em><code class="sig-name descname">get_model</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">*parameters</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/component.html#Component.get_model"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.component.Component.get_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the model for this component</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>parameters: tuple of optimimzation parameters</strong></dt><dd></dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>model: array</dt><dd><p>(Channels, Height, Width) image of the model</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.component.Component.parameters">
+<em class="property">property </em><code class="sig-name descname">parameters</code><a class="headerlink" href="#scarlet.component.Component.parameters" title="Permalink to this definition">¶</a></dt>
+<dd><p>The list of non-fixed parameters</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><dl class="simple">
+<dt>list of parameters available for optimization</dt><dd></dd>
+<dt>If <cite>parameter.fixed == True</cite>, the parameter will not returned here.</dt><dd></dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.component.Component.set_frame">
+<code class="sig-name descname">set_frame</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">frame</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/component.html#Component.set_frame"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.component.Component.set_frame" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets the frame for this component.</p>
+<p>Each component needs to know the properties of the Frame and, potentially, the
+subvolume it covers.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>frame: `~scarlet.Frame`</strong></dt><dd><p>Frame to adopt for this component</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.component.Component.shape">
+<em class="property">property </em><code class="sig-name descname">shape</code><a class="headerlink" href="#scarlet.component.Component.shape" title="Permalink to this definition">¶</a></dt>
+<dd><p>Shape of the image (Channel, Height, Width)</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.component.Component.unfreeze">
+<code class="sig-name descname">unfreeze</code><span class="sig-paren">(</span><em class="sig-param">self</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/component.html#Component.unfreeze"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.component.Component.unfreeze" title="Permalink to this definition">¶</a></dt>
+<dd><p>Release all parameters</p>
+<p>The component will provide <em>all</em> parameters as optimizable parameters.
+Calling this function overrides previous setting of <cite>parameter.fixed</cite> for every
+parameter of this component.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="scarlet.component.ComponentTree">
+<em class="property">class </em><code class="sig-prename descclassname">scarlet.component.</code><code class="sig-name descname">ComponentTree</code><span class="sig-paren">(</span><em class="sig-param">components</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/component.html#ComponentTree"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.component.ComponentTree" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.8)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Base class for hierarchical collections of Components.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Attributes</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><a class="reference internal" href="#scarlet.component.ComponentTree.K" title="scarlet.component.ComponentTree.K"><code class="xref py py-obj docutils literal notranslate"><span class="pre">K</span></code></a></dt><dd><p>Number of components.</p>
+</dd>
+<dt><a class="reference internal" href="#scarlet.component.ComponentTree.components" title="scarlet.component.ComponentTree.components"><code class="xref py py-obj docutils literal notranslate"><span class="pre">components</span></code></a></dt><dd><p>Flattened tuple of all components in the tree.</p>
+</dd>
+<dt><a class="reference internal" href="#scarlet.component.ComponentTree.coord" title="scarlet.component.ComponentTree.coord"><code class="xref py py-obj docutils literal notranslate"><span class="pre">coord</span></code></a></dt><dd><p>The coordinate in tree.</p>
+</dd>
+<dt><a class="reference internal" href="#scarlet.component.ComponentTree.frame" title="scarlet.component.ComponentTree.frame"><code class="xref py py-obj docutils literal notranslate"><span class="pre">frame</span></code></a></dt><dd><p>Frame of the components.</p>
+</dd>
+<dt><a class="reference internal" href="#scarlet.component.ComponentTree.n_components" title="scarlet.component.ComponentTree.n_components"><code class="xref py py-obj docutils literal notranslate"><span class="pre">n_components</span></code></a></dt><dd><p>Number of components.</p>
+</dd>
+<dt><a class="reference internal" href="#scarlet.component.ComponentTree.n_sources" title="scarlet.component.ComponentTree.n_sources"><code class="xref py py-obj docutils literal notranslate"><span class="pre">n_sources</span></code></a></dt><dd><p>Number of initial sources or components.</p>
+</dd>
+<dt><a class="reference internal" href="#scarlet.component.ComponentTree.parameters" title="scarlet.component.ComponentTree.parameters"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parameters</span></code></a></dt><dd><p>The list of non-fixed parameters</p>
+</dd>
+<dt><a class="reference internal" href="#scarlet.component.ComponentTree.sources" title="scarlet.component.ComponentTree.sources"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sources</span></code></a></dt><dd><p>Initial list of components or sources that generate the tree.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.component.ComponentTree.check_parameters" title="scarlet.component.ComponentTree.check_parameters"><code class="xref py py-obj docutils literal notranslate"><span class="pre">check_parameters</span></code></a>(self)</p></td>
+<td><p>Check the all parameters have finite elements</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.component.ComponentTree.freeze" title="scarlet.component.ComponentTree.freeze"><code class="xref py py-obj docutils literal notranslate"><span class="pre">freeze</span></code></a>(self)</p></td>
+<td><p>Fix all parameters</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.component.ComponentTree.get_model" title="scarlet.component.ComponentTree.get_model"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code></a>(self, \*params)</p></td>
+<td><p>Get the model of this component tree</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.component.ComponentTree.set_frame" title="scarlet.component.ComponentTree.set_frame"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_frame</span></code></a>(self, frame)</p></td>
+<td><p>Set the frame for all components in the tree</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.component.ComponentTree.unfreeze" title="scarlet.component.ComponentTree.unfreeze"><code class="xref py py-obj docutils literal notranslate"><span class="pre">unfreeze</span></code></a>(self)</p></td>
+<td><p>Release all parameters</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="scarlet.component.ComponentTree.K">
+<em class="property">property </em><code class="sig-name descname">K</code><a class="headerlink" href="#scarlet.component.ComponentTree.K" title="Permalink to this definition">¶</a></dt>
+<dd><p>Number of components.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.component.ComponentTree.check_parameters">
+<code class="sig-name descname">check_parameters</code><span class="sig-paren">(</span><em class="sig-param">self</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/component.html#ComponentTree.check_parameters"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.component.ComponentTree.check_parameters" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check the all parameters have finite elements</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><cite>ArithmeticError</cite></dt><dd></dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.component.ComponentTree.components">
+<em class="property">property </em><code class="sig-name descname">components</code><a class="headerlink" href="#scarlet.component.ComponentTree.components" title="Permalink to this definition">¶</a></dt>
+<dd><p>Flattened tuple of all components in the tree.</p>
+<p>CAUTION: Each component in a tree can only be a leaf of a single node.
+While one can construct trees that hold the same component multiple
+times, this method will only return that component at its first
+encountered location</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.component.ComponentTree.coord">
+<em class="property">property </em><code class="sig-name descname">coord</code><a class="headerlink" href="#scarlet.component.ComponentTree.coord" title="Permalink to this definition">¶</a></dt>
+<dd><p>The coordinate in tree.</p>
+<p>The coordinate can be used to traverse the tree and for <cite>__getitem__</cite>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.component.ComponentTree.frame">
+<em class="property">property </em><code class="sig-name descname">frame</code><a class="headerlink" href="#scarlet.component.ComponentTree.frame" title="Permalink to this definition">¶</a></dt>
+<dd><p>Frame of the components.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.component.ComponentTree.freeze">
+<code class="sig-name descname">freeze</code><span class="sig-paren">(</span><em class="sig-param">self</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/component.html#ComponentTree.freeze"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.component.ComponentTree.freeze" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fix all parameters</p>
+<p>The tree will not provide optimizable parameters anymore.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.component.ComponentTree.get_model">
+<code class="sig-name descname">get_model</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">*params</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/component.html#ComponentTree.get_model"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.component.ComponentTree.get_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the model of this component tree</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>params: tuple of optimization parameters</strong></dt><dd></dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>model: array</dt><dd><p>(Bands, Height, Width) data cube</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.component.ComponentTree.n_components">
+<em class="property">property </em><code class="sig-name descname">n_components</code><a class="headerlink" href="#scarlet.component.ComponentTree.n_components" title="Permalink to this definition">¶</a></dt>
+<dd><p>Number of components.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.component.ComponentTree.n_sources">
+<em class="property">property </em><code class="sig-name descname">n_sources</code><a class="headerlink" href="#scarlet.component.ComponentTree.n_sources" title="Permalink to this definition">¶</a></dt>
+<dd><p>Number of initial sources or components.</p>
+<p>This can be different than <cite>self.n_components</cite> because sources can
+have multiple components.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><dl class="simple">
+<dt>int: number of initial sources</dt><dd></dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.component.ComponentTree.parameters">
+<em class="property">property </em><code class="sig-name descname">parameters</code><a class="headerlink" href="#scarlet.component.ComponentTree.parameters" title="Permalink to this definition">¶</a></dt>
+<dd><p>The list of non-fixed parameters</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><dl class="simple">
+<dt>list of parameters available for optimization</dt><dd></dd>
+<dt>If <cite>parameter.fixed == True</cite>, the parameter will not returned here.</dt><dd></dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.component.ComponentTree.set_frame">
+<code class="sig-name descname">set_frame</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">frame</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/component.html#ComponentTree.set_frame"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.component.ComponentTree.set_frame" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the frame for all components in the tree</p>
+<p>see <cite>~scarlet.Component.set_frame</cite> for details.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>frame: `~scarlet.Frame`</strong></dt><dd><p>Frame to adopt for this component</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.component.ComponentTree.sources">
+<em class="property">property </em><code class="sig-name descname">sources</code><a class="headerlink" href="#scarlet.component.ComponentTree.sources" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initial list of components or sources that generate the tree.</p>
+<p>This can be different than <cite>self.components</cite> because sources can
+have multiple components.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><dl class="simple">
+<dt>The arguments of <cite>__init__</cite></dt><dd></dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.component.ComponentTree.unfreeze">
+<code class="sig-name descname">unfreeze</code><span class="sig-paren">(</span><em class="sig-param">self</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/component.html#ComponentTree.unfreeze"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.component.ComponentTree.unfreeze" title="Permalink to this definition">¶</a></dt>
+<dd><p>Release all parameters</p>
+<p>The tree will provide <em>all</em> parameters as optimizable parameters.
+Calling this function overrides previous setting of <cite>parameter.fixed</cite> for every
+parameter of this component tree.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="scarlet.component.CubeComponent">
+<em class="property">class </em><code class="sig-prename descclassname">scarlet.component.</code><code class="sig-name descname">CubeComponent</code><span class="sig-paren">(</span><em class="sig-param">frame</em>, <em class="sig-param">cube</em>, <em class="sig-param">bbox=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/component.html#CubeComponent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.component.CubeComponent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#scarlet.component.Component" title="scarlet.component.Component"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.component.Component</span></code></a></p>
+<p>A single component in a blend.</p>
+<p>Uses full cube parameterization.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>frame: `~scarlet.Frame`</strong></dt><dd><p>The spectral and spatial characteristics of this component.</p>
+</dd>
+<dt><strong>cube: `~scarlet.Parameter`</strong></dt><dd><p>3D array (C, Height, Width) of the initial data cube.</p>
+</dd>
+<dt><strong>bbox: `~scarlet.Box`</strong></dt><dd><p>Spatial bounding box of the morphology.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Attributes</dt>
+<dd class="field-even"><dl class="simple">
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">coord</span></code></dt><dd><p>The coordinate in a <cite>~scarlet.component.ComponentTree</cite>.</p>
+</dd>
+<dt><strong>cube</strong></dt><dd></dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">parameters</span></code></dt><dd><p>The list of non-fixed parameters</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">shape</span></code></dt><dd><p>Shape of the image (Channel, Height, Width)</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">check_parameters</span></code>(self)</p></td>
+<td><p>Check the all parameters have finite elements</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">freeze</span></code>(self)</p></td>
+<td><p>Fix all parameters</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.component.CubeComponent.get_model" title="scarlet.component.CubeComponent.get_model"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code></a>(self, \*parameters)</p></td>
+<td><p>Get the model for this component</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_frame</span></code>(self, frame)</p></td>
+<td><p>Sets the frame for this component.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">unfreeze</span></code>(self)</p></td>
+<td><p>Release all parameters</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="scarlet.component.CubeComponent.cube">
+<em class="property">property </em><code class="sig-name descname">cube</code><a class="headerlink" href="#scarlet.component.CubeComponent.cube" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="scarlet.component.CubeComponent.get_model">
+<code class="sig-name descname">get_model</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">*parameters</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/component.html#CubeComponent.get_model"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.component.CubeComponent.get_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the model for this component</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>parameters: tuple of optimimzation parameters</strong></dt><dd></dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>model: array</dt><dd><p>(Channels, Height, Width) image of the model</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="scarlet.component.FactorizedComponent">
+<em class="property">class </em><code class="sig-prename descclassname">scarlet.component.</code><code class="sig-name descname">FactorizedComponent</code><span class="sig-paren">(</span><em class="sig-param">frame</em>, <em class="sig-param">sed</em>, <em class="sig-param">morph</em>, <em class="sig-param">shift=None</em>, <em class="sig-param">bbox=None</em>, <em class="sig-param">**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/component.html#FactorizedComponent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.component.FactorizedComponent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#scarlet.component.Component" title="scarlet.component.Component"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.component.Component</span></code></a></p>
+<p>A single component in a blend.</p>
+<p>Uses the non-parametric factorization sed x morphology.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>frame: `~scarlet.Frame`</strong></dt><dd><p>The spectral and spatial characteristics of this component.</p>
+</dd>
+<dt><strong>sed: `~scarlet.Parameter`</strong></dt><dd><p>1D array (channels) of the initial SED.</p>
+</dd>
+<dt><strong>morph: `~scarlet.Parameter`</strong></dt><dd><p>Image (Height, Width) of the initial morphology.</p>
+</dd>
+<dt><strong>shift: `~scarlet.Parameter`</strong></dt><dd><p>2D position for the shift of the center</p>
+</dd>
+<dt><strong>bbox: `~scarlet.Box`</strong></dt><dd><p>Spatial bounding box of the morphology.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Attributes</dt>
+<dd class="field-even"><dl class="simple">
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">coord</span></code></dt><dd><p>The coordinate in a <cite>~scarlet.component.ComponentTree</cite>.</p>
+</dd>
+<dt><a class="reference internal" href="#scarlet.component.FactorizedComponent.morph" title="scarlet.component.FactorizedComponent.morph"><code class="xref py py-obj docutils literal notranslate"><span class="pre">morph</span></code></a></dt><dd><p>Numpy view of the component morphology</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">parameters</span></code></dt><dd><p>The list of non-fixed parameters</p>
+</dd>
+<dt><a class="reference internal" href="#scarlet.component.FactorizedComponent.sed" title="scarlet.component.FactorizedComponent.sed"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sed</span></code></a></dt><dd><p>Numpy view of the component SED</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">shape</span></code></dt><dd><p>Shape of the image (Channel, Height, Width)</p>
+</dd>
+<dt><a class="reference internal" href="#scarlet.component.FactorizedComponent.shift" title="scarlet.component.FactorizedComponent.shift"><code class="xref py py-obj docutils literal notranslate"><span class="pre">shift</span></code></a></dt><dd><p>Numpy view of the component shift</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">check_parameters</span></code>(self)</p></td>
+<td><p>Check the all parameters have finite elements</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">freeze</span></code>(self)</p></td>
+<td><p>Fix all parameters</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.component.FactorizedComponent.get_model" title="scarlet.component.FactorizedComponent.get_model"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code></a>(self, \*parameters)</p></td>
+<td><p>Get the model for this component.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_frame</span></code>(self, frame)</p></td>
+<td><p>Sets the frame for this component.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">unfreeze</span></code>(self)</p></td>
+<td><p>Release all parameters</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="scarlet.component.FactorizedComponent.get_model">
+<code class="sig-name descname">get_model</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">*parameters</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/component.html#FactorizedComponent.get_model"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.component.FactorizedComponent.get_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the model for this component.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>parameters: tuple of optimimzation parameters</strong></dt><dd></dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>model: array</dt><dd><p>(Channels, Height, Width) image of the model</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.component.FactorizedComponent.morph">
+<em class="property">property </em><code class="sig-name descname">morph</code><a class="headerlink" href="#scarlet.component.FactorizedComponent.morph" title="Permalink to this definition">¶</a></dt>
+<dd><p>Numpy view of the component morphology</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.component.FactorizedComponent.sed">
+<em class="property">property </em><code class="sig-name descname">sed</code><a class="headerlink" href="#scarlet.component.FactorizedComponent.sed" title="Permalink to this definition">¶</a></dt>
+<dd><p>Numpy view of the component SED</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.component.FactorizedComponent.shift">
+<em class="property">property </em><code class="sig-name descname">shift</code><a class="headerlink" href="#scarlet.component.FactorizedComponent.shift" title="Permalink to this definition">¶</a></dt>
+<dd><p>Numpy view of the component shift</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="scarlet.component.FunctionComponent">
+<em class="property">class </em><code class="sig-prename descclassname">scarlet.component.</code><code class="sig-name descname">FunctionComponent</code><span class="sig-paren">(</span><em class="sig-param">frame</em>, <em class="sig-param">sed</em>, <em class="sig-param">fparams</em>, <em class="sig-param">func</em>, <em class="sig-param">bbox=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/component.html#FunctionComponent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.component.FunctionComponent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#scarlet.component.FactorizedComponent" title="scarlet.component.FactorizedComponent"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.component.FactorizedComponent</span></code></a></p>
+<p>A single component in a blend.</p>
+<p>Uses the non-parametric sed x morphology, with the morphology specified
+by a functional expression.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>frame: `~scarlet.Frame`</strong></dt><dd><p>The spectral and spatial characteristics of this component.</p>
+</dd>
+<dt><strong>sed: `~scarlet.Parameter`</strong></dt><dd><p>1D array (channels) of the initial SED.</p>
+</dd>
+<dt><strong>fparams: `~scarlet.Parameter`</strong></dt><dd><p>Parameters of the initial morphology.</p>
+</dd>
+<dt><strong>func: `autograd` function</strong></dt><dd><p>Signature: func(<a href="#id1"><span class="problematic" id="id2">*</span></a>fparams, y=None, x=None) -&gt; Image (Height, Width)</p>
+</dd>
+<dt><strong>bbox: `~scarlet.Box`</strong></dt><dd><p>Spatial bounding box of the morphology.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Attributes</dt>
+<dd class="field-even"><dl class="simple">
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">coord</span></code></dt><dd><p>The coordinate in a <cite>~scarlet.component.ComponentTree</cite>.</p>
+</dd>
+<dt><a class="reference internal" href="#scarlet.component.FunctionComponent.morph" title="scarlet.component.FunctionComponent.morph"><code class="xref py py-obj docutils literal notranslate"><span class="pre">morph</span></code></a></dt><dd><p>Numpy view of the component morphology</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">parameters</span></code></dt><dd><p>The list of non-fixed parameters</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">sed</span></code></dt><dd><p>Numpy view of the component SED</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">shape</span></code></dt><dd><p>Shape of the image (Channel, Height, Width)</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">shift</span></code></dt><dd><p>Numpy view of the component shift</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">check_parameters</span></code>(self)</p></td>
+<td><p>Check the all parameters have finite elements</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">freeze</span></code>(self)</p></td>
+<td><p>Fix all parameters</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.component.FunctionComponent.get_model" title="scarlet.component.FunctionComponent.get_model"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code></a>(self, \*parameters)</p></td>
+<td><p>Get the model for this component.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_frame</span></code>(self, frame)</p></td>
+<td><p>Sets the frame for this component.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">unfreeze</span></code>(self)</p></td>
+<td><p>Release all parameters</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="scarlet.component.FunctionComponent.get_model">
+<code class="sig-name descname">get_model</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">*parameters</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/component.html#FunctionComponent.get_model"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.component.FunctionComponent.get_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the model for this component.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>parameters: tuple of optimimzation parameters</strong></dt><dd></dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>model: array</dt><dd><p>(Channels, Height, Width) image of the model</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.component.FunctionComponent.morph">
+<em class="property">property </em><code class="sig-name descname">morph</code><a class="headerlink" href="#scarlet.component.FunctionComponent.morph" title="Permalink to this definition">¶</a></dt>
+<dd><p>Numpy view of the component morphology</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &copy;2018-2019, Fred Moolekamp and Peter Melchior.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.3.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/api/scarlet.component.rst"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

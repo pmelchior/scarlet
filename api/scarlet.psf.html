@@ -1,0 +1,236 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>scarlet.psf &#8212; scarlet  documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "ignoreClass": "document", "processClass": "math|output_area"}})</script>
+    <link rel="canonical" href="api/api/scarlet.psf.html" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="scarlet.resampling" href="scarlet.resampling.html" />
+    <link rel="prev" title="scarlet.parameter" href="scarlet.parameter.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../index.html">
+              <img class="logo" src="../_static/logo.svg" alt="Logo"/>
+            </a></p>
+<h3><a href="../index.html">Table of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../0-quickstart.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../1-concepts.html">Core Concepts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials.html">Tutorials</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="scarlet.html">API Documentation</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="scarlet.bbox.html">scarlet.bbox</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.blend.html">scarlet.blend</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.cache.html">scarlet.cache</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.component.html">scarlet.component</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.constraint.html">scarlet.constraint</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.display.html">scarlet.display</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.fft.html">scarlet.fft</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.frame.html">scarlet.frame</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.interpolation.html">scarlet.interpolation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.measure.html">scarlet.measure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.observation.html">scarlet.observation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.operator.html">scarlet.operator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.parameter.html">scarlet.parameter</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">scarlet.psf</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.resampling.html">scarlet.resampling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.source.html">scarlet.source</a></li>
+</ul>
+</li>
+</ul>
+
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-scarlet.psf">
+<span id="scarlet-psf"></span><h1>scarlet.psf<a class="headerlink" href="#module-scarlet.psf" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="scarlet.psf.PSF">
+<em class="property">class </em><code class="sig-prename descclassname">scarlet.psf.</code><code class="sig-name descname">PSF</code><span class="sig-paren">(</span><em class="sig-param">X</em>, <em class="sig-param">shape=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#PSF"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.psf.PSF" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.8)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Class to represent PSFs</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>X: array-like or method</strong></dt><dd><p>If <cite>X</cite> is an array, it represent an image of the PSF in every band.
+If <cite>X</cite> is a callable method, it describes a function that can generate a PSF when given coordinates (y, x).</p>
+</dd>
+<dt><strong>shape: tuple</strong></dt><dd><p>Shape of the 2D image to generate an PSF image for. Only used if <cite>X</cite> is a method.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Attributes</dt>
+<dd class="field-even"><dl class="simple">
+<dt><a class="reference internal" href="#scarlet.psf.PSF.image" title="scarlet.psf.PSF.image"><code class="xref py py-obj docutils literal notranslate"><span class="pre">image</span></code></a></dt><dd><p>Centered image of the PSF</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">__call__</span></code>(self, y, x[, bbox])</p></td>
+<td><p>Generate analytic PSF image at coordinate (y,x)</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.psf.PSF.normalize" title="scarlet.psf.PSF.normalize"><code class="xref py py-obj docutils literal notranslate"><span class="pre">normalize</span></code></a>(self)</p></td>
+<td><p>Normalize to PSF image in every band to unity</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.psf.PSF.update_dtype" title="scarlet.psf.PSF.update_dtype"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_dtype</span></code></a>(self, dtype)</p></td>
+<td><p>Update data type of <cite>image</cite> to <cite>dtype</cite></p></td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="scarlet.psf.PSF.image">
+<em class="property">property </em><code class="sig-name descname">image</code><a class="headerlink" href="#scarlet.psf.PSF.image" title="Permalink to this definition">¶</a></dt>
+<dd><p>Centered image of the PSF</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.psf.PSF.normalize">
+<code class="sig-name descname">normalize</code><span class="sig-paren">(</span><em class="sig-param">self</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#PSF.normalize"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.psf.PSF.normalize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Normalize to PSF image in every band to unity</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.psf.PSF.update_dtype">
+<code class="sig-name descname">update_dtype</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">dtype</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#PSF.update_dtype"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.psf.PSF.update_dtype" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update data type of <cite>image</cite> to <cite>dtype</cite></p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="scarlet.psf.gaussian">
+<code class="sig-prename descclassname">scarlet.psf.</code><code class="sig-name descname">gaussian</code><span class="sig-paren">(</span><em class="sig-param">y</em>, <em class="sig-param">x</em>, <em class="sig-param">sigma=1</em>, <em class="sig-param">integrate=True</em>, <em class="sig-param">bbox=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#gaussian"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.psf.gaussian" title="Permalink to this definition">¶</a></dt>
+<dd><p>Circular Gaussian Function</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>y: float</strong></dt><dd><p>Vertical coordinate of the center</p>
+</dd>
+<dt><strong>x: float</strong></dt><dd><p>Horizontal coordinate of the center</p>
+</dd>
+<dt><strong>sigma: float</strong></dt><dd><p>Standard deviation of the gaussian</p>
+</dd>
+<dt><strong>integrate: bool</strong></dt><dd><p>Whether pixel integration is performed</p>
+</dd>
+<dt><strong>bbox: Box</strong></dt><dd><p>Bounding box over which to evaluate the function</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>result: array</dt><dd><p>A 2D circular gaussian sampled at the coordinates <cite>(y_i, x_j)</cite>
+for all i and j in <cite>shape</cite>.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="scarlet.psf.moffat">
+<code class="sig-prename descclassname">scarlet.psf.</code><code class="sig-name descname">moffat</code><span class="sig-paren">(</span><em class="sig-param">y</em>, <em class="sig-param">x</em>, <em class="sig-param">alpha=4.7</em>, <em class="sig-param">beta=1.5</em>, <em class="sig-param">bbox=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#moffat"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.psf.moffat" title="Permalink to this definition">¶</a></dt>
+<dd><p>Symmetric 2D Moffat function</p>
+<blockquote>
+<div><div class="math notranslate nohighlight">
+\[(1+\]</div>
+</div></blockquote>
+<p>rac{(x-x0)^2+(y-y0)^2}{lpha^2})^{-eta}</p>
+<dl class="field-list">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl>
+<dt><strong>y: float</strong></dt><dd><blockquote>
+<div><p>Vertical coordinate of the center</p>
+</div></blockquote>
+<dl class="simple">
+<dt>x: float</dt><dd><p>Horizontal coordinate of the center</p>
+</dd>
+<dt>alpha: float</dt><dd><p>Core width</p>
+</dd>
+<dt>beta: float</dt><dd><p>Power-law index</p>
+</dd>
+<dt>bbox: Box</dt><dd><p>Bounding box over which to evaluate the function</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>result: array</dt><dd><p>A 2D circular gaussian sampled at the coordinates <cite>(y_i, x_j)</cite>
+for all i and j in <cite>shape</cite>.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &copy;2018-2019, Fred Moolekamp and Peter Melchior.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.3.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/api/scarlet.psf.rst"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,461 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>scarlet.source &#8212; scarlet  documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "ignoreClass": "document", "processClass": "math|output_area"}})</script>
+    <link rel="canonical" href="api/api/scarlet.source.html" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="prev" title="scarlet.resampling" href="scarlet.resampling.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../index.html">
+              <img class="logo" src="../_static/logo.svg" alt="Logo"/>
+            </a></p>
+<h3><a href="../index.html">Table of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../0-quickstart.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../1-concepts.html">Core Concepts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials.html">Tutorials</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="scarlet.html">API Documentation</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="scarlet.bbox.html">scarlet.bbox</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.blend.html">scarlet.blend</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.cache.html">scarlet.cache</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.component.html">scarlet.component</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.constraint.html">scarlet.constraint</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.display.html">scarlet.display</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.fft.html">scarlet.fft</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.frame.html">scarlet.frame</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.interpolation.html">scarlet.interpolation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.measure.html">scarlet.measure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.observation.html">scarlet.observation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.operator.html">scarlet.operator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.parameter.html">scarlet.parameter</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.psf.html">scarlet.psf</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.resampling.html">scarlet.resampling</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">scarlet.source</a></li>
+</ul>
+</li>
+</ul>
+
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-scarlet.source">
+<span id="scarlet-source"></span><h1>scarlet.source<a class="headerlink" href="#module-scarlet.source" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="scarlet.source.ExtendedSource">
+<em class="property">class </em><code class="sig-prename descclassname">scarlet.source.</code><code class="sig-name descname">ExtendedSource</code><span class="sig-paren">(</span><em class="sig-param">frame</em>, <em class="sig-param">sky_coord</em>, <em class="sig-param">observations</em>, <em class="sig-param">obs_idx=0</em>, <em class="sig-param">thresh=1.0</em>, <em class="sig-param">symmetric=False</em>, <em class="sig-param">monotonic=True</em>, <em class="sig-param">shifting=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/source.html#ExtendedSource"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.source.ExtendedSource" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="scarlet.component.html#scarlet.component.FactorizedComponent" title="scarlet.component.FactorizedComponent"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.component.FactorizedComponent</span></code></a></p>
+<dl class="field-list simple">
+<dt class="field-odd">Attributes</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>center</strong></dt><dd></dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">coord</span></code></dt><dd><p>The coordinate in a <cite>~scarlet.component.ComponentTree</cite>.</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">morph</span></code></dt><dd><p>Numpy view of the component morphology</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">parameters</span></code></dt><dd><p>The list of non-fixed parameters</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">sed</span></code></dt><dd><p>Numpy view of the component SED</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">shape</span></code></dt><dd><p>Shape of the image (Channel, Height, Width)</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">shift</span></code></dt><dd><p>Numpy view of the component shift</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">check_parameters</span></code>(self)</p></td>
+<td><p>Check the all parameters have finite elements</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">freeze</span></code>(self)</p></td>
+<td><p>Fix all parameters</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code>(self, \*parameters)</p></td>
+<td><p>Get the model for this component.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_frame</span></code>(self, frame)</p></td>
+<td><p>Sets the frame for this component.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">unfreeze</span></code>(self)</p></td>
+<td><p>Release all parameters</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="scarlet.source.ExtendedSource.center">
+<em class="property">property </em><code class="sig-name descname">center</code><a class="headerlink" href="#scarlet.source.ExtendedSource.center" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="scarlet.source.MultiComponentSource">
+<em class="property">class </em><code class="sig-prename descclassname">scarlet.source.</code><code class="sig-name descname">MultiComponentSource</code><span class="sig-paren">(</span><em class="sig-param">frame</em>, <em class="sig-param">sky_coord</em>, <em class="sig-param">observations</em>, <em class="sig-param">obs_idx=0</em>, <em class="sig-param">thresh=1.0</em>, <em class="sig-param">flux_percentiles=None</em>, <em class="sig-param">symmetric=True</em>, <em class="sig-param">monotonic=True</em>, <em class="sig-param">shifting=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/source.html#MultiComponentSource"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.source.MultiComponentSource" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="scarlet.component.html#scarlet.component.ComponentTree" title="scarlet.component.ComponentTree"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.component.ComponentTree</span></code></a></p>
+<p>Extended source with multiple components layered vertically.</p>
+<p>Uses <cite>~scarlet.source.ExtendedSource</cite> to define the overall morphology,
+then erodes the outer footprint until it reaches the specified size percentile.
+For the narrower footprint, it evaluates the mean value at the perimeter and
+sets the inside to the perimeter value, creating a flat distribution inside.
+The subsequent component(s) is/are set to the difference between the flattened
+and the overall morphology.
+The SED for all components is calculated as the best fit of the multi-component
+morphology to the multi-channel image in the region of the source.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Attributes</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">K</span></code></dt><dd><p>Number of components.</p>
+</dd>
+<dt><strong>bbox</strong></dt><dd></dd>
+<dt><strong>center</strong></dt><dd></dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">components</span></code></dt><dd><p>Flattened tuple of all components in the tree.</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">coord</span></code></dt><dd><p>The coordinate in tree.</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">frame</span></code></dt><dd><p>Frame of the components.</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">n_components</span></code></dt><dd><p>Number of components.</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">n_sources</span></code></dt><dd><p>Number of initial sources or components.</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">parameters</span></code></dt><dd><p>The list of non-fixed parameters</p>
+</dd>
+<dt><strong>shift</strong></dt><dd></dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">sources</span></code></dt><dd><p>Initial list of components or sources that generate the tree.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">check_parameters</span></code>(self)</p></td>
+<td><p>Check the all parameters have finite elements</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">freeze</span></code>(self)</p></td>
+<td><p>Fix all parameters</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code>(self, \*params)</p></td>
+<td><p>Get the model of this component tree</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_frame</span></code>(self, frame)</p></td>
+<td><p>Set the frame for all components in the tree</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">unfreeze</span></code>(self)</p></td>
+<td><p>Release all parameters</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="scarlet.source.MultiComponentSource.bbox">
+<em class="property">property </em><code class="sig-name descname">bbox</code><a class="headerlink" href="#scarlet.source.MultiComponentSource.bbox" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="scarlet.source.MultiComponentSource.center">
+<em class="property">property </em><code class="sig-name descname">center</code><a class="headerlink" href="#scarlet.source.MultiComponentSource.center" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="scarlet.source.MultiComponentSource.shift">
+<em class="property">property </em><code class="sig-name descname">shift</code><a class="headerlink" href="#scarlet.source.MultiComponentSource.shift" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="scarlet.source.PointSource">
+<em class="property">class </em><code class="sig-prename descclassname">scarlet.source.</code><code class="sig-name descname">PointSource</code><span class="sig-paren">(</span><em class="sig-param">frame</em>, <em class="sig-param">sky_coord</em>, <em class="sig-param">observations</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/source.html#PointSource"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.source.PointSource" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="scarlet.component.html#scarlet.component.FunctionComponent" title="scarlet.component.FunctionComponent"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.component.FunctionComponent</span></code></a></p>
+<p>Source intialized with a single pixel</p>
+<p>Point sources are initialized with the SED of the center pixel,
+and the morphology taken from <cite>frame.psfs</cite>, centered at <cite>sky_coord</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Attributes</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">coord</span></code></dt><dd><p>The coordinate in a <cite>~scarlet.component.ComponentTree</cite>.</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">morph</span></code></dt><dd><p>Numpy view of the component morphology</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">parameters</span></code></dt><dd><p>The list of non-fixed parameters</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">sed</span></code></dt><dd><p>Numpy view of the component SED</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">shape</span></code></dt><dd><p>Shape of the image (Channel, Height, Width)</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">shift</span></code></dt><dd><p>Numpy view of the component shift</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">check_parameters</span></code>(self)</p></td>
+<td><p>Check the all parameters have finite elements</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">freeze</span></code>(self)</p></td>
+<td><p>Fix all parameters</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code>(self, \*parameters)</p></td>
+<td><p>Get the model for this component.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_frame</span></code>(self, frame)</p></td>
+<td><p>Sets the frame for this component.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">unfreeze</span></code>(self)</p></td>
+<td><p>Release all parameters</p></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="scarlet.source.RandomSource">
+<em class="property">class </em><code class="sig-prename descclassname">scarlet.source.</code><code class="sig-name descname">RandomSource</code><span class="sig-paren">(</span><em class="sig-param">frame</em>, <em class="sig-param">observation=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/source.html#RandomSource"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.source.RandomSource" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="scarlet.component.html#scarlet.component.FactorizedComponent" title="scarlet.component.FactorizedComponent"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.component.FactorizedComponent</span></code></a></p>
+<p>Sources with uniform random morphology and sed.</p>
+<p>For cases with no well-defined spatial shape, this source initializes
+a uniform random field and (optionally) matches the SED to match a given
+observation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Attributes</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">coord</span></code></dt><dd><p>The coordinate in a <cite>~scarlet.component.ComponentTree</cite>.</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">morph</span></code></dt><dd><p>Numpy view of the component morphology</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">parameters</span></code></dt><dd><p>The list of non-fixed parameters</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">sed</span></code></dt><dd><p>Numpy view of the component SED</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">shape</span></code></dt><dd><p>Shape of the image (Channel, Height, Width)</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">shift</span></code></dt><dd><p>Numpy view of the component shift</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">check_parameters</span></code>(self)</p></td>
+<td><p>Check the all parameters have finite elements</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">freeze</span></code>(self)</p></td>
+<td><p>Fix all parameters</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code>(self, \*parameters)</p></td>
+<td><p>Get the model for this component.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_frame</span></code>(self, frame)</p></td>
+<td><p>Sets the frame for this component.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">unfreeze</span></code>(self)</p></td>
+<td><p>Release all parameters</p></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="scarlet.source.build_detection_coadd">
+<code class="sig-prename descclassname">scarlet.source.</code><code class="sig-name descname">build_detection_coadd</code><span class="sig-paren">(</span><em class="sig-param">sed</em>, <em class="sig-param">bg_rms</em>, <em class="sig-param">observation</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/source.html#build_detection_coadd"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.source.build_detection_coadd" title="Permalink to this definition">¶</a></dt>
+<dd><p>Build a channel weighted coadd to use for source detection</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>sed: array</strong></dt><dd><p>SED at the center of the source.</p>
+</dd>
+<dt><strong>bg_rms: array</strong></dt><dd><p>Background RMS in each channel in observation.</p>
+</dd>
+<dt><strong>observation: `~scarlet.observation.Observation`</strong></dt><dd><p>Observation to use for the coadd.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>detect: array</dt><dd><p>2D image created by weighting all of the channels by SED</p>
+</dd>
+<dt>bg_cutoff: float</dt><dd><p>The minimum value in <cite>detect</cite> to include in detection.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="scarlet.source.get_best_fit_seds">
+<code class="sig-prename descclassname">scarlet.source.</code><code class="sig-name descname">get_best_fit_seds</code><span class="sig-paren">(</span><em class="sig-param">morphs</em>, <em class="sig-param">frame</em>, <em class="sig-param">images</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/source.html#get_best_fit_seds"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.source.get_best_fit_seds" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate best fitting SED for multiple components.</p>
+<p>Solves min_A ||img - AS||^2 for the SED matrix A,
+assuming that the images only contain a single source.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>morphs: list</strong></dt><dd><p>Morphology for each component in the source.</p>
+</dd>
+<dt><strong>frame: `scarlet.observation.frame`</strong></dt><dd><p>The frame of the model</p>
+</dd>
+<dt><strong>images: array</strong></dt><dd><p>Observation to extract SEDs from.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>SED: <cite>~numpy.array</cite></dt><dd></dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="scarlet.source.get_pixel_sed">
+<code class="sig-prename descclassname">scarlet.source.</code><code class="sig-name descname">get_pixel_sed</code><span class="sig-paren">(</span><em class="sig-param">sky_coord</em>, <em class="sig-param">observation</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/source.html#get_pixel_sed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.source.get_pixel_sed" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the SED at <cite>sky_coord</cite> in <cite>observation</cite></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>sky_coord: tuple</strong></dt><dd><p>Position in the observation</p>
+</dd>
+<dt><strong>observation: `~scarlet.Observation`</strong></dt><dd><p>Observation to extract SED from.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>SED: <cite>~numpy.array</cite></dt><dd></dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="scarlet.source.get_psf_sed">
+<code class="sig-prename descclassname">scarlet.source.</code><code class="sig-name descname">get_psf_sed</code><span class="sig-paren">(</span><em class="sig-param">sky_coord</em>, <em class="sig-param">observation</em>, <em class="sig-param">frame</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/source.html#get_psf_sed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.source.get_psf_sed" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get SED for a point source at <cite>sky_coord</cite> in <cite>observation</cite></p>
+<p>Identical to <cite>get_pixel_sed</cite>, but corrects for the different
+peak values of the observed seds to approximately correct for PSF
+width variations between channels.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>sky_coord: tuple</strong></dt><dd><p>Position in the observation</p>
+</dd>
+<dt><strong>observation: `~scarlet.Observation`</strong></dt><dd><p>Observation to extract SED from.</p>
+</dd>
+<dt><strong>frame: `~scarlet.Frame`</strong></dt><dd><p>Frame of the model</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>SED: <cite>~numpy.array</cite></dt><dd></dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="scarlet.source.init_extended_source">
+<code class="sig-prename descclassname">scarlet.source.</code><code class="sig-name descname">init_extended_source</code><span class="sig-paren">(</span><em class="sig-param">sky_coord</em>, <em class="sig-param">frame</em>, <em class="sig-param">observations</em>, <em class="sig-param">obs_idx=0</em>, <em class="sig-param">thresh=1</em>, <em class="sig-param">symmetric=True</em>, <em class="sig-param">monotonic=True</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/source.html#init_extended_source"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.source.init_extended_source" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize the source that is symmetric and monotonic
+See <cite>ExtendedSource</cite> for a description of the parameters</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="scarlet.source.init_multicomponent_source">
+<code class="sig-prename descclassname">scarlet.source.</code><code class="sig-name descname">init_multicomponent_source</code><span class="sig-paren">(</span><em class="sig-param">sky_coord</em>, <em class="sig-param">frame</em>, <em class="sig-param">observations</em>, <em class="sig-param">obs_idx=0</em>, <em class="sig-param">flux_percentiles=None</em>, <em class="sig-param">thresh=1.0</em>, <em class="sig-param">symmetric=True</em>, <em class="sig-param">monotonic=True</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/source.html#init_multicomponent_source"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.source.init_multicomponent_source" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize multiple components
+See <cite>MultiComponentSource</cite> for a description of the parameters</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="scarlet.source.trim_morphology">
+<code class="sig-prename descclassname">scarlet.source.</code><code class="sig-name descname">trim_morphology</code><span class="sig-paren">(</span><em class="sig-param">sky_coord</em>, <em class="sig-param">frame</em>, <em class="sig-param">morph</em>, <em class="sig-param">bg_cutoff</em>, <em class="sig-param">thresh</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/source.html#trim_morphology"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.source.trim_morphology" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &copy;2018-2019, Fred Moolekamp and Peter Melchior.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.3.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/api/scarlet.source.rst"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

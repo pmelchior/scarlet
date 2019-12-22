@@ -1,0 +1,373 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>scarlet.observation &#8212; scarlet  documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "ignoreClass": "document", "processClass": "math|output_area"}})</script>
+    <link rel="canonical" href="api/api/scarlet.observation.html" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="scarlet.operator" href="scarlet.operator.html" />
+    <link rel="prev" title="scarlet.measure" href="scarlet.measure.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../index.html">
+              <img class="logo" src="../_static/logo.svg" alt="Logo"/>
+            </a></p>
+<h3><a href="../index.html">Table of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../0-quickstart.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../1-concepts.html">Core Concepts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials.html">Tutorials</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="scarlet.html">API Documentation</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="scarlet.bbox.html">scarlet.bbox</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.blend.html">scarlet.blend</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.cache.html">scarlet.cache</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.component.html">scarlet.component</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.constraint.html">scarlet.constraint</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.display.html">scarlet.display</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.fft.html">scarlet.fft</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.frame.html">scarlet.frame</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.interpolation.html">scarlet.interpolation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.measure.html">scarlet.measure</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">scarlet.observation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.operator.html">scarlet.operator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.parameter.html">scarlet.parameter</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.psf.html">scarlet.psf</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.resampling.html">scarlet.resampling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.source.html">scarlet.source</a></li>
+</ul>
+</li>
+</ul>
+
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-scarlet.observation">
+<span id="scarlet-observation"></span><h1>scarlet.observation<a class="headerlink" href="#module-scarlet.observation" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="scarlet.observation.LowResObservation">
+<em class="property">class </em><code class="sig-prename descclassname">scarlet.observation.</code><code class="sig-name descname">LowResObservation</code><span class="sig-paren">(</span><em class="sig-param">images</em>, <em class="sig-param">wcs=None</em>, <em class="sig-param">psfs=None</em>, <em class="sig-param">weights=None</em>, <em class="sig-param">channels=None</em>, <em class="sig-param">padding=3</em>, <em class="sig-param">operator='exact'</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/observation.html#LowResObservation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.LowResObservation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#scarlet.observation.Observation" title="scarlet.observation.Observation"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.observation.Observation</span></code></a></p>
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.observation.LowResObservation.build_diffkernel" title="scarlet.observation.LowResObservation.build_diffkernel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_diffkernel</span></code></a>(self, model_frame, angle)</p></td>
+<td><p>Builds the differential convolution kernel between the observation and the frame psfs</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.observation.LowResObservation.get_loss" title="scarlet.observation.LowResObservation.get_loss"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_loss</span></code></a>(self, model)</p></td>
+<td><p>Computes the loss/fidelity of a given model wrt to the observation Parameters ———- model: array     A model from <cite>Blend</cite> Returns ——- loss: float     Loss of the model</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.observation.LowResObservation.match" title="scarlet.observation.LowResObservation.match"><code class="xref py py-obj docutils literal notranslate"><span class="pre">match</span></code></a>(self, model_frame)</p></td>
+<td><p>Match the frame of <cite>Blend</cite> to the frame of this observation.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.observation.LowResObservation.match_psfs" title="scarlet.observation.LowResObservation.match_psfs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">match_psfs</span></code></a>(self, psf_hr, wcs_hr, angle)</p></td>
+<td><p>psf matching between different dataset Matches PSFS at different resolutions by interpolating psf_lr on the same grid as psf_hr Parameters ———- psf_hr: array     centered psf of the high resolution scene psf_lr: array     centered psf of the low resolution scene wcs_hr: WCS object     wcs of the high resolution scene wcs_lr: WCS object     wcs of the low resolution scene angle: tuple     the cos and sin of the rotation angle between frames Returns ——- psf_match_hr: array     high rresolution psf at mactching size psf_match_lr: array     low resolution psf at matching size and resolution</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.observation.LowResObservation.render" title="scarlet.observation.LowResObservation.render"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render</span></code></a>(self, model)</p></td>
+<td><p>Resample and convolve a model in the observation frame for display only! Parameters ———- model: array     The model in some other data frame.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.observation.LowResObservation.sinc_shift" title="scarlet.observation.LowResObservation.sinc_shift"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sinc_shift</span></code></a>(self, imgs, shifts, axes, sum_axis)</p></td>
+<td><p>Performs 2 1D sinc convolutions and shifting along one rotated axis in Fourier space.</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="scarlet.observation.LowResObservation.build_diffkernel">
+<code class="sig-name descname">build_diffkernel</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">model_frame</em>, <em class="sig-param">angle</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/observation.html#LowResObservation.build_diffkernel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.LowResObservation.build_diffkernel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Builds the differential convolution kernel between the observation and the frame psfs</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>model_frame: Frame object</strong></dt><dd><p>the frame of the model (hehehe)</p>
+</dd>
+<dt><strong>angle: tuple</strong></dt><dd><p>tuple of the cos and sin of the rotation angle between frames.</p>
+</dd>
+<dt><strong>Returns</strong></dt><dd></dd>
+<dt><strong>——-</strong></dt><dd></dd>
+<dt><strong>diff_psf: array</strong></dt><dd><p>the differential psf between observation and frame psfs.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.observation.LowResObservation.get_loss">
+<code class="sig-name descname">get_loss</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">model</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/observation.html#LowResObservation.get_loss"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.LowResObservation.get_loss" title="Permalink to this definition">¶</a></dt>
+<dd><p>Computes the loss/fidelity of a given model wrt to the observation
+Parameters
+———-
+model: array</p>
+<blockquote>
+<div><p>A model from <cite>Blend</cite></p>
+</div></blockquote>
+<dl class="simple">
+<dt>loss: float</dt><dd><p>Loss of the model</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.observation.LowResObservation.match">
+<code class="sig-name descname">match</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">model_frame</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/observation.html#LowResObservation.match"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.LowResObservation.match" title="Permalink to this definition">¶</a></dt>
+<dd><p>Match the frame of <cite>Blend</cite> to the frame of this observation.</p>
+<p>The method sets up the mappings in spectral and spatial coordinates,
+which includes a spatial selection, computing PSF difference kernels
+and filter transformations.</p>
+<dl class="simple">
+<dt>model_frame: a <cite>scarlet.Frame</cite> instance</dt><dd><p>The frame of <cite>Blend</cite> to match</p>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><dl class="simple">
+<dt>None</dt><dd></dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.observation.LowResObservation.match_psfs">
+<code class="sig-name descname">match_psfs</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">psf_hr</em>, <em class="sig-param">wcs_hr</em>, <em class="sig-param">angle</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/observation.html#LowResObservation.match_psfs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.LowResObservation.match_psfs" title="Permalink to this definition">¶</a></dt>
+<dd><p>psf matching between different dataset
+Matches PSFS at different resolutions by interpolating psf_lr on the same grid as psf_hr
+Parameters
+———-
+psf_hr: array</p>
+<blockquote>
+<div><p>centered psf of the high resolution scene</p>
+</div></blockquote>
+<dl class="simple">
+<dt>psf_lr: array</dt><dd><p>centered psf of the low resolution scene</p>
+</dd>
+<dt>wcs_hr: WCS object</dt><dd><p>wcs of the high resolution scene</p>
+</dd>
+<dt>wcs_lr: WCS object</dt><dd><p>wcs of the low resolution scene</p>
+</dd>
+<dt>angle: tuple</dt><dd><p>the cos and sin of the rotation angle between frames</p>
+</dd>
+</dl>
+<dl class="simple">
+<dt>psf_match_hr: array</dt><dd><p>high rresolution psf at mactching size</p>
+</dd>
+<dt>psf_match_lr: array</dt><dd><p>low resolution psf at matching size and resolution</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.observation.LowResObservation.render">
+<code class="sig-name descname">render</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">model</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/observation.html#LowResObservation.render"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.LowResObservation.render" title="Permalink to this definition">¶</a></dt>
+<dd><p>Resample and convolve a model in the observation frame for display only!
+Parameters
+———-
+model: array</p>
+<blockquote>
+<div><p>The model in some other data frame.</p>
+</div></blockquote>
+<dl class="simple">
+<dt>image_model: array</dt><dd><p><cite>model</cite> mapped into the observation frame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.observation.LowResObservation.sinc_shift">
+<code class="sig-name descname">sinc_shift</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">imgs</em>, <em class="sig-param">shifts</em>, <em class="sig-param">axes</em>, <em class="sig-param">sum_axis</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/observation.html#LowResObservation.sinc_shift"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.LowResObservation.sinc_shift" title="Permalink to this definition">¶</a></dt>
+<dd><p>Performs 2 1D sinc convolutions and shifting along one rotated axis in Fourier space.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>imgs: Fourier</strong></dt><dd><p>a Fourier object of 2D images to sinc convolve and shift
+to the adequate shape.</p>
+</dd>
+<dt><strong>shifts: array</strong></dt><dd><p>an array of the shift values for each line and columns of images in imgs</p>
+</dd>
+<dt><strong>axes: array</strong></dt><dd><p>Optional argument that specifies the axes along which to apply sinc convolution.</p>
+</dd>
+<dt><strong>sum_axis: int</strong></dt><dd><p>axis along which the summation is performed. If axes is of length one, sum_axis should correspond to axes.</p>
+</dd>
+<dt><strong>Returns</strong></dt><dd></dd>
+<dt><strong>——-</strong></dt><dd></dd>
+<dt><strong>result: array</strong></dt><dd><p>the shifted and sinc convolved array in configuration space</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="scarlet.observation.Observation">
+<em class="property">class </em><code class="sig-prename descclassname">scarlet.observation.</code><code class="sig-name descname">Observation</code><span class="sig-paren">(</span><em class="sig-param">images</em>, <em class="sig-param">psfs=None</em>, <em class="sig-param">weights=None</em>, <em class="sig-param">wcs=None</em>, <em class="sig-param">channels=None</em>, <em class="sig-param">padding=10</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/observation.html#Observation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.Observation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.8)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Data and metadata for a single set of observations</p>
+<dl class="field-list simple">
+<dt class="field-odd">Attributes</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>images: array or tensor</strong></dt><dd><p>3D data cube (channels, Ny, Nx) of the image in each band.</p>
+</dd>
+<dt><strong>frame: a `scarlet.Frame` instance</strong></dt><dd><p>The spectral and spatial characteristics of these data</p>
+</dd>
+<dt><strong>weights: array or tensor</strong></dt><dd><p>Weight for each pixel in <cite>images</cite>.
+If a set of masks exists for the observations then
+then any masked pixels should have their <cite>weight</cite> set
+to zero.</p>
+</dd>
+<dt><strong>padding: int</strong></dt><dd><p>Number of pixels to pad each side with, in addition to
+half the width of the PSF, for FFTs. This is needed to
+prevent artifacts from the FFT.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.observation.Observation.get_loss" title="scarlet.observation.Observation.get_loss"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_loss</span></code></a>(self, model)</p></td>
+<td><p>Computes the loss/fidelity of a given model wrt to the observation</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.observation.Observation.match" title="scarlet.observation.Observation.match"><code class="xref py py-obj docutils literal notranslate"><span class="pre">match</span></code></a>(self, model_frame)</p></td>
+<td><p>Match the frame of <cite>Blend</cite> to the frame of this observation.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.observation.Observation.render" title="scarlet.observation.Observation.render"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render</span></code></a>(self, model)</p></td>
+<td><p>Convolve a model to the observation frame</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="scarlet.observation.Observation.get_loss">
+<code class="sig-name descname">get_loss</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">model</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/observation.html#Observation.get_loss"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.Observation.get_loss" title="Permalink to this definition">¶</a></dt>
+<dd><p>Computes the loss/fidelity of a given model wrt to the observation</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>model: array</strong></dt><dd><p>The model from <cite>Blend</cite></p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>result: array</dt><dd><p>Scalar tensor with the likelihood of the model
+given the image data</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.observation.Observation.match">
+<code class="sig-name descname">match</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">model_frame</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/observation.html#Observation.match"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.Observation.match" title="Permalink to this definition">¶</a></dt>
+<dd><p>Match the frame of <cite>Blend</cite> to the frame of this observation.</p>
+<p>The method sets up the mappings in spectral and spatial coordinates,
+which includes a spatial selection, computing PSF difference kernels
+and filter transformations.</p>
+<dl class="simple">
+<dt>model_frame: a <cite>scarlet.Frame</cite> instance</dt><dd><p>The frame of <cite>Blend</cite> to match</p>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><dl class="simple">
+<dt>None</dt><dd></dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.observation.Observation.render">
+<code class="sig-name descname">render</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">model</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/observation.html#Observation.render"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.Observation.render" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convolve a model to the observation frame</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>model: array</strong></dt><dd><p>The model from <cite>Blend</cite></p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>image_model: array</dt><dd><p><cite>model</cite> mapped into the observation frame</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &copy;2018-2019, Fred Moolekamp and Peter Melchior.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.3.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/api/scarlet.observation.rst"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

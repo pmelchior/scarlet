@@ -1,0 +1,372 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>scarlet.bbox &#8212; scarlet  documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "ignoreClass": "document", "processClass": "math|output_area"}})</script>
+    <link rel="canonical" href="api/api/scarlet.bbox.html" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="scarlet.blend" href="scarlet.blend.html" />
+    <link rel="prev" title="API Documentation" href="scarlet.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../index.html">
+              <img class="logo" src="../_static/logo.svg" alt="Logo"/>
+            </a></p>
+<h3><a href="../index.html">Table of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../0-quickstart.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../1-concepts.html">Core Concepts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials.html">Tutorials</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="scarlet.html">API Documentation</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">scarlet.bbox</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.blend.html">scarlet.blend</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.cache.html">scarlet.cache</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.component.html">scarlet.component</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.constraint.html">scarlet.constraint</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.display.html">scarlet.display</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.fft.html">scarlet.fft</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.frame.html">scarlet.frame</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.interpolation.html">scarlet.interpolation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.measure.html">scarlet.measure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.observation.html">scarlet.observation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.operator.html">scarlet.operator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.parameter.html">scarlet.parameter</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.psf.html">scarlet.psf</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.resampling.html">scarlet.resampling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.source.html">scarlet.source</a></li>
+</ul>
+</li>
+</ul>
+
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-scarlet.bbox">
+<span id="scarlet-bbox"></span><h1>scarlet.bbox<a class="headerlink" href="#module-scarlet.bbox" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="scarlet.bbox.Box">
+<em class="property">class </em><code class="sig-prename descclassname">scarlet.bbox.</code><code class="sig-name descname">Box</code><span class="sig-paren">(</span><em class="sig-param">shape</em>, <em class="sig-param">origin=(0</em>, <em class="sig-param">0</em>, <em class="sig-param">0)</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/bbox.html#Box"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.bbox.Box" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.8)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Bounding Box for an object</p>
+<p>A Bounding box describes the location of a data unit in the global/model coordinate
+system. It is used to identify spatial and channel overlap and to map from model
+to observed frames and back.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>shape: tuple</strong></dt><dd><p>Size of the box in depth,height,width</p>
+</dd>
+<dt><strong>origin: tuple</strong></dt><dd><p>Minimum (z,y,x) value of the box (front low left corner).</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Attributes</dt>
+<dd class="field-even"><dl class="simple">
+<dt><a class="reference internal" href="#scarlet.bbox.Box.C" title="scarlet.bbox.Box.C"><code class="xref py py-obj docutils literal notranslate"><span class="pre">C</span></code></a></dt><dd><p>Number of channels in the model</p>
+</dd>
+<dt><a class="reference internal" href="#scarlet.bbox.Box.Nx" title="scarlet.bbox.Box.Nx"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Nx</span></code></a></dt><dd><p>Number of pixels in the x-direction</p>
+</dd>
+<dt><a class="reference internal" href="#scarlet.bbox.Box.Ny" title="scarlet.bbox.Box.Ny"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Ny</span></code></a></dt><dd><p>Number of pixel in the y-direction</p>
+</dd>
+<dt><a class="reference internal" href="#scarlet.bbox.Box.back" title="scarlet.bbox.Box.back"><code class="xref py py-obj docutils literal notranslate"><span class="pre">back</span></code></a></dt><dd><p>Maximum y value</p>
+</dd>
+<dt><a class="reference internal" href="#scarlet.bbox.Box.bottom" title="scarlet.bbox.Box.bottom"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bottom</span></code></a></dt><dd><p>Minimum y value</p>
+</dd>
+<dt><a class="reference internal" href="#scarlet.bbox.Box.front" title="scarlet.bbox.Box.front"><code class="xref py py-obj docutils literal notranslate"><span class="pre">front</span></code></a></dt><dd><p>Minimum z value</p>
+</dd>
+<dt><a class="reference internal" href="#scarlet.bbox.Box.left" title="scarlet.bbox.Box.left"><code class="xref py py-obj docutils literal notranslate"><span class="pre">left</span></code></a></dt><dd><p>Minimum x value</p>
+</dd>
+<dt><a class="reference internal" href="#scarlet.bbox.Box.right" title="scarlet.bbox.Box.right"><code class="xref py py-obj docutils literal notranslate"><span class="pre">right</span></code></a></dt><dd><p>Maximum x value</p>
+</dd>
+<dt><a class="reference internal" href="#scarlet.bbox.Box.top" title="scarlet.bbox.Box.top"><code class="xref py py-obj docutils literal notranslate"><span class="pre">top</span></code></a></dt><dd><p>Maximum y value</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.bbox.Box.contains" title="scarlet.bbox.Box.contains"><code class="xref py py-obj docutils literal notranslate"><span class="pre">contains</span></code></a>(self, p)</p></td>
+<td><p>Whether the box cotains a given coordinate <cite>p</cite></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.bbox.Box.extract_from" title="scarlet.bbox.Box.extract_from"><code class="xref py py-obj docutils literal notranslate"><span class="pre">extract_from</span></code></a>(self, image[, sub])</p></td>
+<td><p>Extract sub-image described by this bbox from image</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.bbox.Box.from_bounds" title="scarlet.bbox.Box.from_bounds"><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_bounds</span></code></a>(front, back, bottom, top, left, …)</p></td>
+<td><p>Initialize a box from its bounds</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.bbox.Box.from_data" title="scarlet.bbox.Box.from_data"><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_data</span></code></a>(X[, min_value])</p></td>
+<td><p>Define range of <cite>X</cite> above <cite>min_value</cite></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.bbox.Box.from_image" title="scarlet.bbox.Box.from_image"><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_image</span></code></a>(image)</p></td>
+<td><p>Initialize a box to cover <cite>image</cite></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.bbox.Box.insert_into" title="scarlet.bbox.Box.insert_into"><code class="xref py py-obj docutils literal notranslate"><span class="pre">insert_into</span></code></a>(self, image, sub)</p></td>
+<td><p>Insert <cite>sub</cite> into <cite>image</cite> according to this bbox</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.bbox.Box.slices_for" title="scarlet.bbox.Box.slices_for"><code class="xref py py-obj docutils literal notranslate"><span class="pre">slices_for</span></code></a>(self, im_or_shape)</p></td>
+<td><p>Slices for <cite>im_or_shape</cite> to be limited to this bounding box.</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="scarlet.bbox.Box.C">
+<em class="property">property </em><code class="sig-name descname">C</code><a class="headerlink" href="#scarlet.bbox.Box.C" title="Permalink to this definition">¶</a></dt>
+<dd><p>Number of channels in the model</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.bbox.Box.Nx">
+<em class="property">property </em><code class="sig-name descname">Nx</code><a class="headerlink" href="#scarlet.bbox.Box.Nx" title="Permalink to this definition">¶</a></dt>
+<dd><p>Number of pixels in the x-direction</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.bbox.Box.Ny">
+<em class="property">property </em><code class="sig-name descname">Ny</code><a class="headerlink" href="#scarlet.bbox.Box.Ny" title="Permalink to this definition">¶</a></dt>
+<dd><p>Number of pixel in the y-direction</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.bbox.Box.back">
+<em class="property">property </em><code class="sig-name descname">back</code><a class="headerlink" href="#scarlet.bbox.Box.back" title="Permalink to this definition">¶</a></dt>
+<dd><p>Maximum y value</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.bbox.Box.bottom">
+<em class="property">property </em><code class="sig-name descname">bottom</code><a class="headerlink" href="#scarlet.bbox.Box.bottom" title="Permalink to this definition">¶</a></dt>
+<dd><p>Minimum y value</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.bbox.Box.contains">
+<code class="sig-name descname">contains</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">p</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/bbox.html#Box.contains"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.bbox.Box.contains" title="Permalink to this definition">¶</a></dt>
+<dd><p>Whether the box cotains a given coordinate <cite>p</cite></p>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.bbox.Box.extract_from">
+<code class="sig-name descname">extract_from</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">image</em>, <em class="sig-param">sub=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/bbox.html#Box.extract_from"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.bbox.Box.extract_from" title="Permalink to this definition">¶</a></dt>
+<dd><p>Extract sub-image described by this bbox from image</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>image: array</strong></dt><dd><p>Full image</p>
+</dd>
+<dt><strong>sub: array</strong></dt><dd><p>Extracted image</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>sub: array</dt><dd></dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.bbox.Box.from_bounds">
+<em class="property">static </em><code class="sig-name descname">from_bounds</code><span class="sig-paren">(</span><em class="sig-param">front</em>, <em class="sig-param">back</em>, <em class="sig-param">bottom</em>, <em class="sig-param">top</em>, <em class="sig-param">left</em>, <em class="sig-param">right</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/bbox.html#Box.from_bounds"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.bbox.Box.from_bounds" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize a box from its bounds</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>bottom: int</strong></dt><dd><p>Minimum in the y direction.</p>
+</dd>
+<dt><strong>top: int</strong></dt><dd><p>Maximum in the y direction.</p>
+</dd>
+<dt><strong>left: int</strong></dt><dd><p>Minimum in the x direction.</p>
+</dd>
+<dt><strong>right: int</strong></dt><dd><p>Maximum in the x direction.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>bbox: <a class="reference internal" href="#scarlet.bbox.Box" title="scarlet.bbox.Box"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.bbox.Box</span></code></a></dt><dd><p>A new box bounded by the input bounds.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.bbox.Box.from_data">
+<em class="property">static </em><code class="sig-name descname">from_data</code><span class="sig-paren">(</span><em class="sig-param">X</em>, <em class="sig-param">min_value=0</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/bbox.html#Box.from_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.bbox.Box.from_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Define range of <cite>X</cite> above <cite>min_value</cite></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>X: array-like</strong></dt><dd><p>Data to threshold</p>
+</dd>
+<dt><strong>min_value: float</strong></dt><dd><p>Minimum value of the result.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>bbox: <a class="reference internal" href="#scarlet.bbox.Box" title="scarlet.bbox.Box"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.bbox.Box</span></code></a></dt><dd><p>Bounding box for the thresholded <cite>X</cite> (bottom, top, left, right)</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.bbox.Box.from_image">
+<em class="property">static </em><code class="sig-name descname">from_image</code><span class="sig-paren">(</span><em class="sig-param">image</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/bbox.html#Box.from_image"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.bbox.Box.from_image" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize a box to cover <cite>image</cite></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>image: array-like</strong></dt><dd><p>2D image</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>bbox: <cite>:class:`scarlet.bbox.Box</cite></dt><dd><p>A new box bounded by the image.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.bbox.Box.front">
+<em class="property">property </em><code class="sig-name descname">front</code><a class="headerlink" href="#scarlet.bbox.Box.front" title="Permalink to this definition">¶</a></dt>
+<dd><p>Minimum z value</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.bbox.Box.insert_into">
+<code class="sig-name descname">insert_into</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">image</em>, <em class="sig-param">sub</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/bbox.html#Box.insert_into"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.bbox.Box.insert_into" title="Permalink to this definition">¶</a></dt>
+<dd><p>Insert <cite>sub</cite> into <cite>image</cite> according to this bbox</p>
+<p>Inverse operation to <a class="reference internal" href="#scarlet.bbox.Box.extract_from" title="scarlet.bbox.Box.extract_from"><code class="xref py py-func docutils literal notranslate"><span class="pre">extract_from()</span></code></a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>image: array</strong></dt><dd><p>Full image</p>
+</dd>
+<dt><strong>sub: array</strong></dt><dd><p>Extracted sub-image</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>image: array</dt><dd></dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.bbox.Box.left">
+<em class="property">property </em><code class="sig-name descname">left</code><a class="headerlink" href="#scarlet.bbox.Box.left" title="Permalink to this definition">¶</a></dt>
+<dd><p>Minimum x value</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.bbox.Box.right">
+<em class="property">property </em><code class="sig-name descname">right</code><a class="headerlink" href="#scarlet.bbox.Box.right" title="Permalink to this definition">¶</a></dt>
+<dd><p>Maximum x value</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.bbox.Box.slices_for">
+<code class="sig-name descname">slices_for</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">im_or_shape</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/bbox.html#Box.slices_for"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.bbox.Box.slices_for" title="Permalink to this definition">¶</a></dt>
+<dd><p>Slices for <cite>im_or_shape</cite> to be limited to this bounding box.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>im_or_shape: array or tuple</strong></dt><dd><p>Array or shape of the array to be sliced</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>If shape is 2D: <cite>slice_y</cite>, <cite>slice_x</cite></dt><dd></dd>
+<dt>If shape is 3: <cite>slice(None)</cite>, <cite>slice_y</cite>, <cite>slice_x</cite></dt><dd></dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.bbox.Box.top">
+<em class="property">property </em><code class="sig-name descname">top</code><a class="headerlink" href="#scarlet.bbox.Box.top" title="Permalink to this definition">¶</a></dt>
+<dd><p>Maximum y value</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &copy;2018-2019, Fred Moolekamp and Peter Melchior.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.3.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/api/scarlet.bbox.rst"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

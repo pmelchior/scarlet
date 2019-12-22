@@ -1,0 +1,242 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>scarlet.fft &#8212; scarlet  documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "ignoreClass": "document", "processClass": "math|output_area"}})</script>
+    <link rel="canonical" href="api/api/scarlet.fft.html" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="scarlet.frame" href="scarlet.frame.html" />
+    <link rel="prev" title="scarlet.display" href="scarlet.display.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../index.html">
+              <img class="logo" src="../_static/logo.svg" alt="Logo"/>
+            </a></p>
+<h3><a href="../index.html">Table of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../0-quickstart.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../1-concepts.html">Core Concepts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials.html">Tutorials</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="scarlet.html">API Documentation</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="scarlet.bbox.html">scarlet.bbox</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.blend.html">scarlet.blend</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.cache.html">scarlet.cache</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.component.html">scarlet.component</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.constraint.html">scarlet.constraint</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.display.html">scarlet.display</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">scarlet.fft</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.frame.html">scarlet.frame</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.interpolation.html">scarlet.interpolation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.measure.html">scarlet.measure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.observation.html">scarlet.observation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.operator.html">scarlet.operator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.parameter.html">scarlet.parameter</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.psf.html">scarlet.psf</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.resampling.html">scarlet.resampling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.source.html">scarlet.source</a></li>
+</ul>
+</li>
+</ul>
+
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-scarlet.fft">
+<span id="scarlet-fft"></span><h1>scarlet.fft<a class="headerlink" href="#module-scarlet.fft" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="scarlet.fft.Fourier">
+<em class="property">class </em><code class="sig-prename descclassname">scarlet.fft.</code><code class="sig-name descname">Fourier</code><span class="sig-paren">(</span><em class="sig-param">image</em>, <em class="sig-param">image_fft=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/fft.html#Fourier"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.fft.Fourier" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.8)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>An array that stores its Fourier Transform</p>
+<p>The <cite>Fourier</cite> class is used for images that will make
+use of their Fourier Transform multiple times.
+In order to prevent numerical artifacts the same image
+convolved with different images might require different
+padding, so the FFT for each different shape is stored
+in a dictionary.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Attributes</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><a class="reference internal" href="#scarlet.fft.Fourier.image" title="scarlet.fft.Fourier.image"><code class="xref py py-obj docutils literal notranslate"><span class="pre">image</span></code></a></dt><dd><p>The real space image</p>
+</dd>
+<dt><a class="reference internal" href="#scarlet.fft.Fourier.shape" title="scarlet.fft.Fourier.shape"><code class="xref py py-obj docutils literal notranslate"><span class="pre">shape</span></code></a></dt><dd><p>The shape of the real space image</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.fft.Fourier.fft" title="scarlet.fft.Fourier.fft"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fft</span></code></a>(self, fft_shape, axes)</p></td>
+<td><p>The FFT of an image for a given <cite>fft_shape</cite> along desired <cite>axes</cite></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.fft.Fourier.from_fft" title="scarlet.fft.Fourier.from_fft"><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_fft</span></code></a>(image_fft, fft_shape, image_shape)</p></td>
+<td><p>Generate a new Fourier object from an FFT dictionary</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="scarlet.fft.Fourier.fft">
+<code class="sig-name descname">fft</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">fft_shape</em>, <em class="sig-param">axes</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/fft.html#Fourier.fft"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.fft.Fourier.fft" title="Permalink to this definition">¶</a></dt>
+<dd><p>The FFT of an image for a given <cite>fft_shape</cite> along desired <cite>axes</cite></p>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.fft.Fourier.from_fft">
+<em class="property">static </em><code class="sig-name descname">from_fft</code><span class="sig-paren">(</span><em class="sig-param">image_fft</em>, <em class="sig-param">fft_shape</em>, <em class="sig-param">image_shape</em>, <em class="sig-param">axes=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/fft.html#Fourier.from_fft"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.fft.Fourier.from_fft" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate a new Fourier object from an FFT dictionary</p>
+<p>If the fft of an image has been generated but not its
+real space image (for example when creating a convolution kernel),
+this method can be called to create a new <cite>Fourier</cite> instance
+from the k-space representation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>image_fft: array</strong></dt><dd><p>The FFT of the image.</p>
+</dd>
+<dt><strong>fft_shape: tuple</strong></dt><dd><p>“Fast” shape of the image used to generate the FFT.
+This will be different than <cite>image_fft.shape</cite> if
+any of the dimensions are odd, since <cite>np.fft.rfft</cite>
+requires an even number of dimensions (for symmetry),
+so this tells <cite>np.fft.irfft</cite> how to go from
+complex k-space to real space.</p>
+</dd>
+<dt><strong>image_shape: tuple</strong></dt><dd><p>The shape of the image <em>before padding</em>.
+This will regenerate the image with the extra
+padding stripped.</p>
+</dd>
+<dt><strong>axes: int or tuple</strong></dt><dd><p>The dimension(s) of the array that will be transformed.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>result: <cite>Fourier</cite></dt><dd><p>A <cite>Fourier</cite> object generated from the FFT.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.fft.Fourier.image">
+<em class="property">property </em><code class="sig-name descname">image</code><a class="headerlink" href="#scarlet.fft.Fourier.image" title="Permalink to this definition">¶</a></dt>
+<dd><p>The real space image</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.fft.Fourier.shape">
+<em class="property">property </em><code class="sig-name descname">shape</code><a class="headerlink" href="#scarlet.fft.Fourier.shape" title="Permalink to this definition">¶</a></dt>
+<dd><p>The shape of the real space image</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="scarlet.fft.convolve">
+<code class="sig-prename descclassname">scarlet.fft.</code><code class="sig-name descname">convolve</code><span class="sig-paren">(</span><em class="sig-param">image1</em>, <em class="sig-param">image2</em>, <em class="sig-param">padding=3</em>, <em class="sig-param">axes=(-2</em>, <em class="sig-param">-1)</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/fft.html#convolve"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.fft.convolve" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convolve two images</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>image1: `Fourier`</strong></dt><dd><p><cite>Fourier</cite> object represeting the image and it’s FFT.</p>
+</dd>
+<dt><strong>image2: `Fourier`</strong></dt><dd><p><cite>Fourier</cite> object represeting the image and it’s FFT.</p>
+</dd>
+<dt><strong>padding: int</strong></dt><dd><p>Additional padding to use when generating the FFT
+to supress artifacts.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="scarlet.fft.match_psfs">
+<code class="sig-prename descclassname">scarlet.fft.</code><code class="sig-name descname">match_psfs</code><span class="sig-paren">(</span><em class="sig-param">psf1</em>, <em class="sig-param">psf2</em>, <em class="sig-param">padding=3</em>, <em class="sig-param">axes=(-2</em>, <em class="sig-param">-1)</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/fft.html#match_psfs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.fft.match_psfs" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate the difference kernel between two psfs</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>psf1: `Fourier`</strong></dt><dd><p><cite>Fourier</cite> object representing the psf and it’s FFT.</p>
+</dd>
+<dt><strong>psf2: `Fourier`</strong></dt><dd><p><cite>Fourier</cite> object representing the psf and it’s FFT.</p>
+</dd>
+<dt><strong>padding: int</strong></dt><dd><p>Additional padding to use when generating the FFT
+to supress artifacts.</p>
+</dd>
+<dt><strong>axes: tuple or None</strong></dt><dd><p>Axes that contain the spatial information for the PSFs.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &copy;2018-2019, Fred Moolekamp and Peter Melchior.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.3.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/api/scarlet.fft.rst"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
