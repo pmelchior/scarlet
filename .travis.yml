@@ -30,7 +30,7 @@ script:
 
 # deploy to github pages
 before_deploy:
-  - cd docs && make html
+  - cd docs && make html && cd ..
 
 deploy:
   provider: pages:git
