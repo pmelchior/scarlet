@@ -80,26 +80,6 @@ Then navigate to the `docs` directory and type
 and a local copy of the current docs will be available in the `docs/_build/html` folder.
 The home page is available at `docs/_build/html/index.html`.
 
-Updating the Docs
-^^^^^^^^^^^^^^^^^
-This section is for updating the public docs hosted on github pages.
-First, MAKE SURE THAT YOU HAVE COMMITTED ALL OF YOUR CHANGES.
-The build process has to checkout the `gh-pages` branch behind the scenes and
-might fail if you have uncommitted changes.
-
-Navigate to the `docs` folder and execute `make gh-pages`:
-
-::
-
-    cd <pathToScarlet>/docs
-    make gh-pages
-
-This will first build the docs in your *current* branch,
-which should usually be master unless the docs are broken and require a fix from another branch.
-Next it switches to the `gh-pages` branch and copies the html files into the base directory.
-The `gh-pages` branch has a special `.gitignore` to ignore all of the source files and only commits the
-changes to the docs, then pushes them to github.
-
 .. _numpy: http://www.numpy.org
 .. _proxmin: https://github.com/pmelchior/proxmin/
 .. _pybind11: https://pybind11.readthedocs.io/en/stable/

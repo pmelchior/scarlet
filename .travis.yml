@@ -30,7 +30,7 @@ script:
 
 # deploy to github pages
 before_deploy:
-  - cd docs && make html && cd ..
+  - cd docs && make html && touch _build/html/.nojekyll && cd ..
 
 deploy:
   provider: pages:git
