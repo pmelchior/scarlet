@@ -349,8 +349,8 @@ def show_sources(
             model = src.get_model()
             model = observation.render(model)
             ax[k][panel].imshow(img_to_rgb(model, norm=norm, channel_map=channel_map))
-            ax[k][panel].set_xlim(src.bbox.left, src.bbox.right)
-            ax[k][panel].set_ylim(src.bbox.bottom, src.bbox.top)
+            ax[k][panel].set_ylim(src.bbox.start[-2], src.bbox.stop[-2])
+            ax[k][panel].set_xlim(src.bbox.start[-1], src.bbox.stop[-1])
             ax[k][panel].set_title("Model Source {} Rendered".format(k))
             if center is not None:
                 ax[k][panel].plot(*center__[::-1], "wx", mew=1, ms=10)
@@ -360,8 +360,8 @@ def show_sources(
             ax[k][panel].imshow(
                 img_to_rgb(observation.images, norm=norm, channel_map=channel_map)
             )
-            ax[k][panel].set_xlim(src.bbox.left, src.bbox.right)
-            ax[k][panel].set_ylim(src.bbox.bottom, src.bbox.top)
+            ax[k][panel].set_ylim(src.bbox.start[-2], src.bbox.stop[-2])
+            ax[k][panel].set_xlim(src.bbox.start[-1], src.bbox.stop[-1])
             ax[k][panel].set_title("Observation".format(k))
             if center is not None:
                 ax[k][panel].plot(*center__[::-1], "wx", mew=1, ms=10)

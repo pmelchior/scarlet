@@ -49,6 +49,24 @@ class Frame(Box):
         self.dtype = dtype
 
     @property
+    def C(self):
+        """Number of channels in the model
+        """
+        return self.shape[0]
+
+    @property
+    def Ny(self):
+        """Number of pixel in the y-direction
+        """
+        return self.shape[1]
+
+    @property
+    def Nx(self):
+        """Number of pixels in the x-direction
+        """
+        return self.shape[2]
+
+    @property
     def psf(self):
         return self._psfs
 

@@ -11,22 +11,17 @@ class Box:
     Parameters
     ----------
     shape: tuple
-        Size of the box in depth,height,width
+        Size of the box
     origin: tuple
-        Minimum (z,y,x) value of the box (front low left corner).
+        Front/low/left corner coordinate of the box
     """
 
-    def __init__(self, shape, origin=(0, 0, 0)):
-        # bbox always in 3D
-        if len(shape) == 2:
-            shape = (0, *shape)
-        assert len(shape) == 3
-        self.shape = shape
-
-        if len(origin) == 2:
-            origin = (0, *origin)
-        assert len(origin) == 3
-        self.origin = origin
+    def __init__(self, shape, origin=None):
+        self.shape = tuple(shape)
+        if origin is None:
+            origin = (0,) * len(shape)
+        assert len(origin) == len(shape)
+        self.origin = tuple(origin)
 
     @staticmethod
     def from_image(image):
@@ -35,7 +30,6 @@ class Box:
         Parameters
         ----------
         image: array-like
-            2D image
 
         Returns
         -------
@@ -45,34 +39,24 @@ class Box:
         return Box(image.shape)
 
     @staticmethod
-    def from_bounds(front, back, bottom, top, left, right):
+    def from_bounds(*args):
         """Initialize a box from its bounds
 
         Parameters
         ----------
-        bottom: int
-            Minimum in the y direction.
-        top: int
-            Maximum in the y direction.
-        left: int
-            Minimum in the x direction.
-        right: int
-            Maximum in the x direction.
+        args: ints
+            Min/Max coordinate for every dimension
 
         Returns
         -------
         bbox: :class:`scarlet.bbox.Box`
             A new box bounded by the input bounds.
         """
-        if back < front:
-            back, front = front, back
-        if top < bottom:
-            top, bottom = bottom, top
-        if right < left:
-            right, left = left, right
-        return Box(
-            (back - front, top - bottom, right - left), origin=(front, bottom, left)
-        )
+        assert len(args) % 2 == 0
+        dims = len(args) // 2
+        shape = [args[dim * 2 + 1] - args[dim * 2] for dim in range(dims)]
+        origin = [args[dim * 2] for dim in range(dims)]
+        return Box(shape, origin=origin)
 
     @staticmethod
     def from_data(X, min_value=0):
@@ -88,7 +72,7 @@ class Box:
         Returns
         -------
         bbox: :class:`scarlet.bbox.Box`
-            Bounding box for the thresholded `X` (bottom, top, left, right)
+            Bounding box for the thresholded `X`
         """
         sel = X > min_value
         if sel.any():
@@ -97,20 +81,16 @@ class Box:
             for dim in range(len(X.shape)):
                 bounds.append(nonzero[dim].min())
                 bounds.append(nonzero[dim].max() + 1)
-            if len(X.shape) == 2:
-                bounds.insert(0, 0)
-                bounds.insert(1, 0)
         else:
-            bounds = [0] * 6
+            bounds = [0,] * len(X.shape) * 2
         return Box.from_bounds(*bounds)
 
     def contains(self, p):
         """Whether the box cotains a given coordinate `p`
         """
-        if len(p) == 2:
-            p = (0, *p)
+        assert len(p) == self.D
 
-        for d in range(len(self.shape)):
+        for d in range(self.D):
             if p[d] < self.origin[d] or p[d] > self.origin[d] + self.shape[d]:
                 return False
         return True
@@ -125,27 +105,17 @@ class Box:
 
         Returns
         -------
-        If shape is 2D: `slice_y`, `slice_x`
-        If shape is 3: `slice(None)`, `slice_y`, `slice_x`
+        slices for every dimension
         """
         if hasattr(im_or_shape, "shape"):
             shape = im_or_shape.shape
         else:
             shape = im_or_shape
-        assert len(shape) in [2, 3]
+        assert len(shape) == self.D
 
         im_box = Box(shape)
         overlap = self & im_box
-        zslice, yslice, xslice = (
-            slice(overlap.front, overlap.back),
-            slice(overlap.bottom, overlap.top),
-            slice(overlap.left, overlap.right),
-        )
-
-        if len(shape) == 2:
-            return yslice, xslice
-        else:
-            return zslice, yslice, xslice
+        return tuple(slice(overlap.start[d], overlap.stop[d]) for d in range(self.D))
 
     def extract_from(self, image, sub=None):
         """Extract sub-image described by this bbox from image
@@ -164,10 +134,7 @@ class Box:
         imbox = Box.from_image(image)
 
         if sub is None:
-            if len(image.shape) == 3:
-                sub = np.zeros(self.shape)
-            else:
-                sub = np.zeros(self.shape[1:])
+            sub = np.zeros(self.shape)
         subbox = Box.from_image(sub)
 
         # imbox now in the frame of this bbox (i.e. of box)
@@ -202,58 +169,22 @@ class Box:
         return image
 
     @property
-    def C(self):
-        """Number of channels in the model
+    def D(self):
+        """Dimensionality of this BBox
         """
-        return self.shape[0]
+        return len(self.shape)
 
     @property
-    def Ny(self):
-        """Number of pixel in the y-direction
+    def start(self):
+        """Tuple of start coordinates
         """
-        return self.shape[1]
+        return self.origin
 
     @property
-    def Nx(self):
-        """Number of pixels in the x-direction
+    def stop(self):
+        """Tuple of stop coordinates (last is included)
         """
-        return self.shape[2]
-
-    @property
-    def front(self):
-        """Minimum z value
-        """
-        return self.origin[0]
-
-    @property
-    def bottom(self):
-        """Minimum y value
-        """
-        return self.origin[1]
-
-    @property
-    def left(self):
-        """Minimum x value
-        """
-        return self.origin[2]
-
-    @property
-    def back(self):
-        """Maximum y value
-        """
-        return self.origin[0] + self.shape[0]
-
-    @property
-    def top(self):
-        """Maximum y value
-        """
-        return self.origin[1] + self.shape[1]
-
-    @property
-    def right(self):
-        """Maximum x value
-        """
-        return self.origin[2] + self.shape[2]
+        return tuple(o + s for o, s in zip(self.origin, self.shape))
 
     def __or__(self, other):
         """Union of two bounding boxes
@@ -268,13 +199,12 @@ class Box:
         result: `Box`
             The smallest rectangular box that contains *both* boxes.
         """
-        front = min(self.front, other.front)
-        back = max(self.back, other.back)
-        bottom = min(self.bottom, other.bottom)
-        top = max(self.top, other.top)
-        left = min(self.left, other.left)
-        right = max(self.right, other.right)
-        return Box.from_bounds(front, back, bottom, top, left, right)
+        assert other.D == self.D
+        bounds = []
+        for d in range(self.D):
+            bounds.append(min(self.start[d], other.start[d]))
+            bounds.append(max(self.stop[d], other.stop[d]))
+        return Box.from_bounds(*bounds)
 
     def __and__(self, other):
         """Intersection of two bounding boxes
@@ -293,18 +223,12 @@ class Box:
             The rectangular box that is in the overlap region
             of both boxes.
         """
-        front = max(self.front, other.front)
-        back = min(self.back, other.back)
-        bottom = max(self.bottom, other.bottom)
-        top = min(self.top, other.top)
-        left = max(self.left, other.left)
-        right = min(self.right, other.right)
-        return Box.from_bounds(front, back, bottom, top, left, right)
-
-    def __str__(self):
-        return "Box({0}..{1}, {2}..{3}, {4}..{5})".format(
-            self.front, self.back, self.bottom, self.top, self.left, self.right
-        )
+        assert other.D == self.D
+        bounds = []
+        for d in range(self.D):
+            bounds.append(max(self.start[d], other.start[d]))
+            bounds.append(min(self.stop[d], other.stop[d]))
+        return Box.from_bounds(*bounds)
 
     def __repr__(self):
         result = "<Box shape={0}, origin={1}>"

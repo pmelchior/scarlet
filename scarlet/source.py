@@ -144,10 +144,10 @@ def trim_morphology(sky_coord, frame, morph, bg_cutoff, thresh):
         if bbox.contains(pixel_center):
             size = 2 * max(
                 (
-                    pixel_center[0] - bbox.bottom,
-                    bbox.top - pixel_center[0],
-                    pixel_center[1] - bbox.left,
-                    bbox.right - pixel_center[1],
+                    pixel_center[0] - bbox.start[0],
+                    bbox.stop[0] - pixel_center[0],
+                    pixel_center[1] - bbox.start[1],
+                    bbox.stop[1] - pixel_center[1],
                 )
             )
             while boxsize < size:
@@ -161,9 +161,10 @@ def trim_morphology(sky_coord, frame, morph, bg_cutoff, thresh):
     top = pixel_center[0] + boxsize // 2
     left = pixel_center[1] - boxsize // 2
     right = pixel_center[1] + boxsize // 2
-    bbox = Box.from_bounds(0, frame.C, bottom, top, left, right)
+    bbox = Box.from_bounds(bottom, top, left, right)
     morph = bbox.extract_from(morph)
-    return morph, bbox
+    bbox_3d = Box.from_bounds(0, frame.C, bottom, top, left, right)
+    return morph, bbox_3d
 
 
 def init_extended_source(
