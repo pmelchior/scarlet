@@ -451,12 +451,9 @@ class LowResObservation(Observation):
             cmin, cmax = 0, self.frame.C
         # 2) use the bounds of coord_lr
         self.bbox = Box.from_bounds(
-            cmin,
-            cmax + 1,
-            np.min(coord_lr[0]).astype(int),
-            np.max(coord_lr[0]).astype(int) + 1,
-            np.min(coord_lr[1]).astype(int),
-            np.max(coord_lr[1]).astype(int) + 1,
+            (cmin, cmax + 1),
+            (np.min(coord_lr[0]).astype(int), np.max(coord_lr[0]).astype(int) + 1),
+            (np.min(coord_lr[1]).astype(int), np.max(coord_lr[1]).astype(int) + 1),
         )
         self.slices = self.bbox.slices_for(model_frame.shape)
         # Coordinates for all model frame pixels

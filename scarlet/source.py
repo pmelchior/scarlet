@@ -144,10 +144,10 @@ def trim_morphology(sky_coord, frame, morph, bg_cutoff, thresh):
         if bbox.contains(pixel_center):
             size = 2 * max(
                 (
-                    pixel_center[0] - bbox.start[0],
-                    bbox.stop[0] - pixel_center[0],
-                    pixel_center[1] - bbox.start[1],
-                    bbox.stop[1] - pixel_center[1],
+                    pixel_center[0] - bbox.start[-2],
+                    bbox.stop[0] - pixel_center[-2],
+                    pixel_center[1] - bbox.start[-1],
+                    bbox.stop[1] - pixel_center[-1],
                 )
             )
             while boxsize < size:
@@ -161,9 +161,9 @@ def trim_morphology(sky_coord, frame, morph, bg_cutoff, thresh):
     top = pixel_center[0] + boxsize // 2
     left = pixel_center[1] - boxsize // 2
     right = pixel_center[1] + boxsize // 2
-    bbox = Box.from_bounds(bottom, top, left, right)
+    bbox = Box.from_bounds((bottom, top), (left, right))
     morph = bbox.extract_from(morph)
-    bbox_3d = Box.from_bounds(0, frame.C, bottom, top, left, right)
+    bbox_3d = Box.from_bounds((0, frame.C), (bottom, top), (left, right))
     return morph, bbox_3d
 
 
@@ -387,7 +387,7 @@ class PointSource(FunctionComponent):
         top = pixel_center[0] + frame.psf.shape[1] // 2
         left = pixel_center[1] - frame.psf.shape[2] // 2
         right = pixel_center[1] + frame.psf.shape[2] // 2
-        bbox = Box.from_bounds(front, back, bottom, top, left, right)
+        bbox = Box.from_bounds((front, back), (bottom, top), (left, right))
 
         super().__init__(frame, sed, center, self._psf_wrapper, bbox=bbox)
 

@@ -8,12 +8,18 @@ class Box:
     system. It is used to identify spatial and channel overlap and to map from model
     to observed frames and back.
 
+    The `BBox` code is agnostic about the meaning of the dimensions.
+    We generally use this convention:
+
+    - 2D shapes denote (Height, Width)
+    - 3D shapes denote (Channels, Height, Width)
+
     Parameters
     ----------
     shape: tuple
         Size of the box
     origin: tuple
-        Front/low/left corner coordinate of the box
+        Minimum corner coordinate of the box
     """
 
     def __init__(self, shape, origin=None):
@@ -39,12 +45,12 @@ class Box:
         return Box(image.shape)
 
     @staticmethod
-    def from_bounds(*args):
+    def from_bounds(*bounds):
         """Initialize a box from its bounds
 
         Parameters
         ----------
-        args: ints
+        bounds: tuple of (min,max) pairs
             Min/Max coordinate for every dimension
 
         Returns
@@ -52,10 +58,8 @@ class Box:
         bbox: :class:`scarlet.bbox.Box`
             A new box bounded by the input bounds.
         """
-        assert len(args) % 2 == 0
-        dims = len(args) // 2
-        shape = [args[dim * 2 + 1] - args[dim * 2] for dim in range(dims)]
-        origin = [args[dim * 2] for dim in range(dims)]
+        shape = [max(0, cmax - cmin) for cmin, cmax in bounds]
+        origin = [cmin for cmin, cmax in bounds]
         return Box(shape, origin=origin)
 
     @staticmethod
@@ -79,19 +83,18 @@ class Box:
             nonzero = np.where(sel)
             bounds = []
             for dim in range(len(X.shape)):
-                bounds.append(nonzero[dim].min())
-                bounds.append(nonzero[dim].max() + 1)
+                bounds.append((nonzero[dim].min(), nonzero[dim].max() + 1))
         else:
-            bounds = [0,] * len(X.shape) * 2
+            bounds = [[0, 0]] * len(X.shape)
         return Box.from_bounds(*bounds)
 
     def contains(self, p):
-        """Whether the box cotains a given coordinate `p`
+        """Whether the box contains a given coordinate `p`
         """
         assert len(p) == self.D
 
         for d in range(self.D):
-            if p[d] < self.origin[d] or p[d] > self.origin[d] + self.shape[d]:
+            if p[d] < self.origin[d] or p[d] >= self.origin[d] + self.shape[d]:
                 return False
         return True
 
@@ -182,7 +185,7 @@ class Box:
 
     @property
     def stop(self):
-        """Tuple of stop coordinates (last is included)
+        """Tuple of stop coordinates
         """
         return tuple(o + s for o, s in zip(self.origin, self.shape))
 
@@ -202,8 +205,9 @@ class Box:
         assert other.D == self.D
         bounds = []
         for d in range(self.D):
-            bounds.append(min(self.start[d], other.start[d]))
-            bounds.append(max(self.stop[d], other.stop[d]))
+            bounds.append(
+                (min(self.start[d], other.start[d]), max(self.stop[d], other.stop[d]))
+            )
         return Box.from_bounds(*bounds)
 
     def __and__(self, other):
@@ -226,8 +230,9 @@ class Box:
         assert other.D == self.D
         bounds = []
         for d in range(self.D):
-            bounds.append(max(self.start[d], other.start[d]))
-            bounds.append(min(self.stop[d], other.stop[d]))
+            bounds.append(
+                (max(self.start[d], other.start[d]), min(self.stop[d], other.stop[d]))
+            )
         return Box.from_bounds(*bounds)
 
     def __repr__(self):

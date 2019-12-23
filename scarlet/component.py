@@ -134,8 +134,12 @@ class Component(ABC):
             # all of the model frame
             bounds = []
             for d in range(self.frame.D):
-                bounds.append(self.bbox.start[d] - self.pad_width[d][0])
-                bounds.append(self.bbox.stop[d] + self.pad_width[d][1])
+                bounds.append(
+                    (
+                        self.bbox.start[d] - self.pad_width[d][0],
+                        self.bbox.stop[d] + self.pad_width[d][1],
+                    )
+                )
             padded_box = Box.from_bounds(*bounds)
 
             model_box = self.frame
