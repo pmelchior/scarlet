@@ -5,6 +5,7 @@ class Cache:
     that pushes content onto the cache, the `key` can be chosen at will.
 
     """
+
     _cache = {}
 
     @staticmethod

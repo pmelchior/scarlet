@@ -7,6 +7,7 @@ from . import interpolation
 from . import operator
 from .cache import Cache
 
+
 class Constraint:
     """Constraint base class
 
@@ -25,6 +26,7 @@ class Constraint:
     For reference, every operator of the `proxmin` package yields a valid
     `Constraint`.
     """
+
     def __init__(self, f=None):
         """Constraint base class
 
@@ -66,6 +68,7 @@ class ConstraintChain:
     repeat: int
         How often the constrain chain is repeated to ensure feasibility
     """
+
     def __init__(self, *constraints, repeat=1):
         assert isinstance(repeat, int) and repeat >= 1
         self.constraints = constraints
@@ -81,12 +84,13 @@ class ConstraintChain:
 class PositivityConstraint(Constraint):
     """Allow only non-negative elements.
     """
+
     def __init__(self):
         super().__init__(proxmin.operators.prox_plus)
 
 
 class NormalizationConstraint(Constraint):
-    def __init__(self, type='sum'):
+    def __init__(self, type="sum"):
         """Normalize X to unity.
 
         Parameters
@@ -95,7 +99,7 @@ class NormalizationConstraint(Constraint):
             Whether the sum or the maximum is set to unity.
         """
         type = type.lower()
-        assert type in ['sum', 'max']
+        assert type in ["sum", "max"]
         self.type = type
 
     def __call__(self, X, step):
@@ -108,7 +112,7 @@ class NormalizationConstraint(Constraint):
 
 
 class L0Constraint(Constraint):
-    def __init__(self, thresh, type='relative'):
+    def __init__(self, thresh, type="relative"):
         """L0 norm (sparsity) penalty
 
         Parameters
@@ -123,7 +127,7 @@ class L0Constraint(Constraint):
 
 
 class L1Constraint(Constraint):
-    def __init__(self, thresh, type='relative'):
+    def __init__(self, thresh, type="relative"):
         """L1 norm (sparsity) penalty
 
         Parameters
@@ -148,9 +152,10 @@ class ThresholdConstraint(Constraint):
     The region that contains flux above the threshold is contained
     in `component.bboxes["thresh"]`.
     """
+
     def __call__(self, X, step):
         thresh, _bins = self.threshold(X)
-        return proxmin.operators.prox_hard_plus(X, step, thresh=thresh, type='absolute')
+        return proxmin.operators.prox_hard_plus(X, step, thresh=thresh, type="absolute")
 
     def threshold(self, morph):
         """Find the threshold value for a given morphology
@@ -159,7 +164,7 @@ class ThresholdConstraint(Constraint):
         _bins = 50
         # Decrease the bin size for sources with a small number of pixels
         if _morph.size < 500:
-            _bins = max(np.int(_morph.size/10), 1)
+            _bins = max(np.int(_morph.size / 10), 1)
             if _bins == 1:
                 return 0, _bins
         hist, bins = np.histogram(np.log10(_morph).reshape(-1), _bins)
@@ -167,7 +172,8 @@ class ThresholdConstraint(Constraint):
         # If all of the pixels are used there is no need to threshold
         if len(cutoff) == 0:
             return 0, _bins
-        return 10**bins[cutoff[-1]], _bins
+        return 10 ** bins[cutoff[-1]], _bins
+
 
 class MonotonicityConstraint(Constraint):
     """Make morphology monotonically decrease from the center
@@ -175,6 +181,7 @@ class MonotonicityConstraint(Constraint):
     See `~scarlet.operator.prox_monotonic`
     for a description of the other parameters.
     """
+
     def __init__(self, use_nearest=False, thresh=0):
         self.use_nearest = use_nearest
         self.thresh = thresh
@@ -191,7 +198,9 @@ class MonotonicityConstraint(Constraint):
         try:
             prox = Cache.check(prox_name, key)
         except KeyError:
-            prox = operator.prox_strict_monotonic(shape, use_nearest=self.use_nearest,thresh=self.thresh, center=center)
+            prox = operator.prox_strict_monotonic(
+                shape, use_nearest=self.use_nearest, thresh=self.thresh, center=center
+            )
 
             Cache.set(prox_name, key, prox)
 
@@ -205,6 +214,7 @@ class SymmetryConstraint(Constraint):
     See `~scarlet.operator.prox_uncentered_symmetry`
     for a description of the parameters.
     """
+
     def __init__(self, strength=1):
         self.strength = strength
 
@@ -215,6 +225,7 @@ class SymmetryConstraint(Constraint):
 class CenterOnConstraint(Constraint):
     """Sets the center pixel to a tiny non-zero value
     """
+
     def __init__(self, tiny=1e-6):
         self.tiny = tiny
 
@@ -224,9 +235,11 @@ class CenterOnConstraint(Constraint):
         morph[center] = max(morph[center], self.tiny)
         return morph
 
+
 class AllOnConstraint(Constraint):
     """Add to all elements a tiny non-zero value
     """
+
     def __init__(self, tiny=1e-6):
         self.tiny = tiny
 

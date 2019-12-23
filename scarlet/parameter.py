@@ -3,6 +3,7 @@ from autograd.numpy.numpy_boxes import ArrayBox
 from autograd.core import VSpace
 from functools import partial
 
+
 class Parameter(np.ndarray):
     """Optimization parameter
 
@@ -26,7 +27,17 @@ class Parameter(np.ndarray):
     fixed: bool
         Whether parameter is held fixed (excluded) during optimization
     """
-    def __new__(cls, array, prior=None, constraint=None, step=0, converged=False, std=None, fixed=False):
+
+    def __new__(
+        cls,
+        array,
+        prior=None,
+        constraint=None,
+        step=0,
+        converged=False,
+        std=None,
+        fixed=False,
+    ):
         obj = np.asarray(array, dtype=array.dtype).view(cls)
         obj.prior = prior
         obj.constraint = constraint
@@ -37,13 +48,14 @@ class Parameter(np.ndarray):
         return obj
 
     def __array_finalize__(self, obj):
-        if obj is None: return
-        self.prior = getattr(obj, 'prior', None)
-        self.constraint = getattr(obj, 'constraint', None)
-        self.step = getattr(obj, 'step_size', 0)
-        self.converged = getattr(obj, 'converged', False)
-        self.std = getattr(obj, 'std', None)
-        self.fixed = getattr(obj, 'fixed', False)
+        if obj is None:
+            return
+        self.prior = getattr(obj, "prior", None)
+        self.constraint = getattr(obj, "constraint", None)
+        self.step = getattr(obj, "step_size", 0)
+        self.converged = getattr(obj, "converged", False)
+        self.std = getattr(obj, "std", None)
+        self.fixed = getattr(obj, "fixed", False)
 
     def __reduce__(self):
         # Get the parent's __reduce__ tuple
@@ -68,5 +80,6 @@ class Parameter(np.ndarray):
 ArrayBox.register(Parameter)
 VSpace.register(Parameter, vspace_maker=VSpace.mappings[np.ndarray])
 
+
 def relative_step(X, it, factor=0.1):
-    return factor*X.mean(axis=0)
+    return factor * X.mean(axis=0)

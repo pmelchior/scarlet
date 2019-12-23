@@ -8,7 +8,7 @@ from . import resampling
 from .bbox import Box
 
 
-class Observation():
+class Observation:
     """Data and metadata for a single set of observations
 
     Attributes
@@ -28,7 +28,9 @@ class Observation():
         prevent artifacts from the FFT.
     """
 
-    def __init__(self, images, psfs=None, weights=None, wcs=None, channels=None, padding=10):
+    def __init__(
+        self, images, psfs=None, weights=None, wcs=None, channels=None, padding=10
+    ):
         """Create an Observation
 
         Parameters
@@ -51,14 +53,18 @@ class Observation():
             half the width of the PSF, for FFTs. This is needed to
             prevent artifacts from the FFT.
         """
-        self.frame = Frame(images.shape, wcs=wcs, psfs=psfs, channels=channels, dtype=images.dtype)
+        self.frame = Frame(
+            images.shape, wcs=wcs, psfs=psfs, channels=channels, dtype=images.dtype
+        )
 
         self.images = images
         if weights is not None:
             self.weights = weights
         else:
             self.weights = np.ones(images.shape)
-        assert self.weights.shape == self.images.shape, "Weights needs to have same shape as images"
+        assert (
+            self.weights.shape == self.images.shape
+        ), "Weights needs to have same shape as images"
 
         self._padding = padding
 
@@ -80,10 +86,10 @@ class Observation():
         """
         # find the box that contained this obs in model_frame
         shape = self.images.shape
-        yx0 = model_frame.get_pixel(self.frame.get_sky_coord((0,0)))
+        yx0 = model_frame.get_pixel(self.frame.get_sky_coord((0, 0)))
         #  channels of model that are represented in this observation
         if self.frame.channels is model_frame.channels:
-            origin = (0,*yx0)
+            origin = (0, *yx0)
         else:
             assert self.frame.channels is not None and model_frame.channels is not None
             cmin = list(model_frame.channels).index(self.frame.channels[0])
@@ -104,7 +110,9 @@ class Observation():
         if self.frame.psf is not model_frame.psf:
             assert self.frame.psf is not None and model_frame.psf is not None
             psf = fft.Fourier(self.frame.psf.update_dtype(model_frame.dtype).image)
-            model_psf = fft.Fourier(model_frame.psf.update_dtype(model_frame.dtype).image)
+            model_psf = fft.Fourier(
+                model_frame.psf.update_dtype(model_frame.dtype).image
+            )
             self._diff_kernels = fft.match_psfs(psf, model_psf)
 
         return self
@@ -158,23 +166,41 @@ class Observation():
         # with inverse variance weights: sigma^2 = 1/weight
         # full likelihood is sum over all data samples: pixel in images
         # NOTE: this assumes that all pixels are used in likelihood!
-        log_norm = np.prod(images_.shape) / 2 * np.log(2*np.pi) + np.sum(np.log(1 / self.weights)) / 2
+        log_norm = (
+            np.prod(images_.shape) / 2 * np.log(2 * np.pi)
+            + np.sum(np.log(1 / self.weights)) / 2
+        )
 
-        return log_norm + np.sum(weights_ * (model_ - images_)** 2) / 2
+        return log_norm + np.sum(weights_ * (model_ - images_) ** 2) / 2
 
 
 class LowResObservation(Observation):
-
-    def __init__(self, images, wcs=None, psfs=None, weights=None, channels=None, padding=3, operator = 'exact'):
+    def __init__(
+        self,
+        images,
+        wcs=None,
+        psfs=None,
+        weights=None,
+        channels=None,
+        padding=3,
+        operator="exact",
+    ):
 
         assert wcs is not None, "WCS is necessary for LowResObservation"
         assert psfs is not None, "PSF is necessary for LowResObservation"
-        assert operator in ['exact', 'bilinear', 'SVD']
+        assert operator in ["exact", "bilinear", "SVD"]
 
-        super().__init__(images, wcs=wcs, psfs=psfs, weights=weights, channels=channels, padding=padding)
+        super().__init__(
+            images,
+            wcs=wcs,
+            psfs=psfs,
+            weights=weights,
+            channels=channels,
+            padding=padding,
+        )
 
     def match_psfs(self, psf_hr, wcs_hr, angle):
-        '''psf matching between different dataset
+        """psf matching between different dataset
         Matches PSFS at different resolutions by interpolating psf_lr on the same grid as psf_hr
         Parameters
         ----------
@@ -194,7 +220,7 @@ class LowResObservation(Observation):
             high rresolution psf at mactching size
         psf_match_lr: array
             low resolution psf at matching size and resolution
-        '''
+        """
 
         psf_lr = self.frame.psf.image
         wcs_lr = self.frame.wcs
@@ -207,30 +233,43 @@ class LowResObservation(Observation):
         psf_wcs_lr = wcs_lr.deepcopy()
 
         if psf_wcs_hr.naxis == 2:
-            psf_wcs_hr.wcs.crval = 0., 0.
-            psf_wcs_hr.wcs.crpix = ny_hr / 2.+1, nx_hr / 2.+1
+            psf_wcs_hr.wcs.crval = 0.0, 0.0
+            psf_wcs_hr.wcs.crpix = ny_hr / 2.0 + 1, nx_hr / 2.0 + 1
         elif psf_wcs_hr.naxis == 3:
-            psf_wcs_hr.wcs.crval = 0., 0., 0.
-            psf_wcs_hr.wcs.crpix = ny_hr / 2+1, nx_hr / 2.+1, 0.
+            psf_wcs_hr.wcs.crval = 0.0, 0.0, 0.0
+            psf_wcs_hr.wcs.crpix = ny_hr / 2 + 1, nx_hr / 2.0 + 1, 0.0
         if psf_wcs_lr.naxis == 2:
-            psf_wcs_lr.wcs.crval = 0., 0.
-            psf_wcs_lr.wcs.crpix = ny_lr / 2.+1, nx_lr / 2.+1
+            psf_wcs_lr.wcs.crval = 0.0, 0.0
+            psf_wcs_lr.wcs.crpix = ny_lr / 2.0 + 1, nx_lr / 2.0 + 1
         elif psf_wcs_lr.naxis == 3:
-            psf_wcs_lr.wcs.crval = 0., 0., 0.
-            psf_wcs_lr.wcs.crpix = ny_lr / 2.+1, nx_lr / 2.+1, 0
+            psf_wcs_lr.wcs.crval = 0.0, 0.0, 0.0
+            psf_wcs_lr.wcs.crpix = ny_lr / 2.0 + 1, nx_lr / 2.0 + 1, 0
 
-        pcoordlr_lr, pcoordlr_hr, coordover_hr = resampling.match_patches(psf_hr.shape, psf_lr.data.shape[1:],
-                                                                    psf_wcs_hr, psf_wcs_lr, isrot = False, psf = True)
+        pcoordlr_lr, pcoordlr_hr, coordover_hr = resampling.match_patches(
+            psf_hr.shape,
+            psf_lr.data.shape[1:],
+            psf_wcs_hr,
+            psf_wcs_lr,
+            isrot=False,
+            psf=True,
+        )
 
-        npsf_y = np.max(coordover_hr[0])-np.min(coordover_hr[0])+1
-        npsf_x = np.max(coordover_hr[1])-np.min(coordover_hr[1])+1
+        npsf_y = np.max(coordover_hr[0]) - np.min(coordover_hr[0]) + 1
+        npsf_x = np.max(coordover_hr[1]) - np.min(coordover_hr[1]) + 1
 
-        psf_valid = psf_lr[:,pcoordlr_lr[0].min():pcoordlr_lr[1].max()+1,pcoordlr_lr[1].min():pcoordlr_lr[1].max()+1]\
+        psf_valid = psf_lr[
+            :,
+            pcoordlr_lr[0].min() : pcoordlr_lr[1].max() + 1,
+            pcoordlr_lr[1].min() : pcoordlr_lr[1].max() + 1,
+        ]
+        psf_match_lr = interpolation.sinc_interp(
+            psf_valid, coordover_hr, pcoordlr_hr, angle=angle
+        )
 
-        psf_match_lr = interpolation.sinc_interp(psf_valid, coordover_hr, pcoordlr_hr, angle = angle)
-
-        psf_match_hr = psf_hr[coordover_hr[0].min():coordover_hr[0].max()+1,
-                       coordover_hr[1].min():coordover_hr[1].max()+1].reshape(npsf_y, npsf_x)
+        psf_match_hr = psf_hr[
+            coordover_hr[0].min() : coordover_hr[0].max() + 1,
+            coordover_hr[1].min() : coordover_hr[1].max() + 1,
+        ].reshape(npsf_y, npsf_x)
 
         assert np.shape(psf_match_lr[0]) == np.shape(psf_match_hr)
 
@@ -239,7 +278,7 @@ class LowResObservation(Observation):
         return psf_match_hr[np.newaxis, :], psf_match_lr
 
     def build_diffkernel(self, model_frame, angle):
-        '''Builds the differential convolution kernel between the observation and the frame psfs
+        """Builds the differential convolution kernel between the observation and the frame psfs
 
         Parameters
         ----------
@@ -251,7 +290,7 @@ class LowResObservation(Observation):
         -------
         diff_psf: array
             the differential psf between observation and frame psfs.
-        '''
+        """
         # Compute diff kernel at hr
         whr = model_frame.wcs
 
@@ -267,7 +306,7 @@ class LowResObservation(Observation):
         return diff_psf
 
     def sinc_shift(self, imgs, shifts, axes, sum_axis):
-        '''Performs 2 1D sinc convolutions and shifting along one rotated axis in Fourier space.
+        """Performs 2 1D sinc convolutions and shifting along one rotated axis in Fourier space.
 
         Parameters
         ----------
@@ -284,18 +323,18 @@ class LowResObservation(Observation):
         -------
         result: array
             the shifted and sinc convolved array in configuration space
-        '''
+        """
         # fft
-        axes = tuple(np.array(axes)-1)
-        sum_axis-=1
+        axes = tuple(np.array(axes) - 1)
+        sum_axis -= 1
         fft_shape = np.array(self._fft_shape)[tuple([axes])]
-        imgs_fft = imgs.fft(fft_shape, np.array(axes)+1)
+        imgs_fft = imgs.fft(fft_shape, np.array(axes) + 1)
         transformed_shape = np.array(imgs_fft.shape[1:])
         transformed_shape[tuple([axes])] = fft_shape
 
         # frequency sampling
         if len(axes) == 1:
-            shifter = np.array(interpolation.mk_shifter(self._fft_shape, real = True))
+            shifter = np.array(interpolation.mk_shifter(self._fft_shape, real=True))
         else:
             shifter = np.array(interpolation.mk_shifter(self._fft_shape))
 
@@ -304,25 +343,40 @@ class LowResObservation(Observation):
             shishift.append(shifter[ax][np.newaxis, :] ** shifts[ax][:, np.newaxis])
         # convolution by sinc: setting to zero all coefficients > n//2 along the desired axis:
         if len(axes) == 1:
-            shishift[0][:, shishift[0].shape[1] // 4:-shishift[0].shape[1] // 4] = 0
+            shishift[0][:, shishift[0].shape[1] // 4 : -shishift[0].shape[1] // 4] = 0
         else:
-            shishift[sum_axis][:, shishift[sum_axis].shape[1] // 4:-shishift[sum_axis].shape[1] // 4] = 0
+            shishift[sum_axis][
+                :, shishift[sum_axis].shape[1] // 4 : -shishift[sum_axis].shape[1] // 4
+            ] = 0
         # Shift
         if 0 in axes:
-            imgs_shiftfft = imgs_fft[:, np.newaxis, :, :] * shishift[0][np.newaxis, :, :, np.newaxis]
+            imgs_shiftfft = (
+                imgs_fft[:, np.newaxis, :, :]
+                * shishift[0][np.newaxis, :, :, np.newaxis]
+            )
             # Shift along the x-axis
             if 1 in axes:
-                #apply shifts and sinc
-                imgs_shiftfft = imgs_shiftfft * shishift[1][np.newaxis, :, np.newaxis, :]
+                # apply shifts and sinc
+                imgs_shiftfft = (
+                    imgs_shiftfft * shishift[1][np.newaxis, :, np.newaxis, :]
+                )
 
         elif 1 in axes:
-            #Apply shifts and sinc
-            imgs_shiftfft = imgs_fft[:, np.newaxis, :, :] * shishift[0][np.newaxis, :, np.newaxis, :]
+            # Apply shifts and sinc
+            imgs_shiftfft = (
+                imgs_fft[:, np.newaxis, :, :]
+                * shishift[0][np.newaxis, :, np.newaxis, :]
+            )
 
         # Inverse Fourier transform.
         inv_shape = tuple(imgs_shiftfft.shape[:2]) + tuple(transformed_shape)
-        #The n-dimensional transform could pose problem for very large images, but I am not sure it is a regime we should care about
-        op = fft.Fourier.from_fft(imgs_shiftfft, fft_shape, inv_shape, np.array(axes)+len(imgs_shiftfft.shape)-2).image
+        # The n-dimensional transform could pose problem for very large images, but I am not sure it is a regime we should care about
+        op = fft.Fourier.from_fft(
+            imgs_shiftfft,
+            fft_shape,
+            inv_shape,
+            np.array(axes) + len(imgs_shiftfft.shape) - 2,
+        ).image
 
         return op
 
@@ -335,8 +389,8 @@ class LowResObservation(Observation):
             if self.frame._psfs is not None:
                 self.frame._psfs.update_dtype(model_frame.dtype)
 
-        #Affine transform
-        try :
+        # Affine transform
+        try:
             model_affine = model_frame.wcs.wcs.pc
         except AttributeError:
             model_affine = model_frame.wcs.cd
@@ -345,21 +399,27 @@ class LowResObservation(Observation):
         except AttributeError:
             self_affine = self.frame.wcs.cd
 
-        model_pix = np.sqrt(np.abs(model_affine[0,0])*np.abs(model_affine[1,1]-model_affine[0,1]*model_affine[1,0]))
-        self_pix = np.sqrt(np.abs(self_affine[0,0])*np.abs(self_affine[1,1]-self_affine[0,1]*self_affine[1,0]))
-        #Vector giving the direction of the x-axis of each frame
-        self_framevector = np.sum(self_affine, axis=0)[:2]/self_pix
-        model_framevector = np.sum(model_affine, axis=0)[:2]/model_pix
-        #normalisation
-        self_framevector /= np.sum(self_framevector**2)**0.5
-        model_framevector /= np.sum(model_framevector**2)**0.5
+        model_pix = np.sqrt(
+            np.abs(model_affine[0, 0])
+            * np.abs(model_affine[1, 1] - model_affine[0, 1] * model_affine[1, 0])
+        )
+        self_pix = np.sqrt(
+            np.abs(self_affine[0, 0])
+            * np.abs(self_affine[1, 1] - self_affine[0, 1] * self_affine[1, 0])
+        )
+        # Vector giving the direction of the x-axis of each frame
+        self_framevector = np.sum(self_affine, axis=0)[:2] / self_pix
+        model_framevector = np.sum(model_affine, axis=0)[:2] / model_pix
+        # normalisation
+        self_framevector /= np.sum(self_framevector ** 2) ** 0.5
+        model_framevector /= np.sum(model_framevector ** 2) ** 0.5
 
         # sin of the angle between datasets (normalised cross product)
         self.sin_rot = np.cross(self_framevector, model_framevector)
         # cos of the angle. (normalised scalar product)
         self.cos_rot = np.dot(self_framevector, model_framevector)
-        #Is the angle larger than machine precision?
-        self.isrot = (np.abs(self.sin_rot)**2) > np.finfo(float).eps
+        # Is the angle larger than machine precision?
+        self.isrot = (np.abs(self.sin_rot) ** 2) > np.finfo(float).eps
         if not self.isrot:
             self.sin_rot = 0
             self.cos_rot = 1
@@ -368,11 +428,19 @@ class LowResObservation(Observation):
             angle = (self.cos_rot, self.sin_rot)
 
         # Get pixel coordinates in each frame.
-        coord_lr, coord_hr, coordhr_over = resampling.match_patches(model_frame.shape, self.frame.shape,
-                                                                    model_frame.wcs, self.frame.wcs, isrot = self.isrot)
+        coord_lr, coord_hr, coordhr_over = resampling.match_patches(
+            model_frame.shape,
+            self.frame.shape,
+            model_frame.wcs,
+            self.frame.wcs,
+            isrot=self.isrot,
+        )
 
-        #shape of the low resolutino image in the overlap or union
-        self.lr_shape = (np.max(coord_lr[0])-np.min(coord_lr[0])+1,np.max(coord_lr[1])-np.min(coord_lr[1])+1)
+        # shape of the low resolutino image in the overlap or union
+        self.lr_shape = (
+            np.max(coord_lr[0]) - np.min(coord_lr[0]) + 1,
+            np.max(coord_lr[1]) - np.min(coord_lr[1]) + 1,
+        )
 
         # BBox of the low resolution pixels in model frame
         #  1) channels of model that are represented in this observation
@@ -382,14 +450,20 @@ class LowResObservation(Observation):
         else:
             cmin, cmax = 0, self.frame.C
         # 2) use the bounds of coord_lr
-        self.bbox = Box.from_bounds(cmin, cmax + 1,
-                        np.min(coord_lr[0]).astype(int),
-                        np.max(coord_lr[0]).astype(int) + 1,
-                        np.min(coord_lr[1]).astype(int),
-                        np.max(coord_lr[1]).astype(int) + 1)
+        self.bbox = Box.from_bounds(
+            cmin,
+            cmax + 1,
+            np.min(coord_lr[0]).astype(int),
+            np.max(coord_lr[0]).astype(int) + 1,
+            np.min(coord_lr[1]).astype(int),
+            np.max(coord_lr[1]).astype(int) + 1,
+        )
         self.slices = self.bbox.slices_for(model_frame.shape)
-        #Coordinates for all model frame pixels
-        self.frame_coord = (np.array(range(model_frame.Ny)), np.array(range(model_frame.Nx)))
+        # Coordinates for all model frame pixels
+        self.frame_coord = (
+            np.array(range(model_frame.Ny)),
+            np.array(range(model_frame.Nx)),
+        )
 
         center_y = (np.max(coord_hr[0]) - np.min(coord_hr[0]) + 1) / 2
         center_x = (np.max(coord_hr[1]) - np.min(coord_hr[1]) + 1) / 2
@@ -399,36 +473,54 @@ class LowResObservation(Observation):
         # 1D convolutions convolutions of the model are done along the smaller axis, therefore,
         # psf is convolved along the frame's longer axis.
         # the smaller frame axis:
-        self.small_axis = (self.frame.Nx <= self.frame.Ny)
+        self.small_axis = self.frame.Nx <= self.frame.Ny
 
-        self._fft_shape = fft._get_fft_shape(model_frame.psf, np.zeros(model_frame.shape), padding=3,
-                                             axes=[-2, -1], max=True)
-        diff_psf = fft.Fourier(fft._pad(diff_psf.image, self._fft_shape, axes = (1,2)))
+        self._fft_shape = fft._get_fft_shape(
+            model_frame.psf,
+            np.zeros(model_frame.shape),
+            padding=3,
+            axes=[-2, -1],
+            max=True,
+        )
+        diff_psf = fft.Fourier(fft._pad(diff_psf.image, self._fft_shape, axes=(1, 2)))
         if self.isrot:
 
-            #Unrotated coordinates:
-            Y_unrot = ((coord_hr[0] - center_y) * self.cos_rot +
-                       (coord_hr[1] - center_x) * self.sin_rot).reshape(self.lr_shape)
-            X_unrot = ((coord_hr[1] - center_x) * self.cos_rot -
-                       (coord_hr[0] - center_y) * self.sin_rot).reshape(self.lr_shape)
+            # Unrotated coordinates:
+            Y_unrot = (
+                (coord_hr[0] - center_y) * self.cos_rot
+                + (coord_hr[1] - center_x) * self.sin_rot
+            ).reshape(self.lr_shape)
+            X_unrot = (
+                (coord_hr[1] - center_x) * self.cos_rot
+                - (coord_hr[0] - center_y) * self.sin_rot
+            ).reshape(self.lr_shape)
 
-            #Removing redundancy
+            # Removing redundancy
             self.Y_unrot = Y_unrot[:, 0]
             self.X_unrot = X_unrot[0, :]
 
             if self.small_axis:
                 self.shifts = [self.Y_unrot * self.cos_rot, self.Y_unrot * self.sin_rot]
-                self.other_shifts = [-self.sin_rot * self.X_unrot, self.cos_rot * self.X_unrot]
+                self.other_shifts = [
+                    -self.sin_rot * self.X_unrot,
+                    self.cos_rot * self.X_unrot,
+                ]
             else:
-                self.shifts = [-self.sin_rot * self.X_unrot, self.cos_rot * self.X_unrot]
-                self.other_shifts = [self.Y_unrot * self.cos_rot, self.Y_unrot * self.sin_rot]
+                self.shifts = [
+                    -self.sin_rot * self.X_unrot,
+                    self.cos_rot * self.X_unrot,
+                ]
+                self.other_shifts = [
+                    self.Y_unrot * self.cos_rot,
+                    self.Y_unrot * self.sin_rot,
+                ]
 
-            axes = (1,2)
+            axes = (1, 2)
 
-        #1-D case.
+        # 1-D case.
         else:
 
-            axes = [int(not self.small_axis)+1]
+            axes = [int(not self.small_axis) + 1]
             self.shifts = np.array(coord_hr)
 
             self.shifts[0] -= center_y
@@ -437,13 +529,16 @@ class LowResObservation(Observation):
             self.other_shifts = np.copy(self.shifts)
 
         # Computes the resampling/convolution matrix
-        resconv_op = self.sinc_shift(diff_psf, self.shifts, axes, int(not self.small_axis)+1)
+        resconv_op = self.sinc_shift(
+            diff_psf, self.shifts, axes, int(not self.small_axis) + 1
+        )
 
-        self._resconv_op = np.array(resconv_op, dtype=self.frame.dtype)*(self_pix/model_pix)**2
+        self._resconv_op = (
+            np.array(resconv_op, dtype=self.frame.dtype) * (self_pix / model_pix) ** 2
+        )
         self._resconv_op = self._resconv_op.reshape(*self._resconv_op.shape[:2], -1)
 
         return self
-
 
     def _render(self, model):
         """Resample and convolve a model in the observation frame
@@ -457,17 +552,18 @@ class LowResObservation(Observation):
             `model` mapped into the observation frame
         """
         # Padding the psf to the fast_shape size
-        model_ = fft.Fourier(fft._pad(model[self.slices[0], :, :], self._fft_shape, axes=(-2, -1)))
+        model_ = fft.Fourier(
+            fft._pad(model[self.slices[0], :, :], self._fft_shape, axes=(-2, -1))
+        )
 
         model_image = []
         if self.isrot:
-            axes = (1,2)
-            sum_axis = int(self.small_axis)+1
+            axes = (1, 2)
+            sum_axis = int(self.small_axis) + 1
 
         else:
-            axes = [int(self.small_axis)+1]
-            sum_axis = int(self.small_axis)+1
-
+            axes = [int(self.small_axis) + 1]
+            sum_axis = int(self.small_axis) + 1
 
         model_conv = self.sinc_shift(model_, self.other_shifts, axes, sum_axis)
 
@@ -480,7 +576,6 @@ class LowResObservation(Observation):
             for c in range(self.frame.C):
                 model_image.append((model_conv[c] @ self._resconv_op[c].T))
             return np.array(model_image, dtype=self.frame.dtype)[:, ::-1, :]
-
 
     def render(self, model):
         """Resample and convolve a model in the observation frame for display only!
@@ -514,6 +609,9 @@ class LowResObservation(Observation):
         weights_ = self.weights[self.slices]
 
         # properly normalized likelihood
-        log_norm = np.prod(images_.shape) / 2 * np.log(2*np.pi) + np.sum(np.log(1 / weights_)) / 2
+        log_norm = (
+            np.prod(images_.shape) / 2 * np.log(2 * np.pi)
+            + np.sum(np.log(1 / weights_)) / 2
+        )
 
         return log_norm + 0.5 * np.sum(weights_ * (model_ - images_) ** 2)

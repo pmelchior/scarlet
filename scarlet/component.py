@@ -21,17 +21,18 @@ class Component(ABC):
     kwargs: dict
         Auxiliary information attached to this component.
     """
+
     def __init__(self, frame, *parameters, bbox=None, **kwargs):
         self.bbox = bbox
         self.set_frame(frame)
 
-        if hasattr(parameters, '__iter__'):
+        if hasattr(parameters, "__iter__"):
             for p in parameters:
                 assert isinstance(p, Parameter)
             self._parameters = parameters
         else:
             assert isinstance(parameters, Parameter)
-            self._parameters = tuple(parameters,)
+            self._parameters = tuple(parameters)
         self.check_parameters()
 
         # additional non-optimization parameters of component
@@ -66,7 +67,7 @@ class Component(ABC):
         list of parameters available for optimization
         If `parameter.fixed == True`, the parameter will not returned here.
         """
-        return [ p for p in self._parameters if not p.fixed ]
+        return [p for p in self._parameters if not p.fixed]
 
     @abstractmethod
     def get_model(self, *parameters):
@@ -122,9 +123,19 @@ class Component(ABC):
             # yields superset of frame pixels
             # pad_width is ((before1, after1), (before2, after2)...)
             self.pad_width = (
-            (max(0, self.bbox.front - self.frame.front), max(0, self.frame.back - self.bbox.back)),
-            (max(0, self.bbox.bottom - self.frame.bottom), max(0, self.frame.top - self.bbox.top)),
-            (max(0, self.bbox.left - self.frame.left), max(0, self.frame.right- self.bbox.right)))
+                (
+                    max(0, self.bbox.front - self.frame.front),
+                    max(0, self.frame.back - self.bbox.back),
+                ),
+                (
+                    max(0, self.bbox.bottom - self.frame.bottom),
+                    max(0, self.frame.top - self.bbox.top),
+                ),
+                (
+                    max(0, self.bbox.left - self.frame.left),
+                    max(0, self.frame.right - self.bbox.right),
+                ),
+            )
 
             # get slicing of padded box so that the result covers
             # all of the model frame
@@ -138,7 +149,7 @@ class Component(ABC):
 
             model_box = self.frame
             overlap = model_box & padded_box
-            overlap -= padded_box.origin # now in padded frame
+            overlap -= padded_box.origin  # now in padded frame
             self.slices = overlap.slices_for(padded_box.shape)
 
     def check_parameters(self):
@@ -148,10 +159,11 @@ class Component(ABC):
         ------
         `ArithmeticError`
         """
-        for k,p in enumerate(self._parameters):
+        for k, p in enumerate(self._parameters):
             if not np.isfinite(p).all():
                 msg = "Component {} Parameter {} is not finite:\n{}".format(self, k, p)
                 raise ArithmeticError(msg)
+
 
 class FactorizedComponent(Component):
     """A single component in a blend.
@@ -171,6 +183,7 @@ class FactorizedComponent(Component):
     bbox: `~scarlet.Box`
         Spatial bounding box of the morphology.
     """
+
     def __init__(self, frame, sed, morph, shift=None, bbox=None, **kwargs):
         if shift is None:
             parameters = (sed, morph)
@@ -236,34 +249,40 @@ class FactorizedComponent(Component):
 
         if morph is None:
             # dont' use self._morph because we could have shift as parameter
-            morph =  self._pad_morph(self._shift_morph(shift, self._parameters[1]._data))
+            morph = self._pad_morph(self._shift_morph(shift, self._parameters[1]._data))
         else:
-            morph =  self._pad_morph(self._shift_morph(shift, morph))
+            morph = self._pad_morph(self._shift_morph(shift, morph))
 
         return sed[:, None, None] * morph[None, :, :]
 
     def _pad_sed(self, sed):
         if self.bbox is not None:
-            padded = np.pad(sed, self.pad_width[0], mode='constant', constant_values=0)
+            padded = np.pad(sed, self.pad_width[0], mode="constant", constant_values=0)
             return padded[self.slices[0]]
         else:
             return sed
 
     def _pad_morph(self, morph):
         if self.bbox is not None:
-                padded = np.pad(morph, self.pad_width[1:], mode='constant', constant_values=0)
-                return padded[self.slices[1:]]
+            padded = np.pad(
+                morph, self.pad_width[1:], mode="constant", constant_values=0
+            )
+            return padded[self.slices[1:]]
         return morph
 
     def _shift_morph(self, shift, morph):
         if shift is not None:
             X = fft.Fourier(morph)
-            X_fft = X.fft(self.fft_shape, (0,1))
+            X_fft = X.fft(self.fft_shape, (0, 1))
 
             # Apply shift in Fourier
-            result_fft = X_fft * (self.shifter_y[:, None] ** shift[0]) * (self.shifter_x[None, :] ** shift[1])
+            result_fft = (
+                X_fft
+                * (self.shifter_y[:, None] ** shift[0])
+                * (self.shifter_x[None, :] ** shift[1])
+            )
 
-            X = fft.Fourier.from_fft(result_fft, self.fft_shape, X.shape, [0,1])
+            X = fft.Fourier.from_fft(result_fft, self.fft_shape, X.shape, [0, 1])
             return np.real(X.image)
         return morph
 
@@ -287,6 +306,7 @@ class FunctionComponent(FactorizedComponent):
     bbox: `~scarlet.Box`
         Spatial bounding box of the morphology.
     """
+
     def __init__(self, frame, sed, fparams, func, bbox=None):
         parameters = (sed, fparams)
         super().__init__(frame, *parameters, bbox=bbox, func=func)
@@ -302,7 +322,7 @@ class FunctionComponent(FactorizedComponent):
             return self._pad_morph(self._morph)
 
     def _func(self, *parameters):
-        return self.kwargs['func'](*parameters)
+        return self.kwargs["func"](*parameters)
 
     def get_model(self, *parameters):
         """Get the model for this component.
@@ -352,12 +372,13 @@ class CubeComponent(Component):
     bbox: `~scarlet.Box`
         Spatial bounding box of the morphology.
     """
+
     def __init__(self, frame, cube, bbox=None):
         parameters = (cube,)
         super().__init__(frame, *parameters, bbox=bbox)
 
     @property
-    def cube (self):
+    def cube(self):
         return self._pad_cube(self._parameters[0]._data)
 
     def get_model(self, *parameters):
@@ -373,12 +394,12 @@ class CubeComponent(Component):
 
     def _pad_cube(self, cube):
         if self.bbox is not None:
-            padded = np.pad(cube, self.pad_width, mode='constant', constant_values=0)
+            padded = np.pad(cube, self.pad_width, mode="constant", constant_values=0)
             return padded[self.slices]
         return cube
 
 
-class ComponentTree():
+class ComponentTree:
     """Base class for hierarchical collections of Components.
     """
 
@@ -400,7 +421,9 @@ class ComponentTree():
         self._parent = None
         for i, c in enumerate(self._tree):
             if not isinstance(c, ComponentTree) and not isinstance(c, Component):
-                raise NotImplementedError("argument needs to be list of Components or ComponentTrees")
+                raise NotImplementedError(
+                    "argument needs to be list of Components or ComponentTrees"
+                )
             assert c.frame is self.frame, "All components need to share the same Frame"
             c._index = i
             c._parent = self
@@ -528,9 +551,9 @@ class ComponentTree():
         model = np.zeros(self.frame.shape)
         if len(params):
             i = 0
-            for k,c in enumerate(self.components):
+            for k, c in enumerate(self.components):
                 j = len(c.parameters)
-                p = params[i:i+j]
+                p = params[i : i + j]
                 i += j
                 model = model + c.get_model(*p)
         else:
@@ -612,7 +635,7 @@ class ComponentTree():
 
     def __getstate__(self):
         # needed for pickling to understand what to save
-        return (self._tree, )
+        return (self._tree,)
 
     def __setstate__(self, state):
         self._tree = state[0]

@@ -3,7 +3,9 @@ from .psf import PSF
 from .bbox import Box
 
 import logging
+
 logger = logging.getLogger("scarlet.frame")
+
 
 class Frame(Box):
     """Spatial and spectral characteristics of the data
@@ -21,7 +23,10 @@ class Frame(Box):
     dtype: `numpy.dtype`
         Dtype to represent the data.
     """
-    def __init__(self, shape_or_box, wcs=None, psfs=None, channels=None, dtype=np.float32):
+
+    def __init__(
+        self, shape_or_box, wcs=None, psfs=None, channels=None, dtype=np.float32
+    ):
 
         if isinstance(shape_or_box, Box):
             self = shape_or_box
@@ -31,7 +36,7 @@ class Frame(Box):
         self.wcs = wcs
 
         if psfs is None:
-            logger.warning('No PSF specified. Possible, but dangerous!')
+            logger.warning("No PSF specified. Possible, but dangerous!")
             self._psfs = None
         else:
             if isinstance(psfs, PSF):
@@ -42,7 +47,6 @@ class Frame(Box):
         assert channels is None or len(channels) == self.shape[0]
         self.channels = channels
         self.dtype = dtype
-
 
     @property
     def psf(self):
@@ -60,7 +64,9 @@ class Frame(Box):
             elif self.wcs.naxis == 2:
                 coord = self.wcs.wcs_world2pix(*sky_coord, 0)
             else:
-                raise ValueError("Invalid number of wcs dimensions: {0}".format(self.wcs.naxis))
+                raise ValueError(
+                    "Invalid number of wcs dimensions: {0}".format(self.wcs.naxis)
+                )
             return tuple(int(c.item()) for c in coord)
 
         return tuple(int(coord) for coord in sky_coord)
@@ -77,7 +83,9 @@ class Frame(Box):
             elif self.wcs.naxis == 2:
                 coord = self.wcs.wcs_pix2world(*pixel, 0)
             else:
-                raise ValueError("Invalid number of wcs dimensions: {0}".format(self.wcs.naxis))
+                raise ValueError(
+                    "Invalid number of wcs dimensions: {0}".format(self.wcs.naxis)
+                )
             return tuple(c.item() for c in coord)
 
         return tuple(pixel)

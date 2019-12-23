@@ -25,10 +25,12 @@ def _centered(arr, newshape):
     currshape = np.array(arr.shape)
 
     if not np.all(newshape <= currshape):
-        msg = "arr must be larger than newshape in both dimensions, received {0}, and {1}"
+        msg = (
+            "arr must be larger than newshape in both dimensions, received {0}, and {1}"
+        )
         raise ValueError(msg.format(arr.shape, newshape))
 
-    startind = (currshape - newshape+1) // 2
+    startind = (currshape - newshape + 1) // 2
     endind = startind + newshape
     myslice = [slice(startind[k], endind[k]) for k in range(len(endind))]
 
@@ -47,7 +49,7 @@ def _pad(arr, newshape, axes=None):
         newshape = np.asarray(newshape)
         currshape = np.array(arr.shape)
         dS = newshape - currshape
-        startind = (dS+1) // 2
+        startind = (dS + 1) // 2
         endind = dS - startind
         pad_width = list(zip(startind, endind))
     else:
@@ -59,13 +61,13 @@ def _pad(arr, newshape, axes=None):
             axes = [axes]
         for a, axis in enumerate(axes):
             dS = newshape[a] - arr.shape[axis]
-            startind = (dS+1) // 2
+            startind = (dS + 1) // 2
             endind = dS - startind
             pad_width[axis] = (startind, endind)
     return np.pad(arr, pad_width, mode="constant")
 
 
-def _get_fft_shape(img1, img2, padding=3, axes=None, max = False):
+def _get_fft_shape(img1, img2, padding=3, axes=None, max=False):
     """Return the fast fft shapes for each spatial axis
 
     Calculate the fast fft shape for each dimension in
@@ -75,7 +77,9 @@ def _get_fft_shape(img1, img2, padding=3, axes=None, max = False):
     shape2 = np.asarray(img2.shape)
     # Make sure the shapes are the same size
     if len(shape1) != len(shape2):
-        msg = "img1 and img2 must have the same number of dimensions, but got {0} and {1}"
+        msg = (
+            "img1 and img2 must have the same number of dimensions, but got {0} and {1}"
+        )
         raise ValueError(msg.format(len(shape1), len(shape2)))
     # Set the combined shape based on the total dimensions
     if axes is None:
@@ -92,7 +96,7 @@ def _get_fft_shape(img1, img2, padding=3, axes=None, max = False):
         for n, ax in enumerate(axes):
             shape[n] = shape1[ax] + shape2[ax]
             if max == True:
-                shape[n] = np.max([shape1[ax],shape2[ax]])
+                shape[n] = np.max([shape1[ax], shape2[ax]])
 
     shape += padding
     # Use the next fastest shape in each dimension
@@ -116,6 +120,7 @@ class Fourier(object):
     padding, so the FFT for each different shape is stored
     in a dictionary.
     """
+
     def __init__(self, image, image_fft=None):
         """Initialize the object
 
@@ -196,7 +201,7 @@ class Fourier(object):
         try:
             iter(axes)
         except TypeError:
-            axes = (axes, )
+            axes = (axes,)
         all_axes = range(len(self.image.shape))
         fft_key = (tuple(fft_shape), tuple(axes), tuple(all_axes))
 
@@ -219,16 +224,33 @@ class Fourier(object):
             index = tuple([index])
 
         # Axes that are removed from the shape of the new object
-        removed = np.array([n for n, idx in enumerate(index)
-                            if not isinstance(idx, slice) and idx is not None])
+        removed = np.array(
+            [
+                n
+                for n, idx in enumerate(index)
+                if not isinstance(idx, slice) and idx is not None
+            ]
+        )
 
         # Create views into the fft transformed values, appropriately adjusting
         # the shapes for the new axes
 
         fft_kernels = {
-            (tuple([s for idx, s in enumerate(key[0]) if key[1][idx] not in removed]),
-            tuple([a for ida, a in enumerate(key[1]) if key[1][ida] not in removed]),
-            tuple([aa for idaa, aa in enumerate(key[2]) if key[2][idaa] not in removed])): kernel[index]
+            (
+                tuple(
+                    [s for idx, s in enumerate(key[0]) if key[1][idx] not in removed]
+                ),
+                tuple(
+                    [a for ida, a in enumerate(key[1]) if key[1][ida] not in removed]
+                ),
+                tuple(
+                    [
+                        aa
+                        for idaa, aa in enumerate(key[2])
+                        if key[2][idaa] not in removed
+                    ]
+                ),
+            ): kernel[index]
             for key, kernel in self._fft.items()
         }
         return Fourier(self.image[index], fft_kernels)
@@ -247,12 +269,12 @@ def _kspace_operation(image1, image2, padding, op, shape, axes):
         raise Exception(msg.format(len(image1.shape), len(image2.shape)))
     fft_shape = _get_fft_shape(image1.image, image2.image, padding, axes)
     convolved_fft = op(image1.fft(fft_shape, axes), image2.fft(fft_shape, axes))
-    #why is shape not image1.shape? images are never padded
+    # why is shape not image1.shape? images are never padded
     convolved = Fourier.from_fft(convolved_fft, fft_shape, shape, axes)
     return convolved
 
 
-def match_psfs(psf1, psf2, padding=3, axes = (-2,-1)):
+def match_psfs(psf1, psf2, padding=3, axes=(-2, -1)):
     """Calculate the difference kernel between two psfs
 
     Parameters
@@ -271,10 +293,10 @@ def match_psfs(psf1, psf2, padding=3, axes = (-2,-1)):
         shape = psf2.shape
     else:
         shape = psf1.shape
-    return _kspace_operation(psf1, psf2, padding, operator.truediv, shape, axes = axes)
+    return _kspace_operation(psf1, psf2, padding, operator.truediv, shape, axes=axes)
 
 
-def convolve(image1, image2, padding=3, axes= (-2,-1)):
+def convolve(image1, image2, padding=3, axes=(-2, -1)):
     """Convolve two images
 
     Parameters
@@ -287,4 +309,6 @@ def convolve(image1, image2, padding=3, axes= (-2,-1)):
         Additional padding to use when generating the FFT
         to supress artifacts.
     """
-    return _kspace_operation(image1, image2, padding, operator.mul, image1.shape, axes = axes)
+    return _kspace_operation(
+        image1, image2, padding, operator.mul, image1.shape, axes=axes
+    )
