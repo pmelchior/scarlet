@@ -2,6 +2,8 @@ import autograd.numpy as np
 from autograd.numpy.numpy_boxes import ArrayBox
 from autograd.core import VSpace
 from functools import partial
+from .constraint import Constraint, ConstraintChain
+from .prior import Prior
 
 
 class Parameter(np.ndarray):
@@ -43,7 +45,13 @@ class Parameter(np.ndarray):
     ):
         obj = np.asarray(array, dtype=array.dtype).view(cls)
         obj.name = name
+        if prior is not None:
+            assert isinstance(prior, Prior)
         obj.prior = prior
+        if constraint is not None:
+            assert isinstance(constraint, Constraint) or isinstance(
+                constraint, ConstraintChain
+            )
         obj.constraint = constraint
         obj.step = step
         obj.converged = converged
