@@ -1,5 +1,6 @@
 from .bbox import *
 from .constraint import *
+from .prior import *
 from .parameter import *
 from .component import *
 from .source import *
