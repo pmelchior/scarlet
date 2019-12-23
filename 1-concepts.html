@@ -382,8 +382,10 @@ class RandomSource(FactorizedComponent):
             sed = get_best_fit_seds(morph[None], frame, observation)[0]
 
         constraint = PositivityConstraint()
-        sed = Parameter(sed, step=relative_step, constraint=constraint)
-        morph = Parameter(morph, step=relative_step, constraint=constraint)
+        sed = Parameter(sed, name=&#34;sed&#34;, step=relative_step, constraint=constraint)
+        morph = Parameter(
+            morph, name=&#34;morph&#34;, step=relative_step, constraint=constraint
+        )
 
         super().__init__(frame, sed, morph)
 
@@ -424,7 +426,7 @@ customization easier.</p>
 
 <span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">src</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">sources</span><span class="p">):</span>
     <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">src</span><span class="o">.</span><span class="n">parameters</span><span class="p">:</span>
-        <span class="nb">print</span> <span class="p">(</span><span class="s2">&quot;Source </span><span class="si">{}</span><span class="s2">, Parameter shape </span><span class="si">{}</span><span class="s2">, Converged </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">converged</span><span class="p">))</span>
+        <span class="nb">print</span> <span class="p">(</span><span class="s2">&quot;Source </span><span class="si">{}</span><span class="s2">: </span><span class="si">{}</span><span class="s2">, Parameter </span><span class="si">{}</span><span class="s2">, Converged </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">src</span><span class="o">.</span><span class="vm">__class__</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">converged</span><span class="p">))</span>
 </pre></div>
 </div>
 </div>
@@ -433,26 +435,26 @@ customization easier.</p>
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-Source 0, Parameter shape (5,), Converged True
-Source 0, Parameter shape (2,), Converged True
-Source 1, Parameter shape (5,), Converged False
-Source 1, Parameter shape (32, 32), Converged False
-Source 1, Parameter shape (5,), Converged False
-Source 1, Parameter shape (32, 32), Converged False
-Source 2, Parameter shape (5,), Converged True
-Source 2, Parameter shape (16, 16), Converged False
-Source 3, Parameter shape (5,), Converged True
-Source 3, Parameter shape (16, 16), Converged False
-Source 4, Parameter shape (5,), Converged False
-Source 4, Parameter shape (16, 16), Converged False
-Source 5, Parameter shape (5,), Converged False
-Source 5, Parameter shape (16, 16), Converged False
-Source 6, Parameter shape (5,), Converged False
-Source 6, Parameter shape (16, 16), Converged False
+Source 0: &lt;class &#39;scarlet.source.PointSource&#39;&gt;, Parameter sed, Converged True
+Source 0: &lt;class &#39;scarlet.source.PointSource&#39;&gt;, Parameter center, Converged True
+Source 1: &lt;class &#39;scarlet.source.MultiComponentSource&#39;&gt;, Parameter sed, Converged False
+Source 1: &lt;class &#39;scarlet.source.MultiComponentSource&#39;&gt;, Parameter morph, Converged False
+Source 1: &lt;class &#39;scarlet.source.MultiComponentSource&#39;&gt;, Parameter sed, Converged False
+Source 1: &lt;class &#39;scarlet.source.MultiComponentSource&#39;&gt;, Parameter morph, Converged False
+Source 2: &lt;class &#39;scarlet.source.ExtendedSource&#39;&gt;, Parameter sed, Converged True
+Source 2: &lt;class &#39;scarlet.source.ExtendedSource&#39;&gt;, Parameter morph, Converged False
+Source 3: &lt;class &#39;scarlet.source.ExtendedSource&#39;&gt;, Parameter sed, Converged True
+Source 3: &lt;class &#39;scarlet.source.ExtendedSource&#39;&gt;, Parameter morph, Converged False
+Source 4: &lt;class &#39;scarlet.source.ExtendedSource&#39;&gt;, Parameter sed, Converged False
+Source 4: &lt;class &#39;scarlet.source.ExtendedSource&#39;&gt;, Parameter morph, Converged False
+Source 5: &lt;class &#39;scarlet.source.ExtendedSource&#39;&gt;, Parameter sed, Converged False
+Source 5: &lt;class &#39;scarlet.source.ExtendedSource&#39;&gt;, Parameter morph, Converged False
+Source 6: &lt;class &#39;scarlet.source.ExtendedSource&#39;&gt;, Parameter sed, Converged False
+Source 6: &lt;class &#39;scarlet.source.ExtendedSource&#39;&gt;, Parameter morph, Converged False
 </pre></div></div>
 </div>
-<p>The parameter with length 5 is the SED, while the other describes the morphology. For object 0, this is simply a 2D center, the rest use images of different sizes.</p>
-<p>Each parameter is a souped up <code class="docutils literal notranslate"><span class="pre">numpy</span></code> array. It has a value as well as additonal attributes that store a <code class="docutils literal notranslate"><span class="pre">prior</span></code> and <code class="docutils literal notranslate"><span class="pre">constraint</span></code> that were enforced during optimization; the typical <code class="docutils literal notranslate"><span class="pre">step</span></code> size during optimization; whether this parameter is considered <code class="docutils literal notranslate"><span class="pre">converged</span></code>; an estimate of the standard deviate <code class="docutils literal notranslate"><span class="pre">std</span></code>; and whether the parameter was held <code class="docutils literal notranslate"><span class="pre">fixed</span></code>:</p>
+<p>Source 0 is a <code class="docutils literal notranslate"><span class="pre">PointSource</span></code>, parameterized by a SED and a center and a sed center. Source 1 has multiple components (each with a SED and a free-form morphology), the rest have a SED and morphology each.</p>
+<p><code class="docutils literal notranslate"><span class="pre">Parameter</span></code> is a souped up <code class="docutils literal notranslate"><span class="pre">numpy</span></code> array. It has a value and a name, as well as additonal attributes that store a <code class="docutils literal notranslate"><span class="pre">prior</span></code> and <code class="docutils literal notranslate"><span class="pre">constraint</span></code> that were enforced during optimization; the typical <code class="docutils literal notranslate"><span class="pre">step</span></code> size during optimization; whether this parameter is considered <code class="docutils literal notranslate"><span class="pre">converged</span></code>; an estimate of the standard deviate <code class="docutils literal notranslate"><span class="pre">std</span></code>; and whether the parameter was held <code class="docutils literal notranslate"><span class="pre">fixed</span></code>:</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
 </pre></div>
@@ -468,9 +470,10 @@ Source 6, Parameter shape (16, 16), Converged False
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-{&#39;prior&#39;: None,
- &#39;constraint&#39;: &lt;scarlet.constraint.PositivityConstraint at 0x7fee45773cf8&gt;,
- &#39;step&#39;: functools.partial(&lt;function relative_step at 0x7fee1e3e7510&gt;, factor=0.01),
+{&#39;name&#39;: &#39;sed&#39;,
+ &#39;prior&#39;: None,
+ &#39;constraint&#39;: &lt;scarlet.constraint.PositivityConstraint at 0x7efcac0e3ef0&gt;,
+ &#39;step&#39;: functools.partial(&lt;function relative_step at 0x7efc84d58268&gt;, factor=0.01),
  &#39;converged&#39;: Parameter(True),
  &#39;std&#39;: masked_array(data=[0.003712885547429323, 0.0018273208988830447,
                     0.0026865066029131413, 0.005372678395360708,
@@ -504,7 +507,7 @@ Source 6, Parameter shape (16, 16), Converged False
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-&lt;matplotlib.colorbar.Colorbar at 0x7fee1bd1ae80&gt;
+&lt;matplotlib.colorbar.Colorbar at 0x7efc82695080&gt;
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">

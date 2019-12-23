@@ -54,6 +54,7 @@
 <li class="toctree-l2"><a class="reference internal" href="scarlet.observation.html">scarlet.observation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.operator.html">scarlet.operator</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.parameter.html">scarlet.parameter</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.prior.html">scarlet.prior</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.psf.html">scarlet.psf</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.resampling.html">scarlet.resampling</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.source.html">scarlet.source</a></li>
@@ -83,40 +84,34 @@
 <span id="scarlet-bbox"></span><h1>scarlet.bbox<a class="headerlink" href="#module-scarlet.bbox" title="Permalink to this headline">¶</a></h1>
 <dl class="class">
 <dt id="scarlet.bbox.Box">
-<em class="property">class </em><code class="sig-prename descclassname">scarlet.bbox.</code><code class="sig-name descname">Box</code><span class="sig-paren">(</span><em class="sig-param">shape</em>, <em class="sig-param">origin=(0</em>, <em class="sig-param">0</em>, <em class="sig-param">0)</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/bbox.html#Box"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.bbox.Box" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">scarlet.bbox.</code><code class="sig-name descname">Box</code><span class="sig-paren">(</span><em class="sig-param">shape</em>, <em class="sig-param">origin=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/bbox.html#Box"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.bbox.Box" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.8)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>Bounding Box for an object</p>
 <p>A Bounding box describes the location of a data unit in the global/model coordinate
 system. It is used to identify spatial and channel overlap and to map from model
 to observed frames and back.</p>
+<p>The <cite>BBox</cite> code is agnostic about the meaning of the dimensions.
+We generally use this convention:</p>
+<ul class="simple">
+<li><p>2D shapes denote (Height, Width)</p></li>
+<li><p>3D shapes denote (Channels, Height, Width)</p></li>
+</ul>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><dl class="simple">
-<dt><strong>shape: tuple</strong></dt><dd><p>Size of the box in depth,height,width</p>
+<dt><strong>shape: tuple</strong></dt><dd><p>Size of the box</p>
 </dd>
-<dt><strong>origin: tuple</strong></dt><dd><p>Minimum (z,y,x) value of the box (front low left corner).</p>
+<dt><strong>origin: tuple</strong></dt><dd><p>Minimum corner coordinate of the box</p>
 </dd>
 </dl>
 </dd>
 <dt class="field-even">Attributes</dt>
 <dd class="field-even"><dl class="simple">
-<dt><a class="reference internal" href="#scarlet.bbox.Box.C" title="scarlet.bbox.Box.C"><code class="xref py py-obj docutils literal notranslate"><span class="pre">C</span></code></a></dt><dd><p>Number of channels in the model</p>
+<dt><a class="reference internal" href="#scarlet.bbox.Box.D" title="scarlet.bbox.Box.D"><code class="xref py py-obj docutils literal notranslate"><span class="pre">D</span></code></a></dt><dd><p>Dimensionality of this BBox</p>
 </dd>
-<dt><a class="reference internal" href="#scarlet.bbox.Box.Nx" title="scarlet.bbox.Box.Nx"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Nx</span></code></a></dt><dd><p>Number of pixels in the x-direction</p>
+<dt><a class="reference internal" href="#scarlet.bbox.Box.start" title="scarlet.bbox.Box.start"><code class="xref py py-obj docutils literal notranslate"><span class="pre">start</span></code></a></dt><dd><p>Tuple of start coordinates</p>
 </dd>
-<dt><a class="reference internal" href="#scarlet.bbox.Box.Ny" title="scarlet.bbox.Box.Ny"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Ny</span></code></a></dt><dd><p>Number of pixel in the y-direction</p>
-</dd>
-<dt><a class="reference internal" href="#scarlet.bbox.Box.back" title="scarlet.bbox.Box.back"><code class="xref py py-obj docutils literal notranslate"><span class="pre">back</span></code></a></dt><dd><p>Maximum y value</p>
-</dd>
-<dt><a class="reference internal" href="#scarlet.bbox.Box.bottom" title="scarlet.bbox.Box.bottom"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bottom</span></code></a></dt><dd><p>Minimum y value</p>
-</dd>
-<dt><a class="reference internal" href="#scarlet.bbox.Box.front" title="scarlet.bbox.Box.front"><code class="xref py py-obj docutils literal notranslate"><span class="pre">front</span></code></a></dt><dd><p>Minimum z value</p>
-</dd>
-<dt><a class="reference internal" href="#scarlet.bbox.Box.left" title="scarlet.bbox.Box.left"><code class="xref py py-obj docutils literal notranslate"><span class="pre">left</span></code></a></dt><dd><p>Minimum x value</p>
-</dd>
-<dt><a class="reference internal" href="#scarlet.bbox.Box.right" title="scarlet.bbox.Box.right"><code class="xref py py-obj docutils literal notranslate"><span class="pre">right</span></code></a></dt><dd><p>Maximum x value</p>
-</dd>
-<dt><a class="reference internal" href="#scarlet.bbox.Box.top" title="scarlet.bbox.Box.top"><code class="xref py py-obj docutils literal notranslate"><span class="pre">top</span></code></a></dt><dd><p>Maximum y value</p>
+<dt><a class="reference internal" href="#scarlet.bbox.Box.stop" title="scarlet.bbox.Box.stop"><code class="xref py py-obj docutils literal notranslate"><span class="pre">stop</span></code></a></dt><dd><p>Tuple of stop coordinates</p>
 </dd>
 </dl>
 </dd>
@@ -129,12 +124,12 @@ to observed frames and back.</p>
 </colgroup>
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.bbox.Box.contains" title="scarlet.bbox.Box.contains"><code class="xref py py-obj docutils literal notranslate"><span class="pre">contains</span></code></a>(self, p)</p></td>
-<td><p>Whether the box cotains a given coordinate <cite>p</cite></p></td>
+<td><p>Whether the box contains a given coordinate <cite>p</cite></p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#scarlet.bbox.Box.extract_from" title="scarlet.bbox.Box.extract_from"><code class="xref py py-obj docutils literal notranslate"><span class="pre">extract_from</span></code></a>(self, image[, sub])</p></td>
 <td><p>Extract sub-image described by this bbox from image</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.bbox.Box.from_bounds" title="scarlet.bbox.Box.from_bounds"><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_bounds</span></code></a>(front, back, bottom, top, left, …)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.bbox.Box.from_bounds" title="scarlet.bbox.Box.from_bounds"><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_bounds</span></code></a>(\*bounds)</p></td>
 <td><p>Initialize a box from its bounds</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#scarlet.bbox.Box.from_data" title="scarlet.bbox.Box.from_data"><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_data</span></code></a>(X[, min_value])</p></td>
@@ -152,39 +147,15 @@ to observed frames and back.</p>
 </tbody>
 </table>
 <dl class="method">
-<dt id="scarlet.bbox.Box.C">
-<em class="property">property </em><code class="sig-name descname">C</code><a class="headerlink" href="#scarlet.bbox.Box.C" title="Permalink to this definition">¶</a></dt>
-<dd><p>Number of channels in the model</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="scarlet.bbox.Box.Nx">
-<em class="property">property </em><code class="sig-name descname">Nx</code><a class="headerlink" href="#scarlet.bbox.Box.Nx" title="Permalink to this definition">¶</a></dt>
-<dd><p>Number of pixels in the x-direction</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="scarlet.bbox.Box.Ny">
-<em class="property">property </em><code class="sig-name descname">Ny</code><a class="headerlink" href="#scarlet.bbox.Box.Ny" title="Permalink to this definition">¶</a></dt>
-<dd><p>Number of pixel in the y-direction</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="scarlet.bbox.Box.back">
-<em class="property">property </em><code class="sig-name descname">back</code><a class="headerlink" href="#scarlet.bbox.Box.back" title="Permalink to this definition">¶</a></dt>
-<dd><p>Maximum y value</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="scarlet.bbox.Box.bottom">
-<em class="property">property </em><code class="sig-name descname">bottom</code><a class="headerlink" href="#scarlet.bbox.Box.bottom" title="Permalink to this definition">¶</a></dt>
-<dd><p>Minimum y value</p>
+<dt id="scarlet.bbox.Box.D">
+<em class="property">property </em><code class="sig-name descname">D</code><a class="headerlink" href="#scarlet.bbox.Box.D" title="Permalink to this definition">¶</a></dt>
+<dd><p>Dimensionality of this BBox</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="scarlet.bbox.Box.contains">
 <code class="sig-name descname">contains</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">p</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/bbox.html#Box.contains"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.bbox.Box.contains" title="Permalink to this definition">¶</a></dt>
-<dd><p>Whether the box cotains a given coordinate <cite>p</cite></p>
+<dd><p>Whether the box contains a given coordinate <cite>p</cite></p>
 </dd></dl>
 
 <dl class="method">
@@ -210,18 +181,12 @@ to observed frames and back.</p>
 
 <dl class="method">
 <dt id="scarlet.bbox.Box.from_bounds">
-<em class="property">static </em><code class="sig-name descname">from_bounds</code><span class="sig-paren">(</span><em class="sig-param">front</em>, <em class="sig-param">back</em>, <em class="sig-param">bottom</em>, <em class="sig-param">top</em>, <em class="sig-param">left</em>, <em class="sig-param">right</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/bbox.html#Box.from_bounds"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.bbox.Box.from_bounds" title="Permalink to this definition">¶</a></dt>
+<em class="property">static </em><code class="sig-name descname">from_bounds</code><span class="sig-paren">(</span><em class="sig-param">*bounds</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/bbox.html#Box.from_bounds"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.bbox.Box.from_bounds" title="Permalink to this definition">¶</a></dt>
 <dd><p>Initialize a box from its bounds</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><dl class="simple">
-<dt><strong>bottom: int</strong></dt><dd><p>Minimum in the y direction.</p>
-</dd>
-<dt><strong>top: int</strong></dt><dd><p>Maximum in the y direction.</p>
-</dd>
-<dt><strong>left: int</strong></dt><dd><p>Minimum in the x direction.</p>
-</dd>
-<dt><strong>right: int</strong></dt><dd><p>Maximum in the x direction.</p>
+<dt><strong>bounds: tuple of (min,max) pairs</strong></dt><dd><p>Min/Max coordinate for every dimension</p>
 </dd>
 </dl>
 </dd>
@@ -249,7 +214,7 @@ to observed frames and back.</p>
 </dd>
 <dt class="field-even">Returns</dt>
 <dd class="field-even"><dl class="simple">
-<dt>bbox: <a class="reference internal" href="#scarlet.bbox.Box" title="scarlet.bbox.Box"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.bbox.Box</span></code></a></dt><dd><p>Bounding box for the thresholded <cite>X</cite> (bottom, top, left, right)</p>
+<dt>bbox: <a class="reference internal" href="#scarlet.bbox.Box" title="scarlet.bbox.Box"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.bbox.Box</span></code></a></dt><dd><p>Bounding box for the thresholded <cite>X</cite></p>
 </dd>
 </dl>
 </dd>
@@ -263,8 +228,7 @@ to observed frames and back.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><dl class="simple">
-<dt><strong>image: array-like</strong></dt><dd><p>2D image</p>
-</dd>
+<dt><strong>image: array-like</strong></dt><dd></dd>
 </dl>
 </dd>
 <dt class="field-even">Returns</dt>
@@ -274,12 +238,6 @@ to observed frames and back.</p>
 </dl>
 </dd>
 </dl>
-</dd></dl>
-
-<dl class="method">
-<dt id="scarlet.bbox.Box.front">
-<em class="property">property </em><code class="sig-name descname">front</code><a class="headerlink" href="#scarlet.bbox.Box.front" title="Permalink to this definition">¶</a></dt>
-<dd><p>Minimum z value</p>
 </dd></dl>
 
 <dl class="method">
@@ -305,18 +263,6 @@ to observed frames and back.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="scarlet.bbox.Box.left">
-<em class="property">property </em><code class="sig-name descname">left</code><a class="headerlink" href="#scarlet.bbox.Box.left" title="Permalink to this definition">¶</a></dt>
-<dd><p>Minimum x value</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="scarlet.bbox.Box.right">
-<em class="property">property </em><code class="sig-name descname">right</code><a class="headerlink" href="#scarlet.bbox.Box.right" title="Permalink to this definition">¶</a></dt>
-<dd><p>Maximum x value</p>
-</dd></dl>
-
-<dl class="method">
 <dt id="scarlet.bbox.Box.slices_for">
 <code class="sig-name descname">slices_for</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">im_or_shape</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/bbox.html#Box.slices_for"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.bbox.Box.slices_for" title="Permalink to this definition">¶</a></dt>
 <dd><p>Slices for <cite>im_or_shape</cite> to be limited to this bounding box.</p>
@@ -329,17 +275,22 @@ to observed frames and back.</p>
 </dd>
 <dt class="field-even">Returns</dt>
 <dd class="field-even"><dl class="simple">
-<dt>If shape is 2D: <cite>slice_y</cite>, <cite>slice_x</cite></dt><dd></dd>
-<dt>If shape is 3: <cite>slice(None)</cite>, <cite>slice_y</cite>, <cite>slice_x</cite></dt><dd></dd>
+<dt>slices for every dimension</dt><dd></dd>
 </dl>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="method">
-<dt id="scarlet.bbox.Box.top">
-<em class="property">property </em><code class="sig-name descname">top</code><a class="headerlink" href="#scarlet.bbox.Box.top" title="Permalink to this definition">¶</a></dt>
-<dd><p>Maximum y value</p>
+<dt id="scarlet.bbox.Box.start">
+<em class="property">property </em><code class="sig-name descname">start</code><a class="headerlink" href="#scarlet.bbox.Box.start" title="Permalink to this definition">¶</a></dt>
+<dd><p>Tuple of start coordinates</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.bbox.Box.stop">
+<em class="property">property </em><code class="sig-name descname">stop</code><a class="headerlink" href="#scarlet.bbox.Box.stop" title="Permalink to this definition">¶</a></dt>
+<dd><p>Tuple of stop coordinates</p>
 </dd></dl>
 
 </dd></dl>

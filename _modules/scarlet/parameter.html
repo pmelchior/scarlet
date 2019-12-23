@@ -64,6 +64,8 @@
 <span class="kn">from</span> <span class="nn">autograd.numpy.numpy_boxes</span> <span class="kn">import</span> <span class="n">ArrayBox</span>
 <span class="kn">from</span> <span class="nn">autograd.core</span> <span class="kn">import</span> <span class="n">VSpace</span>
 <span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">partial</span>
+<span class="kn">from</span> <span class="nn">.constraint</span> <span class="kn">import</span> <span class="n">Constraint</span><span class="p">,</span> <span class="n">ConstraintChain</span>
+<span class="kn">from</span> <span class="nn">.prior</span> <span class="kn">import</span> <span class="n">Prior</span>
 
 
 <div class="viewcode-block" id="Parameter"><a class="viewcode-back" href="../../api/scarlet.parameter.html#scarlet.parameter.Parameter">[docs]</a><span class="k">class</span> <span class="nc">Parameter</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
@@ -73,6 +75,8 @@
 <span class="sd">    ----------</span>
 <span class="sd">    array: array-like</span>
 <span class="sd">        numpy array (type float) to hold parameter values</span>
+<span class="sd">    name: string</span>
+<span class="sd">        Name to identify parameter</span>
 <span class="sd">    prior: `~scarlet.Prior`</span>
 <span class="sd">        Prior distribution for parameter</span>
 <span class="sd">    constraint: `~scarlet.Constraint`</span>
@@ -93,6 +97,7 @@
     <span class="k">def</span> <span class="fm">__new__</span><span class="p">(</span>
         <span class="bp">cls</span><span class="p">,</span>
         <span class="n">array</span><span class="p">,</span>
+        <span class="n">name</span><span class="o">=</span><span class="s2">&quot;unnamed&quot;</span><span class="p">,</span>
         <span class="n">prior</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">constraint</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">step</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
@@ -101,7 +106,14 @@
         <span class="n">fixed</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
     <span class="p">):</span>
         <span class="n">obj</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">array</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span>
+        <span class="n">obj</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="k">if</span> <span class="n">prior</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">prior</span><span class="p">,</span> <span class="n">Prior</span><span class="p">)</span>
         <span class="n">obj</span><span class="o">.</span><span class="n">prior</span> <span class="o">=</span> <span class="n">prior</span>
+        <span class="k">if</span> <span class="n">constraint</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">constraint</span><span class="p">,</span> <span class="n">Constraint</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span>
+                <span class="n">constraint</span><span class="p">,</span> <span class="n">ConstraintChain</span>
+            <span class="p">)</span>
         <span class="n">obj</span><span class="o">.</span><span class="n">constraint</span> <span class="o">=</span> <span class="n">constraint</span>
         <span class="n">obj</span><span class="o">.</span><span class="n">step</span> <span class="o">=</span> <span class="n">step</span>
         <span class="n">obj</span><span class="o">.</span><span class="n">converged</span> <span class="o">=</span> <span class="n">converged</span>
@@ -112,6 +124,7 @@
     <span class="k">def</span> <span class="nf">__array_finalize__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">obj</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">return</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="s2">&quot;unnamed&quot;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">prior</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="s2">&quot;prior&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">constraint</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="s2">&quot;constraint&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">step</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="s2">&quot;step_size&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>

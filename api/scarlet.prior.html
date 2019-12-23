@@ -4,7 +4,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta charset="utf-8" />
-    <title>API Documentation &#8212; scarlet  documentation</title>
+    <title>scarlet.prior &#8212; scarlet  documentation</title>
     <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
@@ -15,11 +15,11 @@
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "ignoreClass": "document", "processClass": "math|output_area"}})</script>
-    <link rel="canonical" href="api/api/scarlet.html" />
+    <link rel="canonical" href="api/api/scarlet.prior.html" />
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="scarlet.bbox" href="scarlet.bbox.html" />
-    <link rel="prev" title="Multi-Resolution Modeling" href="../tutorials/multiresolution.html" />
+    <link rel="next" title="scarlet.psf" href="scarlet.psf.html" />
+    <link rel="prev" title="scarlet.parameter" href="scarlet.parameter.html" />
    
   <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
   
@@ -40,7 +40,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../0-quickstart.html">Quick Start Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../1-concepts.html">Core Concepts</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../tutorials.html">Tutorials</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">API Documentation</a><ul>
+<li class="toctree-l1 current"><a class="reference internal" href="scarlet.html">API Documentation</a><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="scarlet.bbox.html">scarlet.bbox</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.blend.html">scarlet.blend</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.cache.html">scarlet.cache</a></li>
@@ -54,7 +54,7 @@
 <li class="toctree-l2"><a class="reference internal" href="scarlet.observation.html">scarlet.observation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.operator.html">scarlet.operator</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.parameter.html">scarlet.parameter</a></li>
-<li class="toctree-l2"><a class="reference internal" href="scarlet.prior.html">scarlet.prior</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">scarlet.prior</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.psf.html">scarlet.psf</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.resampling.html">scarlet.resampling</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.source.html">scarlet.source</a></li>
@@ -80,29 +80,37 @@
 
           <div class="body" role="main">
             
-  <div class="section" id="api-documentation">
-<h1>API Documentation<a class="headerlink" href="#api-documentation" title="Permalink to this headline">¶</a></h1>
-<div class="toctree-wrapper compound">
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="scarlet.bbox.html">scarlet.bbox</a></li>
-<li class="toctree-l1"><a class="reference internal" href="scarlet.blend.html">scarlet.blend</a></li>
-<li class="toctree-l1"><a class="reference internal" href="scarlet.cache.html">scarlet.cache</a></li>
-<li class="toctree-l1"><a class="reference internal" href="scarlet.component.html">scarlet.component</a></li>
-<li class="toctree-l1"><a class="reference internal" href="scarlet.constraint.html">scarlet.constraint</a></li>
-<li class="toctree-l1"><a class="reference internal" href="scarlet.display.html">scarlet.display</a></li>
-<li class="toctree-l1"><a class="reference internal" href="scarlet.fft.html">scarlet.fft</a></li>
-<li class="toctree-l1"><a class="reference internal" href="scarlet.frame.html">scarlet.frame</a></li>
-<li class="toctree-l1"><a class="reference internal" href="scarlet.interpolation.html">scarlet.interpolation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="scarlet.measure.html">scarlet.measure</a></li>
-<li class="toctree-l1"><a class="reference internal" href="scarlet.observation.html">scarlet.observation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="scarlet.operator.html">scarlet.operator</a></li>
-<li class="toctree-l1"><a class="reference internal" href="scarlet.parameter.html">scarlet.parameter</a></li>
-<li class="toctree-l1"><a class="reference internal" href="scarlet.prior.html">scarlet.prior</a></li>
-<li class="toctree-l1"><a class="reference internal" href="scarlet.psf.html">scarlet.psf</a></li>
-<li class="toctree-l1"><a class="reference internal" href="scarlet.resampling.html">scarlet.resampling</a></li>
-<li class="toctree-l1"><a class="reference internal" href="scarlet.source.html">scarlet.source</a></li>
-</ul>
-</div>
+  <div class="section" id="module-scarlet.prior">
+<span id="scarlet-prior"></span><h1>scarlet.prior<a class="headerlink" href="#module-scarlet.prior" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="scarlet.prior.Prior">
+<em class="property">class </em><code class="sig-prename descclassname">scarlet.prior.</code><code class="sig-name descname">Prior</code><a class="reference internal" href="../_modules/scarlet/prior.html#Prior"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.prior.Prior" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/abc.html#abc.ABC" title="(in Python v3.8)"><code class="xref py py-class docutils literal notranslate"><span class="pre">abc.ABC</span></code></a></p>
+<p>Prior base class</p>
+<p>A prior encodes the distribution of valid solutions for optimization parrameters.</p>
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">__call__</span></code>(self, \*X)</p></td>
+<td><p>Compute the log-likelihood of <cite>X</cite> under the prior</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.prior.Prior.grad" title="scarlet.prior.Prior.grad"><code class="xref py py-obj docutils literal notranslate"><span class="pre">grad</span></code></a>(self, \*X)</p></td>
+<td><p>Compute the gradients of the log-likelihood of <cite>X</cite> under the prior</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="scarlet.prior.Prior.grad">
+<em class="property">abstract </em><code class="sig-name descname">grad</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">*X</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/prior.html#Prior.grad"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.prior.Prior.grad" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the gradients of the log-likelihood of <cite>X</cite> under the prior</p>
+</dd></dl>
+
+</dd></dl>
+
 </div>
 
 
@@ -120,7 +128,7 @@
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |
-      <a href="../_sources/api/scarlet.rst"
+      <a href="../_sources/api/scarlet.prior.rst"
           rel="nofollow">Page source</a>
     </div>
 

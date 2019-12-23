@@ -54,6 +54,7 @@
 <li class="toctree-l2"><a class="reference internal" href="scarlet.observation.html">scarlet.observation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.operator.html">scarlet.operator</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.parameter.html">scarlet.parameter</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.prior.html">scarlet.prior</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.psf.html">scarlet.psf</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.resampling.html">scarlet.resampling</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.source.html">scarlet.source</a></li>
@@ -110,12 +111,12 @@
 </colgroup>
 <tbody>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">contains</span></code>(self, p)</p></td>
-<td><p>Whether the box cotains a given coordinate <cite>p</cite></p></td>
+<td><p>Whether the box contains a given coordinate <cite>p</cite></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">extract_from</span></code>(self, image[, sub])</p></td>
 <td><p>Extract sub-image described by this bbox from image</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_bounds</span></code>(front, back, bottom, top, left, …)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_bounds</span></code>(\*bounds)</p></td>
 <td><p>Initialize a box from its bounds</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_data</span></code>(X[, min_value])</p></td>
@@ -138,6 +139,24 @@
 </tr>
 </tbody>
 </table>
+<dl class="method">
+<dt id="scarlet.frame.Frame.C">
+<em class="property">property </em><code class="sig-name descname">C</code><a class="headerlink" href="#scarlet.frame.Frame.C" title="Permalink to this definition">¶</a></dt>
+<dd><p>Number of channels in the model</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.frame.Frame.Nx">
+<em class="property">property </em><code class="sig-name descname">Nx</code><a class="headerlink" href="#scarlet.frame.Frame.Nx" title="Permalink to this definition">¶</a></dt>
+<dd><p>Number of pixels in the x-direction</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.frame.Frame.Ny">
+<em class="property">property </em><code class="sig-name descname">Ny</code><a class="headerlink" href="#scarlet.frame.Frame.Ny" title="Permalink to this definition">¶</a></dt>
+<dd><p>Number of pixel in the y-direction</p>
+</dd></dl>
+
 <dl class="method">
 <dt id="scarlet.frame.Frame.get_pixel">
 <code class="sig-name descname">get_pixel</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">sky_coord</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/frame.html#Frame.get_pixel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.frame.Frame.get_pixel" title="Permalink to this definition">¶</a></dt>

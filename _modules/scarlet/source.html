@@ -206,10 +206,10 @@
         <span class="k">if</span> <span class="n">bbox</span><span class="o">.</span><span class="n">contains</span><span class="p">(</span><span class="n">pixel_center</span><span class="p">):</span>
             <span class="n">size</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="nb">max</span><span class="p">(</span>
                 <span class="p">(</span>
-                    <span class="n">pixel_center</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">bbox</span><span class="o">.</span><span class="n">bottom</span><span class="p">,</span>
-                    <span class="n">bbox</span><span class="o">.</span><span class="n">top</span> <span class="o">-</span> <span class="n">pixel_center</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
-                    <span class="n">pixel_center</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">bbox</span><span class="o">.</span><span class="n">left</span><span class="p">,</span>
-                    <span class="n">bbox</span><span class="o">.</span><span class="n">right</span> <span class="o">-</span> <span class="n">pixel_center</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+                    <span class="n">pixel_center</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">bbox</span><span class="o">.</span><span class="n">start</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">],</span>
+                    <span class="n">bbox</span><span class="o">.</span><span class="n">stop</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">pixel_center</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">],</span>
+                    <span class="n">pixel_center</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">bbox</span><span class="o">.</span><span class="n">start</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
+                    <span class="n">bbox</span><span class="o">.</span><span class="n">stop</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">pixel_center</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
                 <span class="p">)</span>
             <span class="p">)</span>
             <span class="k">while</span> <span class="n">boxsize</span> <span class="o">&lt;</span> <span class="n">size</span><span class="p">:</span>
@@ -223,9 +223,10 @@
     <span class="n">top</span> <span class="o">=</span> <span class="n">pixel_center</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">boxsize</span> <span class="o">//</span> <span class="mi">2</span>
     <span class="n">left</span> <span class="o">=</span> <span class="n">pixel_center</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">boxsize</span> <span class="o">//</span> <span class="mi">2</span>
     <span class="n">right</span> <span class="o">=</span> <span class="n">pixel_center</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">boxsize</span> <span class="o">//</span> <span class="mi">2</span>
-    <span class="n">bbox</span> <span class="o">=</span> <span class="n">Box</span><span class="o">.</span><span class="n">from_bounds</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">frame</span><span class="o">.</span><span class="n">C</span><span class="p">,</span> <span class="n">bottom</span><span class="p">,</span> <span class="n">top</span><span class="p">,</span> <span class="n">left</span><span class="p">,</span> <span class="n">right</span><span class="p">)</span>
+    <span class="n">bbox</span> <span class="o">=</span> <span class="n">Box</span><span class="o">.</span><span class="n">from_bounds</span><span class="p">((</span><span class="n">bottom</span><span class="p">,</span> <span class="n">top</span><span class="p">),</span> <span class="p">(</span><span class="n">left</span><span class="p">,</span> <span class="n">right</span><span class="p">))</span>
     <span class="n">morph</span> <span class="o">=</span> <span class="n">bbox</span><span class="o">.</span><span class="n">extract_from</span><span class="p">(</span><span class="n">morph</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">morph</span><span class="p">,</span> <span class="n">bbox</span></div>
+    <span class="n">bbox_3d</span> <span class="o">=</span> <span class="n">Box</span><span class="o">.</span><span class="n">from_bounds</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="n">frame</span><span class="o">.</span><span class="n">C</span><span class="p">),</span> <span class="p">(</span><span class="n">bottom</span><span class="p">,</span> <span class="n">top</span><span class="p">),</span> <span class="p">(</span><span class="n">left</span><span class="p">,</span> <span class="n">right</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">morph</span><span class="p">,</span> <span class="n">bbox_3d</span></div>
 
 
 <div class="viewcode-block" id="init_extended_source"><a class="viewcode-back" href="../../api/scarlet.source.html#scarlet.source.init_extended_source">[docs]</a><span class="k">def</span> <span class="nf">init_extended_source</span><span class="p">(</span>
@@ -381,8 +382,10 @@
             <span class="n">sed</span> <span class="o">=</span> <span class="n">get_best_fit_seds</span><span class="p">(</span><span class="n">morph</span><span class="p">[</span><span class="kc">None</span><span class="p">],</span> <span class="n">frame</span><span class="p">,</span> <span class="n">observation</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
 
         <span class="n">constraint</span> <span class="o">=</span> <span class="n">PositivityConstraint</span><span class="p">()</span>
-        <span class="n">sed</span> <span class="o">=</span> <span class="n">Parameter</span><span class="p">(</span><span class="n">sed</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="n">relative_step</span><span class="p">,</span> <span class="n">constraint</span><span class="o">=</span><span class="n">constraint</span><span class="p">)</span>
-        <span class="n">morph</span> <span class="o">=</span> <span class="n">Parameter</span><span class="p">(</span><span class="n">morph</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="n">relative_step</span><span class="p">,</span> <span class="n">constraint</span><span class="o">=</span><span class="n">constraint</span><span class="p">)</span>
+        <span class="n">sed</span> <span class="o">=</span> <span class="n">Parameter</span><span class="p">(</span><span class="n">sed</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;sed&quot;</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="n">relative_step</span><span class="p">,</span> <span class="n">constraint</span><span class="o">=</span><span class="n">constraint</span><span class="p">)</span>
+        <span class="n">morph</span> <span class="o">=</span> <span class="n">Parameter</span><span class="p">(</span>
+            <span class="n">morph</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;morph&quot;</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="n">relative_step</span><span class="p">,</span> <span class="n">constraint</span><span class="o">=</span><span class="n">constraint</span>
+        <span class="p">)</span>
 
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">sed</span><span class="p">,</span> <span class="n">morph</span><span class="p">)</span></div>
 
@@ -436,10 +439,11 @@
         <span class="c1"># set up parameters</span>
         <span class="n">sed</span> <span class="o">=</span> <span class="n">Parameter</span><span class="p">(</span>
             <span class="n">sed</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;sed&quot;</span><span class="p">,</span>
             <span class="n">step</span><span class="o">=</span><span class="n">partial</span><span class="p">(</span><span class="n">relative_step</span><span class="p">,</span> <span class="n">factor</span><span class="o">=</span><span class="mf">1e-2</span><span class="p">),</span>
             <span class="n">constraint</span><span class="o">=</span><span class="n">PositivityConstraint</span><span class="p">(),</span>
         <span class="p">)</span>
-        <span class="n">center</span> <span class="o">=</span> <span class="n">Parameter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">center</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="mf">1e-1</span><span class="p">)</span>
+        <span class="n">center</span> <span class="o">=</span> <span class="n">Parameter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">center</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;center&quot;</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="mf">1e-1</span><span class="p">)</span>
 
         <span class="c1"># define bbox</span>
         <span class="n">pixel_center</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">center</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;int&quot;</span><span class="p">))</span>
@@ -448,7 +452,7 @@
         <span class="n">top</span> <span class="o">=</span> <span class="n">pixel_center</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">frame</span><span class="o">.</span><span class="n">psf</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">//</span> <span class="mi">2</span>
         <span class="n">left</span> <span class="o">=</span> <span class="n">pixel_center</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">frame</span><span class="o">.</span><span class="n">psf</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">//</span> <span class="mi">2</span>
         <span class="n">right</span> <span class="o">=</span> <span class="n">pixel_center</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">frame</span><span class="o">.</span><span class="n">psf</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">//</span> <span class="mi">2</span>
-        <span class="n">bbox</span> <span class="o">=</span> <span class="n">Box</span><span class="o">.</span><span class="n">from_bounds</span><span class="p">(</span><span class="n">front</span><span class="p">,</span> <span class="n">back</span><span class="p">,</span> <span class="n">bottom</span><span class="p">,</span> <span class="n">top</span><span class="p">,</span> <span class="n">left</span><span class="p">,</span> <span class="n">right</span><span class="p">)</span>
+        <span class="n">bbox</span> <span class="o">=</span> <span class="n">Box</span><span class="o">.</span><span class="n">from_bounds</span><span class="p">((</span><span class="n">front</span><span class="p">,</span> <span class="n">back</span><span class="p">),</span> <span class="p">(</span><span class="n">bottom</span><span class="p">,</span> <span class="n">top</span><span class="p">),</span> <span class="p">(</span><span class="n">left</span><span class="p">,</span> <span class="n">right</span><span class="p">))</span>
 
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">sed</span><span class="p">,</span> <span class="n">center</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_psf_wrapper</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="n">bbox</span><span class="p">)</span>
 
@@ -498,7 +502,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">pixel_center</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">center</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;int&quot;</span><span class="p">))</span>
 
         <span class="k">if</span> <span class="n">shifting</span><span class="p">:</span>
-            <span class="n">shift</span> <span class="o">=</span> <span class="n">Parameter</span><span class="p">(</span><span class="n">center</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">pixel_center</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="mf">1e-1</span><span class="p">)</span>
+            <span class="n">shift</span> <span class="o">=</span> <span class="n">Parameter</span><span class="p">(</span><span class="n">center</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">pixel_center</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;shift&quot;</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="mf">1e-1</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">shift</span> <span class="o">=</span> <span class="kc">None</span>
 
@@ -515,6 +519,7 @@
 
         <span class="n">sed</span> <span class="o">=</span> <span class="n">Parameter</span><span class="p">(</span>
             <span class="n">sed</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;sed&quot;</span><span class="p">,</span>
             <span class="n">step</span><span class="o">=</span><span class="n">partial</span><span class="p">(</span><span class="n">relative_step</span><span class="p">,</span> <span class="n">factor</span><span class="o">=</span><span class="mf">1e-2</span><span class="p">),</span>
             <span class="n">constraint</span><span class="o">=</span><span class="n">PositivityConstraint</span><span class="p">(),</span>
         <span class="p">)</span>
@@ -538,7 +543,7 @@
         <span class="p">]</span>
         <span class="n">morph_constraint</span> <span class="o">=</span> <span class="n">ConstraintChain</span><span class="p">(</span><span class="o">*</span><span class="n">constraints</span><span class="p">)</span>
 
-        <span class="n">morph</span> <span class="o">=</span> <span class="n">Parameter</span><span class="p">(</span><span class="n">morph</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="mf">1e-2</span><span class="p">,</span> <span class="n">constraint</span><span class="o">=</span><span class="n">morph_constraint</span><span class="p">)</span>
+        <span class="n">morph</span> <span class="o">=</span> <span class="n">Parameter</span><span class="p">(</span><span class="n">morph</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;morph&quot;</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="mf">1e-2</span><span class="p">,</span> <span class="n">constraint</span><span class="o">=</span><span class="n">morph_constraint</span><span class="p">)</span>
 
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">sed</span><span class="p">,</span> <span class="n">morph</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="n">bbox</span><span class="p">,</span> <span class="n">shift</span><span class="o">=</span><span class="n">shift</span><span class="p">)</span>
 
@@ -610,7 +615,7 @@
         <span class="n">pixel_center</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">center</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;int&quot;</span><span class="p">))</span>
 
         <span class="k">if</span> <span class="n">shifting</span><span class="p">:</span>
-            <span class="n">shift</span> <span class="o">=</span> <span class="n">Parameter</span><span class="p">(</span><span class="n">center</span> <span class="o">-</span> <span class="n">pixel_center</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="mf">1e-1</span><span class="p">)</span>
+            <span class="n">shift</span> <span class="o">=</span> <span class="n">Parameter</span><span class="p">(</span><span class="n">center</span> <span class="o">-</span> <span class="n">pixel_center</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;shift&quot;</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="mf">1e-1</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">shift</span> <span class="o">=</span> <span class="kc">None</span>
 
@@ -648,10 +653,13 @@
         <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">seds</span><span class="p">)):</span>
             <span class="n">sed</span> <span class="o">=</span> <span class="n">Parameter</span><span class="p">(</span>
                 <span class="n">seds</span><span class="p">[</span><span class="n">k</span><span class="p">],</span>
+                <span class="n">name</span><span class="o">=</span><span class="s2">&quot;sed&quot;</span><span class="p">,</span>
                 <span class="n">step</span><span class="o">=</span><span class="n">partial</span><span class="p">(</span><span class="n">relative_step</span><span class="p">,</span> <span class="n">factor</span><span class="o">=</span><span class="mf">1e-1</span><span class="p">),</span>
                 <span class="n">constraint</span><span class="o">=</span><span class="n">PositivityConstraint</span><span class="p">(),</span>
             <span class="p">)</span>
-            <span class="n">morph</span> <span class="o">=</span> <span class="n">Parameter</span><span class="p">(</span><span class="n">morphs</span><span class="p">[</span><span class="n">k</span><span class="p">],</span> <span class="n">step</span><span class="o">=</span><span class="mf">1e-2</span><span class="p">,</span> <span class="n">constraint</span><span class="o">=</span><span class="n">morph_constraint</span><span class="p">)</span>
+            <span class="n">morph</span> <span class="o">=</span> <span class="n">Parameter</span><span class="p">(</span>
+                <span class="n">morphs</span><span class="p">[</span><span class="n">k</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;morph&quot;</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="mf">1e-2</span><span class="p">,</span> <span class="n">constraint</span><span class="o">=</span><span class="n">morph_constraint</span>
+            <span class="p">)</span>
             <span class="n">components</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
                 <span class="n">FactorizedComponent</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">sed</span><span class="p">,</span> <span class="n">morph</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="n">bbox</span><span class="p">,</span> <span class="n">shift</span><span class="o">=</span><span class="n">shift</span><span class="p">)</span>
             <span class="p">)</span>

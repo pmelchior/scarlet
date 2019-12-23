@@ -16,6 +16,7 @@ API Documentation
     scarlet.observation
     scarlet.operator
     scarlet.parameter
+    scarlet.prior
     scarlet.psf
     scarlet.resampling
     scarlet.source
