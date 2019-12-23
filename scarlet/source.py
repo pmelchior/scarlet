@@ -144,10 +144,10 @@ def trim_morphology(sky_coord, frame, morph, bg_cutoff, thresh):
         if bbox.contains(pixel_center):
             size = 2 * max(
                 (
-                    pixel_center[0] - bbox.bottom,
-                    bbox.top - pixel_center[0],
-                    pixel_center[1] - bbox.left,
-                    bbox.right - pixel_center[1],
+                    pixel_center[0] - bbox.start[-2],
+                    bbox.stop[0] - pixel_center[-2],
+                    pixel_center[1] - bbox.start[-1],
+                    bbox.stop[1] - pixel_center[-1],
                 )
             )
             while boxsize < size:
@@ -161,9 +161,10 @@ def trim_morphology(sky_coord, frame, morph, bg_cutoff, thresh):
     top = pixel_center[0] + boxsize // 2
     left = pixel_center[1] - boxsize // 2
     right = pixel_center[1] + boxsize // 2
-    bbox = Box.from_bounds(0, frame.C, bottom, top, left, right)
+    bbox = Box.from_bounds((bottom, top), (left, right))
     morph = bbox.extract_from(morph)
-    return morph, bbox
+    bbox_3d = Box.from_bounds((0, frame.C), (bottom, top), (left, right))
+    return morph, bbox_3d
 
 
 def init_extended_source(
@@ -319,8 +320,10 @@ class RandomSource(FactorizedComponent):
             sed = get_best_fit_seds(morph[None], frame, observation)[0]
 
         constraint = PositivityConstraint()
-        sed = Parameter(sed, step=relative_step, constraint=constraint)
-        morph = Parameter(morph, step=relative_step, constraint=constraint)
+        sed = Parameter(sed, name="sed", step=relative_step, constraint=constraint)
+        morph = Parameter(
+            morph, name="morph", step=relative_step, constraint=constraint
+        )
 
         super().__init__(frame, sed, morph)
 
@@ -374,10 +377,11 @@ class PointSource(FunctionComponent):
         # set up parameters
         sed = Parameter(
             sed,
+            name="sed",
             step=partial(relative_step, factor=1e-2),
             constraint=PositivityConstraint(),
         )
-        center = Parameter(self.center, step=1e-1)
+        center = Parameter(self.center, name="center", step=1e-1)
 
         # define bbox
         pixel_center = tuple(np.round(center).astype("int"))
@@ -386,7 +390,7 @@ class PointSource(FunctionComponent):
         top = pixel_center[0] + frame.psf.shape[1] // 2
         left = pixel_center[1] - frame.psf.shape[2] // 2
         right = pixel_center[1] + frame.psf.shape[2] // 2
-        bbox = Box.from_bounds(front, back, bottom, top, left, right)
+        bbox = Box.from_bounds((front, back), (bottom, top), (left, right))
 
         super().__init__(frame, sed, center, self._psf_wrapper, bbox=bbox)
 
@@ -436,7 +440,7 @@ class ExtendedSource(FactorizedComponent):
         self.pixel_center = tuple(np.round(center).astype("int"))
 
         if shifting:
-            shift = Parameter(center - self.pixel_center, step=1e-1)
+            shift = Parameter(center - self.pixel_center, name="shift", step=1e-1)
         else:
             shift = None
 
@@ -453,6 +457,7 @@ class ExtendedSource(FactorizedComponent):
 
         sed = Parameter(
             sed,
+            name="sed",
             step=partial(relative_step, factor=1e-2),
             constraint=PositivityConstraint(),
         )
@@ -476,7 +481,7 @@ class ExtendedSource(FactorizedComponent):
         ]
         morph_constraint = ConstraintChain(*constraints)
 
-        morph = Parameter(morph, step=1e-2, constraint=morph_constraint)
+        morph = Parameter(morph, name="morph", step=1e-2, constraint=morph_constraint)
 
         super().__init__(frame, sed, morph, bbox=bbox, shift=shift)
 
@@ -548,7 +553,7 @@ class MultiComponentSource(ComponentTree):
         pixel_center = tuple(np.round(center).astype("int"))
 
         if shifting:
-            shift = Parameter(center - pixel_center, step=1e-1)
+            shift = Parameter(center - pixel_center, name="shift", step=1e-1)
         else:
             shift = None
 
@@ -586,10 +591,13 @@ class MultiComponentSource(ComponentTree):
         for k in range(len(seds)):
             sed = Parameter(
                 seds[k],
+                name="sed",
                 step=partial(relative_step, factor=1e-1),
                 constraint=PositivityConstraint(),
             )
-            morph = Parameter(morphs[k], step=1e-2, constraint=morph_constraint)
+            morph = Parameter(
+                morphs[k], name="morph", step=1e-2, constraint=morph_constraint
+            )
             components.append(
                 FactorizedComponent(frame, sed, morph, bbox=bbox, shift=shift)
             )

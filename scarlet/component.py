@@ -122,30 +122,25 @@ class Component(ABC):
             # determine pad from box into full frame
             # yields superset of frame pixels
             # pad_width is ((before1, after1), (before2, after2)...)
-            self.pad_width = (
+            self.pad_width = list(
                 (
-                    max(0, self.bbox.front - self.frame.front),
-                    max(0, self.frame.back - self.bbox.back),
-                ),
-                (
-                    max(0, self.bbox.bottom - self.frame.bottom),
-                    max(0, self.frame.top - self.bbox.top),
-                ),
-                (
-                    max(0, self.bbox.left - self.frame.left),
-                    max(0, self.frame.right - self.bbox.right),
-                ),
+                    max(0, self.bbox.start[d] - self.frame.start[d]),
+                    max(0, self.frame.stop[d] - self.bbox.stop[d]),
+                )
+                for d in range(self.frame.D)
             )
 
             # get slicing of padded box so that the result covers
             # all of the model frame
-            front = self.bbox.front - self.pad_width[0][0]
-            back = self.bbox.back + self.pad_width[0][1]
-            bottom = self.bbox.bottom - self.pad_width[1][0]
-            top = self.bbox.top + self.pad_width[1][1]
-            left = self.bbox.left - self.pad_width[2][0]
-            right = self.bbox.right + self.pad_width[2][1]
-            padded_box = Box.from_bounds(front, back, bottom, top, left, right)
+            bounds = []
+            for d in range(self.frame.D):
+                bounds.append(
+                    (
+                        self.bbox.start[d] - self.pad_width[d][0],
+                        self.bbox.stop[d] + self.pad_width[d][1],
+                    )
+                )
+            padded_box = Box.from_bounds(*bounds)
 
             model_box = self.frame
             overlap = model_box & padded_box
