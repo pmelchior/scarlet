@@ -63,12 +63,14 @@
 <span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">from</span> <span class="nn">.component</span> <span class="kn">import</span> <span class="o">*</span>
 
+
 <div class="viewcode-block" id="get_model"><a class="viewcode-back" href="../../api/scarlet.measure.html#scarlet.measure.get_model">[docs]</a><span class="k">def</span> <span class="nf">get_model</span><span class="p">(</span><span class="n">component</span><span class="p">):</span>
     <span class="n">frame_</span> <span class="o">=</span> <span class="n">component</span><span class="o">.</span><span class="n">frame</span>
     <span class="n">component</span><span class="o">.</span><span class="n">set_frame</span><span class="p">(</span><span class="n">component</span><span class="o">.</span><span class="n">bbox</span><span class="p">)</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">component</span><span class="o">.</span><span class="n">get_model</span><span class="p">()</span>
     <span class="n">component</span><span class="o">.</span><span class="n">set_frame</span><span class="p">(</span><span class="n">frame_</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">model</span></div>
+
 
 <div class="viewcode-block" id="max_pixel"><a class="viewcode-back" href="../../api/scarlet.measure.html#scarlet.measure.max_pixel">[docs]</a><span class="k">def</span> <span class="nf">max_pixel</span><span class="p">(</span><span class="n">component</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Determine pixel with maximum value</span>
@@ -79,7 +81,10 @@
 <span class="sd">        Component to analyze</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">get_model</span><span class="p">(</span><span class="n">component</span><span class="p">)</span>
-    <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">unravel_index</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">model_</span><span class="p">),</span> <span class="n">model</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">+</span> <span class="n">component</span><span class="o">.</span><span class="n">bbox</span><span class="o">.</span><span class="n">origin</span><span class="p">)</span></div>
+    <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">unravel_index</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">model_</span><span class="p">),</span> <span class="n">model</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">+</span> <span class="n">component</span><span class="o">.</span><span class="n">bbox</span><span class="o">.</span><span class="n">origin</span>
+    <span class="p">)</span></div>
+
 
 <div class="viewcode-block" id="flux"><a class="viewcode-back" href="../../api/scarlet.measure.html#scarlet.measure.flux">[docs]</a><span class="k">def</span> <span class="nf">flux</span><span class="p">(</span><span class="n">component</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Determine flux in every channel</span>
@@ -90,7 +95,8 @@
 <span class="sd">        Component to analyze</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">get_model</span><span class="p">(</span><span class="n">component</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">model</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">))</span></div>
+    <span class="k">return</span> <span class="n">model</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span></div>
+
 
 <div class="viewcode-block" id="centroid"><a class="viewcode-back" href="../../api/scarlet.measure.html#scarlet.measure.centroid">[docs]</a><span class="k">def</span> <span class="nf">centroid</span><span class="p">(</span><span class="n">component</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Determine centroid of model</span>
@@ -102,7 +108,7 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">get_model</span><span class="p">(</span><span class="n">component</span><span class="p">)</span>
     <span class="n">indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">indices</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
-    <span class="n">centroid</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">ind</span><span class="o">*</span><span class="n">model</span><span class="p">)</span> <span class="k">for</span> <span class="n">ind</span> <span class="ow">in</span> <span class="n">indices</span><span class="p">])</span> <span class="o">/</span> <span class="n">model</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+    <span class="n">centroid</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">ind</span> <span class="o">*</span> <span class="n">model</span><span class="p">)</span> <span class="k">for</span> <span class="n">ind</span> <span class="ow">in</span> <span class="n">indices</span><span class="p">])</span> <span class="o">/</span> <span class="n">model</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
     <span class="k">return</span> <span class="n">centroid</span> <span class="o">+</span> <span class="n">component</span><span class="o">.</span><span class="n">bbox</span><span class="o">.</span><span class="n">origin</span></div>
 </pre></div>
 

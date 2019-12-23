@@ -87,10 +87,12 @@
     <span class="n">currshape</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">arr</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">newshape</span> <span class="o">&lt;=</span> <span class="n">currshape</span><span class="p">):</span>
-        <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;arr must be larger than newshape in both dimensions, received </span><span class="si">{0}</span><span class="s2">, and </span><span class="si">{1}</span><span class="s2">&quot;</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="s2">&quot;arr must be larger than newshape in both dimensions, received </span><span class="si">{0}</span><span class="s2">, and </span><span class="si">{1}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">arr</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">newshape</span><span class="p">))</span>
 
-    <span class="n">startind</span> <span class="o">=</span> <span class="p">(</span><span class="n">currshape</span> <span class="o">-</span> <span class="n">newshape</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span> <span class="o">//</span> <span class="mi">2</span>
+    <span class="n">startind</span> <span class="o">=</span> <span class="p">(</span><span class="n">currshape</span> <span class="o">-</span> <span class="n">newshape</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">//</span> <span class="mi">2</span>
     <span class="n">endind</span> <span class="o">=</span> <span class="n">startind</span> <span class="o">+</span> <span class="n">newshape</span>
     <span class="n">myslice</span> <span class="o">=</span> <span class="p">[</span><span class="nb">slice</span><span class="p">(</span><span class="n">startind</span><span class="p">[</span><span class="n">k</span><span class="p">],</span> <span class="n">endind</span><span class="p">[</span><span class="n">k</span><span class="p">])</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">endind</span><span class="p">))]</span>
 
@@ -109,7 +111,7 @@
         <span class="n">newshape</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">newshape</span><span class="p">)</span>
         <span class="n">currshape</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">arr</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
         <span class="n">dS</span> <span class="o">=</span> <span class="n">newshape</span> <span class="o">-</span> <span class="n">currshape</span>
-        <span class="n">startind</span> <span class="o">=</span> <span class="p">(</span><span class="n">dS</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span> <span class="o">//</span> <span class="mi">2</span>
+        <span class="n">startind</span> <span class="o">=</span> <span class="p">(</span><span class="n">dS</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">//</span> <span class="mi">2</span>
         <span class="n">endind</span> <span class="o">=</span> <span class="n">dS</span> <span class="o">-</span> <span class="n">startind</span>
         <span class="n">pad_width</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">startind</span><span class="p">,</span> <span class="n">endind</span><span class="p">))</span>
     <span class="k">else</span><span class="p">:</span>
@@ -121,13 +123,13 @@
             <span class="n">axes</span> <span class="o">=</span> <span class="p">[</span><span class="n">axes</span><span class="p">]</span>
         <span class="k">for</span> <span class="n">a</span><span class="p">,</span> <span class="n">axis</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">axes</span><span class="p">):</span>
             <span class="n">dS</span> <span class="o">=</span> <span class="n">newshape</span><span class="p">[</span><span class="n">a</span><span class="p">]</span> <span class="o">-</span> <span class="n">arr</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="n">axis</span><span class="p">]</span>
-            <span class="n">startind</span> <span class="o">=</span> <span class="p">(</span><span class="n">dS</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span> <span class="o">//</span> <span class="mi">2</span>
+            <span class="n">startind</span> <span class="o">=</span> <span class="p">(</span><span class="n">dS</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">//</span> <span class="mi">2</span>
             <span class="n">endind</span> <span class="o">=</span> <span class="n">dS</span> <span class="o">-</span> <span class="n">startind</span>
             <span class="n">pad_width</span><span class="p">[</span><span class="n">axis</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">startind</span><span class="p">,</span> <span class="n">endind</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">pad</span><span class="p">(</span><span class="n">arr</span><span class="p">,</span> <span class="n">pad_width</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;constant&quot;</span><span class="p">)</span>
 
 
-<span class="k">def</span> <span class="nf">_get_fft_shape</span><span class="p">(</span><span class="n">img1</span><span class="p">,</span> <span class="n">img2</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="nb">max</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">_get_fft_shape</span><span class="p">(</span><span class="n">img1</span><span class="p">,</span> <span class="n">img2</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Return the fast fft shapes for each spatial axis</span>
 
 <span class="sd">    Calculate the fast fft shape for each dimension in</span>
@@ -137,7 +139,9 @@
     <span class="n">shape2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">img2</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
     <span class="c1"># Make sure the shapes are the same size</span>
     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">shape1</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">shape2</span><span class="p">):</span>
-        <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;img1 and img2 must have the same number of dimensions, but got </span><span class="si">{0}</span><span class="s2"> and </span><span class="si">{1}</span><span class="s2">&quot;</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="s2">&quot;img1 and img2 must have the same number of dimensions, but got </span><span class="si">{0}</span><span class="s2"> and </span><span class="si">{1}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">shape1</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">shape2</span><span class="p">)))</span>
     <span class="c1"># Set the combined shape based on the total dimensions</span>
     <span class="k">if</span> <span class="n">axes</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -154,7 +158,7 @@
         <span class="k">for</span> <span class="n">n</span><span class="p">,</span> <span class="n">ax</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">axes</span><span class="p">):</span>
             <span class="n">shape</span><span class="p">[</span><span class="n">n</span><span class="p">]</span> <span class="o">=</span> <span class="n">shape1</span><span class="p">[</span><span class="n">ax</span><span class="p">]</span> <span class="o">+</span> <span class="n">shape2</span><span class="p">[</span><span class="n">ax</span><span class="p">]</span>
             <span class="k">if</span> <span class="nb">max</span> <span class="o">==</span> <span class="kc">True</span><span class="p">:</span>
-                <span class="n">shape</span><span class="p">[</span><span class="n">n</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">([</span><span class="n">shape1</span><span class="p">[</span><span class="n">ax</span><span class="p">],</span><span class="n">shape2</span><span class="p">[</span><span class="n">ax</span><span class="p">]])</span>
+                <span class="n">shape</span><span class="p">[</span><span class="n">n</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">([</span><span class="n">shape1</span><span class="p">[</span><span class="n">ax</span><span class="p">],</span> <span class="n">shape2</span><span class="p">[</span><span class="n">ax</span><span class="p">]])</span>
 
     <span class="n">shape</span> <span class="o">+=</span> <span class="n">padding</span>
     <span class="c1"># Use the next fastest shape in each dimension</span>
@@ -178,6 +182,7 @@
 <span class="sd">    padding, so the FFT for each different shape is stored</span>
 <span class="sd">    in a dictionary.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">image_fft</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Initialize the object</span>
 
@@ -258,7 +263,7 @@
         <span class="k">try</span><span class="p">:</span>
             <span class="nb">iter</span><span class="p">(</span><span class="n">axes</span><span class="p">)</span>
         <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
-            <span class="n">axes</span> <span class="o">=</span> <span class="p">(</span><span class="n">axes</span><span class="p">,</span> <span class="p">)</span>
+            <span class="n">axes</span> <span class="o">=</span> <span class="p">(</span><span class="n">axes</span><span class="p">,)</span>
         <span class="n">all_axes</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>
         <span class="n">fft_key</span> <span class="o">=</span> <span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">fft_shape</span><span class="p">),</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">axes</span><span class="p">),</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">all_axes</span><span class="p">))</span>
 
@@ -281,16 +286,33 @@
             <span class="n">index</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">([</span><span class="n">index</span><span class="p">])</span>
 
         <span class="c1"># Axes that are removed from the shape of the new object</span>
-        <span class="n">removed</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">n</span> <span class="k">for</span> <span class="n">n</span><span class="p">,</span> <span class="n">idx</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">index</span><span class="p">)</span>
-                            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="nb">slice</span><span class="p">)</span> <span class="ow">and</span> <span class="n">idx</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">])</span>
+        <span class="n">removed</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+            <span class="p">[</span>
+                <span class="n">n</span>
+                <span class="k">for</span> <span class="n">n</span><span class="p">,</span> <span class="n">idx</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">index</span><span class="p">)</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="nb">slice</span><span class="p">)</span> <span class="ow">and</span> <span class="n">idx</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="p">]</span>
+        <span class="p">)</span>
 
         <span class="c1"># Create views into the fft transformed values, appropriately adjusting</span>
         <span class="c1"># the shapes for the new axes</span>
 
         <span class="n">fft_kernels</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="p">(</span><span class="nb">tuple</span><span class="p">([</span><span class="n">s</span> <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">s</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">key</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="k">if</span> <span class="n">key</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="n">idx</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">removed</span><span class="p">]),</span>
-            <span class="nb">tuple</span><span class="p">([</span><span class="n">a</span> <span class="k">for</span> <span class="n">ida</span><span class="p">,</span> <span class="n">a</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">key</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="k">if</span> <span class="n">key</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="n">ida</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">removed</span><span class="p">]),</span>
-            <span class="nb">tuple</span><span class="p">([</span><span class="n">aa</span> <span class="k">for</span> <span class="n">idaa</span><span class="p">,</span> <span class="n">aa</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">key</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span> <span class="k">if</span> <span class="n">key</span><span class="p">[</span><span class="mi">2</span><span class="p">][</span><span class="n">idaa</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">removed</span><span class="p">])):</span> <span class="n">kernel</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
+            <span class="p">(</span>
+                <span class="nb">tuple</span><span class="p">(</span>
+                    <span class="p">[</span><span class="n">s</span> <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">s</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">key</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="k">if</span> <span class="n">key</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="n">idx</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">removed</span><span class="p">]</span>
+                <span class="p">),</span>
+                <span class="nb">tuple</span><span class="p">(</span>
+                    <span class="p">[</span><span class="n">a</span> <span class="k">for</span> <span class="n">ida</span><span class="p">,</span> <span class="n">a</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">key</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="k">if</span> <span class="n">key</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="n">ida</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">removed</span><span class="p">]</span>
+                <span class="p">),</span>
+                <span class="nb">tuple</span><span class="p">(</span>
+                    <span class="p">[</span>
+                        <span class="n">aa</span>
+                        <span class="k">for</span> <span class="n">idaa</span><span class="p">,</span> <span class="n">aa</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">key</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+                        <span class="k">if</span> <span class="n">key</span><span class="p">[</span><span class="mi">2</span><span class="p">][</span><span class="n">idaa</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">removed</span>
+                    <span class="p">]</span>
+                <span class="p">),</span>
+            <span class="p">):</span> <span class="n">kernel</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
             <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">kernel</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fft</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
         <span class="p">}</span>
         <span class="k">return</span> <span class="n">Fourier</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">image</span><span class="p">[</span><span class="n">index</span><span class="p">],</span> <span class="n">fft_kernels</span><span class="p">)</span></div>
@@ -309,12 +331,12 @@
         <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="n">msg</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">image1</span><span class="o">.</span><span class="n">shape</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">image2</span><span class="o">.</span><span class="n">shape</span><span class="p">)))</span>
     <span class="n">fft_shape</span> <span class="o">=</span> <span class="n">_get_fft_shape</span><span class="p">(</span><span class="n">image1</span><span class="o">.</span><span class="n">image</span><span class="p">,</span> <span class="n">image2</span><span class="o">.</span><span class="n">image</span><span class="p">,</span> <span class="n">padding</span><span class="p">,</span> <span class="n">axes</span><span class="p">)</span>
     <span class="n">convolved_fft</span> <span class="o">=</span> <span class="n">op</span><span class="p">(</span><span class="n">image1</span><span class="o">.</span><span class="n">fft</span><span class="p">(</span><span class="n">fft_shape</span><span class="p">,</span> <span class="n">axes</span><span class="p">),</span> <span class="n">image2</span><span class="o">.</span><span class="n">fft</span><span class="p">(</span><span class="n">fft_shape</span><span class="p">,</span> <span class="n">axes</span><span class="p">))</span>
-    <span class="c1">#why is shape not image1.shape? images are never padded</span>
+    <span class="c1"># why is shape not image1.shape? images are never padded</span>
     <span class="n">convolved</span> <span class="o">=</span> <span class="n">Fourier</span><span class="o">.</span><span class="n">from_fft</span><span class="p">(</span><span class="n">convolved_fft</span><span class="p">,</span> <span class="n">fft_shape</span><span class="p">,</span> <span class="n">shape</span><span class="p">,</span> <span class="n">axes</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">convolved</span>
 
 
-<div class="viewcode-block" id="match_psfs"><a class="viewcode-back" href="../../api/scarlet.fft.html#scarlet.fft.match_psfs">[docs]</a><span class="k">def</span> <span class="nf">match_psfs</span><span class="p">(</span><span class="n">psf1</span><span class="p">,</span> <span class="n">psf2</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">)):</span>
+<div class="viewcode-block" id="match_psfs"><a class="viewcode-back" href="../../api/scarlet.fft.html#scarlet.fft.match_psfs">[docs]</a><span class="k">def</span> <span class="nf">match_psfs</span><span class="p">(</span><span class="n">psf1</span><span class="p">,</span> <span class="n">psf2</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)):</span>
     <span class="sd">&quot;&quot;&quot;Calculate the difference kernel between two psfs</span>
 
 <span class="sd">    Parameters</span>
@@ -333,10 +355,10 @@
         <span class="n">shape</span> <span class="o">=</span> <span class="n">psf2</span><span class="o">.</span><span class="n">shape</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">shape</span> <span class="o">=</span> <span class="n">psf1</span><span class="o">.</span><span class="n">shape</span>
-    <span class="k">return</span> <span class="n">_kspace_operation</span><span class="p">(</span><span class="n">psf1</span><span class="p">,</span> <span class="n">psf2</span><span class="p">,</span> <span class="n">padding</span><span class="p">,</span> <span class="n">operator</span><span class="o">.</span><span class="n">truediv</span><span class="p">,</span> <span class="n">shape</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">axes</span><span class="p">)</span></div>
+    <span class="k">return</span> <span class="n">_kspace_operation</span><span class="p">(</span><span class="n">psf1</span><span class="p">,</span> <span class="n">psf2</span><span class="p">,</span> <span class="n">padding</span><span class="p">,</span> <span class="n">operator</span><span class="o">.</span><span class="n">truediv</span><span class="p">,</span> <span class="n">shape</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="n">axes</span><span class="p">)</span></div>
 
 
-<div class="viewcode-block" id="convolve"><a class="viewcode-back" href="../../api/scarlet.fft.html#scarlet.fft.convolve">[docs]</a><span class="k">def</span> <span class="nf">convolve</span><span class="p">(</span><span class="n">image1</span><span class="p">,</span> <span class="n">image2</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">)):</span>
+<div class="viewcode-block" id="convolve"><a class="viewcode-back" href="../../api/scarlet.fft.html#scarlet.fft.convolve">[docs]</a><span class="k">def</span> <span class="nf">convolve</span><span class="p">(</span><span class="n">image1</span><span class="p">,</span> <span class="n">image2</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)):</span>
     <span class="sd">&quot;&quot;&quot;Convolve two images</span>
 
 <span class="sd">    Parameters</span>
@@ -349,7 +371,9 @@
 <span class="sd">        Additional padding to use when generating the FFT</span>
 <span class="sd">        to supress artifacts.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="n">_kspace_operation</span><span class="p">(</span><span class="n">image1</span><span class="p">,</span> <span class="n">image2</span><span class="p">,</span> <span class="n">padding</span><span class="p">,</span> <span class="n">operator</span><span class="o">.</span><span class="n">mul</span><span class="p">,</span> <span class="n">image1</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">axes</span><span class="p">)</span></div>
+    <span class="k">return</span> <span class="n">_kspace_operation</span><span class="p">(</span>
+        <span class="n">image1</span><span class="p">,</span> <span class="n">image2</span><span class="p">,</span> <span class="n">padding</span><span class="p">,</span> <span class="n">operator</span><span class="o">.</span><span class="n">mul</span><span class="p">,</span> <span class="n">image1</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="n">axes</span>
+    <span class="p">)</span></div>
 </pre></div>
 
           </div>

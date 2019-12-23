@@ -70,6 +70,7 @@
 <span class="kn">import</span> <span class="nn">autograd.numpy</span> <span class="k">as</span> <span class="nn">np</span>
 
 <span class="kn">import</span> <span class="nn">logging</span>
+
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;scarlet.source&quot;</span><span class="p">)</span>
 
 
@@ -175,12 +176,12 @@
     <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">bg_rms</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">):</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;bg_rms must be greater than zero in all channels&quot;</span><span class="p">)</span>
 
-    <span class="n">positive</span> <span class="o">=</span> <span class="p">[</span> <span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">C</span><span class="p">)</span> <span class="k">if</span> <span class="n">sed</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="p">]</span>
+    <span class="n">positive</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">C</span><span class="p">)</span> <span class="k">if</span> <span class="n">sed</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]</span>
     <span class="n">positive_img</span> <span class="o">=</span> <span class="p">[</span><span class="n">observation</span><span class="o">.</span><span class="n">images</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">positive</span><span class="p">]</span>
     <span class="n">positive_bgrms</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">bg_rms</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">positive</span><span class="p">])</span>
     <span class="n">weights</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">sed</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">/</span> <span class="n">bg_rms</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">positive</span><span class="p">])</span>
     <span class="n">jacobian</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">sed</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">/</span> <span class="n">bg_rms</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">positive</span><span class="p">])</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
-    <span class="n">detect</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s1">&#39;i,i...&#39;</span><span class="p">,</span> <span class="n">weights</span><span class="p">,</span> <span class="n">positive_img</span><span class="p">)</span> <span class="o">/</span> <span class="n">jacobian</span>
+    <span class="n">detect</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s2">&quot;i,i...&quot;</span><span class="p">,</span> <span class="n">weights</span><span class="p">,</span> <span class="n">positive_img</span><span class="p">)</span> <span class="o">/</span> <span class="n">jacobian</span>
 
     <span class="c1"># thresh is multiple above the rms of detect (weighted variance across channels)</span>
     <span class="n">bg_cutoff</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">weights</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">positive_bgrms</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span> <span class="o">/</span> <span class="n">jacobian</span>
@@ -203,8 +204,14 @@
         <span class="n">bbox</span> <span class="o">=</span> <span class="n">Box</span><span class="o">.</span><span class="n">from_data</span><span class="p">(</span><span class="n">morph</span><span class="p">,</span> <span class="n">min_value</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
         <span class="n">boxsize</span> <span class="o">=</span> <span class="mi">16</span>
         <span class="k">if</span> <span class="n">bbox</span><span class="o">.</span><span class="n">contains</span><span class="p">(</span><span class="n">pixel_center</span><span class="p">):</span>
-            <span class="n">size</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="nb">max</span><span class="p">((</span><span class="n">pixel_center</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">bbox</span><span class="o">.</span><span class="n">bottom</span><span class="p">,</span> <span class="n">bbox</span><span class="o">.</span><span class="n">top</span> <span class="o">-</span> <span class="n">pixel_center</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
-                            <span class="n">pixel_center</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">bbox</span><span class="o">.</span><span class="n">left</span><span class="p">,</span> <span class="n">bbox</span><span class="o">.</span><span class="n">right</span> <span class="o">-</span> <span class="n">pixel_center</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+            <span class="n">size</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="nb">max</span><span class="p">(</span>
+                <span class="p">(</span>
+                    <span class="n">pixel_center</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">bbox</span><span class="o">.</span><span class="n">bottom</span><span class="p">,</span>
+                    <span class="n">bbox</span><span class="o">.</span><span class="n">top</span> <span class="o">-</span> <span class="n">pixel_center</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                    <span class="n">pixel_center</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">bbox</span><span class="o">.</span><span class="n">left</span><span class="p">,</span>
+                    <span class="n">bbox</span><span class="o">.</span><span class="n">right</span> <span class="o">-</span> <span class="n">pixel_center</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
             <span class="k">while</span> <span class="n">boxsize</span> <span class="o">&lt;</span> <span class="n">size</span><span class="p">:</span>
                 <span class="n">boxsize</span> <span class="o">*=</span> <span class="mi">2</span>
     <span class="k">else</span><span class="p">:</span>
@@ -221,8 +228,9 @@
     <span class="k">return</span> <span class="n">morph</span><span class="p">,</span> <span class="n">bbox</span></div>
 
 
-<div class="viewcode-block" id="init_extended_source"><a class="viewcode-back" href="../../api/scarlet.source.html#scarlet.source.init_extended_source">[docs]</a><span class="k">def</span> <span class="nf">init_extended_source</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">observations</span><span class="p">,</span> <span class="n">obs_idx</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
-                                  <span class="n">thresh</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">symmetric</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">monotonic</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<div class="viewcode-block" id="init_extended_source"><a class="viewcode-back" href="../../api/scarlet.source.html#scarlet.source.init_extended_source">[docs]</a><span class="k">def</span> <span class="nf">init_extended_source</span><span class="p">(</span>
+    <span class="n">sky_coord</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">observations</span><span class="p">,</span> <span class="n">obs_idx</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">thresh</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">symmetric</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">monotonic</span><span class="o">=</span><span class="kc">True</span>
+<span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Initialize the source that is symmetric and monotonic</span>
 <span class="sd">    See `ExtendedSource` for a description of the parameters</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -248,28 +256,41 @@
     <span class="c1"># which observation to use for detection and morphology</span>
     <span class="n">obs_</span> <span class="o">=</span> <span class="n">observations</span><span class="p">[</span><span class="n">obs_idx</span><span class="p">]</span>
     <span class="k">try</span><span class="p">:</span>
-        <span class="n">bg_rms</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">w</span><span class="p">[</span><span class="n">w</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">obs_</span><span class="o">.</span><span class="n">weights</span><span class="p">])</span>
+        <span class="n">bg_rms</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">w</span><span class="p">[</span><span class="n">w</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">obs_</span><span class="o">.</span><span class="n">weights</span><span class="p">])</span>
     <span class="k">except</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span><span class="s2">&quot;Observation.weights missing! Please set inverse variance weights&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span>
+            <span class="s2">&quot;Observation.weights missing! Please set inverse variance weights&quot;</span>
+        <span class="p">)</span>
     <span class="n">morph</span><span class="p">,</span> <span class="n">bg_cutoff</span> <span class="o">=</span> <span class="n">build_detection_coadd</span><span class="p">(</span><span class="n">seds</span><span class="p">[</span><span class="n">obs_idx</span><span class="p">],</span> <span class="n">bg_rms</span><span class="p">,</span> <span class="n">obs_</span><span class="p">)</span>
 
     <span class="c1"># Apply the necessary constraints</span>
     <span class="n">center</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">get_pixel</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">symmetric</span><span class="p">:</span>
-        <span class="n">morph</span> <span class="o">=</span> <span class="n">operator</span><span class="o">.</span><span class="n">prox_uncentered_symmetry</span><span class="p">(</span><span class="n">morph</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">center</span><span class="o">=</span><span class="n">center</span><span class="p">,</span> <span class="n">algorithm</span><span class="o">=</span><span class="s2">&quot;sdss&quot;</span><span class="p">)</span>
+        <span class="n">morph</span> <span class="o">=</span> <span class="n">operator</span><span class="o">.</span><span class="n">prox_uncentered_symmetry</span><span class="p">(</span>
+            <span class="n">morph</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">center</span><span class="o">=</span><span class="n">center</span><span class="p">,</span> <span class="n">algorithm</span><span class="o">=</span><span class="s2">&quot;sdss&quot;</span>
+        <span class="p">)</span>
 
     <span class="k">if</span> <span class="n">monotonic</span><span class="p">:</span>
         <span class="c1"># use finite thresh to remove flat bridges</span>
-        <span class="n">prox_monotonic</span> <span class="o">=</span> <span class="n">operator</span><span class="o">.</span><span class="n">prox_strict_monotonic</span><span class="p">(</span><span class="n">morph</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">use_nearest</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-                                                        <span class="n">center</span><span class="o">=</span><span class="n">center</span><span class="p">,</span> <span class="n">thresh</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)</span>
+        <span class="n">prox_monotonic</span> <span class="o">=</span> <span class="n">operator</span><span class="o">.</span><span class="n">prox_strict_monotonic</span><span class="p">(</span>
+            <span class="n">morph</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">use_nearest</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">center</span><span class="o">=</span><span class="n">center</span><span class="p">,</span> <span class="n">thresh</span><span class="o">=</span><span class="mf">0.1</span>
+        <span class="p">)</span>
         <span class="n">morph</span> <span class="o">=</span> <span class="n">prox_monotonic</span><span class="p">(</span><span class="n">morph</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">morph</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
 
     <span class="n">morph</span><span class="p">,</span> <span class="n">bbox</span> <span class="o">=</span> <span class="n">trim_morphology</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">morph</span><span class="p">,</span> <span class="n">bg_cutoff</span><span class="p">,</span> <span class="n">thresh</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">sed</span><span class="p">,</span> <span class="n">morph</span><span class="p">,</span> <span class="n">bbox</span></div>
 
 
-<div class="viewcode-block" id="init_multicomponent_source"><a class="viewcode-back" href="../../api/scarlet.source.html#scarlet.source.init_multicomponent_source">[docs]</a><span class="k">def</span> <span class="nf">init_multicomponent_source</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">observations</span><span class="p">,</span> <span class="n">obs_idx</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">flux_percentiles</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                               <span class="n">thresh</span><span class="o">=</span><span class="mf">1.</span><span class="p">,</span> <span class="n">symmetric</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">monotonic</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<div class="viewcode-block" id="init_multicomponent_source"><a class="viewcode-back" href="../../api/scarlet.source.html#scarlet.source.init_multicomponent_source">[docs]</a><span class="k">def</span> <span class="nf">init_multicomponent_source</span><span class="p">(</span>
+    <span class="n">sky_coord</span><span class="p">,</span>
+    <span class="n">frame</span><span class="p">,</span>
+    <span class="n">observations</span><span class="p">,</span>
+    <span class="n">obs_idx</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+    <span class="n">flux_percentiles</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">thresh</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+    <span class="n">symmetric</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">monotonic</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Initialize multiple components</span>
 <span class="sd">    See `MultiComponentSource` for a description of the parameters</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -282,8 +303,15 @@
         <span class="n">flux_percentiles</span> <span class="o">=</span> <span class="p">[</span><span class="mi">25</span><span class="p">]</span>
 
     <span class="c1"># Initialize the first component as an extended source</span>
-    <span class="n">sed</span><span class="p">,</span> <span class="n">morph</span><span class="p">,</span> <span class="n">bbox</span> <span class="o">=</span> <span class="n">init_extended_source</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">observations</span><span class="p">,</span> <span class="n">obs_idx</span><span class="o">=</span><span class="n">obs_idx</span><span class="p">,</span>
-                                      <span class="n">thresh</span><span class="o">=</span><span class="n">thresh</span><span class="p">,</span> <span class="n">symmetric</span><span class="o">=</span><span class="n">symmetric</span><span class="p">,</span> <span class="n">monotonic</span><span class="o">=</span><span class="n">monotonic</span><span class="p">)</span>
+    <span class="n">sed</span><span class="p">,</span> <span class="n">morph</span><span class="p">,</span> <span class="n">bbox</span> <span class="o">=</span> <span class="n">init_extended_source</span><span class="p">(</span>
+        <span class="n">sky_coord</span><span class="p">,</span>
+        <span class="n">frame</span><span class="p">,</span>
+        <span class="n">observations</span><span class="p">,</span>
+        <span class="n">obs_idx</span><span class="o">=</span><span class="n">obs_idx</span><span class="p">,</span>
+        <span class="n">thresh</span><span class="o">=</span><span class="n">thresh</span><span class="p">,</span>
+        <span class="n">symmetric</span><span class="o">=</span><span class="n">symmetric</span><span class="p">,</span>
+        <span class="n">monotonic</span><span class="o">=</span><span class="n">monotonic</span><span class="p">,</span>
+    <span class="p">)</span>
     <span class="c1"># create a list of components from base morph by layering them on top of</span>
     <span class="c1"># each other so that they sum up to morph</span>
     <span class="n">K</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">flux_percentiles</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
@@ -318,7 +346,9 @@
             <span class="c1"># If the flux in all channels is  &lt;=0,</span>
             <span class="c1"># the new sed will be filled with NaN values,</span>
             <span class="c1"># which will cause the code to crash later</span>
-            <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;Zero or negative SED </span><span class="si">{}</span><span class="s2"> for component </span><span class="si">{}</span><span class="s2"> at y=</span><span class="si">{}</span><span class="s2">, x=</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">seds</span><span class="p">[</span><span class="n">k</span><span class="p">],</span> <span class="n">k</span><span class="p">,</span> <span class="o">*</span><span class="n">sky_coord</span><span class="p">)</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;Zero or negative SED </span><span class="si">{}</span><span class="s2"> for component </span><span class="si">{}</span><span class="s2"> at y=</span><span class="si">{}</span><span class="s2">, x=</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="n">seds</span><span class="p">[</span><span class="n">k</span><span class="p">],</span> <span class="n">k</span><span class="p">,</span> <span class="o">*</span><span class="n">sky_coord</span>
+            <span class="p">)</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">seds</span><span class="p">,</span> <span class="n">morphs</span><span class="p">,</span> <span class="n">bbox</span></div>
@@ -331,6 +361,7 @@
 <span class="sd">    a uniform random field and (optionally) matches the SED to match a given</span>
 <span class="sd">    observation.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">observation</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Source intialized as random field.</span>
 
@@ -356,13 +387,13 @@
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">sed</span><span class="p">,</span> <span class="n">morph</span><span class="p">)</span></div>
 
 
-
 <div class="viewcode-block" id="PointSource"><a class="viewcode-back" href="../../api/scarlet.source.html#scarlet.source.PointSource">[docs]</a><span class="k">class</span> <span class="nc">PointSource</span><span class="p">(</span><span class="n">FunctionComponent</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Source intialized with a single pixel</span>
 
 <span class="sd">    Point sources are initialized with the SED of the center pixel,</span>
 <span class="sd">    and the morphology taken from `frame.psfs`, centered at `sky_coord`.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">sky_coord</span><span class="p">,</span> <span class="n">observations</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Source intialized with a single pixel</span>
 
@@ -376,7 +407,7 @@
 <span class="sd">            Observation(s) to initialize this source</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">C</span><span class="p">,</span> <span class="n">Ny</span><span class="p">,</span> <span class="n">Nx</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">shape</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">center</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">frame</span><span class="o">.</span><span class="n">get_pixel</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;float&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">center</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">frame</span><span class="o">.</span><span class="n">get_pixel</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;float&quot;</span><span class="p">)</span>
 
         <span class="c1"># initialize SED from sky_coord</span>
         <span class="k">try</span><span class="p">:</span>
@@ -403,16 +434,20 @@
                 <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
 
         <span class="c1"># set up parameters</span>
-        <span class="n">sed</span> <span class="o">=</span> <span class="n">Parameter</span><span class="p">(</span><span class="n">sed</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="n">partial</span><span class="p">(</span><span class="n">relative_step</span><span class="p">,</span> <span class="n">factor</span><span class="o">=</span><span class="mf">1e-2</span><span class="p">),</span> <span class="n">constraint</span><span class="o">=</span><span class="n">PositivityConstraint</span><span class="p">())</span>
+        <span class="n">sed</span> <span class="o">=</span> <span class="n">Parameter</span><span class="p">(</span>
+            <span class="n">sed</span><span class="p">,</span>
+            <span class="n">step</span><span class="o">=</span><span class="n">partial</span><span class="p">(</span><span class="n">relative_step</span><span class="p">,</span> <span class="n">factor</span><span class="o">=</span><span class="mf">1e-2</span><span class="p">),</span>
+            <span class="n">constraint</span><span class="o">=</span><span class="n">PositivityConstraint</span><span class="p">(),</span>
+        <span class="p">)</span>
         <span class="n">center</span> <span class="o">=</span> <span class="n">Parameter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">center</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="mf">1e-1</span><span class="p">)</span>
 
         <span class="c1"># define bbox</span>
-        <span class="n">pixel_center</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">center</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;int&#39;</span><span class="p">))</span>
+        <span class="n">pixel_center</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">center</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;int&quot;</span><span class="p">))</span>
         <span class="n">front</span><span class="p">,</span> <span class="n">back</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">C</span>
-        <span class="n">bottom</span> <span class="o">=</span> <span class="n">pixel_center</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">frame</span><span class="o">.</span><span class="n">psf</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">//</span><span class="mi">2</span>
-        <span class="n">top</span> <span class="o">=</span> <span class="n">pixel_center</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">frame</span><span class="o">.</span><span class="n">psf</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">//</span><span class="mi">2</span>
-        <span class="n">left</span> <span class="o">=</span> <span class="n">pixel_center</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">frame</span><span class="o">.</span><span class="n">psf</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">//</span><span class="mi">2</span>
-        <span class="n">right</span> <span class="o">=</span> <span class="n">pixel_center</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">frame</span><span class="o">.</span><span class="n">psf</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">//</span><span class="mi">2</span>
+        <span class="n">bottom</span> <span class="o">=</span> <span class="n">pixel_center</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">frame</span><span class="o">.</span><span class="n">psf</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">//</span> <span class="mi">2</span>
+        <span class="n">top</span> <span class="o">=</span> <span class="n">pixel_center</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">frame</span><span class="o">.</span><span class="n">psf</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">//</span> <span class="mi">2</span>
+        <span class="n">left</span> <span class="o">=</span> <span class="n">pixel_center</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">frame</span><span class="o">.</span><span class="n">psf</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">//</span> <span class="mi">2</span>
+        <span class="n">right</span> <span class="o">=</span> <span class="n">pixel_center</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">frame</span><span class="o">.</span><span class="n">psf</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">//</span> <span class="mi">2</span>
         <span class="n">bbox</span> <span class="o">=</span> <span class="n">Box</span><span class="o">.</span><span class="n">from_bounds</span><span class="p">(</span><span class="n">front</span><span class="p">,</span> <span class="n">back</span><span class="p">,</span> <span class="n">bottom</span><span class="p">,</span> <span class="n">top</span><span class="p">,</span> <span class="n">left</span><span class="p">,</span> <span class="n">right</span><span class="p">)</span>
 
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">sed</span><span class="p">,</span> <span class="n">center</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_psf_wrapper</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="n">bbox</span><span class="p">)</span>
@@ -421,10 +456,18 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">psf</span><span class="o">.</span><span class="fm">__call__</span><span class="p">(</span><span class="o">*</span><span class="n">parameters</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">bbox</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span></div>
 
 
-
 <div class="viewcode-block" id="ExtendedSource"><a class="viewcode-back" href="../../api/scarlet.source.html#scarlet.source.ExtendedSource">[docs]</a><span class="k">class</span> <span class="nc">ExtendedSource</span><span class="p">(</span><span class="n">FactorizedComponent</span><span class="p">):</span>
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">sky_coord</span><span class="p">,</span> <span class="n">observations</span><span class="p">,</span> <span class="n">obs_idx</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">thresh</span><span class="o">=</span><span class="mf">1.</span><span class="p">,</span>
-                 <span class="n">symmetric</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">monotonic</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">shifting</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">frame</span><span class="p">,</span>
+        <span class="n">sky_coord</span><span class="p">,</span>
+        <span class="n">observations</span><span class="p">,</span>
+        <span class="n">obs_idx</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+        <span class="n">thresh</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+        <span class="n">symmetric</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">monotonic</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">shifting</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Extended source intialized to match a set of observations</span>
 
 <span class="sd">        Parameters</span>
@@ -451,8 +494,8 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">symmetric</span> <span class="o">=</span> <span class="n">symmetric</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">monotonic</span> <span class="o">=</span> <span class="n">monotonic</span>
-        <span class="n">center</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">frame</span><span class="o">.</span><span class="n">get_pixel</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;float&#39;</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">pixel_center</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">center</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;int&#39;</span><span class="p">))</span>
+        <span class="n">center</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">frame</span><span class="o">.</span><span class="n">get_pixel</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;float&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pixel_center</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">center</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;int&quot;</span><span class="p">))</span>
 
         <span class="k">if</span> <span class="n">shifting</span><span class="p">:</span>
             <span class="n">shift</span> <span class="o">=</span> <span class="n">Parameter</span><span class="p">(</span><span class="n">center</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">pixel_center</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="mf">1e-1</span><span class="p">)</span>
@@ -460,13 +503,21 @@
             <span class="n">shift</span> <span class="o">=</span> <span class="kc">None</span>
 
         <span class="c1"># initialize from observation</span>
-        <span class="n">sed</span><span class="p">,</span> <span class="n">morph</span><span class="p">,</span> <span class="n">bbox</span> <span class="o">=</span> <span class="n">init_extended_source</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">observations</span><span class="p">,</span>
+        <span class="n">sed</span><span class="p">,</span> <span class="n">morph</span><span class="p">,</span> <span class="n">bbox</span> <span class="o">=</span> <span class="n">init_extended_source</span><span class="p">(</span>
+            <span class="n">sky_coord</span><span class="p">,</span>
+            <span class="n">frame</span><span class="p">,</span>
+            <span class="n">observations</span><span class="p">,</span>
             <span class="n">obs_idx</span><span class="o">=</span><span class="n">obs_idx</span><span class="p">,</span>
             <span class="n">thresh</span><span class="o">=</span><span class="n">thresh</span><span class="p">,</span>
             <span class="n">symmetric</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-            <span class="n">monotonic</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">monotonic</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
 
-        <span class="n">sed</span> <span class="o">=</span> <span class="n">Parameter</span><span class="p">(</span><span class="n">sed</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="n">partial</span><span class="p">(</span><span class="n">relative_step</span><span class="p">,</span> <span class="n">factor</span><span class="o">=</span><span class="mf">1e-2</span><span class="p">),</span> <span class="n">constraint</span><span class="o">=</span><span class="n">PositivityConstraint</span><span class="p">())</span>
+        <span class="n">sed</span> <span class="o">=</span> <span class="n">Parameter</span><span class="p">(</span>
+            <span class="n">sed</span><span class="p">,</span>
+            <span class="n">step</span><span class="o">=</span><span class="n">partial</span><span class="p">(</span><span class="n">relative_step</span><span class="p">,</span> <span class="n">factor</span><span class="o">=</span><span class="mf">1e-2</span><span class="p">),</span>
+            <span class="n">constraint</span><span class="o">=</span><span class="n">PositivityConstraint</span><span class="p">(),</span>
+        <span class="p">)</span>
 
         <span class="n">constraints</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">if</span> <span class="n">monotonic</span><span class="p">:</span>
@@ -481,9 +532,9 @@
             <span class="c1"># ... and are positive emitters</span>
             <span class="n">PositivityConstraint</span><span class="p">(),</span>
             <span class="c1"># prevent a weak source from disappearing entirely</span>
-            <span class="c1">#CenterOnConstraint(),</span>
+            <span class="c1"># CenterOnConstraint(),</span>
             <span class="c1"># break degeneracies between sed and morphology</span>
-            <span class="n">NormalizationConstraint</span><span class="p">(</span><span class="s2">&quot;max&quot;</span><span class="p">)</span>
+            <span class="n">NormalizationConstraint</span><span class="p">(</span><span class="s2">&quot;max&quot;</span><span class="p">),</span>
         <span class="p">]</span>
         <span class="n">morph_constraint</span> <span class="o">=</span> <span class="n">ConstraintChain</span><span class="p">(</span><span class="o">*</span><span class="n">constraints</span><span class="p">)</span>
 
@@ -498,6 +549,7 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">pixel_center</span></div>
 
+
 <div class="viewcode-block" id="MultiComponentSource"><a class="viewcode-back" href="../../api/scarlet.source.html#scarlet.source.MultiComponentSource">[docs]</a><span class="k">class</span> <span class="nc">MultiComponentSource</span><span class="p">(</span><span class="n">ComponentTree</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Extended source with multiple components layered vertically.</span>
 
@@ -511,8 +563,18 @@
 <span class="sd">    morphology to the multi-channel image in the region of the source.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">sky_coord</span><span class="p">,</span> <span class="n">observations</span><span class="p">,</span> <span class="n">obs_idx</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">thresh</span><span class="o">=</span><span class="mf">1.</span><span class="p">,</span> <span class="n">flux_percentiles</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                 <span class="n">symmetric</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">monotonic</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">shifting</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">frame</span><span class="p">,</span>
+        <span class="n">sky_coord</span><span class="p">,</span>
+        <span class="n">observations</span><span class="p">,</span>
+        <span class="n">obs_idx</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+        <span class="n">thresh</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+        <span class="n">flux_percentiles</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">symmetric</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">monotonic</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">shifting</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Create multi-component extended source.</span>
 
 <span class="sd">        Parameters</span>
@@ -544,8 +606,8 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">symmetric</span> <span class="o">=</span> <span class="n">symmetric</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">monotonic</span> <span class="o">=</span> <span class="n">monotonic</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">coords</span> <span class="o">=</span> <span class="n">sky_coord</span>
-        <span class="n">center</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">frame</span><span class="o">.</span><span class="n">get_pixel</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;float&#39;</span><span class="p">)</span>
-        <span class="n">pixel_center</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">center</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;int&#39;</span><span class="p">))</span>
+        <span class="n">center</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">frame</span><span class="o">.</span><span class="n">get_pixel</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;float&quot;</span><span class="p">)</span>
+        <span class="n">pixel_center</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">center</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;int&quot;</span><span class="p">))</span>
 
         <span class="k">if</span> <span class="n">shifting</span><span class="p">:</span>
             <span class="n">shift</span> <span class="o">=</span> <span class="n">Parameter</span><span class="p">(</span><span class="n">center</span> <span class="o">-</span> <span class="n">pixel_center</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="mf">1e-1</span><span class="p">)</span>
@@ -553,12 +615,16 @@
             <span class="n">shift</span> <span class="o">=</span> <span class="kc">None</span>
 
         <span class="c1"># initialize from observation</span>
-        <span class="n">seds</span><span class="p">,</span> <span class="n">morphs</span><span class="p">,</span> <span class="n">bbox</span> <span class="o">=</span> <span class="n">init_multicomponent_source</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">observations</span><span class="p">,</span>
+        <span class="n">seds</span><span class="p">,</span> <span class="n">morphs</span><span class="p">,</span> <span class="n">bbox</span> <span class="o">=</span> <span class="n">init_multicomponent_source</span><span class="p">(</span>
+            <span class="n">sky_coord</span><span class="p">,</span>
+            <span class="n">frame</span><span class="p">,</span>
+            <span class="n">observations</span><span class="p">,</span>
             <span class="n">obs_idx</span><span class="o">=</span><span class="n">obs_idx</span><span class="p">,</span>
             <span class="n">flux_percentiles</span><span class="o">=</span><span class="n">flux_percentiles</span><span class="p">,</span>
             <span class="n">thresh</span><span class="o">=</span><span class="n">thresh</span><span class="p">,</span>
             <span class="n">symmetric</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-            <span class="n">monotonic</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">monotonic</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
 
         <span class="n">constraints</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">if</span> <span class="n">monotonic</span><span class="p">:</span>
@@ -574,15 +640,21 @@
             <span class="c1"># prevent a weak source from disappearing entirely</span>
             <span class="n">CenterOnConstraint</span><span class="p">(),</span>
             <span class="c1"># break degeneracies between sed and morphology</span>
-            <span class="n">NormalizationConstraint</span><span class="p">(</span><span class="s2">&quot;max&quot;</span><span class="p">)</span>
+            <span class="n">NormalizationConstraint</span><span class="p">(</span><span class="s2">&quot;max&quot;</span><span class="p">),</span>
         <span class="p">]</span>
         <span class="n">morph_constraint</span> <span class="o">=</span> <span class="n">ConstraintChain</span><span class="p">(</span><span class="o">*</span><span class="n">constraints</span><span class="p">)</span>
 
         <span class="n">components</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">seds</span><span class="p">)):</span>
-            <span class="n">sed</span> <span class="o">=</span> <span class="n">Parameter</span><span class="p">(</span><span class="n">seds</span><span class="p">[</span><span class="n">k</span><span class="p">],</span> <span class="n">step</span><span class="o">=</span><span class="n">partial</span><span class="p">(</span><span class="n">relative_step</span><span class="p">,</span> <span class="n">factor</span><span class="o">=</span><span class="mf">1e-1</span><span class="p">),</span> <span class="n">constraint</span><span class="o">=</span><span class="n">PositivityConstraint</span><span class="p">())</span>
+            <span class="n">sed</span> <span class="o">=</span> <span class="n">Parameter</span><span class="p">(</span>
+                <span class="n">seds</span><span class="p">[</span><span class="n">k</span><span class="p">],</span>
+                <span class="n">step</span><span class="o">=</span><span class="n">partial</span><span class="p">(</span><span class="n">relative_step</span><span class="p">,</span> <span class="n">factor</span><span class="o">=</span><span class="mf">1e-1</span><span class="p">),</span>
+                <span class="n">constraint</span><span class="o">=</span><span class="n">PositivityConstraint</span><span class="p">(),</span>
+            <span class="p">)</span>
             <span class="n">morph</span> <span class="o">=</span> <span class="n">Parameter</span><span class="p">(</span><span class="n">morphs</span><span class="p">[</span><span class="n">k</span><span class="p">],</span> <span class="n">step</span><span class="o">=</span><span class="mf">1e-2</span><span class="p">,</span> <span class="n">constraint</span><span class="o">=</span><span class="n">morph_constraint</span><span class="p">)</span>
-            <span class="n">components</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">FactorizedComponent</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">sed</span><span class="p">,</span> <span class="n">morph</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="n">bbox</span><span class="p">,</span> <span class="n">shift</span><span class="o">=</span><span class="n">shift</span><span class="p">))</span>
+            <span class="n">components</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">FactorizedComponent</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">sed</span><span class="p">,</span> <span class="n">morph</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="n">bbox</span><span class="p">,</span> <span class="n">shift</span><span class="o">=</span><span class="n">shift</span><span class="p">)</span>
+            <span class="p">)</span>
             <span class="n">components</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">pixel_center</span> <span class="o">=</span> <span class="n">pixel_center</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">components</span><span class="p">)</span>
 

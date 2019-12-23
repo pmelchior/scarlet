@@ -65,6 +65,7 @@
 <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
 <span class="kn">from</span> <span class="nn">.component</span> <span class="kn">import</span> <span class="n">ComponentTree</span>
 
+
 <div class="viewcode-block" id="channels_to_rgb"><a class="viewcode-back" href="../../api/scarlet.display.html#scarlet.display.channels_to_rgb">[docs]</a><span class="k">def</span> <span class="nf">channels_to_rgb</span><span class="p">(</span><span class="n">channels</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Get the linear mapping of multiple channels to RGB channels</span>
 
@@ -82,7 +83,9 @@
 <span class="sd">    -------</span>
 <span class="sd">    array (3, channels) to map onto RGB</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">assert</span> <span class="n">channels</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">7</span><span class="p">),</span> <span class="s2">&quot;No mapping has been implemented for more than </span><span class="si">{}</span><span class="s2"> channels&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">channels</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">channels</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span>
+        <span class="mi">0</span><span class="p">,</span> <span class="mi">7</span>
+    <span class="p">),</span> <span class="s2">&quot;No mapping has been implemented for more than </span><span class="si">{}</span><span class="s2"> channels&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">channels</span><span class="p">)</span>
 
     <span class="n">channel_map</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">3</span><span class="p">,</span> <span class="n">channels</span><span class="p">))</span>
     <span class="k">if</span> <span class="n">channels</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
@@ -233,9 +236,18 @@
     <span class="n">rgb</span> <span class="o">=</span> <span class="n">norm</span><span class="o">.</span><span class="n">make_rgb_image</span><span class="p">(</span><span class="o">*</span><span class="n">RGB</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">rgb</span></div>
 
-<div class="viewcode-block" id="show_scene"><a class="viewcode-back" href="../../api/scarlet.display.html#scarlet.display.show_scene">[docs]</a><span class="k">def</span> <span class="nf">show_scene</span><span class="p">(</span><span class="n">sources</span><span class="p">,</span> <span class="n">observation</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">channel_map</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-<span class="n">show_observed</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">show_rendered</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">show_residual</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">label_sources</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-<span class="n">figsize</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+
+<div class="viewcode-block" id="show_scene"><a class="viewcode-back" href="../../api/scarlet.display.html#scarlet.display.show_scene">[docs]</a><span class="k">def</span> <span class="nf">show_scene</span><span class="p">(</span>
+    <span class="n">sources</span><span class="p">,</span>
+    <span class="n">observation</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">norm</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">channel_map</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">show_observed</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">show_rendered</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">show_residual</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">label_sources</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">figsize</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Plot all sources to recreate the scence.</span>
 
 <span class="sd">    The functions provides a fast way of evaluating the quality of the entire model,</span>
@@ -263,13 +275,15 @@
 <span class="sd">    matplotlib figure</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">show_observed</span> <span class="ow">or</span> <span class="n">show_rendered</span> <span class="ow">or</span> <span class="n">show_residual</span><span class="p">:</span>
-        <span class="k">assert</span> <span class="n">observation</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;Provide matched observation to show observed frame&quot;</span>
+        <span class="k">assert</span> <span class="p">(</span>
+            <span class="n">observation</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="p">),</span> <span class="s2">&quot;Provide matched observation to show observed frame&quot;</span>
 
     <span class="n">panels</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">+</span> <span class="nb">sum</span><span class="p">((</span><span class="n">show_observed</span><span class="p">,</span> <span class="n">show_rendered</span><span class="p">,</span> <span class="n">show_residual</span><span class="p">))</span>
     <span class="k">if</span> <span class="n">figsize</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">figsize</span> <span class="o">=</span> <span class="p">(</span><span class="mi">3</span><span class="o">*</span><span class="n">panels</span><span class="p">,</span> <span class="mi">3</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">sources</span><span class="p">)))</span>
+        <span class="n">figsize</span> <span class="o">=</span> <span class="p">(</span><span class="mi">3</span> <span class="o">*</span> <span class="n">panels</span><span class="p">,</span> <span class="mi">3</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">sources</span><span class="p">)))</span>
     <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">panels</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="n">figsize</span><span class="p">)</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="s1">&#39;__iter__&#39;</span><span class="p">):</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="s2">&quot;__iter__&quot;</span><span class="p">):</span>
         <span class="n">ax</span> <span class="o">=</span> <span class="p">(</span><span class="n">ax</span><span class="p">,)</span>
 
     <span class="n">panel</span> <span class="o">=</span> <span class="mi">0</span>
@@ -288,7 +302,9 @@
 
     <span class="k">if</span> <span class="n">show_observed</span><span class="p">:</span>
         <span class="n">panel</span> <span class="o">+=</span> <span class="mi">1</span>
-        <span class="n">ax</span><span class="p">[</span><span class="n">panel</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">img_to_rgb</span><span class="p">(</span><span class="n">observation</span><span class="o">.</span><span class="n">images</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">,</span> <span class="n">channel_map</span><span class="o">=</span><span class="n">channel_map</span><span class="p">))</span>
+        <span class="n">ax</span><span class="p">[</span><span class="n">panel</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span>
+            <span class="n">img_to_rgb</span><span class="p">(</span><span class="n">observation</span><span class="o">.</span><span class="n">images</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">,</span> <span class="n">channel_map</span><span class="o">=</span><span class="n">channel_map</span><span class="p">)</span>
+        <span class="p">)</span>
         <span class="n">ax</span><span class="p">[</span><span class="n">panel</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Observation&quot;</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">show_residual</span><span class="p">:</span>
@@ -300,19 +316,30 @@
 
     <span class="k">if</span> <span class="n">label_sources</span><span class="p">:</span>
         <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">src</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">sources</span><span class="p">):</span>
-            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="s1">&#39;center&#39;</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="s2">&quot;center&quot;</span><span class="p">):</span>
                 <span class="n">center</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">src</span><span class="o">.</span><span class="n">center</span><span class="p">)</span>
-                <span class="n">center_</span> <span class="o">=</span> <span class="n">center</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">src</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">origin</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span> <span class="c1"># observed coordinates</span>
-            <span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="o">*</span><span class="n">center</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">k</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;w&#39;</span><span class="p">)</span>
+                <span class="n">center_</span> <span class="o">=</span> <span class="n">center</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+                    <span class="n">src</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">origin</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+                <span class="p">)</span>  <span class="c1"># observed coordinates</span>
+            <span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="o">*</span><span class="n">center</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">k</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;w&quot;</span><span class="p">)</span>
             <span class="k">for</span> <span class="n">panel</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">panels</span><span class="p">):</span>
-                <span class="n">ax</span><span class="p">[</span><span class="n">panel</span><span class="p">]</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="o">*</span><span class="n">center_</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">k</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;w&#39;</span><span class="p">)</span>
+                <span class="n">ax</span><span class="p">[</span><span class="n">panel</span><span class="p">]</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="o">*</span><span class="n">center_</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">k</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;w&quot;</span><span class="p">)</span>
 
     <span class="n">fig</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
-    <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">();</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
     <span class="k">return</span> <span class="n">fig</span></div>
 
-<div class="viewcode-block" id="show_sources"><a class="viewcode-back" href="../../api/scarlet.display.html#scarlet.display.show_sources">[docs]</a><span class="k">def</span> <span class="nf">show_sources</span><span class="p">(</span><span class="n">sources</span><span class="p">,</span> <span class="n">observation</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">channel_map</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-<span class="n">show_observed</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">show_rendered</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">show_sed</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+
+<div class="viewcode-block" id="show_sources"><a class="viewcode-back" href="../../api/scarlet.display.html#scarlet.display.show_sources">[docs]</a><span class="k">def</span> <span class="nf">show_sources</span><span class="p">(</span>
+    <span class="n">sources</span><span class="p">,</span>
+    <span class="n">observation</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">norm</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">channel_map</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">show_observed</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">show_rendered</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">show_sed</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">figsize</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Plot each source individually.</span>
 
 <span class="sd">    The functions provides an more detailed inspection of every source in the list.</span>
@@ -338,15 +365,17 @@
 <span class="sd">    matplotlib figure</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">show_observed</span> <span class="ow">or</span> <span class="n">show_rendered</span><span class="p">:</span>
-        <span class="k">assert</span> <span class="n">observation</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;Provide matched observation to show observed frame&quot;</span>
+        <span class="k">assert</span> <span class="p">(</span>
+            <span class="n">observation</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="p">),</span> <span class="s2">&quot;Provide matched observation to show observed frame&quot;</span>
 
     <span class="n">panels</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">+</span> <span class="nb">sum</span><span class="p">((</span><span class="n">show_observed</span><span class="p">,</span> <span class="n">show_rendered</span><span class="p">,</span> <span class="n">show_sed</span><span class="p">))</span>
     <span class="k">if</span> <span class="n">figsize</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">figsize</span> <span class="o">=</span> <span class="p">(</span><span class="mi">3</span><span class="o">*</span><span class="n">panels</span><span class="p">,</span> <span class="mi">3</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">sources</span><span class="p">)))</span>
+        <span class="n">figsize</span> <span class="o">=</span> <span class="p">(</span><span class="mi">3</span> <span class="o">*</span> <span class="n">panels</span><span class="p">,</span> <span class="mi">3</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">sources</span><span class="p">)))</span>
     <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">sources</span><span class="p">)),</span> <span class="n">panels</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="n">figsize</span><span class="p">)</span>
-    <span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">src</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">sources</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">src</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">sources</span><span class="p">):</span>
 
-        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="s1">&#39;center&#39;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="s2">&quot;center&quot;</span><span class="p">):</span>
             <span class="n">center</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">src</span><span class="o">.</span><span class="n">center</span><span class="p">)</span>
             <span class="c1"># center in src bbox coordinates</span>
             <span class="k">if</span> <span class="n">src</span><span class="o">.</span><span class="n">bbox</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -366,11 +395,11 @@
             <span class="n">seds</span> <span class="o">=</span> <span class="p">[]</span>
             <span class="k">for</span> <span class="n">component</span> <span class="ow">in</span> <span class="n">src</span><span class="p">:</span>
                 <span class="n">model_</span> <span class="o">=</span> <span class="n">component</span><span class="o">.</span><span class="n">get_model</span><span class="p">()</span>
-                <span class="n">seds</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">model_</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">)))</span>
+                <span class="n">seds</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">model_</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)))</span>
                 <span class="n">model</span> <span class="o">+=</span> <span class="n">model_</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">model</span> <span class="o">=</span> <span class="n">src</span><span class="o">.</span><span class="n">get_model</span><span class="p">()</span>
-            <span class="n">seds</span> <span class="o">=</span> <span class="p">[</span><span class="n">model</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">))]</span>
+            <span class="n">seds</span> <span class="o">=</span> <span class="p">[</span><span class="n">model</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">))]</span>
         <span class="n">src</span><span class="o">.</span><span class="n">set_frame</span><span class="p">(</span><span class="n">frame_</span><span class="p">)</span>
         <span class="n">ax</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="n">panel</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">img_to_rgb</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">,</span> <span class="n">channel_map</span><span class="o">=</span><span class="n">channel_map</span><span class="p">))</span>
         <span class="n">ax</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="n">panel</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Model Source </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">k</span><span class="p">))</span>
@@ -390,7 +419,9 @@
 
         <span class="k">if</span> <span class="n">show_observed</span><span class="p">:</span>
             <span class="n">panel</span> <span class="o">+=</span> <span class="mi">1</span>
-            <span class="n">ax</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="n">panel</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">img_to_rgb</span><span class="p">(</span><span class="n">observation</span><span class="o">.</span><span class="n">images</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">,</span> <span class="n">channel_map</span><span class="o">=</span><span class="n">channel_map</span><span class="p">))</span>
+            <span class="n">ax</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="n">panel</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span>
+                <span class="n">img_to_rgb</span><span class="p">(</span><span class="n">observation</span><span class="o">.</span><span class="n">images</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">,</span> <span class="n">channel_map</span><span class="o">=</span><span class="n">channel_map</span><span class="p">)</span>
+            <span class="p">)</span>
             <span class="n">ax</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="n">panel</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="n">src</span><span class="o">.</span><span class="n">bbox</span><span class="o">.</span><span class="n">left</span><span class="p">,</span> <span class="n">src</span><span class="o">.</span><span class="n">bbox</span><span class="o">.</span><span class="n">right</span><span class="p">)</span>
             <span class="n">ax</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="n">panel</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="n">src</span><span class="o">.</span><span class="n">bbox</span><span class="o">.</span><span class="n">bottom</span><span class="p">,</span> <span class="n">src</span><span class="o">.</span><span class="n">bbox</span><span class="o">.</span><span class="n">top</span><span class="p">)</span>
             <span class="n">ax</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="n">panel</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Observation&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">k</span><span class="p">))</span>
@@ -402,14 +433,14 @@
             <span class="k">for</span> <span class="n">sed</span> <span class="ow">in</span> <span class="n">seds</span><span class="p">:</span>
                 <span class="n">ax</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="n">panel</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">sed</span><span class="p">)</span>
             <span class="n">ax</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="n">panel</span><span class="p">]</span><span class="o">.</span><span class="n">set_xticks</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">sed</span><span class="p">)))</span>
-            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">src</span><span class="o">.</span><span class="n">frame</span><span class="p">,</span> <span class="s1">&#39;channels&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">src</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">channels</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">src</span><span class="o">.</span><span class="n">frame</span><span class="p">,</span> <span class="s2">&quot;channels&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">src</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">channels</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="n">ax</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="n">panel</span><span class="p">]</span><span class="o">.</span><span class="n">set_xticklabels</span><span class="p">(</span><span class="n">src</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">channels</span><span class="p">)</span>
             <span class="n">ax</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="n">panel</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;SED&quot;</span><span class="p">)</span>
             <span class="n">ax</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="n">panel</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;Channel&quot;</span><span class="p">)</span>
             <span class="n">ax</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="n">panel</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Intensity&quot;</span><span class="p">)</span>
 
     <span class="n">fig</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
-    <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">();</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
     <span class="k">return</span> <span class="n">fig</span></div>
 </pre></div>
 

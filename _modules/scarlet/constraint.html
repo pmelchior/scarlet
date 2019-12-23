@@ -69,6 +69,7 @@
 <span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">operator</span>
 <span class="kn">from</span> <span class="nn">.cache</span> <span class="kn">import</span> <span class="n">Cache</span>
 
+
 <div class="viewcode-block" id="Constraint"><a class="viewcode-back" href="../../api/scarlet.constraint.html#scarlet.constraint.Constraint">[docs]</a><span class="k">class</span> <span class="nc">Constraint</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;Constraint base class</span>
 
@@ -87,6 +88,7 @@
 <span class="sd">    For reference, every operator of the `proxmin` package yields a valid</span>
 <span class="sd">    `Constraint`.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">f</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Constraint base class</span>
 
@@ -128,6 +130,7 @@
 <span class="sd">    repeat: int</span>
 <span class="sd">        How often the constrain chain is repeated to ensure feasibility</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">constraints</span><span class="p">,</span> <span class="n">repeat</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
         <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">repeat</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="ow">and</span> <span class="n">repeat</span> <span class="o">&gt;=</span> <span class="mi">1</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">constraints</span> <span class="o">=</span> <span class="n">constraints</span>
@@ -143,12 +146,13 @@
 <div class="viewcode-block" id="PositivityConstraint"><a class="viewcode-back" href="../../api/scarlet.constraint.html#scarlet.constraint.PositivityConstraint">[docs]</a><span class="k">class</span> <span class="nc">PositivityConstraint</span><span class="p">(</span><span class="n">Constraint</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Allow only non-negative elements.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">proxmin</span><span class="o">.</span><span class="n">operators</span><span class="o">.</span><span class="n">prox_plus</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="NormalizationConstraint"><a class="viewcode-back" href="../../api/scarlet.constraint.html#scarlet.constraint.NormalizationConstraint">[docs]</a><span class="k">class</span> <span class="nc">NormalizationConstraint</span><span class="p">(</span><span class="n">Constraint</span><span class="p">):</span>
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;sum&#39;</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;sum&quot;</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Normalize X to unity.</span>
 
 <span class="sd">        Parameters</span>
@@ -157,7 +161,7 @@
 <span class="sd">            Whether the sum or the maximum is set to unity.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">type</span> <span class="o">=</span> <span class="nb">type</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
-        <span class="k">assert</span> <span class="nb">type</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;sum&#39;</span><span class="p">,</span> <span class="s1">&#39;max&#39;</span><span class="p">]</span>
+        <span class="k">assert</span> <span class="nb">type</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;sum&quot;</span><span class="p">,</span> <span class="s2">&quot;max&quot;</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">type</span> <span class="o">=</span> <span class="nb">type</span>
 
     <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">step</span><span class="p">):</span>
@@ -170,7 +174,7 @@
 
 
 <div class="viewcode-block" id="L0Constraint"><a class="viewcode-back" href="../../api/scarlet.constraint.html#scarlet.constraint.L0Constraint">[docs]</a><span class="k">class</span> <span class="nc">L0Constraint</span><span class="p">(</span><span class="n">Constraint</span><span class="p">):</span>
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">thresh</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;relative&#39;</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">thresh</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;relative&quot;</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;L0 norm (sparsity) penalty</span>
 
 <span class="sd">        Parameters</span>
@@ -185,7 +189,7 @@
 
 
 <div class="viewcode-block" id="L1Constraint"><a class="viewcode-back" href="../../api/scarlet.constraint.html#scarlet.constraint.L1Constraint">[docs]</a><span class="k">class</span> <span class="nc">L1Constraint</span><span class="p">(</span><span class="n">Constraint</span><span class="p">):</span>
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">thresh</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;relative&#39;</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">thresh</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;relative&quot;</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;L1 norm (sparsity) penalty</span>
 
 <span class="sd">        Parameters</span>
@@ -210,9 +214,10 @@
 <span class="sd">    The region that contains flux above the threshold is contained</span>
 <span class="sd">    in `component.bboxes[&quot;thresh&quot;]`.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+
     <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">step</span><span class="p">):</span>
         <span class="n">thresh</span><span class="p">,</span> <span class="n">_bins</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">threshold</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">proxmin</span><span class="o">.</span><span class="n">operators</span><span class="o">.</span><span class="n">prox_hard_plus</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">step</span><span class="p">,</span> <span class="n">thresh</span><span class="o">=</span><span class="n">thresh</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;absolute&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">proxmin</span><span class="o">.</span><span class="n">operators</span><span class="o">.</span><span class="n">prox_hard_plus</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">step</span><span class="p">,</span> <span class="n">thresh</span><span class="o">=</span><span class="n">thresh</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;absolute&quot;</span><span class="p">)</span>
 
 <div class="viewcode-block" id="ThresholdConstraint.threshold"><a class="viewcode-back" href="../../api/scarlet.constraint.html#scarlet.constraint.ThresholdConstraint.threshold">[docs]</a>    <span class="k">def</span> <span class="nf">threshold</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">morph</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Find the threshold value for a given morphology</span>
@@ -221,7 +226,7 @@
         <span class="n">_bins</span> <span class="o">=</span> <span class="mi">50</span>
         <span class="c1"># Decrease the bin size for sources with a small number of pixels</span>
         <span class="k">if</span> <span class="n">_morph</span><span class="o">.</span><span class="n">size</span> <span class="o">&lt;</span> <span class="mi">500</span><span class="p">:</span>
-            <span class="n">_bins</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int</span><span class="p">(</span><span class="n">_morph</span><span class="o">.</span><span class="n">size</span><span class="o">/</span><span class="mi">10</span><span class="p">),</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="n">_bins</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int</span><span class="p">(</span><span class="n">_morph</span><span class="o">.</span><span class="n">size</span> <span class="o">/</span> <span class="mi">10</span><span class="p">),</span> <span class="mi">1</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">_bins</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
                 <span class="k">return</span> <span class="mi">0</span><span class="p">,</span> <span class="n">_bins</span>
         <span class="n">hist</span><span class="p">,</span> <span class="n">bins</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">histogram</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">_morph</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">),</span> <span class="n">_bins</span><span class="p">)</span>
@@ -229,7 +234,8 @@
         <span class="c1"># If all of the pixels are used there is no need to threshold</span>
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">cutoff</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
             <span class="k">return</span> <span class="mi">0</span><span class="p">,</span> <span class="n">_bins</span>
-        <span class="k">return</span> <span class="mi">10</span><span class="o">**</span><span class="n">bins</span><span class="p">[</span><span class="n">cutoff</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]],</span> <span class="n">_bins</span></div></div>
+        <span class="k">return</span> <span class="mi">10</span> <span class="o">**</span> <span class="n">bins</span><span class="p">[</span><span class="n">cutoff</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]],</span> <span class="n">_bins</span></div></div>
+
 
 <div class="viewcode-block" id="MonotonicityConstraint"><a class="viewcode-back" href="../../api/scarlet.constraint.html#scarlet.constraint.MonotonicityConstraint">[docs]</a><span class="k">class</span> <span class="nc">MonotonicityConstraint</span><span class="p">(</span><span class="n">Constraint</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Make morphology monotonically decrease from the center</span>
@@ -237,6 +243,7 @@
 <span class="sd">    See `~scarlet.operator.prox_monotonic`</span>
 <span class="sd">    for a description of the other parameters.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">use_nearest</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">thresh</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">use_nearest</span> <span class="o">=</span> <span class="n">use_nearest</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">thresh</span> <span class="o">=</span> <span class="n">thresh</span>
@@ -253,7 +260,9 @@
         <span class="k">try</span><span class="p">:</span>
             <span class="n">prox</span> <span class="o">=</span> <span class="n">Cache</span><span class="o">.</span><span class="n">check</span><span class="p">(</span><span class="n">prox_name</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
         <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
-            <span class="n">prox</span> <span class="o">=</span> <span class="n">operator</span><span class="o">.</span><span class="n">prox_strict_monotonic</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="n">use_nearest</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">use_nearest</span><span class="p">,</span><span class="n">thresh</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">thresh</span><span class="p">,</span> <span class="n">center</span><span class="o">=</span><span class="n">center</span><span class="p">)</span>
+            <span class="n">prox</span> <span class="o">=</span> <span class="n">operator</span><span class="o">.</span><span class="n">prox_strict_monotonic</span><span class="p">(</span>
+                <span class="n">shape</span><span class="p">,</span> <span class="n">use_nearest</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">use_nearest</span><span class="p">,</span> <span class="n">thresh</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">thresh</span><span class="p">,</span> <span class="n">center</span><span class="o">=</span><span class="n">center</span>
+            <span class="p">)</span>
 
             <span class="n">Cache</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">prox_name</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">prox</span><span class="p">)</span>
 
@@ -267,6 +276,7 @@
 <span class="sd">    See `~scarlet.operator.prox_uncentered_symmetry`</span>
 <span class="sd">    for a description of the parameters.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strength</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">strength</span> <span class="o">=</span> <span class="n">strength</span>
 
@@ -277,6 +287,7 @@
 <div class="viewcode-block" id="CenterOnConstraint"><a class="viewcode-back" href="../../api/scarlet.constraint.html#scarlet.constraint.CenterOnConstraint">[docs]</a><span class="k">class</span> <span class="nc">CenterOnConstraint</span><span class="p">(</span><span class="n">Constraint</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Sets the center pixel to a tiny non-zero value</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tiny</span><span class="o">=</span><span class="mf">1e-6</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">tiny</span> <span class="o">=</span> <span class="n">tiny</span>
 
@@ -286,9 +297,11 @@
         <span class="n">morph</span><span class="p">[</span><span class="n">center</span><span class="p">]</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">morph</span><span class="p">[</span><span class="n">center</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">tiny</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">morph</span></div>
 
+
 <div class="viewcode-block" id="AllOnConstraint"><a class="viewcode-back" href="../../api/scarlet.constraint.html#scarlet.constraint.AllOnConstraint">[docs]</a><span class="k">class</span> <span class="nc">AllOnConstraint</span><span class="p">(</span><span class="n">Constraint</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Add to all elements a tiny non-zero value</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tiny</span><span class="o">=</span><span class="mf">1e-6</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">tiny</span> <span class="o">=</span> <span class="n">tiny</span>
 
