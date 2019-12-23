@@ -11,6 +11,8 @@ class Parameter(np.ndarray):
     ----------
     array: array-like
         numpy array (type float) to hold parameter values
+    name: string
+        Name to identify parameter
     prior: `~scarlet.Prior`
         Prior distribution for parameter
     constraint: `~scarlet.Constraint`
@@ -31,6 +33,7 @@ class Parameter(np.ndarray):
     def __new__(
         cls,
         array,
+        name="unnamed",
         prior=None,
         constraint=None,
         step=0,
@@ -39,6 +42,7 @@ class Parameter(np.ndarray):
         fixed=False,
     ):
         obj = np.asarray(array, dtype=array.dtype).view(cls)
+        obj.name = name
         obj.prior = prior
         obj.constraint = constraint
         obj.step = step
@@ -50,6 +54,7 @@ class Parameter(np.ndarray):
     def __array_finalize__(self, obj):
         if obj is None:
             return
+        self.name = getattr(obj, "name", "unnamed")
         self.prior = getattr(obj, "prior", None)
         self.constraint = getattr(obj, "constraint", None)
         self.step = getattr(obj, "step_size", 0)
