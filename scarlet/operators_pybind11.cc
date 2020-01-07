@@ -11,7 +11,6 @@ typedef Eigen::Array<int, Eigen::Dynamic, 1> IndexVector;
 void prox_monotonic(
   // Fast implementation of monotonicity constraint
   py::array_t<double> &X,
-  double const &step,
   std::vector<int> const &ref_idx,
   std::vector<int> const &dist_idx,
   double const &thresh
@@ -28,7 +27,6 @@ template <typename T, typename M, typename V>
 void prox_weighted_monotonic(
     // Fast implementation of weighted monotonicity constraint
     Eigen::Ref<V> flat_img,
-    double const &step,
     Eigen::Ref<const M> weights,
     Eigen::Ref<const IndexVector> offsets,
     Eigen::Ref<const IndexVector> dist_idx,

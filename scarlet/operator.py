@@ -4,28 +4,17 @@ import numpy as np
 from proxmin.operators import prox_unity_plus
 from proxmin.utils import MatrixAdapter
 
-from . import observation
-from scipy import fftpack
-
+from . import fft
+from . import interpolation
 from .cache import Cache
-
-
-import logging
-logger = logging.getLogger("scarlet.operator")
-
-
-def prox_max_unity(X, step):
-    """Normalize X so that it's max value is unity."""
-    norm = X.max()
-    X[:] = X/norm
-    return X
 
 
 def _prox_strict_monotonic(X, step, ref_idx, dist_idx, thresh=0):
     """Force an intensity profile to be monotonic based on nearest neighbor
     """
     from . import operators_pybind11
-    operators_pybind11.prox_monotonic(X.reshape(-1), step, ref_idx, dist_idx, thresh)
+
+    operators_pybind11.prox_monotonic(X.reshape(-1), ref_idx, dist_idx, thresh)
     return X
 
 
@@ -33,7 +22,10 @@ def _prox_weighted_monotonic(X, step, weights, didx, offsets, thresh=0):
     """Force an intensity profile to be monotonic based on weighting neighbors
     """
     from . import operators_pybind11
-    operators_pybind11.prox_weighted_monotonic(X.reshape(-1), step, weights, offsets, didx, thresh)
+
+    operators_pybind11.prox_weighted_monotonic(
+        X.reshape(-1), weights, offsets, didx, thresh
+    )
     return X
 
 
@@ -62,8 +54,8 @@ def sort_by_radius(shape, center=None):
     """
     # Get the center pixels
     if center is None:
-        cx = (shape[1]-1) >> 1
-        cy = (shape[0]-1) >> 1
+        cx = (shape[1] - 1) >> 1
+        cy = (shape[0] - 1) >> 1
     else:
         cy, cx = int(center[0]), int(center[1])
     # Calculate the distance between each pixel and the peak
@@ -72,7 +64,7 @@ def sort_by_radius(shape, center=None):
     X, Y = np.meshgrid(x, y)
     X = X - cx
     Y = Y - cy
-    distance = np.sqrt(X**2+Y**2)
+    distance = np.sqrt(X ** 2 + Y ** 2)
     # Get the indices of the pixels sorted by distance from the peak
     didx = np.argsort(distance.flatten())
     return didx
@@ -104,21 +96,33 @@ def prox_strict_monotonic(shape, use_nearest=False, thresh=0, center=None):
 
     if use_nearest:
         from scipy import sparse
+
         if thresh != 0:
             # thresh and nearest neighbors are not compatible, since this thresholds the
             # central pixel and eventually sets the entire array to zero
-            raise ValueError("Thresholding does not work with nearest neighbor monotonicity")
+            raise ValueError(
+                "Thresholding does not work with nearest neighbor monotonicity"
+            )
         monotonicOp = getRadialMonotonicOp(shape, useNearest=True)
         x_idx, ref_idx = sparse.find(monotonicOp.L == 1)[:2]
         ref_idx = ref_idx[np.argsort(x_idx)]
-        result = partial(_prox_strict_monotonic, ref_idx=ref_idx.tolist(),
-                         dist_idx=didx.tolist(), thresh=thresh)
+        result = partial(
+            _prox_strict_monotonic,
+            ref_idx=ref_idx.tolist(),
+            dist_idx=didx.tolist(),
+            thresh=thresh,
+        )
     else:
         coords = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
-        offsets = np.array([width*y+x for y, x in coords])
+        offsets = np.array([width * y + x for y, x in coords])
         weights = getRadialMonotonicWeights(shape, useNearest=False, center=center)
-        result = partial(_prox_weighted_monotonic, weights=weights,
-                         didx=didx[1:], offsets=offsets, thresh=thresh)
+        result = partial(
+            _prox_weighted_monotonic,
+            weights=weights,
+            didx=didx[1:],
+            offsets=offsets,
+            thresh=thresh,
+        )
     return result
 
 
@@ -143,32 +147,6 @@ def prox_cone(X, step, G=None):
             else:
                 break
         X[i] = Y
-    return X
-
-
-def prox_center_on(X, step, tiny=1e-10):
-    """Ensure that the central pixel has positive flux
-
-    Make sure that the center pixel as at least some amount of flux
-    otherwise centering will go off rails
-    """
-    cy = X.shape[0] // 2
-    cx = X.shape[1] // 2
-    X[cy, cx] = max(X[cy, cx], tiny)
-    return X
-
-
-def prox_sed_on(X, step, tiny=1e-10):
-    """Ensure that the SED has some flux.
-
-    This is used when S is normalized and A is
-    not to prevent a source from having no flux,
-    which is known to break the centering algorithm.
-    Once we put in a check to ensure that the difference
-    image has a dipole this operator will be rendered unecessary
-    """
-    if np.all(X <= 0):
-        X[:] = tiny
     return X
 
 
@@ -203,8 +181,8 @@ def uncentered_operator(X, func, center=None, fill=None, **kwargs):
     if py == cy and px == cx:
         return func(X, **kwargs)
 
-    dy = int(2*(py-cy))
-    dx = int(2*(px-cx))
+    dy = int(2 * (py - cy))
+    dx = int(2 * (px - cx))
     if not X.shape[0] % 2:
         dy += 1
     if not X.shape[1] % 2:
@@ -246,9 +224,19 @@ def prox_soft_symmetry(X, step, strength=1):
     1  being completely symmetric, the user can customize
     the level of symmetry required for a component
     """
+    pads = [[0, 0], [0, 0]]
+    slices = [slice(None), slice(None)]
+    if X.shape[0] % 2 == 0:
+        pads[0][1] = 1
+        slices[0] = slice(0, X.shape[0])
+    if X.shape[1] % 2 == 0:
+        pads[1][1] = 1
+        slices[1] = slice(0, X.shape[1])
+
+    X = np.pad(X, pads, mode="constant", constant_values=0)
     Xs = np.fliplr(np.flipud(X))
-    X[:] = 0.5 * strength * (X+Xs) + (1-strength) * X
-    return X
+    X = 0.5 * strength * (X + Xs) + (1 - strength) * X
+    return X[tuple(slices)]
 
 
 def prox_kspace_symmetry(X, step, shift=None, padding=10):
@@ -261,50 +249,37 @@ def prox_kspace_symmetry(X, step, shift=None, padding=10):
     the imaginary part is discarded, shited back to its original position,
     then transformed back to real space.
     """
-    # Record the morph shape
-    shape = X.shape
-    #fast shapes for acceleration
-    _fftpack_shape = [fftpack.helper.next_fast_len(d) for d in ((np.array(X.shape)+padding))]
-
+    # Get fast shapes
+    fft_shape = fft._get_fft_shape(X, X, padding=padding)
     dy, dx = shift
-    #padding with fast shape
-    padding = (np.array(_fftpack_shape) - X.shape+padding)//2
 
-    zeroMask = X <= 0
-    X = np.pad(X, ((padding[0], padding[0]),(padding[1], padding[1])), 'constant')
+    X = fft.Fourier(X)
+    X_fft = X.fft(fft_shape, (0, 1))
 
-    # Transform to k space
-    X_fft = np.fft.fftn(np.fft.ifftshift(X))
+    zeroMask = X.image <= 0
 
-    freq_x = np.fft.fftfreq(X_fft.shape[1])
-    freq_y = np.fft.fftfreq(X_fft.shape[0])
+    # Compute shift operator
+    shifter_y, shifter_x = interpolation.mk_shifter(fft_shape)
+    # Apply shift in Fourier
+    result_fft = X_fft * shifter_y[:, np.newaxis] ** (-dy)
+    result_fft *= shifter_x[np.newaxis, :] ** (-dx)
 
-    # Shift the signal to recenter it, negative because math is opposite from
-    # pixel direction
-    shifter = np.outer(np.exp(-1j * 2 * np.pi * freq_y * -(dy)),
-                       np.exp(-1j * 2 * np.pi * freq_x * -(dx)))
-    inv_shifter = np.outer(np.exp(-1j * 2 * np.pi * freq_y * (dy)),
-                           np.exp(-1j * 2 * np.pi * freq_x * (dx)))
-    result_fft = X_fft * shifter
-
-    # symmeterize
+    # symmetrize
     result_fft = result_fft.real
 
-    # Shift back
-    result_fft = result_fft * inv_shifter
+    # Unshift
+    result_fft = result_fft * shifter_y[:, np.newaxis] ** dy
+    result_fft = result_fft * shifter_x[np.newaxis, :] ** dx
 
-    # Transform to real space
-    result = np.fft.fftshift(np.fft.ifftn(result_fft))
-    # Return the unpadded transform
-    result = observation._centered(np.real(result), shape)
-    result[zeroMask] = 0
-    assert result.shape == shape
+    result = fft.Fourier.from_fft(result_fft, fft_shape, X.image.shape, [0, 1])
 
-
-    return result
+    result.image[zeroMask] = 0
+    return np.real(result.image)
 
 
-def prox_uncentered_symmetry(X, step, center=None, algorithm="kspace", fill=None, shift=None, strength=.5):
+def prox_uncentered_symmetry(
+    X, step, center=None, algorithm="kspace", fill=None, shift=None, strength=0.5
+):
     """Symmetry with off-center peak
 
     Symmetrize X for all pixels with a symmetric partner.
@@ -354,13 +329,17 @@ def prox_uncentered_symmetry(X, step, center=None, algorithm="kspace", fill=None
         algorithm = "soft"
         strength = 1
     if algorithm == "kspace":
-        return uncentered_operator(X, prox_kspace_symmetry, center, shift=shift, step=step, fill=fill)
+        return uncentered_operator(
+            X, prox_kspace_symmetry, center, shift=shift, step=step, fill=fill
+        )
     if algorithm == "sdss":
         return uncentered_operator(X, prox_sdss_symmetry, center, step=step, fill=fill)
     if algorithm == "soft" or algorithm == "kspace" and shift is None:
         # If there is no shift then the symmetry is exact and we can just use
         # the soft symmetry algorithm
-        return uncentered_operator(X, prox_soft_symmetry, center, step=step, strength=strength, fill=fill)
+        return uncentered_operator(
+            X, prox_soft_symmetry, center, step=step, strength=strength, fill=fill
+        )
 
     msg = "algorithm must be one of 'soft', 'sdss', 'kspace', recieved '{0}''"
     raise ValueError(msg.format(algorithm))
@@ -368,12 +347,12 @@ def prox_uncentered_symmetry(X, step, center=None, algorithm="kspace", fill=None
 
 def proj(A, B):
     """Returns the projection of A onto the hyper-plane defined by B"""
-    return A - (A*B).sum()*B/(B**2).sum()
+    return A - (A * B).sum() * B / (B ** 2).sum()
 
 
 def proj_dist(A, B):
     """Returns length of projection of A onto B"""
-    return (A*B).sum()/(B**2).sum()**0.5
+    return (A * B).sum() / (B ** 2).sum() ** 0.5
 
 
 def use_relevant_dim(Y, Q, Vs, index):
@@ -396,7 +375,7 @@ def find_relevant_dim(Y, Q, Vs):
         Y_p = proj_dist(Y, Vs[i])
         Q_p = proj_dist(Q, Vs[i])
         if Y_p < 0:
-            t = -Y_p/(Q_p - Y_p)
+            t = -Y_p / (Q_p - Y_p)
         else:
             t = -2
         if t > max_t:
@@ -409,7 +388,7 @@ def find_Q(Vs, n):
     """Finds a Q that is within the solution space that can act as an appropriate target
     (could be rigorously constructed later)"""
     res = np.zeros(n)
-    res[int((n-1)/2)] = n
+    res[int((n - 1) / 2)] = n
     return res
 
 
@@ -430,10 +409,10 @@ def project_disk_sed_mean(bulge_sed, disk_sed):
     """
     new_sed = disk_sed.copy()
     diff = bulge_sed - disk_sed
-    slope = (diff[-1]-diff[0])/(len(bulge_sed)-1)
-    for s in range(1, len(diff)-1):
-        if diff[s] < diff[s-1]:
-            new_sed[s] = bulge_sed[s] - (slope*s + diff[0])
+    slope = (diff[-1] - diff[0]) / (len(bulge_sed) - 1)
+    for s in range(1, len(diff) - 1):
+        if diff[s] < diff[s - 1]:
+            new_sed[s] = bulge_sed[s] - (slope * s + diff[0])
             diff[s] = bulge_sed[s] - new_sed[s]
     return new_sed
 
@@ -456,10 +435,10 @@ def project_disk_sed(bulge_sed, disk_sed):
     """
     new_sed = disk_sed.copy()
     diff = bulge_sed - disk_sed
-    for s in range(1, len(diff)-1):
-        if diff[s] < diff[s-1]:
-            new_sed[s] = new_sed[s] + diff[s-1]
-            diff[s] = diff[s-1]
+    for s in range(1, len(diff) - 1):
+        if diff[s] < diff[s - 1]:
+            new_sed[s] = new_sed[s] + diff[s - 1]
+            diff[s] = diff[s - 1]
     return new_sed
 
 
@@ -487,7 +466,7 @@ def getOffsets(width, coords=None):
     # Use the neighboring pixels by default
     if coords is None:
         coords = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
-    offsets = [width*y+x for y, x in coords]
+    offsets = [width * y + x for y, x in coords]
     slices = [slice(None, s) if s < 0 else slice(s, None) for s in offsets]
     slicesInv = [slice(-s, None) if s < 0 else slice(None, -s) for s in offsets]
     return offsets, slices, slicesInv
@@ -528,12 +507,12 @@ def diagonalizeArray(arr, shape=None, dtype=np.float64):
     # (for example, a pixel on the left edge should not be connected to the
     # pixel to its immediate left in the flattened vector, since that pixel
     # is actual the far right pixel on the row above it).
-    mask[0][np.arange(1, height)*width] = 1
-    mask[2][np.arange(height)*width-1] = 1
-    mask[3][np.arange(1, height)*width] = 1
-    mask[4][np.arange(1, height)*width-1] = 1
-    mask[5][np.arange(height)*width] = 1
-    mask[7][np.arange(1, height-1)*width-1] = 1
+    mask[0][np.arange(1, height) * width] = 1
+    mask[2][np.arange(height) * width - 1] = 1
+    mask[3][np.arange(1, height) * width] = 1
+    mask[4][np.arange(1, height) * width - 1] = 1
+    mask[5][np.arange(height) * width] = 1
+    mask[7][np.arange(1, height - 1) * width - 1] = 1
 
     return diagonals, mask
 
@@ -546,6 +525,7 @@ def diagonalsToSparse(diagonals, shape, dtype=np.float64):
     See `diagonalizeArray` for the details of the 8xN array.
     """
     import scipy.sparse
+
     height, width = shape
     offsets, slices, slicesInv = getOffsets(width)
     diags = [diag[slicesInv[n]] for n, diag in enumerate(diagonals)]
@@ -560,9 +540,8 @@ def getRadialMonotonicWeights(shape, useNearest=True, minGradient=1, center=None
     to the peak. In order to quickly create this using sparse matrices, its construction is a bit opaque.
     """
     if center is None:
-        center = ((shape[0]-1) // 2, (shape[1]-1) // 2)
+        center = ((shape[0] - 1) // 2, (shape[1] - 1) // 2)
     name = "RadialMonotonicWeights"
-
 
     key = tuple(shape) + tuple(center) + (useNearest, minGradient)
     try:
@@ -578,12 +557,12 @@ def getRadialMonotonicWeights(shape, useNearest=True, minGradient=1, center=None
         X, Y = np.meshgrid(x, y)
         X = X - px
         Y = Y - py
-        distance = np.sqrt(X**2+Y**2)
+        distance = np.sqrt(X ** 2 + Y ** 2)
 
         # Find each pixels neighbors further from the peak and mark them as invalid
         # (to be removed later)
         distArr, mask = diagonalizeArray(distance, dtype=np.float64)
-        relativeDist = (distance.flatten()[:, None]-distArr.T).T
+        relativeDist = (distance.flatten()[:, None] - distArr.T).T
         invalidPix = relativeDist <= 0
 
         # Calculate the angle between each pixel and the x axis, relative to the peak position
@@ -592,23 +571,25 @@ def getRadialMonotonicWeights(shape, useNearest=True, minGradient=1, center=None
         tX = X.copy()
         tX[inf] = 1
         angles = np.arctan2(-Y, -tX)
-        angles[inf & (Y != 0)] = 0.5*np.pi*np.sign(angles[inf & (Y != 0)])
+        angles[inf & (Y != 0)] = 0.5 * np.pi * np.sign(angles[inf & (Y != 0)])
 
         # Calcualte the angle between each pixel and it's neighbors
         xArr, m = diagonalizeArray(X)
         yArr, m = diagonalizeArray(Y)
-        dx = (xArr.T-X.flatten()[:, None]).T
-        dy = (yArr.T-Y.flatten()[:, None]).T
+        dx = (xArr.T - X.flatten()[:, None]).T
+        dy = (yArr.T - Y.flatten()[:, None]).T
         # Avoid dividing by zero and set the tan(infinity) pixel values to pi/2 manually
         inf = dx == 0
         dx[inf] = 1
         relativeAngles = np.arctan2(dy, dx)
-        relativeAngles[inf & (dy != 0)] = 0.5*np.pi*np.sign(relativeAngles[inf & (dy != 0)])
+        relativeAngles[inf & (dy != 0)] = (
+            0.5 * np.pi * np.sign(relativeAngles[inf & (dy != 0)])
+        )
 
         # Find the difference between each pixels angle with the peak
         # and the relative angles to its neighbors, and take the
         # cos to find its neighbors weight
-        dAngles = (angles.flatten()[:, None]-relativeAngles.T).T
+        dAngles = (angles.flatten()[:, None] - relativeAngles.T).T
         cosWeight = np.cos(dAngles)
         # Mask edge pixels, array elements outside the operator (for offdiagonal bands with < N elements),
         # and neighbors further from the peak than the reference pixel
@@ -620,16 +601,16 @@ def getRadialMonotonicWeights(shape, useNearest=True, minGradient=1, center=None
             cosNorm = np.zeros_like(cosWeight)
             columnIndices = np.arange(cosWeight.shape[1])
             maxIndices = np.argmax(cosWeight, axis=0)
-            indices = maxIndices*cosNorm.shape[1]+columnIndices
+            indices = maxIndices * cosNorm.shape[1] + columnIndices
             indices = np.unravel_index(indices, cosNorm.shape)
             cosNorm[indices] = minGradient
             # Remove the reference for the peak pixel
-            cosNorm[:, px+py*shape[1]] = 0
+            cosNorm[:, px + py * shape[1]] = 0
         else:
             # Normalize the cos weights for each pixel
             normalize = np.sum(cosWeight, axis=0)
             normalize[normalize == 0] = 1
-            cosNorm = (cosWeight.T/normalize[:, None]).T
+            cosNorm = (cosWeight.T / normalize[:, None]).T
             cosNorm[mask] = 0
 
         Cache.set(name, key, cosNorm)
@@ -656,14 +637,14 @@ def getRadialMonotonicOp(shape, useNearest=True, minGradient=1, subtract=True):
 
         # The identity with the peak pixel removed represents the reference pixels
         # Center on the center pixel
-        px = int(shape[1]/2)
-        py = int(shape[0]/2)
+        px = int(shape[1] / 2)
+        py = int(shape[0] / 2)
         # Calculate the distance between each pixel and the peak
-        size = shape[0]*shape[1]
+        size = shape[0] * shape[1]
         diagonal = np.ones(size)
-        diagonal[px+py*shape[1]] = -1
+        diagonal[px + py * shape[1]] = -1
         if subtract:
-            monotonic = cosArr-scipy.sparse.diags(diagonal, offsets=0)
+            monotonic = cosArr - scipy.sparse.diags(diagonal, offsets=0)
         else:
             monotonic = cosArr
         monotonic = MatrixAdapter(monotonic.tocoo(), axis=1)

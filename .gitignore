@@ -13,4 +13,4 @@ _eupspkg/
 docs/_build
 docs/api
 docs/_templates
-docs/_static
+docs/hsc_cosmos_35.sca

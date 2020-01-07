@@ -20,8 +20,6 @@
 import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))
-import sphinx_rtd_theme
-
 
 # -- General configuration ------------------------------------------------
 
@@ -62,7 +60,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'scarlet'
-copyright = '2018, Fred Moolekamp and Peter Melchior'
+copyright = '2018-2019, Fred Moolekamp and Peter Melchior'
 author = 'Fred Moolekamp and Peter Melchior'
 
 # The version info for the project you're documenting, acts as replacement for
@@ -92,25 +90,34 @@ pygments_style = 'sphinx'
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = False
 
-
 # -- Options for HTML output ----------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-#
-html_theme = "sphinx_rtd_theme"
-html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
+html_theme = "alabaster"
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
 #
-# html_theme_options = {}
+html_theme_options = {
+    'show_related': False,
+    'fixed_sidebar': True,
+    'github_button': True,
+    'github_user': 'pmelchior',
+    'github_repo': 'scarlet',
+    'github_type': 'watch',
+    }
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
+html_logo = '_static/logo.svg'
+html_short_title = 'Source Separation by Constrained Matrix Factorization'
+htmls_show_sourcelink = False
+html_sourcelink_suffix = ''
+nbsphinx_allow_errors = True
 
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.
@@ -119,10 +126,13 @@ html_static_path = ['_static']
 # refs: http://alabaster.readthedocs.io/en/latest/installation.html#sidebars
 html_sidebars = {
     '**': [
-        'relations.html',  # needs 'show_related': True theme option to display
+        # 'relations.html',  # needs 'show_related': True theme option to display
+        'globaltoc.html',
         'searchbox.html',
     ]
 }
+
+html_baseurl = "api/"
 
 
 # -- Options for HTMLHelp output ------------------------------------------
@@ -180,9 +190,6 @@ texinfo_documents = [
      author, 'scarlet', 'One line description of project.',
      'Miscellaneous'),
 ]
-
-
-
 
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {'https://docs.python.org/': None}

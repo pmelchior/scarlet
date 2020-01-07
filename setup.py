@@ -18,7 +18,7 @@ if "EIGEN_DIR" in os.environ:
     eigen_path = os.environ["EIGEN_DIR"]
 
 # Use the firt 7 digits of the git hash to set the version
-version_root = '0.5'
+version_root = '1.0'
 try:
     __version__ = version_root+'.'+subprocess.check_output(['git', 'rev-parse', 'HEAD'])[:7].decode("utf-8")
 except:
@@ -133,7 +133,7 @@ class BuildExt(build_ext):
 
 
 
-install_requires = ['numpy', 'proxmin>=0.5.5', 'autograd']
+install_requires = ['numpy', 'proxmin>=0.6.6', 'autograd>=1.3']
 # Only require the pybind11 and peigen packages if
 # the C++ headers are not already installed
 if pybind11_path is None:

@@ -1,4 +1,7 @@
-operator.py
-- Skipped tests for `prox_cone`, since it is not implemented and I am not 100% sure how it works
-- Skipped tests for `project_disk_sed_mean` since it is deprecated and does not work as expected
-- Skipped `proximal_disk_sed` since it is unused and possibly broken
+Testing only covers classes the are user-facing or assumed to be stable.
+
+The emphasis of the testing is on correct API and performed by compilation and
+regression testing of the docs.
+
+In addition, components, constraints, and observations are unit tested to
+determine where problems from regression testing are located.
