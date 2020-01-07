@@ -182,12 +182,10 @@ class LowResObservation(Observation):
         weights=None,
         channels=None,
         padding=3,
-        operator="exact",
     ):
 
         assert wcs is not None, "WCS is necessary for LowResObservation"
         assert psfs is not None, "PSF is necessary for LowResObservation"
-        assert operator in ["exact", "bilinear", "SVD"]
 
         super().__init__(
             images,
@@ -352,7 +350,7 @@ class LowResObservation(Observation):
         op = fft.Fourier.from_fft(imgs_shiftfft, fft_shape, inv_shape, fft_axes).image
         return op
 
-    def match(self, model_frame):
+    def match(self, model_frame, perimeter = 'union'):
 
         if self.frame.dtype != model_frame.dtype:
             self.images = self.images.copy().astype(model_frame.dtype)
@@ -416,6 +414,7 @@ class LowResObservation(Observation):
             model_frame.wcs,
             self.frame.wcs,
             isrot=self.isrot,
+            perimeter = perimeter
         )
 
         # shape of the low resolutino image in the overlap or union
