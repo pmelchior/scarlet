@@ -273,8 +273,8 @@ class FactorizedComponent(Component):
             # Apply shift in Fourier
             result_fft = (
                 X_fft
-                * (self.shifter_y[:, None] ** shift[0])
-                * (self.shifter_x[None, :] ** shift[1])
+                * np.exp(self.shifter_y[:, None] * shift[0])
+                * np.exp(self.shifter_x[None, :] * shift[1])
             )
 
             X = fft.Fourier.from_fft(result_fft, self.fft_shape, X.shape, [0, 1])
