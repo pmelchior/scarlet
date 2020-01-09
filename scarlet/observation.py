@@ -350,7 +350,7 @@ class LowResObservation(Observation):
         op = fft.Fourier.from_fft(imgs_shiftfft, fft_shape, inv_shape, fft_axes).image
         return op
 
-    def match(self, model_frame, perimeter = 'union'):
+    def match(self, model_frame, coverage = 'union'):
 
         if self.frame.dtype != model_frame.dtype:
             self.images = self.images.copy().astype(model_frame.dtype)
@@ -414,10 +414,10 @@ class LowResObservation(Observation):
             model_frame.wcs,
             self.frame.wcs,
             isrot=self.isrot,
-            perimeter = perimeter
+            coverage = coverage
         )
 
-        # shape of the low resolutino image in the overlap or union
+        # shape of the low resolutino image in the intersection or union
         self.lr_shape = (
             np.max(coord_lr[0]) - np.min(coord_lr[0]) + 1,
             np.max(coord_lr[1]) - np.min(coord_lr[1]) + 1,
