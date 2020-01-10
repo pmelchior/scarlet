@@ -88,7 +88,7 @@ def _get_fft_shape(img1, img2, padding=3, axes=None, max=False):
         else:
             shape = shape1 + shape2
     else:
-        shape = np.zeros(len(axes))
+        shape = np.zeros(len(axes), dtype='int')
         try:
             len(axes)
         except TypeError:
