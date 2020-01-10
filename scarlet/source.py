@@ -1,4 +1,3 @@
-import proxmin
 from .constraint import *
 from .component import *
 from .bbox import *
