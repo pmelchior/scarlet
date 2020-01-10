@@ -24,8 +24,6 @@ class Parameter(np.ndarray):
         If a method is used, it needs to have the signature
             `step(X, it) -> float`
         where `X` is the parameter value and `it` the iteration counter
-    converged: bool
-        Whether the parameter converged during optimimzation
     std: array-like
         Statistical error estimate, same shape as `array`
     fixed: bool
@@ -39,7 +37,6 @@ class Parameter(np.ndarray):
         prior=None,
         constraint=None,
         step=0,
-        converged=False,
         std=None,
         fixed=False,
     ):
@@ -54,7 +51,6 @@ class Parameter(np.ndarray):
             )
         obj.constraint = constraint
         obj.step = step
-        obj.converged = converged
         obj.std = std
         obj.fixed = fixed
         return obj
@@ -66,7 +62,6 @@ class Parameter(np.ndarray):
         self.prior = getattr(obj, "prior", None)
         self.constraint = getattr(obj, "constraint", None)
         self.step = getattr(obj, "step_size", 0)
-        self.converged = getattr(obj, "converged", False)
         self.std = getattr(obj, "std", None)
         self.fixed = getattr(obj, "fixed", False)
 
