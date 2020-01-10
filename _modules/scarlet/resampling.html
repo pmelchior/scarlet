@@ -63,13 +63,12 @@
 <span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 
 
-<div class="viewcode-block" id="match_patches"><a class="viewcode-back" href="../../api/scarlet.resampling.html#scarlet.resampling.match_patches">[docs]</a><span class="k">def</span> <span class="nf">match_patches</span><span class="p">(</span>
-    <span class="n">shape_hr</span><span class="p">,</span> <span class="n">shape_lr</span><span class="p">,</span> <span class="n">wcs_hr</span><span class="p">,</span> <span class="n">wcs_lr</span><span class="p">,</span> <span class="n">isrot</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">perimeter</span><span class="o">=</span><span class="s2">&quot;overlap&quot;</span><span class="p">,</span> <span class="n">psf</span><span class="o">=</span><span class="kc">False</span>
-<span class="p">):</span>
+<div class="viewcode-block" id="match_patches"><a class="viewcode-back" href="../../api/scarlet.resampling.html#scarlet.resampling.match_patches">[docs]</a><span class="k">def</span> <span class="nf">match_patches</span><span class="p">(</span><span class="n">shape_hr</span><span class="p">,</span> <span class="n">shape_lr</span><span class="p">,</span> <span class="n">wcs_hr</span><span class="p">,</span> <span class="n">wcs_lr</span><span class="p">,</span> <span class="n">isrot</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">coverage</span>  <span class="o">=</span> <span class="s1">&#39;intersection&#39;</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Matches datasets at different resolutions</span>
 
-<span class="sd">    Finds the region of overlap between two datasets and creates a mask for the region as well as the pixel coordinates</span>
-<span class="sd">    for the dataset pixels inside the overlap.</span>
+
+<span class="sd">    Finds the region of intersection between two datasets and creates a mask for the region as well as the pixel coordinates</span>
+<span class="sd">    for the dataset pixels inside the intersection.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -77,8 +76,8 @@
 <span class="sd">        shapes of the two datasets</span>
 <span class="sd">    wcs_hr, wcs_lr: WCS objects</span>
 <span class="sd">        WCS of the Low and High resolution fields respectively</span>
-<span class="sd">    perimeter: string</span>
-<span class="sd">        returns the coordinates in the intersection or union of both frames if set to &#39;overlap&#39; or &#39;union&#39; respectively</span>
+<span class="sd">    coverage: string</span>
+<span class="sd">        returns the coordinates in the intersection or union of both frames if set to &#39;intersection&#39; or &#39;union&#39; respectively</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
@@ -87,15 +86,13 @@
 <span class="sd">    coordlr_over_hr: array</span>
 <span class="sd">        coordinates of the matching pixels at low resolution in the high resolution frame.</span>
 <span class="sd">    coordhr_hr: array</span>
-<span class="sd">        coordinates of the high resolution pixels in the overlap. Necessary for psf matching</span>
+<span class="sd">        coordinates of the high resolution pixels in the intersection. Necessary for psf matching</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="k">assert</span> <span class="n">perimeter</span> <span class="ow">in</span> <span class="p">[</span>
-        <span class="s2">&quot;overlap&quot;</span><span class="p">,</span>
+    <span class="k">assert</span> <span class="n">coverage</span> <span class="ow">in</span> <span class="p">[</span>
+        <span class="s2">&quot;intersection&quot;</span><span class="p">,</span>
         <span class="s2">&quot;union&quot;</span><span class="p">,</span>
-    <span class="p">],</span> <span class="s2">&quot;perimeter should be either overlap or union.&quot;</span>
-    <span class="k">if</span> <span class="n">psf</span> <span class="o">==</span> <span class="kc">True</span><span class="p">:</span>
-        <span class="n">perimeter</span> <span class="o">==</span> <span class="s2">&quot;overlap&quot;</span>
+    <span class="p">],</span> <span class="s2">&quot;coverage should be either intersection or union.&quot;</span>
+
 
     <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">shape_hr</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
         <span class="n">B_hr</span><span class="p">,</span> <span class="n">Ny_hr</span><span class="p">,</span> <span class="n">Nx_hr</span> <span class="o">=</span> <span class="n">shape_hr</span>
@@ -152,17 +149,17 @@
     <span class="k">elif</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">wcs_lr</span><span class="o">.</span><span class="n">array_shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
         <span class="n">x_lr</span><span class="p">,</span> <span class="n">y_lr</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">wcs_lr</span><span class="o">.</span><span class="n">all_world2pix</span><span class="p">(</span><span class="n">ra_hr</span><span class="p">,</span> <span class="n">dec_hr</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">ra_dec_order</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
-    <span class="c1"># mask of low resolution pixels at high resolution in the overlap:</span>
+    <span class="c1"># mask of low resolution pixels at high resolution in the intersection:</span>
     <span class="n">over_lr</span> <span class="o">=</span> <span class="p">(</span><span class="n">X_hr</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">X_hr</span> <span class="o">&lt;</span> <span class="n">Nx_hr</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">Y_hr</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">Y_hr</span> <span class="o">&lt;</span> <span class="n">Ny_hr</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
-    <span class="c1"># mask of high resolution pixels at low resolution in the overlap (needed for psf matching)</span>
+    <span class="c1"># mask of high resolution pixels at low resolution in the intersection (needed for psf matching)</span>
     <span class="n">over_hr</span> <span class="o">=</span> <span class="p">(</span><span class="n">x_lr</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">x_lr</span> <span class="o">&lt;</span> <span class="n">Nx_lr</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">y_lr</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">y_lr</span> <span class="o">&lt;</span> <span class="n">Ny_lr</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
 
-    <span class="c1"># pixels of the high resolution frame in the overlap in high resolution frame (needed for PSF only)</span>
+    <span class="c1"># pixels of the high resolution frame in the intersection in high resolution frame (needed for PSF only)</span>
     <span class="n">coordhr_hr</span> <span class="o">=</span> <span class="p">(</span><span class="n">y_hr</span><span class="p">[(</span><span class="n">over_hr</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)],</span> <span class="n">x_hr</span><span class="p">[(</span><span class="n">over_hr</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)])</span>
 
     <span class="k">class</span> <span class="nc">SourceInitError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Datasets do not match, no overlap found. Check the coordinates of the observations or the WCS.</span>
+<span class="sd">        Datasets do not match, no intersection found. Check the coordinates of the observations or the WCS.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="k">pass</span>
@@ -170,18 +167,18 @@
     <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">over_lr</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
         <span class="k">raise</span> <span class="n">SourceInitError</span>
 
-    <span class="k">if</span> <span class="n">perimeter</span> <span class="ow">is</span> <span class="s2">&quot;overlap&quot;</span><span class="p">:</span>
-        <span class="c1"># Coordinates of low resolution pixels in the overlap at low resolution:</span>
+    <span class="k">if</span> <span class="n">coverage</span> <span class="ow">is</span> <span class="s2">&quot;intersection&quot;</span><span class="p">:</span>
+        <span class="c1"># Coordinates of low resolution pixels in the intersection at low resolution:</span>
         <span class="n">ylr_lr</span> <span class="o">=</span> <span class="n">Y_lr</span><span class="p">[(</span><span class="n">over_lr</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)]</span>
         <span class="n">xlr_lr</span> <span class="o">=</span> <span class="n">X_lr</span><span class="p">[(</span><span class="n">over_lr</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)]</span>
         <span class="n">coordlr_lr</span> <span class="o">=</span> <span class="p">(</span><span class="n">ylr_lr</span><span class="p">,</span> <span class="n">xlr_lr</span><span class="p">)</span>
-        <span class="c1"># Coordinates of low resolution pixels in the overlap at high resolution:</span>
+        <span class="c1"># Coordinates of low resolution pixels in the intersection at high resolution:</span>
         <span class="n">ylr_hr</span> <span class="o">=</span> <span class="n">Y_hr</span><span class="p">[(</span><span class="n">over_lr</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)]</span>
         <span class="n">xlr_hr</span> <span class="o">=</span> <span class="n">X_hr</span><span class="p">[(</span><span class="n">over_lr</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)]</span>
 
         <span class="n">coordlr_hr</span> <span class="o">=</span> <span class="p">(</span><span class="n">ylr_hr</span><span class="p">,</span> <span class="n">xlr_hr</span><span class="p">)</span>
 
-    <span class="k">elif</span> <span class="n">perimeter</span> <span class="ow">is</span> <span class="s2">&quot;union&quot;</span><span class="p">:</span>
+    <span class="k">elif</span> <span class="n">coverage</span> <span class="ow">is</span> <span class="s2">&quot;union&quot;</span><span class="p">:</span>
 
         <span class="c1"># Coordinates of low resolution pixels at low resolution:</span>
         <span class="n">coordlr_lr</span> <span class="o">=</span> <span class="p">(</span><span class="n">Y_lr</span><span class="p">,</span> <span class="n">X_lr</span><span class="p">)</span>
@@ -202,7 +199,7 @@
       &copy;2018-2019, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.3.0</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.3.1</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
     </div>

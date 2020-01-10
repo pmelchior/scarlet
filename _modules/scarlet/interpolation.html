@@ -395,8 +395,8 @@
             <span class="n">freq_y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">fftfreq</span><span class="p">(</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
         <span class="c1"># Shift the signal to recenter it, negative because math is opposite from</span>
         <span class="c1"># pixel direction</span>
-        <span class="n">shift_y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="n">j</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">freq_y</span><span class="p">)</span>
-        <span class="n">shift_x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="n">j</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">freq_x</span><span class="p">)</span>
+        <span class="n">shift_y</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="n">j</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">freq_y</span><span class="p">)</span>
+        <span class="n">shift_x</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="n">j</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">freq_x</span><span class="p">)</span>
 
         <span class="n">shifters</span> <span class="o">=</span> <span class="p">(</span><span class="n">shift_y</span><span class="p">,</span> <span class="n">shift_x</span><span class="p">)</span>
 
@@ -454,10 +454,12 @@
 
     <span class="c1"># Shift elementary kernel</span>
     <span class="n">shifter_y</span><span class="p">,</span> <span class="n">shifter_x</span> <span class="o">=</span> <span class="n">mk_shifter</span><span class="p">(</span><span class="n">fft_shape</span><span class="p">)</span>
-    <span class="c1"># Shifts values</span>
-    <span class="n">shift_y</span> <span class="o">=</span> <span class="n">shifter_y</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:]</span> <span class="o">**</span> <span class="p">(</span><span class="o">-</span><span class="n">y_hr</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span> <span class="o">*</span> <span class="n">cos</span> <span class="o">/</span> <span class="n">hy</span><span class="p">)</span>
-    <span class="n">shift_x</span> <span class="o">=</span> <span class="n">shifter_x</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:]</span> <span class="o">**</span> <span class="p">(</span><span class="o">-</span><span class="n">y_hr</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span> <span class="o">*</span> <span class="n">sin</span> <span class="o">/</span> <span class="n">hx</span><span class="p">)</span>
-    <span class="c1"># Apply shifts</span>
+
+    <span class="c1">#Shifts values</span>
+    <span class="n">shift_y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">shifter_y</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:]</span> <span class="o">*</span> <span class="p">(</span><span class="o">-</span><span class="p">(</span><span class="n">y_hr</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">])</span> <span class="o">*</span> <span class="n">cos</span><span class="p">))</span>
+    <span class="n">shift_x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">shifter_x</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:]</span> <span class="o">*</span> <span class="p">(</span><span class="o">-</span><span class="p">(</span><span class="n">y_hr</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">])</span> <span class="o">*</span> <span class="n">sin</span><span class="p">))</span>
+    <span class="c1">#Apply shifts</span>
+
     <span class="n">result_fft</span> <span class="o">=</span> <span class="n">X_fft</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">*</span> <span class="n">shift_y</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span>
     <span class="n">result_fft</span> <span class="o">=</span> <span class="n">result_fft</span> <span class="o">*</span> <span class="n">shift_x</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:]</span>
 
@@ -640,7 +642,7 @@
       &copy;2018-2019, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.3.0</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.3.1</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
     </div>

@@ -335,8 +335,8 @@
             <span class="c1"># Apply shift in Fourier</span>
             <span class="n">result_fft</span> <span class="o">=</span> <span class="p">(</span>
                 <span class="n">X_fft</span>
-                <span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">shifter_y</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">**</span> <span class="n">shift</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-                <span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">shifter_x</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:]</span> <span class="o">**</span> <span class="n">shift</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+                <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">shifter_y</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">shift</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">shifter_x</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:]</span> <span class="o">*</span> <span class="n">shift</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
             <span class="p">)</span>
 
             <span class="n">X</span> <span class="o">=</span> <span class="n">fft</span><span class="o">.</span><span class="n">Fourier</span><span class="o">.</span><span class="n">from_fft</span><span class="p">(</span><span class="n">result_fft</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">fft_shape</span><span class="p">,</span> <span class="n">X</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
@@ -709,7 +709,7 @@
       &copy;2018-2019, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.3.0</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.3.1</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
     </div>

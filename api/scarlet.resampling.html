@@ -84,10 +84,10 @@
 <span id="scarlet-resampling"></span><h1>scarlet.resampling<a class="headerlink" href="#module-scarlet.resampling" title="Permalink to this headline">¶</a></h1>
 <dl class="function">
 <dt id="scarlet.resampling.match_patches">
-<code class="sig-prename descclassname">scarlet.resampling.</code><code class="sig-name descname">match_patches</code><span class="sig-paren">(</span><em class="sig-param">shape_hr</em>, <em class="sig-param">shape_lr</em>, <em class="sig-param">wcs_hr</em>, <em class="sig-param">wcs_lr</em>, <em class="sig-param">isrot=True</em>, <em class="sig-param">perimeter='overlap'</em>, <em class="sig-param">psf=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/resampling.html#match_patches"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.resampling.match_patches" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">scarlet.resampling.</code><code class="sig-name descname">match_patches</code><span class="sig-paren">(</span><em class="sig-param">shape_hr</em>, <em class="sig-param">shape_lr</em>, <em class="sig-param">wcs_hr</em>, <em class="sig-param">wcs_lr</em>, <em class="sig-param">isrot=True</em>, <em class="sig-param">coverage='intersection'</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/resampling.html#match_patches"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.resampling.match_patches" title="Permalink to this definition">¶</a></dt>
 <dd><p>Matches datasets at different resolutions</p>
-<p>Finds the region of overlap between two datasets and creates a mask for the region as well as the pixel coordinates
-for the dataset pixels inside the overlap.</p>
+<p>Finds the region of intersection between two datasets and creates a mask for the region as well as the pixel coordinates
+for the dataset pixels inside the intersection.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><dl class="simple">
@@ -95,7 +95,7 @@ for the dataset pixels inside the overlap.</p>
 </dd>
 <dt><strong>wcs_hr, wcs_lr: WCS objects</strong></dt><dd><p>WCS of the Low and High resolution fields respectively</p>
 </dd>
-<dt><strong>perimeter: string</strong></dt><dd><p>returns the coordinates in the intersection or union of both frames if set to ‘overlap’ or ‘union’ respectively</p>
+<dt><strong>coverage: string</strong></dt><dd><p>returns the coordinates in the intersection or union of both frames if set to ‘intersection’ or ‘union’ respectively</p>
 </dd>
 </dl>
 </dd>
@@ -105,7 +105,7 @@ for the dataset pixels inside the overlap.</p>
 </dd>
 <dt>coordlr_over_hr: array</dt><dd><p>coordinates of the matching pixels at low resolution in the high resolution frame.</p>
 </dd>
-<dt>coordhr_hr: array</dt><dd><p>coordinates of the high resolution pixels in the overlap. Necessary for psf matching</p>
+<dt>coordhr_hr: array</dt><dd><p>coordinates of the high resolution pixels in the intersection. Necessary for psf matching</p>
 </dd>
 </dl>
 </dd>
@@ -125,7 +125,7 @@ for the dataset pixels inside the overlap.</p>
       &copy;2018-2019, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.3.0</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.3.1</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |
