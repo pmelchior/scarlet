@@ -108,7 +108,7 @@ to data.</p>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">check_parameters</span></code>(self)</p></td>
 <td><p>Check the all parameters have finite elements</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.blend.Blend.fit" title="scarlet.blend.Blend.fit"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fit</span></code></a>(self[, max_iter, e_rel, f_rel])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.blend.Blend.fit" title="scarlet.blend.Blend.fit"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fit</span></code></a>(self[, max_iter, e_rel])</p></td>
 <td><p>Fit the model for each source to the data</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">freeze</span></code>(self)</p></td>
@@ -127,21 +127,14 @@ to data.</p>
 </table>
 <dl class="method">
 <dt id="scarlet.blend.Blend.fit">
-<code class="sig-name descname">fit</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">max_iter=200</em>, <em class="sig-param">e_rel=0.001</em>, <em class="sig-param">f_rel=0.0001</em>, <em class="sig-param">**alg_kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/blend.html#Blend.fit"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.blend.Blend.fit" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">fit</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">max_iter=200</em>, <em class="sig-param">e_rel=0.001</em>, <em class="sig-param">**alg_kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/blend.html#Blend.fit"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.blend.Blend.fit" title="Permalink to this definition">¶</a></dt>
 <dd><p>Fit the model for each source to the data</p>
-<p>Note that two convergence criteria are specified:</p>
-<ul class="simple">
-<li><p><cite>e_rel</cite> for the change of the norm of each parameter between two iterations</p></li>
-<li><p><cite>f_rel</cite> for the change of the loss function</p></li>
-</ul>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><dl class="simple">
 <dt><strong>max_iter: int</strong></dt><dd><p>Maximum number of iterations if the algorithm doesn’t converge</p>
 </dd>
-<dt><strong>e_rel: float</strong></dt><dd><p>Relative error for parameter convergence</p>
-</dd>
-<dt><strong>f_rel: float</strong></dt><dd><p>Relative error for functional convergence of the loss</p>
+<dt><strong>e_rel: float</strong></dt><dd><p>Relative error for convergence of the loss function</p>
 </dd>
 <dt><strong>alg_kwargs: dict</strong></dt><dd><p>Keywords for the <cite>proxmin.adaprox</cite> optimizer</p>
 </dd>
