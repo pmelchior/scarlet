@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def match_patches(shape_hr, shape_lr, wcs_hr, wcs_lr, isrot = True, coverage  = 'intersection'):
+def match_patches(shape_hr, shape_lr, wcs_hr, wcs_lr, isrot = True, coverage  = 'union'):
     """Matches datasets at different resolutions
 
 
@@ -95,6 +95,11 @@ def match_patches(shape_hr, shape_lr, wcs_hr, wcs_lr, isrot = True, coverage  = 
     # pixels of the high resolution frame in the intersection in high resolution frame (needed for PSF only)
     coordhr_hr = (y_hr[(over_hr == 1)], x_hr[(over_hr == 1)])
 
+    import matplotlib.pyplot as plt
+    plt.plot(x_lr, y_lr, 'ob')
+    plt.plot(X_lr, Y_lr, 'or')
+    plt.show()
+
     class SourceInitError(Exception):
         """
         Datasets do not match, no intersection found. Check the coordinates of the observations or the WCS.
@@ -123,5 +128,9 @@ def match_patches(shape_hr, shape_lr, wcs_hr, wcs_lr, isrot = True, coverage  = 
 
         # Coordinates of low resolution pixels at high resolution:
         coordlr_hr = (Y_hr, X_hr)
+    import matplotlib.pyplot as plt
+    plt.plot(coordlr_hr[0],coordlr_hr[1], 'ob')
+    plt.plot(coordhr_hr[0], coordhr_hr[1], 'or')
+    plt.show()
 
     return coordlr_lr, coordlr_hr, coordhr_hr

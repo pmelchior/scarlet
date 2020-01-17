@@ -342,6 +342,50 @@ def mk_shifter(shape, real=False):
 
     return shifters
 
+def get_affine(wcs):
+    try:
+        model_affine = wcs.wcs.pc
+    except AttributeError:
+        model_affine = wcs.cd
+
+    return model_affine
+
+def get_pixel_size(model_affine):
+    """ Extracts the pixel size from a wcs
+    """
+    pix = np.sqrt(
+        np.abs(model_affine[0, 0])
+        * np.abs(model_affine[1, 1] - model_affine[0, 1] * model_affine[1, 0]))
+    return pix
+
+def get_angles(frame_wcs, model_wcs):
+
+    """ Computes the angles between two WCS
+    Parameters
+    ----------
+        frame_wcs: WCS
+            WCS of the observation's frame
+        model_WCS:
+            WCS of the model frame.
+    """
+    model_affine = get_affine(model_wcs)
+    frame_affine = get_affine(frame_wcs)
+    model_pix = get_pixel_size(model_affine)
+    self_pix = get_pixel_size(frame_affine)
+    # Pixel scale ratio
+    h = self_pix / model_pix
+    # Vector giving the direction of the x-axis of each frame
+    self_framevector = np.sum(frame_affine, axis=0)[:2] / self_pix
+    model_framevector = np.sum(model_affine, axis=0)[:2] / model_pix
+    # normalisation
+    self_framevector /= np.sum(self_framevector ** 2) ** 0.5
+    model_framevector /= np.sum(model_framevector ** 2) ** 0.5
+
+    # sin of the angle between datasets (normalised cross product)
+    sin_rot = np.cross(self_framevector, model_framevector)
+    # cos of the angle. (normalised scalar product)
+    cos_rot = np.dot(self_framevector, model_framevector)
+    return (cos_rot, sin_rot), h
 
 def sinc_interp(images, coord_hr, coord_lr, angle=None, padding=3):
     """

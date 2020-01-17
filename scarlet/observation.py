@@ -66,6 +66,15 @@ class Observation:
         ), "Weights needs to have same shape as images"
 
         self._padding = padding
+        self.channels = channels
+        self.wcs = wcs
+        try:
+            assert np.size(psfs.shape) is 3, 'psfs should given as cubes of images.'
+        except AssertionError:
+            assert np.size(psfs.shape) is 2, 'psfs should be given as cubes of images or 2d images.'
+            psfs = psfs[np.newaxis, :, :]
+
+        self.psfs = psfs
 
     def match(self, model_frame):
         """Match the frame of `Blend` to the frame of this observation.
@@ -171,6 +180,16 @@ class Observation:
         )
 
         return log_norm + np.sum(weights_ * (model_ - images_) ** 2) / 2
+
+    def make_LowRes(self):
+        """ Creates a LowResObservation object from an Observation object
+
+        """
+        return LowResObservation(self.images,
+                                 psfs = self.psfs,
+                                 weights = self.weights,
+                                 wcs = self.wcs,
+                                 channels= self.channels)
 
 
 class LowResObservation(Observation):
@@ -366,46 +385,14 @@ class LowResObservation(Observation):
             bmax = model_frame.channels.index(self.frame.channels[-1])
             self._band_slice = slice(bmin, bmax+1)
 
-        # Affine transform
-        try :
-            model_affine = model_frame.wcs.wcs.pc
-        except AttributeError:
-            model_affine = model_frame.wcs.cd
-        try:
-            self_affine = self.frame.wcs.wcs.pc
-        except AttributeError:
-            self_affine = self.frame.wcs.cd
+        self.angle, self.h = interpolation.get_angles(self.frame.wcs, model_frame.wcs)
 
-        model_pix = np.sqrt(
-            np.abs(model_affine[0, 0])
-            * np.abs(model_affine[1, 1] - model_affine[0, 1] * model_affine[1, 0])
-        )
-        self_pix = np.sqrt(
-            np.abs(self_affine[0, 0])
-            * np.abs(self_affine[1, 1] - self_affine[0, 1] * self_affine[1, 0])
-        )
-        # Pixel scale ratio
-        self.h = self_pix/model_pix
-        # Vector giving the direction of the x-axis of each frame
-        self_framevector = np.sum(self_affine, axis=0)[:2] / self_pix
-        model_framevector = np.sum(model_affine, axis=0)[:2] / model_pix
-        # normalisation
-        self_framevector /= np.sum(self_framevector ** 2) ** 0.5
-        model_framevector /= np.sum(model_framevector ** 2) ** 0.5
-
-        # sin of the angle between datasets (normalised cross product)
-        self.sin_rot = np.cross(self_framevector, model_framevector)
-        # cos of the angle. (normalised scalar product)
-        self.cos_rot = np.dot(self_framevector, model_framevector)
         # Is the angle larger than machine precision?
-
-        self.isrot = (np.abs(self.sin_rot) ** 2) > np.finfo(float).eps
+        self.isrot = (np.abs(self.angle[1]) ** 2) > np.finfo(float).eps
         if not self.isrot:
-            self.sin_rot = 0
-            self.cos_rot = 1
+            self.angle[1] = 0
+            self.angle[0] = 1
             angle = None
-        else:
-            angle = (self.cos_rot, self.sin_rot)
 
         # Get pixel coordinates in each frame.
         coord_lr, coord_hr, coordhr_over = resampling.match_patches(
@@ -467,33 +454,39 @@ class LowResObservation(Observation):
 
             # Unrotated coordinates:
             Y_unrot = (
-                (coord_hr[0] - center_y) * self.cos_rot
-                + (coord_hr[1] - center_x) * self.sin_rot
+                (coord_hr[0] - center_y) * self.angle[0]
+                - (coord_hr[1] - center_x) * self.angle[1]
             ).reshape(self.lr_shape)
             X_unrot = (
-                (coord_hr[1] - center_x) * self.cos_rot
-                - (coord_hr[0] - center_y) * self.sin_rot
+                (coord_hr[1] - center_x) * self.angle[0]
+                + (coord_hr[0] - center_y) * self.angle[1]
             ).reshape(self.lr_shape)
 
             # Removing redundancy
             self.Y_unrot = Y_unrot[:, 0]
             self.X_unrot = X_unrot[0, :]
 
+            import matplotlib.pyplot as plt
+
+            plt.plot(coord_lr[0], coord_lr[1],'or')
+            plt.plot(self.Y_unrot, self.X_unrot, 'ob')
+            plt.plot(coord_hr[0], coord_hr[1], 'xg')
+
             if self.small_axis:
-                self.shifts = [self.Y_unrot * self.cos_rot, self.Y_unrot * self.sin_rot]
-                self.other_shifts = [
-                    -self.sin_rot * self.X_unrot,
-                    self.cos_rot * self.X_unrot,
-                ]
+                self.shifts = np.array([self.Y_unrot * self.angle[0], self.Y_unrot * self.angle[1]])
+                self.other_shifts = np.array([
+                    -self.angle[1] * self.X_unrot,
+                    self.angle[0] * self.X_unrot,
+                ])
             else:
-                self.shifts = [
-                    -self.sin_rot * self.X_unrot,
-                    self.cos_rot * self.X_unrot,
-                ]
-                self.other_shifts = [
-                    self.Y_unrot * self.cos_rot,
-                    self.Y_unrot * self.sin_rot,
-                ]
+                self.shifts = np.array([
+                    -self.angle[1] * self.X_unrot,
+                    self.angle[0] * self.X_unrot,
+                ])
+                self.other_shifts = np.array([
+                    self.Y_unrot * self.angle[0],
+                    self.Y_unrot * self.angle[1],
+                ])
 
             axes = (1, 2)
 
