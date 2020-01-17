@@ -77,7 +77,12 @@ class Blend(ComponentTree):
             self._callback, e_rel=e_rel, callback=alg_kwargs.pop("callback", None)
         )
 
-        converged, grads, grad2s = proxmin.adaprox(
+        # do we have a current state of the optimizer to warm start?
+        M = tuple(x.m if x.m is not None else np.zeros(x.shape) for x in X)
+        V = tuple(x.v if x.v is not None else np.zeros(x.shape) for x in X)
+        Vhat = tuple(x.vhat if x.vhat is not None else np.zeros(x.shape) for x in X)
+
+        proxmin.adaprox(
             X,
             _grad,
             _step,
@@ -88,11 +93,17 @@ class Blend(ComponentTree):
             scheme=scheme,
             prox_max_iter=prox_max_iter,
             callback=callback,
+            M=M,
+            V=V,
+            Vhat=Vhat,
             **alg_kwargs
         )
 
         # set convergence and standard deviation from optimizer
-        for p, v in zip(X, grad2s):
+        for p, m, v, vhat in zip(X, M, V, Vhat):
+            p.m = m
+            p.v = v
+            p.vhat = vhat
             p.std = 1 / np.sqrt(ma.masked_equal(v, 0))  # this is rough estimate!
 
         return self

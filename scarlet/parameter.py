@@ -38,6 +38,9 @@ class Parameter(np.ndarray):
         constraint=None,
         step=0,
         std=None,
+        m=None,
+        v=None,
+        vhat=None,
         fixed=False,
     ):
         obj = np.asarray(array, dtype=array.dtype).view(cls)
@@ -52,6 +55,9 @@ class Parameter(np.ndarray):
         obj.constraint = constraint
         obj.step = step
         obj.std = std
+        obj.m = m
+        obj.v = v
+        obj.vhat = vhat
         obj.fixed = fixed
         return obj
 
@@ -63,6 +69,9 @@ class Parameter(np.ndarray):
         self.constraint = getattr(obj, "constraint", None)
         self.step = getattr(obj, "step_size", 0)
         self.std = getattr(obj, "std", None)
+        self.m = getattr(obj, "m", None)
+        self.v = getattr(obj, "v", None)
+        self.vhat = getattr(obj, "vhat", None)
         self.fixed = getattr(obj, "fixed", False)
 
     def __reduce__(self):

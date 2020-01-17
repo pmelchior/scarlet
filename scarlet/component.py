@@ -84,24 +84,6 @@ class Component(ABC):
         """
         pass
 
-    def freeze(self):
-        """Fix all parameters
-
-        The component will not provide optimizable parameters anymore.
-        """
-        for p in self._parameters:
-            p.fixed = True
-
-    def unfreeze(self):
-        """Release all parameters
-
-        The component will provide *all* parameters as optimizable parameters.
-        Calling this function overrides previous setting of `parameter.fixed` for every
-        parameter of this component.
-        """
-        for p in self._parameters:
-            p.fixed = False
-
     def set_frame(self, frame):
         """Sets the frame for this component.
 
@@ -569,24 +551,6 @@ class ComponentTree:
         """
         for c in self.components:
             c.set_frame(frame)
-
-    def freeze(self):
-        """Fix all parameters
-
-        The tree will not provide optimizable parameters anymore.
-        """
-        for c in self.components:
-            c.freeze()
-
-    def unfreeze(self):
-        """Release all parameters
-
-        The tree will provide *all* parameters as optimizable parameters.
-        Calling this function overrides previous setting of `parameter.fixed` for every
-        parameter of this component tree.
-        """
-        for c in self.components:
-            c.unfreeze()
 
     def __iadd__(self, c):
         """Add another component or tree.
