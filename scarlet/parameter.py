@@ -67,7 +67,7 @@ class Parameter(np.ndarray):
         self.name = getattr(obj, "name", "unnamed")
         self.prior = getattr(obj, "prior", None)
         self.constraint = getattr(obj, "constraint", None)
-        self.step = getattr(obj, "step_size", 0)
+        self.step = getattr(obj, "step", 0)
         self.std = getattr(obj, "std", None)
         self.m = getattr(obj, "m", None)
         self.v = getattr(obj, "v", None)
