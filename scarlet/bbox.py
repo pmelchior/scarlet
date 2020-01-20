@@ -1,4 +1,5 @@
 import numpy as np
+from .measure import Moments
 
 
 class Box:
@@ -87,6 +88,59 @@ class Box:
         else:
             bounds = [[0, 0]] * len(X.shape)
         return Box.from_bounds(*bounds)
+
+    @staticmethod
+    def from_moments(image, fwhm_frac=1, fwhm_func=None):
+        """Generate a bounding box from a set of moments
+
+        Parameters
+        ----------
+        image: array
+            Full image to use for moment calculation.
+        fwhm_frac: float
+            Fraction of the FWHM to use for the bounding box
+        fwhm_func: Function
+            For multiband images, this function is used to
+            choose how the fwhm in x and y is calculated.
+            By default (`fwhm_func=None`) the minimum 2nd moment
+            is used from all of the bands.
+
+        Returns
+        -------
+        box: `~scarlet.bbox.Box`
+            The box to use for the moment calculation.
+        """
+        if fwhm_func is None:
+            func = np.min
+        else:
+            func = fwhm_func
+        moments = Moments(image)
+        sigma_y, sigma_x = np.sqrt(moments[2, 0]), np.sqrt(moments[0, 2])
+        fwhm_y, fwhm_x = (np.ceil(2.355*sigma_y)).astype(int), (np.ceil(2.355*sigma_x)).astype(int)
+        # Collapse the FWHM into a single value for each direction
+        fwhm_y = func(fwhm_y)
+        fwhm_x = func(fwhm_x)
+        shape = (len(image), 2*fwhm_y+1, 2*fwhm_x+1)
+        cy, cx = (np.array(image.shape[-2:])-1) // 2
+        return Box(shape, origin=(0, cy-fwhm_y, cx-fwhm_x))
+
+    @staticmethod
+    def from_center(center, shape):
+        """Generate a box given a shape and central position
+        """
+        if len(center) == 3:
+            center = center[1:]
+        if len(shape) == 2:
+            shape = (0,) + tuple(shape)
+        center = np.asarray(center)
+        shape = np.asarray(shape)
+        # The center must be an integer coordinate
+        assert np.all([int(c) == c for c in center])
+        # The shape must be odd in each dimnsion, otherwise
+        # the center is not well defined
+        assert np.all([s % 2 == 1 for s in shape[1:]])
+        origin = (0,) + tuple((center - np.array(0.5*(shape[1:]-1))).astype(int))
+        return Box(tuple(shape), origin=origin)
 
     def contains(self, p):
         """Whether the box contains a given coordinate `p`
@@ -189,6 +243,15 @@ class Box:
         """
         return tuple(o + s for o, s in zip(self.origin, self.shape))
 
+    @property
+    def center(self):
+        """Get the center of the Box
+        """
+        cmin = np.array(self.start)
+        cmax = np.array(self.stop) - 1
+        center = 0.5*(cmax-cmin)
+        return tuple(center)
+
     def __or__(self, other):
         """Union of two bounding boxes
 
@@ -234,6 +297,11 @@ class Box:
                 (max(self.start[d], other.start[d]), min(self.stop[d], other.stop[d]))
             )
         return Box.from_bounds(*bounds)
+
+    def overlaps(self, other):
+        """Whether or not this `Box` overlaps with `other`
+        """
+        return np.all([self.start[k] < other.stop[k] for k in range(len(self.shape))])
 
     def __repr__(self):
         result = "<Box shape={0}, origin={1}>"
