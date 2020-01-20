@@ -240,6 +240,12 @@ def match_sources(images, psfs, centers, min_overlap=1e-4, show=False):
         stamps = stamp_box.extract_from(images)
         diff_y, diff_x = build_diff_images(psfs.image, psf_bbox)
 
+        if show:
+            import matplotlib.pyplot as plt
+            plt.imshow(stamps[0])
+            plt.title("stamp")
+            plt.show()
+
         # Test all of the other sources for overlap and
         # (if necessary) add the portion of their PSF that
         # overlaps with the primary source to the model.
@@ -295,7 +301,7 @@ def match_sources(images, psfs, centers, min_overlap=1e-4, show=False):
 
             if show:
                 import matplotlib.pyplot as plt
-                fig, ax = plt.subplots(figsize=(15, 5))
+                fig, ax = plt.subplots(1, 3, figsize=(15, 5))
                 model = np.zeros(stamp.shape)
                 for col in range(A.shape[1]):
                     model += A[:, col].reshape(stamp.shape) * result[col]

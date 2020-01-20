@@ -127,6 +127,9 @@ class Box:
     @staticmethod
     def from_center(center, shape):
         """Generate a box given a shape and central position
+
+        This method assumes a 2D or 3D shape, where the
+        last two dimensions are (y,x) respectively.
         """
         if len(center) == 3:
             center = center[1:]
