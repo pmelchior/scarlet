@@ -17,7 +17,7 @@ class Component(ABC):
         The spectral and spatial characteristics of this component.
     parameters: list of `~scarlet.Parameter`
     bbox: `~scarlet.Box`
-        Spatial bounding box of the morphology.
+        Hyper-spectral bounding box
     kwargs: dict
         Auxiliary information attached to this component.
     """
@@ -130,11 +130,11 @@ class Component(ABC):
             self.slices = overlap.slices_for(padded_box.shape)
 
     def check_parameters(self):
-        """Check the all parameters have finite elements
+        """Check that all parameters have finite elements
 
         Raises
         ------
-        `ArithmeticError`
+        `ArithmeticError` when non-finite elements are present
         """
         for k, p in enumerate(self._parameters):
             if not np.isfinite(p).all():
@@ -158,7 +158,7 @@ class FactorizedComponent(Component):
     shift: `~scarlet.Parameter`
         2D position for the shift of the center
     bbox: `~scarlet.Box`
-        Spatial bounding box of the morphology.
+        Hyper-spectral bounding box
     """
 
     def __init__(self, frame, sed, morph, shift=None, bbox=None, **kwargs):
@@ -281,7 +281,7 @@ class FunctionComponent(FactorizedComponent):
     func: `autograd` function
         Signature: func(*fparams, y=None, x=None) -> Image (Height, Width)
     bbox: `~scarlet.Box`
-        Spatial bounding box of the morphology.
+        Hyper-spectral bounding box
     """
 
     def __init__(self, frame, sed, fparams, func, bbox=None):
@@ -347,7 +347,7 @@ class CubeComponent(Component):
     cube: `~scarlet.Parameter`
         3D array (C, Height, Width) of the initial data cube.
     bbox: `~scarlet.Box`
-        Spatial bounding box of the morphology.
+        Hyper-spectral bounding box
     """
 
     def __init__(self, frame, cube, bbox=None):
@@ -504,11 +504,11 @@ class ComponentTree:
         return pars
 
     def check_parameters(self):
-        """Check the all parameters have finite elements
+        """Check that all parameters have finite elements
 
         Raises
         ------
-        `ArithmeticError`
+        `ArithmeticError` when non-finite elements are present
         """
         for c in self.components:
             c.check_parameters()

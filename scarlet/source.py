@@ -139,7 +139,6 @@ def trim_morphology(sky_coord, frame, morph, bg_cutoff, thresh):
 
         # find fitting bbox
         bbox = Box.from_data(morph, min_value=0)
-        boxsize = 16
         if bbox.contains(pixel_center):
             size = 2 * max(
                 (
@@ -513,7 +512,7 @@ class MultiComponentSource(ComponentTree):
         obs_idx=0,
         thresh=1.0,
         flux_percentiles=None,
-        symmetric=True,
+        symmetric=False,
         monotonic=True,
         shifting=False,
     ):
