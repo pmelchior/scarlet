@@ -152,7 +152,7 @@ def trim_morphology(sky_coord, frame, morph, bg_cutoff, thresh):
             while boxsize < size:
                 boxsize *= 2
     else:
-        msg = "No flux above threshold for source at y={0} x={1}".format(*center)
+        msg = "No flux above threshold for source at y={0} x={1}".format(*pixel_center)
         logger.warning(msg)
 
     # define bbox and trim to bbox
