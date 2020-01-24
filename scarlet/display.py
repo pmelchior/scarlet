@@ -6,17 +6,14 @@ from .component import ComponentTree
 
 def channels_to_rgb(channels):
     """Get the linear mapping of multiple channels to RGB channels
-
     The mapping created here assumes the the channels are ordered in wavelength
     direction, starting with the shortest wavelength. The mapping seeks to produce
     a relatively even weights for across all channels. It does not consider e.g.
     signal-to-noise variations across channels or human perception.
-
     Parameters
     ----------
     channels: int in range(0,7)
         Number of channels
-
     Returns
     -------
     array (3, channels) to map onto RGB
@@ -107,7 +104,6 @@ class AsinhPercentileNorm(AsinhMapping):
 
 def img_to_3channel(img, channel_map=None, fill_value=0):
     """Convert multi-band image cube into 3 RGB channels
-
     Parameters
     ----------
     img: array_like
@@ -116,7 +112,6 @@ def img_to_3channel(img, channel_map=None, fill_value=0):
         Linear mapping with dimensions (3, channels)
     fill_value: float, default=`0`
         Value to use for any masked pixels.
-
     Returns
     -------
     RGB: numpy array with dtype float
@@ -146,12 +141,10 @@ def img_to_3channel(img, channel_map=None, fill_value=0):
     return rgb
 
 
-def img_to_rgb(img, channel_map=None, fill_value=0, norm=None):
+def img_to_rgb(img, channel_map=None, fill_value=0, norm=None, mask=None):
     """Convert images to normalized RGB.
-
     If normalized values are outside of the range [0..255], they will be
     truncated such as to preserve the corresponding color.
-
     Parameters
     ----------
     img: array_like
@@ -163,7 +156,9 @@ def img_to_rgb(img, channel_map=None, fill_value=0, norm=None):
     norm: `scarlet.display.Norm`, default `None`
         Norm to use for mapping in the allowed range [0..255]. If `norm=None`,
         `scarlet.display.LinearPercentileNorm` will be used.
-
+    mask: array_like
+        A [0,1] binary mask to apply over the top of the image,
+        where pixels with mask==1 are masked out.
     Returns
     -------
     rgb: numpy array with dimensions (3, height, width) and dtype uint8
@@ -172,6 +167,8 @@ def img_to_rgb(img, channel_map=None, fill_value=0, norm=None):
     if norm is None:
         norm = LinearMapping(image=RGB)
     rgb = norm.make_rgb_image(*RGB)
+    if mask is not None:
+        rgb = np.dstack([rgb, ~mask*255])
     return rgb
 
 
@@ -187,10 +184,8 @@ def show_scene(
     figsize=None,
 ):
     """Plot all sources to recreate the scence.
-
     The functions provides a fast way of evaluating the quality of the entire model,
     i.e. the combination of all scences that seek to fit the observation.
-
     Parameters
     ----------
     sources: list of source models
@@ -207,7 +202,6 @@ def show_scene(
     label_sources: bool
         Whether each source is labeled with its numerical index in the source list
     figsize: matplotlib figsize argument
-
     Returns
     -------
     matplotlib figure
@@ -224,6 +218,12 @@ def show_scene(
     if not hasattr(ax, "__iter__"):
         ax = (ax,)
 
+    # Mask any pixels with zero weight in all bands
+    mask = np.sum(observation.weights, axis=0) == 0
+    # if there are no masked pixels, do not use a mask
+    if np.all(mask == 0):
+        mask = None
+
     panel = 0
     tree = ComponentTree(sources)
     model = tree.get_model()
@@ -235,13 +235,13 @@ def show_scene(
 
     if show_rendered:
         panel += 1
-        ax[panel].imshow(img_to_rgb(model, norm=norm, channel_map=channel_map))
+        ax[panel].imshow(img_to_rgb(model, norm=norm, channel_map=channel_map, mask=mask))
         ax[panel].set_title("Model Rendered")
 
     if show_observed:
         panel += 1
         ax[panel].imshow(
-            img_to_rgb(observation.images, norm=norm, channel_map=channel_map)
+            img_to_rgb(observation.images, norm=norm, channel_map=channel_map, mask=mask)
         )
         ax[panel].set_title("Observation")
 
@@ -249,7 +249,7 @@ def show_scene(
         panel += 1
         residual = observation.images - model
         norm_ = LinearPercentileNorm(residual)
-        ax[panel].imshow(img_to_rgb(residual, norm=norm_, channel_map=channel_map))
+        ax[panel].imshow(img_to_rgb(residual, norm=norm_, channel_map=channel_map, mask=mask))
         ax[panel].set_title("Residual")
 
     if label_sources:
@@ -264,7 +264,6 @@ def show_scene(
                 ax[panel].text(*center_[::-1], k, color="w")
 
     fig.tight_layout()
-    plt.close()
     return fig
 
 
@@ -279,9 +278,7 @@ def show_sources(
     figsize=None,
 ):
     """Plot each source individually.
-
     The functions provides an more detailed inspection of every source in the list.
-
     Parameters
     ----------
     sources: list of source models
@@ -297,7 +294,6 @@ def show_sources(
         Whether source SED is shown.
         For multi-component sources, SEDs are shown separately.
     figsize: matplotlib figsize argument
-
     Returns
     -------
     matplotlib figure
