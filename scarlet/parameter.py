@@ -25,7 +25,16 @@ class Parameter(np.ndarray):
             `step(X, it) -> float`
         where `X` is the parameter value and `it` the iteration counter
     std: array-like
-        Statistical error estimate, same shape as `array`
+        Statistical error estimate; set after optimization
+    m: array-like
+        First moment of the gradient; only set when optimized
+        See Kingma & Ba (2015) and Reddi, Kale & Kumar (2018) for details
+    v: array-like
+        Second moment of the gradient; only set when optimized
+        See Kingma & Ba (2015) and Reddi, Kale & Kumar (2018) for details
+    vhat: array-like
+        Maximal second moment of the gradient; only set when optimized
+        See Kingma & Ba (2015) and Reddi, Kale & Kumar (2018) for details
     fixed: bool
         Whether parameter is held fixed (excluded) during optimization
     """
