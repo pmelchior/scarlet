@@ -610,9 +610,12 @@ class LowResObservation(Observation):
         weights_ = self.weights[self.slices]
 
         # properly normalized likelihood
+        log_sigma = np.zeros(weights_.shape, dtype=weights_.dtype)
+        cuts = weights_ > 0
+        log_sigma[cuts] = np.log(1/weights_[cuts])
         log_norm = (
             np.prod(images_.shape) / 2 * np.log(2 * np.pi)
-            + np.sum(np.log(1 / weights_)) / 2
+            + np.sum(log_sigma) / 2
         )
 
         return log_norm + 0.5 * np.sum(weights_ * (model_ - images_) ** 2)
