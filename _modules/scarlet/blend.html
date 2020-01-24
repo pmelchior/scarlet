@@ -139,7 +139,12 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">_callback</span><span class="p">,</span> <span class="n">e_rel</span><span class="o">=</span><span class="n">e_rel</span><span class="p">,</span> <span class="n">callback</span><span class="o">=</span><span class="n">alg_kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;callback&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
         <span class="p">)</span>
 
-        <span class="n">converged</span><span class="p">,</span> <span class="n">grads</span><span class="p">,</span> <span class="n">grad2s</span> <span class="o">=</span> <span class="n">proxmin</span><span class="o">.</span><span class="n">adaprox</span><span class="p">(</span>
+        <span class="c1"># do we have a current state of the optimizer to warm start?</span>
+        <span class="n">M</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">m</span> <span class="k">if</span> <span class="n">x</span><span class="o">.</span><span class="n">m</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">X</span><span class="p">)</span>
+        <span class="n">V</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">v</span> <span class="k">if</span> <span class="n">x</span><span class="o">.</span><span class="n">v</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">X</span><span class="p">)</span>
+        <span class="n">Vhat</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">vhat</span> <span class="k">if</span> <span class="n">x</span><span class="o">.</span><span class="n">vhat</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">X</span><span class="p">)</span>
+
+        <span class="n">proxmin</span><span class="o">.</span><span class="n">adaprox</span><span class="p">(</span>
             <span class="n">X</span><span class="p">,</span>
             <span class="n">_grad</span><span class="p">,</span>
             <span class="n">_step</span><span class="p">,</span>
@@ -150,11 +155,17 @@
             <span class="n">scheme</span><span class="o">=</span><span class="n">scheme</span><span class="p">,</span>
             <span class="n">prox_max_iter</span><span class="o">=</span><span class="n">prox_max_iter</span><span class="p">,</span>
             <span class="n">callback</span><span class="o">=</span><span class="n">callback</span><span class="p">,</span>
+            <span class="n">M</span><span class="o">=</span><span class="n">M</span><span class="p">,</span>
+            <span class="n">V</span><span class="o">=</span><span class="n">V</span><span class="p">,</span>
+            <span class="n">Vhat</span><span class="o">=</span><span class="n">Vhat</span><span class="p">,</span>
             <span class="o">**</span><span class="n">alg_kwargs</span>
         <span class="p">)</span>
 
         <span class="c1"># set convergence and standard deviation from optimizer</span>
-        <span class="k">for</span> <span class="n">p</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">grad2s</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">p</span><span class="p">,</span> <span class="n">m</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">vhat</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">M</span><span class="p">,</span> <span class="n">V</span><span class="p">,</span> <span class="n">Vhat</span><span class="p">):</span>
+            <span class="n">p</span><span class="o">.</span><span class="n">m</span> <span class="o">=</span> <span class="n">m</span>
+            <span class="n">p</span><span class="o">.</span><span class="n">v</span> <span class="o">=</span> <span class="n">v</span>
+            <span class="n">p</span><span class="o">.</span><span class="n">vhat</span> <span class="o">=</span> <span class="n">vhat</span>
             <span class="n">p</span><span class="o">.</span><span class="n">std</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">ma</span><span class="o">.</span><span class="n">masked_equal</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>  <span class="c1"># this is rough estimate!</span>
 
         <span class="k">return</span> <span class="bp">self</span></div>

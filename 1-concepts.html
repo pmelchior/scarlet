@@ -441,21 +441,21 @@ Source 0: PointSource
   Parameter &#39;center&#39;, Shape (2,)
 Source 1: MultiComponentSource
   Parameter &#39;sed&#39;, Shape (5,)
-  Parameter &#39;morph&#39;, Shape (32, 32)
+  Parameter &#39;morph&#39;, Shape (64, 64)
   Parameter &#39;sed&#39;, Shape (5,)
-  Parameter &#39;morph&#39;, Shape (32, 32)
+  Parameter &#39;morph&#39;, Shape (64, 64)
 Source 2: ExtendedSource
   Parameter &#39;sed&#39;, Shape (5,)
-  Parameter &#39;morph&#39;, Shape (16, 16)
+  Parameter &#39;morph&#39;, Shape (32, 32)
 Source 3: ExtendedSource
   Parameter &#39;sed&#39;, Shape (5,)
-  Parameter &#39;morph&#39;, Shape (16, 16)
+  Parameter &#39;morph&#39;, Shape (32, 32)
 Source 4: ExtendedSource
   Parameter &#39;sed&#39;, Shape (5,)
-  Parameter &#39;morph&#39;, Shape (16, 16)
+  Parameter &#39;morph&#39;, Shape (32, 32)
 Source 5: ExtendedSource
   Parameter &#39;sed&#39;, Shape (5,)
-  Parameter &#39;morph&#39;, Shape (16, 16)
+  Parameter &#39;morph&#39;, Shape (64, 64)
 Source 6: ExtendedSource
   Parameter &#39;sed&#39;, Shape (5,)
   Parameter &#39;morph&#39;, Shape (16, 16)
@@ -480,14 +480,19 @@ Source 6: ExtendedSource
 <div class="highlight"><pre>
 {&#39;name&#39;: &#39;sed&#39;,
  &#39;prior&#39;: None,
- &#39;constraint&#39;: &lt;scarlet.constraint.PositivityConstraint at 0x7f807951ce80&gt;,
- &#39;step&#39;: functools.partial(&lt;function relative_step at 0x7f80521cd1e0&gt;, factor=0.01),
- &#39;std&#39;: masked_array(data=[0.003674157662317157, 0.001806330168619752,
-                    0.002653868403285742, 0.005313721485435963,
-                    0.02723087929189205],
+ &#39;constraint&#39;: &lt;scarlet.constraint.PositivityConstraint at 0x7f0a88429f60&gt;,
+ &#39;step&#39;: functools.partial(&lt;function relative_step at 0x7f0a61102bf8&gt;, factor=0.01),
+ &#39;std&#39;: masked_array(data=[0.004701320280147023, 0.001962473031402985,
+                    0.0029886527426883787, 0.005631726304479591,
+                    0.03401675602478617],
               mask=[False, False, False, False, False],
-        fill_value=0.0,
-             dtype=float32),
+        fill_value=0.0),
+ &#39;m&#39;: array([-38.24941725,  13.77663347,  43.19349573, -23.57068828,
+         -0.73809578]),
+ &#39;v&#39;: array([ 45243.93007264, 259652.5579422 , 111956.4417527 ,  31529.48805429,
+           864.19989588]),
+ &#39;vhat&#39;: array([ 45341.26198468, 261039.91599363, 112703.4809416 ,  31680.31045458,
+           870.42792688]),
  &#39;fixed&#39;: False}
 </pre></div></div>
 </div>
@@ -514,7 +519,7 @@ Source 6: ExtendedSource
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-&lt;matplotlib.colorbar.Colorbar at 0x7f804fb15320&gt;
+&lt;matplotlib.colorbar.Colorbar at 0x7f0a5ea53438&gt;
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">

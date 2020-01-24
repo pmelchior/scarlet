@@ -112,19 +112,13 @@
 </colgroup>
 <tbody>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">check_parameters</span></code>(self)</p></td>
-<td><p>Check the all parameters have finite elements</p></td>
+<td><p>Check that all parameters have finite elements</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">freeze</span></code>(self)</p></td>
-<td><p>Fix all parameters</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code>(self, \*parameters)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code>(self, \*parameters)</p></td>
 <td><p>Get the model for this component.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_frame</span></code>(self, frame)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_frame</span></code>(self, frame)</p></td>
 <td><p>Sets the frame for this component.</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">unfreeze</span></code>(self)</p></td>
-<td><p>Release all parameters</p></td>
 </tr>
 </tbody>
 </table>
@@ -137,7 +131,7 @@
 
 <dl class="class">
 <dt id="scarlet.source.MultiComponentSource">
-<em class="property">class </em><code class="sig-prename descclassname">scarlet.source.</code><code class="sig-name descname">MultiComponentSource</code><span class="sig-paren">(</span><em class="sig-param">frame</em>, <em class="sig-param">sky_coord</em>, <em class="sig-param">observations</em>, <em class="sig-param">obs_idx=0</em>, <em class="sig-param">thresh=1.0</em>, <em class="sig-param">flux_percentiles=None</em>, <em class="sig-param">symmetric=True</em>, <em class="sig-param">monotonic=True</em>, <em class="sig-param">shifting=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/source.html#MultiComponentSource"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.source.MultiComponentSource" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">scarlet.source.</code><code class="sig-name descname">MultiComponentSource</code><span class="sig-paren">(</span><em class="sig-param">frame</em>, <em class="sig-param">sky_coord</em>, <em class="sig-param">observations</em>, <em class="sig-param">obs_idx=0</em>, <em class="sig-param">thresh=1.0</em>, <em class="sig-param">flux_percentiles=None</em>, <em class="sig-param">symmetric=False</em>, <em class="sig-param">monotonic=True</em>, <em class="sig-param">shifting=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/source.html#MultiComponentSource"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.source.MultiComponentSource" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="scarlet.component.html#scarlet.component.ComponentTree" title="scarlet.component.ComponentTree"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.component.ComponentTree</span></code></a></p>
 <p>Extended source with multiple components layered vertically.</p>
 <p>Uses <cite>~scarlet.source.ExtendedSource</cite> to define the overall morphology,
@@ -181,19 +175,13 @@ morphology to the multi-channel image in the region of the source.</p>
 </colgroup>
 <tbody>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">check_parameters</span></code>(self)</p></td>
-<td><p>Check the all parameters have finite elements</p></td>
+<td><p>Check that all parameters have finite elements</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">freeze</span></code>(self)</p></td>
-<td><p>Fix all parameters</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code>(self, \*params)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code>(self, \*params)</p></td>
 <td><p>Get the model of this component tree</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_frame</span></code>(self, frame)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_frame</span></code>(self, frame)</p></td>
 <td><p>Set the frame for all components in the tree</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">unfreeze</span></code>(self)</p></td>
-<td><p>Release all parameters</p></td>
 </tr>
 </tbody>
 </table>
@@ -247,19 +235,13 @@ and the morphology taken from <cite>frame.psfs</cite>, centered at <cite>sky_coo
 </colgroup>
 <tbody>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">check_parameters</span></code>(self)</p></td>
-<td><p>Check the all parameters have finite elements</p></td>
+<td><p>Check that all parameters have finite elements</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">freeze</span></code>(self)</p></td>
-<td><p>Fix all parameters</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code>(self, \*parameters)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code>(self, \*parameters)</p></td>
 <td><p>Get the model for this component.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_frame</span></code>(self, frame)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_frame</span></code>(self, frame)</p></td>
 <td><p>Sets the frame for this component.</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">unfreeze</span></code>(self)</p></td>
-<td><p>Release all parameters</p></td>
 </tr>
 </tbody>
 </table>
@@ -299,19 +281,13 @@ observation.</p>
 </colgroup>
 <tbody>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">check_parameters</span></code>(self)</p></td>
-<td><p>Check the all parameters have finite elements</p></td>
+<td><p>Check that all parameters have finite elements</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">freeze</span></code>(self)</p></td>
-<td><p>Fix all parameters</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code>(self, \*parameters)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code>(self, \*parameters)</p></td>
 <td><p>Get the model for this component.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_frame</span></code>(self, frame)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_frame</span></code>(self, frame)</p></td>
 <td><p>Sets the frame for this component.</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">unfreeze</span></code>(self)</p></td>
-<td><p>Release all parameters</p></td>
 </tr>
 </tbody>
 </table>

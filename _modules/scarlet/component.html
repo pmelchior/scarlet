@@ -79,7 +79,7 @@
 <span class="sd">        The spectral and spatial characteristics of this component.</span>
 <span class="sd">    parameters: list of `~scarlet.Parameter`</span>
 <span class="sd">    bbox: `~scarlet.Box`</span>
-<span class="sd">        Spatial bounding box of the morphology.</span>
+<span class="sd">        Hyper-spectral bounding box</span>
 <span class="sd">    kwargs: dict</span>
 <span class="sd">        Auxiliary information attached to this component.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -146,24 +146,6 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">pass</span></div>
 
-<div class="viewcode-block" id="Component.freeze"><a class="viewcode-back" href="../../api/scarlet.component.html#scarlet.component.Component.freeze">[docs]</a>    <span class="k">def</span> <span class="nf">freeze</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Fix all parameters</span>
-
-<span class="sd">        The component will not provide optimizable parameters anymore.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parameters</span><span class="p">:</span>
-            <span class="n">p</span><span class="o">.</span><span class="n">fixed</span> <span class="o">=</span> <span class="kc">True</span></div>
-
-<div class="viewcode-block" id="Component.unfreeze"><a class="viewcode-back" href="../../api/scarlet.component.html#scarlet.component.Component.unfreeze">[docs]</a>    <span class="k">def</span> <span class="nf">unfreeze</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Release all parameters</span>
-
-<span class="sd">        The component will provide *all* parameters as optimizable parameters.</span>
-<span class="sd">        Calling this function overrides previous setting of `parameter.fixed` for every</span>
-<span class="sd">        parameter of this component.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parameters</span><span class="p">:</span>
-            <span class="n">p</span><span class="o">.</span><span class="n">fixed</span> <span class="o">=</span> <span class="kc">False</span></div>
-
 <div class="viewcode-block" id="Component.set_frame"><a class="viewcode-back" href="../../api/scarlet.component.html#scarlet.component.Component.set_frame">[docs]</a>    <span class="k">def</span> <span class="nf">set_frame</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Sets the frame for this component.</span>
 
@@ -210,11 +192,11 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">slices</span> <span class="o">=</span> <span class="n">overlap</span><span class="o">.</span><span class="n">slices_for</span><span class="p">(</span><span class="n">padded_box</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="Component.check_parameters"><a class="viewcode-back" href="../../api/scarlet.component.html#scarlet.component.Component.check_parameters">[docs]</a>    <span class="k">def</span> <span class="nf">check_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Check the all parameters have finite elements</span>
+        <span class="sd">&quot;&quot;&quot;Check that all parameters have finite elements</span>
 
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
-<span class="sd">        `ArithmeticError`</span>
+<span class="sd">        `ArithmeticError` when non-finite elements are present</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">p</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_parameters</span><span class="p">):</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">p</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
@@ -238,7 +220,7 @@
 <span class="sd">    shift: `~scarlet.Parameter`</span>
 <span class="sd">        2D position for the shift of the center</span>
 <span class="sd">    bbox: `~scarlet.Box`</span>
-<span class="sd">        Spatial bounding box of the morphology.</span>
+<span class="sd">        Hyper-spectral bounding box</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">sed</span><span class="p">,</span> <span class="n">morph</span><span class="p">,</span> <span class="n">shift</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
@@ -361,7 +343,7 @@
 <span class="sd">    func: `autograd` function</span>
 <span class="sd">        Signature: func(*fparams, y=None, x=None) -&gt; Image (Height, Width)</span>
 <span class="sd">    bbox: `~scarlet.Box`</span>
-<span class="sd">        Spatial bounding box of the morphology.</span>
+<span class="sd">        Hyper-spectral bounding box</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">sed</span><span class="p">,</span> <span class="n">fparams</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
@@ -427,7 +409,7 @@
 <span class="sd">    cube: `~scarlet.Parameter`</span>
 <span class="sd">        3D array (C, Height, Width) of the initial data cube.</span>
 <span class="sd">    bbox: `~scarlet.Box`</span>
-<span class="sd">        Spatial bounding box of the morphology.</span>
+<span class="sd">        Hyper-spectral bounding box</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">cube</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
@@ -584,11 +566,11 @@
         <span class="k">return</span> <span class="n">pars</span>
 
 <div class="viewcode-block" id="ComponentTree.check_parameters"><a class="viewcode-back" href="../../api/scarlet.component.html#scarlet.component.ComponentTree.check_parameters">[docs]</a>    <span class="k">def</span> <span class="nf">check_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Check the all parameters have finite elements</span>
+        <span class="sd">&quot;&quot;&quot;Check that all parameters have finite elements</span>
 
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
-<span class="sd">        `ArithmeticError`</span>
+<span class="sd">        `ArithmeticError` when non-finite elements are present</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="p">:</span>
             <span class="n">c</span><span class="o">.</span><span class="n">check_parameters</span><span class="p">()</span></div>
@@ -631,24 +613,6 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="p">:</span>
             <span class="n">c</span><span class="o">.</span><span class="n">set_frame</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span></div>
-
-<div class="viewcode-block" id="ComponentTree.freeze"><a class="viewcode-back" href="../../api/scarlet.component.html#scarlet.component.ComponentTree.freeze">[docs]</a>    <span class="k">def</span> <span class="nf">freeze</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Fix all parameters</span>
-
-<span class="sd">        The tree will not provide optimizable parameters anymore.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="p">:</span>
-            <span class="n">c</span><span class="o">.</span><span class="n">freeze</span><span class="p">()</span></div>
-
-<div class="viewcode-block" id="ComponentTree.unfreeze"><a class="viewcode-back" href="../../api/scarlet.component.html#scarlet.component.ComponentTree.unfreeze">[docs]</a>    <span class="k">def</span> <span class="nf">unfreeze</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Release all parameters</span>
-
-<span class="sd">        The tree will provide *all* parameters as optimizable parameters.</span>
-<span class="sd">        Calling this function overrides previous setting of `parameter.fixed` for every</span>
-<span class="sd">        parameter of this component tree.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="p">:</span>
-            <span class="n">c</span><span class="o">.</span><span class="n">unfreeze</span><span class="p">()</span></div>
 
     <span class="k">def</span> <span class="fm">__iadd__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">c</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Add another component or tree.</span>

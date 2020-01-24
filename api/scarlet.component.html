@@ -94,7 +94,7 @@
 <dt><strong>frame: `~scarlet.Frame`</strong></dt><dd><p>The spectral and spatial characteristics of this component.</p>
 </dd>
 <dt><strong>parameters: list of `~scarlet.Parameter`</strong></dt><dd></dd>
-<dt><strong>bbox: `~scarlet.Box`</strong></dt><dd><p>Spatial bounding box of the morphology.</p>
+<dt><strong>bbox: `~scarlet.Box`</strong></dt><dd><p>Hyper-spectral bounding box</p>
 </dd>
 <dt><strong>kwargs: dict</strong></dt><dd><p>Auxiliary information attached to this component.</p>
 </dd>
@@ -119,30 +119,24 @@
 </colgroup>
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.component.Component.check_parameters" title="scarlet.component.Component.check_parameters"><code class="xref py py-obj docutils literal notranslate"><span class="pre">check_parameters</span></code></a>(self)</p></td>
-<td><p>Check the all parameters have finite elements</p></td>
+<td><p>Check that all parameters have finite elements</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.component.Component.freeze" title="scarlet.component.Component.freeze"><code class="xref py py-obj docutils literal notranslate"><span class="pre">freeze</span></code></a>(self)</p></td>
-<td><p>Fix all parameters</p></td>
-</tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.component.Component.get_model" title="scarlet.component.Component.get_model"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code></a>(self, \*parameters)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.component.Component.get_model" title="scarlet.component.Component.get_model"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code></a>(self, \*parameters)</p></td>
 <td><p>Get the model for this component</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.component.Component.set_frame" title="scarlet.component.Component.set_frame"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_frame</span></code></a>(self, frame)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.component.Component.set_frame" title="scarlet.component.Component.set_frame"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_frame</span></code></a>(self, frame)</p></td>
 <td><p>Sets the frame for this component.</p></td>
-</tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.component.Component.unfreeze" title="scarlet.component.Component.unfreeze"><code class="xref py py-obj docutils literal notranslate"><span class="pre">unfreeze</span></code></a>(self)</p></td>
-<td><p>Release all parameters</p></td>
 </tr>
 </tbody>
 </table>
 <dl class="method">
 <dt id="scarlet.component.Component.check_parameters">
 <code class="sig-name descname">check_parameters</code><span class="sig-paren">(</span><em class="sig-param">self</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/component.html#Component.check_parameters"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.component.Component.check_parameters" title="Permalink to this definition">¶</a></dt>
-<dd><p>Check the all parameters have finite elements</p>
+<dd><p>Check that all parameters have finite elements</p>
 <dl class="field-list simple">
 <dt class="field-odd">Raises</dt>
 <dd class="field-odd"><dl class="simple">
-<dt><cite>ArithmeticError</cite></dt><dd></dd>
+<dt><cite>ArithmeticError</cite> when non-finite elements are present</dt><dd></dd>
 </dl>
 </dd>
 </dl>
@@ -152,13 +146,6 @@
 <dt id="scarlet.component.Component.coord">
 <em class="property">property </em><code class="sig-name descname">coord</code><a class="headerlink" href="#scarlet.component.Component.coord" title="Permalink to this definition">¶</a></dt>
 <dd><p>The coordinate in a <cite>~scarlet.component.ComponentTree</cite>.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="scarlet.component.Component.freeze">
-<code class="sig-name descname">freeze</code><span class="sig-paren">(</span><em class="sig-param">self</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/component.html#Component.freeze"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.component.Component.freeze" title="Permalink to this definition">¶</a></dt>
-<dd><p>Fix all parameters</p>
-<p>The component will not provide optimizable parameters anymore.</p>
 </dd></dl>
 
 <dl class="method">
@@ -216,15 +203,6 @@ subvolume it covers.</p>
 <dd><p>Shape of the image (Channel, Height, Width)</p>
 </dd></dl>
 
-<dl class="method">
-<dt id="scarlet.component.Component.unfreeze">
-<code class="sig-name descname">unfreeze</code><span class="sig-paren">(</span><em class="sig-param">self</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/component.html#Component.unfreeze"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.component.Component.unfreeze" title="Permalink to this definition">¶</a></dt>
-<dd><p>Release all parameters</p>
-<p>The component will provide <em>all</em> parameters as optimizable parameters.
-Calling this function overrides previous setting of <cite>parameter.fixed</cite> for every
-parameter of this component.</p>
-</dd></dl>
-
 </dd></dl>
 
 <dl class="class">
@@ -262,19 +240,13 @@ parameter of this component.</p>
 </colgroup>
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.component.ComponentTree.check_parameters" title="scarlet.component.ComponentTree.check_parameters"><code class="xref py py-obj docutils literal notranslate"><span class="pre">check_parameters</span></code></a>(self)</p></td>
-<td><p>Check the all parameters have finite elements</p></td>
+<td><p>Check that all parameters have finite elements</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.component.ComponentTree.freeze" title="scarlet.component.ComponentTree.freeze"><code class="xref py py-obj docutils literal notranslate"><span class="pre">freeze</span></code></a>(self)</p></td>
-<td><p>Fix all parameters</p></td>
-</tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.component.ComponentTree.get_model" title="scarlet.component.ComponentTree.get_model"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code></a>(self, \*params)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.component.ComponentTree.get_model" title="scarlet.component.ComponentTree.get_model"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code></a>(self, \*params)</p></td>
 <td><p>Get the model of this component tree</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.component.ComponentTree.set_frame" title="scarlet.component.ComponentTree.set_frame"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_frame</span></code></a>(self, frame)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.component.ComponentTree.set_frame" title="scarlet.component.ComponentTree.set_frame"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_frame</span></code></a>(self, frame)</p></td>
 <td><p>Set the frame for all components in the tree</p></td>
-</tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.component.ComponentTree.unfreeze" title="scarlet.component.ComponentTree.unfreeze"><code class="xref py py-obj docutils literal notranslate"><span class="pre">unfreeze</span></code></a>(self)</p></td>
-<td><p>Release all parameters</p></td>
 </tr>
 </tbody>
 </table>
@@ -287,11 +259,11 @@ parameter of this component.</p>
 <dl class="method">
 <dt id="scarlet.component.ComponentTree.check_parameters">
 <code class="sig-name descname">check_parameters</code><span class="sig-paren">(</span><em class="sig-param">self</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/component.html#ComponentTree.check_parameters"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.component.ComponentTree.check_parameters" title="Permalink to this definition">¶</a></dt>
-<dd><p>Check the all parameters have finite elements</p>
+<dd><p>Check that all parameters have finite elements</p>
 <dl class="field-list simple">
 <dt class="field-odd">Raises</dt>
 <dd class="field-odd"><dl class="simple">
-<dt><cite>ArithmeticError</cite></dt><dd></dd>
+<dt><cite>ArithmeticError</cite> when non-finite elements are present</dt><dd></dd>
 </dl>
 </dd>
 </dl>
@@ -318,13 +290,6 @@ encountered location</p>
 <dt id="scarlet.component.ComponentTree.frame">
 <em class="property">property </em><code class="sig-name descname">frame</code><a class="headerlink" href="#scarlet.component.ComponentTree.frame" title="Permalink to this definition">¶</a></dt>
 <dd><p>Frame of the components.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="scarlet.component.ComponentTree.freeze">
-<code class="sig-name descname">freeze</code><span class="sig-paren">(</span><em class="sig-param">self</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/component.html#ComponentTree.freeze"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.component.ComponentTree.freeze" title="Permalink to this definition">¶</a></dt>
-<dd><p>Fix all parameters</p>
-<p>The tree will not provide optimizable parameters anymore.</p>
 </dd></dl>
 
 <dl class="method">
@@ -411,15 +376,6 @@ have multiple components.</p>
 </dl>
 </dd></dl>
 
-<dl class="method">
-<dt id="scarlet.component.ComponentTree.unfreeze">
-<code class="sig-name descname">unfreeze</code><span class="sig-paren">(</span><em class="sig-param">self</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/component.html#ComponentTree.unfreeze"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.component.ComponentTree.unfreeze" title="Permalink to this definition">¶</a></dt>
-<dd><p>Release all parameters</p>
-<p>The tree will provide <em>all</em> parameters as optimizable parameters.
-Calling this function overrides previous setting of <cite>parameter.fixed</cite> for every
-parameter of this component tree.</p>
-</dd></dl>
-
 </dd></dl>
 
 <dl class="class">
@@ -435,7 +391,7 @@ parameter of this component tree.</p>
 </dd>
 <dt><strong>cube: `~scarlet.Parameter`</strong></dt><dd><p>3D array (C, Height, Width) of the initial data cube.</p>
 </dd>
-<dt><strong>bbox: `~scarlet.Box`</strong></dt><dd><p>Spatial bounding box of the morphology.</p>
+<dt><strong>bbox: `~scarlet.Box`</strong></dt><dd><p>Hyper-spectral bounding box</p>
 </dd>
 </dl>
 </dd>
@@ -459,19 +415,13 @@ parameter of this component tree.</p>
 </colgroup>
 <tbody>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">check_parameters</span></code>(self)</p></td>
-<td><p>Check the all parameters have finite elements</p></td>
+<td><p>Check that all parameters have finite elements</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">freeze</span></code>(self)</p></td>
-<td><p>Fix all parameters</p></td>
-</tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.component.CubeComponent.get_model" title="scarlet.component.CubeComponent.get_model"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code></a>(self, \*parameters)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.component.CubeComponent.get_model" title="scarlet.component.CubeComponent.get_model"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code></a>(self, \*parameters)</p></td>
 <td><p>Get the model for this component</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_frame</span></code>(self, frame)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_frame</span></code>(self, frame)</p></td>
 <td><p>Sets the frame for this component.</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">unfreeze</span></code>(self)</p></td>
-<td><p>Release all parameters</p></td>
 </tr>
 </tbody>
 </table>
@@ -518,7 +468,7 @@ parameter of this component tree.</p>
 </dd>
 <dt><strong>shift: `~scarlet.Parameter`</strong></dt><dd><p>2D position for the shift of the center</p>
 </dd>
-<dt><strong>bbox: `~scarlet.Box`</strong></dt><dd><p>Spatial bounding box of the morphology.</p>
+<dt><strong>bbox: `~scarlet.Box`</strong></dt><dd><p>Hyper-spectral bounding box</p>
 </dd>
 </dl>
 </dd>
@@ -547,19 +497,13 @@ parameter of this component tree.</p>
 </colgroup>
 <tbody>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">check_parameters</span></code>(self)</p></td>
-<td><p>Check the all parameters have finite elements</p></td>
+<td><p>Check that all parameters have finite elements</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">freeze</span></code>(self)</p></td>
-<td><p>Fix all parameters</p></td>
-</tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.component.FactorizedComponent.get_model" title="scarlet.component.FactorizedComponent.get_model"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code></a>(self, \*parameters)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.component.FactorizedComponent.get_model" title="scarlet.component.FactorizedComponent.get_model"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code></a>(self, \*parameters)</p></td>
 <td><p>Get the model for this component.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_frame</span></code>(self, frame)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_frame</span></code>(self, frame)</p></td>
 <td><p>Sets the frame for this component.</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">unfreeze</span></code>(self)</p></td>
-<td><p>Release all parameters</p></td>
 </tr>
 </tbody>
 </table>
@@ -620,7 +564,7 @@ by a functional expression.</p>
 </dd>
 <dt><strong>func: `autograd` function</strong></dt><dd><p>Signature: func(<a href="#id1"><span class="problematic" id="id2">*</span></a>fparams, y=None, x=None) -&gt; Image (Height, Width)</p>
 </dd>
-<dt><strong>bbox: `~scarlet.Box`</strong></dt><dd><p>Spatial bounding box of the morphology.</p>
+<dt><strong>bbox: `~scarlet.Box`</strong></dt><dd><p>Hyper-spectral bounding box</p>
 </dd>
 </dl>
 </dd>
@@ -649,19 +593,13 @@ by a functional expression.</p>
 </colgroup>
 <tbody>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">check_parameters</span></code>(self)</p></td>
-<td><p>Check the all parameters have finite elements</p></td>
+<td><p>Check that all parameters have finite elements</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">freeze</span></code>(self)</p></td>
-<td><p>Fix all parameters</p></td>
-</tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.component.FunctionComponent.get_model" title="scarlet.component.FunctionComponent.get_model"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code></a>(self, \*parameters)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.component.FunctionComponent.get_model" title="scarlet.component.FunctionComponent.get_model"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code></a>(self, \*parameters)</p></td>
 <td><p>Get the model for this component.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_frame</span></code>(self, frame)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_frame</span></code>(self, frame)</p></td>
 <td><p>Sets the frame for this component.</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">unfreeze</span></code>(self)</p></td>
-<td><p>Release all parameters</p></td>
 </tr>
 </tbody>
 </table>

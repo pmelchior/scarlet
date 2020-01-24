@@ -105,7 +105,16 @@ If a method is used, it needs to have the signature</p>
 </div></blockquote>
 <p>where <cite>X</cite> is the parameter value and <cite>it</cite> the iteration counter</p>
 </dd>
-<dt><strong>std: array-like</strong></dt><dd><p>Statistical error estimate, same shape as <cite>array</cite></p>
+<dt><strong>std: array-like</strong></dt><dd><p>Statistical error estimate; set after optimization</p>
+</dd>
+<dt><strong>m: array-like</strong></dt><dd><p>First moment of the gradient; only set when optimized
+See Kingma &amp; Ba (2015) and Reddi, Kale &amp; Kumar (2018) for details</p>
+</dd>
+<dt><strong>v: array-like</strong></dt><dd><p>Second moment of the gradient; only set when optimized
+See Kingma &amp; Ba (2015) and Reddi, Kale &amp; Kumar (2018) for details</p>
+</dd>
+<dt><strong>vhat: array-like</strong></dt><dd><p>Maximal second moment of the gradient; only set when optimized
+See Kingma &amp; Ba (2015) and Reddi, Kale &amp; Kumar (2018) for details</p>
 </dd>
 <dt><strong>fixed: bool</strong></dt><dd><p>Whether parameter is held fixed (excluded) during optimization</p>
 </dd>

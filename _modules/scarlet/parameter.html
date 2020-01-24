@@ -87,7 +87,16 @@
 <span class="sd">            `step(X, it) -&gt; float`</span>
 <span class="sd">        where `X` is the parameter value and `it` the iteration counter</span>
 <span class="sd">    std: array-like</span>
-<span class="sd">        Statistical error estimate, same shape as `array`</span>
+<span class="sd">        Statistical error estimate; set after optimization</span>
+<span class="sd">    m: array-like</span>
+<span class="sd">        First moment of the gradient; only set when optimized</span>
+<span class="sd">        See Kingma &amp; Ba (2015) and Reddi, Kale &amp; Kumar (2018) for details</span>
+<span class="sd">    v: array-like</span>
+<span class="sd">        Second moment of the gradient; only set when optimized</span>
+<span class="sd">        See Kingma &amp; Ba (2015) and Reddi, Kale &amp; Kumar (2018) for details</span>
+<span class="sd">    vhat: array-like</span>
+<span class="sd">        Maximal second moment of the gradient; only set when optimized</span>
+<span class="sd">        See Kingma &amp; Ba (2015) and Reddi, Kale &amp; Kumar (2018) for details</span>
 <span class="sd">    fixed: bool</span>
 <span class="sd">        Whether parameter is held fixed (excluded) during optimization</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -100,6 +109,9 @@
         <span class="n">constraint</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">step</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
         <span class="n">std</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">m</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">v</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">vhat</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">fixed</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
     <span class="p">):</span>
         <span class="n">obj</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">array</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span>
@@ -114,6 +126,9 @@
         <span class="n">obj</span><span class="o">.</span><span class="n">constraint</span> <span class="o">=</span> <span class="n">constraint</span>
         <span class="n">obj</span><span class="o">.</span><span class="n">step</span> <span class="o">=</span> <span class="n">step</span>
         <span class="n">obj</span><span class="o">.</span><span class="n">std</span> <span class="o">=</span> <span class="n">std</span>
+        <span class="n">obj</span><span class="o">.</span><span class="n">m</span> <span class="o">=</span> <span class="n">m</span>
+        <span class="n">obj</span><span class="o">.</span><span class="n">v</span> <span class="o">=</span> <span class="n">v</span>
+        <span class="n">obj</span><span class="o">.</span><span class="n">vhat</span> <span class="o">=</span> <span class="n">vhat</span>
         <span class="n">obj</span><span class="o">.</span><span class="n">fixed</span> <span class="o">=</span> <span class="n">fixed</span>
         <span class="k">return</span> <span class="n">obj</span>
 
@@ -123,8 +138,11 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="s2">&quot;unnamed&quot;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">prior</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="s2">&quot;prior&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">constraint</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="s2">&quot;constraint&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">step</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="s2">&quot;step_size&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">step</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="s2">&quot;step&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">std</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="s2">&quot;std&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">m</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="s2">&quot;m&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">v</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="s2">&quot;v&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">vhat</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="s2">&quot;vhat&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">fixed</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="s2">&quot;fixed&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">__reduce__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
