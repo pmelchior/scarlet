@@ -133,139 +133,124 @@
 <dl class="function">
 <dt id="scarlet.display.channels_to_rgb">
 <code class="sig-prename descclassname">scarlet.display.</code><code class="sig-name descname">channels_to_rgb</code><span class="sig-paren">(</span><em class="sig-param">channels</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/display.html#channels_to_rgb"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.display.channels_to_rgb" title="Permalink to this definition">¶</a></dt>
-<dd><p>Get the linear mapping of multiple channels to RGB channels</p>
-<p>The mapping created here assumes the the channels are ordered in wavelength
+<dd><p>Get the linear mapping of multiple channels to RGB channels
+The mapping created here assumes the the channels are ordered in wavelength
 direction, starting with the shortest wavelength. The mapping seeks to produce
 a relatively even weights for across all channels. It does not consider e.g.
-signal-to-noise variations across channels or human perception.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><dl class="simple">
-<dt><strong>channels: int in range(0,7)</strong></dt><dd><p>Number of channels</p>
-</dd>
-</dl>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><dl class="simple">
-<dt>array (3, channels) to map onto RGB</dt><dd></dd>
-</dl>
-</dd>
-</dl>
+signal-to-noise variations across channels or human perception.
+Parameters
+———-
+channels: int in range(0,7)</p>
+<blockquote>
+<div><p>Number of channels</p>
+</div></blockquote>
+<p>array (3, channels) to map onto RGB</p>
 </dd></dl>
 
 <dl class="function">
 <dt id="scarlet.display.img_to_3channel">
 <code class="sig-prename descclassname">scarlet.display.</code><code class="sig-name descname">img_to_3channel</code><span class="sig-paren">(</span><em class="sig-param">img</em>, <em class="sig-param">channel_map=None</em>, <em class="sig-param">fill_value=0</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/display.html#img_to_3channel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.display.img_to_3channel" title="Permalink to this definition">¶</a></dt>
-<dd><p>Convert multi-band image cube into 3 RGB channels</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><dl class="simple">
-<dt><strong>img: array_like</strong></dt><dd><p>This should be an array with dimensions (channels, height, width).</p>
+<dd><p>Convert multi-band image cube into 3 RGB channels
+Parameters
+———-
+img: array_like</p>
+<blockquote>
+<div><p>This should be an array with dimensions (channels, height, width).</p>
+</div></blockquote>
+<dl class="simple">
+<dt>channel_map: array_like</dt><dd><p>Linear mapping with dimensions (3, channels)</p>
 </dd>
-<dt><strong>channel_map: array_like</strong></dt><dd><p>Linear mapping with dimensions (3, channels)</p>
-</dd>
-<dt><strong>fill_value: float, default=`0`</strong></dt><dd><p>Value to use for any masked pixels.</p>
-</dd>
-</dl>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><dl class="simple">
-<dt>RGB: numpy array with dtype float</dt><dd></dd>
-</dl>
+<dt>fill_value: float, default=`0`</dt><dd><p>Value to use for any masked pixels.</p>
 </dd>
 </dl>
+<p>RGB: numpy array with dtype float</p>
 </dd></dl>
 
 <dl class="function">
 <dt id="scarlet.display.img_to_rgb">
-<code class="sig-prename descclassname">scarlet.display.</code><code class="sig-name descname">img_to_rgb</code><span class="sig-paren">(</span><em class="sig-param">img</em>, <em class="sig-param">channel_map=None</em>, <em class="sig-param">fill_value=0</em>, <em class="sig-param">norm=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/display.html#img_to_rgb"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.display.img_to_rgb" title="Permalink to this definition">¶</a></dt>
-<dd><p>Convert images to normalized RGB.</p>
-<p>If normalized values are outside of the range [0..255], they will be
-truncated such as to preserve the corresponding color.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><dl class="simple">
-<dt><strong>img: array_like</strong></dt><dd><p>This should be an array with dimensions (channels, height, width).</p>
+<code class="sig-prename descclassname">scarlet.display.</code><code class="sig-name descname">img_to_rgb</code><span class="sig-paren">(</span><em class="sig-param">img</em>, <em class="sig-param">channel_map=None</em>, <em class="sig-param">fill_value=0</em>, <em class="sig-param">norm=None</em>, <em class="sig-param">mask=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/display.html#img_to_rgb"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.display.img_to_rgb" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert images to normalized RGB.
+If normalized values are outside of the range [0..255], they will be
+truncated such as to preserve the corresponding color.
+Parameters
+———-
+img: array_like</p>
+<blockquote>
+<div><p>This should be an array with dimensions (channels, height, width).</p>
+</div></blockquote>
+<dl class="simple">
+<dt>channel_map: array_like</dt><dd><p>Linear mapping with dimensions (3, channels)</p>
 </dd>
-<dt><strong>channel_map: array_like</strong></dt><dd><p>Linear mapping with dimensions (3, channels)</p>
+<dt>fill_value: float, default=`0`</dt><dd><p>Value to use for any masked pixels.</p>
 </dd>
-<dt><strong>fill_value: float, default=`0`</strong></dt><dd><p>Value to use for any masked pixels.</p>
-</dd>
-<dt><strong>norm: `scarlet.display.Norm`, default `None`</strong></dt><dd><p>Norm to use for mapping in the allowed range [0..255]. If <cite>norm=None</cite>,
+<dt>norm: <cite>scarlet.display.Norm</cite>, default <cite>None</cite></dt><dd><p>Norm to use for mapping in the allowed range [0..255]. If <cite>norm=None</cite>,
 <cite>scarlet.display.LinearPercentileNorm</cite> will be used.</p>
 </dd>
-</dl>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><dl class="simple">
-<dt>rgb: numpy array with dimensions (3, height, width) and dtype uint8</dt><dd></dd>
-</dl>
+<dt>mask: array_like</dt><dd><p>A [0,1] binary mask to apply over the top of the image,
+where pixels with mask==1 are masked out.</p>
 </dd>
 </dl>
+<p>rgb: numpy array with dimensions (3, height, width) and dtype uint8</p>
 </dd></dl>
 
 <dl class="function">
 <dt id="scarlet.display.show_scene">
 <code class="sig-prename descclassname">scarlet.display.</code><code class="sig-name descname">show_scene</code><span class="sig-paren">(</span><em class="sig-param">sources</em>, <em class="sig-param">observation=None</em>, <em class="sig-param">norm=None</em>, <em class="sig-param">channel_map=None</em>, <em class="sig-param">show_observed=False</em>, <em class="sig-param">show_rendered=False</em>, <em class="sig-param">show_residual=False</em>, <em class="sig-param">label_sources=True</em>, <em class="sig-param">figsize=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/display.html#show_scene"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.display.show_scene" title="Permalink to this definition">¶</a></dt>
-<dd><p>Plot all sources to recreate the scence.</p>
-<p>The functions provides a fast way of evaluating the quality of the entire model,
-i.e. the combination of all scences that seek to fit the observation.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><dl class="simple">
-<dt><strong>sources: list of source models</strong></dt><dd></dd>
-<dt><strong>observation: `~scarlet.Observation`</strong></dt><dd></dd>
-<dt><strong>norm: norm to compress image intensity to the range [0,255]</strong></dt><dd></dd>
-<dt><strong>channel_map: array_like</strong></dt><dd><p>Linear mapping with dimensions (3, channels)</p>
+<dd><p>Plot all sources to recreate the scence.
+The functions provides a fast way of evaluating the quality of the entire model,
+i.e. the combination of all scences that seek to fit the observation.
+Parameters
+———-
+sources: list of source models
+observation: <cite>~scarlet.Observation</cite>
+norm: norm to compress image intensity to the range [0,255]
+channel_map: array_like</p>
+<blockquote>
+<div><p>Linear mapping with dimensions (3, channels)</p>
+</div></blockquote>
+<dl class="simple">
+<dt>show_observed: bool</dt><dd><p>Whether the observation is shown</p>
 </dd>
-<dt><strong>show_observed: bool</strong></dt><dd><p>Whether the observation is shown</p>
+<dt>show_rendered: bool</dt><dd><p>Whether the model, rendered to match the observation, is shown</p>
 </dd>
-<dt><strong>show_rendered: bool</strong></dt><dd><p>Whether the model, rendered to match the observation, is shown</p>
+<dt>show_residual: bool</dt><dd><p>Whether the residuals between rendered model and observation is shown</p>
 </dd>
-<dt><strong>show_residual: bool</strong></dt><dd><p>Whether the residuals between rendered model and observation is shown</p>
-</dd>
-<dt><strong>label_sources: bool</strong></dt><dd><p>Whether each source is labeled with its numerical index in the source list</p>
-</dd>
-<dt><strong>figsize: matplotlib figsize argument</strong></dt><dd></dd>
-</dl>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><dl class="simple">
-<dt>matplotlib figure</dt><dd></dd>
-</dl>
+<dt>label_sources: bool</dt><dd><p>Whether each source is labeled with its numerical index in the source list</p>
 </dd>
 </dl>
+<p>figsize: matplotlib figsize argument
+Returns
+——-
+matplotlib figure</p>
 </dd></dl>
 
 <dl class="function">
 <dt id="scarlet.display.show_sources">
 <code class="sig-prename descclassname">scarlet.display.</code><code class="sig-name descname">show_sources</code><span class="sig-paren">(</span><em class="sig-param">sources</em>, <em class="sig-param">observation=None</em>, <em class="sig-param">norm=None</em>, <em class="sig-param">channel_map=None</em>, <em class="sig-param">show_observed=False</em>, <em class="sig-param">show_rendered=False</em>, <em class="sig-param">show_sed=True</em>, <em class="sig-param">figsize=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/display.html#show_sources"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.display.show_sources" title="Permalink to this definition">¶</a></dt>
-<dd><p>Plot each source individually.</p>
-<p>The functions provides an more detailed inspection of every source in the list.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><dl class="simple">
-<dt><strong>sources: list of source models</strong></dt><dd></dd>
-<dt><strong>observation: `~scarlet.Observation`</strong></dt><dd></dd>
-<dt><strong>norm: norm to compress image intensity to the range [0,255]</strong></dt><dd></dd>
-<dt><strong>channel_map: array_like</strong></dt><dd><p>Linear mapping with dimensions (3, channels)</p>
+<dd><p>Plot each source individually.
+The functions provides an more detailed inspection of every source in the list.
+Parameters
+———-
+sources: list of source models
+observation: <cite>~scarlet.Observation</cite>
+norm: norm to compress image intensity to the range [0,255]
+channel_map: array_like</p>
+<blockquote>
+<div><p>Linear mapping with dimensions (3, channels)</p>
+</div></blockquote>
+<dl class="simple">
+<dt>show_observed: bool</dt><dd><p>Whether the observation is shown</p>
 </dd>
-<dt><strong>show_observed: bool</strong></dt><dd><p>Whether the observation is shown</p>
+<dt>show_rendered: bool</dt><dd><p>Whether the model, rendered to match the observation, is shown</p>
 </dd>
-<dt><strong>show_rendered: bool</strong></dt><dd><p>Whether the model, rendered to match the observation, is shown</p>
-</dd>
-<dt><strong>show_sed: bool</strong></dt><dd><p>Whether source SED is shown.
+<dt>show_sed: bool</dt><dd><p>Whether source SED is shown.
 For multi-component sources, SEDs are shown separately.</p>
 </dd>
-<dt><strong>figsize: matplotlib figsize argument</strong></dt><dd></dd>
 </dl>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><dl class="simple">
-<dt>matplotlib figure</dt><dd></dd>
-</dl>
-</dd>
-</dl>
+<p>figsize: matplotlib figsize argument
+Returns
+——-
+matplotlib figure</p>
 </dd></dl>
 
 </div>
