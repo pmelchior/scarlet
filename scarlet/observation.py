@@ -167,7 +167,7 @@ class Observation:
         # NOTE: this assumes that all pixels are used in likelihood!
         log_sigma = np.zeros(self.weights.shape, dtype=self.weights.dtype)
         cuts = self.weights > 0
-        log_sigma[cuts] = 1/self.weights[cuts]
+        log_sigma[cuts] = np.log(1/self.weights[cuts])
         log_norm = (
             np.prod(images_.shape) / 2 * np.log(2 * np.pi)
             + np.sum(log_sigma) / 2
