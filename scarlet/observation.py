@@ -165,9 +165,12 @@ class Observation:
         # with inverse variance weights: sigma^2 = 1/weight
         # full likelihood is sum over all data samples: pixel in images
         # NOTE: this assumes that all pixels are used in likelihood!
+        log_sigma = np.zeros(self.weights.shape, dtype=self.weights.dtype)
+        cuts = self.weights > 0
+        log_sigma[cuts] = 1/self.weights[cuts]
         log_norm = (
             np.prod(images_.shape) / 2 * np.log(2 * np.pi)
-            + np.sum(np.log(1 / self.weights)) / 2
+            + np.sum(log_sigma) / 2
         )
 
         return log_norm + np.sum(weights_ * (model_ - images_) ** 2) / 2
