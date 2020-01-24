@@ -219,10 +219,11 @@ def show_scene(
         ax = (ax,)
 
     # Mask any pixels with zero weight in all bands
-    mask = np.sum(observation.weights, axis=0) == 0
-    # if there are no masked pixels, do not use a mask
-    if np.all(mask == 0):
-        mask = None
+    if observation is not None:
+        mask = np.sum(observation.weights, axis=0) == 0
+        # if there are no masked pixels, do not use a mask
+        if np.all(mask == 0):
+            mask = None
 
     panel = 0
     tree = ComponentTree(sources)
