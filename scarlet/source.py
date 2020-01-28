@@ -272,7 +272,7 @@ def init_multicomponent_source(
     for k in range(K):
         if np.all(morphs[k] <= 0):
             msg = "Zero or negative morphology for component {} at y={}, x={}"
-            logger.warning(msg.format(k, *skycoords))
+            logger.warning(msg.format(k, *sky_coords))
         morphs[k] /= morphs[k].max()
 
     # optimal SEDs given the morphologies, assuming img only has that source

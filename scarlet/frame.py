@@ -2,6 +2,7 @@ import numpy as np
 from .psf import PSF
 from .bbox import Box
 from . import interpolation
+from . import resampling
 import logging
 
 logger = logging.getLogger("scarlet.frame")
@@ -76,7 +77,6 @@ class Frame(Box):
         meaning the data frame and model frame are the same,
         then this just returns `sky_coord`.
         """
-        print(*sky_coord)
         if self.wcs is not None:
             if self.wcs.naxis == 3:
                 coord = self.wcs.wcs_world2pix(*sky_coord, 0, 0)
@@ -132,68 +132,101 @@ class Frame(Box):
             or sets the frame to incorporate only the pixels vovered by all the observations ('intersection').
             Default is 'union'.
         """
-
+        # Array of pixel sizes for each observation
+        pix_tab = []
+        # Array of psf size for each psf of each observation
+        fat_psf_size = None
+        small_psf_size = None
         channels = []
-        #Check that pixels are square and create frame channels
-        for obs in observations:
-            channels = channels + obs.channels
+        #Create frame channels and find smallest and largest psf
+        for c, obs in enumerate(observations):
+            #Concatenate all channels
+            channels = channels + obs.frame.channels
+            #concatenate all pixel sizes
+            pix_tab.append(interpolation.get_pixel_size(interpolation.get_affine(obs.frame.wcs)))
+            h_temp = interpolation.get_pixel_size(interpolation.get_affine(obs.frame.wcs))
+            # Looking for the sharpest and the fatest psf
+            for psf in obs.frame._psfs.image:
+                psf_size = get_psf_size(psf)*h_temp
+                if (fat_psf_size is None) or (psf_size > fat_psf_size):
+                    fat_psf_size = psf_size
+                if (obs_id is None) or (c == obs_id):
+                    if (target_psf is None) and ((small_psf_size is None) or (psf_size < small_psf_size)):
+                        target_psf_temp = PSF(psf[np.newaxis, :, :])
+                        psf_h = h_temp
 
-        # Find target psf and wcs if not set by arguments
+
+        # Find a reference observation. Either provided by obs_id or as the observation with the smallest pixel
         if obs_id is None:
-            if target_wcs is None:
-                h = None
-                for obs in observations:
-                    # Finds the smallest pixel scale
-                    pix = interpolation.get_pixel_size(interpolation.get_affine(obs.wcs))
-                    if (h is None) or (pix < h):
-                        target_wcs = obs.wcs
-                        h = pix
-
-            if target_psf is None:
-                psf_size = None
-                for obs in observations:
-                    # Finds the sharpest PSF (might not be on the sharpest grid though)
-                    for psf in obs.psfs.image:
-                        size = get_psf_size(psf)*interpolation.get_pixel_size(interpolation.get_affine(obs.wcs))
-                        if (psf_size is None) or size < psf_size:
-                            psf_size = size
-                            psf_h = interpolation.get_pixel_size(interpolation.get_affine(obs.wcs))
-                            target_psf = PSF(psf[np.newaxis, :, :])
-                            print('zizi', obs.channels, size)
-                if psf_h > interpolation.get_pixel_size(interpolation.get_affine(target_wcs)):
-                    coord_lr = [range(target_psf.shape[-2]), range(target_psf.shape[-1])]
-                    ny_hr, nx_hr = target_psf.shape[-2]*psf_h/h, target_psf.shape[-1]*psf_h/h
-                    if (ny_hr % 2) == 0:
-                        ny_hr += 1
-                    if (nx_hr % 2) == 0:
-                        nx_hr += 1
-                    coord_hr = [range(ny_hr), range(nx_hr)]
-                    angle, h = interpolation.get_angles(target_wcs, obs.wcs)
-                    target_psf = PSF(interpolation.sinc_interp(target_psf, coord_hr, coord_lr, angle = angle))
-                    print('zezette')
-
+            obs_ref = observations[int((pix_tab == np.min(pix_tab))[0])]
         else:
-            # Sets frame properties from obs_id using sharpest psf in observation `obs_id`
-            assert obs_id in range(len(observations)), '`obs_id` should be an integer between 0 and `len(observations)`'
-            target_obs = observations[obs_id]
-            target_wcs = target_obs.wcs.cdelt[-1]
-            for psf in target_obs.psfs.image:
-                size = get_psf_size(psf)
-                if (psf_size is None) or (size < psf_size):
-                    psf_size = size
-                    target_psf = PSF(psf[np.newaxis, :, :])
+            #Frame defined from obs_id
+            obs_ref = observations[obs_id]
+        # Reference wcs
+        if target_wcs is None:
+            target_wcs = obs_ref.frame.wcs
+        # Scale of the smallest pixel
+        h = interpolation.get_pixel_size(interpolation.get_affine(target_wcs))
+
+        # If needed and psf is not provided: interpolate psf to smallest pixel
+        if target_psf is None:
+            # If the reference PSF is not at the highest pixel resolution, make it!
+            if psf_h > interpolation.get_pixel_size(interpolation.get_affine(target_wcs)):
+                coord_lr = [range(target_psf_temp.shape[-2]), range(target_psf_temp.shape[-1])]
+                ny_hr, nx_hr = target_psf_temp.shape[-2] * psf_h / h, target_psf_temp.shape[-1] * psf_h / h
+                if (ny_hr % 2) == 0:
+                    ny_hr += 1
+                if (nx_hr % 2) == 0:
+                    nx_hr += 1
+                coord_hr = [range(ny_hr), range(nx_hr)]
+                angle, h = interpolation.get_angles(target_wcs, obs.wcs)
+                target_psf = PSF(interpolation.sinc_interp(target_psf_temp, coord_hr, coord_lr, angle=angle))
 
         # Matching observations together so as to create a common frame
-        fat_psf = None
+        obs_coords = []
+        y_min, x_min, y_max, x_max = 0, 0, 0, 0
         for c, obs in enumerate(observations):
-            if (obs.wcs is not target_wcs) and (type(obs) is not 'LowResObservation'):
+            # Make observations with a different wcs LowResObservation
+            if (obs.frame.wcs is not target_wcs) and (type(obs) is not 'LowResObservation'):
                 observations[c] = obs.make_LowRes()
 
+            # Is the angle larger than machine precision?
+            obs_coord = resampling.get_to_common_frame(obs, target_wcs)
+            if np.min(obs_coord[0]) < y_min:
+                y_min = np.min(obs_coord[0])
+            if np.min(obs_coord[1]) < x_min:
+                x_min = np.min(obs_coord[1])
+            if np.max(obs_coord[0]) > y_max:
+                y_max = np.max(obs_coord[0])
+            if np.max(obs_coord[1]) > x_max:
+                x_max = np.max(obs_coord[1])
 
+            obs_coords.append(obs_coord)
 
-        shape = (6,100,200)
-        print(target_wcs, target_psf.shape, channels)
-        return Frame(shape, wcs=target_wcs, psfs=target_psf, channels=channels)
+        if fat_psf_size % 2 == 0:
+            fat_psf_size += 1
+        fat_psf_size.astype(int)
+        ny = (y_max - y_min + 1 + fat_psf_size).astype(int)
+        nx = (x_max - x_min + 1 + fat_psf_size).astype(int)
+
+        footprint = np.zeros((ny,nx))
+        for coord in obs_coords:
+            footprint[(coord[0] - y_min+ fat_psf_size/2).astype(int),
+                      (coord[1] - x_min+ fat_psf_size/2).astype(int)] += 1
+
+        if coverage is 'union':
+            coord_frame = np.where(footprint != 0)
+
+        elif coverage is 'intersection':
+            coord_frame = np.where(footprint == np.max(footprint))
+
+        frame_shape =(len(channels), ny, nx)
+        frame = Frame(frame_shape, wcs=target_wcs, psfs=target_psf, channels=channels)
+        # Match observations to this frame
+        for obs in observations:
+            obs.match(frame, coord_frame)
+
+        return
 
 
 def get_boundaries(frame_wcs, observation):

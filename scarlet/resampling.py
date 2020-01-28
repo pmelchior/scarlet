@@ -1,6 +1,46 @@
 import numpy as np
 
 
+def get_to_common_frame(obs, frame_wcs):
+    """ Matches an `Observation`'s coordinates to a `Frame`'s wcs
+
+    Parameters
+    ----------
+    obs: `Observation`
+        An observation instance for which we want to know the coordinates in the frame of `frame_wcs`
+    frame_wcs: `WCS`
+        a wcs that gives the mapping between pixel coordinates and sky coordinates for a given frame
+    Returns
+    -------
+        coord: `array`
+            Coordinates of the observations's pixels in the frame of the provided wcs
+    """
+    c, ny, nx = obs.frame.shape
+    #Positions of the observation's pixels
+    y, x = np.indices((ny, nx))
+    y = y.flatten()
+    x = x.flatten()
+
+    # Ra-Dec positions of the observation's pixels
+    if np.size(obs.frame.wcs.array_shape) == 2:
+        ra, dec = obs.frame.wcs.all_pix2world(x, y, 0, ra_dec_order=True)
+    elif np.size(obs.frame.wcs.array_shape) == 3:
+        ra, dec = obs.frame.wcs.all_pix2world(x, y, 0, 0, ra_dec_order=True)
+
+    # Positions of Observation's pixel in the frame of the wcs
+    if np.size(frame_wcs.array_shape) == 2:
+        X, Y = frame_wcs.all_world2pix(ra, dec, 0, ra_dec_order=True)
+    elif np.size(frame_wcs.array_shape) == 3:
+        X, Y, _ = frame_wcs.all_world2pix(ra, dec, 0, 0, ra_dec_order=True)
+
+    coord = (Y,X)
+    return coord
+
+
+
+
+
+
 def match_patches(shape_hr, shape_lr, wcs_hr, wcs_lr, isrot = True, coverage  = 'union'):
     """Matches datasets at different resolutions
 
@@ -32,24 +72,15 @@ def match_patches(shape_hr, shape_lr, wcs_hr, wcs_lr, isrot = True, coverage  = 
     ], "coverage should be either intersection or union."
 
 
-    if np.size(shape_hr) == 3:
-        B_hr, Ny_hr, Nx_hr = shape_hr
-    elif np.size(shape_hr) == 2:
-        Ny_hr, Nx_hr = shape_hr
-    else:
-        raise ValueError("Wrong dimensions for reference image")
 
-    if np.size(shape_lr) == 3:
-        B_lr, Ny_lr, Nx_lr = shape_lr
-    elif np.size(shape_lr) == 2:
-        Ny_lr, Nx_lr = shape_lr
-    else:
-        raise ValueError("Wrong dimensions for low resolution image")
+    B_hr, ny_hr, nx_hr = shape_hr
+
+    B_lr, Ny_lr, Nx_lr = shape_lr
 
     assert wcs_hr != None
     assert wcs_lr != None
 
-    y_hr, x_hr = np.array(range(Ny_hr)), np.array(range(Nx_hr))
+    y_hr, x_hr = np.array(range(ny_hr)), np.array(range(nx_hr))
 
     # Capital letters are for coordinates of low-resolution pixels
     if isrot:
@@ -88,17 +119,13 @@ def match_patches(shape_hr, shape_lr, wcs_hr, wcs_lr, isrot = True, coverage  = 
         x_lr, y_lr, _ = wcs_lr.all_world2pix(ra_hr, dec_hr, 0, 0, ra_dec_order=True)
 
     # mask of low resolution pixels at high resolution in the intersection:
-    over_lr = (X_hr >= 0) * (X_hr < Nx_hr + 1) * (Y_hr >= 0) * (Y_hr < Ny_hr + 1)
+    over_lr = (X_hr >= 0) * (X_hr < nx_hr + 1) * (Y_hr >= 0) * (Y_hr < ny_hr + 1)
     # mask of high resolution pixels at low resolution in the intersection (needed for psf matching)
     over_hr = (x_lr >= 0) * (x_lr < Nx_lr + 1) * (y_lr >= 0) * (y_lr < Ny_lr + 1)
 
     # pixels of the high resolution frame in the intersection in high resolution frame (needed for PSF only)
     coordhr_hr = (y_hr[(over_hr == 1)], x_hr[(over_hr == 1)])
 
-    import matplotlib.pyplot as plt
-    plt.plot(x_lr, y_lr, 'ob')
-    plt.plot(X_lr, Y_lr, 'or')
-    plt.show()
 
     class SourceInitError(Exception):
         """
@@ -128,9 +155,5 @@ def match_patches(shape_hr, shape_lr, wcs_hr, wcs_lr, isrot = True, coverage  = 
 
         # Coordinates of low resolution pixels at high resolution:
         coordlr_hr = (Y_hr, X_hr)
-    import matplotlib.pyplot as plt
-    plt.plot(coordlr_hr[0],coordlr_hr[1], 'ob')
-    plt.plot(coordhr_hr[0], coordhr_hr[1], 'or')
-    plt.show()
 
     return coordlr_lr, coordlr_hr, coordhr_hr

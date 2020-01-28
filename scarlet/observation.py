@@ -66,15 +66,6 @@ class Observation:
         ), "Weights needs to have same shape as images"
 
         self._padding = padding
-        self.channels = channels
-        self.wcs = wcs
-        try:
-            assert np.size(psfs.shape) is 3, 'psfs should given as cubes of images.'
-        except AssertionError:
-            assert np.size(psfs.shape) is 2, 'psfs should be given as cubes of images or 2d images.'
-            psfs = psfs[np.newaxis, :, :]
-
-        self.psfs = psfs
 
     def match(self, model_frame):
         """Match the frame of `Blend` to the frame of this observation.
@@ -186,10 +177,10 @@ class Observation:
 
         """
         return LowResObservation(self.images,
-                                 psfs = self.psfs,
+                                 psfs = self.frame._psfs,
                                  weights = self.weights,
-                                 wcs = self.wcs,
-                                 channels= self.channels)
+                                 wcs = self.frame.wcs,
+                                 channels= self.frame.channels)
 
 
 class LowResObservation(Observation):
@@ -369,7 +360,15 @@ class LowResObservation(Observation):
         op = fft.Fourier.from_fft(imgs_shiftfft, fft_shape, inv_shape, fft_axes).image
         return op
 
-    def match(self, model_frame, coverage = 'union'):
+    def match(self, model_frame, coord):
+        """ matches the observation to a frame
+
+        Parameters
+        ----------
+        model_frame: `Frame`
+
+
+        """
 
         if self.frame.dtype != model_frame.dtype:
             self.images = self.images.copy().astype(model_frame.dtype)
