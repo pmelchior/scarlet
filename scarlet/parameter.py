@@ -24,10 +24,17 @@ class Parameter(np.ndarray):
         If a method is used, it needs to have the signature
             `step(X, it) -> float`
         where `X` is the parameter value and `it` the iteration counter
-    converged: bool
-        Whether the parameter converged during optimimzation
     std: array-like
-        Statistical error estimate, same shape as `array`
+        Statistical error estimate; set after optimization
+    m: array-like
+        First moment of the gradient; only set when optimized
+        See Kingma & Ba (2015) and Reddi, Kale & Kumar (2018) for details
+    v: array-like
+        Second moment of the gradient; only set when optimized
+        See Kingma & Ba (2015) and Reddi, Kale & Kumar (2018) for details
+    vhat: array-like
+        Maximal second moment of the gradient; only set when optimized
+        See Kingma & Ba (2015) and Reddi, Kale & Kumar (2018) for details
     fixed: bool
         Whether parameter is held fixed (excluded) during optimization
     """
@@ -39,8 +46,10 @@ class Parameter(np.ndarray):
         prior=None,
         constraint=None,
         step=0,
-        converged=False,
         std=None,
+        m=None,
+        v=None,
+        vhat=None,
         fixed=False,
     ):
         obj = np.asarray(array, dtype=array.dtype).view(cls)
@@ -54,8 +63,10 @@ class Parameter(np.ndarray):
             )
         obj.constraint = constraint
         obj.step = step
-        obj.converged = converged
         obj.std = std
+        obj.m = m
+        obj.v = v
+        obj.vhat = vhat
         obj.fixed = fixed
         return obj
 
@@ -65,9 +76,11 @@ class Parameter(np.ndarray):
         self.name = getattr(obj, "name", "unnamed")
         self.prior = getattr(obj, "prior", None)
         self.constraint = getattr(obj, "constraint", None)
-        self.step = getattr(obj, "step_size", 0)
-        self.converged = getattr(obj, "converged", False)
+        self.step = getattr(obj, "step", 0)
         self.std = getattr(obj, "std", None)
+        self.m = getattr(obj, "m", None)
+        self.v = getattr(obj, "v", None)
+        self.vhat = getattr(obj, "vhat", None)
         self.fixed = getattr(obj, "fixed", False)
 
     def __reduce__(self):

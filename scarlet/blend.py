@@ -6,12 +6,6 @@ from functools import partial
 
 from .component import ComponentTree
 
-# silence proxmin warning about non-convergence
-import logging
-
-proxmin_logger = logging.getLogger("proxmin")
-proxmin_logger.setLevel(logging.ERROR)
-
 
 class Blend(ComponentTree):
     """The blended scene
@@ -47,23 +41,15 @@ class Blend(ComponentTree):
         self.observations = observations
         self.loss = []
 
-    def fit(self, max_iter=200, e_rel=1e-3, f_rel=1e-4, **alg_kwargs):
+    def fit(self, max_iter=200, e_rel=1e-3, **alg_kwargs):
         """Fit the model for each source to the data
-
-        Note that two convergence criteria are specified:
-
-        * `e_rel` for the change of the norm of each parameter between two iterations
-        * `f_rel` for the change of the loss function
-
 
         Parameters
         ----------
         max_iter: int
             Maximum number of iterations if the algorithm doesn't converge
         e_rel: float
-            Relative error for parameter convergence
-        f_rel: float
-            Relative error for functional convergence of the loss
+            Relative error for convergence of the loss function
         alg_kwargs: dict
             Keywords for the `proxmin.adaprox` optimizer
         """
@@ -88,25 +74,36 @@ class Blend(ComponentTree):
         prox_max_iter = alg_kwargs.pop("prox_max_iter", 10)
         eps = alg_kwargs.pop("eps", 1e-8)
         callback = partial(
-            self._callback, f_rel=f_rel, callback=alg_kwargs.pop("callback", None)
+            self._callback, e_rel=e_rel, callback=alg_kwargs.pop("callback", None)
         )
 
-        converged, grads, grad2s = proxmin.adaprox(
+        # do we have a current state of the optimizer to warm start?
+        M = tuple(x.m if x.m is not None else np.zeros(x.shape) for x in X)
+        V = tuple(x.v if x.v is not None else np.zeros(x.shape) for x in X)
+        Vhat = tuple(x.vhat if x.vhat is not None else np.zeros(x.shape) for x in X)
+
+        proxmin.adaprox(
             X,
             _grad,
             _step,
             prox=_prox,
             max_iter=max_iter,
             e_rel=e_rel,
+            check_convergence=False,
             scheme=scheme,
             prox_max_iter=prox_max_iter,
             callback=callback,
+            M=M,
+            V=V,
+            Vhat=Vhat,
             **alg_kwargs
         )
 
         # set convergence and standard deviation from optimizer
-        for p, c, g, v in zip(X, converged, grads, grad2s):
-            p.converged = c
+        for p, m, v, vhat in zip(X, M, V, Vhat):
+            p.m = m
+            p.v = v
+            p.vhat = vhat
             p.std = 1 / np.sqrt(ma.masked_equal(v, 0))  # this is rough estimate!
 
         return self
@@ -127,12 +124,12 @@ class Blend(ComponentTree):
         self.loss.append(total_loss._value)
         return total_loss
 
-    def _callback(self, *parameters, it=None, f_rel=1e-3, callback=None):
+    def _callback(self, *parameters, it=None, e_rel=1e-3, callback=None):
 
         # raise ArithmeticError if some of the parameters have become inf/nan
         self.check_parameters()
 
-        if it > 1 and abs(self.loss[-2] - self.loss[-1]) < f_rel * np.abs(
+        if it > 1 and abs(self.loss[-2] - self.loss[-1]) < e_rel * np.abs(
             self.loss[-1]
         ):
             raise StopIteration("scarlet.Blend.fit() converged")
