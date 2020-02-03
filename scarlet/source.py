@@ -407,6 +407,7 @@ class ExtendedSource(FactorizedComponent):
         symmetric=False,
         monotonic=True,
         shifting=False,
+        prior=None
     ):
         """Extended source intialized to match a set of observations
 
@@ -468,6 +469,9 @@ class ExtendedSource(FactorizedComponent):
         if symmetric:
             # have 2-fold rotation symmetry around their center ...
             constraints.append(SymmetryConstraint())
+
+        if prior is not None:
+            constraints.append(prior)
 
         constraints += [
             # ... and are positive emitters
