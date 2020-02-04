@@ -2,7 +2,6 @@ import numpy as np
 from .psf import PSF
 from .bbox import Box
 from . import interpolation
-from . import resampling
 import logging
 
 logger = logging.getLogger("scarlet.frame")
@@ -150,15 +149,16 @@ class Frame(Box):
                 psf_size = get_psf_size(psf)*h_temp
                 if (fat_psf_size is None) or (psf_size > fat_psf_size):
                     fat_psf_size = psf_size
+                    fat_pixel_size = psf_size/h_temp
                 if (obs_id is None) or (c == obs_id):
                     if (target_psf is None) and ((small_psf_size is None) or (psf_size < small_psf_size)):
+                        small_psf_size = psf_size
                         target_psf_temp = PSF(psf[np.newaxis, :, :])
                         psf_h = h_temp
 
-
         # Find a reference observation. Either provided by obs_id or as the observation with the smallest pixel
         if obs_id is None:
-            obs_ref = observations[int((pix_tab == np.min(pix_tab))[0])]
+            obs_ref = observations[np.where(pix_tab == np.min(pix_tab))[0][0]]
         else:
             #Frame defined from obs_id
             obs_ref = observations[obs_id]
@@ -171,16 +171,11 @@ class Frame(Box):
         # If needed and psf is not provided: interpolate psf to smallest pixel
         if target_psf is None:
             # If the reference PSF is not at the highest pixel resolution, make it!
-            if psf_h > interpolation.get_pixel_size(interpolation.get_affine(target_wcs)):
-                coord_lr = [range(target_psf_temp.shape[-2]), range(target_psf_temp.shape[-1])]
-                ny_hr, nx_hr = target_psf_temp.shape[-2] * psf_h / h, target_psf_temp.shape[-1] * psf_h / h
-                if (ny_hr % 2) == 0:
-                    ny_hr += 1
-                if (nx_hr % 2) == 0:
-                    nx_hr += 1
-                coord_hr = [range(ny_hr), range(nx_hr)]
-                angle, h = interpolation.get_angles(target_wcs, obs.wcs)
-                target_psf = PSF(interpolation.sinc_interp(target_psf_temp, coord_hr, coord_lr, angle=angle))
+            if psf_h > h:
+                angle, h = interpolation.get_angles(target_wcs, obs.frame.wcs)
+                target_psf = PSF(interpolation.sinc_interp_inplace(target_psf_temp, psf_h, h, angle))
+            else:
+                target_psf = target_psf_temp
 
         # Matching observations together so as to create a common frame
         obs_coords = []
@@ -190,8 +185,7 @@ class Frame(Box):
             if (obs.frame.wcs is not target_wcs) and (type(obs) is not 'LowResObservation'):
                 observations[c] = obs.make_LowRes()
 
-            # Is the angle larger than machine precision?
-            obs_coord = resampling.get_to_common_frame(obs, target_wcs)
+            obs_coord = obs.match_coordinates(target_wcs)
             if np.min(obs_coord[0]) < y_min:
                 y_min = np.min(obs_coord[0])
             if np.min(obs_coord[1]) < x_min:
@@ -206,38 +200,45 @@ class Frame(Box):
         if fat_psf_size % 2 == 0:
             fat_psf_size += 1
         fat_psf_size.astype(int)
-        ny = (y_max - y_min + 1 + fat_psf_size).astype(int)
-        nx = (x_max - x_min + 1 + fat_psf_size).astype(int)
+        ny = (y_max - y_min + 1 + fat_pixel_size).astype(int)
+        nx = (x_max - x_min + 1 + fat_pixel_size).astype(int)
 
         footprint = np.zeros((ny,nx))
         for coord in obs_coords:
-            footprint[(coord[0] - y_min+ fat_psf_size/2).astype(int),
-                      (coord[1] - x_min+ fat_psf_size/2).astype(int)] += 1
+            footprint[(coord[0] - y_min + fat_pixel_size/2).astype(int),
+                      (coord[1] - x_min + fat_pixel_size/2).astype(int)] += 1
 
         if coverage is 'union':
             coord_frame = np.where(footprint != 0)
 
         elif coverage is 'intersection':
-            coord_frame = np.where(footprint == np.max(footprint))
+            coord_frame = (np.where(footprint == np.max(footprint)))
+        y_min = np.min(coord_frame[0])
+        x_min = np.min(coord_frame[1])
+        y_max = np.max(coord_frame[0])
+        x_max = np.max(coord_frame[1])
+
+        ny = (y_max - y_min + 1 + fat_pixel_size).astype(int)
+        nx = (x_max - x_min + 1 + fat_pixel_size).astype(int)
 
         frame_shape =(len(channels), ny, nx)
+        if np.size(target_wcs.array_shape) == 3:
+            target_wcs.array_shape = frame_shape
+            target_wcs.crval = target_wcs.all_pix2world(x_min, y_min, 0, 0, ra_dec_order=True)
+            target_wcs.crpix = [0, 0, 0]
+
+        if np.size(target_wcs.array_shape) == 2:
+            target_wcs.array_shape = frame_shape[-2:]
+            target_wcs.crval = target_wcs.all_pix2world(x_min, y_min, 0, ra_dec_order=True)
+            target_wcs.crpix = [0, 0]
+
         frame = Frame(frame_shape, wcs=target_wcs, psfs=target_psf, channels=channels)
+
         # Match observations to this frame
         for obs in observations:
-            obs.match(frame, coord_frame)
+            obs.match(frame)
 
-        return
-
-
-def get_boundaries(frame_wcs, observation):
-    """ Extracts the boundaries of an observation relative to a given frame
-
-    Parameters:
-        frame_wcs: wcs
-            reference frame for matching coordinates
-        observations: `Observation` object
-            observation which boundaries we want to extract.
-    """
+        return frame
 
 
 def get_psf_size(psf):
@@ -256,14 +257,14 @@ def get_psf_size(psf):
             radius of the area inside 3 sigma around the center in pixels
     """
     # Normalisation by maximum
-    psf /= np.max(psf)
+    psf_frame = psf/np.max(psf)
 
     # Pixels in the FWHM set to one, others to 0:
-    psf[psf>0.5] = 1
-    psf[psf<=0.5] = 0
+    psf_frame[psf_frame>0.5] = 1
+    psf_frame[psf_frame<=0.5] = 0
 
     # Area in the FWHM:
-    area = np.sum(psf)
+    area = np.sum(psf_frame)
 
     # Diameter of this area
     d = 2*(area/np.pi)**0.5

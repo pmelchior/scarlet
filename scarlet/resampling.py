@@ -12,7 +12,7 @@ def get_to_common_frame(obs, frame_wcs):
         a wcs that gives the mapping between pixel coordinates and sky coordinates for a given frame
     Returns
     -------
-        coord: `array`
+        coord_obs_frame: `tuple`
             Coordinates of the observations's pixels in the frame of the provided wcs
     """
     c, ny, nx = obs.frame.shape
@@ -35,8 +35,6 @@ def get_to_common_frame(obs, frame_wcs):
 
     coord = (Y,X)
     return coord
-
-
 
 
 
@@ -137,23 +135,14 @@ def match_patches(shape_hr, shape_lr, wcs_hr, wcs_lr, isrot = True, coverage  = 
     if np.sum(over_lr) == 0:
         raise SourceInitError
 
-    if coverage is "intersection":
-        # Coordinates of low resolution pixels in the intersection at low resolution:
-        ylr_lr = Y_lr[(over_lr == 1)]
-        xlr_lr = X_lr[(over_lr == 1)]
-        coordlr_lr = (ylr_lr, xlr_lr)
-        # Coordinates of low resolution pixels in the intersection at high resolution:
-        ylr_hr = Y_hr[(over_lr == 1)]
-        xlr_hr = X_hr[(over_lr == 1)]
+    # Coordinates of low resolution pixels in the intersection at low resolution:
+    ylr_lr = Y_lr[(over_lr == 1)]
+    xlr_lr = X_lr[(over_lr == 1)]
+    coordlr_lr = (ylr_lr, xlr_lr)
+    # Coordinates of low resolution pixels in the intersection at high resolution:
+    ylr_hr = Y_hr[(over_lr == 1)]
+    xlr_hr = X_hr[(over_lr == 1)]
 
-        coordlr_hr = (ylr_hr, xlr_hr)
-
-    elif coverage is "union":
-
-        # Coordinates of low resolution pixels at low resolution:
-        coordlr_lr = (Y_lr, X_lr)
-
-        # Coordinates of low resolution pixels at high resolution:
-        coordlr_hr = (Y_hr, X_hr)
+    coordlr_hr = (ylr_hr, xlr_hr)
 
     return coordlr_lr, coordlr_hr, coordhr_hr

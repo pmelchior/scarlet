@@ -2,7 +2,6 @@ import numpy as np
 from .cache import Cache
 from . import fft
 
-
 def get_projection_slices(image, shape, yx0=None):
     """Get slices needed to project an image
 
@@ -385,7 +384,7 @@ def get_angles(frame_wcs, model_wcs):
     sin_rot = np.cross(self_framevector, model_framevector)
     # cos of the angle. (normalised scalar product)
     cos_rot = np.dot(self_framevector, model_framevector)
-    return (cos_rot, sin_rot), h
+    return [cos_rot, sin_rot], h
 
 def sinc_interp(images, coord_hr, coord_lr, angle=None, padding=3):
     """
@@ -413,7 +412,7 @@ def sinc_interp(images, coord_hr, coord_lr, angle=None, padding=3):
     assert hy != 0
     assert hx != 0
 
-    if angle is None:
+    if (angle is None) or (1 - angle[0] < np.finfo(float).eps):
         result = [
             np.dot(
                 np.dot(
@@ -438,8 +437,8 @@ def sinc_interp(images, coord_hr, coord_lr, angle=None, padding=3):
     shifter_y, shifter_x = mk_shifter(fft_shape)
 
     #Shifts values
-    shift_y = np.exp(shifter_y[np.newaxis, :] * (-(y_hr[:, np.newaxis]) * cos))
-    shift_x = np.exp(shifter_x[np.newaxis, :] * (-(y_hr[:, np.newaxis]) * sin))
+    shift_y = np.exp(shifter_y[np.newaxis, :] * (- (y_hr[:, np.newaxis]) * cos))
+    shift_x = np.exp(shifter_x[np.newaxis, :] * (- (y_hr[:, np.newaxis]) * sin))
     #Apply shifts
 
     result_fft = X_fft[:, np.newaxis, :, :] * shift_y[np.newaxis, :, :, np.newaxis]
@@ -463,6 +462,43 @@ def sinc_interp(images, coord_hr, coord_lr, angle=None, padding=3):
     result = (result_y * shx[np.newaxis, np.newaxis, :, :]).sum(axis=-1)
 
     return result
+
+
+def sinc_interp_inplace(image, h_image, h_target, angle):
+    """ In place interpolation of a cube of images
+
+    Performs interpolation from a grid defined by the grid of `image` to a grid spanning the same physical area scaled
+    by a factor `h` and rotated by `angle` radians. The center for the rotation is the central pixel of the image.
+    This procedure is advised for odd-sized images only.
+
+    Parameters
+    ----------
+    image: `ndarray`
+        Cube of images with shape BxNyxNx with B the number of bands and NyxNx, the number of pixels
+    h_image: `float`
+        Phisical scale of a pixel in image
+    h_target: `float`
+        Physical scale of the target pixel to which to interpolate
+    angle: float
+        angle between the grid of image and the target grid where to interpolate
+    Returns
+    -------
+    interp_image: `ndarray`
+        interpolated image
+    """
+    assert len(image.shape) == 3, "images should be provided as a cube. If only one image is provided, " \
+                                  "image should be a cube with image.shape[0] = 1"
+    ny_lr, nx_lr = image.shape[-2:]
+    coord_lr = np.array([np.array(range(ny_lr)) - (ny_lr-1)/2, np.array(range(nx_lr))-(nx_lr-1)/2])
+    ny_hr, nx_hr = (image.shape[-2] * h_image / h_target).astype(int), \
+                   (image.shape[-1] * h_image / h_target).astype(int)
+    if (ny_hr % 2) == 0:
+        ny_hr += 1
+    if (nx_hr % 2) == 0:
+        nx_hr += 1
+    coord_hr = np.array([np.array(range(ny_hr.astype(int)))-(ny_hr-1)/2, np.array(range(nx_hr.astype(int)))-(nx_hr-1)/2])
+
+    return sinc_interp(image, coord_hr, coord_lr, angle=angle)
 
 
 def fft_resample(img, dy, dx, kernel=lanczos, **kwargs):

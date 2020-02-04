@@ -6,7 +6,6 @@ from . import fft
 from . import resampling
 from .bbox import Box
 
-
 class Observation:
     """Data and metadata for a single set of observations
 
@@ -28,7 +27,7 @@ class Observation:
     """
 
     def __init__(
-        self, images, psfs=None, weights=None, wcs=None, channels=None, padding=10
+            self, images, psfs=None, weights=None, wcs=None, channels=None, padding=10
     ):
         """Create an Observation
 
@@ -62,10 +61,28 @@ class Observation:
         else:
             self.weights = np.ones(images.shape)
         assert (
-            self.weights.shape == self.images.shape
+                self.weights.shape == self.images.shape
         ), "Weights needs to have same shape as images"
 
         self._padding = padding
+
+    def match_coordinates(self, wcs):
+        """ Matches the coordinates of the pixels in the observation to a different wcs.
+        This method is mostly used for child class LowResObservations, but having it here simplifies the writing when
+        matching frames.
+
+        Parameters
+        ----------
+        wcs: WCS
+            wcs of the frame to witch the observation's pixels are to be matched
+
+        Returns
+        -------
+        coords: array
+            coordinates of the pixels in the observation matched to the wcs
+        """
+        self.coord_frame = resampling.get_to_common_frame(self, wcs)
+        return self.coord_frame
 
     def match(self, model_frame):
         """Match the frame of `Blend` to the frame of this observation.
@@ -92,7 +109,6 @@ class Observation:
         else:
             assert self.frame.channels is not None and model_frame.channels is not None
             cmin = list(model_frame.channels).index(self.frame.channels[0])
-            cmax = list(model_frame.channels).index(self.frame.channels[-1])
             origin = (cmin, *yx0)
         self.bbox = Box(shape, origin=origin)
         self.slices = self.bbox.slices_for(model_frame.shape)
@@ -166,8 +182,8 @@ class Observation:
         # full likelihood is sum over all data samples: pixel in images
         # NOTE: this assumes that all pixels are used in likelihood!
         log_norm = (
-            np.prod(images_.shape) / 2 * np.log(2 * np.pi)
-            + np.sum(np.log(1 / self.weights)) / 2
+                np.prod(images_.shape) / 2 * np.log(2 * np.pi)
+                + np.sum(np.log(1 / self.weights)) / 2
         )
 
         return log_norm + np.sum(weights_ * (model_ - images_) ** 2) / 2
@@ -177,21 +193,21 @@ class Observation:
 
         """
         return LowResObservation(self.images,
-                                 psfs = self.frame._psfs,
-                                 weights = self.weights,
-                                 wcs = self.frame.wcs,
-                                 channels= self.frame.channels)
+                                 psfs=self.frame._psfs,
+                                 weights=self.weights,
+                                 wcs=self.frame.wcs,
+                                 channels=self.frame.channels)
 
 
 class LowResObservation(Observation):
     def __init__(
-        self,
-        images,
-        wcs=None,
-        psfs=None,
-        weights=None,
-        channels=None,
-        padding=3,
+            self,
+            images,
+            wcs=None,
+            psfs=None,
+            weights=None,
+            channels=None,
+            padding=3,
     ):
 
         assert wcs is not None, "WCS is necessary for LowResObservation"
@@ -206,7 +222,7 @@ class LowResObservation(Observation):
             padding=padding,
         )
 
-    def match_psfs(self, psf_hr, wcs_hr, angle):
+    def match_psfs(self, psf_hr, wcs_hr):
         """psf matching between different dataset
         Matches PSFS at different resolutions by interpolating psf_lr on the same grid as psf_hr
         Parameters
@@ -229,46 +245,14 @@ class LowResObservation(Observation):
             low resolution psf at matching size and resolution
         """
 
-        psf_lr = self.frame.psf.image
+        psf_lr = self.frame._psfs.image
         wcs_lr = self.frame.wcs
 
-        _, ny_hr, nx_hr = psf_hr.shape
-        npsf_bands, ny_lr, nx_lr = psf_lr.shape
+        h_lr = interpolation.get_pixel_size(interpolation.get_affine(wcs_lr))
+        h_hr = interpolation.get_pixel_size(interpolation.get_affine(wcs_hr))
 
-        # Createsa wcs for psf centered around the frame center
-        psf_wcs_hr = wcs_hr.deepcopy()
-        psf_wcs_lr = wcs_lr.deepcopy()
-
-        if psf_wcs_hr.naxis == 2:
-            psf_wcs_hr.wcs.crval = 0.0, 0.0
-            psf_wcs_hr.wcs.crpix = ny_hr / 2.0 + 1, nx_hr / 2.0 + 1
-        elif psf_wcs_hr.naxis == 3:
-            psf_wcs_hr.wcs.crval = 0.0, 0.0, 0.0
-            psf_wcs_hr.wcs.crpix = ny_hr / 2 + 1, nx_hr / 2.0 + 1, 0.0
-        if psf_wcs_lr.naxis == 2:
-            psf_wcs_lr.wcs.crval = 0.0, 0.0
-            psf_wcs_lr.wcs.crpix = ny_lr / 2.0 + 1, nx_lr / 2.0 + 1
-        elif psf_wcs_lr.naxis == 3:
-
-            psf_wcs_lr.wcs.crval = 0.0, 0.0, 0.0
-            psf_wcs_lr.wcs.crpix = ny_lr / 2.0 + 1, nx_lr / 2.0 + 1, 0
-
-        pcoordlr_lr, pcoordlr_hr, coordover_hr = resampling.match_patches(
-            psf_hr.shape,
-            psf_lr.data.shape[1:],
-            psf_wcs_hr,
-            psf_wcs_lr,
-            isrot=False
-        )
-
-        psf_valid = psf_lr[
-            :,
-            pcoordlr_lr[0].min() : pcoordlr_lr[1].max() + 1,
-            pcoordlr_lr[1].min() : pcoordlr_lr[1].max() + 1,
-        ]
-        psf_match_lr = interpolation.sinc_interp(
-            psf_valid, coordover_hr, pcoordlr_hr, angle=angle
-        )
+        angle, h_ratio = interpolation.get_angles(wcs_hr, wcs_lr)
+        psf_match_lr = interpolation.sinc_interp_inplace(psf_lr, h_lr, h_hr, angle)
 
         psf_hr /= np.sum(psf_hr)
         psf_match_lr /= np.sum(psf_match_lr)
@@ -293,11 +277,11 @@ class LowResObservation(Observation):
         whr = model_frame.wcs
 
         # Reference PSF
-        _target = model_frame.psf.image
+        _target = model_frame._psfs.image
 
         # Computes spatially matching observation and target psfs. The observation psf is also resampled \\
         # to the model frame resolution
-        new_target, observed_psfs = self.match_psfs(_target, whr, angle)
+        new_target, observed_psfs = self.match_psfs(_target, whr)
         diff_psf = fft.match_psfs(fft.Fourier(observed_psfs), fft.Fourier(new_target))
 
         return diff_psf
@@ -342,9 +326,9 @@ class LowResObservation(Observation):
             # Shift along the x-axis
             if 1 in axes:
                 # Fourier shift
-                shishift = np.exp(shifter[1][np.newaxis, :] * shifts[1][:,np.newaxis])
+                shishift = np.exp(shifter[1][np.newaxis, :] * shifts[1][:, np.newaxis])
                 imgs_shiftfft = imgs_shiftfft * shishift[np.newaxis, :, np.newaxis, :]
-                fft_axes = np.array(axes)+len(imgs_shiftfft.shape)-2
+                fft_axes = np.array(axes) + len(imgs_shiftfft.shape) - 2
             inv_shape = tuple(imgs_shiftfft.shape[:2]) + tuple(transformed_shape)
 
 
@@ -353,21 +337,22 @@ class LowResObservation(Observation):
             shishift = np.exp(shifter[1][:, np.newaxis] * shifts[1][np.newaxis, :])
             imgs_shiftfft = imgs_fft[:, :, :, np.newaxis] * shishift[np.newaxis, np.newaxis, :, :]
             inv_shape = tuple([imgs_shiftfft.shape[0]]) + tuple(transformed_shape) + tuple([imgs_shiftfft.shape[-1]])
-            fft_axes = [len(imgs_shiftfft.shape)-2]
+            fft_axes = [len(imgs_shiftfft.shape) - 2]
 
         # Inverse Fourier transform.
         # The n-dimensional transform could pose problem for very large images
         op = fft.Fourier.from_fft(imgs_shiftfft, fft_shape, inv_shape, fft_axes).image
         return op
 
-    def match(self, model_frame, coord):
+    def match(self, model_frame):
         """ matches the observation to a frame
 
         Parameters
         ----------
         model_frame: `Frame`
-
-
+            Frame to match to the observation
+        coord: `array`
+            coordinates of the pixels in the frame to fit
         """
 
         if self.frame.dtype != model_frame.dtype:
@@ -377,21 +362,13 @@ class LowResObservation(Observation):
             if self.frame._psfs is not None:
                 self.frame._psfs.update_dtype(model_frame.dtype)
 
-        # channels of model that are represented in this observation
-        self._band_slice = slice(None)
-        if self.frame.channels is not model_frame.channels:
-            bmin = model_frame.channels.index(self.frame.channels[0])
-            bmax = model_frame.channels.index(self.frame.channels[-1])
-            self._band_slice = slice(bmin, bmax+1)
-
         self.angle, self.h = interpolation.get_angles(self.frame.wcs, model_frame.wcs)
 
         # Is the angle larger than machine precision?
         self.isrot = (np.abs(self.angle[1]) ** 2) > np.finfo(float).eps
         if not self.isrot:
-            self.angle[1] = 0
-            self.angle[0] = 1
-            angle = None
+            self.angle = None
+
 
         # Get pixel coordinates in each frame.
         coord_lr, coord_hr, coordhr_over = resampling.match_patches(
@@ -399,11 +376,9 @@ class LowResObservation(Observation):
             self.frame.shape,
             model_frame.wcs,
             self.frame.wcs,
-            isrot=self.isrot,
-            coverage = coverage
+            isrot=self.isrot
         )
-
-        # shape of the low resolutino image in the intersection or union
+        # shape of the low resolution image in the intersection or union
         self.lr_shape = (
             np.max(coord_lr[0]) - np.min(coord_lr[0]) + 1,
             np.max(coord_lr[1]) - np.min(coord_lr[1]) + 1,
@@ -429,7 +404,7 @@ class LowResObservation(Observation):
             np.array(range(model_frame.Nx)),
         )
 
-        diff_psf = self.build_diffkernel(model_frame, angle)
+        diff_psf = self.build_diffkernel(model_frame, self.angle)
 
         # 1D convolutions convolutions of the model are done along the smaller axis, therefore,
         # psf is convolved along the frame's longer axis.
@@ -445,31 +420,25 @@ class LowResObservation(Observation):
         )
         self.diff_psf = fft.Fourier(fft._pad(diff_psf.image, self._fft_shape, axes=(1, 2)))
 
-        center_y = np.int(self._fft_shape[0]/2.-(self._fft_shape[0]-model_frame.Ny)/2.) - \
+        center_y = np.int(self._fft_shape[0] / 2. - (self._fft_shape[0] - model_frame.Ny) / 2.) - \
                    ((self._fft_shape[0] % 2) != 0) * ((model_frame.Ny % 2) == 0)
-        center_x = np.int(self._fft_shape[1]/2.-(self._fft_shape[1]-model_frame.Nx)/2.) - \
+        center_x = np.int(self._fft_shape[1] / 2. - (self._fft_shape[1] - model_frame.Nx) / 2.) - \
                    ((self._fft_shape[1] % 2) != 0) * ((model_frame.Nx % 2) == 0)
         if self.isrot:
 
             # Unrotated coordinates:
             Y_unrot = (
-                (coord_hr[0] - center_y) * self.angle[0]
-                - (coord_hr[1] - center_x) * self.angle[1]
+                    (coord_hr[0] - center_y) * self.angle[0]
+                    - (coord_hr[1] - center_x) * self.angle[1]
             ).reshape(self.lr_shape)
             X_unrot = (
-                (coord_hr[1] - center_x) * self.angle[0]
-                + (coord_hr[0] - center_y) * self.angle[1]
+                    (coord_hr[1] - center_x) * self.angle[0]
+                    + (coord_hr[0] - center_y) * self.angle[1]
             ).reshape(self.lr_shape)
 
             # Removing redundancy
             self.Y_unrot = Y_unrot[:, 0]
             self.X_unrot = X_unrot[0, :]
-
-            import matplotlib.pyplot as plt
-
-            plt.plot(coord_lr[0], coord_lr[1],'or')
-            plt.plot(self.Y_unrot, self.X_unrot, 'ob')
-            plt.plot(coord_hr[0], coord_hr[1], 'xg')
 
             if self.small_axis:
                 self.shifts = np.array([self.Y_unrot * self.angle[0], self.Y_unrot * self.angle[1]])
@@ -503,8 +472,7 @@ class LowResObservation(Observation):
         # Computes the resampling/convolution matrix
         resconv_op = self.sinc_shift(self.diff_psf, self.shifts, axes)
 
-
-        self._resconv_op = np.array(resconv_op, dtype=self.frame.dtype)*self.h**2
+        self._resconv_op = np.array(resconv_op, dtype=self.frame.dtype) * self.h ** 2
 
         if self.isrot:
             self._resconv_op = self._resconv_op.reshape(*self._resconv_op.shape[:2], -1)
@@ -515,7 +483,6 @@ class LowResObservation(Observation):
         else:
             self._resconv_op = self._resconv_op.reshape(self._resconv_op.shape[0], -1, self._resconv_op.shape[-1])
             return self
-
 
     def _render(self, model):
         """Resample and convolve a model in the observation frame
@@ -541,7 +508,7 @@ class LowResObservation(Observation):
             axes = [int(self.small_axis) + 1]
 
         model_conv = self.sinc_shift(model_, -self.other_shifts, axes)
-        #Transposes are all over the place to make arrays F-contiguous
+        # Transposes are all over the place to make arrays F-contiguous
         if self.isrot:
             if self.small_axis:
                 model_conv = model_conv.reshape(*model_conv.shape[:2], -1)
@@ -554,10 +521,8 @@ class LowResObservation(Observation):
                     model_image.append((self._resconv_op[c] @ model_conv[c].T).T)
                 return np.array(model_image, dtype=self.frame.dtype)
 
-
-
         if self.small_axis:
-            model_conv = model_conv.reshape(model_conv.shape[0],-1,model_conv.shape[-1])
+            model_conv = model_conv.reshape(model_conv.shape[0], -1, model_conv.shape[-1])
             for c in range(self.frame.C):
                 model_image.append((model_conv[c].T @ self._resconv_op[c].T).T)
             return np.array(model_image, dtype=self.frame.dtype)
@@ -579,7 +544,7 @@ class LowResObservation(Observation):
             `model` mapped into the observation frame
         """
         image_model = np.zeros(self.frame.shape)
-        image_model[self.slices] = self._render(model)
+        image_model[:,self.slices[-2], self.slices[-1]] = self._render(model)
         return image_model
 
     def get_loss(self, model):
@@ -595,13 +560,13 @@ class LowResObservation(Observation):
         """
 
         model_ = self._render(model)
-        images_ = self.images[self.slices]
-        weights_ = self.weights[self.slices]
+        images_ = self.images[:,self.slices[-2], self.slices[-1]]
+        weights_ = self.weights[:,self.slices[-2], self.slices[-1]]
 
         # properly normalized likelihood
         log_norm = (
-            np.prod(images_.shape) / 2 * np.log(2 * np.pi)
-            + np.sum(np.log(1 / weights_)) / 2
+                np.prod(images_.shape) / 2 * np.log(2 * np.pi)
+                + np.sum(np.log(1 / weights_)) / 2
         )
 
         return log_norm + 0.5 * np.sum(weights_ * (model_ - images_) ** 2)
