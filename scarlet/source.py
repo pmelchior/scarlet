@@ -139,7 +139,6 @@ def trim_morphology(sky_coord, frame, morph, bg_cutoff, thresh):
 
         # find fitting bbox
         bbox = Box.from_data(morph, min_value=0)
-        boxsize = 16
         if bbox.contains(pixel_center):
             size = 2 * max(
                 (
@@ -152,7 +151,7 @@ def trim_morphology(sky_coord, frame, morph, bg_cutoff, thresh):
             while boxsize < size:
                 boxsize *= 2
     else:
-        msg = "No flux above threshold for source at y={0} x={1}".format(*center)
+        msg = "No flux above threshold for source at y={0} x={1}".format(*pixel_center)
         logger.warning(msg)
 
     # define bbox and trim to bbox
@@ -272,7 +271,7 @@ def init_multicomponent_source(
     for k in range(K):
         if np.all(morphs[k] <= 0):
             msg = "Zero or negative morphology for component {} at y={}, x={}"
-            logger.warning(msg.format(k, *sky_coords))
+            logger.warning(msg.format(k, *sky_coord))
         morphs[k] /= morphs[k].max()
 
     # optimal SEDs given the morphologies, assuming img only has that source
@@ -513,7 +512,7 @@ class MultiComponentSource(ComponentTree):
         obs_idx=0,
         thresh=1.0,
         flux_percentiles=None,
-        symmetric=True,
+        symmetric=False,
         monotonic=True,
         shifting=False,
     ):

@@ -6,6 +6,7 @@ from . import fft
 from . import resampling
 from .bbox import Box
 
+
 class Observation:
     """Data and metadata for a single set of observations
 
@@ -181,9 +182,12 @@ class Observation:
         # with inverse variance weights: sigma^2 = 1/weight
         # full likelihood is sum over all data samples: pixel in images
         # NOTE: this assumes that all pixels are used in likelihood!
+        log_sigma = np.zeros(self.weights.shape, dtype=self.weights.dtype)
+        cuts = self.weights > 0
+        log_sigma[cuts] = np.log(1 / self.weights[cuts])
         log_norm = (
                 np.prod(images_.shape) / 2 * np.log(2 * np.pi)
-                + np.sum(np.log(1 / self.weights)) / 2
+                + np.sum(log_sigma) / 2
         )
 
         return log_norm + np.sum(weights_ * (model_ - images_) ** 2) / 2
@@ -259,15 +263,13 @@ class LowResObservation(Observation):
 
         return psf_hr, psf_match_lr
 
-    def build_diffkernel(self, model_frame, angle):
+    def build_diffkernel(self, model_frame):
         """Builds the differential convolution kernel between the observation and the frame psfs
 
         Parameters
         ----------
         model_frame: Frame object
-            the frame of the model (hehehe)
-        angle: tuple
-            tuple of the cos and sin of the rotation angle between frames.
+            the frame of the model
         Returns
         -------
         diff_psf: array
@@ -369,7 +371,6 @@ class LowResObservation(Observation):
         if not self.isrot:
             self.angle = None
 
-
         # Get pixel coordinates in each frame.
         coord_lr, coord_hr, coordhr_over = resampling.match_patches(
             model_frame.shape,
@@ -404,7 +405,7 @@ class LowResObservation(Observation):
             np.array(range(model_frame.Nx)),
         )
 
-        diff_psf = self.build_diffkernel(model_frame, self.angle)
+        diff_psf = self.build_diffkernel(model_frame)
 
         # 1D convolutions convolutions of the model are done along the smaller axis, therefore,
         # psf is convolved along the frame's longer axis.
@@ -544,7 +545,7 @@ class LowResObservation(Observation):
             `model` mapped into the observation frame
         """
         image_model = np.zeros(self.frame.shape)
-        image_model[:,self.slices[-2], self.slices[-1]] = self._render(model)
+        image_model[:, self.slices[-2], self.slices[-1]] = self._render(model)
         return image_model
 
     def get_loss(self, model):
@@ -560,13 +561,16 @@ class LowResObservation(Observation):
         """
 
         model_ = self._render(model)
-        images_ = self.images[:,self.slices[-2], self.slices[-1]]
-        weights_ = self.weights[:,self.slices[-2], self.slices[-1]]
+        images_ = self.images[:, self.slices[-2], self.slices[-1]]
+        weights_ = self.weights[:, self.slices[-2], self.slices[-1]]
 
         # properly normalized likelihood
+        log_sigma = np.zeros(weights_.shape, dtype=weights_.dtype)
+        cuts = weights_ > 0
+        log_sigma[cuts] = np.log(1 / weights_[cuts])
         log_norm = (
                 np.prod(images_.shape) / 2 * np.log(2 * np.pi)
-                + np.sum(np.log(1 / weights_)) / 2
+                + np.sum(log_sigma) / 2
         )
 
         return log_norm + 0.5 * np.sum(weights_ * (model_ - images_) ** 2)

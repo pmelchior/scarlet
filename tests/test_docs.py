@@ -5,7 +5,7 @@ import re
 import glob
 from nbconvert.preprocessors import ExecutePreprocessor
 
-
+# inspired by http://www.blog.pythonlibrary.org/2018/10/16/testing-jupyter-notebooks/
 def run_notebook(notebook_path):
     nb_name, _ = os.path.splitext(os.path.basename(notebook_path))
 
@@ -15,11 +15,6 @@ def run_notebook(notebook_path):
     proc = ExecutePreprocessor(timeout=600, kernel_name='python3')
     proc.allow_errors = True
     proc.preprocess(nb)
-
-    # output_path = os.path.join(dirname, '{}_all_output.ipynb'.format(nb_name))
-    #
-    # with open(output_path, mode='wt') as f:
-    #     nbformat.write(nb, f)
 
     for num, cell in enumerate(nb.cells):
         if 'outputs' in cell:
