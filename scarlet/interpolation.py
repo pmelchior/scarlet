@@ -496,8 +496,8 @@ def sinc_interp_inplace(image, h_image, h_target, angle):
         ny_hr += 1
     if (nx_hr % 2) == 0:
         nx_hr += 1
-    coord_hr = np.array([np.array(range(ny_hr.astype(int)))-(ny_hr-1)/2, np.array(range(nx_hr.astype(int)))-(nx_hr-1)/2])
-
+    coord_hr = np.array([np.array(range(ny_hr.astype(int)))-(ny_hr-1)/2,
+                         np.array(range(nx_hr.astype(int)))-(nx_hr-1)/2]) / h_image * h_target
     return sinc_interp(image, coord_hr, coord_lr, angle=angle)
 
 
