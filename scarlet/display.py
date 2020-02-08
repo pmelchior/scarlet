@@ -168,7 +168,7 @@ def img_to_rgb(img, channel_map=None, fill_value=0, norm=None, mask=None):
         norm = LinearMapping(image=RGB)
     rgb = norm.make_rgb_image(*RGB)
     if mask is not None:
-        rgb = np.dstack([rgb, ~mask*255])
+        rgb = np.dstack([rgb, ~mask * 255])
     return rgb
 
 
@@ -236,13 +236,17 @@ def show_scene(
 
     if show_rendered:
         panel += 1
-        ax[panel].imshow(img_to_rgb(model, norm=norm, channel_map=channel_map, mask=mask))
+        ax[panel].imshow(
+            img_to_rgb(model, norm=norm, channel_map=channel_map, mask=mask)
+        )
         ax[panel].set_title("Model Rendered")
 
     if show_observed:
         panel += 1
         ax[panel].imshow(
-            img_to_rgb(observation.images, norm=norm, channel_map=channel_map, mask=mask)
+            img_to_rgb(
+                observation.images, norm=norm, channel_map=channel_map, mask=mask
+            )
         )
         ax[panel].set_title("Observation")
 
@@ -250,7 +254,9 @@ def show_scene(
         panel += 1
         residual = observation.images - model
         norm_ = LinearPercentileNorm(residual)
-        ax[panel].imshow(img_to_rgb(residual, norm=norm_, channel_map=channel_map, mask=mask))
+        ax[panel].imshow(
+            img_to_rgb(residual, norm=norm_, channel_map=channel_map, mask=mask)
+        )
         ax[panel].set_title("Residual")
 
     if label_sources:
@@ -265,6 +271,7 @@ def show_scene(
                 ax[panel].text(*center_[::-1], k, color="w")
 
     fig.tight_layout()
+    plt.close()
     return fig
 
 
