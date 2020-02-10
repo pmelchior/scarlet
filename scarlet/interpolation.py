@@ -431,7 +431,7 @@ def sinc_interp(images, coord_hr, coord_lr, angle=None, padding=3):
 
     X = fft.Fourier(images)
     # Fourier transform
-    X_fft = X.fft(fft_shape, (1, 2))
+    X_fft = X.fft(fft_shape, (-2, -1))
 
     # Shift elementary kernel
     shifter_y, shifter_x = mk_shifter(fft_shape)

@@ -67,24 +67,6 @@ class Observation:
 
         self._padding = padding
 
-    def match_coordinates(self, wcs):
-        """ Matches the coordinates of the pixels in the observation to a different wcs.
-        This method is mostly used for child class LowResObservations, but having it here simplifies the writing when
-        matching frames.
-
-        Parameters
-        ----------
-        wcs: WCS
-            wcs of the frame to witch the observation's pixels are to be matched
-
-        Returns
-        -------
-        coords: array
-            coordinates of the pixels in the observation matched to the wcs
-        """
-        self.coord_frame = resampling.get_to_common_frame(self, wcs)
-        return self.coord_frame
-
     def match(self, model_frame):
         """Match the frame of `Blend` to the frame of this observation.
 
@@ -372,13 +354,7 @@ class LowResObservation(Observation):
             self.angle = None
 
         # Get pixel coordinates in each frame.
-        coord_lr, coord_hr, coordhr_over = resampling.match_patches(
-            model_frame.shape,
-            self.frame.shape,
-            model_frame.wcs,
-            self.frame.wcs,
-            isrot=self.isrot
-        )
+        coord_lr, coord_hr, coordhr_over = resampling.match_patches(self, model_frame,isrot=self.isrot)
         # shape of the low resolution image in the intersection or union
         self.lr_shape = (
             np.max(coord_lr[0]) - np.min(coord_lr[0]) + 1,
@@ -413,13 +389,13 @@ class LowResObservation(Observation):
         self.small_axis = self.frame.Nx <= self.frame.Ny
 
         self._fft_shape = fft._get_fft_shape(
-            model_frame.psf,
+            diff_psf,
             np.zeros(model_frame.shape),
             padding=3,
             axes=[-2, -1],
             max=True,
         )
-        self.diff_psf = fft.Fourier(fft._pad(diff_psf.image, self._fft_shape, axes=(1, 2)))
+        self.diff_psf = fft.Fourier(fft._pad(diff_psf.image, self._fft_shape, axes=(-2,-1)))
 
         center_y = np.int(self._fft_shape[0] / 2. - (self._fft_shape[0] - model_frame.Ny) / 2.) - \
                    ((self._fft_shape[0] % 2) != 0) * ((model_frame.Ny % 2) == 0)

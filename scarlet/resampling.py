@@ -1,5 +1,41 @@
 import numpy as np
 
+def pix2radec(coord, wcs):
+    y,x = coord
+    if np.size(wcs.array_shape) == 2:
+        ra, dec = wcs.all_pix2world(x, y, 0, ra_dec_order=True)
+    elif np.size(wcs.array_shape) == 3:
+        ra, dec = wcs.all_pix2world(x, y, 0, 0, ra_dec_order=True)
+    return (ra, dec)
+
+def radec2pix(coord, wcs):
+    ra, dec = coord
+    # Positions of coords  in the frame of the obs
+    if np.size(wcs.array_shape) == 2:
+        X, Y = wcs.all_world2pix(ra, dec, 0, ra_dec_order=True)
+    elif np.size(wcs.array_shape) == 3:
+        X, Y, _ = wcs.all_world2pix(ra, dec, 0, 0, ra_dec_order=True)
+    return (Y, X)
+
+def convert_coordinates(coord, origin_wcs, target_wcs):
+    """Converts coordinates from one reference frame to another
+    Parameters
+    ----------
+    coord: `tuple`
+        coordinates in the frame of the `origin_wcs` to convert in the frame of the `target_wcs`
+    origin_wcs: WCS
+        wcs of `coord`
+    target_wcs: WCS
+        wcs of the frame to which coord is converted
+
+    Returns
+    -------
+    coord_target: `tuple`
+        coordinates at the location of `coord` in the target frame defined by `target_wcs`
+    """
+    ra, dec = pix2radec(coord, origin_wcs)
+    y,x = radec2pix((ra, dec), target_wcs)
+    return (y, x)
 
 def get_to_common_frame(obs, frame_wcs):
     """ Matches an `Observation`'s coordinates to a `Frame`'s wcs
@@ -21,17 +57,8 @@ def get_to_common_frame(obs, frame_wcs):
     y = y.flatten()
     x = x.flatten()
 
-    # Ra-Dec positions of the observation's pixels
-    if np.size(obs.frame.wcs.array_shape) == 2:
-        ra, dec = obs.frame.wcs.all_pix2world(x, y, 0, ra_dec_order=True)
-    elif np.size(obs.frame.wcs.array_shape) == 3:
-        ra, dec = obs.frame.wcs.all_pix2world(x, y, 0, 0, ra_dec_order=True)
-
     # Positions of Observation's pixel in the frame of the wcs
-    if np.size(frame_wcs.array_shape) == 2:
-        X, Y = frame_wcs.all_world2pix(ra, dec, 0, ra_dec_order=True)
-    elif np.size(frame_wcs.array_shape) == 3:
-        X, Y, _ = frame_wcs.all_world2pix(ra, dec, 0, 0, ra_dec_order=True)
+    Y,X = convert_coordinates((y,x), obs.frame.wcs, frame_wcs)
 
     coord = (Y,X)
     return coord
@@ -39,7 +66,7 @@ def get_to_common_frame(obs, frame_wcs):
 
 
 
-def match_patches(shape_hr, shape_lr, wcs_hr, wcs_lr, isrot = True, coverage  = 'union'):
+def match_patches(obs, frame, isrot = True):
     """Matches datasets at different resolutions
 
 
@@ -64,16 +91,11 @@ def match_patches(shape_hr, shape_lr, wcs_hr, wcs_lr, isrot = True, coverage  = 
     coordhr_hr: array
         coordinates of the high resolution pixels in the intersection. Necessary for psf matching
     """
-    assert coverage in [
-        "intersection",
-        "union",
-    ], "coverage should be either intersection or union."
+    B_hr, ny_hr, nx_hr = frame.shape
+    B_lr, Ny_lr, Nx_lr = obs.frame.shape
 
-
-
-    B_hr, ny_hr, nx_hr = shape_hr
-
-    B_lr, Ny_lr, Nx_lr = shape_lr
+    wcs_hr = frame.wcs
+    wcs_lr = obs.frame.wcs
 
     assert wcs_hr != None
     assert wcs_lr != None
@@ -93,33 +115,15 @@ def match_patches(shape_hr, shape_lr, wcs_hr, wcs_lr, isrot = True, coverage  = 
         Y_lr, X_lr = np.array(range(Ny_lr)), np.array(range(Nx_lr))
 
     # Corresponding angular positions
-    # of low resolution pixels
-    if np.size(wcs_lr.array_shape) == 2:
-        ra_lr, dec_lr = wcs_lr.all_pix2world(X_lr, Y_lr, 0, ra_dec_order=True)
-    elif np.size(wcs_lr.array_shape) == 3:
-        ra_lr, dec_lr = wcs_lr.all_pix2world(X_lr, Y_lr, 0, 0, ra_dec_order=True)
-    # of high resolution pixels
-    if np.size(wcs_hr.array_shape) == 2:
-        ra_hr, dec_hr = wcs_hr.all_pix2world(x_hr, y_hr, 0, ra_dec_order=True)
-    elif np.size(wcs_hr.array_shape) == 3:
-        ra_hr, dec_hr, _ = wcs_hr.all_pix2world(x_hr, y_hr, 0, 0, ra_dec_order=True)
-
     # Coordinates of the low resolution pixels in the high resolution frame
-    if np.size(wcs_hr.array_shape) == 2:
-        X_hr, Y_hr = wcs_hr.all_world2pix(ra_lr, dec_lr, 0, ra_dec_order=True)
-    elif np.size(wcs_hr.array_shape) == 3:
-        X_hr, Y_hr, _ = wcs_hr.all_world2pix(ra_lr, dec_lr, 0, 0, ra_dec_order=True)
-
+    Y_hr, X_hr = convert_coordinates((Y_lr, X_lr), wcs_lr, wcs_hr)
     # Coordinates of the high resolution pixels in the low resolution frame
-    if np.size(wcs_lr.array_shape) == 2:
-        x_lr, y_lr = wcs_lr.all_world2pix(ra_hr, dec_hr, 0, ra_dec_order=True)
-    elif np.size(wcs_lr.array_shape) == 3:
-        x_lr, y_lr, _ = wcs_lr.all_world2pix(ra_hr, dec_hr, 0, 0, ra_dec_order=True)
+    y_lr, x_lr = convert_coordinates((y_hr, x_hr), wcs_hr, wcs_lr)
 
     # mask of low resolution pixels at high resolution in the intersection:
-    over_lr = (X_hr >= 0) * (X_hr < nx_hr + 1) * (Y_hr >= 0) * (Y_hr < ny_hr + 1)
+    over_lr = (X_hr >= 0 - 0.5) * (X_hr < nx_hr + 0.5) * (Y_hr >= 0 - 0.5) * (Y_hr < ny_hr + 0.5)
     # mask of high resolution pixels at low resolution in the intersection (needed for psf matching)
-    over_hr = (x_lr >= 0) * (x_lr < Nx_lr + 1) * (y_lr >= 0) * (y_lr < Ny_lr + 1)
+    over_hr = (x_lr >= 0 - 0.5) * (x_lr < Nx_lr + 0.5) * (y_lr >= 0 - 0.5) * (y_lr < Ny_lr + 0.5)
 
     # pixels of the high resolution frame in the intersection in high resolution frame (needed for PSF only)
     coordhr_hr = (y_hr[(over_hr == 1)], x_hr[(over_hr == 1)])
