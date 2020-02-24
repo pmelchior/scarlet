@@ -343,7 +343,7 @@ def show_sources(
             model = src.get_model()
             seds = [model.sum(axis=(1, 2))]
         src.set_frame(frame_)
-        ax[k][panel].imshow(img_to_rgb(model, norm=norm, channel_map=channel_map))
+        ax[k][panel].imshow(img_to_rgb(model, norm=norm, channel_map=channel_map, mask=model.sum(axis=0)==0))
         ax[k][panel].set_title("Model Source {}".format(k))
         if center is not None:
             ax[k][panel].plot(*center_[::-1], "wx", mew=1, ms=10)
