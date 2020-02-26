@@ -1,6 +1,10 @@
 import autograd.numpy as np
 import autograd.scipy as scipy
 from .bbox import Box
+from .component import Component
+from .parameter import Parameter
+from .fft import Fourier
+from .observation import Observation
 
 
 def moffat(y, x, alpha=4.7, beta=1.5, bbox=None):
@@ -151,4 +155,123 @@ class PSF:
         """
         if self.image.dtype != dtype:
             self._image = self._image.astype(dtype)
+        return self
+
+
+class PSFDiffKernel(Component):
+    """PSF Difference Kernel Source
+
+    "Source" used to model the difference kernel to match one
+    PSF to another. Typically this should be modeling the
+    deconvolution kernel to convolve an image from an
+    observed PSF into a model PSF, as the difference
+    from model PSF to observed PSF is calculated much
+    more quickly using a DFT in `~scarlet.Observation.match`.
+    """
+    def __init__(
+        self,
+        frame,
+        initial,
+        step=1e-2
+    ):
+        """Initialize the Model
+
+        Parameters
+        ----------
+        frame: `~scarlet.Frame`
+            The spectral and spatial characteristics of this component.
+        initial: `numpy.array`
+            Initial guess for the kernel.
+        step: `double`
+            Step size for the kernel parameter.
+        """
+        kernel = initial.copy()
+        kernel = Parameter(
+            kernel,
+            name="kernel",
+            step=step,
+        )
+        super().__init__(frame, kernel)
+
+    def get_model(self, *parameters):
+        kernel = self.kernel
+        if len(parameters) == 1:
+            kernel = parameters[0]
+        elif len(parameters) > 1:
+            raise ValueError("PsfDiffKernel only takes a single parameter")
+        return kernel
+
+    @property
+    def kernel(self):
+        """Return the contents of the kernel parameter
+        """
+        return self._parameters[0]._data
+
+
+class PsfObservation(Observation):
+    def match(self, psfs):
+        """Implement the observed PSFs as the difference kernel
+
+        This is different than `~scarlet.Observation.match`,
+        where the difference kernel that matches the model
+        PSF to the observed PSF is calculated and stored.
+        For a `PsfObservation` the input PSF, which
+        should be the observed PSF (see below) is stored
+        as the "difference kernel" while the actual
+        deconvolution (difference) kernel is calculated
+        by the model.
+
+        Parameters
+        ----------
+        psfs: `~numpy.array`
+            The input PSF that is being convolved.
+            For deconvolution this is the observed PSF,
+            since the observed PSF is convolved with the
+            deconvolution kernel to match the model PSF.
+            For matching a model PSF to a wider observed
+            PSF use the `Observation` class,
+            which calculates the difference kernel much
+            more quickly using a DFT.
+
+        Returns
+        -------
+        self: `~scarlet.PsfObservation`
+            Return this object to allow for chaining.
+        """
+        self.bbox = Box(self.frame.shape)
+        self.slices = self.bbox.slices_for(self.frame.shape)
+        self._diff_kernels = Fourier(psfs)
+        return self
+
+    def get_loss(self, model):
+        """get_loss
+
+        We override `scarlet.Observation.get_loss` since the lognorm
+        is the dominant term, which interferes with calculating
+        relative error.
+        """
+        model_ = self.render(model)
+        images_ = self.images[self.slices]
+        weights_ = self.weights[self.slices]
+        return np.sum(weights_ * (model_ - images_) ** 2) / 2
+
+
+class DeconvolvedObservation(Observation):
+    """Deconvolved image using a deconvolution kernel
+
+    This is the same as `~scarlet.Observation` except that the matching
+    algorithm uses a precalculated deconvolution kernel and the
+    images are deconolved using that kernel. A separate class exists
+    to make it less likely that the user executes this operation
+    more than once, which will have adverse affects on the
+    `images` property.
+    """
+    def match(self, model_frame, kernel):
+        if hasattr(self, "matched") and self.matched:
+            msg = ("Matching has already been executed. "
+                   "Matching multiple times can have unexpected results.")
+            raise RuntimeError(msg)
+        super().match(model_frame, kernel)
+        self.images = self.render(self.images)
+        self.matched = True
         return self
