@@ -172,6 +172,7 @@ class PSFDiffKernel(Component):
         self,
         frame,
         initial,
+        band,
         step=1e-2
     ):
         """Initialize the Model
@@ -185,7 +186,8 @@ class PSFDiffKernel(Component):
         step: `double`
             Step size for the kernel parameter.
         """
-        kernel = initial.copy()
+        kernel = np.zeros(initial.shape, dtype=initial.dtype)
+        kernel[band] = initial[band]
         kernel = Parameter(
             kernel,
             name="kernel",
