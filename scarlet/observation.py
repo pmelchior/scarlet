@@ -66,6 +66,8 @@ class Observation:
         ), "Weights needs to have same shape as images"
 
         self._padding = padding
+        self.slices = (slice(None), slice(None), slice(None))
+        self._diff_kernels = None
 
     def match(self, model_frame, diff_kernels=None):
         """Match the frame of `Blend` to the frame of this observation.
