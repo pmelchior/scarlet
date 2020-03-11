@@ -100,7 +100,7 @@ def match_patches(obs, frame, isrot = True):
     assert wcs_hr != None
     assert wcs_lr != None
 
-    y_hr, x_hr = np.array(range(ny_hr)), np.array(range(nx_hr))
+    y_hr, x_hr = np.array(range(ny_hr)) + frame.origin[-2], np.array(range(nx_hr)) + frame.origin[-1]
 
     # Capital letters are for coordinates of low-resolution pixels
     if isrot:
@@ -112,41 +112,17 @@ def match_patches(obs, frame, isrot = True):
         Y_lr = Y_lr.flatten()
 
     else:
-        Y_lr, X_lr = np.array(range(Ny_lr)), np.array(range(Nx_lr))
+        # Handling rectangular scenes. I make the grid square so that wcs can be applied
+        N_lr = (Ny_lr != Nx_lr) * np.max([Ny_lr, Nx_lr]) + (Nx_lr == Ny_lr) * Ny_lr
+        Y_lr, X_lr = np.array(range(N_lr)), np.array(range(N_lr))
 
     # Corresponding angular positions
     # Coordinates of the low resolution pixels in the high resolution frame
     Y_hr, X_hr = convert_coordinates((Y_lr, X_lr), wcs_lr, wcs_hr)
-    # Coordinates of the high resolution pixels in the low resolution frame
-    y_lr, x_lr = convert_coordinates((y_hr, x_hr), wcs_hr, wcs_lr)
 
-    # mask of low resolution pixels at high resolution in the intersection:
-    over_lr = (X_hr >= 0 - 0.5) * (X_hr < nx_hr + 0.5) * (Y_hr >= 0 - 0.5) * (Y_hr < ny_hr + 0.5)
-    # mask of high resolution pixels at low resolution in the intersection (needed for psf matching)
-    over_hr = (x_lr >= 0 - 0.5) * (x_lr < Nx_lr + 0.5) * (y_lr >= 0 - 0.5) * (y_lr < Ny_lr + 0.5)
-
-    # pixels of the high resolution frame in the intersection in high resolution frame (needed for PSF only)
-    coordhr_hr = (y_hr[(over_hr == 1)], x_hr[(over_hr == 1)])
-
-
-    class SourceInitError(Exception):
-        """
-        Datasets do not match, no intersection found. Check the coordinates of the observations or the WCS.
-        """
-
-        pass
-
-    if np.sum(over_lr) == 0:
-        raise SourceInitError
 
     # Coordinates of low resolution pixels in the intersection at low resolution:
-    ylr_lr = Y_lr[(over_lr == 1)]
-    xlr_lr = X_lr[(over_lr == 1)]
-    coordlr_lr = (ylr_lr, xlr_lr)
+    coordlr_lr = (Y_lr, X_lr)
     # Coordinates of low resolution pixels in the intersection at high resolution:
-    ylr_hr = Y_hr[(over_lr == 1)]
-    xlr_hr = X_hr[(over_lr == 1)]
-
-    coordlr_hr = (ylr_hr, xlr_hr)
-
-    return coordlr_lr, coordlr_hr, coordhr_hr
+    coordlr_hr = (Y_hr, X_hr)
+    return coordlr_lr, coordlr_hr

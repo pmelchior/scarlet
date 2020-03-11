@@ -85,7 +85,7 @@ class Observation:
         """
         # find the box that contained this obs in model_frame
         shape = self.images.shape
-        yx0 = model_frame.get_pixel(self.frame.get_sky_coord((0, 0)))
+        yx0 = model_frame.get_pixel(self.frame.get_sky_coord((-model_frame.origin[-2], -model_frame.origin[-1])))
         #  channels of model that are represented in this observation
         if self.frame.channels is model_frame.channels:
             origin = (0, *yx0)
@@ -133,11 +133,9 @@ class Observation:
         image_model: array
             `model` mapped into the observation frame
         """
-
         image_model = model[self.slices]
         if self._diff_kernels is not None:
             image_model = self._convolve(image_model)
-
         return image_model
 
     def get_loss(self, model):
@@ -156,8 +154,8 @@ class Observation:
         """
 
         model_ = self.render(model)
-        images_ = self.images[self.slices]
-        weights_ = self.weights[self.slices]
+        images_ = self.images
+        weights_ = self.weights
 
         # normalization of the single-pixel likelihood:
         # 1 / [(2pi)^1/2 (sigma^2)^1/2]
@@ -289,7 +287,6 @@ class LowResObservation(Observation):
         """
         # fft
         axes = tuple(np.array(axes) - 1)
-
         fft_shape = np.array(self._fft_shape)[tuple([axes])]
         imgs_fft = imgs.fft(fft_shape, np.array(axes) + 1)
         transformed_shape = np.array(imgs_fft.shape[1:])
@@ -300,7 +297,6 @@ class LowResObservation(Observation):
             shifter = np.array(interpolation.mk_shifter(self._fft_shape, real=True))
         else:
             shifter = np.array(interpolation.mk_shifter(self._fft_shape))
-
         # Shift
         if 0 in axes:
             # Fourier shift
@@ -338,7 +334,6 @@ class LowResObservation(Observation):
         coord: `array`
             coordinates of the pixels in the frame to fit
         """
-
         if self.frame.dtype != model_frame.dtype:
             self.images = self.images.copy().astype(model_frame.dtype)
             if type(self.weights) is np.ndarray:
@@ -354,7 +349,7 @@ class LowResObservation(Observation):
             self.angle = None
 
         # Get pixel coordinates in each frame.
-        coord_lr, coord_hr, coordhr_over = resampling.match_patches(self, model_frame,isrot=self.isrot)
+        coord_lr, coord_hr = resampling.match_patches(self, model_frame,isrot=self.isrot)
         # shape of the low resolution image in the intersection or union
         self.lr_shape = (
             np.max(coord_lr[0]) - np.min(coord_lr[0]) + 1,
@@ -368,19 +363,19 @@ class LowResObservation(Observation):
             cmax = model_frame.channels.index(self.frame.channels[-1])
         else:
             cmin, cmax = 0, self.frame.C
-        # 2) use the bounds of coord_lr
-        self.bbox = Box.from_bounds(
-            (cmin, cmax + 1),
-            (np.min(coord_lr[0]).astype(int), np.max(coord_lr[0]).astype(int) + 1),
-            (np.min(coord_lr[1]).astype(int), np.max(coord_lr[1]).astype(int) + 1),
-        )
-        self.slices = self.bbox.slices_for(model_frame.shape)
+        # 2) use the bounds of coord_hr
+        self.bbox = Box(
+            (cmax + 1 - cmin,
+            np.around(np.max(coord_lr[0]) + 1 - np.min(coord_lr[0])).astype(int),
+            np.around(np.max(coord_lr[1]) + 1 - np.min(coord_lr[1])).astype(int),
+        ))
+        # Slice of the frame that contains the observation
+        self.slices = self.bbox.slices_for(self.frame.shape)
         # Coordinates for all model frame pixels
         self.frame_coord = (
             np.array(range(model_frame.Ny)),
             np.array(range(model_frame.Nx)),
         )
-
         diff_psf = self.build_diffkernel(model_frame)
 
         # 1D convolutions convolutions of the model are done along the smaller axis, therefore,
@@ -397,10 +392,10 @@ class LowResObservation(Observation):
         )
         self.diff_psf = fft.Fourier(fft._pad(diff_psf.image, self._fft_shape, axes=(-2,-1)))
 
-        center_y = np.int(self._fft_shape[0] / 2. - (self._fft_shape[0] - model_frame.Ny) / 2.) - \
-                   ((self._fft_shape[0] % 2) != 0) * ((model_frame.Ny % 2) == 0)
+        center_y = np.int(self._fft_shape[0] / 2. - (self._fft_shape[0] - model_frame.Ny) / 2.) + \
+                   ((self._fft_shape[0] % 2) != 0) * ((model_frame.Ny % 2) == 0) + model_frame.origin[-2]
         center_x = np.int(self._fft_shape[1] / 2. - (self._fft_shape[1] - model_frame.Nx) / 2.) - \
-                   ((self._fft_shape[1] % 2) != 0) * ((model_frame.Nx % 2) == 0)
+                   ((self._fft_shape[1] % 2) != 0) * ((model_frame.Nx % 2) == 0) + model_frame.origin[-1]
         if self.isrot:
 
             # Unrotated coordinates:
@@ -445,7 +440,6 @@ class LowResObservation(Observation):
             self.shifts[1] -= center_x
 
             self.other_shifts = np.copy(self.shifts)
-
         # Computes the resampling/convolution matrix
         resconv_op = self.sinc_shift(self.diff_psf, self.shifts, axes)
 
@@ -474,7 +468,7 @@ class LowResObservation(Observation):
         """
         # Padding the psf to the fast_shape size
         model_ = fft.Fourier(
-            fft._pad(model[self.slices[0], :, :], self._fft_shape, axes=(-2, -1))
+            fft._pad(model, self._fft_shape, axes=(-2, -1))
         )
 
         model_image = []
@@ -521,7 +515,7 @@ class LowResObservation(Observation):
             `model` mapped into the observation frame
         """
         image_model = np.zeros(self.frame.shape)
-        image_model[:, self.slices[-2], self.slices[-1]] = self._render(model)
+        image_model[self.slices] = self._render(model)
         return image_model
 
     def get_loss(self, model):

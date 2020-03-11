@@ -319,26 +319,22 @@ def mk_shifter(shape, real=False):
 
     # Name of the chached shifts.
     name = "mk_shifter"
-    key = shape[0], shape[1]
-
+    key = shape[0], shape[1], real
     try:
-        shift_y, shift_x = Cache.check(name, key)
-        shifters = (shift_y, shift_x)
+        shifters = Cache.check(name, key)
     except KeyError:
-        freq_x = np.fft.rfftfreq(shape[1])
+        freq_x = np.fft.rfftfreq(shape[-1])
         if real is True:
-            freq_y = np.fft.rfftfreq(shape[0])
+            freq_y = np.fft.rfftfreq(shape[-2])
         else:
-            freq_y = np.fft.fftfreq(shape[0])
+            freq_y = np.fft.fftfreq(shape[-2])
         # Shift the signal to recenter it, negative because math is opposite from
         # pixel direction
         shift_y = (-1j * 2 * np.pi * freq_y)
         shift_x = (-1j * 2 * np.pi * freq_x)
 
         shifters = (shift_y, shift_x)
-
     Cache.set(name, key, shifters)
-
     return shifters
 
 def get_affine(wcs):

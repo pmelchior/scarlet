@@ -30,7 +30,7 @@ class Frame(Box):
     ):
 
         if isinstance(shape_or_box, Box):
-            self = shape_or_box
+            super().__init__(shape_or_box.shape, shape_or_box.origin)
         else:
             super().__init__(shape_or_box)
 
@@ -48,6 +48,8 @@ class Frame(Box):
         assert channels is None or len(channels) == self.shape[0]
         self.channels = channels
         self.dtype = dtype
+
+
 
     @property
     def C(self):
@@ -186,69 +188,59 @@ class Frame(Box):
                 observations[c] = obs.make_LowRes()
             # Limits that include all observations relative to target_wcs
             obs_coord = resampling.get_to_common_frame(obs, target_wcs)
-            if int(np.min(obs_coord[0])) < y_min - 0.5:
+            if int(np.min(obs_coord[0])) < y_min:
                 y_min = np.min(obs_coord[0])
-            if int(np.min(obs_coord[1])) < x_min - 0.5:
+            if int(np.min(obs_coord[1])) < x_min:
                 x_min = np.min(obs_coord[1])
-            #+1  because (0,0) is in the corner and we need to capture everything in the last pixel.
-            if int(np.max(obs_coord[0])) > y_max + 0.5:
-                y_max = np.max(obs_coord[0]) + 1
-            if int(np.max(obs_coord[1])) > x_max + 0.5:
-                x_max = np.max(obs_coord[1]) + 1
+            #The upper limit is the bottom right corner
+            if int(np.max(obs_coord[0])) > y_max:
+                y_max = np.max(obs_coord[0])
+            if int(np.max(obs_coord[1])) > x_max:
+                x_max = np.max(obs_coord[1])
 
         # Margin in pixels
-        fat_pixel_size = (fat_psf_size/h).astype(int)*0
+        fat_pixel_size = (fat_psf_size/h).astype(int)
         #Padding by the size of the psf
         if fat_pixel_size % 2 != 0:
             fat_pixel_size += 1
 
-        offset = np.array([y_min , x_min])
-        # Shape of the box that encompasses all observations + psf margin
-        ny = (y_max - offset[0]).astype(int)
-        nx = (x_max - offset[1]).astype(int)
+        offset = np.array([y_min, x_min])
+        # Shape of the box that encompasses all observations
+        ny = (y_max - offset[0] + 1).astype(int)
+        nx = (x_max - offset[1] + 1).astype(int)
 
-        coord_frame = (np.indices((ny,nx)) + offset[:,np.newaxis, np.newaxis]).astype(int)
-
+        coord_frame = (np.indices((ny,nx)))
         footprint = 0
         for obs in observations:
             if obs.frame.wcs != target_wcs:
-                coord_2obs = resampling.convert_coordinates(coord_frame, target_wcs, obs.frame.wcs)
+                coord_2obs = np.around(resampling.convert_coordinates(coord_frame, target_wcs, obs.frame.wcs))
             else:
                 coord_2obs = coord_frame
-
-            footprint += (coord_2obs[0] >= 0) * (coord_2obs[1] >= 0) *\
+            footprint += (coord_2obs[0] >= -np.finfo(float).eps) * (coord_2obs[1] >= -np.finfo(float).eps) *\
                 (coord_2obs[0] <= obs.frame.shape[-2]) * (coord_2obs[1] <= obs.frame.shape[-1])
 
-
         if coverage is 'union':
-            coord_frame = np.where(footprint != 0)
+            coord_cover = np.where(footprint != 0)
 
         elif coverage is 'intersection':
-            coord_frame = (np.where(footprint == np.max(footprint)))
-
-        y_min = np.min(coord_frame[0])
-        x_min = np.min(coord_frame[1])
-        y_max = np.max(coord_frame[0])
-        x_max = np.max(coord_frame[1])
-
-        ny = (y_max - y_min + 1 + fat_pixel_size).astype(int)
-        nx = (x_max - x_min + 1 + fat_pixel_size).astype(int)
-
+            coord_cover = (np.where(footprint == np.max(footprint)))
+        #Corners of the footprint with padding by the psf size
+        y_fmin = np.min(coord_cover[0]) - fat_pixel_size / 2 + offset[0]
+        x_fmin = np.min(coord_cover[1]) - fat_pixel_size / 2 + offset[1]
+        y_fmax = np.max(coord_cover[0]) + fat_pixel_size / 2 + offset[0]
+        x_fmax = np.max(coord_cover[1]) + fat_pixel_size / 2 + offset[1]
+        # Shape of the resulting frame
+        ny = (y_fmax - y_fmin + 1).astype(int)
+        nx = (x_fmax - x_fmin + 1).astype(int)
         frame_shape =(len(channels), ny, nx)
-        target_wcs.wcs.crval = resampling.pix2radec((y_min - fat_pixel_size / 2,
-                                                     x_min - fat_pixel_size / 2), target_wcs)
-        if np.size(target_wcs.array_shape) == 2:
-            target_wcs.array_shape = (ny,nx)
-            target_wcs.wcs.crpix = [0, 0]
-        elif np.size(target_wcs.array_shape) == 3:
-            target_wcs.array_shape = (len(channels),ny, nx)
-            target_wcs.wcs.crpix = [0, 0, 0]
 
-        frame = Frame(frame_shape, wcs=target_wcs, psfs=target_psf, channels=channels)
+        fbox = Box(frame_shape, origin = (0,np.around(y_fmin).astype(int), np.around(x_fmin).astype(int)))
+        frame = Frame(fbox, wcs=target_wcs, psfs=target_psf, channels=channels)
 
         # Match observations to this frame
         for obs in observations:
             obs.match(frame)
+
         return frame
 
 
