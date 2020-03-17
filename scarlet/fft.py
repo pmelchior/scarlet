@@ -37,7 +37,7 @@ def _centered(arr, newshape):
     return arr[tuple(myslice)]
 
 
-def _pad(arr, newshape, axes=None):
+def _pad(arr, newshape, axes=None, mode = "constant"):
     """Pad an array to fit into newshape
 
     Pad `arr` with zeros to fit into newshape,
@@ -64,7 +64,7 @@ def _pad(arr, newshape, axes=None):
             startind = (dS + 1) // 2
             endind = dS - startind
             pad_width[axis] = (startind, endind)
-    return np.pad(arr, pad_width, mode="constant")
+    return np.pad(arr, pad_width, mode=mode)
 
 
 def _get_fft_shape(img1, img2, padding=3, axes=None, max=False):

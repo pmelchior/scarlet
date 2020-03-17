@@ -100,8 +100,6 @@ def match_patches(obs, frame, isrot = True):
     assert wcs_hr != None
     assert wcs_lr != None
 
-    y_hr, x_hr = np.array(range(ny_hr)) + frame.origin[-2], np.array(range(nx_hr)) + frame.origin[-1]
-
     # Capital letters are for coordinates of low-resolution pixels
     if isrot:
 
