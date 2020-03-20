@@ -294,6 +294,8 @@ def show_sources(
     show_rendered=False,
     show_sed=True,
     figsize=None,
+    use_mask=True,
+    mark_centers=True,
 ):
     """Plot each source individually.
     The functions provides an more detailed inspection of every source in the list.
@@ -353,9 +355,13 @@ def show_sources(
             model = src.get_model()
             seds = [model.sum(axis=(1, 2))]
         src.set_frame(frame_)
-        ax[k][panel].imshow(img_to_rgb(model, norm=norm, channel_map=channel_map, mask=model.sum(axis=0)==0))
+        if use_mask:
+            mask = model.sum(axis=0)==0
+        else:
+            mask = None
+        ax[k][panel].imshow(img_to_rgb(model, norm=norm, channel_map=channel_map, mask=mask))
         ax[k][panel].set_title("Model Source {}".format(k))
-        if center is not None:
+        if center is not None and mark_centers:
             ax[k][panel].plot(*center_[::-1], "wx", mew=1, ms=10)
 
         if show_rendered:
@@ -367,7 +373,7 @@ def show_sources(
             if src.bbox is not None:
                 ax[k][panel].set_ylim(src.bbox.start[-2], src.bbox.stop[-2])
                 ax[k][panel].set_xlim(src.bbox.start[-1], src.bbox.stop[-1])
-            if center is not None:
+            if center is not None and mark_centers:
                 ax[k][panel].plot(*center__[::-1], "wx", mew=1, ms=10)
 
         if show_observed:
@@ -379,7 +385,7 @@ def show_sources(
             if src.bbox is not None:
                 ax[k][panel].set_ylim(src.bbox.start[-2], src.bbox.stop[-2])
                 ax[k][panel].set_xlim(src.bbox.start[-1], src.bbox.stop[-1])
-            if center is not None:
+            if center is not None and mark_centers:
                 ax[k][panel].plot(*center__[::-1], "wx", mew=1, ms=10)
 
         if show_sed:
