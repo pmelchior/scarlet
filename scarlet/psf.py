@@ -211,7 +211,7 @@ class PSFDiffKernel(Component):
 
 
 class PsfObservation(Observation):
-    def match(self, psfs):
+    def match(self, psfs, convolution = "real"):
         """Implement the observed PSFs as the difference kernel
 
         This is different than `~scarlet.Observation.match`,
@@ -243,6 +243,7 @@ class PsfObservation(Observation):
         self.bbox = Box(self.frame.shape)
         self.slices = self.bbox.slices_for(self.frame.shape)
         self._diff_kernels = Fourier(psfs)
+        self.convolution = convolution
         return self
 
     def get_loss(self, model):
