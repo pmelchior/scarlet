@@ -1,9 +1,99 @@
 import autograd.numpy as np
+from autograd.extend import defvjp, primitive
 
 from .frame import Frame
 from . import interpolation
 from . import fft
 from . import resampling
+
+from .bbox import Box
+from scarlet.operators_pybind11 import apply_filter
+
+
+def get_filter_coords(filter_values, center=None):
+    """Create filter coordinate grid needed for the apply filter function
+
+    Parameters
+    ----------
+    filter_values: array
+        The 2D array of the filter to apply.
+    center: tuple
+        The center of the filter. If `center` is `None` then
+        `filter_values` must have an odd number of rows and columns
+        and the center will be set to the center of `filter_values`.
+
+    Returns
+    -------
+    coords: array
+        The coordinates of the pixels in `filter_values`,
+        where the coordinates of the `center` pixel are `(0,0)`.
+    """
+    if len(filter_values.shape) != 2:
+        raise ValueError("`filter_values` must be 2D")
+    if center is None:
+        if filter_values.shape[0] % 2 == 0 or filter_values.shape[1] % 2 == 0:
+            msg = """Ambiguous center of the `filter_values` array,
+                     you must use a `filter_values` array
+                     with an odd number of rows and columns or
+                     calculate `coords` on your own."""
+            raise ValueError(msg)
+        center = [filter_values.shape[0]//2, filter_values.shape[1]//2]
+    x = np.arange(filter_values.shape[1])
+    y = np.arange(filter_values.shape[0])
+    x, y = np.meshgrid(x, y)
+    x -= center[1]
+    y -= center[0]
+    coords = np.dstack([y, x])
+    return coords
+
+
+def get_filter_slices(coords):
+    """Get the slices in x and y to apply a filter
+
+    Parameters
+    ----------
+    coords: array
+        The coordinates of the filter,
+        defined by `get_filter_coords`.
+
+    Returns
+    -------
+    y_start, y_end, x_start, x_end: int
+        The start and end of each slice that is passed to `apply_filter`.
+    """
+    z = np.zeros((len(coords),), dtype=int)
+    # Set the y slices
+    y_start = np.max([z, coords[:, 0]], axis=0)
+    y_end = -np.min([z, coords[:, 0]], axis=0)
+    # Set the x slices
+    x_start = np.max([z, coords[:, 1]], axis=0)
+    x_end = -np.min([z, coords[:, 1]], axis=0)
+    return y_start, y_end, x_start, x_end
+
+
+@primitive
+def _convolve(image, psf, slices):
+    """Convolve an image with a PSF in real space
+    """
+    result = np.empty(image.shape, dtype=image.dtype)
+    for band in range(len(image)):
+        if hasattr(image[band], "_value"):
+            # This is an ArrayBox
+            img = image[band]._value
+        else:
+            img = image[band]
+        apply_filter(img, psf[band].reshape(-1), slices[0], slices[1], slices[2], slices[3], result[band])
+    return result
+
+
+def _grad_convolve(convolved, image, psf, slices):
+    """Gradient of a real space convolution
+    """
+    return lambda input_grad: _convolve(input_grad, psf[:, ::-1, ::-1], slices)
+
+
+# Register this function in autograd
+defvjp(_convolve, _grad_convolve)
 
 
 class Observation:
@@ -67,7 +157,7 @@ class Observation:
         self.slices = (slice(None), slice(None), slice(None))
         self._diff_kernels = None
 
-    def match(self, model_frame, diff_kernels=None):
+    def match(self, model_frame, diff_kernels=None, convolution="real"):
         """Match the frame of `Blend` to the frame of this observation.
 
         The method sets up the mappings in spectral and spatial coordinates,
@@ -82,6 +172,11 @@ class Observation:
             The difference kernel for each band.
             If `diff_kernels` is `None` then they are
             calculated automatically.
+        convolution: str
+            The type of convolution to use.
+            - `real`: Use a real space convolution and gradient
+            - `fft`: Use a DFT to do the convolution and gradient
+
         Returns
         -------
         None
@@ -117,12 +212,35 @@ class Observation:
                 diff_kernels = fft.Fourier(diff_kernels)
             self._diff_kernels = diff_kernels
 
+        # initialize the filter window
+        self.convolution = convolution
         return self
+
+    @property
+    def convolution(self):
+        """Whether to do a real space or k-space convolution
+        """
+        return self._convolution
+
+    @convolution.setter
+    def convolution(self, value):
+        assert value in ["real", "fft"], "`convolution` must be either 'real' or 'fft'"
+        self._convolution = value
+        if value == "real":
+            coords = get_filter_coords(self._diff_kernels[0])
+            self._convolution_slices = get_filter_slices(coords.reshape(-1, 2))
+
 
     def _convolve(self, model):
         """Convolve the model in a single band
         """
-        return fft.convolve(fft.Fourier(model), self._diff_kernels, axes=(1, 2)).image
+        if self.convolution == "real":
+            result = _convolve(model, self._diff_kernels.image, self._convolution_slices)
+        elif self.convolution == "fft":
+            result = fft.convolve(fft.Fourier(model), self._diff_kernels, axes=(1, 2)).image
+        else:
+            raise ValueError("`convolution` must be either 'real' or 'fft', got {}".format(self.convolution))
+        return result
 
     def render(self, model):
         """Convolve a model to the observation frame
