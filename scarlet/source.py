@@ -315,7 +315,7 @@ class RandomSource(FactorizedComponent):
         if observation is None:
             sed = np.random.rand(C)
         else:
-            sed = get_best_fit_seds(morph[None], frame, observation)[0]
+            sed = get_best_fit_seds(morph[None], frame, observation.images)[0]
 
         constraint = PositivityConstraint()
         sed = Parameter(sed, name="sed", step=relative_step, constraint=constraint)
