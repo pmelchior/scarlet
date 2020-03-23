@@ -81,15 +81,9 @@ class Observation:
         model_frame: a `scarlet.Frame` instance
             The frame of `Blend` to match
         diff_kernels: array
-            The difference kernels to implement.
-            Typically the calculation of `diff_kernels` is the primary task
-            of this method and this parameter is `None`,
-            however in some instances, for example deconvolution,
-            the difference kernels may have been precalculated.
-            In that case the `match` method is merely responsible for setting
-            the internal `_diff_kernels` attribute and making sure that the
-            internal properties exist that are necessary to convolve an input
-            image with the difference kernels in the `render` method.
+            The difference kernel for each band.
+            If `diff_kernels` is `None` then they are
+            calculated automatically.
         Returns
         -------
         None
