@@ -157,7 +157,7 @@ class Observation:
         self.slices = (slice(None), slice(None), slice(None))
         self._diff_kernels = None
 
-    def match(self, model_frame, diff_kernels=None, convolution="real"):
+    def match(self, model_frame, diff_kernels=None, convolution="fft"):
         """Match the frame of `Blend` to the frame of this observation.
 
         The method sets up the mappings in spectral and spatial coordinates,
