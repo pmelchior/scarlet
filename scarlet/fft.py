@@ -106,6 +106,10 @@ def _get_fft_shape(img1, img2, padding=3, axes=None, max=False):
     while shape[-1] % 2 != 0:
         shape[-1] += 1
         shape[-1] = fftpack.helper.next_fast_len(shape[-1])
+    if shape2[-2] % 2 == 0:
+        while shape[-2] % 2 != 0:
+            shape[-2] += 1
+            shape[-2] = fftpack.helper.next_fast_len(shape[-1])
 
     return shape
 

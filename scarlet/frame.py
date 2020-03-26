@@ -150,7 +150,7 @@ class Frame(Box):
             h_temp = interpolation.get_pixel_size(interpolation.get_affine(obs.frame.wcs))
             # Looking for the sharpest and the fatest psf
             for psf in obs.frame._psfs.image:
-                psf_size = get_psf_size(psf)*h_temp
+                psf_size = interpolation.get_psf_size(psf)*h_temp
                 if (fat_psf_size is None) or (psf_size > fat_psf_size):
                     fat_psf_size = psf_size
                 if (obs_id is None) or (c == obs_id):
@@ -185,7 +185,7 @@ class Frame(Box):
         for c, obs in enumerate(observations):
             # Make observations with a different wcs LowResObservation
             if (obs.frame.wcs is not target_wcs) and (type(obs) is not 'LowResObservation'):
-                observations[c] = obs.make_LowRes()
+                observations[c] = obs.get_LowRes()
             # Limits that include all observations relative to target_wcs
             obs_coord = resampling.get_to_common_frame(obs, target_wcs)
             if int(np.min(obs_coord[0])) < y_min:
@@ -242,37 +242,3 @@ class Frame(Box):
             obs.match(frame)
 
         return frame
-
-
-def get_psf_size(psf):
-    """ Measures the size of a psf by computing the size of the area in 3 sigma around the center.
-
-    This is an approximate method to estimate the size of the psf for setting the size of the frame,
-    which does not require a precise measurement.
-
-    Parameters
-    ----------
-        PSF: `scarlet.PSF` object
-            PSF for whic to compute the size
-    Returns
-    -------
-        sigma3: `float`
-            radius of the area inside 3 sigma around the center in pixels
-    """
-    # Normalisation by maximum
-    psf_frame = psf/np.max(psf)
-
-    # Pixels in the FWHM set to one, others to 0:
-    psf_frame[psf_frame>0.5] = 1
-    psf_frame[psf_frame<=0.5] = 0
-
-    # Area in the FWHM:
-    area = np.sum(psf_frame)
-
-    # Diameter of this area
-    d = 2*(area/np.pi)**0.5
-
-    # 3-sigma:
-    sigma3 = 3*d/(2*(2*np.log(2))**0.5)
-
-    return sigma3

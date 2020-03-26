@@ -94,7 +94,7 @@ class Observation:
             cmin = list(model_frame.channels).index(self.frame.channels[0])
             origin = (cmin, *yx0)
         self.bbox = Box(shape, origin=origin)
-        self.slices = self.bbox.slices_for(model_frame.shape)
+        self.model_slices = self.bbox.slices_for(model_frame.shape)
 
         # check dtype consistency
         if self.frame.dtype != model_frame.dtype:
@@ -133,9 +133,12 @@ class Observation:
         image_model: array
             `model` mapped into the observation frame
         """
-        image_model = model[self.slices]
+
         if self._diff_kernels is not None:
-            image_model = self._convolve(image_model)
+            image_model = self._convolve(model)[self.model_slices]
+        else:
+            image_model = model[self.model_slices]
+
         return image_model
 
     def get_loss(self, model):
@@ -172,7 +175,7 @@ class Observation:
 
         return log_norm + np.sum(weights_ * (model_ - images_) ** 2) / 2
 
-    def make_LowRes(self):
+    def get_LowRes(self):
         """ Creates a LowResObservation object from an Observation object
 
         """
@@ -228,16 +231,19 @@ class LowResObservation(Observation):
         psf_match_lr: array
             low resolution psf at matching size and resolution
         """
-
         psf_lr = self.frame._psfs.image
+        # Odd pad shape
+        pad_shape = np.array((self.images.shape[-2:] + np.array(psf_lr.shape[-2:]))/2).astype(int) * 2 + 1
         wcs_lr = self.frame.wcs
 
         h_lr = interpolation.get_pixel_size(interpolation.get_affine(wcs_lr))
         h_hr = interpolation.get_pixel_size(interpolation.get_affine(wcs_hr))
 
+        # Interpolation of the low res psf
         angle, h_ratio = interpolation.get_angles(wcs_hr, wcs_lr)
-        psf_match_lr = interpolation.sinc_interp_inplace(psf_lr, h_lr, h_hr, angle)
+        psf_match_lr = interpolation.sinc_interp_inplace(psf_lr, h_lr, h_hr, angle, pad_shape = pad_shape)
 
+        # Normalisation
         psf_hr /= np.sum(psf_hr)
         psf_match_lr /= np.sum(psf_match_lr)
 
@@ -370,7 +376,7 @@ class LowResObservation(Observation):
             np.around(np.max(coord_lr[1]) + 1 - np.min(coord_lr[1])).astype(int),
         ))
         # Slice of the frame that contains the observation
-        self.slices = self.bbox.slices_for(self.frame.shape)
+        self.model_slices = self.bbox.slices_for(model_frame.shape)
         # Coordinates for all model frame pixels
         self.frame_coord = (
             np.array(range(model_frame.Ny)),
@@ -514,8 +520,8 @@ class LowResObservation(Observation):
         image_model: array
             `model` mapped into the observation frame
         """
-        image_model = np.zeros(self.frame.shape)
-        image_model[self.slices] = self._render(model)
+
+        image_model = self._render(model)[self.model_slices]
         return image_model
 
     def get_loss(self, model):
@@ -531,8 +537,8 @@ class LowResObservation(Observation):
         """
 
         model_ = self._render(model)
-        images_ = self.images[:, self.slices[-2], self.slices[-1]]
-        weights_ = self.weights[:, self.slices[-2], self.slices[-1]]
+        images_ = self.images[:, self.model_slices[-2], self.model_slices[-1]]
+        weights_ = self.weights[:, self.model_slices[-2], self.model_slices[-1]]
 
         # properly normalized likelihood
         log_sigma = np.zeros(weights_.shape, dtype=weights_.dtype)

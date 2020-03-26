@@ -366,11 +366,11 @@ def get_angles(frame_wcs, model_wcs):
     model_affine = get_affine(model_wcs)
     frame_affine = get_affine(frame_wcs)
     model_pix = get_pixel_size(model_affine)
-    self_pix = get_pixel_size(frame_affine)
+    frame_pix = get_pixel_size(frame_affine)
     # Pixel scale ratio
-    h = self_pix / model_pix
+    h = frame_pix / model_pix
     # Vector giving the direction of the x-axis of each frame
-    self_framevector = np.sum(frame_affine, axis=0)[:2] / self_pix
+    self_framevector = np.sum(frame_affine, axis=0)[:2] / frame_pix
     model_framevector = np.sum(model_affine, axis=0)[:2] / model_pix
     # normalisation
     self_framevector /= np.sum(self_framevector ** 2) ** 0.5
@@ -460,7 +460,7 @@ def sinc_interp(images, coord_hr, coord_lr, angle=None, padding=3):
     return result
 
 
-def sinc_interp_inplace(image, h_image, h_target, angle):
+def sinc_interp_inplace(image, h_image, h_target, angle, pad_shape = None):
     """ In place interpolation of a cube of images
 
     Performs interpolation from a grid defined by the grid of `image` to a grid spanning the same physical area scaled
@@ -480,10 +480,14 @@ def sinc_interp_inplace(image, h_image, h_target, angle):
     Returns
     -------
     interp_image: `ndarray`
-        interpolated image
+        padded interpolated image
     """
     assert len(image.shape) == 3, "images should be provided as a cube. If only one image is provided, " \
                                   "image should be a cube with image.shape[0] = 1"
+    if pad_shape is not None:
+        # Padding. This is never explicitelly undone in this function on purpose. Proceed with caution.
+        image = fft._pad(image, pad_shape, axes = [-2,-1])
+
     ny_lr, nx_lr = image.shape[-2:]
     coord_lr = np.array([np.array(range(ny_lr)) - (ny_lr-1)/2, np.array(range(nx_lr))-(nx_lr-1)/2])
     ny_hr, nx_hr = (image.shape[-2] * h_image / h_target).astype(int), \
@@ -644,3 +648,37 @@ def apply_2D_trapezoid_rule(y, x, f, dNy, dNx=None, dy=None, dx=None):
         np.split(np.array(np.split(volumes, _dNx, axis=1)), _dNy, axis=1)
     ).sum(axis=(2, 3))
     return volumes
+
+
+def get_psf_size(psf):
+    """ Measures the size of a psf by computing the size of the area in 3 sigma around the center.
+
+    This is an approximate method to estimate the size of the psf for setting the size of the frame,
+    which does not require a precise measurement.
+
+    Parameters
+    ----------
+        PSF: `scarlet.PSF` object
+            PSF for whic to compute the size
+    Returns
+    -------
+        sigma3: `float`
+            radius of the area inside 3 sigma around the center in pixels
+    """
+    # Normalisation by maximum
+    psf_frame = psf/np.max(psf)
+
+    # Pixels in the FWHM set to one, others to 0:
+    psf_frame[psf_frame>0.5] = 1
+    psf_frame[psf_frame<=0.5] = 0
+
+    # Area in the FWHM:
+    area = np.sum(psf_frame)
+
+    # Diameter of this area
+    d = 2*(area/np.pi)**0.5
+
+    # 3-sigma:
+    sigma3 = 3*d/(2*(2*np.log(2))**0.5)
+
+    return sigma3

@@ -1,6 +1,8 @@
 import numpy as np
 
-def pix2radec(coord, wcs):
+def _pix2radec(coord, wcs):
+    """Converts coordinates from pixels to Ra-Dec given a wcs
+    """
     y,x = coord
     if np.size(wcs.array_shape) == 2:
         ra, dec = wcs.all_pix2world(x, y, 0, ra_dec_order=True)
@@ -8,7 +10,9 @@ def pix2radec(coord, wcs):
         ra, dec = wcs.all_pix2world(x, y, 0, 0, ra_dec_order=True)
     return (ra, dec)
 
-def radec2pix(coord, wcs):
+def _radec2pix(coord, wcs):
+    """Converts coordinates from Ra-Dec to pixels given a wcs
+    """
     ra, dec = coord
     # Positions of coords  in the frame of the obs
     if np.size(wcs.array_shape) == 2:
@@ -33,8 +37,8 @@ def convert_coordinates(coord, origin_wcs, target_wcs):
     coord_target: `tuple`
         coordinates at the location of `coord` in the target frame defined by `target_wcs`
     """
-    ra, dec = pix2radec(coord, origin_wcs)
-    y,x = radec2pix((ra, dec), target_wcs)
+    ra, dec = _pix2radec(coord, origin_wcs)
+    y,x = _radec2pix((ra, dec), target_wcs)
     return (y, x)
 
 def get_to_common_frame(obs, frame_wcs):
