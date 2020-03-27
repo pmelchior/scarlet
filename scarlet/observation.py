@@ -272,7 +272,7 @@ class LowResObservation(Observation):
         new_target, observed_psfs = self.match_psfs(_target, whr)
         diff_psf = fft.match_psfs(fft.Fourier(observed_psfs), fft.Fourier(new_target))
 
-        return diff_psf
+        return diff_psf, new_target
 
     def sinc_shift(self, imgs, shifts, axes):
         """Performs 2 1D sinc convolutions and shifting along one rotated axis in Fourier space.
@@ -382,7 +382,7 @@ class LowResObservation(Observation):
             np.array(range(model_frame.Ny)),
             np.array(range(model_frame.Nx)),
         )
-        diff_psf = self.build_diffkernel(model_frame)
+        diff_psf, target = self.build_diffkernel(model_frame)
 
         # 1D convolutions convolutions of the model are done along the smaller axis, therefore,
         # psf is convolved along the frame's longer axis.
@@ -390,12 +390,16 @@ class LowResObservation(Observation):
         self.small_axis = self.frame.Nx <= self.frame.Ny
 
         self._fft_shape = fft._get_fft_shape(
-            diff_psf,
+            target,
             np.zeros(model_frame.shape),
             padding=3,
             axes=[-2, -1],
-            max=True,
+            max=False,
         )
+        # Cutting diff_psf if needded and keeping the parity
+        if (self._fft_shape[-2] < diff_psf.shape[-2]) or (self._fft_shape[-1] < diff_psf.shape[-1]):
+            diff_psf = fft._centered(diff_psf, np.array([diff_psf.shape[0]+1, *self._fft_shape])-1)
+
         self.diff_psf = fft.Fourier(fft._pad(diff_psf.image, self._fft_shape, axes=(-2,-1)))
 
         center_y = np.int(self._fft_shape[0] / 2. - (self._fft_shape[0] - model_frame.Ny) / 2.) + \
