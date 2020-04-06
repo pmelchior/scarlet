@@ -197,7 +197,7 @@ class Fourier(object):
     @property
     def shape(self):
         """The shape of the real space image"""
-        return self.image.shape
+        return self._image.shape
 
     def fft(self, fft_shape, axes):
         """The FFT of an image for a given `fft_shape` along desired `axes`

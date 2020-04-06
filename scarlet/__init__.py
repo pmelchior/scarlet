@@ -8,5 +8,6 @@ from .psf import *
 from .frame import *
 from .observation import *
 from .blend import *
+from .wavelet import *
 from . import operator
 from . import measure
