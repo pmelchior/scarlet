@@ -95,7 +95,6 @@ def match_patches(obs, frame, isrot = True):
     coordhr_hr: array
         coordinates of the high resolution pixels in the intersection. Necessary for psf matching
     """
-    B_hr, ny_hr, nx_hr = frame.shape
     B_lr, Ny_lr, Nx_lr = obs.frame.shape
 
     wcs_hr = frame.wcs
