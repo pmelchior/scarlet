@@ -1,6 +1,7 @@
 from .constraint import *
 from .component import *
 from .bbox import *
+from .wavelet import *
 from . import operator
 
 # make sure that import * above doesn't import its own stock numpy
@@ -395,6 +396,89 @@ class PointSource(FunctionComponent):
     def _psf_wrapper(self, *parameters):
         return self.frame.psf.__call__(*parameters, bbox=self.bbox)[0]
 
+class WaveletSource(FunctionComponent):
+    """Source intialized with a single pixel
+
+    Point sources are initialized with the SED of the center pixel,
+    and the morphology taken from `frame.psfs`, centered at `sky_coord`.
+    """
+
+    def __init__(
+        self,
+        frame,
+        sky_coord,
+        observations,
+        obs_idx=0,
+        thresh=1.0,
+        shifting=False,
+    ):
+        """Extended source intialized to match a set of observations
+
+        Parameters
+        ----------
+        frame: `~scarlet.Frame`
+            The frame of the model
+        sky_coord: tuple
+            Center of the source
+        observations: instance or list of `~scarlet.observation.Observation`
+            Observation(s) to initialize this source.
+        obs_idx: int
+            Index of the observation in `observations` to
+            initialize the morphology.
+        thresh: `float`
+            Multiple of the backround RMS used as a
+            flux cutoff for morphology initialization.
+        shifting: `bool`
+            Whether or not a subpixel shift is added as optimization parameter
+        """
+        center = np.array(frame.get_pixel(sky_coord), dtype="float")
+        self.pixel_center = tuple(np.round(center).astype("int"))
+
+        if shifting:
+            shift = Parameter(center - self.pixel_center, name="shift", step=1e-1)
+        else:
+            shift = None
+
+        # initialize SED from sky_coord
+        try:
+            iter(observations)
+        except TypeError:
+            observations = [observations]
+
+        # initialize from observation
+        sed, morph, bbox = init_extended_source(
+            sky_coord,
+            frame,
+            observations,
+            obs_idx=obs_idx,
+            thresh=thresh,
+            symmetric=True,
+            monotonic=True,
+        )
+
+        sed = Parameter(
+            sed,
+            name="sed",
+            step=partial(relative_step, factor=1e-2),
+            constraint=PositivityConstraint(),
+        )
+
+        morph = Starlet(morph).starlet
+
+        morph_constraint = L0Constraint(thresh)
+        morph = Parameter(morph, name="morph", step=1e-2, constraint=morph_constraint)
+
+        super().__init__(frame, sed, morph, self._iuwt, bbox=bbox, shift=shift)
+
+    @property
+    def center(self):
+        if len(self.parameters) == 3:
+            return self.pixel_center + self.shift
+        else:
+            return self.pixel_center
+
+    def _iuwt(self, param):
+        return Starlet.from_starlet(param).image
 
 class ExtendedSource(FactorizedComponent):
     def __init__(
