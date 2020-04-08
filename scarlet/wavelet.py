@@ -85,7 +85,7 @@ class Starlet(object):
 
         # Shape of the image to reconstruct
         if shape is None:
-            shape = np.shape(starlet)[(0,-2,-1)]
+            shape = [*np.shape(starlet)[:-3],*np.shape(starlet)[-2:]]
         if len(starlet.shape) >3:
             rec = []
             for star in starlet:
@@ -153,11 +153,7 @@ def get_starlet_shape(shape, lvl = None):
     lvl_max = np.int(np.log2(np.min(shape[-2:])))
     if (lvl is None) or lvl > lvl_max:
         lvl = lvl_max
-    fft_shape = [*shape[:-2],lvl,0,0]
-    for i in [-2,-1]:
-        fft_shape[i] = fftpack.helper.next_fast_len(shape[i])
-        while (fft_shape[i] % 2) != (shape[i] % 2):
-            fft_shape[i] = fftpack.helper.next_fast_len(fft_shape[i]+1)
+    fft_shape = [*shape[:-2],lvl,*shape[-2:]]
     return fft_shape
 
 def mk_starlet(shape, image = None):

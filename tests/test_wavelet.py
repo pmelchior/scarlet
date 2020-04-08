@@ -31,11 +31,11 @@ class TestWavelet(object):
         starlet_transform = wavelet.Starlet(psf, lvl = 4)
 
         # Test number of levels
-        assert_equal(starlet_transform.shape[1], 4)
+        assert_equal(starlet_transform.starlet.shape[1], 4)
 
         # Test inverse
-        inverse = wavelet.Starlet.from_starlet(starlet_transform.starlet)
-        assert_almost_equal(inverse[0], psf)
+        inverse = wavelet.Starlet.from_starlet(starlet_transform.starlet).image
+        assert_almost_equal(inverse, psf)
 
 
     def test_getitem(self):
@@ -46,10 +46,6 @@ class TestWavelet(object):
         psf = self.get_psfs(shape, [1])
         # Slice
         starlet_transform = wavelet.Starlet(psf)
-        print(starlet_transform.starlet.shape)
         sliced = starlet_transform[0, 20:, :-10]
-        print(starlet_transform.starlet.shape)
         assert_array_equal(sliced.image.shape, [1, 108, 118])
         assert_array_equal(sliced.starlet.shape, [1, 7, 108, 118])
-
-TestWavelet.test_getitem
