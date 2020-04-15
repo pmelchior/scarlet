@@ -3,7 +3,6 @@ from functools import partial
 import numpy as np
 import proxmin
 
-from . import interpolation
 from . import operator
 from .cache import Cache
 

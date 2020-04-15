@@ -541,8 +541,8 @@ class LowResObservation(Observation):
         """
 
         model_ = self._render(model)
-        images_ = self.images[:, self.model_slices[-2], self.model_slices[-1]]
-        weights_ = self.weights[:, self.model_slices[-2], self.model_slices[-1]]
+        images_ = self.images
+        weights_ = self.weights
 
         # properly normalized likelihood
         log_sigma = np.zeros(weights_.shape, dtype=weights_.dtype)
