@@ -434,11 +434,6 @@ class WaveletSource(FunctionComponent):
         center = np.array(frame.get_pixel(sky_coord), dtype="float")
         self.pixel_center = tuple(np.round(center).astype("int"))
 
-        if shifting:
-            shift = Parameter(center - self.pixel_center, name="shift", step=1e-1)
-        else:
-            shift = None
-
         # initialize SED from sky_coord
         try:
             iter(observations)
@@ -468,7 +463,7 @@ class WaveletSource(FunctionComponent):
         morph_constraint = L0Constraint(thresh)
         morph = Parameter(morph, name="morph", step=1e-2, constraint=morph_constraint)
 
-        super().__init__(frame, sed, morph, self._iuwt, bbox=bbox, shift=shift)
+        super().__init__(frame, sed, morph, self._iuwt, bbox=bbox)
 
     @property
     def center(self):

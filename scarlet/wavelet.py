@@ -15,7 +15,7 @@ class Starlet(object):
         shape. The fft of the seed starlet is cached so that it can be reused in the transform of other
         images that have the same shape.
     """
-    def __init__(self, image, lvl = None, starlet = None, direct = True):
+    def __init__(self, image, lvl = None, starlet = None, direct = False):
         """ Initialise the Starlet object
 
         Paramters
@@ -25,6 +25,9 @@ class Starlet(object):
             number of starlet levels to use in the decomposition
         starlet: array
             Starlet transform of an array
+        direct: bool
+            if set to True, uses direct wavelet transform with the a trou algorithm.
+            if set to False, the transform is performed by convolving the image by the wavelet transform of a dirac.
         """
         # Shape for the starlet padding. It is also an fft fast shape.
         if starlet is None:
@@ -49,11 +52,20 @@ class Starlet(object):
                 self._starlet = starlet[np.newaxis, :, :, :]
             else:
                 self._starlet = starlet
+        self.seed = None
 
     @property
     def image(self):
         """The real space image"""
         return self._image
+
+    @property
+    def norm_star(self):
+        """The norm of the seed wavelet in each wavelet level (not in coarse wavelet)"""
+        if self.seed is None:
+            self.seed = mk_starlet(self._starlet_shape)
+        return np.sqrt(np.sum(self.seed ** 2, axis=(-2, -1)))
+
 
     @property
     def starlet(self):
@@ -101,19 +113,18 @@ class Starlet(object):
         """
         try:
             #Check if the starlet seed exists
-            starlet_fft = Cache.check('Starlet', tuple(self._starlet_shape))
+            seed_fft = Cache.check('Starlet', tuple(self._starlet_shape))
         except KeyError:
             # make a starlet seed
-            starlet = mk_starlet(self._starlet_shape)
+            self.seed = mk_starlet(self._starlet_shape)
             # Take its fft
-            starlet_fft = fft.Fourier(starlet)
-            starlet_fft.fft(self._starlet_shape[-2:], (-2,-1))
+            seed_fft = fft.Fourier(self.seed)
+            seed_fft.fft(self._starlet_shape[-2:], (-2,-1))
             # Cache the fft
-            Cache.set('Starlet', tuple(self._starlet_shape), starlet_fft)
+            Cache.set('Starlet', tuple(self._starlet_shape), seed_fft)
         starlets = []
-        print(self._image.shape, starlet_fft.shape)
         for im in self._image:
-            starlets.append(fft.convolve(starlet_fft,
+            starlets.append(fft.convolve(seed_fft,
                                          fft.Fourier(im[np.newaxis, :, :]), axes = (-2,-1)).image)
         return np.array(starlets)
 
@@ -234,8 +245,8 @@ def iuwt(starlet):
     """
     lvl, n1, n2 = np.shape(starlet)
     n = np.size(h)
-
-    cJ = np.copy(starlet[lvl - 1, :, :])
+    # Coarse scale
+    cJ = starlet[-1, :, :]
 
     for i in np.arange(1, lvl):
         newh = np.zeros(n + (n - 1) * (2 ** (lvl - i - 1) - 1))
@@ -249,4 +260,3 @@ def iuwt(starlet):
         cJ = cnew + starlet[lvl - 1 - i, :, :]
 
     return np.reshape(cJ, (n1, n2))
-
