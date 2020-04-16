@@ -182,6 +182,7 @@ def show_scene(
     show_residual=False,
     label_sources=True,
     figsize=None,
+    linear=True,
 ):
     """Plot all sources to recreate the scence.
     The functions provides a fast way of evaluating the quality of the entire model,
@@ -202,6 +203,9 @@ def show_scene(
     label_sources: bool
         Whether each source is labeled with its numerical index in the source list
     figsize: matplotlib figsize argument
+    linear: bool
+        Whether or not to display the scene in a single line (`True`) or
+        on multiple lines (`False`).
     Returns
     -------
     matplotlib figure
@@ -212,9 +216,16 @@ def show_scene(
         ), "Provide matched observation to show observed frame"
 
     panels = 1 + sum((show_observed, show_rendered, show_residual))
-    if figsize is None:
-        figsize = (3 * panels, 3 * len(list(sources)))
-    fig, ax = plt.subplots(1, panels, figsize=figsize)
+    if linear:
+        if figsize is None:
+            figsize = (3 * panels, 3 * len(list(sources)))
+        fig, ax = plt.subplots(1, panels, figsize=figsize)
+    else:
+        columns = int(np.ceil(panels/2))
+        if figsize is None:
+            figsize = (7*columns, 4*columns)
+        fig = plt.figure(figsize=figsize)
+        ax = [fig.add_subplot(2, columns, n+1) for n in range(panels)]
     if not hasattr(ax, "__iter__"):
         ax = (ax,)
 
@@ -271,7 +282,6 @@ def show_scene(
                 ax[panel].text(*center_[::-1], k, color="w")
 
     fig.tight_layout()
-    plt.close()
     return fig
 
 
@@ -343,7 +353,7 @@ def show_sources(
             model = src.get_model()
             seds = [model.sum(axis=(1, 2))]
         src.set_frame(frame_)
-        ax[k][panel].imshow(img_to_rgb(model, norm=norm, channel_map=channel_map))
+        ax[k][panel].imshow(img_to_rgb(model, norm=norm, channel_map=channel_map, mask=model.sum(axis=0)==0))
         ax[k][panel].set_title("Model Source {}".format(k))
         if center is not None:
             ax[k][panel].plot(*center_[::-1], "wx", mew=1, ms=10)
@@ -384,5 +394,4 @@ def show_sources(
             ax[k][panel].set_ylabel("Intensity")
 
     fig.tight_layout()
-    plt.close()
     return fig

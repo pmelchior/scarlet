@@ -72,9 +72,9 @@ PYBIND11_PLUGIN(operators_pybind11)
   py::module mod("operators_pybind11", "Fast proximal operators");
   mod.def("prox_monotonic", &prox_monotonic, "Monotonic Proximal Operator");
 
-  typedef Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> MatrixF;
+  typedef Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> MatrixF;
   typedef Eigen::Matrix<float, Eigen::Dynamic, 1> VectorF;
-  typedef Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> MatrixD;
+  typedef Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> MatrixD;
   typedef Eigen::Matrix<double, Eigen::Dynamic, 1> VectorD;
 
   mod.def("prox_weighted_monotonic", &prox_weighted_monotonic<float, MatrixF, VectorF>,
