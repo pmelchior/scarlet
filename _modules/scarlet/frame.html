@@ -61,7 +61,6 @@
             
   <h1>Source code for scarlet.frame</h1><div class="highlight"><pre>
 <span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
-<span class="kn">from</span> <span class="nn">.psf</span> <span class="kn">import</span> <span class="n">PSF</span>
 <span class="kn">from</span> <span class="nn">.bbox</span> <span class="kn">import</span> <span class="n">Box</span>
 
 <span class="kn">import</span> <span class="nn">logging</span>
@@ -89,7 +88,8 @@
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">shape_or_box</span><span class="p">,</span> <span class="n">wcs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">psfs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">channels</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span>
     <span class="p">):</span>
-
+        <span class="c1"># Import PSF here to prevent a circular dependency</span>
+        <span class="kn">from</span> <span class="nn">.psf</span> <span class="kn">import</span> <span class="n">PSF</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">shape_or_box</span><span class="p">,</span> <span class="n">Box</span><span class="p">):</span>
             <span class="bp">self</span> <span class="o">=</span> <span class="n">shape_or_box</span>
         <span class="k">else</span><span class="p">:</span>
@@ -181,7 +181,7 @@
       &copy;2018-2019, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.0</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.4</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
     </div>

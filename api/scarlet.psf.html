@@ -83,6 +83,55 @@
   <div class="section" id="module-scarlet.psf">
 <span id="scarlet-psf"></span><h1>scarlet.psf<a class="headerlink" href="#module-scarlet.psf" title="Permalink to this headline">¶</a></h1>
 <dl class="class">
+<dt id="scarlet.psf.DeconvolvedObservation">
+<em class="property">class </em><code class="sig-prename descclassname">scarlet.psf.</code><code class="sig-name descname">DeconvolvedObservation</code><span class="sig-paren">(</span><em class="sig-param">images</em>, <em class="sig-param">psfs=None</em>, <em class="sig-param">weights=None</em>, <em class="sig-param">wcs=None</em>, <em class="sig-param">channels=None</em>, <em class="sig-param">padding=10</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#DeconvolvedObservation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.psf.DeconvolvedObservation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="scarlet.observation.html#scarlet.observation.Observation" title="scarlet.observation.Observation"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.observation.Observation</span></code></a></p>
+<p>Deconvolved image using a deconvolution kernel</p>
+<p>This is the same as <cite>~scarlet.Observation</cite> except that the matching
+algorithm uses a precalculated deconvolution kernel and the
+images are deconolved using that kernel. A separate class exists
+to make it less likely that the user executes this operation
+more than once, which will have adverse affects on the
+<cite>images</cite> property.</p>
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_loss</span></code>(self, model)</p></td>
+<td><p>Computes the loss/fidelity of a given model wrt to the observation</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.psf.DeconvolvedObservation.match" title="scarlet.psf.DeconvolvedObservation.match"><code class="xref py py-obj docutils literal notranslate"><span class="pre">match</span></code></a>(self, model_frame, kernel)</p></td>
+<td><p>Match the frame of <cite>Blend</cite> to the frame of this observation.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">render</span></code>(self, model)</p></td>
+<td><p>Convolve a model to the observation frame</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="scarlet.psf.DeconvolvedObservation.match">
+<code class="sig-name descname">match</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">model_frame</em>, <em class="sig-param">kernel</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#DeconvolvedObservation.match"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.psf.DeconvolvedObservation.match" title="Permalink to this definition">¶</a></dt>
+<dd><p>Match the frame of <cite>Blend</cite> to the frame of this observation.</p>
+<p>The method sets up the mappings in spectral and spatial coordinates,
+which includes a spatial selection, computing PSF difference kernels
+and filter transformations.</p>
+<dl class="simple">
+<dt>model_frame: a <cite>scarlet.Frame</cite> instance</dt><dd><p>The frame of <cite>Blend</cite> to match</p>
+</dd>
+<dt>diff_kernels: array</dt><dd><p>The difference kernel for each band.
+If <cite>diff_kernels</cite> is <cite>None</cite> then they are
+calculated automatically.</p>
+</dd>
+</dl>
+<p>None</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
 <dt id="scarlet.psf.PSF">
 <em class="property">class </em><code class="sig-prename descclassname">scarlet.psf.</code><code class="sig-name descname">PSF</code><span class="sig-paren">(</span><em class="sig-param">X</em>, <em class="sig-param">shape=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#PSF"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.psf.PSF" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.8)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
@@ -138,6 +187,143 @@ If <cite>X</cite> is a callable method, it describes a function that can generat
 <dt id="scarlet.psf.PSF.update_dtype">
 <code class="sig-name descname">update_dtype</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">dtype</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#PSF.update_dtype"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.psf.PSF.update_dtype" title="Permalink to this definition">¶</a></dt>
 <dd><p>Update data type of <cite>image</cite> to <cite>dtype</cite></p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="scarlet.psf.PSFDiffKernel">
+<em class="property">class </em><code class="sig-prename descclassname">scarlet.psf.</code><code class="sig-name descname">PSFDiffKernel</code><span class="sig-paren">(</span><em class="sig-param">frame</em>, <em class="sig-param">initial</em>, <em class="sig-param">band</em>, <em class="sig-param">step=0.01</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#PSFDiffKernel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.psf.PSFDiffKernel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="scarlet.component.html#scarlet.component.Component" title="scarlet.component.Component"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.component.Component</span></code></a></p>
+<p>PSF Difference Kernel Source</p>
+<p>“Source” used to model the difference kernel to match one
+PSF to another. Typically this should be modeling the
+deconvolution kernel to convolve an image from an
+observed PSF into a model PSF, as the difference
+from model PSF to observed PSF is calculated much
+more quickly using a DFT in <cite>~scarlet.Observation.match</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Attributes</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">coord</span></code></dt><dd><p>The coordinate in a <cite>~scarlet.component.ComponentTree</cite>.</p>
+</dd>
+<dt><a class="reference internal" href="#scarlet.psf.PSFDiffKernel.kernel" title="scarlet.psf.PSFDiffKernel.kernel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">kernel</span></code></a></dt><dd><p>Return the contents of the kernel parameter</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">parameters</span></code></dt><dd><p>The list of non-fixed parameters</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">shape</span></code></dt><dd><p>Shape of the image (Channel, Height, Width)</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">check_parameters</span></code>(self)</p></td>
+<td><p>Check that all parameters have finite elements</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.psf.PSFDiffKernel.get_model" title="scarlet.psf.PSFDiffKernel.get_model"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code></a>(self, \*parameters)</p></td>
+<td><p>Get the model for this component</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_frame</span></code>(self, frame)</p></td>
+<td><p>Sets the frame for this component.</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="scarlet.psf.PSFDiffKernel.get_model">
+<code class="sig-name descname">get_model</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">*parameters</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#PSFDiffKernel.get_model"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.psf.PSFDiffKernel.get_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the model for this component</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>parameters: tuple of optimimzation parameters</strong></dt><dd></dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>model: array</dt><dd><p>(Channels, Height, Width) image of the model</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.psf.PSFDiffKernel.kernel">
+<em class="property">property </em><code class="sig-name descname">kernel</code><a class="headerlink" href="#scarlet.psf.PSFDiffKernel.kernel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the contents of the kernel parameter</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="scarlet.psf.PsfObservation">
+<em class="property">class </em><code class="sig-prename descclassname">scarlet.psf.</code><code class="sig-name descname">PsfObservation</code><span class="sig-paren">(</span><em class="sig-param">images</em>, <em class="sig-param">psfs=None</em>, <em class="sig-param">weights=None</em>, <em class="sig-param">wcs=None</em>, <em class="sig-param">channels=None</em>, <em class="sig-param">padding=10</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#PsfObservation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.psf.PsfObservation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="scarlet.observation.html#scarlet.observation.Observation" title="scarlet.observation.Observation"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.observation.Observation</span></code></a></p>
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.psf.PsfObservation.get_loss" title="scarlet.psf.PsfObservation.get_loss"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_loss</span></code></a>(self, model)</p></td>
+<td><p>We override <cite>scarlet.Observation.get_loss</cite> since the lognorm is the dominant term, which interferes with calculating relative error.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.psf.PsfObservation.match" title="scarlet.psf.PsfObservation.match"><code class="xref py py-obj docutils literal notranslate"><span class="pre">match</span></code></a>(self, psfs)</p></td>
+<td><p>Implement the observed PSFs as the difference kernel</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">render</span></code>(self, model)</p></td>
+<td><p>Convolve a model to the observation frame</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="scarlet.psf.PsfObservation.get_loss">
+<code class="sig-name descname">get_loss</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">model</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#PsfObservation.get_loss"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.psf.PsfObservation.get_loss" title="Permalink to this definition">¶</a></dt>
+<dd><p>We override <cite>scarlet.Observation.get_loss</cite> since the lognorm
+is the dominant term, which interferes with calculating
+relative error.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="scarlet.psf.PsfObservation.match">
+<code class="sig-name descname">match</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">psfs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#PsfObservation.match"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.psf.PsfObservation.match" title="Permalink to this definition">¶</a></dt>
+<dd><p>Implement the observed PSFs as the difference kernel</p>
+<p>This is different than <cite>~scarlet.Observation.match</cite>,
+where the difference kernel that matches the model
+PSF to the observed PSF is calculated and stored.
+For a <cite>PsfObservation</cite> the input PSF, which
+should be the observed PSF (see below) is stored
+as the “difference kernel” while the actual
+deconvolution (difference) kernel is calculated
+by the model.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>psfs: `~numpy.array`</strong></dt><dd><p>The input PSF that is being convolved.
+For deconvolution this is the observed PSF,
+since the observed PSF is convolved with the
+deconvolution kernel to match the model PSF.
+For matching a model PSF to a wider observed
+PSF use the <cite>Observation</cite> class,
+which calculates the difference kernel much
+more quickly using a DFT.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>self: <cite>~scarlet.PsfObservation</cite></dt><dd><p>Return this object to allow for chaining.</p>
+</dd>
+</dl>
+</dd>
+</dl>
 </dd></dl>
 
 </dd></dl>
@@ -222,7 +408,7 @@ for all i and j in <cite>shape</cite>.</p>
       &copy;2018-2019, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.0</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.4</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

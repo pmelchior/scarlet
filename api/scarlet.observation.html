@@ -159,14 +159,12 @@ and filter transformations.</p>
 <dl class="simple">
 <dt>model_frame: a <cite>scarlet.Frame</cite> instance</dt><dd><p>The frame of <cite>Blend</cite> to match</p>
 </dd>
-</dl>
-<dl class="field-list simple">
-<dt class="field-odd">Returns</dt>
-<dd class="field-odd"><dl class="simple">
-<dt>None</dt><dd></dd>
-</dl>
+<dt>diff_kernels: array</dt><dd><p>The difference kernel for each band.
+If <cite>diff_kernels</cite> is <cite>None</cite> then they are
+calculated automatically.</p>
 </dd>
 </dl>
+<p>None</p>
 </dd></dl>
 
 <dl class="method">
@@ -273,7 +271,7 @@ prevent artifacts from the FFT.</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.observation.Observation.get_loss" title="scarlet.observation.Observation.get_loss"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_loss</span></code></a>(self, model)</p></td>
 <td><p>Computes the loss/fidelity of a given model wrt to the observation</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.observation.Observation.match" title="scarlet.observation.Observation.match"><code class="xref py py-obj docutils literal notranslate"><span class="pre">match</span></code></a>(self, model_frame)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.observation.Observation.match" title="scarlet.observation.Observation.match"><code class="xref py py-obj docutils literal notranslate"><span class="pre">match</span></code></a>(self, model_frame[, diff_kernels])</p></td>
 <td><p>Match the frame of <cite>Blend</cite> to the frame of this observation.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.observation.Observation.render" title="scarlet.observation.Observation.render"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render</span></code></a>(self, model)</p></td>
@@ -304,7 +302,7 @@ given the image data</p>
 
 <dl class="method">
 <dt id="scarlet.observation.Observation.match">
-<code class="sig-name descname">match</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">model_frame</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/observation.html#Observation.match"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.Observation.match" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">match</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">model_frame</em>, <em class="sig-param">diff_kernels=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/observation.html#Observation.match"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.Observation.match" title="Permalink to this definition">¶</a></dt>
 <dd><p>Match the frame of <cite>Blend</cite> to the frame of this observation.</p>
 <p>The method sets up the mappings in spectral and spatial coordinates,
 which includes a spatial selection, computing PSF difference kernels
@@ -312,14 +310,12 @@ and filter transformations.</p>
 <dl class="simple">
 <dt>model_frame: a <cite>scarlet.Frame</cite> instance</dt><dd><p>The frame of <cite>Blend</cite> to match</p>
 </dd>
-</dl>
-<dl class="field-list simple">
-<dt class="field-odd">Returns</dt>
-<dd class="field-odd"><dl class="simple">
-<dt>None</dt><dd></dd>
-</dl>
+<dt>diff_kernels: array</dt><dd><p>The difference kernel for each band.
+If <cite>diff_kernels</cite> is <cite>None</cite> then they are
+calculated automatically.</p>
 </dd>
 </dl>
+<p>None</p>
 </dd></dl>
 
 <dl class="method">
@@ -357,7 +353,7 @@ and filter transformations.</p>
       &copy;2018-2019, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.0</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.4</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

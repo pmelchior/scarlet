@@ -195,7 +195,7 @@ where pixels with mask==1 are masked out.</p>
 
 <dl class="function">
 <dt id="scarlet.display.show_scene">
-<code class="sig-prename descclassname">scarlet.display.</code><code class="sig-name descname">show_scene</code><span class="sig-paren">(</span><em class="sig-param">sources</em>, <em class="sig-param">observation=None</em>, <em class="sig-param">norm=None</em>, <em class="sig-param">channel_map=None</em>, <em class="sig-param">show_observed=False</em>, <em class="sig-param">show_rendered=False</em>, <em class="sig-param">show_residual=False</em>, <em class="sig-param">label_sources=True</em>, <em class="sig-param">figsize=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/display.html#show_scene"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.display.show_scene" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">scarlet.display.</code><code class="sig-name descname">show_scene</code><span class="sig-paren">(</span><em class="sig-param">sources</em>, <em class="sig-param">observation=None</em>, <em class="sig-param">norm=None</em>, <em class="sig-param">channel_map=None</em>, <em class="sig-param">show_observed=False</em>, <em class="sig-param">show_rendered=False</em>, <em class="sig-param">show_residual=False</em>, <em class="sig-param">label_sources=True</em>, <em class="sig-param">figsize=None</em>, <em class="sig-param">linear=True</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/display.html#show_scene"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.display.show_scene" title="Permalink to this definition">¶</a></dt>
 <dd><p>Plot all sources to recreate the scence.
 The functions provides a fast way of evaluating the quality of the entire model,
 i.e. the combination of all scences that seek to fit the observation.
@@ -219,9 +219,12 @@ channel_map: array_like</p>
 </dd>
 </dl>
 <p>figsize: matplotlib figsize argument
-Returns
-——-
-matplotlib figure</p>
+linear: bool</p>
+<blockquote>
+<div><p>Whether or not to display the scene in a single line (<cite>True</cite>) or
+on multiple lines (<cite>False</cite>).</p>
+</div></blockquote>
+<p>matplotlib figure</p>
 </dd></dl>
 
 <dl class="function">
@@ -266,7 +269,7 @@ matplotlib figure</p>
       &copy;2018-2019, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.0</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.4</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

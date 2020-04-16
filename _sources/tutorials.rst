@@ -7,3 +7,4 @@ Tutorials
    tutorials/display
    tutorials/point_source
    tutorials/multiresolution
+   tutorials/deconvolution

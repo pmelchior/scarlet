@@ -43,6 +43,7 @@
 <li class="toctree-l2 current"><a class="current reference internal" href="#">Displaying Scenes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="point_source.html">Point Source Tutorial</a></li>
 <li class="toctree-l2"><a class="reference internal" href="multiresolution.html">Multi-Resolution Modeling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deconvolution.html">Deconvolution Tutorial</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../api/scarlet.html">API Documentation</a></li>
@@ -461,17 +462,18 @@ New channel map:
 <span class="n">observation</span> <span class="o">=</span> <span class="n">observation</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">model_frame</span><span class="p">)</span>
 
 <span class="n">scarlet</span><span class="o">.</span><span class="n">display</span><span class="o">.</span><span class="n">show_scene</span><span class="p">(</span><span class="n">sources</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">,</span> <span class="n">channel_map</span><span class="o">=</span><span class="n">channel_map</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </pre></div>
 </div>
 </div>
 <div class="nboutput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
-</pre></div>
+<div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
 <img alt="../_images/tutorials_display_10_0.png" src="../_images/tutorials_display_10_0.png" />
 </div>
 </div>
+<p>Notice that we include the <code class="docutils literal notranslate"><span class="pre">plt.show()</span></code> at the end of the cell above. This is because <code class="docutils literal notranslate"><span class="pre">show_scene</span></code> returns the matplotlib <code class="docutils literal notranslate"><span class="pre">figure</span></code>, which is useful in cases where you might want to add annotations onto your plots, however without showing the scene or closing the figure the Jupyter notebook will display the figure twice.</p>
 <p>To compare it to data, we need to provide the observation and make sure that the observed frame is matched to the model frame:</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
@@ -488,12 +490,12 @@ New channel map:
                            <span class="n">show_rendered</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
                            <span class="n">show_observed</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
                            <span class="n">show_residual</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </pre></div>
 </div>
 </div>
 <div class="nboutput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
-</pre></div>
+<div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
 <img alt="../_images/tutorials_display_12_0.png" src="../_images/tutorials_display_12_0.png" />
@@ -506,12 +508,12 @@ New channel map:
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
 <span></span><span class="n">scarlet</span><span class="o">.</span><span class="n">display</span><span class="o">.</span><span class="n">show_sources</span><span class="p">(</span><span class="n">sources</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">,</span> <span class="n">channel_map</span><span class="o">=</span><span class="n">channel_map</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </pre></div>
 </div>
 </div>
 <div class="nboutput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
-</pre></div>
+<div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
 <img alt="../_images/tutorials_display_14_0.png" src="../_images/tutorials_display_14_0.png" />
@@ -530,15 +532,24 @@ New channel map:
                              <span class="n">show_rendered</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
                              <span class="n">show_observed</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
                             <span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </pre></div>
 </div>
 </div>
 <div class="nboutput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
-</pre></div>
+<div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
 <img alt="../_images/tutorials_display_16_0.png" src="../_images/tutorials_display_16_0.png" />
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span>
+</pre></div>
 </div>
 </div>
 </div>
@@ -555,7 +566,7 @@ New channel map:
       &copy;2018-2019, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.0</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.4</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

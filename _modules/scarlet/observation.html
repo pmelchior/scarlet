@@ -128,8 +128,10 @@
         <span class="p">),</span> <span class="s2">&quot;Weights needs to have same shape as images&quot;</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_padding</span> <span class="o">=</span> <span class="n">padding</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">slices</span> <span class="o">=</span> <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_diff_kernels</span> <span class="o">=</span> <span class="kc">None</span>
 
-<div class="viewcode-block" id="Observation.match"><a class="viewcode-back" href="../../api/scarlet.observation.html#scarlet.observation.Observation.match">[docs]</a>    <span class="k">def</span> <span class="nf">match</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model_frame</span><span class="p">):</span>
+<div class="viewcode-block" id="Observation.match"><a class="viewcode-back" href="../../api/scarlet.observation.html#scarlet.observation.Observation.match">[docs]</a>    <span class="k">def</span> <span class="nf">match</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model_frame</span><span class="p">,</span> <span class="n">diff_kernels</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Match the frame of `Blend` to the frame of this observation.</span>
 
 <span class="sd">        The method sets up the mappings in spectral and spatial coordinates,</span>
@@ -140,7 +142,10 @@
 <span class="sd">        ---------</span>
 <span class="sd">        model_frame: a `scarlet.Frame` instance</span>
 <span class="sd">            The frame of `Blend` to match</span>
-
+<span class="sd">        diff_kernels: array</span>
+<span class="sd">            The difference kernel for each band.</span>
+<span class="sd">            If `diff_kernels` is `None` then they are</span>
+<span class="sd">            calculated automatically.</span>
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        None</span>
@@ -154,7 +159,6 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">channels</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">model_frame</span><span class="o">.</span><span class="n">channels</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
             <span class="n">cmin</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">model_frame</span><span class="o">.</span><span class="n">channels</span><span class="p">)</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">channels</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-            <span class="n">cmax</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">model_frame</span><span class="o">.</span><span class="n">channels</span><span class="p">)</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">channels</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
             <span class="n">origin</span> <span class="o">=</span> <span class="p">(</span><span class="n">cmin</span><span class="p">,</span> <span class="o">*</span><span class="n">yx0</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">bbox</span> <span class="o">=</span> <span class="n">Box</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="n">origin</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">slices</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bbox</span><span class="o">.</span><span class="n">slices_for</span><span class="p">(</span><span class="n">model_frame</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
@@ -167,14 +171,19 @@
                 <span class="bp">self</span><span class="o">.</span><span class="n">weights</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">weights</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">model_frame</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
 
         <span class="c1"># constrcut diff kernels</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_diff_kernels</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">psf</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">model_frame</span><span class="o">.</span><span class="n">psf</span><span class="p">:</span>
-            <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">psf</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">model_frame</span><span class="o">.</span><span class="n">psf</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-            <span class="n">psf</span> <span class="o">=</span> <span class="n">fft</span><span class="o">.</span><span class="n">Fourier</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">psf</span><span class="o">.</span><span class="n">update_dtype</span><span class="p">(</span><span class="n">model_frame</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span><span class="o">.</span><span class="n">image</span><span class="p">)</span>
-            <span class="n">model_psf</span> <span class="o">=</span> <span class="n">fft</span><span class="o">.</span><span class="n">Fourier</span><span class="p">(</span>
-                <span class="n">model_frame</span><span class="o">.</span><span class="n">psf</span><span class="o">.</span><span class="n">update_dtype</span><span class="p">(</span><span class="n">model_frame</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span><span class="o">.</span><span class="n">image</span>
-            <span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_diff_kernels</span> <span class="o">=</span> <span class="n">fft</span><span class="o">.</span><span class="n">match_psfs</span><span class="p">(</span><span class="n">psf</span><span class="p">,</span> <span class="n">model_psf</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">diff_kernels</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_diff_kernels</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">psf</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">model_frame</span><span class="o">.</span><span class="n">psf</span><span class="p">:</span>
+                <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">psf</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">model_frame</span><span class="o">.</span><span class="n">psf</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+                <span class="n">psf</span> <span class="o">=</span> <span class="n">fft</span><span class="o">.</span><span class="n">Fourier</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">psf</span><span class="o">.</span><span class="n">update_dtype</span><span class="p">(</span><span class="n">model_frame</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span><span class="o">.</span><span class="n">image</span><span class="p">)</span>
+                <span class="n">model_psf</span> <span class="o">=</span> <span class="n">fft</span><span class="o">.</span><span class="n">Fourier</span><span class="p">(</span>
+                    <span class="n">model_frame</span><span class="o">.</span><span class="n">psf</span><span class="o">.</span><span class="n">update_dtype</span><span class="p">(</span><span class="n">model_frame</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span><span class="o">.</span><span class="n">image</span>
+                <span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_diff_kernels</span> <span class="o">=</span> <span class="n">fft</span><span class="o">.</span><span class="n">match_psfs</span><span class="p">(</span><span class="n">psf</span><span class="p">,</span> <span class="n">model_psf</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">diff_kernels</span><span class="p">,</span> <span class="n">fft</span><span class="o">.</span><span class="n">Fourier</span><span class="p">):</span>
+                <span class="n">diff_kernels</span> <span class="o">=</span> <span class="n">fft</span><span class="o">.</span><span class="n">Fourier</span><span class="p">(</span><span class="n">diff_kernels</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_diff_kernels</span> <span class="o">=</span> <span class="n">diff_kernels</span>
 
         <span class="k">return</span> <span class="bp">self</span></div>
 
@@ -693,7 +702,7 @@
       &copy;2018-2019, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.0</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.4</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
     </div>

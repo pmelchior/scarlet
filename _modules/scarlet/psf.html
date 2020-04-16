@@ -63,6 +63,10 @@
 <span></span><span class="kn">import</span> <span class="nn">autograd.numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">autograd.scipy</span> <span class="k">as</span> <span class="nn">scipy</span>
 <span class="kn">from</span> <span class="nn">.bbox</span> <span class="kn">import</span> <span class="n">Box</span>
+<span class="kn">from</span> <span class="nn">.component</span> <span class="kn">import</span> <span class="n">Component</span>
+<span class="kn">from</span> <span class="nn">.parameter</span> <span class="kn">import</span> <span class="n">Parameter</span>
+<span class="kn">from</span> <span class="nn">.fft</span> <span class="kn">import</span> <span class="n">Fourier</span>
+<span class="kn">from</span> <span class="nn">.observation</span> <span class="kn">import</span> <span class="n">Observation</span>
 
 
 <div class="viewcode-block" id="moffat"><a class="viewcode-back" href="../../api/scarlet.psf.html#scarlet.psf.moffat">[docs]</a><span class="k">def</span> <span class="nf">moffat</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">4.7</span><span class="p">,</span> <span class="n">beta</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
@@ -214,6 +218,127 @@
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">dtype</span> <span class="o">!=</span> <span class="n">dtype</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_image</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_image</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">dtype</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span></div></div>
+
+
+<div class="viewcode-block" id="PSFDiffKernel"><a class="viewcode-back" href="../../api/scarlet.psf.html#scarlet.psf.PSFDiffKernel">[docs]</a><span class="k">class</span> <span class="nc">PSFDiffKernel</span><span class="p">(</span><span class="n">Component</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;PSF Difference Kernel Source</span>
+
+<span class="sd">    &quot;Source&quot; used to model the difference kernel to match one</span>
+<span class="sd">    PSF to another. Typically this should be modeling the</span>
+<span class="sd">    deconvolution kernel to convolve an image from an</span>
+<span class="sd">    observed PSF into a model PSF, as the difference</span>
+<span class="sd">    from model PSF to observed PSF is calculated much</span>
+<span class="sd">    more quickly using a DFT in `~scarlet.Observation.match`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">frame</span><span class="p">,</span>
+        <span class="n">initial</span><span class="p">,</span>
+        <span class="n">band</span><span class="p">,</span>
+        <span class="n">step</span><span class="o">=</span><span class="mf">1e-2</span>
+    <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Initialize the Model</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        frame: `~scarlet.Frame`</span>
+<span class="sd">            The spectral and spatial characteristics of this component.</span>
+<span class="sd">        initial: `numpy.array`</span>
+<span class="sd">            Initial guess for the kernel.</span>
+<span class="sd">        step: `double`</span>
+<span class="sd">            Step size for the kernel parameter.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">kernel</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">initial</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">initial</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+        <span class="n">kernel</span><span class="p">[</span><span class="n">band</span><span class="p">]</span> <span class="o">=</span> <span class="n">initial</span><span class="p">[</span><span class="n">band</span><span class="p">]</span>
+        <span class="n">kernel</span> <span class="o">=</span> <span class="n">Parameter</span><span class="p">(</span>
+            <span class="n">kernel</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;kernel&quot;</span><span class="p">,</span>
+            <span class="n">step</span><span class="o">=</span><span class="n">step</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">kernel</span><span class="p">)</span>
+
+<div class="viewcode-block" id="PSFDiffKernel.get_model"><a class="viewcode-back" href="../../api/scarlet.psf.html#scarlet.psf.PSFDiffKernel.get_model">[docs]</a>    <span class="k">def</span> <span class="nf">get_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">parameters</span><span class="p">):</span>
+        <span class="n">kernel</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">kernel</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">parameters</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">kernel</span> <span class="o">=</span> <span class="n">parameters</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">parameters</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;PsfDiffKernel only takes a single parameter&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">kernel</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">kernel</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return the contents of the kernel parameter</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parameters</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">_data</span></div>
+
+
+<div class="viewcode-block" id="PsfObservation"><a class="viewcode-back" href="../../api/scarlet.psf.html#scarlet.psf.PsfObservation">[docs]</a><span class="k">class</span> <span class="nc">PsfObservation</span><span class="p">(</span><span class="n">Observation</span><span class="p">):</span>
+<div class="viewcode-block" id="PsfObservation.match"><a class="viewcode-back" href="../../api/scarlet.psf.html#scarlet.psf.PsfObservation.match">[docs]</a>    <span class="k">def</span> <span class="nf">match</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">psfs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Implement the observed PSFs as the difference kernel</span>
+
+<span class="sd">        This is different than `~scarlet.Observation.match`,</span>
+<span class="sd">        where the difference kernel that matches the model</span>
+<span class="sd">        PSF to the observed PSF is calculated and stored.</span>
+<span class="sd">        For a `PsfObservation` the input PSF, which</span>
+<span class="sd">        should be the observed PSF (see below) is stored</span>
+<span class="sd">        as the &quot;difference kernel&quot; while the actual</span>
+<span class="sd">        deconvolution (difference) kernel is calculated</span>
+<span class="sd">        by the model.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        psfs: `~numpy.array`</span>
+<span class="sd">            The input PSF that is being convolved.</span>
+<span class="sd">            For deconvolution this is the observed PSF,</span>
+<span class="sd">            since the observed PSF is convolved with the</span>
+<span class="sd">            deconvolution kernel to match the model PSF.</span>
+<span class="sd">            For matching a model PSF to a wider observed</span>
+<span class="sd">            PSF use the `Observation` class,</span>
+<span class="sd">            which calculates the difference kernel much</span>
+<span class="sd">            more quickly using a DFT.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        self: `~scarlet.PsfObservation`</span>
+<span class="sd">            Return this object to allow for chaining.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bbox</span> <span class="o">=</span> <span class="n">Box</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">slices</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bbox</span><span class="o">.</span><span class="n">slices_for</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_diff_kernels</span> <span class="o">=</span> <span class="n">Fourier</span><span class="p">(</span><span class="n">psfs</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span></div>
+
+<div class="viewcode-block" id="PsfObservation.get_loss"><a class="viewcode-back" href="../../api/scarlet.psf.html#scarlet.psf.PsfObservation.get_loss">[docs]</a>    <span class="k">def</span> <span class="nf">get_loss</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;get_loss</span>
+
+<span class="sd">        We override `scarlet.Observation.get_loss` since the lognorm</span>
+<span class="sd">        is the dominant term, which interferes with calculating</span>
+<span class="sd">        relative error.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">model_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+        <span class="n">images_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">images</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">slices</span><span class="p">]</span>
+        <span class="n">weights_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">weights</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">slices</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">weights_</span> <span class="o">*</span> <span class="p">(</span><span class="n">model_</span> <span class="o">-</span> <span class="n">images_</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span></div></div>
+
+
+<div class="viewcode-block" id="DeconvolvedObservation"><a class="viewcode-back" href="../../api/scarlet.psf.html#scarlet.psf.DeconvolvedObservation">[docs]</a><span class="k">class</span> <span class="nc">DeconvolvedObservation</span><span class="p">(</span><span class="n">Observation</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Deconvolved image using a deconvolution kernel</span>
+
+<span class="sd">    This is the same as `~scarlet.Observation` except that the matching</span>
+<span class="sd">    algorithm uses a precalculated deconvolution kernel and the</span>
+<span class="sd">    images are deconolved using that kernel. A separate class exists</span>
+<span class="sd">    to make it less likely that the user executes this operation</span>
+<span class="sd">    more than once, which will have adverse affects on the</span>
+<span class="sd">    `images` property.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+<div class="viewcode-block" id="DeconvolvedObservation.match"><a class="viewcode-back" href="../../api/scarlet.psf.html#scarlet.psf.DeconvolvedObservation.match">[docs]</a>    <span class="k">def</span> <span class="nf">match</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model_frame</span><span class="p">,</span> <span class="n">kernel</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;matched&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">matched</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;Matching has already been executed. &quot;</span>
+                   <span class="s2">&quot;Matching multiple times can have unexpected results.&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">model_frame</span><span class="p">,</span> <span class="n">kernel</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">images</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">images</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">matched</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="bp">self</span></div></div>
 </pre></div>
 
           </div>
@@ -226,7 +351,7 @@
       &copy;2018-2019, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.0</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.4</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
     </div>

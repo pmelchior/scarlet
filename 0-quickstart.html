@@ -455,8 +455,8 @@ frame, in which you seek to fit a model, to the observed data frame.</p>
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-CPU times: user 1.34 s, sys: 40 ms, total: 1.38 s
-Wall time: 1.38 s
+CPU times: user 1.31 s, sys: 48.1 ms, total: 1.36 s
+Wall time: 1.36 s
 scarlet ran for 52 iterations to logL = 28834.069625073516
 </pre></div></div>
 </div>
@@ -536,12 +536,12 @@ Text(0, 0.5, &#39;log-Likelihood&#39;)
                              <span class="n">observation</span><span class="o">=</span><span class="n">observation</span><span class="p">,</span>
                              <span class="n">show_rendered</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
                              <span class="n">show_observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </pre></div>
 </div>
 </div>
 <div class="nboutput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
-</pre></div>
+<div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
 <img alt="_images/0-quickstart_21_0.png" src="_images/0-quickstart_21_0.png" />
@@ -610,12 +610,12 @@ Source 6, Fluxes: [2.67099665 2.41223576 2.56550062 3.15687361 4.6268204 ]
 <span class="n">fp</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
 
 <span class="n">scarlet</span><span class="o">.</span><span class="n">display</span><span class="o">.</span><span class="n">show_scene</span><span class="p">(</span><span class="n">sources_</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </pre></div>
 </div>
 </div>
 <div class="nboutput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
-</pre></div>
+<div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
 <img alt="_images/0-quickstart_29_0.png" src="_images/0-quickstart_29_0.png" />
@@ -648,6 +648,7 @@ Source 6, Fluxes: [2.67099665 2.41223576 2.56550062 3.15687361 4.6268204 ]
 <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Iteration&#39;</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;log-Likelihood&#39;</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </pre></div>
 </div>
 </div>
@@ -659,20 +660,11 @@ Source 6, Fluxes: [2.67099665 2.41223576 2.56550062 3.15687361 4.6268204 ]
 scarlet ran for 58 iterations to logL = 31399.978169309914
 </pre></div></div>
 </div>
-<div class="nboutput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
-</pre></div>
-</div>
-<div class="output_area docutils container">
-<div class="highlight"><pre>
-&lt;matplotlib.legend.Legend at 0x7f7725efea58&gt;
-</pre></div></div>
-</div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="_images/0-quickstart_31_2.png" src="_images/0-quickstart_31_2.png" />
+<img alt="_images/0-quickstart_31_1.png" src="_images/0-quickstart_31_1.png" />
 </div>
 </div>
 <p>We can see that logL is slightly higher than before. Let’s have a look at the new model:</p>
@@ -687,18 +679,27 @@ scarlet ran for 58 iterations to logL = 31399.978169309914
                            <span class="n">show_rendered</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
                            <span class="n">show_observed</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
                            <span class="n">show_residual</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </pre></div>
 </div>
 </div>
 <div class="nboutput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
-</pre></div>
+<div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
 <img alt="_images/0-quickstart_33_0.png" src="_images/0-quickstart_33_0.png" />
 </div>
 </div>
 <p>We can see the two new sources 7 and 8, and that most of the features are very similar to before. As expected, the residuals have visibly improved and are now dominated by a Yin-Yang-shaped orange-blue pattern in the center of source 1, which we already fit with 2 components. Maybe we should try with 3 …</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span>
+</pre></div>
+</div>
+</div>
 </div>
 </div>
 </div>
@@ -714,7 +715,7 @@ scarlet ran for 58 iterations to logL = 31399.978169309914
       &copy;2018-2019, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.0</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.4</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |
