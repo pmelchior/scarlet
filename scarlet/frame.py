@@ -81,7 +81,7 @@ class Frame(Box):
         """
         if self.wcs is not None:
             if self.wcs.naxis == 3:
-                coord = self.wcs.wcs_world2pix(*sky_coord, 0, 0)
+                coord = self.wcs.wcs_world2pix(*sky_coord, 0, 0)[:2]
             elif self.wcs.naxis == 2:
                 coord = self.wcs.wcs_world2pix(*sky_coord, 0)
             else:
@@ -100,7 +100,7 @@ class Frame(Box):
         """
         if self.wcs is not None:
             if self.wcs.naxis == 3:
-                coord = self.wcs.wcs_pix2world(*pixel, 0, 0)
+                coord = self.wcs.wcs_pix2world(*pixel, 0, 0)[:2]
             elif self.wcs.naxis == 2:
                 coord = self.wcs.wcs_pix2world(*pixel, 0)
             else:
