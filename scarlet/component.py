@@ -178,13 +178,13 @@ class FactorizedComponent(Component):
     def sed(self):
         """Numpy view of the component SED
         """
-        return self._pad_sed(self._parameters[0]._data)
+        return self._parameters[0]._data
 
     @property
     def morph(self):
         """Numpy view of the component morphology
         """
-        return self._pad_morph(self._shift_morph(self.shift, self._parameters[1]._data))
+        return self._shift_morph(self.shift, self._parameters[1]._data)
 
     @property
     def shift(self):
@@ -221,31 +221,14 @@ class FactorizedComponent(Component):
         if sed is None:
             sed = self.sed
 
+        if morph is None:
+            morph = self._parameters[1]._data
+
         if shift is None:
             shift = self.shift
 
-        if morph is None:
-            # dont' use self._morph because we could have shift as parameter
-            morph = self._pad_morph(self._shift_morph(shift, self._parameters[1]._data))
-        else:
-            morph = self._pad_morph(self._shift_morph(shift, morph))
-
+        morph = self._shift_morph(shift, morph)
         return sed[:, None, None] * morph[None, :, :]
-
-    def _pad_sed(self, sed):
-        if self.bbox is not None:
-            padded = np.pad(sed, self.pad_width[0], mode="constant", constant_values=0)
-            return padded[self.slices[0]]
-        else:
-            return sed
-
-    def _pad_morph(self, morph):
-        if self.bbox is not None:
-            padded = np.pad(
-                morph, self.pad_width[1:], mode="constant", constant_values=0
-            )
-            return padded[self.slices[1:]]
-        return morph
 
     def _shift_morph(self, shift, morph):
         if shift is not None:
@@ -293,10 +276,11 @@ class FunctionComponent(FactorizedComponent):
         """Numpy view of the component morphology
         """
         try:
-            return self._pad_morph(self._morph)
+            return self._morph
         except AttributeError:
+            # Cache morph. This is updated in get_model if fparams changes
             self._morph = self._func(*self._parameters[1])
-            return self._pad_morph(self._morph)
+        return self._morph
 
     def _func(self, *parameters):
         return self.kwargs["func"](*parameters)
@@ -330,7 +314,6 @@ class FunctionComponent(FactorizedComponent):
         else:
             morph = self._func(*fparams)
             self._morph = morph._value
-            morph = self._pad_morph(morph)
 
         return sed[:, None, None] * morph[None, :, :]
 
@@ -356,23 +339,17 @@ class CubeComponent(Component):
 
     @property
     def cube(self):
-        return self._pad_cube(self._parameters[0]._data)
+        return self._parameters[0]._data
 
     def get_model(self, *parameters):
         cube = None
         for p in parameters:
             if p._value is self._parameters[0]:
-                cube = self._pad_cube(p)
+                cube = p
 
         if cube is None:
             cube = self.cube
 
-        return cube
-
-    def _pad_cube(self, cube):
-        if self.bbox is not None:
-            padded = np.pad(cube, self.pad_width, mode="constant", constant_values=0)
-            return padded[self.slices]
         return cube
 
 
@@ -532,10 +509,10 @@ class ComponentTree:
                 j = len(c.parameters)
                 p = params[i : i + j]
                 i += j
-                model = model + c.get_model(*p)
+                model = c.bbox.add_into(model, c.get_model(*p))
         else:
             for c in self.components:
-                model = model + c.get_model()
+                model = c.bbox.add_into(model, c.get_model())
 
         return model
 

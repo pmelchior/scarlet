@@ -1,4 +1,38 @@
-import numpy as np
+import autograd.numpy as np
+from autograd.extend import defvjp, primitive
+
+
+@primitive
+def _add_slice(destination, source, dest_slices, src_slices):
+    """Add the source to the portion of destination contained in the box
+    """
+    destination[dest_slices] += source[src_slices]
+    return destination
+
+
+def _grad_add_slice_dest(result, destination, source, dest_slices, src_slices):
+    """Gradient for the destination
+
+    Since this is just addition, the upstream gradient is passed through.
+    """
+    return lambda upstream_grad: upstream_grad
+
+
+def _grad_add_slice_source(result, destination, source, dest_slices, src_slices):
+    """Gradient for the source
+
+    This just extracts the portion of the upstream gradient that
+    overlaps with the source
+    """
+    def result(upstream_grad):
+        _result = np.zeros(source.shape, dtype=source.dtype)
+        _result[src_slices] = upstream_grad[dest_slices]
+        return _result
+    return result
+
+
+# Register this function in autograd
+defvjp(_add_slice, _grad_add_slice_dest, _grad_add_slice_source)
 
 
 class Box:
@@ -169,6 +203,32 @@ class Box:
         imbox -= self.origin
         overlap = imbox & subbox
         image[self.slices_for(image)] = sub[overlap.slices_for(sub)]
+        return image
+
+    def add_into(self, image, sub):
+        """Add the sub-image into the image
+
+        This is the same as insert_into except that the sub is added to the
+        overlapping elements
+
+        Parameters
+        ----------
+        image: array
+            Full image
+        sub: array
+            Extracted sub-image
+
+        Returns
+        -------
+        image: array
+        """
+        imbox = Box.from_image(image)
+        subbox = Box.from_image(sub)
+
+        # imbox now in the frame of this bbox (i.e. of box)
+        imbox -= self.origin
+        overlap = imbox & subbox
+        image = _add_slice(image, sub, self.slices_for(image), overlap.slices_for(sub))
         return image
 
     @property

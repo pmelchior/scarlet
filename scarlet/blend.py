@@ -121,6 +121,7 @@ class Blend(ComponentTree):
         total_loss = 0
         for observation in self.observations:
             total_loss = total_loss + observation.get_loss(model)
+
         self.loss.append(total_loss._value)
         return total_loss
 
