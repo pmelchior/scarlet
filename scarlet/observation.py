@@ -18,7 +18,7 @@ def get_filter_coords(filter_values, center=None):
     filter_values: array
         The 2D array of the filter to apply.
     center: tuple
-        The center of the filter. If `center` is `None` then
+        The center (y,x) of the filter. If `center` is `None` then
         `filter_values` must have an odd number of rows and columns
         and the center will be set to the center of `filter_values`.
 
@@ -47,7 +47,7 @@ def get_filter_coords(filter_values, center=None):
     return coords
 
 
-def get_filter_slices(coords):
+def get_filter_bounds(coords):
     """Get the slices in x and y to apply a filter
 
     Parameters
@@ -72,7 +72,7 @@ def get_filter_slices(coords):
 
 
 @primitive
-def _convolve(image, psf, slices):
+def _convolve(image, psf, bounds):
     """Convolve an image with a PSF in real space
     """
     result = np.empty(image.shape, dtype=image.dtype)
@@ -82,7 +82,7 @@ def _convolve(image, psf, slices):
             img = image[band]._value
         else:
             img = image[band]
-        apply_filter(img, psf[band].reshape(-1), slices[0], slices[1], slices[2], slices[3], result[band])
+        apply_filter(img, psf[band].reshape(-1), bounds[0], bounds[1], bounds[2], bounds[3], result[band])
     return result
 
 
@@ -228,7 +228,7 @@ class Observation:
         self._convolution = value
         if value == "real":
             coords = get_filter_coords(self._diff_kernels[0])
-            self._convolution_slices = get_filter_slices(coords.reshape(-1, 2))
+            self._convolution_slices = get_filter_bounds(coords.reshape(-1, 2))
 
 
     def _convolve(self, model):
