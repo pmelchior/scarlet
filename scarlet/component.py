@@ -4,6 +4,7 @@ from . import fft
 from . import interpolation
 from .bbox import Box
 import autograd.numpy as np
+from autograd.extend import defvjp, primitive
 
 
 class Component(ABC):
@@ -353,6 +354,33 @@ class CubeComponent(Component):
         return cube
 
 
+@primitive
+def _add_models(*models, full_model, slices):
+    """Insert the models into the full model
+    """
+    for i in range(len(models)):
+        full_model[slices[i][0]] += models[i][slices[i][1]]
+    return full_model
+
+
+def _grad_add_models(upstream_grad, *models, full_model, slices, index):
+    """Gradient for a single model
+
+    The full model is just the sum of the models,
+    so the gradient is 1 for each model,
+    we just have to slice it appropriately.
+    """
+    model = models[index]
+    full_model_slices = slices[index][0]
+    model_slices = slices[index][1]
+
+    def result(upstream_grad):
+        _result = np.zeros(model.shape, dtype=model.dtype)
+        _result[model_slices] = upstream_grad[full_model_slices]
+        return _result
+    return result
+
+
 class ComponentTree:
     """Base class for hierarchical collections of Components.
     """
@@ -502,19 +530,33 @@ class ComponentTree:
         model: array
             (Bands, Height, Width) data cube
         """
-        model = np.zeros(self.frame.shape)
-        if len(params):
-            i = 0
-            for k, c in enumerate(self.components):
-                j = len(c.parameters)
-                p = params[i : i + j]
-                i += j
-                model = c.bbox.add_into(model, c.get_model(*p))
-        else:
-            for c in self.components:
-                model = c.bbox.add_into(model, c.get_model())
+        full_model = np.zeros(self.frame.shape, dtype=self.frame.dtype)
 
-        return model
+        models = []
+        slices = []
+        i = 0
+
+        for k, c in enumerate(self.components):
+            if len(params):
+                j = len(c.parameters)
+                p = params[i: i + j]
+                i += j
+                model = c.get_model(*p)
+            else:
+                model = c.get_model()
+
+            models.append(model)
+
+            # Get the slices needed to insert the model
+            imbox = Box.from_image(full_model)
+            subbox = Box.from_image(model)
+            imbox -= c.bbox.origin
+            overlap = imbox & subbox
+            slices.append((c.bbox.slices_for(full_model), overlap.slices_for(model)))
+
+        full_model = _add_models(*models, full_model=full_model, slices=slices)
+
+        return full_model
 
     def set_frame(self, frame):
         """Set the frame for all components in the tree
