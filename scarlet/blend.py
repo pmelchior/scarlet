@@ -5,7 +5,7 @@ from autograd.extend import defvjp
 import proxmin
 from functools import partial
 
-from .component import ComponentTree, tree_get_model, grad_tree_get_model
+from .component import ComponentTree, _add_models, _grad_add_models
 
 
 class Blend(ComponentTree):
@@ -33,7 +33,7 @@ class Blend(ComponentTree):
         observations: a `scarlet.Observation` instance or a list thereof
             Data package(s) to fit
         """
-        ComponentTree.__init__(self, sources)
+        ComponentTree.__init__(self, sources, trim=False)
 
         try:
             iter(observations)
@@ -63,7 +63,7 @@ class Blend(ComponentTree):
         # This has to be done each time we fit a blend,
         # since the number of components => the number of arguments, which must be linked to the
         # autograd primitive function
-        defvjp(tree_get_model, *([partial(grad_tree_get_model, index=k) for k in range(n_params)]))
+        defvjp(_add_models, *([partial(_grad_add_models, index=k) for k in range(n_params)]))
 
         # compute the backward gradient tree
         grad_logL = grad(self._loss, tuple(range(n_params)))

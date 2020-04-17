@@ -385,7 +385,7 @@ class ComponentTree:
     """Base class for hierarchical collections of Components.
     """
 
-    def __init__(self, components):
+    def __init__(self, components, trim=True):
         """Constructor
 
         Group a list of `~scarlet.component.Component`s in a hierarchy.
@@ -409,6 +409,15 @@ class ComponentTree:
             assert c.frame is self.frame, "All components need to share the same Frame"
             c._index = i
             c._parent = self
+
+        if trim:
+            box = self.components[0].bbox
+            self._bbox = Box(box.shape, box.origin)
+            for component in components:
+                self._bbox |= component.bbox
+        else:
+            self._bbox = None
+
 
     @property
     def components(self):
@@ -555,6 +564,9 @@ class ComponentTree:
             slices.append((c.bbox.slices_for(full_model), overlap.slices_for(model)))
 
         full_model = _add_models(*models, full_model=full_model, slices=slices)
+
+        if self._bbox is not None:
+            full_model = self._bbox.extract_from(full_model)
 
         return full_model
 
