@@ -235,6 +235,31 @@ class Box:
             )
         return Box.from_bounds(*bounds)
 
+    def __or__(self, other):
+        """Intersection of two bounding boxes
+
+        If there is no intersection between the two bounding
+        boxes then an empty bounding box is returned.
+
+        Parameters
+        ----------
+        other: `Box`
+            The other bounding box in the intersection
+
+        Returns
+        -------
+        result: `Box`
+            The rectangular box that is in the overlap region
+            of both boxes.
+        """
+        assert other.D == self.D
+        bounds = []
+        for d in range(self.D):
+            bounds.append(
+                (min(self.start[d], other.start[d]), max(self.stop[d], other.stop[d]))
+            )
+        return Box.from_bounds(*bounds)
+
     def __repr__(self):
         result = "<Box shape={0}, origin={1}>"
         return result.format(self.shape, self.origin)

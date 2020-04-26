@@ -73,6 +73,10 @@ class Frame(Box):
     def psf(self):
         return self._psfs
 
+    @property
+    def bbox(self):
+        return Box(self.shape, self.origin)
+
     def get_pixel(self, sky_coord):
         """Get the pixel coordinate from a world coordinate
         If there is no WCS associated with the `Scene`,
@@ -180,61 +184,36 @@ class Frame(Box):
             else:
                 target_psf = target_psf_temp
 
-        # Matching observations together with the target_wcs so as to create a common frame
-        y_min, x_min, y_max, x_max = 0, 0, 0, 0
-        for c, obs in enumerate(observations):
-            # Make observations with a different wcs LowResObservation
-            if (obs.frame.wcs is not target_wcs) and (type(obs) is not 'LowResObservation'):
-                observations[c] = obs.get_LowRes()
-            # Limits that include all observations relative to target_wcs
-            obs_coord = resampling.get_to_common_frame(obs, target_wcs)
-            if int(np.min(obs_coord[0])) < y_min:
-                y_min = np.min(obs_coord[0])
-            if int(np.min(obs_coord[1])) < x_min:
-                x_min = np.min(obs_coord[1])
-            #The upper limit is the bottom right corner
-            if int(np.max(obs_coord[0])) > y_max:
-                y_max = np.max(obs_coord[0])
-            if int(np.max(obs_coord[1])) > x_max:
-                x_max = np.max(obs_coord[1])
-
         # Margin in pixels
-        fat_pixel_size = (fat_psf_size/h).astype(int)
-        #Padding by the size of the psf
+        fat_pixel_size = (fat_psf_size / h).astype(int)
+        # Padding by the size of the psf
         if fat_pixel_size % 2 != 0:
             fat_pixel_size += 1
 
-        offset = np.array([y_min, x_min])
-        # Shape of the box that encompasses all observations
-        ny = (y_max - offset[0] + 1).astype(int)
-        nx = (x_max - offset[1] + 1).astype(int)
+        # Matching observations together with the target_wcs so as to create a common frame\
+        # Box for the reference observation
+        ref_box = obs_ref.frame
+        for c, obs in enumerate(observations):
+            # Make observations with a different wcs LowResObservation
+            if (obs is not obs_ref) and (type(obs) is not 'LowResObservation'):
+                observations[c] = obs.get_LowRes()
+                # Limits that include all observations relative to target_wcs
+                obs_coord = resampling.get_to_common_frame(obs, target_wcs)
+                y_min = np.min(obs_coord[0])
+                x_min = np.min(obs_coord[1])
+                y_max = np.max(obs_coord[0])
+                x_max = np.max(obs_coord[1])
+                if coverage == 'union':
+                    ref_box = ref_box | Box((obs.frame.C, y_max - y_min + 1, x_max - x_min + 1),
+                                            origin = (0, y_min, x_min))
+                elif coverage == 'union':
+                    ref_box = ref_box & Box((obs.frame.C, y_max - y_min + 1, x_max - x_min + 1),
+                                            origin = (0, y_min, x_min))
 
-        coord_frame = (np.indices((ny,nx)))
-        footprint = 0
-        for obs in observations:
-            if obs.frame.wcs != target_wcs:
-                coord_2obs = np.around(resampling.convert_coordinates(coord_frame, target_wcs, obs.frame.wcs))
-            else:
-                coord_2obs = coord_frame
-            footprint += (coord_2obs[0] >= -np.finfo(float).eps) * (coord_2obs[1] >= -np.finfo(float).eps) *\
-                (coord_2obs[0] <= obs.frame.shape[-2]) * (coord_2obs[1] <= obs.frame.shape[-1])
-
-        if coverage is 'union':
-            coord_cover = np.where(footprint != 0)
-
-        elif coverage is 'intersection':
-            coord_cover = (np.where(footprint == np.max(footprint)))
-        #Corners of the footprint with padding by the psf size
-        y_fmin = np.min(coord_cover[0]) - fat_pixel_size / 2 + offset[0]
-        x_fmin = np.min(coord_cover[1]) - fat_pixel_size / 2 + offset[1]
-        y_fmax = np.max(coord_cover[0]) + fat_pixel_size / 2 + offset[0]
-        x_fmax = np.max(coord_cover[1]) + fat_pixel_size / 2 + offset[1]
-        # Shape of the resulting frame
-        ny = (y_fmax - y_fmin + 1).astype(int)
-        nx = (x_fmax - x_fmin + 1).astype(int)
-        frame_shape =(len(channels), ny, nx)
-
-        fbox = Box(frame_shape, origin = (0,np.around(y_fmin).astype(int), np.around(x_fmin).astype(int)))
+        _, ny, nx = ref_box.shape
+        frame_shape =(len(channels), np.int(ny + fat_pixel_size), np.int(nx + fat_pixel_size))
+        _, o_y, o_x = ref_box.origin
+        fbox = Box(frame_shape, origin = (0,np.int(o_y - fat_pixel_size/2), np.int(o_x - fat_pixel_size/2)))
         frame = Frame(fbox, wcs=target_wcs, psfs=target_psf, channels=channels)
 
         # Match observations to this frame
@@ -242,3 +221,37 @@ class Frame(Box):
             obs.match(frame)
 
         return frame
+
+
+    def __and__(self, other):
+        """Intersection of two bounding boxes
+
+        If there is no intersection between the two bounding
+        boxes then an empty bounding box is returned.
+
+        Parameters
+        ----------
+        other: `Box`
+            The other bounding box in the intersection
+
+        Returns
+        -------
+        result: `Box`
+            The rectangular box that is in the overlap region
+            of both boxes.
+        """
+        assert other.D == self.D
+        bounds = []
+        if self.channels is other.channels:
+            cmin = 0
+            cmax = self.C + 1
+        else:
+            assert self.channels is not None and other.channels is not None
+            cmin = list(other.channels).index(self.channels[0])
+            cmax = cmin + self.C + 1
+        bounds.append((cmin, cmax))
+        for d in range(self.D - 1):
+            bounds.append(
+                (max(self.start[d + 1], other.start[d + 1]), min(self.stop[d + 1], other.stop[d + 1]))
+            )
+        return Box.from_bounds(*bounds)
