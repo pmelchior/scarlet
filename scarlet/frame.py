@@ -1,5 +1,4 @@
 import numpy as np
-from .psf import PSF
 from .bbox import Box
 from . import interpolation
 import logging
@@ -28,7 +27,8 @@ class Frame(Box):
     def __init__(
         self, shape_or_box, wcs=None, psfs=None, channels=None, dtype=np.float32
     ):
-
+        # Import PSF here to prevent a circular dependency
+        from .psf import PSF
         if isinstance(shape_or_box, Box):
             super().__init__(shape_or_box.shape, shape_or_box.origin)
         else:

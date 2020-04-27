@@ -66,8 +66,10 @@ class Observation:
         ), "Weights needs to have same shape as images"
         self.model_images = np.zeros(self.frame.shape)
         self._padding = padding
+        self.slices = (slice(None), slice(None), slice(None))
+        self._diff_kernels = None
 
-    def match(self, model_frame):
+    def match(self, model_frame, diff_kernels=None):
         """Match the frame of `Blend` to the frame of this observation.
 
         The method sets up the mappings in spectral and spatial coordinates,
@@ -78,7 +80,10 @@ class Observation:
         ---------
         model_frame: a `scarlet.Frame` instance
             The frame of `Blend` to match
-
+        diff_kernels: array
+            The difference kernel for each band.
+            If `diff_kernels` is `None` then they are
+            calculated automatically.
         Returns
         -------
         None
@@ -91,6 +96,7 @@ class Observation:
                                             overlap.stop[d]-model_frame.origin[d]) for d in range(self.frame.D))
         # Slices of the model in this observation
         self.slices_for_images = tuple(slice(overlap.start[d], overlap.stop[d]) for d in range(self.frame.D))
+
         # check dtype consistency
         if self.frame.dtype != model_frame.dtype:
             self.frame.dtype = model_frame.dtype
@@ -99,14 +105,19 @@ class Observation:
                 self.weights = self.weights.copy().astype(model_frame.dtype)
 
         # constrcut diff kernels
-        self._diff_kernels = None
-        if self.frame.psf is not model_frame.psf:
-            assert self.frame.psf is not None and model_frame.psf is not None
-            psf = fft.Fourier(self.frame.psf.update_dtype(model_frame.dtype).image)
-            model_psf = fft.Fourier(
-                model_frame.psf.update_dtype(model_frame.dtype).image
-            )
-            self._diff_kernels = fft.match_psfs(psf, model_psf)
+        if diff_kernels is None:
+            self._diff_kernels = None
+            if self.frame.psf is not model_frame.psf:
+                assert self.frame.psf is not None and model_frame.psf is not None
+                psf = fft.Fourier(self.frame.psf.update_dtype(model_frame.dtype).image)
+                model_psf = fft.Fourier(
+                    model_frame.psf.update_dtype(model_frame.dtype).image
+                )
+                self._diff_kernels = fft.match_psfs(psf, model_psf)
+        else:
+            if not isinstance(diff_kernels, fft.Fourier):
+                diff_kernels = fft.Fourier(diff_kernels)
+            self._diff_kernels = diff_kernels
 
         return self
 
