@@ -213,8 +213,8 @@ class Frame(Box):
         _, ny, nx = ref_box.shape
         frame_shape =(len(channels), np.int((ny + fat_pixel_size)), np.int((nx + fat_pixel_size)))
         _, o_y, o_x = ref_box.origin
-        fbox = Box(frame_shape, origin = (0, np.around((o_y - fat_pixel_size/2)),
-                                          np.around((o_x - fat_pixel_size/2))))
+        fbox = Box(frame_shape, origin = (0, np.int(o_y - fat_pixel_size/2),
+                                          np.int(o_x - fat_pixel_size/2)))
         frame = Frame(fbox, wcs=target_wcs, psfs=target_psf, channels=channels)
         # Match observations to this frame
         for obs in observations:
