@@ -2,10 +2,9 @@ import numpy as np
 from .bbox import Box
 from . import interpolation
 import logging
-from. import resampling
+from . import resampling
 
 logger = logging.getLogger("scarlet.frame")
-
 
 class Frame(Box):
     """Spatial and spectral characteristics of the data
@@ -138,6 +137,8 @@ class Frame(Box):
             or sets the frame to incorporate only the pixels vovered by all the observations ('intersection').
             Default is 'union'.
         """
+        # Import PSF here to prevent a circular dependency
+        from .psf import PSF
         assert coverage in ['union', 'intersection']
         # Array of pixel sizes for each observation
         pix_tab = []
