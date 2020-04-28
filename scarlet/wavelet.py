@@ -199,25 +199,28 @@ def mk_starlet(shape, image = None):
             return np.array(wave)
         else:
             c = fft._pad(image, shape[-2:])
+    c = fft.Fourier(c)
     ## wavelet set of coefficients.
     wave = np.zeros([lvl, n1, n2])
 
     for i in np.arange(lvl - 1):
-        newh = np.zeros(n + (n - 1) * (2 ** i - 1))
-        newh[0::2 ** i] = h
+        newh = np.zeros((n + (n - 1) * (2 ** i - 1), 1))
+        newh[0::2 ** i, 0] = h
+        newhT = fft.Fourier(newh.T)
+        newh = fft.Fourier(newh)
 
         # Calculates c(j+1)
         # Line convolution
-        cnew = sc.convolve1d(c, newh, axis=0)
+        cnew = fft.convolve(c, newh, axes=[0])
 
         # Column convolution
-        cnew = sc.convolve1d(cnew, newh, axis=1)
+        cnew = fft.convolve(cnew, newhT, axes=[1])
 
         ###### hoh for g; Column convolution
-        hc = sc.convolve1d(cnew, newh, axis=0)
+        hc = fft.convolve(cnew, newh, axes=[0])
 
         # hoh for g; Line convolution
-        hc = sc.convolve1d(hc, newh, axis=1)
+        hc = fft.convolve(hc, newhT, axes=[1])
 
         # wj+1 = cj-hcj+1
         wave[i, :, :] = c - hc
@@ -253,9 +256,9 @@ def iuwt(starlet):
         newh[0::2 ** (lvl - i - 1)] = h
 
         # Line convolution
-        cnew = sc.convolve1d(cJ, newh, axis=0)
+        cnew = fft.convolve(cJ, newh, axes=[0])
         # Column convolution
-        cnew = sc.convolve1d(cnew, newh, axis=1)
+        cnew = fft.convolve(cnew, newh, axes=[1])
 
         cJ = cnew + starlet[lvl - 1 - i, :, :]
 
