@@ -93,36 +93,37 @@
 <col style="width: 90%" />
 </colgroup>
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.observation.LowResObservation.build_diffkernel" title="scarlet.observation.LowResObservation.build_diffkernel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_diffkernel</span></code></a>(self, model_frame, angle)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.observation.LowResObservation.build_diffkernel" title="scarlet.observation.LowResObservation.build_diffkernel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_diffkernel</span></code></a>(self, model_frame)</p></td>
 <td><p>Builds the differential convolution kernel between the observation and the frame psfs</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.observation.LowResObservation.get_loss" title="scarlet.observation.LowResObservation.get_loss"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_loss</span></code></a>(self, model)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_LowRes</span></code>(self)</p></td>
+<td><p>Creates a LowResObservation object from an Observation object</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.observation.LowResObservation.get_loss" title="scarlet.observation.LowResObservation.get_loss"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_loss</span></code></a>(self, model)</p></td>
 <td><p>Computes the loss/fidelity of a given model wrt to the observation Parameters ———- model: array     A model from <cite>Blend</cite> Returns ——- loss: float     Loss of the model</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.observation.LowResObservation.match" title="scarlet.observation.LowResObservation.match"><code class="xref py py-obj docutils literal notranslate"><span class="pre">match</span></code></a>(self, model_frame[, coverage])</p></td>
-<td><p>Match the frame of <cite>Blend</cite> to the frame of this observation.</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.observation.LowResObservation.match" title="scarlet.observation.LowResObservation.match"><code class="xref py py-obj docutils literal notranslate"><span class="pre">match</span></code></a>(self, model_frame)</p></td>
+<td><p>matches the observation to a frame</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.observation.LowResObservation.match_psfs" title="scarlet.observation.LowResObservation.match_psfs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">match_psfs</span></code></a>(self, psf_hr, wcs_hr, angle)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.observation.LowResObservation.match_psfs" title="scarlet.observation.LowResObservation.match_psfs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">match_psfs</span></code></a>(self, psf_hr, wcs_hr)</p></td>
 <td><p>psf matching between different dataset Matches PSFS at different resolutions by interpolating psf_lr on the same grid as psf_hr Parameters ———- psf_hr: array     centered psf of the high resolution scene psf_lr: array     centered psf of the low resolution scene wcs_hr: WCS object     wcs of the high resolution scene wcs_lr: WCS object     wcs of the low resolution scene angle: tuple     the cos and sin of the rotation angle between frames Returns ——- psf_match_hr: array     high rresolution psf at mactching size psf_match_lr: array     low resolution psf at matching size and resolution</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.observation.LowResObservation.render" title="scarlet.observation.LowResObservation.render"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render</span></code></a>(self, model)</p></td>
-<td><p>Resample and convolve a model in the observation frame for display only! Parameters ———- model: array     The model in some other data frame.</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.observation.LowResObservation.render" title="scarlet.observation.LowResObservation.render"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render</span></code></a>(self, model)</p></td>
+<td><p>Resample and convolve a model in the observation frame Parameters ———- model: array     The model in some other data frame.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.observation.LowResObservation.sinc_shift" title="scarlet.observation.LowResObservation.sinc_shift"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sinc_shift</span></code></a>(self, imgs, shifts, axes)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.observation.LowResObservation.sinc_shift" title="scarlet.observation.LowResObservation.sinc_shift"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sinc_shift</span></code></a>(self, imgs, shifts, axes)</p></td>
 <td><p>Performs 2 1D sinc convolutions and shifting along one rotated axis in Fourier space.</p></td>
 </tr>
 </tbody>
 </table>
 <dl class="method">
 <dt id="scarlet.observation.LowResObservation.build_diffkernel">
-<code class="sig-name descname">build_diffkernel</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">model_frame</em>, <em class="sig-param">angle</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/observation.html#LowResObservation.build_diffkernel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.LowResObservation.build_diffkernel" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">build_diffkernel</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">model_frame</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/observation.html#LowResObservation.build_diffkernel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.LowResObservation.build_diffkernel" title="Permalink to this definition">¶</a></dt>
 <dd><p>Builds the differential convolution kernel between the observation and the frame psfs</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><dl class="simple">
-<dt><strong>model_frame: Frame object</strong></dt><dd><p>the frame of the model (hehehe)</p>
-</dd>
-<dt><strong>angle: tuple</strong></dt><dd><p>tuple of the cos and sin of the rotation angle between frames.</p>
+<dt><strong>model_frame: Frame object</strong></dt><dd><p>the frame of the model</p>
 </dd>
 <dt><strong>Returns</strong></dt><dd></dd>
 <dt><strong>——-</strong></dt><dd></dd>
@@ -151,25 +152,23 @@ model: array</p>
 
 <dl class="method">
 <dt id="scarlet.observation.LowResObservation.match">
-<code class="sig-name descname">match</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">model_frame</em>, <em class="sig-param">coverage='union'</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/observation.html#LowResObservation.match"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.LowResObservation.match" title="Permalink to this definition">¶</a></dt>
-<dd><p>Match the frame of <cite>Blend</cite> to the frame of this observation.</p>
-<p>The method sets up the mappings in spectral and spatial coordinates,
-which includes a spatial selection, computing PSF difference kernels
-and filter transformations.</p>
-<dl class="simple">
-<dt>model_frame: a <cite>scarlet.Frame</cite> instance</dt><dd><p>The frame of <cite>Blend</cite> to match</p>
+<code class="sig-name descname">match</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">model_frame</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/observation.html#LowResObservation.match"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.LowResObservation.match" title="Permalink to this definition">¶</a></dt>
+<dd><p>matches the observation to a frame</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>model_frame: `Frame`</strong></dt><dd><p>Frame to match to the observation</p>
 </dd>
-<dt>diff_kernels: array</dt><dd><p>The difference kernel for each band.
-If <cite>diff_kernels</cite> is <cite>None</cite> then they are
-calculated automatically.</p>
+<dt><strong>coord: `array`</strong></dt><dd><p>coordinates of the pixels in the frame to fit</p>
 </dd>
 </dl>
-<p>None</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="method">
 <dt id="scarlet.observation.LowResObservation.match_psfs">
-<code class="sig-name descname">match_psfs</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">psf_hr</em>, <em class="sig-param">wcs_hr</em>, <em class="sig-param">angle</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/observation.html#LowResObservation.match_psfs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.LowResObservation.match_psfs" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">match_psfs</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">psf_hr</em>, <em class="sig-param">wcs_hr</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/observation.html#LowResObservation.match_psfs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.LowResObservation.match_psfs" title="Permalink to this definition">¶</a></dt>
 <dd><p>psf matching between different dataset
 Matches PSFS at different resolutions by interpolating psf_lr on the same grid as psf_hr
 Parameters
@@ -199,7 +198,7 @@ psf_hr: array</p>
 <dl class="method">
 <dt id="scarlet.observation.LowResObservation.render">
 <code class="sig-name descname">render</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">model</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/observation.html#LowResObservation.render"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.LowResObservation.render" title="Permalink to this definition">¶</a></dt>
-<dd><p>Resample and convolve a model in the observation frame for display only!
+<dd><p>Resample and convolve a model in the observation frame
 Parameters
 ———-
 model: array</p>
@@ -268,17 +267,26 @@ prevent artifacts from the FFT.</p>
 <col style="width: 90%" />
 </colgroup>
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.observation.Observation.get_loss" title="scarlet.observation.Observation.get_loss"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_loss</span></code></a>(self, model)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.observation.Observation.get_LowRes" title="scarlet.observation.Observation.get_LowRes"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_LowRes</span></code></a>(self)</p></td>
+<td><p>Creates a LowResObservation object from an Observation object</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.observation.Observation.get_loss" title="scarlet.observation.Observation.get_loss"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_loss</span></code></a>(self, model)</p></td>
 <td><p>Computes the loss/fidelity of a given model wrt to the observation</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.observation.Observation.match" title="scarlet.observation.Observation.match"><code class="xref py py-obj docutils literal notranslate"><span class="pre">match</span></code></a>(self, model_frame[, diff_kernels])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.observation.Observation.match" title="scarlet.observation.Observation.match"><code class="xref py py-obj docutils literal notranslate"><span class="pre">match</span></code></a>(self, model_frame[, diff_kernels])</p></td>
 <td><p>Match the frame of <cite>Blend</cite> to the frame of this observation.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.observation.Observation.render" title="scarlet.observation.Observation.render"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render</span></code></a>(self, model)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.observation.Observation.render" title="scarlet.observation.Observation.render"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render</span></code></a>(self, model)</p></td>
 <td><p>Convolve a model to the observation frame</p></td>
 </tr>
 </tbody>
 </table>
+<dl class="method">
+<dt id="scarlet.observation.Observation.get_LowRes">
+<code class="sig-name descname">get_LowRes</code><span class="sig-paren">(</span><em class="sig-param">self</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/observation.html#Observation.get_LowRes"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.Observation.get_LowRes" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates a LowResObservation object from an Observation object</p>
+</dd></dl>
+
 <dl class="method">
 <dt id="scarlet.observation.Observation.get_loss">
 <code class="sig-name descname">get_loss</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">model</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/observation.html#Observation.get_loss"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.Observation.get_loss" title="Permalink to this definition">¶</a></dt>

@@ -363,11 +363,9 @@ div.rendered_html tbody tr:hover {
 <p>A <code class="docutils literal notranslate"><span class="pre">Frame</span></code> in <em>scarlet</em> is a description of the hyperspectral cube of the model or the observations. Think of it as the metadata, what aspects of the sky are described here. At the least, a <code class="docutils literal notranslate"><span class="pre">Frame</span></code> holds the <code class="docutils literal notranslate"><span class="pre">shape</span></code> of the cube, for which we use the convention <code class="docutils literal notranslate"><span class="pre">(C,</span> <span class="pre">Ny,</span> <span class="pre">Nx)</span></code> for the number of elements in 3 dimensions: <code class="docutils literal notranslate"><span class="pre">C</span></code> for the number of bands/channels and <code class="docutils literal notranslate"><span class="pre">Ny,</span> <span class="pre">Nx</span></code> for the number of pixels at every channel.</p>
 <p>An <code class="docutils literal notranslate"><span class="pre">Observation</span></code> combines a <code class="docutils literal notranslate"><span class="pre">Frame</span></code> with several data units, similar to header-data arrangement in FITS files. In addition to the actual science image cube, you can and often must provide weights for all elements in the data cube, an image cube of the PSF model (one image for all or one for each channel), an <code class="docutils literal notranslate"><span class="pre">astropy.WCS</span></code> structure to translate from pixel to sky coordinates, and labels for all channels. The reason for specifying them is to enable the code to internally map from the model
 frame, in which you seek to fit a model, to the observed data frame.</p>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>It is crictical to realize that there are two frames: one for model that reconstructs the scene on the sky, and one for any observation of the scene. They may be identical, but mostly they are not, in which case the observation is an information-reduced rendering of the model. The loss of information could be in terms of signal-to-noise ratio, spatial resolution, PSF blurring, spectral coverage, or all of the above.</p>
-</div>
-<p>In this example, we assume that bands and pixel locations are identical between the model and the observation. Because we have ground-based images with different PSFs in each band, we need to provide a reference PSF for the model. We simply choose a minimal Gaussian PSF that is barely well sampled as our reference kernel:</p>
+.. note::
+
+    It is crictical to realize that there are two frames: one for model that reconstructs the scene on the sky, and one for any observation of the scene. They may be identical, but mostly they are not, in which case the observation is an information-reduced rendering of the model. The loss of information could be in terms of signal-to-noise ratio, spatial resolution, PSF blurring, spectral coverage, or all of the above.<p>In this example, we assume that bands and pixel locations are identical between the model and the observation. Because we have ground-based images with different PSFs in each band, we need to provide a reference PSF for the model. We simply choose a minimal Gaussian PSF that is barely well sampled as our reference kernel:</p>
 <div class="nbinput nblast docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
 </pre></div>
@@ -428,11 +426,9 @@ frame, in which you seek to fit a model, to the observed data frame.</p>
 </pre></div>
 </div>
 </div>
-<div class="admonition warning">
-<p class="admonition-title">Warning</p>
-<p>Coordinates in <em>scarlet</em> are given in the C/numpy notation (y,x) as opposed to the more conventional mathematical (x,y) ordering.</p>
-</div>
-</div>
+.. warning::
+
+    Coordinates in *scarlet* are given in the C/numpy notation (y,x) as opposed to the more conventional mathematical (x,y) ordering.</div>
 <div class="section" id="Create-and-Fit-Model">
 <h2>Create and Fit Model<a class="headerlink" href="#Create-and-Fit-Model" title="Permalink to this headline">¶</a></h2>
 <p>The <code class="docutils literal notranslate"><span class="pre">Blend</span></code> class represents the sources as a tree and has the machinery to fit all of the sources to the given images. In this example the code is set to run for a maximum of 200 iterations, but will end early if the likelihood and all of the constraints converge.</p>
@@ -455,8 +451,8 @@ frame, in which you seek to fit a model, to the observed data frame.</p>
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-CPU times: user 1.31 s, sys: 48.1 ms, total: 1.36 s
-Wall time: 1.36 s
+CPU times: user 1.29 s, sys: 73.9 ms, total: 1.37 s
+Wall time: 1.37 s
 scarlet ran for 52 iterations to logL = 28834.069625073516
 </pre></div></div>
 </div>
@@ -595,11 +591,9 @@ Source 6, Fluxes: [2.67099665 2.41223576 2.56550062 3.15687361 4.6268204 ]
 </pre></div>
 </div>
 </div>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>We recommend to serialize sources or source lists instead of a blend because the latter would also serialize the observations. That is normally not desired and will bloat the pickled file.</p>
-</div>
-<p>The pickled file can be reopened in the same way. Every source can be utilized as before.</p>
+.. note::
+
+    We recommend to serialize sources or source lists instead of a blend because the latter would also serialize the observations. That is normally not desired and will bloat the pickled file.<p>The pickled file can be reopened in the same way. Every source can be utilized as before.</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
 </pre></div>
@@ -657,7 +651,7 @@ Source 6, Fluxes: [2.67099665 2.41223576 2.56550062 3.15687361 4.6268204 ]
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-scarlet ran for 58 iterations to logL = 31399.978169309914
+scarlet ran for 58 iterations to logL = 31399.969817132696
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">

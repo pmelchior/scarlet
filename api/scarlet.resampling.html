@@ -83,8 +83,56 @@
   <div class="section" id="module-scarlet.resampling">
 <span id="scarlet-resampling"></span><h1>scarlet.resampling<a class="headerlink" href="#module-scarlet.resampling" title="Permalink to this headline">¶</a></h1>
 <dl class="function">
+<dt id="scarlet.resampling.convert_coordinates">
+<code class="sig-prename descclassname">scarlet.resampling.</code><code class="sig-name descname">convert_coordinates</code><span class="sig-paren">(</span><em class="sig-param">coord</em>, <em class="sig-param">origin_wcs</em>, <em class="sig-param">target_wcs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/resampling.html#convert_coordinates"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.resampling.convert_coordinates" title="Permalink to this definition">¶</a></dt>
+<dd><p>Converts coordinates from one reference frame to another
+Parameters
+———-
+coord: <cite>tuple</cite></p>
+<blockquote>
+<div><p>coordinates in the frame of the <cite>origin_wcs</cite> to convert in the frame of the <cite>target_wcs</cite></p>
+</div></blockquote>
+<dl class="simple">
+<dt>origin_wcs: WCS</dt><dd><p>wcs of <cite>coord</cite></p>
+</dd>
+<dt>target_wcs: WCS</dt><dd><p>wcs of the frame to which coord is converted</p>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><dl class="simple">
+<dt>coord_target: <cite>tuple</cite></dt><dd><p>coordinates at the location of <cite>coord</cite> in the target frame defined by <cite>target_wcs</cite></p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="scarlet.resampling.get_to_common_frame">
+<code class="sig-prename descclassname">scarlet.resampling.</code><code class="sig-name descname">get_to_common_frame</code><span class="sig-paren">(</span><em class="sig-param">obs</em>, <em class="sig-param">frame_wcs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/resampling.html#get_to_common_frame"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.resampling.get_to_common_frame" title="Permalink to this definition">¶</a></dt>
+<dd><p>Matches an <cite>Observation</cite>’s coordinates to a <cite>Frame</cite>’s wcs</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>obs: `Observation`</strong></dt><dd><p>An observation instance for which we want to know the coordinates in the frame of <cite>frame_wcs</cite></p>
+</dd>
+<dt><strong>frame_wcs: `WCS`</strong></dt><dd><p>a wcs that gives the mapping between pixel coordinates and sky coordinates for a given frame</p>
+</dd>
+<dt><strong>Returns</strong></dt><dd></dd>
+<dt><strong>——-</strong></dt><dd><dl class="simple">
+<dt>coord_obs_frame: <cite>tuple</cite></dt><dd><p>Coordinates of the observations’s pixels in the frame of the provided wcs</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
 <dt id="scarlet.resampling.match_patches">
-<code class="sig-prename descclassname">scarlet.resampling.</code><code class="sig-name descname">match_patches</code><span class="sig-paren">(</span><em class="sig-param">shape_hr</em>, <em class="sig-param">shape_lr</em>, <em class="sig-param">wcs_hr</em>, <em class="sig-param">wcs_lr</em>, <em class="sig-param">isrot=True</em>, <em class="sig-param">coverage='intersection'</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/resampling.html#match_patches"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.resampling.match_patches" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">scarlet.resampling.</code><code class="sig-name descname">match_patches</code><span class="sig-paren">(</span><em class="sig-param">obs</em>, <em class="sig-param">frame</em>, <em class="sig-param">isrot=True</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/resampling.html#match_patches"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.resampling.match_patches" title="Permalink to this definition">¶</a></dt>
 <dd><p>Matches datasets at different resolutions</p>
 <p>Finds the region of intersection between two datasets and creates a mask for the region as well as the pixel coordinates
 for the dataset pixels inside the intersection.</p>

@@ -62,11 +62,11 @@
   <h1>Source code for scarlet.frame</h1><div class="highlight"><pre>
 <span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">from</span> <span class="nn">.bbox</span> <span class="kn">import</span> <span class="n">Box</span>
-
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">interpolation</span>
 <span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">resampling</span>
 
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;scarlet.frame&quot;</span><span class="p">)</span>
-
 
 <div class="viewcode-block" id="Frame"><a class="viewcode-back" href="../../api/scarlet.frame.html#scarlet.frame.Frame">[docs]</a><span class="k">class</span> <span class="nc">Frame</span><span class="p">(</span><span class="n">Box</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Spatial and spectral characteristics of the data</span>
@@ -91,7 +91,7 @@
         <span class="c1"># Import PSF here to prevent a circular dependency</span>
         <span class="kn">from</span> <span class="nn">.psf</span> <span class="kn">import</span> <span class="n">PSF</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">shape_or_box</span><span class="p">,</span> <span class="n">Box</span><span class="p">):</span>
-            <span class="bp">self</span> <span class="o">=</span> <span class="n">shape_or_box</span>
+            <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">shape_or_box</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">shape_or_box</span><span class="o">.</span><span class="n">origin</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">shape_or_box</span><span class="p">)</span>
 
@@ -109,6 +109,8 @@
         <span class="k">assert</span> <span class="n">channels</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">channels</span><span class="p">)</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">channels</span> <span class="o">=</span> <span class="n">channels</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">dtype</span> <span class="o">=</span> <span class="n">dtype</span>
+
+
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">C</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -131,6 +133,10 @@
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">psf</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_psfs</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">bbox</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">Box</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">origin</span><span class="p">)</span>
 
 <div class="viewcode-block" id="Frame.get_pixel"><a class="viewcode-back" href="../../api/scarlet.frame.html#scarlet.frame.Frame.get_pixel">[docs]</a>    <span class="k">def</span> <span class="nf">get_pixel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sky_coord</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Get the pixel coordinate from a world coordinate</span>
@@ -167,8 +173,151 @@
                     <span class="s2">&quot;Invalid number of wcs dimensions: </span><span class="si">{0}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">wcs</span><span class="o">.</span><span class="n">naxis</span><span class="p">)</span>
                 <span class="p">)</span>
             <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">item</span><span class="p">()</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">coord</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">pixel</span><span class="p">)</span></div>
 
-        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">pixel</span><span class="p">)</span></div></div>
+<div class="viewcode-block" id="Frame.from_observations"><a class="viewcode-back" href="../../api/scarlet.frame.html#scarlet.frame.Frame.from_observations">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">from_observations</span><span class="p">(</span><span class="n">observations</span><span class="p">,</span> <span class="n">target_psf</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">target_wcs</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">obs_id</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">coverage</span> <span class="o">=</span> <span class="s1">&#39;union&#39;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Generates a frame from a set of observations.</span>
+
+<span class="sd">        By default, this method will generate a frame from a set of observations by indentifying the highest resolution</span>
+<span class="sd">        and the smallest PSF and use them to construct a common frome for all observations in the set.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        observations: array of `scarlet.Observation` objects</span>
+<span class="sd">            array that contains Observations to match onto a common frame</span>
+<span class="sd">        psfs: `scarlet.PSF` or its arguments</span>
+<span class="sd">            Target PSF to which oll observations are to be deconvolved.If set to None we use the smallest PSF across</span>
+<span class="sd">            all observations and channels.</span>
+<span class="sd">        wcs: TBD</span>
+<span class="sd">            World Coordinates of the target frame</span>
+<span class="sd">        obs_id:</span>
+<span class="sd">            index of the reference observation. If not set to None, the observation with the smallest PSF and smallest</span>
+<span class="sd">            pixel is used</span>
+<span class="sd">        coverage: `string`</span>
+<span class="sd">            Sets the frame to incorporate all the pixels covered by all the model (&#39;union&#39;)</span>
+<span class="sd">            or sets the frame to incorporate only the pixels vovered by all the observations (&#39;intersection&#39;).</span>
+<span class="sd">            Default is &#39;union&#39;.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Import PSF here to prevent a circular dependency</span>
+        <span class="kn">from</span> <span class="nn">.psf</span> <span class="kn">import</span> <span class="n">PSF</span>
+        <span class="k">assert</span> <span class="n">coverage</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;union&#39;</span><span class="p">,</span> <span class="s1">&#39;intersection&#39;</span><span class="p">]</span>
+        <span class="c1"># Array of pixel sizes for each observation</span>
+        <span class="n">pix_tab</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="c1"># Array of psf size for each psf of each observation</span>
+        <span class="n">fat_psf_size</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">small_psf_size</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">channels</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="c1">#Create frame channels and find smallest and largest psf</span>
+        <span class="k">for</span> <span class="n">c</span><span class="p">,</span> <span class="n">obs</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">observations</span><span class="p">):</span>
+            <span class="c1">#Concatenate all channels</span>
+            <span class="n">channels</span> <span class="o">=</span> <span class="n">channels</span> <span class="o">+</span> <span class="n">obs</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">channels</span>
+            <span class="c1">#concatenate all pixel sizes</span>
+            <span class="n">pix_tab</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">interpolation</span><span class="o">.</span><span class="n">get_pixel_size</span><span class="p">(</span><span class="n">interpolation</span><span class="o">.</span><span class="n">get_affine</span><span class="p">(</span><span class="n">obs</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">wcs</span><span class="p">)))</span>
+            <span class="n">h_temp</span> <span class="o">=</span> <span class="n">interpolation</span><span class="o">.</span><span class="n">get_pixel_size</span><span class="p">(</span><span class="n">interpolation</span><span class="o">.</span><span class="n">get_affine</span><span class="p">(</span><span class="n">obs</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">wcs</span><span class="p">))</span>
+            <span class="c1"># Looking for the sharpest and the fatest psf</span>
+            <span class="k">for</span> <span class="n">psf</span> <span class="ow">in</span> <span class="n">obs</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">_psfs</span><span class="o">.</span><span class="n">image</span><span class="p">:</span>
+                <span class="n">psf_size</span> <span class="o">=</span> <span class="n">interpolation</span><span class="o">.</span><span class="n">get_psf_size</span><span class="p">(</span><span class="n">psf</span><span class="p">)</span><span class="o">*</span><span class="n">h_temp</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">fat_psf_size</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">psf_size</span> <span class="o">&gt;</span> <span class="n">fat_psf_size</span><span class="p">):</span>
+                    <span class="n">fat_psf_size</span> <span class="o">=</span> <span class="n">psf_size</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">obs_id</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">c</span> <span class="o">==</span> <span class="n">obs_id</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="p">(</span><span class="n">target_psf</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">and</span> <span class="p">((</span><span class="n">small_psf_size</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">psf_size</span> <span class="o">&lt;</span> <span class="n">small_psf_size</span><span class="p">)):</span>
+                        <span class="n">small_psf_size</span> <span class="o">=</span> <span class="n">psf_size</span>
+                        <span class="n">target_psf_temp</span> <span class="o">=</span> <span class="n">PSF</span><span class="p">(</span><span class="n">psf</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:])</span>
+                        <span class="n">psf_h</span> <span class="o">=</span> <span class="n">h_temp</span>
+
+        <span class="c1"># Find a reference observation. Either provided by obs_id or as the observation with the smallest pixel</span>
+        <span class="k">if</span> <span class="n">obs_id</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">obs_ref</span> <span class="o">=</span> <span class="n">observations</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">pix_tab</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">pix_tab</span><span class="p">))[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1">#Frame defined from obs_id</span>
+            <span class="n">obs_ref</span> <span class="o">=</span> <span class="n">observations</span><span class="p">[</span><span class="n">obs_id</span><span class="p">]</span>
+        <span class="c1"># Reference wcs</span>
+        <span class="k">if</span> <span class="n">target_wcs</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">target_wcs</span> <span class="o">=</span> <span class="n">obs_ref</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">wcs</span>
+        <span class="c1"># Scale of the smallest pixel</span>
+        <span class="n">h</span> <span class="o">=</span> <span class="n">interpolation</span><span class="o">.</span><span class="n">get_pixel_size</span><span class="p">(</span><span class="n">interpolation</span><span class="o">.</span><span class="n">get_affine</span><span class="p">(</span><span class="n">target_wcs</span><span class="p">))</span>
+
+        <span class="c1"># If needed and psf is not provided: interpolate psf to smallest pixel</span>
+        <span class="k">if</span> <span class="n">target_psf</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># If the reference PSF is not at the highest pixel resolution, make it!</span>
+            <span class="k">if</span> <span class="n">psf_h</span> <span class="o">&gt;</span> <span class="n">h</span><span class="p">:</span>
+                <span class="n">angle</span><span class="p">,</span> <span class="n">h</span> <span class="o">=</span> <span class="n">interpolation</span><span class="o">.</span><span class="n">get_angles</span><span class="p">(</span><span class="n">target_wcs</span><span class="p">,</span> <span class="n">obs</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">wcs</span><span class="p">)</span>
+                <span class="n">target_psf</span> <span class="o">=</span> <span class="n">PSF</span><span class="p">(</span><span class="n">interpolation</span><span class="o">.</span><span class="n">sinc_interp_inplace</span><span class="p">(</span><span class="n">target_psf_temp</span><span class="p">,</span> <span class="n">psf_h</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">angle</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">target_psf</span> <span class="o">=</span> <span class="n">target_psf_temp</span>
+
+        <span class="c1"># Margin in pixels</span>
+        <span class="n">fat_pixel_size</span> <span class="o">=</span> <span class="p">(</span><span class="n">fat_psf_size</span> <span class="o">/</span> <span class="n">h</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+        <span class="c1"># Padding by the size of the psf</span>
+        <span class="k">if</span> <span class="n">fat_pixel_size</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">fat_pixel_size</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="c1"># Matching observations together with the target_wcs so as to create a common frame\</span>
+        <span class="c1"># Box for the reference observation</span>
+        <span class="n">ref_box</span> <span class="o">=</span> <span class="n">obs_ref</span><span class="o">.</span><span class="n">frame</span>
+        <span class="k">for</span> <span class="n">c</span><span class="p">,</span> <span class="n">obs</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">observations</span><span class="p">):</span>
+            <span class="c1"># Make observations with a different wcs LowResObservation</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">obs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">obs_ref</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">obs</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="s1">&#39;LowResObservation&#39;</span><span class="p">):</span>
+                <span class="n">observations</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">=</span> <span class="n">obs</span><span class="o">.</span><span class="n">get_LowRes</span><span class="p">()</span>
+                <span class="c1"># Limits that include all observations relative to target_wcs</span>
+                <span class="n">obs_coord</span> <span class="o">=</span> <span class="n">resampling</span><span class="o">.</span><span class="n">get_to_common_frame</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">target_wcs</span><span class="p">)</span>
+                <span class="n">y_min</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">obs_coord</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                <span class="n">x_min</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">obs_coord</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+                <span class="n">y_max</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">obs_coord</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                <span class="n">x_max</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">obs_coord</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+                <span class="n">new_box</span> <span class="o">=</span> <span class="n">Box</span><span class="p">((</span><span class="n">obs</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">C</span><span class="p">,</span> <span class="n">y_max</span> <span class="o">-</span> <span class="n">y_min</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">x_max</span> <span class="o">-</span> <span class="n">x_min</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span>
+                                            <span class="n">origin</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">y_min</span><span class="p">,</span> <span class="n">x_min</span><span class="p">))</span>
+                <span class="k">if</span> <span class="n">coverage</span> <span class="o">==</span> <span class="s1">&#39;union&#39;</span><span class="p">:</span>
+                    <span class="n">ref_box</span> <span class="o">|=</span> <span class="n">new_box</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">ref_box</span> <span class="o">=</span> <span class="n">new_box</span> <span class="o">&amp;</span> <span class="n">ref_box</span>
+
+        <span class="n">_</span><span class="p">,</span> <span class="n">ny</span><span class="p">,</span> <span class="n">nx</span> <span class="o">=</span> <span class="n">ref_box</span><span class="o">.</span><span class="n">shape</span>
+        <span class="n">frame_shape</span> <span class="o">=</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">channels</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">int</span><span class="p">((</span><span class="n">ny</span> <span class="o">+</span> <span class="n">fat_pixel_size</span><span class="p">)),</span> <span class="n">np</span><span class="o">.</span><span class="n">int</span><span class="p">((</span><span class="n">nx</span> <span class="o">+</span> <span class="n">fat_pixel_size</span><span class="p">)))</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">o_y</span><span class="p">,</span> <span class="n">o_x</span> <span class="o">=</span> <span class="n">ref_box</span><span class="o">.</span><span class="n">origin</span>
+        <span class="n">fbox</span> <span class="o">=</span> <span class="n">Box</span><span class="p">(</span><span class="n">frame_shape</span><span class="p">,</span> <span class="n">origin</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">int</span><span class="p">(</span><span class="n">o_y</span> <span class="o">-</span> <span class="n">fat_pixel_size</span><span class="o">/</span><span class="mi">2</span><span class="p">),</span>
+                                          <span class="n">np</span><span class="o">.</span><span class="n">int</span><span class="p">(</span><span class="n">o_x</span> <span class="o">-</span> <span class="n">fat_pixel_size</span><span class="o">/</span><span class="mi">2</span><span class="p">)))</span>
+        <span class="n">frame</span> <span class="o">=</span> <span class="n">Frame</span><span class="p">(</span><span class="n">fbox</span><span class="p">,</span> <span class="n">wcs</span><span class="o">=</span><span class="n">target_wcs</span><span class="p">,</span> <span class="n">psfs</span><span class="o">=</span><span class="n">target_psf</span><span class="p">,</span> <span class="n">channels</span><span class="o">=</span><span class="n">channels</span><span class="p">)</span>
+        <span class="c1"># Match observations to this frame</span>
+        <span class="k">for</span> <span class="n">obs</span> <span class="ow">in</span> <span class="n">observations</span><span class="p">:</span>
+            <span class="n">obs</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">frame</span></div>
+
+
+    <span class="k">def</span> <span class="fm">__and__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Intersection of two Frames (box and channels)</span>
+
+<span class="sd">        If there is no intersection between the two bounding</span>
+<span class="sd">        boxes then an empty bounding box is returned.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        other: `Frame`</span>
+<span class="sd">            The other frame in the intersection</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        result: `Box`</span>
+<span class="sd">            The rectangular box that is in the overlap region</span>
+<span class="sd">            of both frames.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="n">other</span><span class="o">.</span><span class="n">D</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">D</span>
+        <span class="n">bounds</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">channels</span> <span class="ow">is</span> <span class="n">other</span><span class="o">.</span><span class="n">channels</span><span class="p">:</span>
+            <span class="n">cmin</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">cmax</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">C</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">channels</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">other</span><span class="o">.</span><span class="n">channels</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="n">cmin</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">other</span><span class="o">.</span><span class="n">channels</span><span class="p">)</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">channels</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="n">cmax</span> <span class="o">=</span> <span class="n">cmin</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">C</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="n">bounds</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">cmin</span><span class="p">,</span> <span class="n">cmax</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">D</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="n">bounds</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">start</span><span class="p">[</span><span class="n">d</span> <span class="o">+</span> <span class="mi">1</span><span class="p">],</span> <span class="n">other</span><span class="o">.</span><span class="n">start</span><span class="p">[</span><span class="n">d</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]),</span> <span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">stop</span><span class="p">[</span><span class="n">d</span> <span class="o">+</span> <span class="mi">1</span><span class="p">],</span> <span class="n">other</span><span class="o">.</span><span class="n">stop</span><span class="p">[</span><span class="n">d</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]))</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">Box</span><span class="o">.</span><span class="n">from_bounds</span><span class="p">(</span><span class="o">*</span><span class="n">bounds</span><span class="p">)</span></div>
 </pre></div>
 
           </div>

@@ -100,13 +100,16 @@ more than once, which will have adverse affects on the
 <col style="width: 90%" />
 </colgroup>
 <tbody>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_loss</span></code>(self, model)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_LowRes</span></code>(self)</p></td>
+<td><p>Creates a LowResObservation object from an Observation object</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_loss</span></code>(self, model)</p></td>
 <td><p>Computes the loss/fidelity of a given model wrt to the observation</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.psf.DeconvolvedObservation.match" title="scarlet.psf.DeconvolvedObservation.match"><code class="xref py py-obj docutils literal notranslate"><span class="pre">match</span></code></a>(self, model_frame, kernel)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.psf.DeconvolvedObservation.match" title="scarlet.psf.DeconvolvedObservation.match"><code class="xref py py-obj docutils literal notranslate"><span class="pre">match</span></code></a>(self, model_frame, kernel)</p></td>
 <td><p>Match the frame of <cite>Blend</cite> to the frame of this observation.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">render</span></code>(self, model)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">render</span></code>(self, model)</p></td>
 <td><p>Convolve a model to the observation frame</p></td>
 </tr>
 </tbody>
@@ -272,13 +275,16 @@ more quickly using a DFT in <cite>~scarlet.Observation.match</cite>.</p>
 <col style="width: 90%" />
 </colgroup>
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.psf.PsfObservation.get_loss" title="scarlet.psf.PsfObservation.get_loss"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_loss</span></code></a>(self, model)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_LowRes</span></code>(self)</p></td>
+<td><p>Creates a LowResObservation object from an Observation object</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.psf.PsfObservation.get_loss" title="scarlet.psf.PsfObservation.get_loss"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_loss</span></code></a>(self, model)</p></td>
 <td><p>We override <cite>scarlet.Observation.get_loss</cite> since the lognorm is the dominant term, which interferes with calculating relative error.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.psf.PsfObservation.match" title="scarlet.psf.PsfObservation.match"><code class="xref py py-obj docutils literal notranslate"><span class="pre">match</span></code></a>(self, psfs)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.psf.PsfObservation.match" title="scarlet.psf.PsfObservation.match"><code class="xref py py-obj docutils literal notranslate"><span class="pre">match</span></code></a>(self, psfs)</p></td>
 <td><p>Implement the observed PSFs as the difference kernel</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">render</span></code>(self, model)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">render</span></code>(self, model)</p></td>
 <td><p>Convolve a model to the observation frame</p></td>
 </tr>
 </tbody>

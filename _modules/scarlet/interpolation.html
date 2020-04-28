@@ -64,7 +64,6 @@
 <span class="kn">from</span> <span class="nn">.cache</span> <span class="kn">import</span> <span class="n">Cache</span>
 <span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">fft</span>
 
-
 <div class="viewcode-block" id="get_projection_slices"><a class="viewcode-back" href="../../api/scarlet.interpolation.html#scarlet.interpolation.get_projection_slices">[docs]</a><span class="k">def</span> <span class="nf">get_projection_slices</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">shape</span><span class="p">,</span> <span class="n">yx0</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Get slices needed to project an image</span>
 
@@ -382,28 +381,68 @@
 
     <span class="c1"># Name of the chached shifts.</span>
     <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;mk_shifter&quot;</span>
-    <span class="n">key</span> <span class="o">=</span> <span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
-
+    <span class="n">key</span> <span class="o">=</span> <span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">real</span>
     <span class="k">try</span><span class="p">:</span>
-        <span class="n">shift_y</span><span class="p">,</span> <span class="n">shift_x</span> <span class="o">=</span> <span class="n">Cache</span><span class="o">.</span><span class="n">check</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
-        <span class="n">shifters</span> <span class="o">=</span> <span class="p">(</span><span class="n">shift_y</span><span class="p">,</span> <span class="n">shift_x</span><span class="p">)</span>
+        <span class="n">shifters</span> <span class="o">=</span> <span class="n">Cache</span><span class="o">.</span><span class="n">check</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
     <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
-        <span class="n">freq_x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">rfftfreq</span><span class="p">(</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">freq_x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">rfftfreq</span><span class="p">(</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
         <span class="k">if</span> <span class="n">real</span> <span class="ow">is</span> <span class="kc">True</span><span class="p">:</span>
-            <span class="n">freq_y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">rfftfreq</span><span class="p">(</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="n">freq_y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">rfftfreq</span><span class="p">(</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">])</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">freq_y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">fftfreq</span><span class="p">(</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="n">freq_y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">fftfreq</span><span class="p">(</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">])</span>
         <span class="c1"># Shift the signal to recenter it, negative because math is opposite from</span>
         <span class="c1"># pixel direction</span>
         <span class="n">shift_y</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="n">j</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">freq_y</span><span class="p">)</span>
         <span class="n">shift_x</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="n">j</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">freq_x</span><span class="p">)</span>
 
         <span class="n">shifters</span> <span class="o">=</span> <span class="p">(</span><span class="n">shift_y</span><span class="p">,</span> <span class="n">shift_x</span><span class="p">)</span>
-
     <span class="n">Cache</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">shifters</span><span class="p">)</span>
-
     <span class="k">return</span> <span class="n">shifters</span></div>
 
+<div class="viewcode-block" id="get_affine"><a class="viewcode-back" href="../../api/scarlet.interpolation.html#scarlet.interpolation.get_affine">[docs]</a><span class="k">def</span> <span class="nf">get_affine</span><span class="p">(</span><span class="n">wcs</span><span class="p">):</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">model_affine</span> <span class="o">=</span> <span class="n">wcs</span><span class="o">.</span><span class="n">wcs</span><span class="o">.</span><span class="n">pc</span>
+    <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+        <span class="n">model_affine</span> <span class="o">=</span> <span class="n">wcs</span><span class="o">.</span><span class="n">cd</span>
+
+    <span class="k">return</span> <span class="n">model_affine</span></div>
+
+<div class="viewcode-block" id="get_pixel_size"><a class="viewcode-back" href="../../api/scarlet.interpolation.html#scarlet.interpolation.get_pixel_size">[docs]</a><span class="k">def</span> <span class="nf">get_pixel_size</span><span class="p">(</span><span class="n">model_affine</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Extracts the pixel size from a wcs</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">pix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">model_affine</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
+        <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">model_affine</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">model_affine</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">model_affine</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]))</span>
+    <span class="k">return</span> <span class="n">pix</span></div>
+
+<div class="viewcode-block" id="get_angles"><a class="viewcode-back" href="../../api/scarlet.interpolation.html#scarlet.interpolation.get_angles">[docs]</a><span class="k">def</span> <span class="nf">get_angles</span><span class="p">(</span><span class="n">frame_wcs</span><span class="p">,</span> <span class="n">model_wcs</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot; Computes the angles between two WCS</span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">        frame_wcs: WCS</span>
+<span class="sd">            WCS of the observation&#39;s frame</span>
+<span class="sd">        model_WCS:</span>
+<span class="sd">            WCS of the model frame.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">model_affine</span> <span class="o">=</span> <span class="n">get_affine</span><span class="p">(</span><span class="n">model_wcs</span><span class="p">)</span>
+    <span class="n">frame_affine</span> <span class="o">=</span> <span class="n">get_affine</span><span class="p">(</span><span class="n">frame_wcs</span><span class="p">)</span>
+    <span class="n">model_pix</span> <span class="o">=</span> <span class="n">get_pixel_size</span><span class="p">(</span><span class="n">model_affine</span><span class="p">)</span>
+    <span class="n">frame_pix</span> <span class="o">=</span> <span class="n">get_pixel_size</span><span class="p">(</span><span class="n">frame_affine</span><span class="p">)</span>
+    <span class="c1"># Pixel scale ratio</span>
+    <span class="n">h</span> <span class="o">=</span> <span class="n">frame_pix</span> <span class="o">/</span> <span class="n">model_pix</span>
+    <span class="c1"># Vector giving the direction of the x-axis of each frame</span>
+    <span class="n">self_framevector</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">frame_affine</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)[:</span><span class="mi">2</span><span class="p">]</span> <span class="o">/</span> <span class="n">frame_pix</span>
+    <span class="n">model_framevector</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">model_affine</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)[:</span><span class="mi">2</span><span class="p">]</span> <span class="o">/</span> <span class="n">model_pix</span>
+    <span class="c1"># normalisation</span>
+    <span class="n">self_framevector</span> <span class="o">/=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">self_framevector</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span> <span class="o">**</span> <span class="mf">0.5</span>
+    <span class="n">model_framevector</span> <span class="o">/=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">model_framevector</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span> <span class="o">**</span> <span class="mf">0.5</span>
+
+    <span class="c1"># sin of the angle between datasets (normalised cross product)</span>
+    <span class="n">sin_rot</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">self_framevector</span><span class="p">,</span> <span class="n">model_framevector</span><span class="p">)</span>
+    <span class="c1"># cos of the angle. (normalised scalar product)</span>
+    <span class="n">cos_rot</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">self_framevector</span><span class="p">,</span> <span class="n">model_framevector</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">cos_rot</span><span class="p">,</span> <span class="n">sin_rot</span><span class="p">],</span> <span class="n">h</span></div>
 
 <div class="viewcode-block" id="sinc_interp"><a class="viewcode-back" href="../../api/scarlet.interpolation.html#scarlet.interpolation.sinc_interp">[docs]</a><span class="k">def</span> <span class="nf">sinc_interp</span><span class="p">(</span><span class="n">images</span><span class="p">,</span> <span class="n">coord_hr</span><span class="p">,</span> <span class="n">coord_lr</span><span class="p">,</span> <span class="n">angle</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">3</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
@@ -431,7 +470,7 @@
     <span class="k">assert</span> <span class="n">hy</span> <span class="o">!=</span> <span class="mi">0</span>
     <span class="k">assert</span> <span class="n">hx</span> <span class="o">!=</span> <span class="mi">0</span>
 
-    <span class="k">if</span> <span class="n">angle</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">angle</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">angle</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">np</span><span class="o">.</span><span class="n">finfo</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">eps</span><span class="p">):</span>
         <span class="n">result</span> <span class="o">=</span> <span class="p">[</span>
             <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span>
                 <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span>
@@ -450,14 +489,14 @@
 
     <span class="n">X</span> <span class="o">=</span> <span class="n">fft</span><span class="o">.</span><span class="n">Fourier</span><span class="p">(</span><span class="n">images</span><span class="p">)</span>
     <span class="c1"># Fourier transform</span>
-    <span class="n">X_fft</span> <span class="o">=</span> <span class="n">X</span><span class="o">.</span><span class="n">fft</span><span class="p">(</span><span class="n">fft_shape</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+    <span class="n">X_fft</span> <span class="o">=</span> <span class="n">X</span><span class="o">.</span><span class="n">fft</span><span class="p">(</span><span class="n">fft_shape</span><span class="p">,</span> <span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
 
     <span class="c1"># Shift elementary kernel</span>
     <span class="n">shifter_y</span><span class="p">,</span> <span class="n">shifter_x</span> <span class="o">=</span> <span class="n">mk_shifter</span><span class="p">(</span><span class="n">fft_shape</span><span class="p">)</span>
 
     <span class="c1">#Shifts values</span>
-    <span class="n">shift_y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">shifter_y</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:]</span> <span class="o">*</span> <span class="p">(</span><span class="o">-</span><span class="p">(</span><span class="n">y_hr</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">])</span> <span class="o">*</span> <span class="n">cos</span><span class="p">))</span>
-    <span class="n">shift_x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">shifter_x</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:]</span> <span class="o">*</span> <span class="p">(</span><span class="o">-</span><span class="p">(</span><span class="n">y_hr</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">])</span> <span class="o">*</span> <span class="n">sin</span><span class="p">))</span>
+    <span class="n">shift_y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">shifter_y</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:]</span> <span class="o">*</span> <span class="p">(</span><span class="o">-</span> <span class="p">(</span><span class="n">y_hr</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">])</span> <span class="o">*</span> <span class="n">cos</span><span class="p">))</span>
+    <span class="n">shift_x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">shifter_x</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:]</span> <span class="o">*</span> <span class="p">(</span><span class="o">-</span> <span class="p">(</span><span class="n">y_hr</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">])</span> <span class="o">*</span> <span class="n">sin</span><span class="p">))</span>
     <span class="c1">#Apply shifts</span>
 
     <span class="n">result_fft</span> <span class="o">=</span> <span class="n">X_fft</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">*</span> <span class="n">shift_y</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span>
@@ -481,6 +520,47 @@
     <span class="n">result</span> <span class="o">=</span> <span class="p">(</span><span class="n">result_y</span> <span class="o">*</span> <span class="n">shx</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:])</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">result</span></div>
+
+
+<div class="viewcode-block" id="sinc_interp_inplace"><a class="viewcode-back" href="../../api/scarlet.interpolation.html#scarlet.interpolation.sinc_interp_inplace">[docs]</a><span class="k">def</span> <span class="nf">sinc_interp_inplace</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">h_image</span><span class="p">,</span> <span class="n">h_target</span><span class="p">,</span> <span class="n">angle</span><span class="p">,</span> <span class="n">pad_shape</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; In place interpolation of a cube of images</span>
+
+<span class="sd">    Performs interpolation from a grid defined by the grid of `image` to a grid spanning the same physical area scaled</span>
+<span class="sd">    by a factor `h` and rotated by `angle` radians. The center for the rotation is the central pixel of the image.</span>
+<span class="sd">    This procedure is advised for odd-sized images only.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    image: `ndarray`</span>
+<span class="sd">        Cube of images with shape BxNyxNx with B the number of bands and NyxNx, the number of pixels</span>
+<span class="sd">    h_image: `float`</span>
+<span class="sd">        Phisical scale of a pixel in image</span>
+<span class="sd">    h_target: `float`</span>
+<span class="sd">        Physical scale of the target pixel to which to interpolate</span>
+<span class="sd">    angle: float</span>
+<span class="sd">        angle between the grid of image and the target grid where to interpolate</span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    interp_image: `ndarray`</span>
+<span class="sd">        padded interpolated image</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span><span class="p">,</span> <span class="s2">&quot;images should be provided as a cube. If only one image is provided, &quot;</span> \
+                                  <span class="s2">&quot;image should be a cube with image.shape[0] = 1&quot;</span>
+    <span class="k">if</span> <span class="n">pad_shape</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># Padding. This is never explicitelly undone in this function on purpose. Proceed with caution.</span>
+        <span class="n">image</span> <span class="o">=</span> <span class="n">fft</span><span class="o">.</span><span class="n">_pad</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">pad_shape</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+
+    <span class="n">ny_lr</span><span class="p">,</span> <span class="n">nx_lr</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">:]</span>
+    <span class="n">coord_lr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">ny_lr</span><span class="p">))</span> <span class="o">-</span> <span class="p">(</span><span class="n">ny_lr</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">nx_lr</span><span class="p">))</span><span class="o">-</span><span class="p">(</span><span class="n">nx_lr</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span><span class="p">])</span>
+    <span class="n">ny_hr</span><span class="p">,</span> <span class="n">nx_hr</span> <span class="o">=</span> <span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span> <span class="o">*</span> <span class="n">h_image</span> <span class="o">/</span> <span class="n">h_target</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">),</span> \
+                   <span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">h_image</span> <span class="o">/</span> <span class="n">h_target</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">ny_hr</span> <span class="o">%</span> <span class="mi">2</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">ny_hr</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">nx_hr</span> <span class="o">%</span> <span class="mi">2</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">nx_hr</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="n">coord_hr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">ny_hr</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)))</span><span class="o">-</span><span class="p">(</span><span class="n">ny_hr</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span>
+                         <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">nx_hr</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)))</span><span class="o">-</span><span class="p">(</span><span class="n">nx_hr</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span><span class="p">])</span> <span class="o">/</span> <span class="n">h_image</span> <span class="o">*</span> <span class="n">h_target</span>
+    <span class="k">return</span> <span class="n">sinc_interp</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">coord_hr</span><span class="p">,</span> <span class="n">coord_lr</span><span class="p">,</span> <span class="n">angle</span><span class="o">=</span><span class="n">angle</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="fft_resample"><a class="viewcode-back" href="../../api/scarlet.interpolation.html#scarlet.interpolation.fft_resample">[docs]</a><span class="k">def</span> <span class="nf">fft_resample</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">dy</span><span class="p">,</span> <span class="n">dx</span><span class="p">,</span> <span class="n">kernel</span><span class="o">=</span><span class="n">lanczos</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
@@ -630,6 +710,40 @@
         <span class="n">np</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">volumes</span><span class="p">,</span> <span class="n">_dNx</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)),</span> <span class="n">_dNy</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
     <span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
     <span class="k">return</span> <span class="n">volumes</span></div>
+
+
+<div class="viewcode-block" id="get_psf_size"><a class="viewcode-back" href="../../api/scarlet.interpolation.html#scarlet.interpolation.get_psf_size">[docs]</a><span class="k">def</span> <span class="nf">get_psf_size</span><span class="p">(</span><span class="n">psf</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Measures the size of a psf by computing the size of the area in 3 sigma around the center.</span>
+
+<span class="sd">    This is an approximate method to estimate the size of the psf for setting the size of the frame,</span>
+<span class="sd">    which does not require a precise measurement.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">        PSF: `scarlet.PSF` object</span>
+<span class="sd">            PSF for whic to compute the size</span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">        sigma3: `float`</span>
+<span class="sd">            radius of the area inside 3 sigma around the center in pixels</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Normalisation by maximum</span>
+    <span class="n">psf_frame</span> <span class="o">=</span> <span class="n">psf</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">psf</span><span class="p">)</span>
+
+    <span class="c1"># Pixels in the FWHM set to one, others to 0:</span>
+    <span class="n">psf_frame</span><span class="p">[</span><span class="n">psf_frame</span><span class="o">&gt;</span><span class="mf">0.5</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">psf_frame</span><span class="p">[</span><span class="n">psf_frame</span><span class="o">&lt;=</span><span class="mf">0.5</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="c1"># Area in the FWHM:</span>
+    <span class="n">area</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">psf_frame</span><span class="p">)</span>
+
+    <span class="c1"># Diameter of this area</span>
+    <span class="n">d</span> <span class="o">=</span> <span class="mi">2</span><span class="o">*</span><span class="p">(</span><span class="n">area</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span><span class="o">**</span><span class="mf">0.5</span>
+
+    <span class="c1"># 3-sigma:</span>
+    <span class="n">sigma3</span> <span class="o">=</span> <span class="mi">3</span><span class="o">*</span><span class="n">d</span><span class="o">/</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">2</span><span class="p">))</span><span class="o">**</span><span class="mf">0.5</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">sigma3</span></div>
 </pre></div>
 
           </div>

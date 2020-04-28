@@ -197,7 +197,7 @@ where the convolution kernel is a different size than the morphology.</p>
 
 <dl class="function">
 <dt id="scarlet.interpolation.fft_resample">
-<code class="sig-prename descclassname">scarlet.interpolation.</code><code class="sig-name descname">fft_resample</code><span class="sig-paren">(</span><em class="sig-param">img</em>, <em class="sig-param">dy</em>, <em class="sig-param">dx</em>, <em class="sig-param">kernel=&lt;function lanczos at 0x7f52213f6620&gt;</em>, <em class="sig-param">**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#fft_resample"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.interpolation.fft_resample" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">scarlet.interpolation.</code><code class="sig-name descname">fft_resample</code><span class="sig-paren">(</span><em class="sig-param">img</em>, <em class="sig-param">dy</em>, <em class="sig-param">dx</em>, <em class="sig-param">kernel=&lt;function lanczos at 0x7f84ba29abf8&gt;</em>, <em class="sig-param">**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#fft_resample"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.interpolation.fft_resample" title="Permalink to this definition">¶</a></dt>
 <dd><p>Translate the image by a fraction of a pixel</p>
 <p>This method uses FFT’s to convolve the image with a
 kernel to shift the position of the image by a fraction
@@ -227,6 +227,27 @@ of a pixel.</p>
 </dd></dl>
 
 <dl class="function">
+<dt id="scarlet.interpolation.get_affine">
+<code class="sig-prename descclassname">scarlet.interpolation.</code><code class="sig-name descname">get_affine</code><span class="sig-paren">(</span><em class="sig-param">wcs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#get_affine"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.interpolation.get_affine" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="scarlet.interpolation.get_angles">
+<code class="sig-prename descclassname">scarlet.interpolation.</code><code class="sig-name descname">get_angles</code><span class="sig-paren">(</span><em class="sig-param">frame_wcs</em>, <em class="sig-param">model_wcs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#get_angles"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.interpolation.get_angles" title="Permalink to this definition">¶</a></dt>
+<dd><p>Computes the angles between two WCS
+Parameters
+———-</p>
+<blockquote>
+<div><dl class="simple">
+<dt>frame_wcs: WCS</dt><dd><p>WCS of the observation’s frame</p>
+</dd>
+<dt>model_WCS:</dt><dd><p>WCS of the model frame.</p>
+</dd>
+</dl>
+</div></blockquote>
+</dd></dl>
+
+<dl class="function">
 <dt id="scarlet.interpolation.get_common_padding">
 <code class="sig-prename descclassname">scarlet.interpolation.</code><code class="sig-name descname">get_common_padding</code><span class="sig-paren">(</span><em class="sig-param">img1</em>, <em class="sig-param">img2</em>, <em class="sig-param">padding=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#get_common_padding"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.interpolation.get_common_padding" title="Permalink to this definition">¶</a></dt>
 <dd><p>Project two images to a common frame</p>
@@ -251,6 +272,12 @@ where the convolution kernel is a different size than the morphology.</p>
 </dl>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="scarlet.interpolation.get_pixel_size">
+<code class="sig-prename descclassname">scarlet.interpolation.</code><code class="sig-name descname">get_pixel_size</code><span class="sig-paren">(</span><em class="sig-param">model_affine</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#get_pixel_size"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.interpolation.get_pixel_size" title="Permalink to this definition">¶</a></dt>
+<dd><p>Extracts the pixel size from a wcs</p>
 </dd></dl>
 
 <dl class="function">
@@ -291,8 +318,30 @@ useful for calculating information about the image before projection.</p>
 </dd></dl>
 
 <dl class="function">
+<dt id="scarlet.interpolation.get_psf_size">
+<code class="sig-prename descclassname">scarlet.interpolation.</code><code class="sig-name descname">get_psf_size</code><span class="sig-paren">(</span><em class="sig-param">psf</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#get_psf_size"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.interpolation.get_psf_size" title="Permalink to this definition">¶</a></dt>
+<dd><p>Measures the size of a psf by computing the size of the area in 3 sigma around the center.</p>
+<p>This is an approximate method to estimate the size of the psf for setting the size of the frame,
+which does not require a precise measurement.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>PSF: `scarlet.PSF` object</strong></dt><dd><p>PSF for whic to compute the size</p>
+</dd>
+<dt><strong>Returns</strong></dt><dd></dd>
+<dt><strong>——-</strong></dt><dd><dl class="simple">
+<dt>sigma3: <cite>float</cite></dt><dd><p>radius of the area inside 3 sigma around the center in pixels</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
 <dt id="scarlet.interpolation.get_separable_kernel">
-<code class="sig-prename descclassname">scarlet.interpolation.</code><code class="sig-name descname">get_separable_kernel</code><span class="sig-paren">(</span><em class="sig-param">dy</em>, <em class="sig-param">dx</em>, <em class="sig-param">kernel=&lt;function lanczos at 0x7f52213f6620&gt;</em>, <em class="sig-param">**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#get_separable_kernel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.interpolation.get_separable_kernel" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">scarlet.interpolation.</code><code class="sig-name descname">get_separable_kernel</code><span class="sig-paren">(</span><em class="sig-param">dy</em>, <em class="sig-param">dx</em>, <em class="sig-param">kernel=&lt;function lanczos at 0x7f84ba29abf8&gt;</em>, <em class="sig-param">**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#get_separable_kernel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.interpolation.get_separable_kernel" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create a 2D kernel from a 1D kernel separable in x and y</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -426,6 +475,33 @@ the projection.</p>
 </dd>
 <dt><strong>Returns</strong></dt><dd></dd>
 <dt><strong>——-</strong></dt><dd><p>result:  interpolated  samples at positions coord_hr</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="scarlet.interpolation.sinc_interp_inplace">
+<code class="sig-prename descclassname">scarlet.interpolation.</code><code class="sig-name descname">sinc_interp_inplace</code><span class="sig-paren">(</span><em class="sig-param">image</em>, <em class="sig-param">h_image</em>, <em class="sig-param">h_target</em>, <em class="sig-param">angle</em>, <em class="sig-param">pad_shape=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#sinc_interp_inplace"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.interpolation.sinc_interp_inplace" title="Permalink to this definition">¶</a></dt>
+<dd><p>In place interpolation of a cube of images</p>
+<p>Performs interpolation from a grid defined by the grid of <cite>image</cite> to a grid spanning the same physical area scaled
+by a factor <cite>h</cite> and rotated by <cite>angle</cite> radians. The center for the rotation is the central pixel of the image.
+This procedure is advised for odd-sized images only.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>image: `ndarray`</strong></dt><dd><p>Cube of images with shape BxNyxNx with B the number of bands and NyxNx, the number of pixels</p>
+</dd>
+<dt><strong>h_image: `float`</strong></dt><dd><p>Phisical scale of a pixel in image</p>
+</dd>
+<dt><strong>h_target: `float`</strong></dt><dd><p>Physical scale of the target pixel to which to interpolate</p>
+</dd>
+<dt><strong>angle: float</strong></dt><dd><p>angle between the grid of image and the target grid where to interpolate</p>
+</dd>
+<dt><strong>Returns</strong></dt><dd></dd>
+<dt><strong>——-</strong></dt><dd></dd>
+<dt><strong>interp_image: `ndarray`</strong></dt><dd><p>padded interpolated image</p>
 </dd>
 </dl>
 </dd>

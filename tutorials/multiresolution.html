@@ -322,7 +322,7 @@ div.rendered_html tbody tr:hover {
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
 <span></span><span class="c1"># Load the HSC image data</span>
-<span class="n">obs_hdu</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s1">&#39;../../data/test_resampling/Cut_HSC.fits&#39;</span><span class="p">)</span>
+<span class="n">obs_hdu</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s1">&#39;../../data/test_resampling/Cut_HSC1.fits&#39;</span><span class="p">)</span>
 <span class="n">data_hsc</span> <span class="o">=</span> <span class="n">obs_hdu</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">byteswap</span><span class="p">()</span><span class="o">.</span><span class="n">newbyteorder</span><span class="p">()</span>
 <span class="n">wcs_hsc</span> <span class="o">=</span> <span class="n">WCS</span><span class="p">(</span><span class="n">obs_hdu</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">)</span>
 <span class="n">channels_hsc</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;g&#39;</span><span class="p">,</span><span class="s1">&#39;r&#39;</span><span class="p">,</span><span class="s1">&#39;i&#39;</span><span class="p">,</span><span class="s1">&#39;z&#39;</span><span class="p">,</span><span class="s1">&#39;y&#39;</span><span class="p">]</span>
@@ -333,13 +333,14 @@ div.rendered_html tbody tr:hover {
 <span class="n">psf_hsc</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">PSF</span><span class="p">(</span><span class="n">psf_hsc</span><span class="p">)</span>
 
 <span class="c1"># Load the HST image data</span>
-<span class="n">hst_hdu</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s1">&#39;../../data/test_resampling/Cut_HST.fits&#39;</span><span class="p">)</span>
+<span class="n">hst_hdu</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s1">&#39;../../data/test_resampling/Cut_HST1.fits&#39;</span><span class="p">)</span>
 <span class="n">data_hst</span> <span class="o">=</span> <span class="n">hst_hdu</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span>
 <span class="n">wcs_hst</span> <span class="o">=</span> <span class="n">WCS</span><span class="p">(</span><span class="n">hst_hdu</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">)</span>
 <span class="n">channels_hst</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;F814W&#39;</span><span class="p">]</span>
 
 <span class="c1"># apply wcs correction</span>
-<span class="c1">#wcs_hst.wcs.crval -= 2.4750118475607095e-05*np.array([0,1])</span>
+<span class="n">wcs_hsc</span><span class="o">.</span><span class="n">wcs</span><span class="o">.</span><span class="n">crval</span> <span class="o">-=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span><span class="mf">2.22364861e-05</span><span class="p">,</span> <span class="mf">7.9102005e-06</span><span class="p">])</span>
+<span class="n">wcs_hst</span><span class="o">.</span><span class="n">wcs</span><span class="o">.</span><span class="n">crval</span> <span class="o">-=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.49868145e-06</span><span class="p">,</span> <span class="mf">1.25988294e-06</span><span class="p">])</span>
 <span class="c1"># Load the HST PSF data</span>
 <span class="n">psf_hst</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s1">&#39;../../data/test_resampling/PSF_HST.fits&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span>
 <span class="n">psf_hst</span> <span class="o">=</span> <span class="n">psf_hst</span><span class="p">[</span><span class="kc">None</span><span class="p">,:,:]</span>
@@ -397,18 +398,21 @@ div.rendered_html tbody tr:hover {
 <span class="n">xi</span><span class="p">,</span><span class="n">yi</span> <span class="o">=</span> <span class="n">catalog_hsc</span><span class="p">[</span><span class="s1">&#39;x&#39;</span><span class="p">],</span> <span class="n">catalog_hsc</span><span class="p">[</span><span class="s1">&#39;y&#39;</span><span class="p">]</span>
 <span class="c1"># Convert the HST coordinates to the HSC WCS</span>
 <span class="n">ra</span><span class="p">,</span> <span class="n">dec</span> <span class="o">=</span> <span class="n">wcs_hst</span><span class="o">.</span><span class="n">wcs_pix2world</span><span class="p">(</span><span class="n">yo</span><span class="p">,</span><span class="n">xo</span><span class="p">,</span><span class="mi">0</span><span class="p">)</span>
+
 <span class="n">Yo</span><span class="p">,</span><span class="n">Xo</span><span class="p">,</span> <span class="n">l</span> <span class="o">=</span> <span class="n">wcs_hsc</span><span class="o">.</span><span class="n">wcs_world2pix</span><span class="p">(</span><span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
 <span class="c1"># Map the HSC image to RGB</span>
 <span class="n">img_rgb</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">display</span><span class="o">.</span><span class="n">img_to_rgb</span><span class="p">(</span><span class="n">data_hsc</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">hsc_norm</span><span class="p">)</span>
 <span class="c1"># Apply Asinh to the HST data</span>
 <span class="n">hst_img</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">display</span><span class="o">.</span><span class="n">img_to_rgb</span><span class="p">(</span><span class="n">data_hst</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">hst_norm</span><span class="p">)</span>
 
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">15</span><span class="p">,</span><span class="mi">30</span><span class="p">))</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="mi">121</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">img_rgb</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">Xo</span><span class="p">,</span><span class="n">Yo</span><span class="p">,</span> <span class="s1">&#39;o&#39;</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">xi</span><span class="p">,</span><span class="n">yi</span><span class="p">,</span> <span class="s1">&#39;o&#39;</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="mi">122</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">hst_img</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">xo</span><span class="p">,</span><span class="n">yo</span><span class="p">,</span> <span class="s1">&#39;o&#39;</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </pre></div>
 </div>
@@ -425,35 +429,24 @@ div.rendered_html tbody tr:hover {
 <h2>Create Frame and Observations<a class="headerlink" href="#Create-Frame-and-Observations" title="Permalink to this headline">¶</a></h2>
 <p>Unlike the single resolution examples, we now have two different instruments with different pixel resolutions, so we need two different observations. Since the HST image is at a much higher resolution, we define our model <code class="docutils literal notranslate"><span class="pre">Frame</span></code> to use the HST PSF and the HST resolution. Because there is no resampling between the model frame and the HST observation, we can use the default <code class="docutils literal notranslate"><span class="pre">Observation</span></code> class for the HST data. The HSC images have lower resolution, so we need to resample the models to this
 frame, and that’s done by <code class="docutils literal notranslate"><span class="pre">LowResObservation</span></code>.</p>
-<div class="nbinput docutils container">
+<p>Users can specify frame, Observation and LowResObservation objects by hand and match them as is usually done in single observation fitting. Alternativelly, the user can provide a list of observation (no matter what the resolution of each observation is), from which the <code class="docutils literal notranslate"><span class="pre">from_observations</span></code> method will decide which observation(s) should be a LowResObservations. If no psf or reference wcs is provided, the method will also</p>
+<div class="nbinput nblast docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
-<span></span><span class="c1"># Initialize the frame using the HST PSF and WCS</span>
-<span class="n">channels</span> <span class="o">=</span> <span class="n">channels_hsc</span> <span class="o">+</span> <span class="n">channels_hst</span>
-<span class="n">shape</span> <span class="o">=</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">channels</span><span class="p">),</span> <span class="n">n1</span><span class="p">,</span><span class="n">n2</span><span class="p">)</span>
-<span class="n">frame</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">Frame</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="n">wcs</span><span class="o">=</span><span class="n">wcs_hst</span><span class="p">,</span> <span class="n">psfs</span><span class="o">=</span><span class="n">psf_hst</span><span class="p">,</span> <span class="n">channels</span><span class="o">=</span><span class="n">channels</span><span class="p">)</span>
-
+<span></span><span class="c1">#Automated frame definition</span>
 <span class="c1"># define two observation packages and match to frame</span>
-<span class="n">obs_hst</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">Observation</span><span class="p">(</span><span class="n">data_hst</span><span class="p">,</span> <span class="n">wcs</span><span class="o">=</span><span class="n">wcs_hst</span><span class="p">,</span> <span class="n">psfs</span><span class="o">=</span><span class="n">psf_hst</span><span class="p">,</span> <span class="n">channels</span><span class="o">=</span><span class="n">channels_hst</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">weights_hst</span><span class="p">)</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
-<span class="n">obs_hsc</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">LowResObservation</span><span class="p">(</span><span class="n">data_hsc</span><span class="p">,</span>  <span class="n">wcs</span><span class="o">=</span><span class="n">wcs_hsc</span><span class="p">,</span> <span class="n">psfs</span><span class="o">=</span><span class="n">psf_hsc</span><span class="p">,</span> <span class="n">channels</span><span class="o">=</span><span class="n">channels_hsc</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">weights_hsc</span><span class="p">)</span>
-<span class="o">%</span><span class="k">time</span> obs_hsc.match(frame)
+<span class="n">obs_hst</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">Observation</span><span class="p">(</span><span class="n">data_hst</span><span class="p">,</span> <span class="n">wcs</span><span class="o">=</span><span class="n">wcs_hst</span><span class="p">,</span> <span class="n">psfs</span><span class="o">=</span><span class="n">psf_hst</span><span class="p">,</span> <span class="n">channels</span><span class="o">=</span><span class="n">channels_hst</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">weights_hst</span><span class="p">)</span>
+<span class="n">obs_hsc</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">Observation</span><span class="p">(</span><span class="n">data_hsc</span><span class="p">,</span> <span class="n">wcs</span><span class="o">=</span><span class="n">wcs_hsc</span><span class="p">,</span> <span class="n">psfs</span><span class="o">=</span><span class="n">psf_hsc</span><span class="p">,</span> <span class="n">channels</span><span class="o">=</span><span class="n">channels_hsc</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">weights_hsc</span><span class="p">)</span>
 
 <span class="c1"># Keep the order of the observations consistent with the `channels` parameter</span>
 <span class="c1"># This implementation is a bit of a hack and will be refined in the future</span>
 <span class="n">obs</span> <span class="o">=</span> <span class="p">[</span><span class="n">obs_hsc</span><span class="p">,</span> <span class="n">obs_hst</span><span class="p">]</span>
+<span class="n">frame</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">Frame</span><span class="o">.</span><span class="n">from_observations</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">coverage</span> <span class="o">=</span> <span class="s1">&#39;intersection&#39;</span><span class="p">)</span>
+<span class="n">obs_hsc</span><span class="p">,</span> <span class="n">obs_hst</span> <span class="o">=</span> <span class="n">obs</span>
 </pre></div>
 </div>
-</div>
-<div class="nboutput nblast docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<div class="highlight"><pre>
-CPU times: user 354 ms, sys: 244 ms, total: 598 ms
-Wall time: 598 ms
-</pre></div></div>
 </div>
 </div>
 <div class="section" id="Initialize-Sources-and-Blend">
@@ -531,8 +524,8 @@ Wall time: 598 ms
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-CPU times: user 316 ms, sys: 208 ms, total: 525 ms
-Wall time: 525 ms
+CPU times: user 1.3 s, sys: 898 ms, total: 2.2 s
+Wall time: 2.2 s
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">
@@ -550,7 +543,7 @@ Wall time: 525 ms
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
-<span></span><span class="o">%</span><span class="k">time</span> blend.fit(10)
+<span></span><span class="o">%</span><span class="k">time</span> blend.fit(150)
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;scarlet ran for </span><span class="si">{0}</span><span class="s2"> iterations to logL = </span><span class="si">{1}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">blend</span><span class="o">.</span><span class="n">loss</span><span class="p">),</span> <span class="o">-</span><span class="n">blend</span><span class="o">.</span><span class="n">loss</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]))</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">blend</span><span class="o">.</span><span class="n">loss</span><span class="p">))</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Iteration&#39;</span><span class="p">)</span>
@@ -563,9 +556,9 @@ Wall time: 525 ms
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-CPU times: user 33.8 s, sys: 5.84 s, total: 39.6 s
-Wall time: 39.6 s
-scarlet ran for 10 iterations to logL = -133552.9015256128
+CPU times: user 2min 9s, sys: 30.9 s, total: 2min 40s
+Wall time: 2min 40s
+scarlet ran for 12 iterations to logL = -2176914.7752632657
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">
@@ -746,11 +739,59 @@ source number  2
 source number  3
 </pre></div></div>
 </div>
-<div class="nboutput nblast docutils container">
+<div class="nboutput docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
 <img alt="../_images/tutorials_multiresolution_19_7.png" src="../_images/tutorials_multiresolution_19_7.png" />
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+source number  4
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/tutorials_multiresolution_19_9.png" src="../_images/tutorials_multiresolution_19_9.png" />
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+source number  5
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/tutorials_multiresolution_19_11.png" src="../_images/tutorials_multiresolution_19_11.png" />
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span>
+</pre></div>
 </div>
 </div>
 </div>
