@@ -4,7 +4,6 @@ from .frame import Frame
 from . import interpolation
 from . import fft
 from . import resampling
-from .bbox import Box
 
 
 class Observation:
