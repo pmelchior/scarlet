@@ -56,7 +56,7 @@ class TestLowResObservation(object):
             #Reconstructs the array shape because in storrage
             wcs_hr.array_shape = wcs_hr.wcs.crpix*2
 
-            for j in np.arange(i,len(images)):
+            for j in np.arange(i + 1,len(images)):
                 data_lr = images[j]
                 psf_lr = psfs[j]
                 wcs_lr = wcss[j]
