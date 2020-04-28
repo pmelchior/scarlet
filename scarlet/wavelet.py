@@ -223,11 +223,11 @@ def mk_starlet(shape, image = None):
         hc = fft.convolve(hc, newhT, axes=[1])
 
         # wj+1 = cj-hcj+1
-        wave[i, :, :] = c - hc
+        wave[i, :, :] = c.image - hc.image
 
         c = cnew
 
-    wave[-1, :, :] = c
+    wave[-1, :, :] = c.image
     return wave
 
 
@@ -249,17 +249,19 @@ def iuwt(starlet):
     lvl, n1, n2 = np.shape(starlet)
     n = np.size(h)
     # Coarse scale
-    cJ = starlet[-1, :, :]
+    cJ = fft.Fourier(starlet[-1, :, :])
 
     for i in np.arange(1, lvl):
-        newh = np.zeros(n + (n - 1) * (2 ** (lvl - i - 1) - 1))
-        newh[0::2 ** (lvl - i - 1)] = h
+        newh = np.zeros((n + (n - 1) * (2 ** (lvl - i - 1) - 1), 1))
+        newh[0::2 ** (lvl - i - 1), 0] = h
+        newhT = fft.Fourier(newh.T)
+        newh = fft.Fourier(newh)
 
         # Line convolution
         cnew = fft.convolve(cJ, newh, axes=[0])
         # Column convolution
-        cnew = fft.convolve(cnew, newh, axes=[1])
+        cnew = fft.convolve(cnew, newhT, axes=[1])
 
-        cJ = cnew + starlet[lvl - 1 - i, :, :]
+        cJ = fft.Fourier(cnew.image + starlet[lvl - 1 - i, :, :])
 
-    return np.reshape(cJ, (n1, n2))
+    return np.reshape(cJ.image, (n1, n2))

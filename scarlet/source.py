@@ -473,7 +473,7 @@ class WaveletSource(FunctionComponent):
             return self.pixel_center
 
     def _iuwt(self, param):
-        return Starlet.from_starlet(param).image
+        return Starlet.from_starlet(param).image[0]
 
 class ExtendedSource(FactorizedComponent):
     def __init__(
