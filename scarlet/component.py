@@ -125,7 +125,7 @@ class Component(ABC):
             padded_box = Box.from_bounds(*bounds)
 
             model_box = self.frame
-            overlap = model_box & padded_box
+            overlap = padded_box & model_box
             overlap -= padded_box.origin  # now in padded frame
             self.slices = overlap.slices_for(padded_box.shape)
 

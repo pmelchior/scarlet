@@ -2,7 +2,6 @@ import numpy as np
 from .cache import Cache
 from . import fft
 
-
 def get_projection_slices(image, shape, yx0=None):
     """Get slices needed to project an image
 
@@ -320,28 +319,68 @@ def mk_shifter(shape, real=False):
 
     # Name of the chached shifts.
     name = "mk_shifter"
-    key = shape[0], shape[1]
-
+    key = shape[0], shape[1], real
     try:
-        shift_y, shift_x = Cache.check(name, key)
-        shifters = (shift_y, shift_x)
+        shifters = Cache.check(name, key)
     except KeyError:
-        freq_x = np.fft.rfftfreq(shape[1])
+        freq_x = np.fft.rfftfreq(shape[-1])
         if real is True:
-            freq_y = np.fft.rfftfreq(shape[0])
+            freq_y = np.fft.rfftfreq(shape[-2])
         else:
-            freq_y = np.fft.fftfreq(shape[0])
+            freq_y = np.fft.fftfreq(shape[-2])
         # Shift the signal to recenter it, negative because math is opposite from
         # pixel direction
         shift_y = (-1j * 2 * np.pi * freq_y)
         shift_x = (-1j * 2 * np.pi * freq_x)
 
         shifters = (shift_y, shift_x)
-
     Cache.set(name, key, shifters)
-
     return shifters
 
+def get_affine(wcs):
+    try:
+        model_affine = wcs.wcs.pc
+    except AttributeError:
+        model_affine = wcs.cd
+
+    return model_affine
+
+def get_pixel_size(model_affine):
+    """ Extracts the pixel size from a wcs
+    """
+    pix = np.sqrt(
+        np.abs(model_affine[0, 0])
+        * np.abs(model_affine[1, 1] - model_affine[0, 1] * model_affine[1, 0]))
+    return pix
+
+def get_angles(frame_wcs, model_wcs):
+
+    """ Computes the angles between two WCS
+    Parameters
+    ----------
+        frame_wcs: WCS
+            WCS of the observation's frame
+        model_WCS:
+            WCS of the model frame.
+    """
+    model_affine = get_affine(model_wcs)
+    frame_affine = get_affine(frame_wcs)
+    model_pix = get_pixel_size(model_affine)
+    frame_pix = get_pixel_size(frame_affine)
+    # Pixel scale ratio
+    h = frame_pix / model_pix
+    # Vector giving the direction of the x-axis of each frame
+    self_framevector = np.sum(frame_affine, axis=0)[:2] / frame_pix
+    model_framevector = np.sum(model_affine, axis=0)[:2] / model_pix
+    # normalisation
+    self_framevector /= np.sum(self_framevector ** 2) ** 0.5
+    model_framevector /= np.sum(model_framevector ** 2) ** 0.5
+
+    # sin of the angle between datasets (normalised cross product)
+    sin_rot = np.cross(self_framevector, model_framevector)
+    # cos of the angle. (normalised scalar product)
+    cos_rot = np.dot(self_framevector, model_framevector)
+    return [cos_rot, sin_rot], h
 
 def sinc_interp(images, coord_hr, coord_lr, angle=None, padding=3):
     """
@@ -369,7 +408,7 @@ def sinc_interp(images, coord_hr, coord_lr, angle=None, padding=3):
     assert hy != 0
     assert hx != 0
 
-    if angle is None:
+    if (angle is None) or (1 - angle[0] < np.finfo(float).eps):
         result = [
             np.dot(
                 np.dot(
@@ -388,14 +427,14 @@ def sinc_interp(images, coord_hr, coord_lr, angle=None, padding=3):
 
     X = fft.Fourier(images)
     # Fourier transform
-    X_fft = X.fft(fft_shape, (1, 2))
+    X_fft = X.fft(fft_shape, (-2, -1))
 
     # Shift elementary kernel
     shifter_y, shifter_x = mk_shifter(fft_shape)
 
     #Shifts values
-    shift_y = np.exp(shifter_y[np.newaxis, :] * (-(y_hr[:, np.newaxis]) * cos))
-    shift_x = np.exp(shifter_x[np.newaxis, :] * (-(y_hr[:, np.newaxis]) * sin))
+    shift_y = np.exp(shifter_y[np.newaxis, :] * (- (y_hr[:, np.newaxis]) * cos))
+    shift_x = np.exp(shifter_x[np.newaxis, :] * (- (y_hr[:, np.newaxis]) * sin))
     #Apply shifts
 
     result_fft = X_fft[:, np.newaxis, :, :] * shift_y[np.newaxis, :, :, np.newaxis]
@@ -419,6 +458,47 @@ def sinc_interp(images, coord_hr, coord_lr, angle=None, padding=3):
     result = (result_y * shx[np.newaxis, np.newaxis, :, :]).sum(axis=-1)
 
     return result
+
+
+def sinc_interp_inplace(image, h_image, h_target, angle, pad_shape = None):
+    """ In place interpolation of a cube of images
+
+    Performs interpolation from a grid defined by the grid of `image` to a grid spanning the same physical area scaled
+    by a factor `h` and rotated by `angle` radians. The center for the rotation is the central pixel of the image.
+    This procedure is advised for odd-sized images only.
+
+    Parameters
+    ----------
+    image: `ndarray`
+        Cube of images with shape BxNyxNx with B the number of bands and NyxNx, the number of pixels
+    h_image: `float`
+        Phisical scale of a pixel in image
+    h_target: `float`
+        Physical scale of the target pixel to which to interpolate
+    angle: float
+        angle between the grid of image and the target grid where to interpolate
+    Returns
+    -------
+    interp_image: `ndarray`
+        padded interpolated image
+    """
+    assert len(image.shape) == 3, "images should be provided as a cube. If only one image is provided, " \
+                                  "image should be a cube with image.shape[0] = 1"
+    if pad_shape is not None:
+        # Padding. This is never explicitelly undone in this function on purpose. Proceed with caution.
+        image = fft._pad(image, pad_shape, axes = [-2,-1])
+
+    ny_lr, nx_lr = image.shape[-2:]
+    coord_lr = np.array([np.array(range(ny_lr)) - (ny_lr-1)/2, np.array(range(nx_lr))-(nx_lr-1)/2])
+    ny_hr, nx_hr = (image.shape[-2] * h_image / h_target).astype(int), \
+                   (image.shape[-1] * h_image / h_target).astype(int)
+    if (ny_hr % 2) == 0:
+        ny_hr += 1
+    if (nx_hr % 2) == 0:
+        nx_hr += 1
+    coord_hr = np.array([np.array(range(ny_hr.astype(int)))-(ny_hr-1)/2,
+                         np.array(range(nx_hr.astype(int)))-(nx_hr-1)/2]) / h_image * h_target
+    return sinc_interp(image, coord_hr, coord_lr, angle=angle)
 
 
 def fft_resample(img, dy, dx, kernel=lanczos, **kwargs):
@@ -568,3 +648,37 @@ def apply_2D_trapezoid_rule(y, x, f, dNy, dNx=None, dy=None, dx=None):
         np.split(np.array(np.split(volumes, _dNx, axis=1)), _dNy, axis=1)
     ).sum(axis=(2, 3))
     return volumes
+
+
+def get_psf_size(psf):
+    """ Measures the size of a psf by computing the size of the area in 3 sigma around the center.
+
+    This is an approximate method to estimate the size of the psf for setting the size of the frame,
+    which does not require a precise measurement.
+
+    Parameters
+    ----------
+        PSF: `scarlet.PSF` object
+            PSF for whic to compute the size
+    Returns
+    -------
+        sigma3: `float`
+            radius of the area inside 3 sigma around the center in pixels
+    """
+    # Normalisation by maximum
+    psf_frame = psf/np.max(psf)
+
+    # Pixels in the FWHM set to one, others to 0:
+    psf_frame[psf_frame>0.5] = 1
+    psf_frame[psf_frame<=0.5] = 0
+
+    # Area in the FWHM:
+    area = np.sum(psf_frame)
+
+    # Diameter of this area
+    d = 2*(area/np.pi)**0.5
+
+    # 3-sigma:
+    sigma3 = 3*d/(2*(2*np.log(2))**0.5)
+
+    return sigma3

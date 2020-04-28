@@ -241,7 +241,8 @@ class PsfObservation(Observation):
             Return this object to allow for chaining.
         """
         self.bbox = Box(self.frame.shape)
-        self.slices = self.bbox.slices_for(self.frame.shape)
+        self.slices_for_images = self.bbox.slices_for(self.frame.shape)
+        self.slices_for_model = self.bbox.slices_for(self.frame.shape)
         self._diff_kernels = Fourier(psfs)
         return self
 
@@ -253,8 +254,8 @@ class PsfObservation(Observation):
         relative error.
         """
         model_ = self.render(model)
-        images_ = self.images[self.slices]
-        weights_ = self.weights[self.slices]
+        images_ = self.images[self.slices_for_images]
+        weights_ = self.weights[self.slices_for_images]
         return np.sum(weights_ * (model_ - images_) ** 2) / 2
 
 
