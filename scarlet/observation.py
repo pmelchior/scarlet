@@ -63,7 +63,6 @@ class Observation:
         assert (
                 self.weights.shape == self.images.shape
         ), "Weights needs to have same shape as images"
-        self.model_images = np.zeros(self.frame.shape)
         self._padding = padding
         self.slices = (slice(None), slice(None), slice(None))
         self._diff_kernels = None

@@ -236,10 +236,7 @@ class Box:
         return Box.from_bounds(*bounds)
 
     def __or__(self, other):
-        """Intersection of two bounding boxes
-
-        If there is no intersection between the two bounding
-        boxes then an empty bounding box is returned.
+        """Union of two bounding boxes
 
         Parameters
         ----------
@@ -249,7 +246,7 @@ class Box:
         Returns
         -------
         result: `Box`
-            The rectangular box that is in the overlap region
+            The rectangular box that form the union region
             of both boxes.
         """
         assert other.D == self.D

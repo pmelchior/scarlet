@@ -204,12 +204,12 @@ class Frame(Box):
                 x_min = np.min(obs_coord[1])
                 y_max = np.max(obs_coord[0])
                 x_max = np.max(obs_coord[1])
+                new_box = Box((obs.frame.C, y_max - y_min + 1, x_max - x_min + 1),
+                                            origin = (0, y_min, x_min))
                 if coverage == 'union':
-                    ref_box = ref_box | Box((obs.frame.C, y_max - y_min + 1, x_max - x_min + 1),
-                                            origin = (0, y_min, x_min))
-                elif coverage == 'union':
-                    ref_box = ref_box & Box((obs.frame.C, y_max - y_min + 1, x_max - x_min + 1),
-                                            origin = (0, y_min, x_min))
+                    ref_box |= new_box
+                else:
+                    ref_box = new_box & ref_box
 
         _, ny, nx = ref_box.shape
         frame_shape =(len(channels), np.int((ny + fat_pixel_size)), np.int((nx + fat_pixel_size)))
@@ -225,21 +225,21 @@ class Frame(Box):
 
 
     def __and__(self, other):
-        """Intersection of two bounding boxes
+        """Intersection of two Frames (box and channels)
 
         If there is no intersection between the two bounding
         boxes then an empty bounding box is returned.
 
         Parameters
         ----------
-        other: `Box`
-            The other bounding box in the intersection
+        other: `Frame`
+            The other frame in the intersection
 
         Returns
         -------
         result: `Box`
             The rectangular box that is in the overlap region
-            of both boxes.
+            of both frames.
         """
         assert other.D == self.D
         bounds = []
