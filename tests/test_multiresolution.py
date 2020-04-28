@@ -1,6 +1,6 @@
 import numpy as np
 import scarlet
-from numpy.testing import assert_almost_equal
+import os
 
 def SDR(X_true, X):
     """Source distortion ratio between an expected value and its estimate. The higher the SDR the better X_true and X agree"""
@@ -42,7 +42,7 @@ def setup_scarlet(data_hr, wcs_hr, data_lr, wcs_lr, psf_hr, psf_lr, channels, co
 class TestLowResObservation(object):
     def test_surveys(self):
         # Load data for Euclid and Rubin Obs resolutions
-        datas = np.load('../data/test_resampling/Multiresolution_tests.npz', allow_pickle = True)
+        datas = np.load(os.path.join(os.path.dirname(__file__), '../data/test_resampling/Multiresolution_tests.npz'), allow_pickle = True)
         images = datas['images']
         psfs = datas['psf']
         wcss = datas['wcs']
@@ -74,7 +74,7 @@ class TestLowResObservation(object):
 
     def test_padded_frame(self):
         # Load data for Euclid and Rubin Obs resolutions
-        datas = np.load('../data/test_resampling/Multiresolution_padded_tests.npz', allow_pickle = True)
+        datas = np.load(os.path.join(os.path.dirname(__file__), '../data/test_resampling/Multiresolution_tests.npz'), allow_pickle = True)
         images = datas['images']
         psfs = datas['psf']
         wcss = datas['wcs']
