@@ -4,7 +4,6 @@ from .frame import Frame
 from . import interpolation
 from . import fft
 from . import resampling
-from .bbox import Box
 
 
 class Observation:
@@ -64,10 +63,11 @@ class Observation:
         assert (
                 self.weights.shape == self.images.shape
         ), "Weights needs to have same shape as images"
-
         self._padding = padding
+        self.slices = (slice(None), slice(None), slice(None))
+        self._diff_kernels = None
 
-    def match(self, model_frame):
+    def match(self, model_frame, diff_kernels=None):
         """Match the frame of `Blend` to the frame of this observation.
 
         The method sets up the mappings in spectral and spatial coordinates,
@@ -78,23 +78,22 @@ class Observation:
         ---------
         model_frame: a `scarlet.Frame` instance
             The frame of `Blend` to match
-
+        diff_kernels: array
+            The difference kernel for each band.
+            If `diff_kernels` is `None` then they are
+            calculated automatically.
         Returns
         -------
         None
         """
-        # find the box that contained this obs in model_frame
-        shape = self.images.shape
-        yx0 = model_frame.get_pixel(self.frame.get_sky_coord((-model_frame.origin[-2], -model_frame.origin[-1])))
-        #  channels of model that are represented in this observation
-        if self.frame.channels is model_frame.channels:
-            origin = (0, *yx0)
-        else:
-            assert self.frame.channels is not None and model_frame.channels is not None
-            cmin = list(model_frame.channels).index(self.frame.channels[0])
-            origin = (cmin, *yx0)
-        self.bbox = Box(shape, origin=origin)
-        self.model_slices = self.bbox.slices_for(model_frame.shape)
+        # Find the box that contained this obs in model_frame
+        overlap = self.frame & model_frame
+
+        # Slices of the observation in the model
+        self.slices_for_model = tuple(slice(overlap.start[d]-model_frame.origin[d],
+                                            overlap.stop[d]-model_frame.origin[d]) for d in range(self.frame.D))
+        # Slices of the model in this observation
+        self.slices_for_images = tuple(slice(overlap.start[d], overlap.stop[d]) for d in range(self.frame.D))
 
         # check dtype consistency
         if self.frame.dtype != model_frame.dtype:
@@ -104,14 +103,19 @@ class Observation:
                 self.weights = self.weights.copy().astype(model_frame.dtype)
 
         # constrcut diff kernels
-        self._diff_kernels = None
-        if self.frame.psf is not model_frame.psf:
-            assert self.frame.psf is not None and model_frame.psf is not None
-            psf = fft.Fourier(self.frame.psf.update_dtype(model_frame.dtype).image)
-            model_psf = fft.Fourier(
-                model_frame.psf.update_dtype(model_frame.dtype).image
-            )
-            self._diff_kernels = fft.match_psfs(psf, model_psf)
+        if diff_kernels is None:
+            self._diff_kernels = None
+            if self.frame.psf is not model_frame.psf:
+                assert self.frame.psf is not None and model_frame.psf is not None
+                psf = fft.Fourier(self.frame.psf.update_dtype(model_frame.dtype).image)
+                model_psf = fft.Fourier(
+                    model_frame.psf.update_dtype(model_frame.dtype).image
+                )
+                self._diff_kernels = fft.match_psfs(psf, model_psf)
+        else:
+            if not isinstance(diff_kernels, fft.Fourier):
+                diff_kernels = fft.Fourier(diff_kernels)
+            self._diff_kernels = diff_kernels
 
         return self
 
@@ -135,11 +139,11 @@ class Observation:
         """
 
         if self._diff_kernels is not None:
-            image_model = self._convolve(model)[self.model_slices]
+            model_images = self._convolve(model)
         else:
-            image_model = model[self.model_slices]
+            model_images = model
 
-        return image_model
+        return model_images[:, self.slices_for_model[-2], self.slices_for_model[-1]]
 
     def get_loss(self, model):
         """Computes the loss/fidelity of a given model wrt to the observation
@@ -157,9 +161,8 @@ class Observation:
         """
 
         model_ = self.render(model)
-        images_ = self.images
-        weights_ = self.weights
-
+        images_ = self.images[:, self.slices_for_images[-2], self.slices_for_images[-1]]
+        weights_ = self.weights[:, self.slices_for_images[-2], self.slices_for_images[-1]]
         # normalization of the single-pixel likelihood:
         # 1 / [(2pi)^1/2 (sigma^2)^1/2]
         # with inverse variance weights: sigma^2 = 1/weight
@@ -357,26 +360,11 @@ class LowResObservation(Observation):
         # Get pixel coordinates in each frame.
         coord_lr, coord_hr = resampling.match_patches(self, model_frame,isrot=self.isrot)
         # shape of the low resolution image in the intersection or union
-        self.lr_shape = (
+        lr_shape = (
             np.max(coord_lr[0]) - np.min(coord_lr[0]) + 1,
             np.max(coord_lr[1]) - np.min(coord_lr[1]) + 1,
         )
 
-        # BBox of the low resolution pixels in model frame
-        #  1) channels of model that are represented in this observation
-        if self.frame.channels is not model_frame.channels:
-            cmin = model_frame.channels.index(self.frame.channels[0])
-            cmax = model_frame.channels.index(self.frame.channels[-1])
-        else:
-            cmin, cmax = 0, self.frame.C
-        # 2) use the bounds of coord_hr
-        self.bbox = Box(
-            (cmax + 1 - cmin,
-            np.around(np.max(coord_lr[0]) + 1 - np.min(coord_lr[0])).astype(int),
-            np.around(np.max(coord_lr[1]) + 1 - np.min(coord_lr[1])).astype(int),
-        ))
-        # Slice of the frame that contains the observation
-        self.model_slices = self.bbox.slices_for(model_frame.shape)
         # Coordinates for all model frame pixels
         self.frame_coord = (
             np.array(range(model_frame.Ny)),
@@ -412,11 +400,11 @@ class LowResObservation(Observation):
             Y_unrot = (
                     (coord_hr[0] - center_y) * self.angle[0]
                     - (coord_hr[1] - center_x) * self.angle[1]
-            ).reshape(self.lr_shape)
+            ).reshape(lr_shape)
             X_unrot = (
                     (coord_hr[1] - center_x) * self.angle[0]
                     + (coord_hr[0] - center_y) * self.angle[1]
-            ).reshape(self.lr_shape)
+            ).reshape(lr_shape)
 
             # Removing redundancy
             self.Y_unrot = Y_unrot[:, 0]
@@ -465,7 +453,7 @@ class LowResObservation(Observation):
             self._resconv_op = self._resconv_op.reshape(self._resconv_op.shape[0], -1, self._resconv_op.shape[-1])
             return self
 
-    def _render(self, model):
+    def render(self, model):
         """Resample and convolve a model in the observation frame
         Parameters
         ----------
@@ -513,21 +501,6 @@ class LowResObservation(Observation):
                 model_image.append((self._resconv_op[c].T @ model_conv[c].T).T)
             return np.array(model_image, dtype=self.frame.dtype)
 
-    def render(self, model):
-        """Resample and convolve a model in the observation frame for display only!
-        Parameters
-        ----------
-        model: array
-            The model in some other data frame.
-        Returns
-        -------
-        image_model: array
-            `model` mapped into the observation frame
-        """
-
-        image_model = self._render(model)[self.model_slices]
-        return image_model
-
     def get_loss(self, model):
         """Computes the loss/fidelity of a given model wrt to the observation
         Parameters
@@ -540,9 +513,9 @@ class LowResObservation(Observation):
             Loss of the model
         """
 
-        model_ = self._render(model)
-        images_ = self.images[:, self.model_slices[-2], self.model_slices[-1]]
-        weights_ = self.weights[:, self.model_slices[-2], self.model_slices[-1]]
+        model_ = self.render(model)
+        images_ = self.images
+        weights_ = self.weights
 
         # properly normalized likelihood
         log_sigma = np.zeros(weights_.shape, dtype=weights_.dtype)

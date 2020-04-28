@@ -8,6 +8,8 @@ def _pix2radec(coord, wcs):
         ra, dec = wcs.all_pix2world(x, y, 0, ra_dec_order=True)
     elif np.size(wcs.array_shape) == 3:
         ra, dec = wcs.all_pix2world(x, y, 0, 0, ra_dec_order=True)
+    else:
+        raise ValueError("WCSs must have either 2 or 3 dimensions. Received "+str(np.size(wcs.array_shape))+".")
     return (ra, dec)
 
 def _radec2pix(coord, wcs):
@@ -19,6 +21,8 @@ def _radec2pix(coord, wcs):
         X, Y = wcs.all_world2pix(ra, dec, 0, ra_dec_order=True)
     elif np.size(wcs.array_shape) == 3:
         X, Y, _ = wcs.all_world2pix(ra, dec, 0, 0, ra_dec_order=True)
+    else:
+        raise ValueError("WCSs must have either 2 or 3 dimensions. Received "+str(np.size(wcs.array_shape))+".")
     return (Y, X)
 
 def convert_coordinates(coord, origin_wcs, target_wcs):
