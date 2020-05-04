@@ -67,14 +67,20 @@ def _pad(arr, newshape, axes=None, mode = "constant"):
     return np.pad(arr, pad_width, mode=mode)
 
 
-def _get_fft_shape(img1, img2, padding=3, axes=None, max=False):
+def _get_fft_shape(im_or_shape1, im_or_shape2, padding=3, axes=None, max=False):
     """Return the fast fft shapes for each spatial axis
 
     Calculate the fast fft shape for each dimension in
     axes.
     """
-    shape1 = np.asarray(img1.shape)
-    shape2 = np.asarray(img2.shape)
+    if hasattr(im_or_shape1, "shape"):
+        shape1 = np.asarray(im_or_shape1.shape)
+    else:
+        shape1 = np.asarray(im_or_shape1)
+    if hasattr(im_or_shape2, "shape"):
+        shape2 = np.asarray(im_or_shape2.shape)
+    else:
+        shape2 = np.asarray(im_or_shape2)
     # Make sure the shapes are the same size
     if len(shape1) != len(shape2):
         msg = (
