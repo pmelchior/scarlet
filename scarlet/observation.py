@@ -143,7 +143,7 @@ class Observation:
         else:
             model_images = model
 
-        return model_images[:, self.slices_for_model[-2], self.slices_for_model[-1]]
+        return model_images[self.slices_for_model]
 
     def get_loss(self, model):
         """Computes the loss/fidelity of a given model wrt to the observation

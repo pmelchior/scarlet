@@ -1,8 +1,7 @@
 import autograd.numpy as np
 from . import fft
 from . import Cache
-from scipy import fftpack
-import scipy.ndimage.filters as sc
+from scipy.stats import median_absolute_deviation as mad
 
 # Filter for the scarlet transform. Here bspline
 h = np.array([1. / 16, 1. / 4, 3. / 8, 1. / 4, 1. / 16])
@@ -30,6 +29,7 @@ class Starlet(object):
             if set to False, the transform is performed by convolving the image by the wavelet transform of a dirac.
         """
         # Shape for the starlet padding. It is also an fft fast shape.
+        self.seed = None
         if starlet is None:
             self._starlet_shape = get_starlet_shape(image.shape, lvl = lvl)
         else:
@@ -52,7 +52,10 @@ class Starlet(object):
                 self._starlet = starlet[np.newaxis, :, :, :]
             else:
                 self._starlet = starlet
-        self.seed = None
+
+        if self.seed is None:
+            self.seed = mk_starlet(self._starlet_shape)
+        self._norm = np.sqrt(np.sum(self.seed ** 2, axis=(-2, -1)))
 
     @property
     def image(self):
@@ -60,11 +63,9 @@ class Starlet(object):
         return self._image
 
     @property
-    def norm_star(self):
+    def norm(self):
         """The norm of the seed wavelet in each wavelet level (not in coarse wavelet)"""
-        if self.seed is None:
-            self.seed = mk_starlet(self._starlet_shape)
-        return np.sqrt(np.sum(self.seed ** 2, axis=(-2, -1)))
+        return self._norm
 
 
     @property
@@ -103,7 +104,6 @@ class Starlet(object):
         if (starlet_shape == None):
             starlet_shape = get_starlet_shape(shape)
         starlet_shape[0] = starlet.shape[0]
-        starlet = fft._pad(starlet, starlet_shape)
         if len(starlet.shape) >3:
             rec = []
             for star in starlet:
@@ -282,3 +282,19 @@ class InputError(Exception):
 
     def __init__(self, message):
         self.message = message
+
+def mad_wavelet(image):
+    """ image: Median absolute deviation of the first wavelet scale.
+    (WARNING: sorry to disapoint, this is not a wavelet for mad scientists)
+
+    Parameters
+    ----------
+    image: array
+        An image or cube of images
+    Returns
+    -------
+    mad: array
+        median absolute deviation each image in the cube
+    """
+    sigma = mad(Starlet(image).starlet[:,0,...], axis = (-2,-1))
+    return sigma

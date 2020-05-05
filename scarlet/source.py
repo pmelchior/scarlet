@@ -408,6 +408,7 @@ class WaveletSource(FunctionComponent):
         frame,
         sky_coord,
         observations,
+        noise,
         obs_idx=0,
         thresh=1.0,
         shifting=False,
@@ -457,10 +458,21 @@ class WaveletSource(FunctionComponent):
             step=partial(relative_step, factor=1e-2),
             constraint=PositivityConstraint(),
         )
+        # Threshold in units of noise
+        thresh *= np.sum(sed*noise)
 
-        morph = Starlet(morph).starlet
+        # Starlet transform
+        transform = Starlet(morph)
+        morph = transform.starlet
+        # wavelet-scale norm
+        wavelet_norm = transform.norm
+        #One threshold per wavelet scale: thresh*norm
+        thresh_array = np.zeros(morph.shape) + thresh
+        thresh_array[-3:] = thresh_array[-3:] * np.array([wavelet_norm])[..., np.newaxis, np.newaxis]
+        # We don't threshold the last scale
+        thresh_array[...,-1,:,:] = np.inf
 
-        morph_constraint = L0Constraint(thresh)
+        morph_constraint = L0Constraint(thresh_array)
         morph = Parameter(morph, name="morph", step=1e-2, constraint=morph_constraint)
 
         super().__init__(frame, sed, morph, self._iuwt, bbox=bbox)
