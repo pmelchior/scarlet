@@ -1,5 +1,4 @@
 import numpy as np
-from .component import *
 
 
 def get_model(component):
@@ -20,7 +19,7 @@ def max_pixel(component):
     """
     model = get_model(component)
     return tuple(
-        np.unravel_index(np.argmax(model_), model.shape) + component.bbox.origin
+        np.unravel_index(np.argmax(model), model.shape) + component.bbox.origin
     )
 
 

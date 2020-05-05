@@ -1,11 +1,10 @@
 import numpy.ma as ma
 import autograd.numpy as np
 from autograd import grad
-from autograd.extend import defvjp
 import proxmin
 from functools import partial
 
-from .component import ComponentTree, _add_models, _grad_add_models
+from .component import ComponentTree
 
 
 class Blend(ComponentTree):

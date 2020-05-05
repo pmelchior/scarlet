@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from .parameter import *
+from .parameter import Parameter
 from . import fft
 from . import interpolation
 from .bbox import Box
