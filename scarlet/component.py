@@ -15,8 +15,8 @@ class Component(ABC):
 
     Parameters
     ----------
-    frame: `~scarlet.Frame`
-        The spectral and spatial characteristics of this component.
+    model_frame: `~scarlet.Frame`
+        The spectral and spatial characteristics of the model.
     parameters: list of `~scarlet.Parameter`
     bbox: `~scarlet.Box`
         Hyper-spectral bounding box
@@ -24,9 +24,9 @@ class Component(ABC):
         Auxiliary information attached to this component.
     """
 
-    def __init__(self, frame, *parameters, bbox=None, **kwargs):
+    def __init__(self, model_frame, *parameters, bbox=None, **kwargs):
         self.bbox = bbox
-        self.set_frame(frame)
+        self.set_model_frame(model_frame)
 
         if hasattr(parameters, "__iter__"):
             for p in parameters:
@@ -72,12 +72,18 @@ class Component(ABC):
         return [p for p in self._parameters if not p.fixed]
 
     @abstractmethod
-    def get_model(self, *parameters):
+    def get_model(self, *parameters, frame=None):
         """Get the model for this component
 
         Parameters
         ----------
-        parameters: tuple of optimimzation parameters
+        parameters: `tuple`
+            - Tuple of of optimimzation parameters
+
+        frame: `~scarlet.frame.Fraeme`
+            Frame to project the model into. If `frame` is `None`
+            then the model contained in `bbox` is returned.
+
 
         Returns
         -------
@@ -86,7 +92,7 @@ class Component(ABC):
         """
         pass
 
-    def set_frame(self, frame):
+    def set_frame(self, model_frame):
         """Sets the frame for this component.
 
         Each component needs to know the properties of the Frame and, potentially, the
@@ -97,7 +103,13 @@ class Component(ABC):
         frame: `~scarlet.Frame`
             Frame to adopt for this component
         """
-        self.frame = frame
+        if self.shape[0] != model_frame.shape[0]:
+            msg = "Model shape ({}) and bbox shape ({}) must have the same spectral shape"
+            raise ValueError(msg.format(model_frame.shape, self.shape))
+        self.model_frame = model_frame
+        overlap = model_frame & self.bbox
+        overlap -= self.bbox.origin
+        
 
         # store padding and slicing structures
         if self.bbox is not None:
