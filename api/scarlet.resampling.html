@@ -1,7 +1,7 @@
 
 <!DOCTYPE html>
 
-<html xmlns="http://www.w3.org/1999/xhtml">
+<html>
   <head>
     <meta charset="utf-8" />
     <title>scarlet.resampling &#8212; scarlet  documentation</title>
@@ -82,9 +82,9 @@
             
   <div class="section" id="module-scarlet.resampling">
 <span id="scarlet-resampling"></span><h1>scarlet.resampling<a class="headerlink" href="#module-scarlet.resampling" title="Permalink to this headline">¶</a></h1>
-<dl class="function">
+<dl class="py function">
 <dt id="scarlet.resampling.convert_coordinates">
-<code class="sig-prename descclassname">scarlet.resampling.</code><code class="sig-name descname">convert_coordinates</code><span class="sig-paren">(</span><em class="sig-param">coord</em>, <em class="sig-param">origin_wcs</em>, <em class="sig-param">target_wcs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/resampling.html#convert_coordinates"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.resampling.convert_coordinates" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">scarlet.resampling.</code><code class="sig-name descname">convert_coordinates</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">coord</span></em>, <em class="sig-param"><span class="n">origin_wcs</span></em>, <em class="sig-param"><span class="n">target_wcs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/resampling.html#convert_coordinates"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.resampling.convert_coordinates" title="Permalink to this definition">¶</a></dt>
 <dd><p>Converts coordinates from one reference frame to another
 Parameters
 ———-
@@ -108,9 +108,9 @@ coord: <cite>tuple</cite></p>
 </dl>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="scarlet.resampling.get_to_common_frame">
-<code class="sig-prename descclassname">scarlet.resampling.</code><code class="sig-name descname">get_to_common_frame</code><span class="sig-paren">(</span><em class="sig-param">obs</em>, <em class="sig-param">frame_wcs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/resampling.html#get_to_common_frame"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.resampling.get_to_common_frame" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">scarlet.resampling.</code><code class="sig-name descname">get_to_common_frame</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">obs</span></em>, <em class="sig-param"><span class="n">frame_wcs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/resampling.html#get_to_common_frame"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.resampling.get_to_common_frame" title="Permalink to this definition">¶</a></dt>
 <dd><p>Matches an <cite>Observation</cite>’s coordinates to a <cite>Frame</cite>’s wcs</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -130,9 +130,9 @@ coord: <cite>tuple</cite></p>
 </dl>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="scarlet.resampling.match_patches">
-<code class="sig-prename descclassname">scarlet.resampling.</code><code class="sig-name descname">match_patches</code><span class="sig-paren">(</span><em class="sig-param">obs</em>, <em class="sig-param">frame</em>, <em class="sig-param">isrot=True</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/resampling.html#match_patches"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.resampling.match_patches" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">scarlet.resampling.</code><code class="sig-name descname">match_patches</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">obs</span></em>, <em class="sig-param"><span class="n">frame</span></em>, <em class="sig-param"><span class="n">isrot</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/resampling.html#match_patches"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.resampling.match_patches" title="Permalink to this definition">¶</a></dt>
 <dd><p>Matches datasets at different resolutions</p>
 <p>Finds the region of intersection between two datasets and creates a mask for the region as well as the pixel coordinates
 for the dataset pixels inside the intersection.</p>
@@ -173,7 +173,7 @@ for the dataset pixels inside the intersection.</p>
       &copy;2018-2019, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.4</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.0.3</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

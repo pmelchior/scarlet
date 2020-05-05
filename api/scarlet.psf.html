@@ -1,7 +1,7 @@
 
 <!DOCTYPE html>
 
-<html xmlns="http://www.w3.org/1999/xhtml">
+<html>
   <head>
     <meta charset="utf-8" />
     <title>scarlet.psf &#8212; scarlet  documentation</title>
@@ -82,9 +82,9 @@
             
   <div class="section" id="module-scarlet.psf">
 <span id="scarlet-psf"></span><h1>scarlet.psf<a class="headerlink" href="#module-scarlet.psf" title="Permalink to this headline">¶</a></h1>
-<dl class="class">
+<dl class="py class">
 <dt id="scarlet.psf.DeconvolvedObservation">
-<em class="property">class </em><code class="sig-prename descclassname">scarlet.psf.</code><code class="sig-name descname">DeconvolvedObservation</code><span class="sig-paren">(</span><em class="sig-param">images</em>, <em class="sig-param">psfs=None</em>, <em class="sig-param">weights=None</em>, <em class="sig-param">wcs=None</em>, <em class="sig-param">channels=None</em>, <em class="sig-param">padding=10</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#DeconvolvedObservation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.psf.DeconvolvedObservation" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">scarlet.psf.</code><code class="sig-name descname">DeconvolvedObservation</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">images</span></em>, <em class="sig-param"><span class="n">psfs</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">weights</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">wcs</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">channels</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">padding</span><span class="o">=</span><span class="default_value">10</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#DeconvolvedObservation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.psf.DeconvolvedObservation" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="scarlet.observation.html#scarlet.observation.Observation" title="scarlet.observation.Observation"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.observation.Observation</span></code></a></p>
 <p>Deconvolved image using a deconvolution kernel</p>
 <p>This is the same as <cite>~scarlet.Observation</cite> except that the matching
@@ -114,9 +114,9 @@ more than once, which will have adverse affects on the
 </tr>
 </tbody>
 </table>
-<dl class="method">
+<dl class="py method">
 <dt id="scarlet.psf.DeconvolvedObservation.match">
-<code class="sig-name descname">match</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">model_frame</em>, <em class="sig-param">kernel</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#DeconvolvedObservation.match"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.psf.DeconvolvedObservation.match" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">match</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">model_frame</span></em>, <em class="sig-param"><span class="n">kernel</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#DeconvolvedObservation.match"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.psf.DeconvolvedObservation.match" title="Permalink to this definition">¶</a></dt>
 <dd><p>Match the frame of <cite>Blend</cite> to the frame of this observation.</p>
 <p>The method sets up the mappings in spectral and spatial coordinates,
 which includes a spatial selection, computing PSF difference kernels
@@ -134,9 +134,9 @@ calculated automatically.</p>
 
 </dd></dl>
 
-<dl class="class">
+<dl class="py class">
 <dt id="scarlet.psf.PSF">
-<em class="property">class </em><code class="sig-prename descclassname">scarlet.psf.</code><code class="sig-name descname">PSF</code><span class="sig-paren">(</span><em class="sig-param">X</em>, <em class="sig-param">shape=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#PSF"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.psf.PSF" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">scarlet.psf.</code><code class="sig-name descname">PSF</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">X</span></em>, <em class="sig-param"><span class="n">shape</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#PSF"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.psf.PSF" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.8)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>Class to represent PSFs</p>
 <dl class="field-list simple">
@@ -174,29 +174,29 @@ If <cite>X</cite> is a callable method, it describes a function that can generat
 </tr>
 </tbody>
 </table>
-<dl class="method">
+<dl class="py method">
 <dt id="scarlet.psf.PSF.image">
 <em class="property">property </em><code class="sig-name descname">image</code><a class="headerlink" href="#scarlet.psf.PSF.image" title="Permalink to this definition">¶</a></dt>
 <dd><p>Centered image of the PSF</p>
 </dd></dl>
 
-<dl class="method">
+<dl class="py method">
 <dt id="scarlet.psf.PSF.normalize">
-<code class="sig-name descname">normalize</code><span class="sig-paren">(</span><em class="sig-param">self</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#PSF.normalize"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.psf.PSF.normalize" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">normalize</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#PSF.normalize"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.psf.PSF.normalize" title="Permalink to this definition">¶</a></dt>
 <dd><p>Normalize to PSF image in every band to unity</p>
 </dd></dl>
 
-<dl class="method">
+<dl class="py method">
 <dt id="scarlet.psf.PSF.update_dtype">
-<code class="sig-name descname">update_dtype</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">dtype</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#PSF.update_dtype"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.psf.PSF.update_dtype" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">update_dtype</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">dtype</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#PSF.update_dtype"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.psf.PSF.update_dtype" title="Permalink to this definition">¶</a></dt>
 <dd><p>Update data type of <cite>image</cite> to <cite>dtype</cite></p>
 </dd></dl>
 
 </dd></dl>
 
-<dl class="class">
+<dl class="py class">
 <dt id="scarlet.psf.PSFDiffKernel">
-<em class="property">class </em><code class="sig-prename descclassname">scarlet.psf.</code><code class="sig-name descname">PSFDiffKernel</code><span class="sig-paren">(</span><em class="sig-param">frame</em>, <em class="sig-param">initial</em>, <em class="sig-param">band</em>, <em class="sig-param">step=0.01</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#PSFDiffKernel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.psf.PSFDiffKernel" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">scarlet.psf.</code><code class="sig-name descname">PSFDiffKernel</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">frame</span></em>, <em class="sig-param"><span class="n">initial</span></em>, <em class="sig-param"><span class="n">band</span></em>, <em class="sig-param"><span class="n">step</span><span class="o">=</span><span class="default_value">0.01</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#PSFDiffKernel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.psf.PSFDiffKernel" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="scarlet.component.html#scarlet.component.Component" title="scarlet.component.Component"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.component.Component</span></code></a></p>
 <p>PSF Difference Kernel Source</p>
 <p>“Source” used to model the difference kernel to match one
@@ -237,9 +237,9 @@ more quickly using a DFT in <cite>~scarlet.Observation.match</cite>.</p>
 </tr>
 </tbody>
 </table>
-<dl class="method">
+<dl class="py method">
 <dt id="scarlet.psf.PSFDiffKernel.get_model">
-<code class="sig-name descname">get_model</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">*parameters</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#PSFDiffKernel.get_model"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.psf.PSFDiffKernel.get_model" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">get_model</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">\*parameters</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#PSFDiffKernel.get_model"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.psf.PSFDiffKernel.get_model" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get the model for this component</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -256,7 +256,7 @@ more quickly using a DFT in <cite>~scarlet.Observation.match</cite>.</p>
 </dl>
 </dd></dl>
 
-<dl class="method">
+<dl class="py method">
 <dt id="scarlet.psf.PSFDiffKernel.kernel">
 <em class="property">property </em><code class="sig-name descname">kernel</code><a class="headerlink" href="#scarlet.psf.PSFDiffKernel.kernel" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return the contents of the kernel parameter</p>
@@ -264,9 +264,9 @@ more quickly using a DFT in <cite>~scarlet.Observation.match</cite>.</p>
 
 </dd></dl>
 
-<dl class="class">
+<dl class="py class">
 <dt id="scarlet.psf.PsfObservation">
-<em class="property">class </em><code class="sig-prename descclassname">scarlet.psf.</code><code class="sig-name descname">PsfObservation</code><span class="sig-paren">(</span><em class="sig-param">images</em>, <em class="sig-param">psfs=None</em>, <em class="sig-param">weights=None</em>, <em class="sig-param">wcs=None</em>, <em class="sig-param">channels=None</em>, <em class="sig-param">padding=10</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#PsfObservation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.psf.PsfObservation" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">scarlet.psf.</code><code class="sig-name descname">PsfObservation</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">images</span></em>, <em class="sig-param"><span class="n">psfs</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">weights</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">wcs</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">channels</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">padding</span><span class="o">=</span><span class="default_value">10</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#PsfObservation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.psf.PsfObservation" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="scarlet.observation.html#scarlet.observation.Observation" title="scarlet.observation.Observation"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.observation.Observation</span></code></a></p>
 <p class="rubric">Methods</p>
 <table class="longtable docutils align-default">
@@ -289,17 +289,17 @@ more quickly using a DFT in <cite>~scarlet.Observation.match</cite>.</p>
 </tr>
 </tbody>
 </table>
-<dl class="method">
+<dl class="py method">
 <dt id="scarlet.psf.PsfObservation.get_loss">
-<code class="sig-name descname">get_loss</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">model</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#PsfObservation.get_loss"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.psf.PsfObservation.get_loss" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">get_loss</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">model</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#PsfObservation.get_loss"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.psf.PsfObservation.get_loss" title="Permalink to this definition">¶</a></dt>
 <dd><p>We override <cite>scarlet.Observation.get_loss</cite> since the lognorm
 is the dominant term, which interferes with calculating
 relative error.</p>
 </dd></dl>
 
-<dl class="method">
+<dl class="py method">
 <dt id="scarlet.psf.PsfObservation.match">
-<code class="sig-name descname">match</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">psfs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#PsfObservation.match"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.psf.PsfObservation.match" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">match</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">psfs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#PsfObservation.match"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.psf.PsfObservation.match" title="Permalink to this definition">¶</a></dt>
 <dd><p>Implement the observed PSFs as the difference kernel</p>
 <p>This is different than <cite>~scarlet.Observation.match</cite>,
 where the difference kernel that matches the model
@@ -334,9 +334,9 @@ more quickly using a DFT.</p>
 
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="scarlet.psf.gaussian">
-<code class="sig-prename descclassname">scarlet.psf.</code><code class="sig-name descname">gaussian</code><span class="sig-paren">(</span><em class="sig-param">y</em>, <em class="sig-param">x</em>, <em class="sig-param">sigma=1</em>, <em class="sig-param">integrate=True</em>, <em class="sig-param">bbox=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#gaussian"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.psf.gaussian" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">scarlet.psf.</code><code class="sig-name descname">gaussian</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">y</span></em>, <em class="sig-param"><span class="n">x</span></em>, <em class="sig-param"><span class="n">sigma</span><span class="o">=</span><span class="default_value">1</span></em>, <em class="sig-param"><span class="n">integrate</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">bbox</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#gaussian"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.psf.gaussian" title="Permalink to this definition">¶</a></dt>
 <dd><p>Circular Gaussian Function</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -363,9 +363,9 @@ for all i and j in <cite>shape</cite>.</p>
 </dl>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="scarlet.psf.moffat">
-<code class="sig-prename descclassname">scarlet.psf.</code><code class="sig-name descname">moffat</code><span class="sig-paren">(</span><em class="sig-param">y</em>, <em class="sig-param">x</em>, <em class="sig-param">alpha=4.7</em>, <em class="sig-param">beta=1.5</em>, <em class="sig-param">bbox=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#moffat"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.psf.moffat" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">scarlet.psf.</code><code class="sig-name descname">moffat</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">y</span></em>, <em class="sig-param"><span class="n">x</span></em>, <em class="sig-param"><span class="n">alpha</span><span class="o">=</span><span class="default_value">4.7</span></em>, <em class="sig-param"><span class="n">beta</span><span class="o">=</span><span class="default_value">1.5</span></em>, <em class="sig-param"><span class="n">bbox</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#moffat"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.psf.moffat" title="Permalink to this definition">¶</a></dt>
 <dd><p>Symmetric 2D Moffat function</p>
 <blockquote>
 <div><div class="math notranslate nohighlight">
@@ -414,7 +414,7 @@ for all i and j in <cite>shape</cite>.</p>
       &copy;2018-2019, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.4</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.0.3</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

@@ -1,7 +1,7 @@
 
 <!DOCTYPE html>
 
-<html xmlns="http://www.w3.org/1999/xhtml">
+<html>
   <head>
     <meta charset="utf-8" />
     <title>scarlet.bbox &#8212; scarlet  documentation</title>
@@ -82,9 +82,9 @@
             
   <div class="section" id="module-scarlet.bbox">
 <span id="scarlet-bbox"></span><h1>scarlet.bbox<a class="headerlink" href="#module-scarlet.bbox" title="Permalink to this headline">¶</a></h1>
-<dl class="class">
+<dl class="py class">
 <dt id="scarlet.bbox.Box">
-<em class="property">class </em><code class="sig-prename descclassname">scarlet.bbox.</code><code class="sig-name descname">Box</code><span class="sig-paren">(</span><em class="sig-param">shape</em>, <em class="sig-param">origin=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/bbox.html#Box"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.bbox.Box" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">scarlet.bbox.</code><code class="sig-name descname">Box</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">shape</span></em>, <em class="sig-param"><span class="n">origin</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/bbox.html#Box"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.bbox.Box" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.8)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>Bounding Box for an object</p>
 <p>A Bounding box describes the location of a data unit in the global/model coordinate
@@ -146,21 +146,21 @@ We generally use this convention:</p>
 </tr>
 </tbody>
 </table>
-<dl class="method">
+<dl class="py method">
 <dt id="scarlet.bbox.Box.D">
 <em class="property">property </em><code class="sig-name descname">D</code><a class="headerlink" href="#scarlet.bbox.Box.D" title="Permalink to this definition">¶</a></dt>
 <dd><p>Dimensionality of this BBox</p>
 </dd></dl>
 
-<dl class="method">
+<dl class="py method">
 <dt id="scarlet.bbox.Box.contains">
-<code class="sig-name descname">contains</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">p</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/bbox.html#Box.contains"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.bbox.Box.contains" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">contains</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">p</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/bbox.html#Box.contains"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.bbox.Box.contains" title="Permalink to this definition">¶</a></dt>
 <dd><p>Whether the box contains a given coordinate <cite>p</cite></p>
 </dd></dl>
 
-<dl class="method">
+<dl class="py method">
 <dt id="scarlet.bbox.Box.extract_from">
-<code class="sig-name descname">extract_from</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">image</em>, <em class="sig-param">sub=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/bbox.html#Box.extract_from"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.bbox.Box.extract_from" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">extract_from</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">image</span></em>, <em class="sig-param"><span class="n">sub</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/bbox.html#Box.extract_from"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.bbox.Box.extract_from" title="Permalink to this definition">¶</a></dt>
 <dd><p>Extract sub-image described by this bbox from image</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -179,9 +179,9 @@ We generally use this convention:</p>
 </dl>
 </dd></dl>
 
-<dl class="method">
+<dl class="py method">
 <dt id="scarlet.bbox.Box.from_bounds">
-<em class="property">static </em><code class="sig-name descname">from_bounds</code><span class="sig-paren">(</span><em class="sig-param">*bounds</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/bbox.html#Box.from_bounds"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.bbox.Box.from_bounds" title="Permalink to this definition">¶</a></dt>
+<em class="property">static </em><code class="sig-name descname">from_bounds</code><span class="sig-paren">(</span><em class="sig-param">\*bounds</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/bbox.html#Box.from_bounds"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.bbox.Box.from_bounds" title="Permalink to this definition">¶</a></dt>
 <dd><p>Initialize a box from its bounds</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -199,9 +199,9 @@ We generally use this convention:</p>
 </dl>
 </dd></dl>
 
-<dl class="method">
+<dl class="py method">
 <dt id="scarlet.bbox.Box.from_data">
-<em class="property">static </em><code class="sig-name descname">from_data</code><span class="sig-paren">(</span><em class="sig-param">X</em>, <em class="sig-param">min_value=0</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/bbox.html#Box.from_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.bbox.Box.from_data" title="Permalink to this definition">¶</a></dt>
+<em class="property">static </em><code class="sig-name descname">from_data</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">X</span></em>, <em class="sig-param"><span class="n">min_value</span><span class="o">=</span><span class="default_value">0</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/bbox.html#Box.from_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.bbox.Box.from_data" title="Permalink to this definition">¶</a></dt>
 <dd><p>Define range of <cite>X</cite> above <cite>min_value</cite></p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -221,9 +221,9 @@ We generally use this convention:</p>
 </dl>
 </dd></dl>
 
-<dl class="method">
+<dl class="py method">
 <dt id="scarlet.bbox.Box.from_image">
-<em class="property">static </em><code class="sig-name descname">from_image</code><span class="sig-paren">(</span><em class="sig-param">image</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/bbox.html#Box.from_image"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.bbox.Box.from_image" title="Permalink to this definition">¶</a></dt>
+<em class="property">static </em><code class="sig-name descname">from_image</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">image</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/bbox.html#Box.from_image"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.bbox.Box.from_image" title="Permalink to this definition">¶</a></dt>
 <dd><p>Initialize a box to cover <cite>image</cite></p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -240,9 +240,9 @@ We generally use this convention:</p>
 </dl>
 </dd></dl>
 
-<dl class="method">
+<dl class="py method">
 <dt id="scarlet.bbox.Box.insert_into">
-<code class="sig-name descname">insert_into</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">image</em>, <em class="sig-param">sub</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/bbox.html#Box.insert_into"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.bbox.Box.insert_into" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">insert_into</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">image</span></em>, <em class="sig-param"><span class="n">sub</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/bbox.html#Box.insert_into"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.bbox.Box.insert_into" title="Permalink to this definition">¶</a></dt>
 <dd><p>Insert <cite>sub</cite> into <cite>image</cite> according to this bbox</p>
 <p>Inverse operation to <a class="reference internal" href="#scarlet.bbox.Box.extract_from" title="scarlet.bbox.Box.extract_from"><code class="xref py py-func docutils literal notranslate"><span class="pre">extract_from()</span></code></a>.</p>
 <dl class="field-list simple">
@@ -262,9 +262,9 @@ We generally use this convention:</p>
 </dl>
 </dd></dl>
 
-<dl class="method">
+<dl class="py method">
 <dt id="scarlet.bbox.Box.slices_for">
-<code class="sig-name descname">slices_for</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">im_or_shape</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/bbox.html#Box.slices_for"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.bbox.Box.slices_for" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">slices_for</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">im_or_shape</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/bbox.html#Box.slices_for"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.bbox.Box.slices_for" title="Permalink to this definition">¶</a></dt>
 <dd><p>Slices for <cite>im_or_shape</cite> to be limited to this bounding box.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -281,13 +281,13 @@ We generally use this convention:</p>
 </dl>
 </dd></dl>
 
-<dl class="method">
+<dl class="py method">
 <dt id="scarlet.bbox.Box.start">
 <em class="property">property </em><code class="sig-name descname">start</code><a class="headerlink" href="#scarlet.bbox.Box.start" title="Permalink to this definition">¶</a></dt>
 <dd><p>Tuple of start coordinates</p>
 </dd></dl>
 
-<dl class="method">
+<dl class="py method">
 <dt id="scarlet.bbox.Box.stop">
 <em class="property">property </em><code class="sig-name descname">stop</code><a class="headerlink" href="#scarlet.bbox.Box.stop" title="Permalink to this definition">¶</a></dt>
 <dd><p>Tuple of stop coordinates</p>
@@ -308,7 +308,7 @@ We generally use this convention:</p>
       &copy;2018-2019, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.4</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.0.3</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

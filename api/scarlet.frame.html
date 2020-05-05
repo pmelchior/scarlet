@@ -1,7 +1,7 @@
 
 <!DOCTYPE html>
 
-<html xmlns="http://www.w3.org/1999/xhtml">
+<html>
   <head>
     <meta charset="utf-8" />
     <title>scarlet.frame &#8212; scarlet  documentation</title>
@@ -82,7 +82,7 @@
             
   <div class="section" id="module-scarlet.frame">
 <span id="scarlet-frame"></span><h1>scarlet.frame<a class="headerlink" href="#module-scarlet.frame" title="Permalink to this headline">¶</a></h1>
-<dl class="class">
+<dl class="py class">
 <dt id="scarlet.frame.Frame">
 <em class="property">class </em><code class="sig-prename descclassname">scarlet.frame.</code><code class="sig-name descname">Frame</code><span class="sig-paren">(</span><em class="sig-param">shape_or_box</em>, <em class="sig-param">wcs=None</em>, <em class="sig-param">psfs=None</em>, <em class="sig-param">channels=None</em>, <em class="sig-param">dtype=&lt;class 'numpy.float32'&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/frame.html#Frame"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.frame.Frame" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="scarlet.bbox.html#scarlet.bbox.Box" title="scarlet.bbox.Box"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.bbox.Box</span></code></a></p>
@@ -142,32 +142,32 @@
 </tr>
 </tbody>
 </table>
-<dl class="method">
+<dl class="py method">
 <dt id="scarlet.frame.Frame.C">
 <em class="property">property </em><code class="sig-name descname">C</code><a class="headerlink" href="#scarlet.frame.Frame.C" title="Permalink to this definition">¶</a></dt>
 <dd><p>Number of channels in the model</p>
 </dd></dl>
 
-<dl class="method">
+<dl class="py method">
 <dt id="scarlet.frame.Frame.Nx">
 <em class="property">property </em><code class="sig-name descname">Nx</code><a class="headerlink" href="#scarlet.frame.Frame.Nx" title="Permalink to this definition">¶</a></dt>
 <dd><p>Number of pixels in the x-direction</p>
 </dd></dl>
 
-<dl class="method">
+<dl class="py method">
 <dt id="scarlet.frame.Frame.Ny">
 <em class="property">property </em><code class="sig-name descname">Ny</code><a class="headerlink" href="#scarlet.frame.Frame.Ny" title="Permalink to this definition">¶</a></dt>
 <dd><p>Number of pixel in the y-direction</p>
 </dd></dl>
 
-<dl class="method">
+<dl class="py method">
 <dt id="scarlet.frame.Frame.bbox">
 <em class="property">property </em><code class="sig-name descname">bbox</code><a class="headerlink" href="#scarlet.frame.Frame.bbox" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
-<dl class="method">
+<dl class="py method">
 <dt id="scarlet.frame.Frame.from_observations">
-<em class="property">static </em><code class="sig-name descname">from_observations</code><span class="sig-paren">(</span><em class="sig-param">observations</em>, <em class="sig-param">target_psf=None</em>, <em class="sig-param">target_wcs=None</em>, <em class="sig-param">obs_id=None</em>, <em class="sig-param">coverage='union'</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/frame.html#Frame.from_observations"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.frame.Frame.from_observations" title="Permalink to this definition">¶</a></dt>
+<em class="property">static </em><code class="sig-name descname">from_observations</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">observations</span></em>, <em class="sig-param"><span class="n">target_psf</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">target_wcs</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">obs_id</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">coverage</span><span class="o">=</span><span class="default_value">'union'</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/frame.html#Frame.from_observations"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.frame.Frame.from_observations" title="Permalink to this definition">¶</a></dt>
 <dd><p>Generates a frame from a set of observations.</p>
 <p>By default, this method will generate a frame from a set of observations by indentifying the highest resolution
 and the smallest PSF and use them to construct a common frome for all observations in the set.</p>
@@ -193,25 +193,25 @@ Default is ‘union’.</p>
 </dl>
 </dd></dl>
 
-<dl class="method">
+<dl class="py method">
 <dt id="scarlet.frame.Frame.get_pixel">
-<code class="sig-name descname">get_pixel</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">sky_coord</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/frame.html#Frame.get_pixel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.frame.Frame.get_pixel" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">get_pixel</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">sky_coord</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/frame.html#Frame.get_pixel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.frame.Frame.get_pixel" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get the pixel coordinate from a world coordinate
 If there is no WCS associated with the <cite>Scene</cite>,
 meaning the data frame and model frame are the same,
 then this just returns <cite>sky_coord</cite>.</p>
 </dd></dl>
 
-<dl class="method">
+<dl class="py method">
 <dt id="scarlet.frame.Frame.get_sky_coord">
-<code class="sig-name descname">get_sky_coord</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">pixel</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/frame.html#Frame.get_sky_coord"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.frame.Frame.get_sky_coord" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">get_sky_coord</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">pixel</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/frame.html#Frame.get_sky_coord"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.frame.Frame.get_sky_coord" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get the world coordinate for a pixel coordinate
 If there is no WCS associated with the <cite>Scene</cite>,
 meaning the data frame and model frame are the same,
 then this just returns <cite>pixel</cite>.</p>
 </dd></dl>
 
-<dl class="method">
+<dl class="py method">
 <dt id="scarlet.frame.Frame.psf">
 <em class="property">property </em><code class="sig-name descname">psf</code><a class="headerlink" href="#scarlet.frame.Frame.psf" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
@@ -231,7 +231,7 @@ then this just returns <cite>pixel</cite>.</p>
       &copy;2018-2019, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.4</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.0.3</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

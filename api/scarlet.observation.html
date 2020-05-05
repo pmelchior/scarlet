@@ -1,7 +1,7 @@
 
 <!DOCTYPE html>
 
-<html xmlns="http://www.w3.org/1999/xhtml">
+<html>
   <head>
     <meta charset="utf-8" />
     <title>scarlet.observation &#8212; scarlet  documentation</title>
@@ -82,9 +82,9 @@
             
   <div class="section" id="module-scarlet.observation">
 <span id="scarlet-observation"></span><h1>scarlet.observation<a class="headerlink" href="#module-scarlet.observation" title="Permalink to this headline">¶</a></h1>
-<dl class="class">
+<dl class="py class">
 <dt id="scarlet.observation.LowResObservation">
-<em class="property">class </em><code class="sig-prename descclassname">scarlet.observation.</code><code class="sig-name descname">LowResObservation</code><span class="sig-paren">(</span><em class="sig-param">images</em>, <em class="sig-param">wcs=None</em>, <em class="sig-param">psfs=None</em>, <em class="sig-param">weights=None</em>, <em class="sig-param">channels=None</em>, <em class="sig-param">padding=3</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/observation.html#LowResObservation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.LowResObservation" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">scarlet.observation.</code><code class="sig-name descname">LowResObservation</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">images</span></em>, <em class="sig-param"><span class="n">wcs</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">psfs</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">weights</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">channels</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">padding</span><span class="o">=</span><span class="default_value">3</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/observation.html#LowResObservation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.LowResObservation" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#scarlet.observation.Observation" title="scarlet.observation.Observation"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.observation.Observation</span></code></a></p>
 <p class="rubric">Methods</p>
 <table class="longtable docutils align-default">
@@ -116,9 +116,9 @@
 </tr>
 </tbody>
 </table>
-<dl class="method">
+<dl class="py method">
 <dt id="scarlet.observation.LowResObservation.build_diffkernel">
-<code class="sig-name descname">build_diffkernel</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">model_frame</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/observation.html#LowResObservation.build_diffkernel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.LowResObservation.build_diffkernel" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">build_diffkernel</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">model_frame</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/observation.html#LowResObservation.build_diffkernel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.LowResObservation.build_diffkernel" title="Permalink to this definition">¶</a></dt>
 <dd><p>Builds the differential convolution kernel between the observation and the frame psfs</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -134,9 +134,9 @@
 </dl>
 </dd></dl>
 
-<dl class="method">
+<dl class="py method">
 <dt id="scarlet.observation.LowResObservation.get_loss">
-<code class="sig-name descname">get_loss</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">model</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/observation.html#LowResObservation.get_loss"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.LowResObservation.get_loss" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">get_loss</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">model</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/observation.html#LowResObservation.get_loss"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.LowResObservation.get_loss" title="Permalink to this definition">¶</a></dt>
 <dd><p>Computes the loss/fidelity of a given model wrt to the observation
 Parameters
 ———-
@@ -150,9 +150,9 @@ model: array</p>
 </dl>
 </dd></dl>
 
-<dl class="method">
+<dl class="py method">
 <dt id="scarlet.observation.LowResObservation.match">
-<code class="sig-name descname">match</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">model_frame</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/observation.html#LowResObservation.match"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.LowResObservation.match" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">match</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">model_frame</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/observation.html#LowResObservation.match"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.LowResObservation.match" title="Permalink to this definition">¶</a></dt>
 <dd><p>matches the observation to a frame</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -166,9 +166,9 @@ model: array</p>
 </dl>
 </dd></dl>
 
-<dl class="method">
+<dl class="py method">
 <dt id="scarlet.observation.LowResObservation.match_psfs">
-<code class="sig-name descname">match_psfs</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">psf_hr</em>, <em class="sig-param">wcs_hr</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/observation.html#LowResObservation.match_psfs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.LowResObservation.match_psfs" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">match_psfs</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">psf_hr</span></em>, <em class="sig-param"><span class="n">wcs_hr</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/observation.html#LowResObservation.match_psfs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.LowResObservation.match_psfs" title="Permalink to this definition">¶</a></dt>
 <dd><p>psf matching between different dataset
 Matches PSFS at different resolutions by interpolating psf_lr on the same grid as psf_hr
 Parameters
@@ -195,9 +195,9 @@ psf_hr: array</p>
 </dl>
 </dd></dl>
 
-<dl class="method">
+<dl class="py method">
 <dt id="scarlet.observation.LowResObservation.render">
-<code class="sig-name descname">render</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">model</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/observation.html#LowResObservation.render"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.LowResObservation.render" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">render</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">model</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/observation.html#LowResObservation.render"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.LowResObservation.render" title="Permalink to this definition">¶</a></dt>
 <dd><p>Resample and convolve a model in the observation frame
 Parameters
 ———-
@@ -211,9 +211,9 @@ model: array</p>
 </dl>
 </dd></dl>
 
-<dl class="method">
+<dl class="py method">
 <dt id="scarlet.observation.LowResObservation.sinc_shift">
-<code class="sig-name descname">sinc_shift</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">imgs</em>, <em class="sig-param">shifts</em>, <em class="sig-param">axes</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/observation.html#LowResObservation.sinc_shift"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.LowResObservation.sinc_shift" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">sinc_shift</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">imgs</span></em>, <em class="sig-param"><span class="n">shifts</span></em>, <em class="sig-param"><span class="n">axes</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/observation.html#LowResObservation.sinc_shift"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.LowResObservation.sinc_shift" title="Permalink to this definition">¶</a></dt>
 <dd><p>Performs 2 1D sinc convolutions and shifting along one rotated axis in Fourier space.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -236,9 +236,9 @@ to the adequate shape.</p>
 
 </dd></dl>
 
-<dl class="class">
+<dl class="py class">
 <dt id="scarlet.observation.Observation">
-<em class="property">class </em><code class="sig-prename descclassname">scarlet.observation.</code><code class="sig-name descname">Observation</code><span class="sig-paren">(</span><em class="sig-param">images</em>, <em class="sig-param">psfs=None</em>, <em class="sig-param">weights=None</em>, <em class="sig-param">wcs=None</em>, <em class="sig-param">channels=None</em>, <em class="sig-param">padding=10</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/observation.html#Observation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.Observation" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">scarlet.observation.</code><code class="sig-name descname">Observation</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">images</span></em>, <em class="sig-param"><span class="n">psfs</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">weights</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">wcs</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">channels</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">padding</span><span class="o">=</span><span class="default_value">10</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/observation.html#Observation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.Observation" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.8)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>Data and metadata for a single set of observations</p>
 <dl class="field-list simple">
@@ -281,15 +281,15 @@ prevent artifacts from the FFT.</p>
 </tr>
 </tbody>
 </table>
-<dl class="method">
+<dl class="py method">
 <dt id="scarlet.observation.Observation.get_LowRes">
-<code class="sig-name descname">get_LowRes</code><span class="sig-paren">(</span><em class="sig-param">self</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/observation.html#Observation.get_LowRes"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.Observation.get_LowRes" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">get_LowRes</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/observation.html#Observation.get_LowRes"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.Observation.get_LowRes" title="Permalink to this definition">¶</a></dt>
 <dd><p>Creates a LowResObservation object from an Observation object</p>
 </dd></dl>
 
-<dl class="method">
+<dl class="py method">
 <dt id="scarlet.observation.Observation.get_loss">
-<code class="sig-name descname">get_loss</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">model</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/observation.html#Observation.get_loss"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.Observation.get_loss" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">get_loss</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">model</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/observation.html#Observation.get_loss"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.Observation.get_loss" title="Permalink to this definition">¶</a></dt>
 <dd><p>Computes the loss/fidelity of a given model wrt to the observation</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -308,9 +308,9 @@ given the image data</p>
 </dl>
 </dd></dl>
 
-<dl class="method">
+<dl class="py method">
 <dt id="scarlet.observation.Observation.match">
-<code class="sig-name descname">match</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">model_frame</em>, <em class="sig-param">diff_kernels=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/observation.html#Observation.match"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.Observation.match" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">match</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">model_frame</span></em>, <em class="sig-param"><span class="n">diff_kernels</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/observation.html#Observation.match"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.Observation.match" title="Permalink to this definition">¶</a></dt>
 <dd><p>Match the frame of <cite>Blend</cite> to the frame of this observation.</p>
 <p>The method sets up the mappings in spectral and spatial coordinates,
 which includes a spatial selection, computing PSF difference kernels
@@ -326,9 +326,9 @@ calculated automatically.</p>
 <p>None</p>
 </dd></dl>
 
-<dl class="method">
+<dl class="py method">
 <dt id="scarlet.observation.Observation.render">
-<code class="sig-name descname">render</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">model</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/observation.html#Observation.render"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.Observation.render" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">render</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">model</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/observation.html#Observation.render"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.observation.Observation.render" title="Permalink to this definition">¶</a></dt>
 <dd><p>Convolve a model to the observation frame</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -361,7 +361,7 @@ calculated automatically.</p>
       &copy;2018-2019, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.4</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.0.3</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

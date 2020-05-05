@@ -1,7 +1,7 @@
 
 <!DOCTYPE html>
 
-<html xmlns="http://www.w3.org/1999/xhtml">
+<html>
   <head>
     <meta charset="utf-8" />
     <title>scarlet.source &#8212; scarlet  documentation</title>
@@ -81,9 +81,9 @@
             
   <div class="section" id="module-scarlet.source">
 <span id="scarlet-source"></span><h1>scarlet.source<a class="headerlink" href="#module-scarlet.source" title="Permalink to this headline">¶</a></h1>
-<dl class="class">
+<dl class="py class">
 <dt id="scarlet.source.ExtendedSource">
-<em class="property">class </em><code class="sig-prename descclassname">scarlet.source.</code><code class="sig-name descname">ExtendedSource</code><span class="sig-paren">(</span><em class="sig-param">frame</em>, <em class="sig-param">sky_coord</em>, <em class="sig-param">observations</em>, <em class="sig-param">obs_idx=0</em>, <em class="sig-param">thresh=1.0</em>, <em class="sig-param">symmetric=False</em>, <em class="sig-param">monotonic=True</em>, <em class="sig-param">shifting=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/source.html#ExtendedSource"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.source.ExtendedSource" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">scarlet.source.</code><code class="sig-name descname">ExtendedSource</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">frame</span></em>, <em class="sig-param"><span class="n">sky_coord</span></em>, <em class="sig-param"><span class="n">observations</span></em>, <em class="sig-param"><span class="n">obs_idx</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">thresh</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">symmetric</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">monotonic</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">shifting</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/source.html#ExtendedSource"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.source.ExtendedSource" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="scarlet.component.html#scarlet.component.FactorizedComponent" title="scarlet.component.FactorizedComponent"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.component.FactorizedComponent</span></code></a></p>
 <dl class="field-list simple">
 <dt class="field-odd">Attributes</dt>
@@ -122,16 +122,16 @@
 </tr>
 </tbody>
 </table>
-<dl class="method">
+<dl class="py method">
 <dt id="scarlet.source.ExtendedSource.center">
 <em class="property">property </em><code class="sig-name descname">center</code><a class="headerlink" href="#scarlet.source.ExtendedSource.center" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </dd></dl>
 
-<dl class="class">
+<dl class="py class">
 <dt id="scarlet.source.MultiComponentSource">
-<em class="property">class </em><code class="sig-prename descclassname">scarlet.source.</code><code class="sig-name descname">MultiComponentSource</code><span class="sig-paren">(</span><em class="sig-param">frame</em>, <em class="sig-param">sky_coord</em>, <em class="sig-param">observations</em>, <em class="sig-param">obs_idx=0</em>, <em class="sig-param">thresh=1.0</em>, <em class="sig-param">flux_percentiles=None</em>, <em class="sig-param">symmetric=False</em>, <em class="sig-param">monotonic=True</em>, <em class="sig-param">shifting=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/source.html#MultiComponentSource"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.source.MultiComponentSource" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">scarlet.source.</code><code class="sig-name descname">MultiComponentSource</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">frame</span></em>, <em class="sig-param"><span class="n">sky_coord</span></em>, <em class="sig-param"><span class="n">observations</span></em>, <em class="sig-param"><span class="n">obs_idx</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">thresh</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">flux_percentiles</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">symmetric</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">monotonic</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">shifting</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/source.html#MultiComponentSource"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.source.MultiComponentSource" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="scarlet.component.html#scarlet.component.ComponentTree" title="scarlet.component.ComponentTree"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.component.ComponentTree</span></code></a></p>
 <p>Extended source with multiple components layered vertically.</p>
 <p>Uses <cite>~scarlet.source.ExtendedSource</cite> to define the overall morphology,
@@ -185,26 +185,26 @@ morphology to the multi-channel image in the region of the source.</p>
 </tr>
 </tbody>
 </table>
-<dl class="method">
+<dl class="py method">
 <dt id="scarlet.source.MultiComponentSource.bbox">
 <em class="property">property </em><code class="sig-name descname">bbox</code><a class="headerlink" href="#scarlet.source.MultiComponentSource.bbox" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
-<dl class="method">
+<dl class="py method">
 <dt id="scarlet.source.MultiComponentSource.center">
 <em class="property">property </em><code class="sig-name descname">center</code><a class="headerlink" href="#scarlet.source.MultiComponentSource.center" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
-<dl class="method">
+<dl class="py method">
 <dt id="scarlet.source.MultiComponentSource.shift">
 <em class="property">property </em><code class="sig-name descname">shift</code><a class="headerlink" href="#scarlet.source.MultiComponentSource.shift" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </dd></dl>
 
-<dl class="class">
+<dl class="py class">
 <dt id="scarlet.source.PointSource">
-<em class="property">class </em><code class="sig-prename descclassname">scarlet.source.</code><code class="sig-name descname">PointSource</code><span class="sig-paren">(</span><em class="sig-param">frame</em>, <em class="sig-param">sky_coord</em>, <em class="sig-param">observations</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/source.html#PointSource"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.source.PointSource" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">scarlet.source.</code><code class="sig-name descname">PointSource</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">frame</span></em>, <em class="sig-param"><span class="n">sky_coord</span></em>, <em class="sig-param"><span class="n">observations</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/source.html#PointSource"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.source.PointSource" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="scarlet.component.html#scarlet.component.FunctionComponent" title="scarlet.component.FunctionComponent"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.component.FunctionComponent</span></code></a></p>
 <p>Source intialized with a single pixel</p>
 <p>Point sources are initialized with the SED of the center pixel,
@@ -247,9 +247,9 @@ and the morphology taken from <cite>frame.psfs</cite>, centered at <cite>sky_coo
 </table>
 </dd></dl>
 
-<dl class="class">
+<dl class="py class">
 <dt id="scarlet.source.RandomSource">
-<em class="property">class </em><code class="sig-prename descclassname">scarlet.source.</code><code class="sig-name descname">RandomSource</code><span class="sig-paren">(</span><em class="sig-param">frame</em>, <em class="sig-param">observation=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/source.html#RandomSource"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.source.RandomSource" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">scarlet.source.</code><code class="sig-name descname">RandomSource</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">frame</span></em>, <em class="sig-param"><span class="n">observation</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/source.html#RandomSource"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.source.RandomSource" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="scarlet.component.html#scarlet.component.FactorizedComponent" title="scarlet.component.FactorizedComponent"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.component.FactorizedComponent</span></code></a></p>
 <p>Sources with uniform random morphology and sed.</p>
 <p>For cases with no well-defined spatial shape, this source initializes
@@ -293,9 +293,9 @@ observation.</p>
 </table>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="scarlet.source.build_detection_coadd">
-<code class="sig-prename descclassname">scarlet.source.</code><code class="sig-name descname">build_detection_coadd</code><span class="sig-paren">(</span><em class="sig-param">sed</em>, <em class="sig-param">bg_rms</em>, <em class="sig-param">observation</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/source.html#build_detection_coadd"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.source.build_detection_coadd" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">scarlet.source.</code><code class="sig-name descname">build_detection_coadd</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">sed</span></em>, <em class="sig-param"><span class="n">bg_rms</span></em>, <em class="sig-param"><span class="n">observation</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/source.html#build_detection_coadd"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.source.build_detection_coadd" title="Permalink to this definition">¶</a></dt>
 <dd><p>Build a channel weighted coadd to use for source detection</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -319,9 +319,9 @@ observation.</p>
 </dl>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="scarlet.source.get_best_fit_seds">
-<code class="sig-prename descclassname">scarlet.source.</code><code class="sig-name descname">get_best_fit_seds</code><span class="sig-paren">(</span><em class="sig-param">morphs</em>, <em class="sig-param">frame</em>, <em class="sig-param">images</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/source.html#get_best_fit_seds"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.source.get_best_fit_seds" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">scarlet.source.</code><code class="sig-name descname">get_best_fit_seds</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">morphs</span></em>, <em class="sig-param"><span class="n">frame</span></em>, <em class="sig-param"><span class="n">images</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/source.html#get_best_fit_seds"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.source.get_best_fit_seds" title="Permalink to this definition">¶</a></dt>
 <dd><p>Calculate best fitting SED for multiple components.</p>
 <p>Solves min_A ||img - AS||^2 for the SED matrix A,
 assuming that the images only contain a single source.</p>
@@ -344,9 +344,9 @@ assuming that the images only contain a single source.</p>
 </dl>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="scarlet.source.get_pixel_sed">
-<code class="sig-prename descclassname">scarlet.source.</code><code class="sig-name descname">get_pixel_sed</code><span class="sig-paren">(</span><em class="sig-param">sky_coord</em>, <em class="sig-param">observation</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/source.html#get_pixel_sed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.source.get_pixel_sed" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">scarlet.source.</code><code class="sig-name descname">get_pixel_sed</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">sky_coord</span></em>, <em class="sig-param"><span class="n">observation</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/source.html#get_pixel_sed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.source.get_pixel_sed" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get the SED at <cite>sky_coord</cite> in <cite>observation</cite></p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -365,9 +365,9 @@ assuming that the images only contain a single source.</p>
 </dl>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="scarlet.source.get_psf_sed">
-<code class="sig-prename descclassname">scarlet.source.</code><code class="sig-name descname">get_psf_sed</code><span class="sig-paren">(</span><em class="sig-param">sky_coord</em>, <em class="sig-param">observation</em>, <em class="sig-param">frame</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/source.html#get_psf_sed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.source.get_psf_sed" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">scarlet.source.</code><code class="sig-name descname">get_psf_sed</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">sky_coord</span></em>, <em class="sig-param"><span class="n">observation</span></em>, <em class="sig-param"><span class="n">frame</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/source.html#get_psf_sed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.source.get_psf_sed" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get SED for a point source at <cite>sky_coord</cite> in <cite>observation</cite></p>
 <p>Identical to <cite>get_pixel_sed</cite>, but corrects for the different
 peak values of the observed seds to approximately correct for PSF
@@ -391,23 +391,23 @@ width variations between channels.</p>
 </dl>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="scarlet.source.init_extended_source">
-<code class="sig-prename descclassname">scarlet.source.</code><code class="sig-name descname">init_extended_source</code><span class="sig-paren">(</span><em class="sig-param">sky_coord</em>, <em class="sig-param">frame</em>, <em class="sig-param">observations</em>, <em class="sig-param">obs_idx=0</em>, <em class="sig-param">thresh=1</em>, <em class="sig-param">symmetric=True</em>, <em class="sig-param">monotonic=True</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/source.html#init_extended_source"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.source.init_extended_source" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">scarlet.source.</code><code class="sig-name descname">init_extended_source</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">sky_coord</span></em>, <em class="sig-param"><span class="n">frame</span></em>, <em class="sig-param"><span class="n">observations</span></em>, <em class="sig-param"><span class="n">obs_idx</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">thresh</span><span class="o">=</span><span class="default_value">1</span></em>, <em class="sig-param"><span class="n">symmetric</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">monotonic</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/source.html#init_extended_source"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.source.init_extended_source" title="Permalink to this definition">¶</a></dt>
 <dd><p>Initialize the source that is symmetric and monotonic
 See <cite>ExtendedSource</cite> for a description of the parameters</p>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="scarlet.source.init_multicomponent_source">
-<code class="sig-prename descclassname">scarlet.source.</code><code class="sig-name descname">init_multicomponent_source</code><span class="sig-paren">(</span><em class="sig-param">sky_coord</em>, <em class="sig-param">frame</em>, <em class="sig-param">observations</em>, <em class="sig-param">obs_idx=0</em>, <em class="sig-param">flux_percentiles=None</em>, <em class="sig-param">thresh=1.0</em>, <em class="sig-param">symmetric=True</em>, <em class="sig-param">monotonic=True</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/source.html#init_multicomponent_source"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.source.init_multicomponent_source" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">scarlet.source.</code><code class="sig-name descname">init_multicomponent_source</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">sky_coord</span></em>, <em class="sig-param"><span class="n">frame</span></em>, <em class="sig-param"><span class="n">observations</span></em>, <em class="sig-param"><span class="n">obs_idx</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">flux_percentiles</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">thresh</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">symmetric</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">monotonic</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/source.html#init_multicomponent_source"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.source.init_multicomponent_source" title="Permalink to this definition">¶</a></dt>
 <dd><p>Initialize multiple components
 See <cite>MultiComponentSource</cite> for a description of the parameters</p>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="scarlet.source.trim_morphology">
-<code class="sig-prename descclassname">scarlet.source.</code><code class="sig-name descname">trim_morphology</code><span class="sig-paren">(</span><em class="sig-param">sky_coord</em>, <em class="sig-param">frame</em>, <em class="sig-param">morph</em>, <em class="sig-param">bg_cutoff</em>, <em class="sig-param">thresh</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/source.html#trim_morphology"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.source.trim_morphology" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">scarlet.source.</code><code class="sig-name descname">trim_morphology</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">sky_coord</span></em>, <em class="sig-param"><span class="n">frame</span></em>, <em class="sig-param"><span class="n">morph</span></em>, <em class="sig-param"><span class="n">bg_cutoff</span></em>, <em class="sig-param"><span class="n">thresh</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/source.html#trim_morphology"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.source.trim_morphology" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </div>
@@ -423,7 +423,7 @@ See <cite>MultiComponentSource</cite> for a description of the parameters</p>
       &copy;2018-2019, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.4</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.0.3</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

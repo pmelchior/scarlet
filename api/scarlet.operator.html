@@ -1,7 +1,7 @@
 
 <!DOCTYPE html>
 
-<html xmlns="http://www.w3.org/1999/xhtml">
+<html>
   <head>
     <meta charset="utf-8" />
     <title>scarlet.operator &#8212; scarlet  documentation</title>
@@ -82,7 +82,7 @@
             
   <div class="section" id="module-scarlet.operator">
 <span id="scarlet-operator"></span><h1>scarlet.operator<a class="headerlink" href="#module-scarlet.operator" title="Permalink to this headline">¶</a></h1>
-<dl class="function">
+<dl class="py function">
 <dt id="scarlet.operator.diagonalizeArray">
 <code class="sig-prename descclassname">scarlet.operator.</code><code class="sig-name descname">diagonalizeArray</code><span class="sig-paren">(</span><em class="sig-param">arr</em>, <em class="sig-param">shape=None</em>, <em class="sig-param">dtype=&lt;class 'numpy.float64'&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/operator.html#diagonalizeArray"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.diagonalizeArray" title="Permalink to this definition">¶</a></dt>
 <dd><p>Convert an array to a matrix that compares each pixel to its neighbors
@@ -97,7 +97,7 @@ or the angle of the vector to the peak.
 <code class="docutils literal notranslate"><span class="pre">shape</span></code> is the shape of the original image.</p>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="scarlet.operator.diagonalsToSparse">
 <code class="sig-prename descclassname">scarlet.operator.</code><code class="sig-name descname">diagonalsToSparse</code><span class="sig-paren">(</span><em class="sig-param">diagonals</em>, <em class="sig-param">shape</em>, <em class="sig-param">dtype=&lt;class 'numpy.float64'&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/operator.html#diagonalsToSparse"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.diagonalsToSparse" title="Permalink to this definition">¶</a></dt>
 <dd><p>Convert a diagonalized array into a sparse diagonal matrix
@@ -107,22 +107,22 @@ it into a sparse diagonal matrix.
 See <cite>diagonalizeArray</cite> for the details of the 8xN array.</p>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="scarlet.operator.find_Q">
-<code class="sig-prename descclassname">scarlet.operator.</code><code class="sig-name descname">find_Q</code><span class="sig-paren">(</span><em class="sig-param">Vs</em>, <em class="sig-param">n</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/operator.html#find_Q"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.find_Q" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">scarlet.operator.</code><code class="sig-name descname">find_Q</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">Vs</span></em>, <em class="sig-param"><span class="n">n</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/operator.html#find_Q"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.find_Q" title="Permalink to this definition">¶</a></dt>
 <dd><p>Finds a Q that is within the solution space that can act as an appropriate target
 (could be rigorously constructed later)</p>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="scarlet.operator.find_relevant_dim">
-<code class="sig-prename descclassname">scarlet.operator.</code><code class="sig-name descname">find_relevant_dim</code><span class="sig-paren">(</span><em class="sig-param">Y</em>, <em class="sig-param">Q</em>, <em class="sig-param">Vs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/operator.html#find_relevant_dim"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.find_relevant_dim" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">scarlet.operator.</code><code class="sig-name descname">find_relevant_dim</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">Y</span></em>, <em class="sig-param"><span class="n">Q</span></em>, <em class="sig-param"><span class="n">Vs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/operator.html#find_relevant_dim"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.find_relevant_dim" title="Permalink to this definition">¶</a></dt>
 <dd><p>Finds a dimension relevant to the problem by ‘raycasting’ from Y to Q</p>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="scarlet.operator.getOffsets">
-<code class="sig-prename descclassname">scarlet.operator.</code><code class="sig-name descname">getOffsets</code><span class="sig-paren">(</span><em class="sig-param">width</em>, <em class="sig-param">coords=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/operator.html#getOffsets"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.getOffsets" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">scarlet.operator.</code><code class="sig-name descname">getOffsets</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">width</span></em>, <em class="sig-param"><span class="n">coords</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/operator.html#getOffsets"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.getOffsets" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get the offset and slices for a sparse band diagonal array
 For an operator that interacts with its neighbors we want a band diagonal matrix,
 where each row describes the 8 pixels that are neighbors for the reference pixel
@@ -132,39 +132,39 @@ See <cite>diagonalizeArray</cite> for more on the slices and format of the array
 NxN operators that act on a data vector.</p>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="scarlet.operator.getRadialMonotonicOp">
-<code class="sig-prename descclassname">scarlet.operator.</code><code class="sig-name descname">getRadialMonotonicOp</code><span class="sig-paren">(</span><em class="sig-param">shape</em>, <em class="sig-param">useNearest=True</em>, <em class="sig-param">minGradient=1</em>, <em class="sig-param">subtract=True</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/operator.html#getRadialMonotonicOp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.getRadialMonotonicOp" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">scarlet.operator.</code><code class="sig-name descname">getRadialMonotonicOp</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">shape</span></em>, <em class="sig-param"><span class="n">useNearest</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">minGradient</span><span class="o">=</span><span class="default_value">1</span></em>, <em class="sig-param"><span class="n">subtract</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/operator.html#getRadialMonotonicOp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.getRadialMonotonicOp" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create an operator to constrain radial monotonicity
 This version of the radial monotonicity operator selects all of the pixels closer to the peak
 for each pixel and weights their flux based on their alignment with a vector from the pixel
 to the peak. In order to quickly create this using sparse matrices, its construction is a bit opaque.</p>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="scarlet.operator.getRadialMonotonicWeights">
-<code class="sig-prename descclassname">scarlet.operator.</code><code class="sig-name descname">getRadialMonotonicWeights</code><span class="sig-paren">(</span><em class="sig-param">shape</em>, <em class="sig-param">useNearest=True</em>, <em class="sig-param">minGradient=1</em>, <em class="sig-param">center=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/operator.html#getRadialMonotonicWeights"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.getRadialMonotonicWeights" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">scarlet.operator.</code><code class="sig-name descname">getRadialMonotonicWeights</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">shape</span></em>, <em class="sig-param"><span class="n">useNearest</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">minGradient</span><span class="o">=</span><span class="default_value">1</span></em>, <em class="sig-param"><span class="n">center</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/operator.html#getRadialMonotonicWeights"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.getRadialMonotonicWeights" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create the weights used for the Radial Monotonicity Operator
 This version of the radial monotonicity operator selects all of the pixels closer to the peak
 for each pixel and weights their flux based on their alignment with a vector from the pixel
 to the peak. In order to quickly create this using sparse matrices, its construction is a bit opaque.</p>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="scarlet.operator.proj">
-<code class="sig-prename descclassname">scarlet.operator.</code><code class="sig-name descname">proj</code><span class="sig-paren">(</span><em class="sig-param">A</em>, <em class="sig-param">B</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/operator.html#proj"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.proj" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">scarlet.operator.</code><code class="sig-name descname">proj</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">A</span></em>, <em class="sig-param"><span class="n">B</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/operator.html#proj"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.proj" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns the projection of A onto the hyper-plane defined by B</p>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="scarlet.operator.proj_dist">
-<code class="sig-prename descclassname">scarlet.operator.</code><code class="sig-name descname">proj_dist</code><span class="sig-paren">(</span><em class="sig-param">A</em>, <em class="sig-param">B</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/operator.html#proj_dist"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.proj_dist" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">scarlet.operator.</code><code class="sig-name descname">proj_dist</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">A</span></em>, <em class="sig-param"><span class="n">B</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/operator.html#proj_dist"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.proj_dist" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns length of projection of A onto B</p>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="scarlet.operator.project_disk_sed">
-<code class="sig-prename descclassname">scarlet.operator.</code><code class="sig-name descname">project_disk_sed</code><span class="sig-paren">(</span><em class="sig-param">bulge_sed</em>, <em class="sig-param">disk_sed</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/operator.html#project_disk_sed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.project_disk_sed" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">scarlet.operator.</code><code class="sig-name descname">project_disk_sed</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">bulge_sed</span></em>, <em class="sig-param"><span class="n">disk_sed</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/operator.html#project_disk_sed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.project_disk_sed" title="Permalink to this definition">¶</a></dt>
 <dd><p>Project the disk SED onto the space where it is bluer</p>
 <p>For the majority of observed galaxies, it appears that
 the difference between the bulge and the disk SEDs is
@@ -178,9 +178,9 @@ results that are as good as those in <cite>project_disk_sed_mean</cite>,
 after many iterations it is expected to converge to a better value.</p>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="scarlet.operator.project_disk_sed_mean">
-<code class="sig-prename descclassname">scarlet.operator.</code><code class="sig-name descname">project_disk_sed_mean</code><span class="sig-paren">(</span><em class="sig-param">bulge_sed</em>, <em class="sig-param">disk_sed</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/operator.html#project_disk_sed_mean"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.project_disk_sed_mean" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">scarlet.operator.</code><code class="sig-name descname">project_disk_sed_mean</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">bulge_sed</span></em>, <em class="sig-param"><span class="n">disk_sed</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/operator.html#project_disk_sed_mean"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.project_disk_sed_mean" title="Permalink to this definition">¶</a></dt>
 <dd><p>Project the disk SED onto the space where it is bluer</p>
 <p>For the majority of observed galaxies, it appears that
 the difference between the bulge and the disk SEDs is
@@ -194,15 +194,15 @@ probably be avoided. It is being kept for now to record
 its effect.</p>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="scarlet.operator.prox_cone">
-<code class="sig-prename descclassname">scarlet.operator.</code><code class="sig-name descname">prox_cone</code><span class="sig-paren">(</span><em class="sig-param">X</em>, <em class="sig-param">step</em>, <em class="sig-param">G=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/operator.html#prox_cone"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.prox_cone" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">scarlet.operator.</code><code class="sig-name descname">prox_cone</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">X</span></em>, <em class="sig-param"><span class="n">step</span></em>, <em class="sig-param"><span class="n">G</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/operator.html#prox_cone"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.prox_cone" title="Permalink to this definition">¶</a></dt>
 <dd><p>Exact projection of components of X onto cone defined by Gx &gt;= 0</p>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="scarlet.operator.prox_kspace_symmetry">
-<code class="sig-prename descclassname">scarlet.operator.</code><code class="sig-name descname">prox_kspace_symmetry</code><span class="sig-paren">(</span><em class="sig-param">X</em>, <em class="sig-param">step</em>, <em class="sig-param">shift=None</em>, <em class="sig-param">padding=10</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/operator.html#prox_kspace_symmetry"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.prox_kspace_symmetry" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">scarlet.operator.</code><code class="sig-name descname">prox_kspace_symmetry</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">X</span></em>, <em class="sig-param"><span class="n">step</span></em>, <em class="sig-param"><span class="n">shift</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">padding</span><span class="o">=</span><span class="default_value">10</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/operator.html#prox_kspace_symmetry"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.prox_kspace_symmetry" title="Permalink to this definition">¶</a></dt>
 <dd><p>Symmetry in Fourier Space</p>
 <p>This algorithm by Nate Lust uses the fact that throwing
 away the imaginary part in Fourier space leaves a symmetric
@@ -212,17 +212,17 @@ the imaginary part is discarded, shited back to its original position,
 then transformed back to real space.</p>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="scarlet.operator.prox_sdss_symmetry">
-<code class="sig-prename descclassname">scarlet.operator.</code><code class="sig-name descname">prox_sdss_symmetry</code><span class="sig-paren">(</span><em class="sig-param">X</em>, <em class="sig-param">step</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/operator.html#prox_sdss_symmetry"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.prox_sdss_symmetry" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">scarlet.operator.</code><code class="sig-name descname">prox_sdss_symmetry</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">X</span></em>, <em class="sig-param"><span class="n">step</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/operator.html#prox_sdss_symmetry"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.prox_sdss_symmetry" title="Permalink to this definition">¶</a></dt>
 <dd><p>SDSS/HSC symmetry operator</p>
 <p>This function uses the <em>minimum</em> of the two
 symmetric pixels in the update.</p>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="scarlet.operator.prox_soft_symmetry">
-<code class="sig-prename descclassname">scarlet.operator.</code><code class="sig-name descname">prox_soft_symmetry</code><span class="sig-paren">(</span><em class="sig-param">X</em>, <em class="sig-param">step</em>, <em class="sig-param">strength=1</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/operator.html#prox_soft_symmetry"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.prox_soft_symmetry" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">scarlet.operator.</code><code class="sig-name descname">prox_soft_symmetry</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">X</span></em>, <em class="sig-param"><span class="n">step</span></em>, <em class="sig-param"><span class="n">strength</span><span class="o">=</span><span class="default_value">1</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/operator.html#prox_soft_symmetry"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.prox_soft_symmetry" title="Permalink to this definition">¶</a></dt>
 <dd><p>Soft version of symmetry
 Using a <cite>strength</cite> that varies from 0 to 1,
 with 0 meaning no symmetry enforced at all and
@@ -230,9 +230,9 @@ with 0 meaning no symmetry enforced at all and
 the level of symmetry required for a component</p>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="scarlet.operator.prox_strict_monotonic">
-<code class="sig-prename descclassname">scarlet.operator.</code><code class="sig-name descname">prox_strict_monotonic</code><span class="sig-paren">(</span><em class="sig-param">shape</em>, <em class="sig-param">use_nearest=False</em>, <em class="sig-param">thresh=0</em>, <em class="sig-param">center=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/operator.html#prox_strict_monotonic"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.prox_strict_monotonic" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">scarlet.operator.</code><code class="sig-name descname">prox_strict_monotonic</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">shape</span></em>, <em class="sig-param"><span class="n">use_nearest</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">thresh</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">center</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/operator.html#prox_strict_monotonic"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.prox_strict_monotonic" title="Permalink to this definition">¶</a></dt>
 <dd><p>Build the prox_monotonic operator</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -258,9 +258,9 @@ will force the pixel to zero.</p>
 </dl>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="scarlet.operator.prox_uncentered_symmetry">
-<code class="sig-prename descclassname">scarlet.operator.</code><code class="sig-name descname">prox_uncentered_symmetry</code><span class="sig-paren">(</span><em class="sig-param">X</em>, <em class="sig-param">step</em>, <em class="sig-param">center=None</em>, <em class="sig-param">algorithm='kspace'</em>, <em class="sig-param">fill=None</em>, <em class="sig-param">shift=None</em>, <em class="sig-param">strength=0.5</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/operator.html#prox_uncentered_symmetry"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.prox_uncentered_symmetry" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">scarlet.operator.</code><code class="sig-name descname">prox_uncentered_symmetry</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">X</span></em>, <em class="sig-param"><span class="n">step</span></em>, <em class="sig-param"><span class="n">center</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">algorithm</span><span class="o">=</span><span class="default_value">'kspace'</span></em>, <em class="sig-param"><span class="n">fill</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">shift</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">strength</span><span class="o">=</span><span class="default_value">0.5</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/operator.html#prox_uncentered_symmetry"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.prox_uncentered_symmetry" title="Permalink to this definition">¶</a></dt>
 <dd><p>Symmetry with off-center peak</p>
 <p>Symmetrize X for all pixels with a symmetric partner.</p>
 <dl class="field-list">
@@ -314,15 +314,15 @@ This parameter is only used when <cite>algorithm = “soft”</cite>.</p>
 </dl>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="scarlet.operator.proximal_disk_sed">
-<code class="sig-prename descclassname">scarlet.operator.</code><code class="sig-name descname">proximal_disk_sed</code><span class="sig-paren">(</span><em class="sig-param">X</em>, <em class="sig-param">step</em>, <em class="sig-param">peaks</em>, <em class="sig-param">algorithm=&lt;function project_disk_sed_mean at 0x7f84ba29cbf8&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/operator.html#proximal_disk_sed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.proximal_disk_sed" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">scarlet.operator.</code><code class="sig-name descname">proximal_disk_sed</code><span class="sig-paren">(</span><em class="sig-param">X</em>, <em class="sig-param">step</em>, <em class="sig-param">peaks</em>, <em class="sig-param">algorithm=&lt;function project_disk_sed_mean at 0x7fbc89896510&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/operator.html#proximal_disk_sed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.proximal_disk_sed" title="Permalink to this definition">¶</a></dt>
 <dd><p>Ensure that each disk SED is bluer than the bulge SED</p>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="scarlet.operator.sort_by_radius">
-<code class="sig-prename descclassname">scarlet.operator.</code><code class="sig-name descname">sort_by_radius</code><span class="sig-paren">(</span><em class="sig-param">shape</em>, <em class="sig-param">center=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/operator.html#sort_by_radius"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.sort_by_radius" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">scarlet.operator.</code><code class="sig-name descname">sort_by_radius</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">shape</span></em>, <em class="sig-param"><span class="n">center</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/operator.html#sort_by_radius"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.sort_by_radius" title="Permalink to this definition">¶</a></dt>
 <dd><p>Sort indices distance from the center</p>
 <p>Given a shape, calculate the distance of each
 pixel from the center and return the indices
@@ -348,9 +348,9 @@ sorted by distance from the center.</p>
 </dl>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="scarlet.operator.uncentered_operator">
-<code class="sig-prename descclassname">scarlet.operator.</code><code class="sig-name descname">uncentered_operator</code><span class="sig-paren">(</span><em class="sig-param">X</em>, <em class="sig-param">func</em>, <em class="sig-param">center=None</em>, <em class="sig-param">fill=None</em>, <em class="sig-param">**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/operator.html#uncentered_operator"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.uncentered_operator" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">scarlet.operator.</code><code class="sig-name descname">uncentered_operator</code><span class="sig-paren">(</span><em class="sig-param">X</em>, <em class="sig-param">func</em>, <em class="sig-param">center=None</em>, <em class="sig-param">fill=None</em>, <em class="sig-param">\*\*kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/operator.html#uncentered_operator"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.uncentered_operator" title="Permalink to this definition">¶</a></dt>
 <dd><p>Only apply the operator on a centered patch</p>
 <p>In some cases, for example symmetry, an operator might not make
 sense outside of a centered box. This operator only updates
@@ -375,9 +375,9 @@ then only the subregion is updated and the rest of
 </dl>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="scarlet.operator.use_relevant_dim">
-<code class="sig-prename descclassname">scarlet.operator.</code><code class="sig-name descname">use_relevant_dim</code><span class="sig-paren">(</span><em class="sig-param">Y</em>, <em class="sig-param">Q</em>, <em class="sig-param">Vs</em>, <em class="sig-param">index</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/operator.html#use_relevant_dim"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.use_relevant_dim" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">scarlet.operator.</code><code class="sig-name descname">use_relevant_dim</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">Y</span></em>, <em class="sig-param"><span class="n">Q</span></em>, <em class="sig-param"><span class="n">Vs</span></em>, <em class="sig-param"><span class="n">index</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/operator.html#use_relevant_dim"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.use_relevant_dim" title="Permalink to this definition">¶</a></dt>
 <dd><p>Uses relevant dimension to reduce problem dimensionality (projects everything onto the
 new hyperplane</p>
 </dd></dl>
@@ -395,7 +395,7 @@ new hyperplane</p>
       &copy;2018-2019, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.4</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.0.3</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |
