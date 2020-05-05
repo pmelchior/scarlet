@@ -4,6 +4,7 @@ from . import fft
 from . import interpolation
 from .bbox import Box
 import autograd.numpy as np
+from functools import partial
 from autograd.extend import defvjp, primitive
 
 
@@ -359,7 +360,10 @@ def _add_models(*models, full_model, slices):
     """Insert the models into the full model
     """
     for i in range(len(models)):
-        full_model[slices[i][0]] += models[i][slices[i][1]]
+        if hasattr(models[i], "_value"):
+            full_model[slices[i][0]] += models[i][slices[i][1]]._value
+        else:
+            full_model[slices[i][0]] += models[i][slices[i][1]]
     return full_model
 
 
@@ -539,6 +543,14 @@ class ComponentTree:
         model: array
             (Bands, Height, Width) data cube
         """
+
+        # We have to declare the function that inserts sources
+        # into the blend with autograd.
+        # This has to be done each time we fit a blend,
+        # since the number of components => the number of arguments,
+        # which must be linked to the autograd primitive function
+        defvjp(_add_models, *([partial(_grad_add_models, index=k) for k in range(len(self.components))]))
+
         full_model = np.zeros(self.frame.shape, dtype=self.frame.dtype)
 
         models = []

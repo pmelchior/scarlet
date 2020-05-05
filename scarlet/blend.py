@@ -59,12 +59,6 @@ class Blend(ComponentTree):
         X = self.parameters
         n_params = len(X)
 
-        # We have to declare the function that inserts sources into the blend with autograd
-        # This has to be done each time we fit a blend,
-        # since the number of components => the number of arguments, which must be linked to the
-        # autograd primitive function
-        defvjp(_add_models, *([partial(_grad_add_models, index=k) for k in range(n_params)]))
-
         # compute the backward gradient tree
         grad_logL = grad(self._loss, tuple(range(n_params)))
         grad_logP = lambda *X: tuple(
