@@ -98,28 +98,6 @@ class Box:
                 return False
         return True
 
-    def slices_for(self, im_or_shape):
-        """Slices for `im_or_shape` to be limited to this bounding box.
-
-        Parameters
-        ----------
-        im_or_shape: array or tuple
-            Array or shape of the array to be sliced
-
-        Returns
-        -------
-        slices for every dimension
-        """
-        if hasattr(im_or_shape, "shape"):
-            shape = im_or_shape.shape
-        else:
-            shape = im_or_shape
-        assert len(shape) == self.D
-
-        im_box = Box(shape)
-        overlap = self & im_box
-        return tuple(slice(overlap.start[d], overlap.stop[d]) for d in range(self.D))
-
     def as_slices(self):
         return tuple([slice(o, o+s) for o,s in zip(self.origin, self.shape)])
 

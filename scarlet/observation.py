@@ -182,6 +182,7 @@ class Observation:
         -------
         None
         """
+<<<<<<< HEAD
         # Find the box that contained this obs in model_frame
         overlap = self.frame & model_frame
 
@@ -190,6 +191,20 @@ class Observation:
                                             overlap.stop[d]-model_frame.origin[d]) for d in range(self.frame.D))
         # Slices of the model in this observation
         self.slices_for_images = tuple(slice(overlap.start[d], overlap.stop[d]) for d in range(self.frame.D))
+=======
+        # find the box that contained this obs in model_frame
+        shape = self.images.shape
+        yx0 = model_frame.get_pixel(self.frame.get_sky_coord((0, 0)))
+        #  channels of model that are represented in this observation
+        if self.frame.channels is model_frame.channels:
+            origin = (0, *yx0)
+        else:
+            assert self.frame.channels is not None and model_frame.channels is not None
+            cmin = list(model_frame.channels).index(self.frame.channels[0])
+            origin = (cmin, *yx0)
+        self.bbox = Box(shape, origin=origin)
+        self.slices = (self.bbox & model_frame).as_slices()
+>>>>>>> Remove unecessary  method
 
         # check dtype consistency
         if self.frame.dtype != model_frame.dtype:

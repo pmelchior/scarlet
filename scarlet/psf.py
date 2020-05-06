@@ -241,8 +241,7 @@ class PsfObservation(Observation):
             Return this object to allow for chaining.
         """
         self.bbox = Box(self.frame.shape)
-        self.slices_for_images = self.bbox.slices_for(self.frame.shape)
-        self.slices_for_model = self.bbox.slices_for(self.frame.shape)
+        self.slices = (self.bbox & self.frame).as_slices()
         self._diff_kernels = Fourier(psfs)
         self.convolution = convolution
         return self
