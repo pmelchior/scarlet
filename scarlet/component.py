@@ -445,16 +445,18 @@ class ComponentTree:
             c._index = i
             c._parent = self
 
-        # Make the bounding box of the tree the union of the component boxes
-        box = self.components[0].bbox
-        self._bbox = Box(box.shape, box.origin)
-        for component in components:
-            self._bbox |= component.bbox
-
     @property
     def bbox(self):
         """Union of all the component `~scarlet.bbox.Box`es
         """
+        try:
+            return self._bbox
+        except AttributeError:
+            # Make the bbox of the tree the union of the component bboxes
+            box = self.components[0].bbox
+            self._bbox = Box(box.shape, box.origin)
+            for component in self.components:
+                self._bbox |= component.bbox
         return self._bbox
 
     @property
