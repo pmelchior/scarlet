@@ -365,9 +365,9 @@ class CubeComponent(Component):
         Hyper-spectral bounding box
     """
 
-    def __init__(self, frame, cube, bbox=None):
+    def __init__(self, frame, bbox, cube):
         parameters = (cube,)
-        super().__init__(frame, *parameters, bbox=bbox)
+        super().__init__(frame, bbox, *parameters)
 
     @property
     def cube(self):
