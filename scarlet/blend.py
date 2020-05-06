@@ -32,7 +32,7 @@ class Blend(ComponentTree):
         observations: a `scarlet.Observation` instance or a list thereof
             Data package(s) to fit
         """
-        ComponentTree.__init__(self, sources, trim=False)
+        ComponentTree.__init__(self, sources)
 
         try:
             iter(observations)

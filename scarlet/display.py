@@ -2,6 +2,7 @@ import numpy as np
 from astropy.visualization.lupton_rgb import LinearMapping, AsinhMapping
 import matplotlib.pyplot as plt
 from .component import ComponentTree
+from .bbox import Box
 
 
 def channels_to_rgb(channels):
@@ -275,7 +276,7 @@ def show_scene(
             if hasattr(src, "center"):
                 center = np.array(src.center)
                 center_ = center - np.array(
-                    src.frame.origin[1:]
+                    src.model_frame.origin[1:]
                 )  # observed coordinates
             ax[0].text(*center[::-1], k, color="w")
             for panel in range(1, panels):
@@ -285,11 +286,17 @@ def show_scene(
     return fig
 
 
+def get_extent(bbox):
+    extent = np.array([bbox.start[-1], bbox.stop[-1], bbox.start[-2], bbox.stop[-2]], dtype=float) - 0.5
+    return extent
+
+
 def show_sources(
     sources,
     observation=None,
     norm=None,
     channel_map=None,
+    show_model=True,
     show_observed=False,
     show_rendered=False,
     show_sed=True,
@@ -323,78 +330,77 @@ def show_sources(
             observation is not None
         ), "Provide matched observation to show observed frame"
 
-    panels = 1 + sum((show_observed, show_rendered, show_sed))
+    panels = sum((show_model, show_observed, show_rendered, show_sed))
     if figsize is None:
         figsize = (3 * panels, 3 * len(list(sources)))
     fig, ax = plt.subplots(len(list(sources)), panels, figsize=figsize)
     for k, src in enumerate(sources):
-
         if hasattr(src, "center"):
-            center = np.array(src.center)
-            # center in src bbox coordinates
-            if src.bbox is not None:
-                center_ = center - np.array(src.bbox.origin[1:])
-            else:
-                center_ = center
-            # center in observed coordinates
-            center__ = center - np.array(src.frame.origin[1:])
+            center = np.array(src.center)[::-1]
         else:
             center = None
 
         panel = 0
-        frame_ = src.frame
-        src.set_frame(src.bbox)
+
+        model = src.get_model()
         if isinstance(src, ComponentTree):
-            model = 0
             seds = []
             for component in src:
                 model_ = component.get_model()
                 seds.append(model_.sum(axis=(1, 2)))
-                model += model_
         else:
-            model = src.get_model()
             seds = [model.sum(axis=(1, 2))]
-        src.set_frame(frame_)
+
         if use_mask:
-            mask = model.sum(axis=0)==0
+            mask = model.sum(axis=0) == 0
         else:
             mask = None
-        ax[k][panel].imshow(img_to_rgb(model, norm=norm, channel_map=channel_map, mask=mask))
-        ax[k][panel].set_title("Model Source {}".format(k))
-        if center is not None and mark_centers:
-            ax[k][panel].plot(*center_[::-1], "wx", mew=1, ms=10)
+
+        if show_model:
+            # Show the unrendered model in it's bbox
+            ax[k][panel].imshow(
+                img_to_rgb(model, norm=norm, channel_map=channel_map, mask=mask), extent=get_extent(src.bbox))
+            ax[k][panel].set_title("Model Source {}".format(k))
+            if center is not None and mark_centers:
+                ax[k][panel].plot(*center, "wx", mew=1, ms=10)
+
+        if show_rendered or show_observed:
+            # Create the frame to show the source
+            # with enough room to show it rully rendered with the PSF
+            B, ph, pw = observation.frame.psf.shape
+            origin = (0, src.bbox.start[1]-ph//2, src.bbox.start[2]-pw//2)
+            shape = (B, src.shape[1]+ph, src.shape[2]+pw)
+            rendered_box = Box(shape, origin)
+            extent = get_extent(rendered_box)
 
         if show_rendered:
+            # Center and show the rendered model
             panel += 1
-            model = src.get_model()
-            model = observation.render(model)
-            ax[k][panel].imshow(img_to_rgb(model, norm=norm, channel_map=channel_map))
+            model = src.project(frame=rendered_box)
+            model = observation.render(model, in_frame=False)
+            ax[k][panel].imshow(img_to_rgb(model, norm=norm, channel_map=channel_map), extent=extent)
             ax[k][panel].set_title("Model Source {} Rendered".format(k))
-            if src.bbox is not None:
-                ax[k][panel].set_ylim(src.bbox.start[-2], src.bbox.stop[-2])
-                ax[k][panel].set_xlim(src.bbox.start[-1], src.bbox.stop[-1])
+
             if center is not None and mark_centers:
-                ax[k][panel].plot(*center__[::-1], "wx", mew=1, ms=10)
+                ax[k][panel].plot(*center, "wx", mew=1, ms=10)
 
         if show_observed:
+            # Center the observation on the source and display it
+            _images = observation.project(rendered_box)
             panel += 1
-            ax[k][panel].imshow(
-                img_to_rgb(observation.images, norm=norm, channel_map=channel_map)
-            )
+            ax[k][panel].imshow(img_to_rgb(_images, norm=norm, channel_map=channel_map), extent=extent)
             ax[k][panel].set_title("Observation".format(k))
-            if src.bbox is not None:
-                ax[k][panel].set_ylim(src.bbox.start[-2], src.bbox.stop[-2])
-                ax[k][panel].set_xlim(src.bbox.start[-1], src.bbox.stop[-1])
+
             if center is not None and mark_centers:
-                ax[k][panel].plot(*center__[::-1], "wx", mew=1, ms=10)
+                ax[k][panel].plot(*center, "wx", mew=1, ms=10)
 
         if show_sed:
             panel += 1
             for sed in seds:
                 ax[k][panel].plot(sed)
             ax[k][panel].set_xticks(range(len(sed)))
-            if hasattr(src.frame, "channels") and src.frame.channels is not None:
-                ax[k][panel].set_xticklabels(src.frame.channels)
+            if hasattr(src.model_frame, "channels") and src.model_frame.channels is not None:
+                ax[k][panel].set_xticklabels(src.model_frame.channels)
             ax[k][panel].set_title("SED")
             ax[k][panel].set_xlabel("Channel")
             ax[k][panel].set_ylabel("Intensity")

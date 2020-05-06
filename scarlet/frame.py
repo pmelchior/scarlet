@@ -72,10 +72,6 @@ class Frame(Box):
     def psf(self):
         return self._psfs
 
-    @property
-    def bbox(self):
-        return Box(self.shape, self.origin)
-
     def get_pixel(self, sky_coord):
         """Get the pixel coordinate from a world coordinate
         If there is no WCS associated with the `Scene`,
@@ -223,7 +219,6 @@ class Frame(Box):
 
         return frame
 
-
     def __and__(self, other):
         """Intersection of two Frames (box and channels)
 
@@ -256,3 +251,9 @@ class Frame(Box):
                 (max(self.start[d + 1], other.start[d + 1]), min(self.stop[d + 1], other.stop[d + 1]))
             )
         return Box.from_bounds(*bounds)
+
+    @property
+    def bbox(self):
+        """The `~scarlet.bbox.Box` version of this `Frame`.
+        """
+        return Box(self.shape, self.origin)

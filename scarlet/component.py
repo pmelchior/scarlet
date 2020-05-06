@@ -1,11 +1,14 @@
 from abc import ABC, abstractmethod
+from functools import partial
+
+import autograd.numpy as np
+from autograd.extend import defvjp, primitive
+
+from .frame import Frame
 from .parameter import Parameter
 from . import fft
 from . import interpolation
-from .bbox import Box
-import autograd.numpy as np
-from functools import partial
-from autograd.extend import defvjp, primitive
+from .bbox import Box, overlapped_slices
 
 
 class Component(ABC):
@@ -17,14 +20,14 @@ class Component(ABC):
     ----------
     model_frame: `~scarlet.Frame`
         The spectral and spatial characteristics of the model.
-    parameters: list of `~scarlet.Parameter`
     bbox: `~scarlet.Box`
         Hyper-spectral bounding box
+    parameters: list of `~scarlet.Parameter`
     kwargs: dict
         Auxiliary information attached to this component.
     """
 
-    def __init__(self, model_frame, *parameters, bbox=None, **kwargs):
+    def __init__(self, model_frame, bbox, *parameters, **kwargs):
         self.bbox = bbox
         self.set_model_frame(model_frame)
 
@@ -77,13 +80,11 @@ class Component(ABC):
 
         Parameters
         ----------
-        parameters: `tuple`
-            - Tuple of of optimimzation parameters
+        parameters: tuple of optimimzation parameters
 
-        frame: `~scarlet.frame.Fraeme`
+        frame: `~scarlet.frame.Frame`
             Frame to project the model into. If `frame` is `None`
             then the model contained in `bbox` is returned.
-
 
         Returns
         -------
@@ -92,56 +93,19 @@ class Component(ABC):
         """
         pass
 
-    def set_frame(self, model_frame):
+    def set_model_frame(self, model_frame):
         """Sets the frame for this component.
 
-        Each component needs to know the properties of the Frame and, potentially, the
-        subvolume it covers.
+        Each component needs to know the properties of the Frame and,
+        potentially, the subvolume it covers.
 
         Parameters
         ----------
-        frame: `~scarlet.Frame`
-            Frame to adopt for this component
+        model_frame: `~scarlet.Frame`
+            Frame of the model
         """
-        if self.shape[0] != model_frame.shape[0]:
-            msg = "Model shape ({}) and bbox shape ({}) must have the same spectral shape"
-            raise ValueError(msg.format(model_frame.shape, self.shape))
         self.model_frame = model_frame
-        overlap = model_frame & self.bbox
-        overlap -= self.bbox.origin
-        
-
-        # store padding and slicing structures
-        if self.bbox is not None:
-            assert isinstance(self.bbox, Box)
-            # TODO: full 3D bbox and slicing support
-            # determine pad from box into full frame
-            # yields superset of frame pixels
-            # pad_width is ((before1, after1), (before2, after2)...)
-            self.pad_width = list(
-                (
-                    max(0, self.bbox.start[d] - self.frame.start[d]),
-                    max(0, self.frame.stop[d] - self.bbox.stop[d]),
-                )
-                for d in range(self.frame.D)
-            )
-
-            # get slicing of padded box so that the result covers
-            # all of the model frame
-            bounds = []
-            for d in range(self.frame.D):
-                bounds.append(
-                    (
-                        self.bbox.start[d] - self.pad_width[d][0],
-                        self.bbox.stop[d] + self.pad_width[d][1],
-                    )
-                )
-            padded_box = Box.from_bounds(*bounds)
-
-            model_box = self.frame
-            overlap = padded_box & model_box
-            overlap -= padded_box.origin  # now in padded frame
-            self.slices = overlap.slices_for(padded_box.shape)
+        self.model_frame_slices, self.model_slices = overlapped_slices(model_frame, self.bbox)
 
     def check_parameters(self):
         """Check that all parameters have finite elements
@@ -155,6 +119,45 @@ class Component(ABC):
                 msg = "Component {} Parameter {} is not finite:\n{}".format(self, k, p)
                 raise ArithmeticError(msg)
 
+    def project(self, model=None, frame=None):
+        """Project a model into a frame
+
+
+        Parameters
+        ----------
+        model: array
+            Image of the model to project.
+            This must be the same shape as `self.bbox`.
+            If `model` is `None` then `self.get_model()` is used.
+        frame: `~scarlet.frame.Frame`
+            The frame to project the model into.
+            If `frame` is `None` then the model is projected
+            into `self.model_frame`.
+
+        Returns
+        -------
+        projected_model: array
+            (Channels, Height, Width) image of the model
+        """
+        # Use the current model by default
+        if model is None:
+            model = self.get_model()
+        # Use the full model frame by default
+        if frame is None or frame == self.model_frame:
+            frame = self.model_frame
+            frame_slices = self.model_frame_slices
+            model_slices = self.model_slices
+        else:
+            frame_slices, model_slices = overlapped_slices(frame, self.bbox)
+
+        if hasattr(frame, "dtype"):
+            dtype = frame.dtype
+        else:
+            dtype = model.dtype
+        result = np.zeros(frame.shape, dtype=dtype)
+        result[frame_slices] = model[model_slices]
+        return result
+
 
 class FactorizedComponent(Component):
     """A single component in a blend.
@@ -163,24 +166,24 @@ class FactorizedComponent(Component):
 
     Parameters
     ----------
-    frame: `~scarlet.Frame`
-        The spectral and spatial characteristics of this component.
+    model_frame: `~scarlet.Frame`
+        The spectral and spatial characteristics of the full model.
+    bbox: `~scarlet.Box`
+        Hyper-spectral bounding box
     sed: `~scarlet.Parameter`
         1D array (channels) of the initial SED.
     morph: `~scarlet.Parameter`
         Image (Height, Width) of the initial morphology.
     shift: `~scarlet.Parameter`
         2D position for the shift of the center
-    bbox: `~scarlet.Box`
-        Hyper-spectral bounding box
     """
 
-    def __init__(self, frame, sed, morph, shift=None, bbox=None, **kwargs):
+    def __init__(self, model_frame, bbox, sed, morph, shift=None, **kwargs):
         if shift is None:
             parameters = (sed, morph)
         else:
             parameters = (sed, morph, shift)
-        super().__init__(frame, *parameters, bbox=bbox, **kwargs)
+        super().__init__(model_frame, bbox, *parameters, **kwargs)
 
         # store shifting structures
         if shift is not None:
@@ -208,12 +211,16 @@ class FactorizedComponent(Component):
             return self._parameters[2]._data
         return None
 
-    def get_model(self, *parameters):
+    def get_model(self, *parameters, frame=None):
         """Get the model for this component.
 
         Parameters
         ----------
         parameters: tuple of optimimzation parameters
+
+        frame: `~scarlet.frame.Frame`
+            Frame to project the model into. If `frame` is `None`
+            then the model contained in `bbox` is returned.
 
         Returns
         -------
@@ -242,7 +249,11 @@ class FactorizedComponent(Component):
             shift = self.shift
 
         morph = self._shift_morph(shift, morph)
-        return sed[:, None, None] * morph[None, :, :]
+        model = sed[:, None, None] * morph[None, :, :]
+        # project the model into frame (if necessary)
+        if frame is not None:
+            model = self.project(model, frame)
+        return model
 
     def _shift_morph(self, shift, morph):
         if shift is not None:
@@ -269,21 +280,21 @@ class FunctionComponent(FactorizedComponent):
 
     Parameters
     ----------
-    frame: `~scarlet.Frame`
-        The spectral and spatial characteristics of this component.
+    model_frame: `~scarlet.Frame`
+        The spectral and spatial characteristics of the full model.
+    bbox: `~scarlet.Box`
+        Hyper-spectral bounding box
     sed: `~scarlet.Parameter`
         1D array (channels) of the initial SED.
     fparams: `~scarlet.Parameter`
         Parameters of the initial morphology.
     func: `autograd` function
         Signature: func(*fparams, y=None, x=None) -> Image (Height, Width)
-    bbox: `~scarlet.Box`
-        Hyper-spectral bounding box
     """
 
-    def __init__(self, frame, sed, fparams, func, bbox=None):
+    def __init__(self, model_frame, bbox, sed, fparams, func):
         parameters = (sed, fparams)
-        super().__init__(frame, *parameters, bbox=bbox, func=func)
+        super().__init__(model_frame, bbox, *parameters, func=func)
 
     @property
     def morph(self):
@@ -299,12 +310,16 @@ class FunctionComponent(FactorizedComponent):
     def _func(self, *parameters):
         return self.kwargs["func"](*parameters)
 
-    def get_model(self, *parameters):
+    def get_model(self, *parameters, frame=None):
         """Get the model for this component.
 
         Parameters
         ----------
         parameters: tuple of optimimzation parameters
+
+        frame: `~scarlet.frame.Frame`
+            Frame to project the model into. If `frame` is `None`
+            then the model contained in `bbox` is returned.
 
         Returns
         -------
@@ -329,7 +344,10 @@ class FunctionComponent(FactorizedComponent):
             morph = self._func(*fparams)
             self._morph = morph._value
 
-        return sed[:, None, None] * morph[None, :, :]
+        model = sed[:, None, None] * morph[None, :, :]
+        if frame is not None:
+            model = self.project(model, frame)
+        return model
 
 
 class CubeComponent(Component):
@@ -355,7 +373,7 @@ class CubeComponent(Component):
     def cube(self):
         return self._parameters[0]._data
 
-    def get_model(self, *parameters):
+    def get_model(self, *parameters, frame=None):
         cube = None
         for p in parameters:
             if p._value is self._parameters[0]:
@@ -363,7 +381,8 @@ class CubeComponent(Component):
 
         if cube is None:
             cube = self.cube
-
+        if frame is not None:
+            cube = self.project(cube, frame)
         return cube
 
 
@@ -401,7 +420,7 @@ class ComponentTree:
     """Base class for hierarchical collections of Components.
     """
 
-    def __init__(self, components, trim=True):
+    def __init__(self, components):
         """Constructor
 
         Group a list of `~scarlet.component.Component`s in a hierarchy.
@@ -422,18 +441,27 @@ class ComponentTree:
                 raise NotImplementedError(
                     "argument needs to be list of Components or ComponentTrees"
                 )
-            assert c.frame is self.frame, "All components need to share the same Frame"
+            assert c.model_frame is self.model_frame, "All components need to share the same model Frame"
             c._index = i
             c._parent = self
 
-        if trim:
-            box = self.components[0].bbox
-            self._bbox = Box(box.shape, box.origin)
-            for component in components:
-                self._bbox |= component.bbox
-        else:
-            self._bbox = None
+        # Make the bounding box of the tree the union of the component boxes
+        box = self.components[0].bbox
+        self._bbox = Box(box.shape, box.origin)
+        for component in components:
+            self._bbox |= component.bbox
 
+    @property
+    def bbox(self):
+        """Union of all the component `~scarlet.bbox.Box`es
+        """
+        return self._bbox
+
+    @property
+    def shape(self):
+        """Shape of this model
+        """
+        return self._bbox.shape
 
     @property
     def components(self):
@@ -476,10 +504,10 @@ class ComponentTree:
         return self.n_components
 
     @property
-    def frame(self):
+    def model_frame(self):
         """Frame of the components.
         """
-        return self._tree[0].frame
+        return self._tree[0].model_frame
 
     @property
     def sources(self):
@@ -543,7 +571,7 @@ class ComponentTree:
         for c in self.components:
             c.check_parameters()
 
-    def get_model(self, *params):
+    def get_model(self, *params, frame=None):
         """Get the model of this component tree
 
         Parameters
@@ -563,7 +591,15 @@ class ComponentTree:
         # which must be linked to the autograd primitive function
         defvjp(_add_models, *([partial(_grad_add_models, index=k) for k in range(len(self.components))]))
 
-        full_model = np.zeros(self.frame.shape, dtype=self.frame.dtype)
+        if frame is None:
+            frame = Frame(self.bbox, dtype=self.model_frame.dtype, psfs=self.model_frame.psf)
+        # If this is the model frame then the slices are already cached
+        if frame == self.model_frame:
+            use_cached = True
+        else:
+            use_cached = False
+
+        full_model = np.zeros(frame.shape, dtype=frame.dtype)
 
         models = []
         slices = []
@@ -580,24 +616,19 @@ class ComponentTree:
 
             models.append(model)
 
-            # Get the slices needed to insert the model
-            imbox = Box.from_image(full_model)
-            subbox = Box.from_image(model)
-            imbox -= c.bbox.origin
-            overlap = imbox & subbox
-            slices.append((c.bbox.slices_for(full_model), overlap.slices_for(model)))
-
+            if use_cached:
+                slices.append((c.model_frame_slices, c.model_slices))
+            else:
+                # Get the slices needed to insert the model
+                slices.append(overlapped_slices(frame, c.bbox))
         full_model = _add_models(*models, full_model=full_model, slices=slices)
-
-        if self._bbox is not None:
-            full_model = self._bbox.extract_from(full_model)
 
         return full_model
 
-    def set_frame(self, frame):
+    def set_model_frame(self, model_frame):
         """Set the frame for all components in the tree
 
-        see `~scarlet.Component.set_frame` for details.
+        see `~scarlet.Component.set_model_frame` for details.
 
         Parameters
         ----------
@@ -605,7 +636,7 @@ class ComponentTree:
             Frame to adopt for this component
         """
         for c in self.components:
-            c.set_frame(frame)
+            c.set_model_frame(model_frame)
 
     def __iadd__(self, c):
         """Add another component or tree.
@@ -654,3 +685,41 @@ class ComponentTree:
     def __setstate__(self, state):
         self._tree = state[0]
         self._tree_to_components()
+
+    def project(self, model=None, frame=None):
+        """Project a model into a frame
+
+
+        Parameters
+        ----------
+        model: array
+            Image of the model to project.
+            This must be the same shape as `self.bbox`.
+            If `model` is `None` then `self.get_model()` is used.
+        frame: `~scarlet.frame.Frame`
+            The frame to project the model into.
+            If `frame` is `None` then the model is projected
+            into `self.model_frame`.
+
+        Returns
+        -------
+        projected_model: array
+            (Channels, Height, Width) image of the model
+        """
+        # Use the current model by default
+        if model is None:
+            model = self.get_model()
+        # Use the full model frame by default
+        if frame is None:
+            frame = self.model_frame
+
+        if hasattr(frame, "dtype"):
+            dtype = frame.dtype
+        else:
+            dtype = self.model_frame.dtype
+
+        frame_slices, model_slices = overlapped_slices(frame, self.bbox)
+
+        result = np.zeros(frame.shape, dtype=dtype)
+        result[frame_slices] = model[model_slices]
+        return result

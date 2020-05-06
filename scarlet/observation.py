@@ -6,7 +6,8 @@ from . import interpolation
 from . import fft
 from . import resampling
 
-from .bbox import Box
+from .bbox import Box, overlapped_slices
+
 from scarlet.operators_pybind11 import apply_filter
 
 
@@ -230,7 +231,6 @@ class Observation:
             coords = get_filter_coords(self._diff_kernels[0])
             self._convolution_slices = get_filter_bounds(coords.reshape(-1, 2))
 
-
     def _convolve(self, model):
         """Convolve the model in a single band
         """
@@ -242,19 +242,25 @@ class Observation:
             raise ValueError("`convolution` must be either 'real' or 'fft', got {}".format(self.convolution))
         return result
 
-    def render(self, model):
+    def render(self, model, in_frame=True):
         """Convolve a model to the observation frame
 
         Parameters
         ----------
         model: array
             The model from `Blend`
+        in_frame: bool
+            Whether or not the model must be contained in the observation frame
 
         Returns
         -------
         image_model: array
             `model` mapped into the observation frame
         """
+        if in_frame:
+            image_model = model[self.slices]
+        else:
+            image_model = model
 
         if self._diff_kernels is not None:
             model_images = self._convolve(model)
@@ -305,6 +311,22 @@ class Observation:
                                  weights=self.weights,
                                  wcs=self.frame.wcs,
                                  channels=self.frame.channels)
+
+    def project(self, frame):
+        """Project this observation into another frame
+
+        Note: the frame must have the same sampling and rotation,
+        but can differ in the shape and origin of the `Frame`.
+        """
+        frame_slices, observation_slices = overlapped_slices(frame, self.bbox)
+
+        if hasattr(frame, "dtype"):
+            dtype = frame.dtype
+        else:
+            dtype = self.images.dtype
+        result = np.zeros(frame.shape, dtype=dtype)
+        result[frame_slices] = self.images[observation_slices]
+        return result
 
 
 class LowResObservation(Observation):
