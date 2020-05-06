@@ -386,7 +386,7 @@ def show_sources(
 
         if show_observed:
             # Center the observation on the source and display it
-            _images = observation.project(rendered_box)
+            _images = observation._project(rendered_box)
             panel += 1
             ax[k][panel].imshow(img_to_rgb(_images, norm=norm, channel_map=channel_map), extent=extent)
             ax[k][panel].set_title("Observation".format(k))

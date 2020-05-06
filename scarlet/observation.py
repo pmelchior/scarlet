@@ -182,29 +182,9 @@ class Observation:
         -------
         None
         """
-<<<<<<< HEAD
-        # Find the box that contained this obs in model_frame
-        overlap = self.frame & model_frame
-
-        # Slices of the observation in the model
-        self.slices_for_model = tuple(slice(overlap.start[d]-model_frame.origin[d],
-                                            overlap.stop[d]-model_frame.origin[d]) for d in range(self.frame.D))
-        # Slices of the model in this observation
-        self.slices_for_images = tuple(slice(overlap.start[d], overlap.stop[d]) for d in range(self.frame.D))
-=======
-        # find the box that contained this obs in model_frame
-        shape = self.images.shape
-        yx0 = model_frame.get_pixel(self.frame.get_sky_coord((0, 0)))
-        #  channels of model that are represented in this observation
-        if self.frame.channels is model_frame.channels:
-            origin = (0, *yx0)
-        else:
-            assert self.frame.channels is not None and model_frame.channels is not None
-            cmin = list(model_frame.channels).index(self.frame.channels[0])
-            origin = (cmin, *yx0)
-        self.bbox = Box(shape, origin=origin)
-        self.slices = (self.bbox & model_frame).as_slices()
->>>>>>> Remove unecessary  method
+        slices = overlapped_slices(self.frame, model_frame)
+        self.slices_for_model = slices[0] #  Slice of model that overlaps with the observation
+        self.slices_for_images = slices[1] # Slice of images to match the model
 
         # check dtype consistency
         if self.frame.dtype != model_frame.dtype:
@@ -327,11 +307,13 @@ class Observation:
                                  wcs=self.frame.wcs,
                                  channels=self.frame.channels)
 
-    def project(self, frame):
+    def _project(self, frame):
         """Project this observation into another frame
 
         Note: the frame must have the same sampling and rotation,
         but can differ in the shape and origin of the `Frame`.
+        This method is a convenience function for now but should
+        not be considered supported and could be removed in a later version
         """
         frame_slices, observation_slices = overlapped_slices(frame, self.bbox)
 
