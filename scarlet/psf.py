@@ -240,8 +240,7 @@ class PsfObservation(Observation):
         self: `~scarlet.PsfObservation`
             Return this object to allow for chaining.
         """
-        self.bbox = Box(self.frame.shape)
-        self.slices = (self.bbox & self.frame).as_slices()
+        #self.slices = (self.bbox & self.frame).as_slices()
         self._diff_kernels = Fourier(psfs)
         self.convolution = convolution
         return self
@@ -254,8 +253,8 @@ class PsfObservation(Observation):
         relative error.
         """
         model_ = self.render(model)
-        images_ = self.images[self.slices_for_images]
-        weights_ = self.weights[self.slices_for_images]
+        images_ = self.images#[self.slices_for_images]
+        weights_ = self.weights#[self.slices_for_images]
         return np.sum(weights_ * (model_ - images_) ** 2) / 2
 
 

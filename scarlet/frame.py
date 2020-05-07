@@ -45,10 +45,11 @@ class Frame(Box):
                 self._psfs = PSF(psfs)
 
         assert channels is None or len(channels) == self.shape[0]
+        if channels is None:
+            logger.warning(
+                "No channels specified. Possible, but multi-observation processing will likely fail!")
         self.channels = channels
         self.dtype = dtype
-
-
 
     @property
     def C(self):
@@ -218,39 +219,6 @@ class Frame(Box):
             obs.match(frame)
 
         return frame
-
-    def __and__(self, other):
-        """Intersection of two Frames (box and channels)
-
-        If there is no intersection between the two bounding
-        boxes then an empty bounding box is returned.
-
-        Parameters
-        ----------
-        other: `Frame`
-            The other frame in the intersection
-
-        Returns
-        -------
-        result: `Box`
-            The rectangular box that is in the overlap region
-            of both frames.
-        """
-        assert other.D == self.D
-        bounds = []
-        if self.channels is other.channels:
-            cmin = 0
-            cmax = self.C + 1
-        else:
-            assert self.channels is not None and other.channels is not None
-            cmin = list(other.channels).index(self.channels[0])
-            cmax = cmin + self.C + 1
-        bounds.append((cmin, cmax))
-        for d in range(self.D - 1):
-            bounds.append(
-                (max(self.start[d + 1], other.start[d + 1]), min(self.stop[d + 1], other.stop[d + 1]))
-            )
-        return Box.from_bounds(*bounds)
 
     @property
     def bbox(self):

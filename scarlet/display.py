@@ -2,7 +2,6 @@ import numpy as np
 from astropy.visualization.lupton_rgb import LinearMapping, AsinhMapping
 import matplotlib.pyplot as plt
 from .component import ComponentTree
-from .bbox import Box
 
 
 def channels_to_rgb(channels):

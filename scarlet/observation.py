@@ -155,7 +155,8 @@ class Observation:
                 self.weights.shape == self.images.shape
         ), "Weights needs to have same shape as images"
         self._padding = padding
-        self.slices = (slice(None), slice(None), slice(None))
+        self.slices_for_model = (slice(None), slice(None), slice(None))
+        self.slices_for_images = (slice(None), slice(None), slice(None))
         self._diff_kernels = None
 
     def match(self, model_frame, diff_kernels=None, convolution="fft"):
@@ -182,9 +183,14 @@ class Observation:
         -------
         None
         """
+        self.model_frame = model_frame
+        if model_frame.channels is not None and self.frame.channels is not None:
+            channel_origin = list(model_frame.channels).index(self.frame.channels[0])
+            self.frame.origin = (channel_origin, *self.frame.origin[1:])
+
         slices = overlapped_slices(self.frame, model_frame)
-        self.slices_for_model = slices[0] #  Slice of model that overlaps with the observation
-        self.slices_for_images = slices[1] # Slice of images to match the model
+        self.slices_for_images = slices[0] # Slice of images to match the model
+        self.slices_for_model = slices[1] #  Slice of model that overlaps with the observation
 
         # check dtype consistency
         if self.frame.dtype != model_frame.dtype:
@@ -252,17 +258,15 @@ class Observation:
         image_model: array
             `model` mapped into the observation frame
         """
-        if in_frame:
-            image_model = model[self.slices]
-        else:
-            image_model = model
-
         if self._diff_kernels is not None:
             model_images = self._convolve(model)
         else:
             model_images = model
 
-        return model_images[:, self.slices_for_model[-2], self.slices_for_model[-1]]
+        if in_frame:
+            model_images = model_images[:, self.slices_for_model[-2], self.slices_for_model[-1]]
+
+        return model_images
 
     def get_loss(self, model):
         """Computes the loss/fidelity of a given model wrt to the observation
@@ -278,10 +282,14 @@ class Observation:
             Scalar tensor with the likelihood of the model
             given the image data
         """
-
         model_ = self.render(model)
-        images_ = self.images[:, self.slices_for_images[-2], self.slices_for_images[-1]]
-        weights_ = self.weights[:, self.slices_for_images[-2], self.slices_for_images[-1]]
+        if self.frame != self.model_frame:
+            images_ = self.images[self.slices_for_images]
+            weights_ = self.weights[self.slices_for_images]
+        else:
+            images_ = self.images
+            weights_ = self.weights
+
         # normalization of the single-pixel likelihood:
         # 1 / [(2pi)^1/2 (sigma^2)^1/2]
         # with inverse variance weights: sigma^2 = 1/weight
@@ -307,7 +315,7 @@ class Observation:
                                  wcs=self.frame.wcs,
                                  channels=self.frame.channels)
 
-    def _project(self, frame):
+    def _project(self, frame, images=None):
         """Project this observation into another frame
 
         Note: the frame must have the same sampling and rotation,
@@ -317,13 +325,20 @@ class Observation:
         """
         frame_slices, observation_slices = overlapped_slices(frame, self.bbox)
 
+        if images is None:
+            images = self.images
+
         if hasattr(frame, "dtype"):
             dtype = frame.dtype
         else:
-            dtype = self.images.dtype
+            dtype = images.dtype
         result = np.zeros(frame.shape, dtype=dtype)
-        result[frame_slices] = self.images[observation_slices]
+        result[frame_slices] = images[observation_slices]
         return result
+
+    @property
+    def bbox(self):
+        return self.frame.bbox
 
 
 class LowResObservation(Observation):
@@ -649,7 +664,6 @@ class LowResObservation(Observation):
         loss: float
             Loss of the model
         """
-
         model_ = self.render(model)
         images_ = self.images
         weights_ = self.weights
