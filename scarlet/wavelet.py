@@ -18,7 +18,7 @@ class Starlet(object):
         """ Initialise the Starlet object
 
         Paramters
-        image: Fourier object
+        image: numpy ndarray
             image to transform
         lvl: int
             number of starlet levels to use in the decomposition
@@ -69,8 +69,8 @@ class Starlet(object):
 
 
     @property
-    def starlet(self):
-        """The real space image"""
+    def coefficients(self):
+        """Starlet coefficients"""
         return fft._centered(self._starlet,
                              [self._image_shape[0], self._starlet_shape[-3], *self._image_shape[-2:]])
 
@@ -93,7 +93,7 @@ class Starlet(object):
         Returns
         -------
         Starlet: Starlet object
-            the starlet object initialised with the image that corresponds to the inverse transfform of `starlet`
+            the starlet object initialised with the image that corresponds to the inverse transform of `starlet`
         """
         # Shape of the image to reconstruct
         if (shape is not None) and (starlet_shape is not None):
@@ -115,7 +115,16 @@ class Starlet(object):
 
 
     def transform(self):
-        """ Performs the wavelet transform of an image by comvolution with the seed wavelet and caches the seed
+        """ Performs the wavelet transform of an image by convolution with the seed wavelet
+
+         Seed wavelets are the transform of a dirac in starlets when computed for a given shape,
+         the seed is cached to be reused for images with the same shape.
+         The transform is applied to `self._image`
+
+        Returns
+        -------
+        starlet: numpy ndarray
+            the starlet transform of the Starlet object's image
         """
         try:
             #Check if the starlet seed exists
@@ -138,8 +147,8 @@ class Starlet(object):
 
         Returns
         -------
-        starlet: Fourier object
-            the starlet transform of a Dirac fonction as the `image` of a Fourier object
+        starlet: numpy ndarray
+            the starlet transform of the Starlet object's image
         """
         return mk_starlet(self._starlet_shape, self.image)
 
@@ -296,5 +305,5 @@ def mad_wavelet(image):
     mad: array
         median absolute deviation each image in the cube
     """
-    sigma = mad(Starlet(image).starlet[:,0,...], axis = (-2,-1))
+    sigma = mad(Starlet(image).coefficients[:,0,...], axis = (-2,-1))
     return sigma

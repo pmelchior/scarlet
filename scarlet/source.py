@@ -396,11 +396,12 @@ class PointSource(FunctionComponent):
     def _psf_wrapper(self, *parameters):
         return self.frame.psf.__call__(*parameters, bbox=self.bbox)[0]
 
-class WaveletSource(FunctionComponent):
-    """Source intialized with a single pixel
+class StarletSource(FunctionComponent):
+    """Source intialized with starlet coefficients.
 
-    Point sources are initialized with the SED of the center pixel,
-    and the morphology taken from `frame.psfs`, centered at `sky_coord`.
+    Sources are initialized with the SED of the center pixel,
+    and the morphologies are initialised as ExtendedSources
+    and transformed into starlet coefficients.
     """
 
     def __init__(
@@ -459,11 +460,11 @@ class WaveletSource(FunctionComponent):
             constraint=PositivityConstraint(),
         )
         # Threshold in units of noise
-        thresh *= np.sum(sed*noise)
+        thresh = 5 * np.sum(sed*noise)
 
-        # Starlet transform
+        # Starlet transform of morphologies (n1,n2) with 4 dimensions: (1,lvl,n1,n2), lvl = wavelet scales
         transform = Starlet(morph)
-        morph = transform.starlet
+        morph = transform.coefficients
         # wavelet-scale norm
         wavelet_norm = transform.norm
         #One threshold per wavelet scale: thresh*norm
@@ -485,6 +486,9 @@ class WaveletSource(FunctionComponent):
             return self.pixel_center
 
     def _iuwt(self, param):
+        """ Takes the inverse transform of parameters as starlet coefficients.
+
+        """
         return Starlet.from_starlet(param).image[0]
 
 class ExtendedSource(FactorizedComponent):
