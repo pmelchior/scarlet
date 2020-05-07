@@ -466,15 +466,15 @@ class StarletSource(FunctionComponent):
         transform = Starlet(morph)
         morph = transform.coefficients
         # wavelet-scale norm
-        wavelet_norm = transform.norm
+        starlet_norm = transform.norm
         #One threshold per wavelet scale: thresh*norm
         thresh_array = np.zeros(morph.shape) + thresh
-        thresh_array[-3:] = thresh_array[-3:] * np.array([wavelet_norm])[..., np.newaxis, np.newaxis]
+        thresh_array[-3:] = thresh_array[-3:] * np.array([starlet_norm])[..., np.newaxis, np.newaxis]
         # We don't threshold the last scale
         thresh_array[...,-1,:,:] = np.inf
 
         morph_constraint = L0Constraint(thresh_array)
-        morph = Parameter(morph, name="morph", step=1e-2, constraint=morph_constraint)
+        morph = Parameter(morph, name="morph", step=1.e-3, constraint=morph_constraint)
 
         super().__init__(frame, sed, morph, self._iuwt, bbox=bbox)
 
@@ -489,7 +489,7 @@ class StarletSource(FunctionComponent):
         """ Takes the inverse transform of parameters as starlet coefficients.
 
         """
-        return Starlet.from_starlet(param).image[0]
+        return Starlet(coefficients = param).image[0]
 
 class ExtendedSource(FactorizedComponent):
     def __init__(

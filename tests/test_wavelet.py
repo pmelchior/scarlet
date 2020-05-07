@@ -34,18 +34,5 @@ class TestWavelet(object):
         assert_equal(starlet_transform.coefficients.shape[1], 4)
 
         # Test inverse
-        inverse = wavelet.Starlet.from_starlet(starlet_transform.coefficients).image
+        inverse = wavelet.Starlet(coefficients = starlet_transform.coefficients).image
         assert_almost_equal(inverse, psf)
-
-
-    def test_getitem(self):
-        """Test matching two PSFs with a spectral dimension
-        """
-        # PSF
-        shape = (128, 128)
-        psf = self.get_psfs(shape, [1])
-        # Slice
-        starlet_transform = wavelet.Starlet(psf)
-        sliced = starlet_transform[0, 20:, :-10]
-        assert_array_equal(sliced.image.shape, [1, 108, 118])
-        assert_array_equal(sliced.coefficients.shape, [1, 7, 108, 118])

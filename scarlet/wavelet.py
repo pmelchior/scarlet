@@ -14,7 +14,7 @@ class Starlet(object):
         shape. The fft of the seed starlet is cached so that it can be reused in the transform of other
         images that have the same shape.
     """
-    def __init__(self, image, lvl = None, starlet = None, direct = False):
+    def __init__(self, image = None, lvl = None, coefficients = None, direct = True):
         """ Initialise the Starlet object
 
         Paramters
@@ -28,31 +28,42 @@ class Starlet(object):
             if set to True, uses direct wavelet transform with the a trou algorithm.
             if set to False, the transform is performed by convolving the image by the wavelet transform of a dirac.
         """
-        # Shape for the starlet padding. It is also an fft fast shape.
         self.seed = None
-        if starlet is None:
-            self._starlet_shape = get_starlet_shape(image.shape, lvl = lvl)
-        else:
-            self._starlet_shape = starlet.shape
-        # Image (as a cube)
-        if len(image.shape) == 2:
-            self._image = image[np.newaxis, :, :]
-        else:
-            self._image = image
-        # Original shape of the image
-        self._image_shape = self._image.shape
-        # Can be initialised by a starlet transform to perform inverse transforms
-        if starlet is None:
-            if direct == True:
-                self._starlet = self.direct_transform()
+        # Transform method
+        self._direct = direct
+        if coefficients is None:
+            if image is None:
+                raise InputError('At least an image or a set of coefficients should be provided')
             else:
-                self._starlet = self.transform()
-        else:
-            if len(np.shape(starlet)) == 3:
-                self._starlet = starlet[np.newaxis, :, :, :]
-            else:
-                self._starlet = starlet
+                if len(image.shape) == 2:
+                    self._image = image[np.newaxis, :, :]
+                else:
+                    self._image = image
+                # Original shape of the image
+                self._image_shape = self._image.shape
+                # Padding shape for the starlet transform
+                if lvl is None:
+                    self._lvl = get_starlet_shape(image.shape)
+                else:
+                    self._lvl = lvl
+            self._coefficients = None
 
+        else:
+            self._image_shape = [coefficients.shape[0], *coefficients.shape[-2:]]
+            if len(np.shape(coefficients)) == 3:
+                self._coefficients = coefficients[np.newaxis, :, :, :]
+            else:
+                self._coefficients = coefficients
+            self._lvl = self._coefficients.shape[1]
+            if image is None:
+                self._image = None
+            else:
+                if len(image.shape) == 2:
+                    self._image = image[np.newaxis, :, :]
+                else:
+                    self._image = image
+
+        self._starlet_shape = [self._lvl, *self._image_shape[-2:]]
         if self.seed is None:
             self.seed = mk_starlet(self._starlet_shape)
         self._norm = np.sqrt(np.sum(self.seed ** 2, axis=(-2, -1)))
@@ -60,59 +71,39 @@ class Starlet(object):
     @property
     def image(self):
         """The real space image"""
-        return self._image
+        if self._image is None:
+            rec = []
+            for star in self._coefficients:
+                rec.append(iuwt(star))
+            return np.array(rec)
+        else:
+            return self._image
 
     @property
     def norm(self):
         """The norm of the seed wavelet in each wavelet level (not in coarse wavelet)"""
         return self._norm
 
-
     @property
     def coefficients(self):
         """Starlet coefficients"""
-        return fft._centered(self._starlet,
-                             [self._image_shape[0], self._starlet_shape[-3], *self._image_shape[-2:]])
+        if self._coefficients is None:
+            if self._direct == True:
+                return self.direct_transform()
+            else:
+                return self.transform()
+        else:
+            return self._coefficients
 
     @property
     def shape(self):
         """The shape of the real space image"""
         return self._image.shape
 
-    @staticmethod
-    def from_starlet(starlet, shape = None, starlet_shape = None):
-        """ Creates a Starlet object from its transform and uses the inverse transform to create the image
-
-        Parameters
-        ----------
-        starlet: array
-            The starlet transform of an array to inverse transform.
-        shape: tuple
-            the expected shape of the untransformed image without padding
-
-        Returns
-        -------
-        Starlet: Starlet object
-            the starlet object initialised with the image that corresponds to the inverse transform of `starlet`
-        """
-        # Shape of the image to reconstruct
-        if (shape is not None) and (starlet_shape is not None):
-            if not ((starlet.shape[-2:] is shape[-2:]) ^ (starlet.shape[-2:] is starlet_shape[-2:])):
-                raise InputError('Either shape or starlet should have the same shape as the starlet.')
-        if shape is None:
-            shape = [*np.shape(starlet)[:-3],*np.shape(starlet)[-2:]]
-        if (starlet_shape == None):
-            starlet_shape = get_starlet_shape(shape)
-        starlet_shape[0] = starlet.shape[0]
-        if len(starlet.shape) >3:
-            rec = []
-            for star in starlet:
-                rec.append(fft._centered(iuwt(star), shape[-2:]))
-            return Starlet(np.array(rec), starlet = starlet)
-
-        return Starlet(fft._centered(iuwt(starlet), shape), starlet = starlet)
-
-
+    @property
+    def scales(self):
+        """Number of starlet scales"""
+        return self._lvl
 
     def transform(self):
         """ Performs the wavelet transform of an image by convolution with the seed wavelet
@@ -137,10 +128,10 @@ class Starlet(object):
             seed_fft.fft(self._starlet_shape[-2:], (-2,-1))
             # Cache the fft
             Cache.set('Starlet', tuple(self._starlet_shape), seed_fft)
-        starlets = []
+        coefficients = []
         for im in self._image:
-            starlets.append(fft.convolve(seed_fft, fft.Fourier(im[np.newaxis, :, :]), axes = (-2,-1)).image)
-        return np.array(starlets)
+            coefficients.append(fft.convolve(seed_fft, fft.Fourier(im[np.newaxis, :, :]), axes = (-2,-1)).image)
+        return np.array(coefficients)
 
     def direct_transform(self):
         """ Computes the direct starlet transform of the starlet's image
@@ -155,22 +146,6 @@ class Starlet(object):
     def __len__(self):
         return len(self._image)
 
-    def __getitem__(self, index):
-        # Make the index a tuple
-        if not hasattr(index, "__getitem__"):
-            index = tuple([index])
-        star_index = []
-        if len(index) > 1:
-            for i in range(len(self._starlet_shape)):
-                if i == len(self._starlet_shape)-3:
-                    star_index.append(slice(None))
-                else:
-                    try:
-                        star_index.append(index[i])
-                    except:
-                        star_index.append(slice(None))
-        return Starlet(self.image[index], starlet = self._starlet[tuple(star_index)])
-
 def get_starlet_shape(shape, lvl = None):
     """ Get the pad shape for a starlet transform
     """
@@ -178,9 +153,7 @@ def get_starlet_shape(shape, lvl = None):
     lvl_max = np.int(np.log2(np.min(shape[-2:])))
     if (lvl is None) or lvl > lvl_max:
         lvl = lvl_max
-    fft_shape = fft._get_fft_shape(shape, shape, max = True)
-    fft_shape = [*shape[:-2],lvl,*fft_shape[-2:]]
-    return fft_shape
+    return lvl
 
 def mk_starlet(shape, image = None):
     """ Creates a starlet for a given 2d shape.
@@ -213,11 +186,10 @@ def mk_starlet(shape, image = None):
                 wave.append(mk_starlet(shape, im))
             return np.array(wave)
         else:
-            c = fft._pad(image, shape[-2:])
+            c = image
     c = fft.Fourier(c)
     ## wavelet set of coefficients.
     wave = np.zeros([lvl, n1, n2])
-
     for i in np.arange(lvl - 1):
         newh = np.zeros((n + (n - 1) * (2 ** i - 1), 1))
         newh[0::2 ** i, 0] = h
