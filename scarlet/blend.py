@@ -108,6 +108,13 @@ class Blend(ComponentTree):
 
         return self
 
+    def get_model(self, *parameters):
+        """Override `ComponentTree.get_model` to use the model frame
+
+        See `~scarlet.ComponentTree.get_model` for more info.
+        """
+        return super().get_model(*parameters, frame=self.model_frame)
+
     def _loss(self, *parameters):
         """Loss function for autograd
 
@@ -137,3 +144,13 @@ class Blend(ComponentTree):
 
         if callback is not None:
             callback(*parameters, it=it)
+
+    @property
+    def bbox(self):
+        """Bounding box of the blend
+
+        Override the bounding box of the `ComponentTree`,
+        which includes the area of sources that extend beyond
+        the model frame boundaries.
+        """
+        return self.model_frame.bbox

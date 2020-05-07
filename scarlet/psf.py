@@ -193,7 +193,7 @@ class PSFDiffKernel(Component):
             name="kernel",
             step=step,
         )
-        super().__init__(frame, kernel)
+        super().__init__(frame, frame.bbox, kernel)
 
     def get_model(self, *parameters):
         kernel = self.kernel
