@@ -6,7 +6,6 @@ from proxmin.utils import MatrixAdapter
 
 from . import fft
 from . import interpolation
-from .cache import Cache
 
 
 def sort_by_radius(shape, center=None):
@@ -516,80 +515,72 @@ def getRadialMonotonicWeights(shape, neighbor_weight="flat", center=None):
 
     if center is None:
         center = ((shape[0] - 1) // 2, (shape[1] - 1) // 2)
-    name = "RadialMonotonicWeights"
 
-    key = tuple(shape) + tuple(center) + (neighbor_weight,)
-    try:
-        cosNorm = Cache.check(name, key)
-    except KeyError:
+    # Center on the center pixel
+    py, px = int(center[0]), int(center[1])
+    # Calculate the distance between each pixel and the peak
+    x = np.arange(shape[1])
+    y = np.arange(shape[0])
+    X, Y = np.meshgrid(x, y)
+    X = X - px
+    Y = Y - py
+    distance = np.sqrt(X ** 2 + Y ** 2)
 
-        # Center on the center pixel
-        py, px = int(center[0]), int(center[1])
-        # Calculate the distance between each pixel and the peak
-        x = np.arange(shape[1])
-        y = np.arange(shape[0])
-        X, Y = np.meshgrid(x, y)
-        X = X - px
-        Y = Y - py
-        distance = np.sqrt(X ** 2 + Y ** 2)
+    # Find each pixels neighbors further from the peak and mark them as invalid
+    # (to be removed later)
+    distArr, mask = diagonalizeArray(distance, dtype=np.float64)
+    relativeDist = (distance.flatten()[:, None] - distArr.T).T
+    invalidPix = relativeDist <= 0
 
-        # Find each pixels neighbors further from the peak and mark them as invalid
-        # (to be removed later)
-        distArr, mask = diagonalizeArray(distance, dtype=np.float64)
-        relativeDist = (distance.flatten()[:, None] - distArr.T).T
-        invalidPix = relativeDist <= 0
+    # Calculate the angle between each pixel and the x axis, relative to the peak position
+    # (also avoid dividing by zero and set the tan(infinity) pixel values to pi/2 manually)
+    inf = X == 0
+    tX = X.copy()
+    tX[inf] = 1
+    angles = np.arctan2(-Y, -tX)
+    angles[inf & (Y != 0)] = 0.5 * np.pi * np.sign(angles[inf & (Y != 0)])
 
-        # Calculate the angle between each pixel and the x axis, relative to the peak position
-        # (also avoid dividing by zero and set the tan(infinity) pixel values to pi/2 manually)
-        inf = X == 0
-        tX = X.copy()
-        tX[inf] = 1
-        angles = np.arctan2(-Y, -tX)
-        angles[inf & (Y != 0)] = 0.5 * np.pi * np.sign(angles[inf & (Y != 0)])
+    # Calculate the angle between each pixel and its neighbors
+    xArr, m = diagonalizeArray(X)
+    yArr, m = diagonalizeArray(Y)
+    dx = (xArr.T - X.flatten()[:, None]).T
+    dy = (yArr.T - Y.flatten()[:, None]).T
+    # Avoid dividing by zero and set the tan(infinity) pixel values to pi/2 manually
+    inf = dx == 0
+    dx[inf] = 1
+    relativeAngles = np.arctan2(dy, dx)
+    relativeAngles[inf & (dy != 0)] = (
+        0.5 * np.pi * np.sign(relativeAngles[inf & (dy != 0)])
+    )
 
-        # Calculate the angle between each pixel and its neighbors
-        xArr, m = diagonalizeArray(X)
-        yArr, m = diagonalizeArray(Y)
-        dx = (xArr.T - X.flatten()[:, None]).T
-        dy = (yArr.T - Y.flatten()[:, None]).T
-        # Avoid dividing by zero and set the tan(infinity) pixel values to pi/2 manually
-        inf = dx == 0
-        dx[inf] = 1
-        relativeAngles = np.arctan2(dy, dx)
-        relativeAngles[inf & (dy != 0)] = (
-            0.5 * np.pi * np.sign(relativeAngles[inf & (dy != 0)])
-        )
+    # Find the difference between each pixels angle with the peak
+    # and the relative angles to its neighbors, and take the
+    # cos to find its neighbors weight
+    dAngles = (angles.flatten()[:, None] - relativeAngles.T).T
+    cosWeight = np.cos(dAngles)
+    # Mask edge pixels, array elements outside the operator (for offdiagonal bands with < N elements),
+    # and neighbors further from the peak than the reference pixel
+    cosWeight[invalidPix] = 0
+    cosWeight[mask] = 0
 
-        # Find the difference between each pixels angle with the peak
-        # and the relative angles to its neighbors, and take the
-        # cos to find its neighbors weight
-        dAngles = (angles.flatten()[:, None] - relativeAngles.T).T
-        cosWeight = np.cos(dAngles)
-        # Mask edge pixels, array elements outside the operator (for offdiagonal bands with < N elements),
-        # and neighbors further from the peak than the reference pixel
-        cosWeight[invalidPix] = 0
-        cosWeight[mask] = 0
+    if neighbor_weight == "nearest":
+        # Only use a single pixel most in line with peak
+        cosNorm = np.zeros_like(cosWeight)
+        columnIndices = np.arange(cosWeight.shape[1])
+        maxIndices = np.argmax(cosWeight, axis=0)
+        indices = maxIndices * cosNorm.shape[1] + columnIndices
+        indices = np.unravel_index(indices, cosNorm.shape)
+        cosNorm[indices] = 1
+        # Remove the reference for the peak pixel
+        cosNorm[:, px + py * shape[1]] = 0
+    else:
+        if neighbor_weight == "flat":
+            cosWeight[cosWeight != 0] = 1
 
-        if neighbor_weight == "nearest":
-            # Only use a single pixel most in line with peak
-            cosNorm = np.zeros_like(cosWeight)
-            columnIndices = np.arange(cosWeight.shape[1])
-            maxIndices = np.argmax(cosWeight, axis=0)
-            indices = maxIndices * cosNorm.shape[1] + columnIndices
-            indices = np.unravel_index(indices, cosNorm.shape)
-            cosNorm[indices] = 1
-            # Remove the reference for the peak pixel
-            cosNorm[:, px + py * shape[1]] = 0
-        else:
-            if neighbor_weight == "flat":
-                cosWeight[cosWeight != 0] = 1
-
-            # Normalize the cos weights for each pixel
-            normalize = np.sum(cosWeight, axis=0)
-            normalize[normalize == 0] = 1
-            cosNorm = (cosWeight.T / normalize[:, None]).T
-            cosNorm[mask] = 0
-
-        Cache.set(name, key, cosNorm)
+        # Normalize the cos weights for each pixel
+        normalize = np.sum(cosWeight, axis=0)
+        normalize[normalize == 0] = 1
+        cosNorm = (cosWeight.T / normalize[:, None]).T
+        cosNorm[mask] = 0
 
     return cosNorm
