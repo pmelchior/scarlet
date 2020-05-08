@@ -9,26 +9,6 @@ from . import interpolation
 from .cache import Cache
 
 
-def _prox_strict_monotonic(X, step, ref_idx, dist_idx, thresh=0):
-    """Force an intensity profile to be monotonic based on nearest neighbor
-    """
-    from . import operators_pybind11
-
-    operators_pybind11.prox_monotonic(X.reshape(-1), ref_idx, dist_idx, thresh)
-    return X
-
-
-def _prox_weighted_monotonic(X, step, weights, didx, offsets, thresh=0):
-    """Force an intensity profile to be monotonic based on weighting neighbors
-    """
-    from . import operators_pybind11
-
-    operators_pybind11.prox_weighted_monotonic(
-        X.reshape(-1), weights, offsets, didx, thresh
-    )
-    return X
-
-
 def sort_by_radius(shape, center=None):
     """Sort indices distance from the center
 
@@ -70,16 +50,26 @@ def sort_by_radius(shape, center=None):
     return didx
 
 
-def prox_strict_monotonic(shape, use_nearest=False, thresh=0, center=None):
+def _prox_weighted_monotonic(X, step, weights, didx, offsets, min_gradient=0):
+    """Force an intensity profile to be monotonic based on weighting neighbors
+    """
+    from . import operators_pybind11
+
+    operators_pybind11.prox_weighted_monotonic(
+        X.reshape(-1), weights, offsets, didx, min_gradient
+    )
+    return X
+
+
+def prox_weighted_monotonic(shape, neighbor_weight="flat", min_gradient=0, center=None):
     """Build the prox_monotonic operator
 
     Parameters
     ----------
-    use_nearest: `bool`
-        Whether to use the nearest pixel to the center for comparison
-        (`use_nearest=True`) or use a weighted combination of all
-        neighbors closer to the central pixel (`use_nearest=False`).
-    thresh: `float`
+    neighbor_weight: ['flat', 'angle', 'nearest']
+        Which weighting scheme to average all neighbor pixels towards `center`
+        as reference for the monotonicty test.
+    min_gradient: `float`
         Forced gradient. A `thresh` of zero will allow a pixel to be the
         same value as its reference pixels, while a `thresh` of one
         will force the pixel to zero.
@@ -93,36 +83,18 @@ def prox_strict_monotonic(shape, use_nearest=False, thresh=0, center=None):
     """
     height, width = shape
     didx = sort_by_radius(shape, center)
-
-    if use_nearest:
-        from scipy import sparse
-
-        if thresh != 0:
-            # thresh and nearest neighbors are not compatible, since this thresholds the
-            # central pixel and eventually sets the entire array to zero
-            raise ValueError(
-                "Thresholding does not work with nearest neighbor monotonicity"
-            )
-        monotonicOp = getRadialMonotonicOp(shape, useNearest=True)
-        x_idx, ref_idx = sparse.find(monotonicOp.L == 1)[:2]
-        ref_idx = ref_idx[np.argsort(x_idx)]
-        result = partial(
-            _prox_strict_monotonic,
-            ref_idx=ref_idx.tolist(),
-            dist_idx=didx.tolist(),
-            thresh=thresh,
-        )
-    else:
-        coords = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
-        offsets = np.array([width * y + x for y, x in coords])
-        weights = getRadialMonotonicWeights(shape, useNearest=False, center=center)
-        result = partial(
-            _prox_weighted_monotonic,
-            weights=weights,
-            didx=didx[1:],
-            offsets=offsets,
-            thresh=thresh,
-        )
+    coords = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
+    offsets = np.array([width * y + x for y, x in coords])
+    weights = getRadialMonotonicWeights(
+        shape, neighbor_weight=neighbor_weight, center=center
+    )
+    result = partial(
+        _prox_weighted_monotonic,
+        weights=weights,
+        didx=didx[1:],
+        offsets=offsets,
+        min_gradient=min_gradient,
+    )
     return result
 
 
@@ -261,14 +233,14 @@ def prox_kspace_symmetry(X, step, shift=None, padding=10):
     # Compute shift operator
     shifter_y, shifter_x = interpolation.mk_shifter(fft_shape)
 
-    #Apply shift in Fourier
+    # Apply shift in Fourier
     result_fft = X_fft * np.exp(shifter_y[:, np.newaxis] * (-dy))
     result_fft *= np.exp(shifter_x[np.newaxis, :] * (-dx))
 
     # symmetrize
     result_fft = result_fft.real
 
-    #Unshift
+    # Unshift
     result_fft = result_fft * np.exp(shifter_y[:, np.newaxis] * dy)
     result_fft = result_fft * np.exp(shifter_x[np.newaxis, :] * dx)
 
@@ -534,19 +506,20 @@ def diagonalsToSparse(diagonals, shape, dtype=np.float64):
     return diagonalArr
 
 
-def getRadialMonotonicWeights(shape, useNearest=True, minGradient=1, center=None):
+def getRadialMonotonicWeights(shape, neighbor_weight="flat", center=None):
     """Create the weights used for the Radial Monotonicity Operator
     This version of the radial monotonicity operator selects all of the pixels closer to the peak
     for each pixel and weights their flux based on their alignment with a vector from the pixel
     to the peak. In order to quickly create this using sparse matrices, its construction is a bit opaque.
     """
+    assert neighbor_weight in ["flat", "angle", "nearest"]
+
     if center is None:
         center = ((shape[0] - 1) // 2, (shape[1] - 1) // 2)
     name = "RadialMonotonicWeights"
 
-    key = tuple(shape) + tuple(center) + (useNearest, minGradient)
+    key = tuple(shape) + tuple(center) + (neighbor_weight,)
     try:
-
         cosNorm = Cache.check(name, key)
     except KeyError:
 
@@ -574,7 +547,7 @@ def getRadialMonotonicWeights(shape, useNearest=True, minGradient=1, center=None
         angles = np.arctan2(-Y, -tX)
         angles[inf & (Y != 0)] = 0.5 * np.pi * np.sign(angles[inf & (Y != 0)])
 
-        # Calcualte the angle between each pixel and it's neighbors
+        # Calculate the angle between each pixel and its neighbors
         xArr, m = diagonalizeArray(X)
         yArr, m = diagonalizeArray(Y)
         dx = (xArr.T - X.flatten()[:, None]).T
@@ -597,17 +570,20 @@ def getRadialMonotonicWeights(shape, useNearest=True, minGradient=1, center=None
         cosWeight[invalidPix] = 0
         cosWeight[mask] = 0
 
-        if useNearest:
+        if neighbor_weight == "nearest":
             # Only use a single pixel most in line with peak
             cosNorm = np.zeros_like(cosWeight)
             columnIndices = np.arange(cosWeight.shape[1])
             maxIndices = np.argmax(cosWeight, axis=0)
             indices = maxIndices * cosNorm.shape[1] + columnIndices
             indices = np.unravel_index(indices, cosNorm.shape)
-            cosNorm[indices] = minGradient
+            cosNorm[indices] = 1
             # Remove the reference for the peak pixel
             cosNorm[:, px + py * shape[1]] = 0
         else:
+            if neighbor_weight == "flat":
+                cosWeight[cosWeight != 0] = 1
+
             # Normalize the cos weights for each pixel
             normalize = np.sum(cosWeight, axis=0)
             normalize[normalize == 0] = 1
@@ -617,39 +593,3 @@ def getRadialMonotonicWeights(shape, useNearest=True, minGradient=1, center=None
         Cache.set(name, key, cosNorm)
 
     return cosNorm
-
-
-def getRadialMonotonicOp(shape, useNearest=True, minGradient=1, subtract=True):
-    """Create an operator to constrain radial monotonicity
-    This version of the radial monotonicity operator selects all of the pixels closer to the peak
-    for each pixel and weights their flux based on their alignment with a vector from the pixel
-    to the peak. In order to quickly create this using sparse matrices, its construction is a bit opaque.
-    """
-    import scipy.sparse
-
-    name = "RadialMonotonic"
-    key = tuple(shape) + (useNearest, minGradient, subtract)
-    try:
-        monotonic = Cache.check(name, key)
-    except KeyError:
-
-        cosNorm = getRadialMonotonicWeights(shape, useNearest=useNearest, minGradient=1)
-        cosArr = diagonalsToSparse(cosNorm, shape)
-
-        # The identity with the peak pixel removed represents the reference pixels
-        # Center on the center pixel
-        px = int(shape[1] / 2)
-        py = int(shape[0] / 2)
-        # Calculate the distance between each pixel and the peak
-        size = shape[0] * shape[1]
-        diagonal = np.ones(size)
-        diagonal[px + py * shape[1]] = -1
-        if subtract:
-            monotonic = cosArr - scipy.sparse.diags(diagonal, offsets=0)
-        else:
-            monotonic = cosArr
-        monotonic = MatrixAdapter(monotonic.tocoo(), axis=1)
-        monotonic.spectral_norm
-        Cache.set(name, key, monotonic)
-
-    return monotonic
