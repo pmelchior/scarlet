@@ -461,7 +461,7 @@ class ExtendedSource(FactorizedComponent):
 
         # backwards compatibility: monotonic was boolean
         if monotonic is True:
-            neighbor_weight = "angle"
+            monotonic = "angle"
         elif monotonic is False:
             monotonic = None
         if monotonic is not None:
@@ -574,7 +574,7 @@ class MultiComponentSource(ComponentTree):
 
         # backwards compatibility: monotonic was boolean
         if monotonic is True:
-            neighbor_weight = "angle"
+            monotonic = "angle"
         elif monotonic is False:
             monotonic = None
         if monotonic is not None:
