@@ -166,13 +166,7 @@ def trim_morphology(sky_coord, frame, morph, bg_cutoff, thresh):
 
 
 def init_extended_source(
-    sky_coord,
-    frame,
-    observations,
-    obs_idx=0,
-    thresh=1,
-    symmetric=True,
-    monotonic="flat",
+    sky_coord, frame, observations, obs_idx=0, thresh=1, symmetric=True, monotonic=True,
 ):
     """Initialize the source that is symmetric and monotonic
     See `ExtendedSource` for a description of the parameters
@@ -213,10 +207,10 @@ def init_extended_source(
             morph, 0, center=center, algorithm="sdss"
         )
 
-    if monotonic is not None:
+    if monotonic:
         # use finite thresh to remove flat bridges
         prox_monotonic = operator.prox_weighted_monotonic(
-            morph.shape, neighbor_weight=monotonic, center=center, min_gradient=0.2
+            morph.shape, neighbor_weight="flat", center=center, min_gradient=0.2
         )
         morph = prox_monotonic(morph, 0).reshape(morph.shape)
 
@@ -232,7 +226,7 @@ def init_multicomponent_source(
     flux_percentiles=None,
     thresh=1.0,
     symmetric=True,
-    monotonic="flat",
+    monotonic=True,
 ):
     """Initialize multiple components
     See `MultiComponentSource` for a description of the parameters
@@ -437,8 +431,6 @@ class ExtendedSource(FactorizedComponent):
         shifting: `bool`
             Whether or not a subpixel shift is added as optimization parameter
         """
-        self.symmetric = symmetric
-        self.monotonic = monotonic
         center = np.array(frame.get_pixel(sky_coord), dtype="float")
         self.pixel_center = tuple(np.round(center).astype("int"))
 
@@ -455,7 +447,7 @@ class ExtendedSource(FactorizedComponent):
             obs_idx=obs_idx,
             thresh=thresh,
             symmetric=True,
-            monotonic="flat",
+            monotonic=True,
         )
 
         sed = Parameter(
@@ -466,10 +458,17 @@ class ExtendedSource(FactorizedComponent):
         )
 
         constraints = []
+
+        # backwards compatibility: monotonic was boolean
+        if monotonic is True:
+            neighbor_weight = "angle"
+        elif monotonic is False:
+            monotonic = None
         if monotonic is not None:
             # most astronomical sources are monotonically decreasing
             # from their center
             constraints.append(MonotonicityConstraint(neighbor_weight=monotonic))
+
         if symmetric:
             # have 2-fold rotation symmetry around their center ...
             constraints.append(SymmetryConstraint())
@@ -568,14 +567,21 @@ class MultiComponentSource(ComponentTree):
             flux_percentiles=flux_percentiles,
             thresh=thresh,
             symmetric=True,
-            monotonic="flat",
+            monotonic=True,
         )
 
         constraints = []
+
+        # backwards compatibility: monotonic was boolean
+        if monotonic is True:
+            neighbor_weight = "angle"
+        elif monotonic is False:
+            monotonic = None
         if monotonic is not None:
             # most astronomical sources are monotonically decreasing
             # from their center
             constraints.append(MonotonicityConstraint(neighbor_weight=monotonic))
+
         if symmetric:
             # have 2-fold rotation symmetry around their center ...
             constraints.append(SymmetryConstraint())
