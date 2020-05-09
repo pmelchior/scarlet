@@ -35,34 +35,27 @@ class Starlet(object):
             if image is None:
                 raise InputError('At least an image or a set of coefficients should be provided')
             else:
-                if len(image.shape) == 2:
-                    self._image = image[np.newaxis, :, :]
-                else:
-                    self._image = image
                 # Original shape of the image
-                self._image_shape = self._image.shape
+                self._image_shape = image.shape
                 # Padding shape for the starlet transform
                 if lvl is None:
                     self._lvl = get_starlet_shape(image.shape)
                 else:
                     self._lvl = lvl
-            self._coefficients = None
+                if len(image.shape) == 2:
+                    image = image[np.newaxis, :, :]
 
         else:
-            self._image_shape = [coefficients.shape[0], *coefficients.shape[-2:]]
             if len(np.shape(coefficients)) == 3:
-                self._coefficients = coefficients[np.newaxis, :, :, :]
-            else:
-                self._coefficients = coefficients
-            self._lvl = self._coefficients.shape[1]
-            if image is None:
-                self._image = None
-            else:
-                if len(image.shape) == 2:
-                    self._image = image[np.newaxis, :, :]
-                else:
-                    self._image = image
+                coefficients = coefficients[np.newaxis, :, :, :]
+            self._image_shape = [coefficients.shape[0], *coefficients.shape[-2:]]
+            self._lvl = coefficients.shape[1]
+            if image is not None:
+                raise InputError("Ambiguous initialisation: \
+                    Starlet objects should be instanciated either with an image of a set of coefficients, not both")
 
+        self._image = image
+        self._coeffs = coefficients
         self._starlet_shape = [self._lvl, *self._image_shape[-2:]]
         if self.seed is None:
             self.seed = mk_starlet(self._starlet_shape)
@@ -71,13 +64,24 @@ class Starlet(object):
     @property
     def image(self):
         """The real space image"""
-        if self._image is None:
-            rec = []
-            for star in self._coefficients:
-                rec.append(iuwt(star))
-            return np.array(rec)
+        rec = []
+        for star in self._coeffs:
+            rec.append(iuwt(star))
+        self._image = np.array(rec)
+
+        return self._image
+
+    @image.setter
+    def image(self, image):
+        """Updates the coefficients if the image is changed"""
+        if len(image.shape) == 2:
+            self._image = image[np.newaxis, :, :]
         else:
-            return self._image
+            self._image = image
+        if self._direct == True:
+            self._coeffs = self.direct_transform()
+        else:
+            self._coeffs = self.transform()
 
     @property
     def norm(self):
@@ -87,13 +91,22 @@ class Starlet(object):
     @property
     def coefficients(self):
         """Starlet coefficients"""
-        if self._coefficients is None:
-            if self._direct == True:
-                return self.direct_transform()
-            else:
-                return self.transform()
+        if self._direct == True:
+            self._coeffs = self.direct_transform()
         else:
-            return self._coefficients
+            self._coeffs = self.transform()
+        return self._coeffs
+
+    @coefficients.setter
+    def coefficients(self, coeffs):
+        """Updates the image if the coefficients are changed"""
+        if len(np.shape(coeffs)) == 3:
+            coeffs = coeffs[np.newaxis, :, :, :]
+        self._coeffs = coeffs
+        rec = []
+        for star in self._coeffs:
+            rec.append(iuwt(star))
+        self._image = np.array(rec)
 
     @property
     def shape(self):
@@ -141,10 +154,11 @@ class Starlet(object):
         starlet: numpy ndarray
             the starlet transform of the Starlet object's image
         """
-        return mk_starlet(self._starlet_shape, self.image)
+        return mk_starlet(self._starlet_shape, self._image)
 
     def __len__(self):
         return len(self._image)
+
 
 def get_starlet_shape(shape, lvl = None):
     """ Get the pad shape for a starlet transform

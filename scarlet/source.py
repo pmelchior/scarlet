@@ -443,7 +443,7 @@ class StarletSource(FunctionComponent):
             observations = [observations]
 
         # initialize from observation
-        sed, morph, bbox = init_extended_source(
+        sed, image_morph, bbox = init_extended_source(
             sky_coord,
             frame,
             observations,
@@ -463,13 +463,14 @@ class StarletSource(FunctionComponent):
         thresh = 5 * np.sum(sed*noise)
 
         # Starlet transform of morphologies (n1,n2) with 4 dimensions: (1,lvl,n1,n2), lvl = wavelet scales
-        transform = Starlet(morph)
-        morph = transform.coefficients
+        self.transform = Starlet(image_morph)
+        #The starlet transform is the model
+        morph = self.transform.coefficients
         # wavelet-scale norm
-        starlet_norm = transform.norm
+        starlet_norm = self.transform.norm
         #One threshold per wavelet scale: thresh*norm
         thresh_array = np.zeros(morph.shape) + thresh
-        thresh_array[-3:] = thresh_array[-3:] * np.array([starlet_norm])[..., np.newaxis, np.newaxis]
+        thresh_array = thresh_array * np.array([starlet_norm])[..., np.newaxis, np.newaxis]
         # We don't threshold the last scale
         thresh_array[...,-1,:,:] = np.inf
 
