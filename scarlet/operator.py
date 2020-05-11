@@ -513,17 +513,15 @@ def getRadialMonotonicWeights(shape, neighbor_weight="flat", center=None):
     """
     assert neighbor_weight in ["flat", "angle", "nearest"]
 
+    # Center on the center pixel
     if center is None:
         center = ((shape[0] - 1) // 2, (shape[1] - 1) // 2)
-
-    # Center on the center pixel
     py, px = int(center[0]), int(center[1])
+
     # Calculate the distance between each pixel and the peak
-    x = np.arange(shape[1])
-    y = np.arange(shape[0])
+    x = np.arange(shape[1]) - px
+    y = np.arange(shape[0]) - py
     X, Y = np.meshgrid(x, y)
-    X = X - px
-    Y = Y - py
     distance = np.sqrt(X ** 2 + Y ** 2)
 
     # Find each pixels neighbors further from the peak and mark them as invalid
