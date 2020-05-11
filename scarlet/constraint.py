@@ -112,8 +112,8 @@ class NormalizationConstraint(Constraint):
 class EntropyConstraint(Constraint):
     """Returns Shannon Entropy along a given axis
     """
-    def __call__(self,X):
-        return operator.prox_shannon_entropy(X)
+    def __call__(self,X,step):
+        return operator.prox_shannon_entropy(X,step)
 
 
 class L0Constraint(Constraint):
