@@ -333,7 +333,7 @@ class PointSource(FunctionComponent):
     and the morphology taken from `frame.psfs`, centered at `sky_coord`.
     """
 
-    def __init__(self, frame, sky_coord, observations):
+    def __init__(self, frame, sky_coord, observations,entropic=False):
         """Source intialized with a single pixel
 
         Parameters
@@ -344,8 +344,11 @@ class PointSource(FunctionComponent):
             Center of the source
         observations: instance or list of `~scarlet.Observation`
             Observation(s) to initialize this source
+        entropic: `bool`
+            Whether or not to enforce more information on SED
         """
         C, Ny, Nx = frame.shape
+        self.entropic = entropic
         self.center = np.array(frame.get_pixel(sky_coord), dtype="float")
 
         # initialize SED from sky_coord
@@ -373,12 +376,16 @@ class PointSource(FunctionComponent):
                 logger.info(msg)
 
         # set up parameters
+        sedconstraints = PositivityConstraint()
+        if entropic:
+            sedconstraints.append(EntropyConstraint())
         sed = Parameter(
             sed,
             name="sed",
             step=partial(relative_step, factor=1e-2),
-            constraint=PositivityConstraint(),
+            constraint=sedconstraints,
         )
+
         center = Parameter(self.center, name="center", step=1e-1)
 
         # define bbox
@@ -406,6 +413,7 @@ class ExtendedSource(FactorizedComponent):
         thresh=1.0,
         symmetric=False,
         monotonic=True,
+        entropic=False,
         shifting=False,
     ):
         """Extended source intialized to match a set of observations
@@ -429,11 +437,14 @@ class ExtendedSource(FactorizedComponent):
         monotonic: `bool`
             Whether or not to make the object monotonically decrease
             in flux from the center.
+        entropic: `bool`
+            Whether or not to enforce more information on SED
         shifting: `bool`
             Whether or not a subpixel shift is added as optimization parameter
         """
         self.symmetric = symmetric
         self.monotonic = monotonic
+        self.entropic = entropic
         center = np.array(frame.get_pixel(sky_coord), dtype="float")
         self.pixel_center = tuple(np.round(center).astype("int"))
 
@@ -452,12 +463,14 @@ class ExtendedSource(FactorizedComponent):
             symmetric=True,
             monotonic=True,
         )
-
+        sedconstraints = PositivityConstraint()
+        if entropic:
+            sedconstraints.append(EntropyConstraint())
         sed = Parameter(
             sed,
             name="sed",
             step=partial(relative_step, factor=1e-2),
-            constraint=PositivityConstraint(),
+            constraint=sedconstraints,
         )
 
         constraints = []
@@ -468,7 +481,6 @@ class ExtendedSource(FactorizedComponent):
         if symmetric:
             # have 2-fold rotation symmetry around their center ...
             constraints.append(SymmetryConstraint())
-
         constraints += [
             # ... and are positive emitters
             PositivityConstraint(),
