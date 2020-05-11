@@ -21,7 +21,7 @@ class Component(ABC):
     model_frame: `~scarlet.Frame`
         The spectral and spatial characteristics of the model.
     bbox: `~scarlet.Box`
-        Hyper-spectral bounding box
+        Hyper-spectral bounding box of this component
     parameters: list of `~scarlet.Parameter`
     kwargs: dict
         Auxiliary information attached to this component.
@@ -119,7 +119,7 @@ class Component(ABC):
                 msg = "Component {} Parameter {} is not finite:\n{}".format(self, k, p)
                 raise ArithmeticError(msg)
 
-    def project(self, model=None, frame=None):
+    def model_to_frame(self, frame=None, model=None):
         """Project a model into a frame
 
 
@@ -169,7 +169,7 @@ class FactorizedComponent(Component):
     model_frame: `~scarlet.Frame`
         The spectral and spatial characteristics of the full model.
     bbox: `~scarlet.Box`
-        Hyper-spectral bounding box
+        Hyper-spectral bounding box of this component.
     sed: `~scarlet.Parameter`
         1D array (channels) of the initial SED.
     morph: `~scarlet.Parameter`
@@ -252,7 +252,7 @@ class FactorizedComponent(Component):
         model = sed[:, None, None] * morph[None, :, :]
         # project the model into frame (if necessary)
         if frame is not None:
-            model = self.project(model, frame)
+            model = self.model_to_frame(frame, model)
         return model
 
     def _shift_morph(self, shift, morph):
@@ -283,7 +283,7 @@ class FunctionComponent(FactorizedComponent):
     model_frame: `~scarlet.Frame`
         The spectral and spatial characteristics of the full model.
     bbox: `~scarlet.Box`
-        Hyper-spectral bounding box
+        Hyper-spectral bounding box of this component.
     sed: `~scarlet.Parameter`
         1D array (channels) of the initial SED.
     fparams: `~scarlet.Parameter`
@@ -346,7 +346,7 @@ class FunctionComponent(FactorizedComponent):
 
         model = sed[:, None, None] * morph[None, :, :]
         if frame is not None:
-            model = self.project(model, frame)
+            model = self.model_to_frame(frame, model)
         return model
 
 
@@ -362,7 +362,7 @@ class CubeComponent(Component):
     cube: `~scarlet.Parameter`
         3D array (C, Height, Width) of the initial data cube.
     bbox: `~scarlet.Box`
-        Hyper-spectral bounding box
+        Hyper-spectral bounding box of this component.
     """
 
     def __init__(self, frame, bbox, cube):
@@ -382,13 +382,17 @@ class CubeComponent(Component):
         if cube is None:
             cube = self.cube
         if frame is not None:
-            cube = self.project(cube, frame)
+            cube = self.model_to_frame(frame, cube)
         return cube
 
 
 @primitive
 def _add_models(*models, full_model, slices):
     """Insert the models into the full model
+
+    `slices` is a tuple `(full_model_slice, model_slices)` used
+    to insert a model into the full_model in the region where the
+    two models overlap.
     """
     for i in range(len(models)):
         if hasattr(models[i], "_value"):
@@ -585,14 +589,6 @@ class ComponentTree:
         model: array
             (Bands, Height, Width) data cube
         """
-
-        # We have to declare the function that inserts sources
-        # into the blend with autograd.
-        # This has to be done each time we fit a blend,
-        # since the number of components => the number of arguments,
-        # which must be linked to the autograd primitive function
-        defvjp(_add_models, *([partial(_grad_add_models, index=k) for k in range(len(self.components))]))
-
         if frame is None:
             frame = Frame(self.bbox, dtype=self.model_frame.dtype, psfs=self.model_frame.psf)
         # If this is the model frame then the slices are already cached
@@ -623,6 +619,14 @@ class ComponentTree:
             else:
                 # Get the slices needed to insert the model
                 slices.append(overlapped_slices(frame, c.bbox))
+
+        # We have to declare the function that inserts sources
+        # into the blend with autograd.
+        # This has to be done each time we fit a blend,
+        # since the number of components => the number of arguments,
+        # which must be linked to the autograd primitive function.
+        defvjp(_add_models, *([partial(_grad_add_models, index=k) for k in range(len(self.components))]))
+
         full_model = _add_models(*models, full_model=full_model, slices=slices)
 
         return full_model
@@ -688,7 +692,7 @@ class ComponentTree:
         self._tree = state[0]
         self._tree_to_components()
 
-    def project(self, model=None, frame=None):
+    def model_to_frame(self, frame=None, model=None):
         """Project a model into a frame
 
 

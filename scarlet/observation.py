@@ -6,70 +6,9 @@ from . import interpolation
 from . import fft
 from . import resampling
 
-from .bbox import Box, overlapped_slices
+from .bbox import overlapped_slices
 
 from scarlet.operators_pybind11 import apply_filter
-
-
-def get_filter_coords(filter_values, center=None):
-    """Create filter coordinate grid needed for the apply filter function
-
-    Parameters
-    ----------
-    filter_values: array
-        The 2D array of the filter to apply.
-    center: tuple
-        The center (y,x) of the filter. If `center` is `None` then
-        `filter_values` must have an odd number of rows and columns
-        and the center will be set to the center of `filter_values`.
-
-    Returns
-    -------
-    coords: array
-        The coordinates of the pixels in `filter_values`,
-        where the coordinates of the `center` pixel are `(0,0)`.
-    """
-    if len(filter_values.shape) != 2:
-        raise ValueError("`filter_values` must be 2D")
-    if center is None:
-        if filter_values.shape[0] % 2 == 0 or filter_values.shape[1] % 2 == 0:
-            msg = """Ambiguous center of the `filter_values` array,
-                     you must use a `filter_values` array
-                     with an odd number of rows and columns or
-                     calculate `coords` on your own."""
-            raise ValueError(msg)
-        center = [filter_values.shape[0]//2, filter_values.shape[1]//2]
-    x = np.arange(filter_values.shape[1])
-    y = np.arange(filter_values.shape[0])
-    x, y = np.meshgrid(x, y)
-    x -= center[1]
-    y -= center[0]
-    coords = np.dstack([y, x])
-    return coords
-
-
-def get_filter_bounds(coords):
-    """Get the slices in x and y to apply a filter
-
-    Parameters
-    ----------
-    coords: array
-        The coordinates of the filter,
-        defined by `get_filter_coords`.
-
-    Returns
-    -------
-    y_start, y_end, x_start, x_end: int
-        The start and end of each slice that is passed to `apply_filter`.
-    """
-    z = np.zeros((len(coords),), dtype=int)
-    # Set the y slices
-    y_start = np.max([z, coords[:, 0]], axis=0)
-    y_end = -np.min([z, coords[:, 0]], axis=0)
-    # Set the x slices
-    x_start = np.max([z, coords[:, 1]], axis=0)
-    x_end = -np.min([z, coords[:, 1]], axis=0)
-    return y_start, y_end, x_start, x_end
 
 
 @primitive
@@ -229,8 +168,8 @@ class Observation:
         assert value in ["real", "fft"], "`convolution` must be either 'real' or 'fft'"
         self._convolution = value
         if value == "real":
-            coords = get_filter_coords(self._diff_kernels[0])
-            self._convolution_slices = get_filter_bounds(coords.reshape(-1, 2))
+            coords = interpolation.get_filter_coords(self._diff_kernels[0])
+            self._convolution_slices = interpolation.get_filter_bounds(coords.reshape(-1, 2))
 
     def _convolve(self, model):
         """Convolve the model in a single band
@@ -315,7 +254,7 @@ class Observation:
                                  wcs=self.frame.wcs,
                                  channels=self.frame.channels)
 
-    def _project(self, frame, images=None):
+    def _model_to_frame(self, frame, images=None):
         """Project this observation into another frame
 
         Note: the frame must have the same sampling and rotation,

@@ -253,7 +253,7 @@ def show_scene(
         extent = get_extent(observation.frame)
 
     if show_model:
-        ax[panel].imshow(img_to_rgb(model, norm=norm, channel_map=channel_map), extent=extent)
+        ax[panel].imshow(img_to_rgb(model, norm=norm, channel_map=channel_map), extent=extent, origin="lower")
         ax[panel].set_title("Model")
         ax[panel].set_xlim(extent[0], extent[1])
         ax[panel].set_ylim(extent[2], extent[3])
@@ -264,7 +264,7 @@ def show_scene(
 
     if show_rendered:
         ax[panel].imshow(
-            img_to_rgb(model, norm=norm, channel_map=channel_map, mask=mask), extent=extent
+            img_to_rgb(model, norm=norm, channel_map=channel_map, mask=mask), extent=extent, origin="lower"
         )
         ax[panel].set_title("Model Rendered")
         ax[panel].set_xlim(extent[0], extent[1])
@@ -275,7 +275,7 @@ def show_scene(
         ax[panel].imshow(
             img_to_rgb(
                 observation.images, norm=norm, channel_map=channel_map, mask=mask
-            ), extent=extent
+            ), extent=extent, origin="lower"
         )
         ax[panel].set_title("Observation")
         ax[panel].set_xlim(extent[0], extent[1])
@@ -286,7 +286,8 @@ def show_scene(
         residual = observation.images - model
         norm_ = LinearPercentileNorm(residual)
         ax[panel].imshow(
-            img_to_rgb(residual, norm=norm_, channel_map=channel_map, mask=mask), extent=extent
+            img_to_rgb(residual, norm=norm_, channel_map=channel_map, mask=mask),
+            extent=extent, origin="lower"
         )
         ax[panel].set_title("Residual")
         ax[panel].set_xlim(extent[0], extent[1])
@@ -323,9 +324,8 @@ def show_sources(
     show_rendered=False,
     show_sed=True,
     figsize=None,
-    use_mask=False,
+    model_mask=None,
     mark_centers=True,
-    mask_model=False,
 ):
     """Plot each source individually.
     The functions provides an more detailed inspection of every source in the list.
@@ -346,6 +346,14 @@ def show_sources(
         Whether source SED is shown.
         For multi-component sources, SEDs are shown separately.
     figsize: matplotlib figsize argument
+    model_mask: array
+        Mask used to hide pixels in the sparese model only.
+        This can be used to understand how the underlying model is
+        behaving, but defaults to `None`, which does not mask the
+        model at all.
+    mark_centers: bool
+        Whether or not to mark the centers of the soures
+        with their source number.
     Returns
     -------
     matplotlib figure
@@ -376,17 +384,13 @@ def show_sources(
         else:
             seds = [model.sum(axis=(1, 2))]
 
-        if use_mask:
-            mask = model.sum(axis=0) == 0
-        else:
-            mask = None
-
         extent = get_extent(src.bbox)
         rendered_box = src.bbox
         if show_model:
             # Show the unrendered model in it's bbox
             ax[k][panel].imshow(
-                img_to_rgb(model, norm=norm, channel_map=channel_map, mask=mask), extent=extent)
+                img_to_rgb(model, norm=norm, channel_map=channel_map, mask=model_mask),
+                extent=extent, origin="lower")
             ax[k][panel].set_title("Model Source {}".format(k))
             ax[k][panel].set_xlim(extent[0], extent[1])
             ax[k][panel].set_ylim(extent[2], extent[3])
@@ -396,9 +400,12 @@ def show_sources(
 
         if show_rendered:
             # Center and show the rendered model
-            model = src.project(frame=rendered_box)
+            model = src.model_to_frame(frame=rendered_box)
             model = observation.render(model, in_frame=False)
-            ax[k][panel].imshow(img_to_rgb(model, norm=norm, channel_map=channel_map), extent=extent)
+            ax[k][panel].imshow(
+                img_to_rgb(model, norm=norm, channel_map=channel_map),
+                extent=extent, origin="lower"
+            )
             ax[k][panel].set_title("Model Source {} Rendered".format(k))
             ax[k][panel].set_xlim(extent[0], extent[1])
             ax[k][panel].set_ylim(extent[2], extent[3])
@@ -409,8 +416,11 @@ def show_sources(
 
         if show_observed:
             # Center the observation on the source and display it
-            _images = observation._project(rendered_box)
-            ax[k][panel].imshow(img_to_rgb(_images, norm=norm, channel_map=channel_map), extent=extent)
+            _images = observation._model_to_frame(rendered_box)
+            ax[k][panel].imshow(
+                img_to_rgb(_images, norm=norm, channel_map=channel_map),
+                extent=extent, origin="lower"
+            )
             ax[k][panel].set_title("Observation".format(k))
             ax[k][panel].set_xlim(extent[0], extent[1])
             ax[k][panel].set_ylim(extent[2], extent[3])

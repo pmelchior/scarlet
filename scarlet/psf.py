@@ -253,8 +253,8 @@ class PsfObservation(Observation):
         relative error.
         """
         model_ = self.render(model)
-        images_ = self.images#[self.slices_for_images]
-        weights_ = self.weights#[self.slices_for_images]
+        images_ = self.images
+        weights_ = self.weights
         return np.sum(weights_ * (model_ - images_) ** 2) / 2
 
 
