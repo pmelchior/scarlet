@@ -133,17 +133,8 @@ NxN operators that act on a data vector.</p>
 </dd></dl>
 
 <dl class="py function">
-<dt id="scarlet.operator.getRadialMonotonicOp">
-<code class="sig-prename descclassname">scarlet.operator.</code><code class="sig-name descname">getRadialMonotonicOp</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">shape</span></em>, <em class="sig-param"><span class="n">useNearest</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">minGradient</span><span class="o">=</span><span class="default_value">1</span></em>, <em class="sig-param"><span class="n">subtract</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/operator.html#getRadialMonotonicOp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.getRadialMonotonicOp" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create an operator to constrain radial monotonicity
-This version of the radial monotonicity operator selects all of the pixels closer to the peak
-for each pixel and weights their flux based on their alignment with a vector from the pixel
-to the peak. In order to quickly create this using sparse matrices, its construction is a bit opaque.</p>
-</dd></dl>
-
-<dl class="py function">
 <dt id="scarlet.operator.getRadialMonotonicWeights">
-<code class="sig-prename descclassname">scarlet.operator.</code><code class="sig-name descname">getRadialMonotonicWeights</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">shape</span></em>, <em class="sig-param"><span class="n">useNearest</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">minGradient</span><span class="o">=</span><span class="default_value">1</span></em>, <em class="sig-param"><span class="n">center</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/operator.html#getRadialMonotonicWeights"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.getRadialMonotonicWeights" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">scarlet.operator.</code><code class="sig-name descname">getRadialMonotonicWeights</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">shape</span></em>, <em class="sig-param"><span class="n">neighbor_weight</span><span class="o">=</span><span class="default_value">'flat'</span></em>, <em class="sig-param"><span class="n">center</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/operator.html#getRadialMonotonicWeights"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.getRadialMonotonicWeights" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create the weights used for the Radial Monotonicity Operator
 This version of the radial monotonicity operator selects all of the pixels closer to the peak
 for each pixel and weights their flux based on their alignment with a vector from the pixel
@@ -231,34 +222,6 @@ the level of symmetry required for a component</p>
 </dd></dl>
 
 <dl class="py function">
-<dt id="scarlet.operator.prox_strict_monotonic">
-<code class="sig-prename descclassname">scarlet.operator.</code><code class="sig-name descname">prox_strict_monotonic</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">shape</span></em>, <em class="sig-param"><span class="n">use_nearest</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">thresh</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">center</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/operator.html#prox_strict_monotonic"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.prox_strict_monotonic" title="Permalink to this definition">¶</a></dt>
-<dd><p>Build the prox_monotonic operator</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><dl class="simple">
-<dt><strong>use_nearest: `bool`</strong></dt><dd><p>Whether to use the nearest pixel to the center for comparison
-(<cite>use_nearest=True</cite>) or use a weighted combination of all
-neighbors closer to the central pixel (<cite>use_nearest=False</cite>).</p>
-</dd>
-<dt><strong>thresh: `float`</strong></dt><dd><p>Forced gradient. A <cite>thresh</cite> of zero will allow a pixel to be the
-same value as its reference pixels, while a <cite>thresh</cite> of one
-will force the pixel to zero.</p>
-</dd>
-<dt><strong>center: tuple</strong></dt><dd><p>Location of the central (highest-value) pixel.</p>
-</dd>
-</dl>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><dl class="simple">
-<dt>result: <cite>function</cite></dt><dd><p>The monotonicity function.</p>
-</dd>
-</dl>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
 <dt id="scarlet.operator.prox_uncentered_symmetry">
 <code class="sig-prename descclassname">scarlet.operator.</code><code class="sig-name descname">prox_uncentered_symmetry</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">X</span></em>, <em class="sig-param"><span class="n">step</span></em>, <em class="sig-param"><span class="n">center</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">algorithm</span><span class="o">=</span><span class="default_value">'kspace'</span></em>, <em class="sig-param"><span class="n">fill</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">shift</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">strength</span><span class="o">=</span><span class="default_value">0.5</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/operator.html#prox_uncentered_symmetry"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.prox_uncentered_symmetry" title="Permalink to this definition">¶</a></dt>
 <dd><p>Symmetry with off-center peak</p>
@@ -315,8 +278,35 @@ This parameter is only used when <cite>algorithm = “soft”</cite>.</p>
 </dd></dl>
 
 <dl class="py function">
+<dt id="scarlet.operator.prox_weighted_monotonic">
+<code class="sig-prename descclassname">scarlet.operator.</code><code class="sig-name descname">prox_weighted_monotonic</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">shape</span></em>, <em class="sig-param"><span class="n">neighbor_weight</span><span class="o">=</span><span class="default_value">'flat'</span></em>, <em class="sig-param"><span class="n">min_gradient</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">center</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/operator.html#prox_weighted_monotonic"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.prox_weighted_monotonic" title="Permalink to this definition">¶</a></dt>
+<dd><p>Build the prox_monotonic operator</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>neighbor_weight: [‘flat’, ‘angle’, ‘nearest’]</strong></dt><dd><p>Which weighting scheme to average all neighbor pixels towards <cite>center</cite>
+as reference for the monotonicty test.</p>
+</dd>
+<dt><strong>min_gradient: `float`</strong></dt><dd><p>Forced gradient. A <cite>thresh</cite> of zero will allow a pixel to be the
+same value as its reference pixels, while a <cite>thresh</cite> of one
+will force the pixel to zero.</p>
+</dd>
+<dt><strong>center: tuple</strong></dt><dd><p>Location of the central (highest-value) pixel.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>result: <cite>function</cite></dt><dd><p>The monotonicity function.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
 <dt id="scarlet.operator.proximal_disk_sed">
-<code class="sig-prename descclassname">scarlet.operator.</code><code class="sig-name descname">proximal_disk_sed</code><span class="sig-paren">(</span><em class="sig-param">X</em>, <em class="sig-param">step</em>, <em class="sig-param">peaks</em>, <em class="sig-param">algorithm=&lt;function project_disk_sed_mean at 0x7fbc89896510&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/operator.html#proximal_disk_sed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.proximal_disk_sed" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">scarlet.operator.</code><code class="sig-name descname">proximal_disk_sed</code><span class="sig-paren">(</span><em class="sig-param">X</em>, <em class="sig-param">step</em>, <em class="sig-param">peaks</em>, <em class="sig-param">algorithm=&lt;function project_disk_sed_mean at 0x7f442bdfe598&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/operator.html#proximal_disk_sed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.operator.proximal_disk_sed" title="Permalink to this definition">¶</a></dt>
 <dd><p>Ensure that each disk SED is bluer than the bulge SED</p>
 </dd></dl>
 

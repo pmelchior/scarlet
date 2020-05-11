@@ -228,7 +228,7 @@
 
 
 <div class="viewcode-block" id="init_extended_source"><a class="viewcode-back" href="../../api/scarlet.source.html#scarlet.source.init_extended_source">[docs]</a><span class="k">def</span> <span class="nf">init_extended_source</span><span class="p">(</span>
-    <span class="n">sky_coord</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">observations</span><span class="p">,</span> <span class="n">obs_idx</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">thresh</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">symmetric</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">monotonic</span><span class="o">=</span><span class="kc">True</span>
+    <span class="n">sky_coord</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">observations</span><span class="p">,</span> <span class="n">obs_idx</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">thresh</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">symmetric</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">monotonic</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
 <span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Initialize the source that is symmetric and monotonic</span>
 <span class="sd">    See `ExtendedSource` for a description of the parameters</span>
@@ -271,8 +271,8 @@
 
     <span class="k">if</span> <span class="n">monotonic</span><span class="p">:</span>
         <span class="c1"># use finite thresh to remove flat bridges</span>
-        <span class="n">prox_monotonic</span> <span class="o">=</span> <span class="n">operator</span><span class="o">.</span><span class="n">prox_strict_monotonic</span><span class="p">(</span>
-            <span class="n">morph</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">use_nearest</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">center</span><span class="o">=</span><span class="n">center</span><span class="p">,</span> <span class="n">thresh</span><span class="o">=</span><span class="mf">0.1</span>
+        <span class="n">prox_monotonic</span> <span class="o">=</span> <span class="n">operator</span><span class="o">.</span><span class="n">prox_weighted_monotonic</span><span class="p">(</span>
+            <span class="n">morph</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">neighbor_weight</span><span class="o">=</span><span class="s2">&quot;flat&quot;</span><span class="p">,</span> <span class="n">center</span><span class="o">=</span><span class="n">center</span><span class="p">,</span> <span class="n">min_gradient</span><span class="o">=</span><span class="mf">0.2</span>
         <span class="p">)</span>
         <span class="n">morph</span> <span class="o">=</span> <span class="n">prox_monotonic</span><span class="p">(</span><span class="n">morph</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">morph</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
 
@@ -466,8 +466,8 @@
         <span class="n">observations</span><span class="p">,</span>
         <span class="n">obs_idx</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
         <span class="n">thresh</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+        <span class="n">monotonic</span><span class="o">=</span><span class="s2">&quot;flat&quot;</span><span class="p">,</span>
         <span class="n">symmetric</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-        <span class="n">monotonic</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="n">shifting</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
     <span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Extended source intialized to match a set of observations</span>
@@ -486,16 +486,13 @@
 <span class="sd">        thresh: `float`</span>
 <span class="sd">            Multiple of the backround RMS used as a</span>
 <span class="sd">            flux cutoff for morphology initialization.</span>
+<span class="sd">        monotonic: [&#39;flat&#39;, &#39;angle&#39;, &#39;nearest&#39;] or None</span>
+<span class="sd">            Which version of monotonic decrease in flux from the center to enforce</span>
 <span class="sd">        symmetric: `bool`</span>
 <span class="sd">            Whether or not to enforce symmetry.</span>
-<span class="sd">        monotonic: `bool`</span>
-<span class="sd">            Whether or not to make the object monotonically decrease</span>
-<span class="sd">            in flux from the center.</span>
 <span class="sd">        shifting: `bool`</span>
 <span class="sd">            Whether or not a subpixel shift is added as optimization parameter</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">symmetric</span> <span class="o">=</span> <span class="n">symmetric</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">monotonic</span> <span class="o">=</span> <span class="n">monotonic</span>
         <span class="n">center</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">frame</span><span class="o">.</span><span class="n">get_pixel</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;float&quot;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">pixel_center</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">center</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;int&quot;</span><span class="p">))</span>
 
@@ -523,10 +520,17 @@
         <span class="p">)</span>
 
         <span class="n">constraints</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="k">if</span> <span class="n">monotonic</span><span class="p">:</span>
+
+        <span class="c1"># backwards compatibility: monotonic was boolean</span>
+        <span class="k">if</span> <span class="n">monotonic</span> <span class="ow">is</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="n">monotonic</span> <span class="o">=</span> <span class="s2">&quot;angle&quot;</span>
+        <span class="k">elif</span> <span class="n">monotonic</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">:</span>
+            <span class="n">monotonic</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">monotonic</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="c1"># most astronomical sources are monotonically decreasing</span>
             <span class="c1"># from their center</span>
-            <span class="n">constraints</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">MonotonicityConstraint</span><span class="p">())</span>
+            <span class="n">constraints</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">MonotonicityConstraint</span><span class="p">(</span><span class="n">neighbor_weight</span><span class="o">=</span><span class="n">monotonic</span><span class="p">))</span>
+
         <span class="k">if</span> <span class="n">symmetric</span><span class="p">:</span>
             <span class="c1"># have 2-fold rotation symmetry around their center ...</span>
             <span class="n">constraints</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">SymmetryConstraint</span><span class="p">())</span>
@@ -575,7 +579,7 @@
         <span class="n">thresh</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
         <span class="n">flux_percentiles</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">symmetric</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-        <span class="n">monotonic</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">monotonic</span><span class="o">=</span><span class="s2">&quot;flat&quot;</span><span class="p">,</span>
         <span class="n">shifting</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
     <span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Create multi-component extended source.</span>
@@ -600,9 +604,8 @@
 <span class="sd">            as the primary source.</span>
 <span class="sd">        symmetric: `bool`</span>
 <span class="sd">            Whether or not to enforce symmetry.</span>
-<span class="sd">        monotonic: `bool`</span>
-<span class="sd">            Whether or not to make the object monotonically decrease</span>
-<span class="sd">            in flux from the center.</span>
+<span class="sd">        monotonic: [&#39;flat&#39;, &#39;angle&#39;, &#39;nearest&#39;] or None</span>
+<span class="sd">            Which version of monotonic decrease in flux from the center to enforce</span>
 <span class="sd">        shifting: `bool`</span>
 <span class="sd">            Whether or not a subpixel shift is added as optimization parameter</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -630,10 +633,17 @@
         <span class="p">)</span>
 
         <span class="n">constraints</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="k">if</span> <span class="n">monotonic</span><span class="p">:</span>
+
+        <span class="c1"># backwards compatibility: monotonic was boolean</span>
+        <span class="k">if</span> <span class="n">monotonic</span> <span class="ow">is</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="n">monotonic</span> <span class="o">=</span> <span class="s2">&quot;angle&quot;</span>
+        <span class="k">elif</span> <span class="n">monotonic</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">:</span>
+            <span class="n">monotonic</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">monotonic</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="c1"># most astronomical sources are monotonically decreasing</span>
             <span class="c1"># from their center</span>
-            <span class="n">constraints</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">MonotonicityConstraint</span><span class="p">())</span>
+            <span class="n">constraints</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">MonotonicityConstraint</span><span class="p">(</span><span class="n">neighbor_weight</span><span class="o">=</span><span class="n">monotonic</span><span class="p">))</span>
+
         <span class="k">if</span> <span class="n">symmetric</span><span class="p">:</span>
             <span class="c1"># have 2-fold rotation symmetry around their center ...</span>
             <span class="n">constraints</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">SymmetryConstraint</span><span class="p">())</span>

@@ -243,26 +243,28 @@
 <span class="sd">    for a description of the other parameters.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">use_nearest</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">thresh</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">use_nearest</span> <span class="o">=</span> <span class="n">use_nearest</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">thresh</span> <span class="o">=</span> <span class="n">thresh</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">neighbor_weight</span><span class="o">=</span><span class="s2">&quot;flat&quot;</span><span class="p">,</span> <span class="n">min_gradient</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">neighbor_weight</span> <span class="o">=</span> <span class="n">neighbor_weight</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">min_gradient</span> <span class="o">=</span> <span class="n">min_gradient</span>
 
     <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">morph</span><span class="p">,</span> <span class="n">step</span><span class="p">):</span>
         <span class="n">shape</span> <span class="o">=</span> <span class="n">morph</span><span class="o">.</span><span class="n">shape</span>
         <span class="n">center</span> <span class="o">=</span> <span class="p">(</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">//</span> <span class="mi">2</span><span class="p">,</span> <span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">//</span> <span class="mi">2</span><span class="p">)</span>
 
         <span class="c1"># get prox from the cache</span>
-        <span class="n">prox_name</span> <span class="o">=</span> <span class="s2">&quot;operator.prox_strict_monotonic&quot;</span>
-        <span class="n">key</span> <span class="o">=</span> <span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="n">center</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_nearest</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">thresh</span><span class="p">)</span>
+        <span class="n">prox_name</span> <span class="o">=</span> <span class="s2">&quot;operator.prox_weighted_monotonic&quot;</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="n">center</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">neighbor_weight</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_gradient</span><span class="p">)</span>
         <span class="c1"># The creation of this operator is expensive,</span>
         <span class="c1"># so load it from memory if possible.</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="n">prox</span> <span class="o">=</span> <span class="n">Cache</span><span class="o">.</span><span class="n">check</span><span class="p">(</span><span class="n">prox_name</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
         <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
-            <span class="n">prox</span> <span class="o">=</span> <span class="n">operator</span><span class="o">.</span><span class="n">prox_strict_monotonic</span><span class="p">(</span>
-                <span class="n">shape</span><span class="p">,</span> <span class="n">use_nearest</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">use_nearest</span><span class="p">,</span> <span class="n">thresh</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">thresh</span><span class="p">,</span> <span class="n">center</span><span class="o">=</span><span class="n">center</span>
+            <span class="n">prox</span> <span class="o">=</span> <span class="n">operator</span><span class="o">.</span><span class="n">prox_weighted_monotonic</span><span class="p">(</span>
+                <span class="n">shape</span><span class="p">,</span>
+                <span class="n">neighbor_weight</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">neighbor_weight</span><span class="p">,</span>
+                <span class="n">min_gradient</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">min_gradient</span><span class="p">,</span>
+                <span class="n">center</span><span class="o">=</span><span class="n">center</span><span class="p">,</span>
             <span class="p">)</span>
-
             <span class="n">Cache</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">prox_name</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">prox</span><span class="p">)</span>
 
         <span class="c1"># apply the prox</span>

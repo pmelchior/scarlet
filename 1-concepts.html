@@ -139,20 +139,33 @@ div.nboutput.container div.prompt pre {
 /* all prompts */
 div.nbinput.container div.prompt,
 div.nboutput.container div.prompt {
-    min-width: 5.5ex;
-    padding-top: 0.3rem;
-    padding-right: 0.3rem;
-    text-align: right;
-    flex: 0;
+    width: 4.5ex;
+    padding-top: 5px;
+    position: relative;
+    user-select: none;
 }
+
+div.nbinput.container div.prompt > div,
+div.nboutput.container div.prompt > div {
+    position: absolute;
+    right: 0;
+    margin-right: 0.3ex;
+}
+
 @media (max-width: 540px) {
     div.nbinput.container div.prompt,
     div.nboutput.container div.prompt {
+        width: unset;
         text-align: left;
         padding: 0.4em;
     }
     div.nboutput.container div.prompt.empty {
         padding: 0;
+    }
+
+    div.nbinput.container div.prompt > div,
+    div.nboutput.container div.prompt > div {
+        position: unset;
     }
 }
 
@@ -245,7 +258,7 @@ div.nboutput.container div.output_area div[class*=highlight].math,
 div.nboutput.container div.output_area.rendered_html,
 div.nboutput.container div.output_area > div.output_javascript,
 div.nboutput.container div.output_area:not(.rendered_html) > img{
-    padding: 0.3rem;
+    padding: 5px;
 }
 
 /* fix copybtn overflow problem in chromium (needed for 'sphinx_copybutton') */
@@ -472,10 +485,10 @@ Source 3: ExtendedSource
   Parameter &#39;morph&#39;, Shape (32, 32)
 Source 4: ExtendedSource
   Parameter &#39;sed&#39;, Shape (5,)
-  Parameter &#39;morph&#39;, Shape (32, 32)
+  Parameter &#39;morph&#39;, Shape (16, 16)
 Source 5: ExtendedSource
   Parameter &#39;sed&#39;, Shape (5,)
-  Parameter &#39;morph&#39;, Shape (64, 64)
+  Parameter &#39;morph&#39;, Shape (32, 32)
 Source 6: ExtendedSource
   Parameter &#39;sed&#39;, Shape (5,)
   Parameter &#39;morph&#39;, Shape (16, 16)
@@ -500,19 +513,18 @@ Source 6: ExtendedSource
 <div class="highlight"><pre>
 {&#39;name&#39;: &#39;sed&#39;,
  &#39;prior&#39;: None,
- &#39;constraint&#39;: &lt;scarlet.constraint.PositivityConstraint at 0x7f8c6bc54eb8&gt;,
- &#39;step&#39;: functools.partial(&lt;function relative_step at 0x7f8c7892ebf8&gt;, factor=0.01),
- &#39;std&#39;: masked_array(data=[0.004701320280147023, 0.001962473031402985,
-                    0.0029886527426883787, 0.005631726304479591,
-                    0.03401675602478617],
+ &#39;constraint&#39;: &lt;scarlet.constraint.PositivityConstraint at 0x7fdb2bbf8d30&gt;,
+ &#39;step&#39;: functools.partial(&lt;function relative_step at 0x7fdb389efa60&gt;, factor=0.01),
+ &#39;std&#39;: masked_array(data=[0.003817164870903723, 0.0018921677761312456,
+                    0.002921310950745035, 0.00584322923181318,
+                    0.030817793977438356],
               mask=[False, False, False, False, False],
         fill_value=0.0),
- &#39;m&#39;: array([-38.24941725,  13.77663347,  43.19349573, -23.57068828,
-         -0.73809578]),
- &#39;v&#39;: array([ 45243.93007264, 259652.5579422 , 111956.4417527 ,  31529.48805429,
-           864.19989588]),
- &#39;vhat&#39;: array([ 45341.26198468, 261039.91599363, 112703.4809416 ,  31680.31045458,
-           870.42792688]),
+ &#39;m&#39;: array([28.17550732, 26.41053805, -9.48699856, -0.75050351,  1.05484258]),
+ &#39;v&#39;: array([ 68630.65807649, 279306.28974774, 117177.55358097,  29288.29914388,
+          1052.92370915]),
+ &#39;vhat&#39;: array([ 69670.81078195, 283936.31736394, 119670.59813682,  29885.33928298,
+          1088.35944243]),
  &#39;fixed&#39;: False}
 </pre></div></div>
 </div>
@@ -539,7 +551,7 @@ Source 6: ExtendedSource
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-&lt;matplotlib.colorbar.Colorbar at 0x7f8c69e6f438&gt;
+&lt;matplotlib.colorbar.Colorbar at 0x7fdb29e8e278&gt;
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">
@@ -592,8 +604,9 @@ pixels <span class="math notranslate nohighlight">\(i,j\)</span> is <span class=
 <div class="section" id="Monotonicity">
 <h3>Monotonicity<a class="headerlink" href="#Monotonicity" title="Permalink to this headline">¶</a></h3>
 <p>Another useful constraint from the SDSS-HSC deblender is the assumption that most astrophysical objects are monotonically decreasing from the peak. In detail, this assumption is incorrect e.g. for spiral galaxies, especially tightly wound ones. But we can build good representations of even complex galaxies as multiple stellar populations, each with a single SED and monotonically decreasing from its peak.</p>
-<p>In <em>scarlet</em> monotonicity is implemented as a projection that is <em>not</em> a true proximal operator. It is possible to write monotonicity as a true proximal operator, but the implementation is far too slow for practical purposes. Instead, the morphology is projected into a space that has <em>a</em> monotonic solution, just not the closest one. We implemented two possible monotonic solutions in <code class="docutils literal notranslate"><span class="pre">MonotonicityConstraint</span></code>. If <code class="docutils literal notranslate"><span class="pre">use_nearest=True</span></code>, then only a single reference pixel is used: the nearest one
-in the direction to the peak. With <code class="docutils literal notranslate"><span class="pre">use_nearest=False</span></code> a weighted average of all pixels closer to the peak than the current pixel is used to allow for a smoother monotonic solution.</p>
+<p>We implemented three possible monotonic solutions in <code class="docutils literal notranslate"><span class="pre">MonotonicityConstraint</span></code>. Each of them restrict the intensity of the active pixel <span class="math notranslate nohighlight">\(i\)</span> (blue) to at most the average of the pixel intensity of its direct neighbors in the direction of the source center (ochre):</p>
+<div class="math notranslate nohighlight">
+\[x_i\leq\frac{1}{N_i}\sum_j^{N_i} w_j x_j\]</div>
 <table class="docutils align-default">
 <colgroup>
 <col style="width: 47%" />
@@ -610,7 +623,16 @@ in the direction to the peak. With <code class="docutils literal notranslate"><s
 </tr>
 </tbody>
 </table>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">neighbor_weight='nearest'</span></code>: Only the neighbor that is closest to the center defines the reference. This mode is the most flexible one but prone to creating radial “spikes”.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">neighbor_weight='angle'</span></code>: All three neighbor pixels that are closer to the peak are combined to compute the reference intensity. The weights of the neighbor <span class="math notranslate nohighlight">\(w_j = \cos(\alpha_i - \alpha_j)\)</span>, where <span class="math notranslate nohighlight">\(\alpha_i\)</span> and <span class="math notranslate nohighlight">\(\alpha_j\)</span> are the angles from the active and the neighbor pixel to the center, respectively. This option is a softened version of the nearest-neighbor weight but still prefers strong radial monotonicity and thus similarly prone to radial spikes.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">neighbor_weight='flat'</span></code>: All three neighbor pixels that are closer to the peak are combined with flat weights to compute the reference intensity. This option is the most restrictive and allows for the greatest degree of azimuthal smoothing.</p></li>
+</ul>
 <p>The monotonicity mapping hinges on a properly centered source, but in contrast to symmetry the center has to be localized only within one pixel.</p>
+<div class="section" id="Implementation-Note">
+<h4>Implementation Note<a class="headerlink" href="#Implementation-Note" title="Permalink to this headline">¶</a></h4>
+<p><code class="docutils literal notranslate"><span class="pre">MonotonicityConstraint</span></code> is implemented as a projection that is <em>not</em> a true proximal operator. It is possible to write monotonicity as a true proximal operator, but the implementation is far too slow for practical purposes. Instead, the morphology is projected into a space that has <em>a</em> monotonic solution, just not necessarily the closest one in the L2 sense.</p>
+</div>
 </div>
 <div class="section" id="Constraint-Chains">
 <h3>Constraint Chains<a class="headerlink" href="#Constraint-Chains" title="Permalink to this headline">¶</a></h3>

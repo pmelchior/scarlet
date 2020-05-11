@@ -134,20 +134,33 @@ div.nboutput.container div.prompt pre {
 /* all prompts */
 div.nbinput.container div.prompt,
 div.nboutput.container div.prompt {
-    min-width: 5.5ex;
-    padding-top: 0.3rem;
-    padding-right: 0.3rem;
-    text-align: right;
-    flex: 0;
+    width: 4.5ex;
+    padding-top: 5px;
+    position: relative;
+    user-select: none;
 }
+
+div.nbinput.container div.prompt > div,
+div.nboutput.container div.prompt > div {
+    position: absolute;
+    right: 0;
+    margin-right: 0.3ex;
+}
+
 @media (max-width: 540px) {
     div.nbinput.container div.prompt,
     div.nboutput.container div.prompt {
+        width: unset;
         text-align: left;
         padding: 0.4em;
     }
     div.nboutput.container div.prompt.empty {
         padding: 0;
+    }
+
+    div.nbinput.container div.prompt > div,
+    div.nboutput.container div.prompt > div {
+        position: unset;
     }
 }
 
@@ -240,7 +253,7 @@ div.nboutput.container div.output_area div[class*=highlight].math,
 div.nboutput.container div.output_area.rendered_html,
 div.nboutput.container div.output_area > div.output_javascript,
 div.nboutput.container div.output_area:not(.rendered_html) > img{
-    padding: 0.3rem;
+    padding: 5px;
 }
 
 /* fix copybtn overflow problem in chromium (needed for 'sphinx_copybutton') */
@@ -451,9 +464,9 @@ frame, in which you seek to fit a model, to the observed data frame.</p>
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-CPU times: user 1.2 s, sys: 56.5 ms, total: 1.26 s
-Wall time: 1.26 s
-scarlet ran for 52 iterations to logL = 28834.069625073516
+CPU times: user 1.44 s, sys: 72 ms, total: 1.51 s
+Wall time: 1.51 s
+scarlet ran for 64 iterations to logL = 30094.44899266597
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">
@@ -565,13 +578,13 @@ Text(0, 0.5, &#39;log-Likelihood&#39;)
 <div class="output_area docutils container">
 <div class="highlight"><pre>
 ----------------- [&#39;g&#39; &#39;r&#39; &#39;i&#39; &#39;z&#39; &#39;y&#39;]
-Source 0, Fluxes: [167.84036412 262.49673054 319.16062586 349.29757006 368.30040936]
-Source 1, Fluxes: [ 72.07762058 218.15142275 389.89943775 529.90028483 652.8861988 ]
-Source 2, Fluxes: [ 9.1510457  13.78349148 24.66412381 31.45216486 44.23071035]
-Source 3, Fluxes: [ 9.14205622 11.4564969  12.15724073 15.12552012 21.18254131]
-Source 4, Fluxes: [5.99796409 4.68599092 5.06235726 3.78801388 2.30624062]
-Source 5, Fluxes: [0.81176389 0.36756581 2.34917876 1.72441843 9.26481453]
-Source 6, Fluxes: [2.67099665 2.41223576 2.56550062 3.15687361 4.6268204 ]
+Source 0, Fluxes: [166.45605148 265.08543282 320.55517257 345.10965342 369.09496842]
+Source 1, Fluxes: [ 73.61267324 217.4384859  389.33562972 525.21714754 648.34841096]
+Source 2, Fluxes: [ 8.38399975 12.79008795 25.11876342 31.85718322 42.18338685]
+Source 3, Fluxes: [ 9.73875572 11.55266717 12.89733839 15.07730986 17.55845027]
+Source 4, Fluxes: [4.52481202 4.13121664 4.26628745 3.73356459 2.51564525]
+Source 5, Fluxes: [0.71264059 0.73716593 1.92296142 1.65541636 6.52497464]
+Source 6, Fluxes: [2.38620268 2.20614046 2.31402505 2.92430976 3.78574236]
 </pre></div></div>
 </div>
 <p>Other measurements (e.g. <code class="docutils literal notranslate"><span class="pre">centroid</span></code>) are also implemented. The measurement approach is also easily extendable. The source models are generated in the model frame (which is the best-fit representation of the full hyperspectral <code class="docutils literal notranslate"><span class="pre">Frame</span></code>), from which any measurement can directly be made without having to deal with noise, PSF convolution, overlapping sources, etc.</p>
@@ -625,16 +638,16 @@ Source 6, Fluxes: [2.67099665 2.41223576 2.56550062 3.15687361 4.6268204 ]
 <span></span><span class="c1"># add two sources at their approximate locations</span>
 <span class="n">model_frame_</span> <span class="o">=</span> <span class="n">sources_</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">frame</span>
 <span class="n">yx</span> <span class="o">=</span> <span class="p">(</span><span class="mf">14.</span><span class="p">,</span> <span class="mf">44.</span><span class="p">)</span>
-<span class="n">new_source</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">ExtendedSource</span><span class="p">(</span><span class="n">model_frame_</span><span class="p">,</span> <span class="n">yx</span><span class="p">,</span> <span class="n">observation</span><span class="p">,</span> <span class="n">shifting</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">symmetric</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">monotonic</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">thresh</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+<span class="n">new_source</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">ExtendedSource</span><span class="p">(</span><span class="n">model_frame_</span><span class="p">,</span> <span class="n">yx</span><span class="p">,</span> <span class="n">observation</span><span class="p">,</span> <span class="n">shifting</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="n">sources_</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">new_source</span><span class="p">)</span>
-<span class="n">yx</span> <span class="o">=</span> <span class="p">(</span><span class="mf">43.</span><span class="p">,</span> <span class="mf">12.</span><span class="p">)</span>
-<span class="n">new_source</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">ExtendedSource</span><span class="p">(</span><span class="n">model_frame_</span><span class="p">,</span> <span class="n">yx</span><span class="p">,</span> <span class="n">observation</span><span class="p">,</span> <span class="n">shifting</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">symmetric</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">monotonic</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">thresh</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+<span class="n">yx</span> <span class="o">=</span> <span class="p">(</span><span class="mf">42.</span><span class="p">,</span> <span class="mf">9.</span><span class="p">)</span>
+<span class="n">new_source</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">ExtendedSource</span><span class="p">(</span><span class="n">model_frame_</span><span class="p">,</span> <span class="n">yx</span><span class="p">,</span> <span class="n">observation</span><span class="p">,</span> <span class="n">shifting</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="n">sources_</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">new_source</span><span class="p">)</span>
 
 <span class="c1"># generate a new Blend instance</span>
 <span class="n">blend_</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">Blend</span><span class="p">(</span><span class="n">sources_</span><span class="p">,</span> <span class="n">observation</span><span class="p">)</span>
 <span class="c1"># tighten relative change in likelihood for convergence</span>
-<span class="n">blend_</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="mi">200</span><span class="p">,</span> <span class="n">e_rel</span><span class="o">=</span><span class="mf">1e-5</span><span class="p">)</span>
+<span class="n">blend_</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="mi">200</span><span class="p">,</span> <span class="n">e_rel</span><span class="o">=</span><span class="mf">1e-4</span><span class="p">)</span>
 
 <span class="c1"># show convergence of logL</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;scarlet ran for </span><span class="si">{0}</span><span class="s2"> iterations to logL = </span><span class="si">{1}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">blend_</span><span class="o">.</span><span class="n">loss</span><span class="p">),</span> <span class="o">-</span><span class="n">blend_</span><span class="o">.</span><span class="n">loss</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]))</span>
@@ -651,7 +664,7 @@ Source 6, Fluxes: [2.67099665 2.41223576 2.56550062 3.15687361 4.6268204 ]
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-scarlet ran for 58 iterations to logL = 31399.969817132696
+scarlet ran for 29 iterations to logL = 31262.298849496554
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">
@@ -685,15 +698,6 @@ scarlet ran for 58 iterations to logL = 31399.969817132696
 </div>
 </div>
 <p>We can see the two new sources 7 and 8, and that most of the features are very similar to before. As expected, the residuals have visibly improved and are now dominated by a Yin-Yang-shaped orange-blue pattern in the center of source 1, which we already fit with 2 components. Maybe we should try with 3 …</p>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
-<span></span>
-</pre></div>
-</div>
-</div>
 </div>
 </div>
 </div>
