@@ -42,7 +42,7 @@ class Constraint:
         Parameters
         ----------
         X: array
-            Optimimzation parameter
+            Optimization parameter
         step: float or array of same shape as X
             Step size for the proximal mapping
 
@@ -108,6 +108,12 @@ class NormalizationConstraint(Constraint):
         else:
             X /= X.max()
         return X
+
+class EntropyConstraint(Constraint):
+    """Returns Shannon Entropy along a given axis
+    """
+    def __call__(self,X):
+        return operator.prox_shannon_entropy(X)
 
 
 class L0Constraint(Constraint):
