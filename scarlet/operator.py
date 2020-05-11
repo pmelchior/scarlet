@@ -204,7 +204,7 @@ def prox_soft_symmetry(X, step, strength=1):
         pads[1][1] = 1
         slices[1] = slice(0, X.shape[1])
 
-    X = np.pad(X, pads, mode="constant", constant_values=0)
+    X = fft.fast_zero_pad(X, pads)
     Xs = np.fliplr(np.flipud(X))
     X = 0.5 * strength * (X + Xs) + (1 - strength) * X
     return X[tuple(slices)]
