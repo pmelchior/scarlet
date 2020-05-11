@@ -3,6 +3,7 @@ from functools import partial
 import numpy as np
 from proxmin.operators import prox_unity_plus
 from proxmin.utils import MatrixAdapter
+from scipy.special import lambertw
 
 from . import fft
 from . import interpolation
@@ -69,6 +70,18 @@ def sort_by_radius(shape, center=None):
     didx = np.argsort(distance.flatten())
     return didx
 
+def shannon_entropy(X,axis=0):
+    """Returns Shannon Entropy along a given axis
+    """
+    posX = X -X.min()
+    prob = (posX)/posX.sum(ax=axis)
+    return -(prob*np.log(prob)).sum(axis=axis)
+
+def prox_shannon_entropy(X,step):
+    """Returns proximal operator of the Shannon Entropy
+    """
+    posX = X - X.min()
+    return step*np.real(lambertw(1/step*np.exp(posX/step-1)))
 
 def prox_strict_monotonic(shape, use_nearest=False, thresh=0, center=None):
     """Build the prox_monotonic operator
