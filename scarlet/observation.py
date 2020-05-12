@@ -189,8 +189,6 @@ class Observation:
         ----------
         model: array
             The model from `Blend`
-        in_frame: bool
-            Whether or not the model must be contained in the observation frame
 
         Returns
         -------
