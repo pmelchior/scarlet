@@ -409,7 +409,6 @@ class StarletSource(FunctionComponent):
         frame,
         sky_coord,
         observations,
-        noise,
         obs_idx=0,
         thresh=1.0,
         shifting=False,
@@ -459,22 +458,26 @@ class StarletSource(FunctionComponent):
             step=partial(relative_step, factor=1e-2),
             constraint=PositivityConstraint(),
         )
+
+        noise = mad_wavelet(observations[0].images) * \
+                np.sum(observations[0]._diff_kernels.image**2, axis = (-2,-1))**0.5
         # Threshold in units of noise
-        thresh = 5 * np.sum(sed*noise)
+        thresh = 5 * np.sqrt(np.sum((sed*noise) ** 2))
 
         # Starlet transform of morphologies (n1,n2) with 4 dimensions: (1,lvl,n1,n2), lvl = wavelet scales
         self.transform = Starlet(image_morph)
         #The starlet transform is the model
-        morph = self.transform.coefficients
+        morph = self.transform.coefficients*0
         # wavelet-scale norm
         starlet_norm = self.transform.norm
         #One threshold per wavelet scale: thresh*norm
         thresh_array = np.zeros(morph.shape) + thresh
         thresh_array = thresh_array * np.array([starlet_norm])[..., np.newaxis, np.newaxis]
         # We don't threshold the last scale
-        thresh_array[...,-1,:,:] = np.inf
+        thresh_array[:,-1,:,:] = 0
 
-        morph_constraint = L0Constraint(thresh_array)
+        morph_constraint = ConstraintChain(*[L0Constraint(thresh_array), PositivityConstraint()])
+
         morph = Parameter(morph, name="morph", step=1.e-3, constraint=morph_constraint)
 
         super().__init__(frame, sed, morph, self._iuwt, bbox=bbox)

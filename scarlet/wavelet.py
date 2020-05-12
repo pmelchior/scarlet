@@ -291,5 +291,5 @@ def mad_wavelet(image):
     mad: array
         median absolute deviation each image in the cube
     """
-    sigma = mad(Starlet(image).coefficients[:,0,...], axis = (-2,-1))
+    sigma = mad(Starlet(image, lvl = 2).coefficients[:,0,...], axis = (-2,-1))
     return sigma
