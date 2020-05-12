@@ -1,6 +1,10 @@
-from .constraint import *
-from .component import *
-from .bbox import *
+from functools import partial
+
+from .constraint import PositivityConstraint, MonotonicityConstraint, SymmetryConstraint
+from .constraint import NormalizationConstraint, ConstraintChain, CenterOnConstraint
+from .parameter import Parameter, relative_step
+from .component import ComponentTree, FunctionComponent, FactorizedComponent
+from .bbox import Box
 from . import operator
 
 # make sure that import * above doesn't import its own stock numpy
@@ -299,7 +303,7 @@ class RandomSource(FactorizedComponent):
     observation.
     """
 
-    def __init__(self, frame, observation=None):
+    def __init__(self, model_frame, observation=None):
         """Source intialized as random field.
 
         Parameters
@@ -309,13 +313,13 @@ class RandomSource(FactorizedComponent):
         observation: list of `~scarlet.Observation`
             Observation to initialize the SED of the source
         """
-        C, Ny, Nx = frame.shape
+        C, Ny, Nx = model_frame.shape
         morph = np.random.rand(Ny, Nx)
 
         if observation is None:
             sed = np.random.rand(C)
         else:
-            sed = get_best_fit_seds(morph[None], frame, observation.images)[0]
+            sed = get_best_fit_seds(morph[None], model_frame, observation.images)[0]
 
         constraint = PositivityConstraint()
         sed = Parameter(sed, name="sed", step=relative_step, constraint=constraint)
@@ -323,7 +327,7 @@ class RandomSource(FactorizedComponent):
             morph, name="morph", step=relative_step, constraint=constraint
         )
 
-        super().__init__(frame, sed, morph)
+        super().__init__(model_frame, model_frame.bbox, sed, morph)
 
 
 class PointSource(FunctionComponent):
@@ -333,20 +337,20 @@ class PointSource(FunctionComponent):
     and the morphology taken from `frame.psfs`, centered at `sky_coord`.
     """
 
-    def __init__(self, frame, sky_coord, observations):
+    def __init__(self, model_frame, sky_coord, observations):
         """Source intialized with a single pixel
 
         Parameters
         ----------
         frame: `~scarlet.Frame`
-            The frame of the model
+            The frame of the full model
         sky_coord: tuple
             Center of the source
         observations: instance or list of `~scarlet.Observation`
             Observation(s) to initialize this source
         """
-        C, Ny, Nx = frame.shape
-        self.center = np.array(frame.get_pixel(sky_coord), dtype="float")
+        C, Ny, Nx = model_frame.shape
+        self.center = np.array(model_frame.get_pixel(sky_coord), dtype="float")
 
         # initialize SED from sky_coord
         try:
@@ -358,7 +362,7 @@ class PointSource(FunctionComponent):
         # SED in the frame for source detection
         seds = []
         for obs in observations:
-            _sed = get_psf_sed(sky_coord, obs, frame)
+            _sed = get_psf_sed(sky_coord, obs, model_frame)
             seds.append(_sed)
         sed = np.concatenate(seds).reshape(-1)
 
@@ -384,22 +388,22 @@ class PointSource(FunctionComponent):
         # define bbox
         pixel_center = tuple(np.round(center).astype("int"))
         front, back = 0, C
-        bottom = pixel_center[0] - frame.psf.shape[1] // 2
-        top = pixel_center[0] + frame.psf.shape[1] // 2
-        left = pixel_center[1] - frame.psf.shape[2] // 2
-        right = pixel_center[1] + frame.psf.shape[2] // 2
+        bottom = pixel_center[0] - model_frame.psf.shape[1] // 2
+        top = pixel_center[0] + model_frame.psf.shape[1] // 2
+        left = pixel_center[1] - model_frame.psf.shape[2] // 2
+        right = pixel_center[1] + model_frame.psf.shape[2] // 2
         bbox = Box.from_bounds((front, back), (bottom, top), (left, right))
 
-        super().__init__(frame, sed, center, self._psf_wrapper, bbox=bbox)
+        super().__init__(model_frame, bbox, sed, center, self._psf_wrapper)
 
     def _psf_wrapper(self, *parameters):
-        return self.frame.psf.__call__(*parameters, bbox=self.bbox)[0]
+        return self.model_frame.psf.__call__(*parameters, bbox=self.bbox)[0]
 
 
 class ExtendedSource(FactorizedComponent):
     def __init__(
         self,
-        frame,
+        model_frame,
         sky_coord,
         observations,
         obs_idx=0,
@@ -413,7 +417,7 @@ class ExtendedSource(FactorizedComponent):
         Parameters
         ----------
         frame: `~scarlet.Frame`
-            The frame of the model
+            The frame of the full model
         sky_coord: tuple
             Center of the source
         observations: instance or list of `~scarlet.observation.Observation`
@@ -431,7 +435,7 @@ class ExtendedSource(FactorizedComponent):
         shifting: `bool`
             Whether or not a subpixel shift is added as optimization parameter
         """
-        center = np.array(frame.get_pixel(sky_coord), dtype="float")
+        center = np.array(model_frame.get_pixel(sky_coord), dtype="float")
         self.pixel_center = tuple(np.round(center).astype("int"))
 
         if shifting:
@@ -442,7 +446,7 @@ class ExtendedSource(FactorizedComponent):
         # initialize from observation
         sed, morph, bbox = init_extended_source(
             sky_coord,
-            frame,
+            model_frame,
             observations,
             obs_idx=obs_idx,
             thresh=thresh,
@@ -485,7 +489,7 @@ class ExtendedSource(FactorizedComponent):
 
         morph = Parameter(morph, name="morph", step=1e-2, constraint=morph_constraint)
 
-        super().__init__(frame, sed, morph, bbox=bbox, shift=shift)
+        super().__init__(model_frame, bbox, sed, morph, shift=shift)
 
     @property
     def center(self):
@@ -510,7 +514,7 @@ class MultiComponentSource(ComponentTree):
 
     def __init__(
         self,
-        frame,
+        model_frame,
         sky_coord,
         observations,
         obs_idx=0,
@@ -524,8 +528,8 @@ class MultiComponentSource(ComponentTree):
 
         Parameters
         ----------
-        frame: `~scarlet.Frame`
-            The frame of the model
+        model_frame: `~scarlet.Frame`
+            The frame of the full model
         sky_coord: tuple
             Center of the source
         observations: instance or list of `~scarlet.observation.Observation`
@@ -550,7 +554,7 @@ class MultiComponentSource(ComponentTree):
         self.symmetric = symmetric
         self.monotonic = monotonic
         self.coords = sky_coord
-        center = np.array(frame.get_pixel(sky_coord), dtype="float")
+        center = np.array(model_frame.get_pixel(sky_coord), dtype="float")
         pixel_center = tuple(np.round(center).astype("int"))
 
         if shifting:
@@ -561,7 +565,7 @@ class MultiComponentSource(ComponentTree):
         # initialize from observation
         seds, morphs, bbox = init_multicomponent_source(
             sky_coord,
-            frame,
+            model_frame,
             observations,
             obs_idx=obs_idx,
             flux_percentiles=flux_percentiles,
@@ -607,15 +611,10 @@ class MultiComponentSource(ComponentTree):
                 morphs[k], name="morph", step=1e-2, constraint=morph_constraint
             )
             components.append(
-                FactorizedComponent(frame, sed, morph, bbox=bbox, shift=shift)
+                FactorizedComponent(model_frame, bbox, sed, morph, shift=shift)
             )
             components[-1].pixel_center = pixel_center
         super().__init__(components)
-
-    @property
-    def bbox(self):
-        c = self.components[0]
-        return c.bbox
 
     @property
     def shift(self):

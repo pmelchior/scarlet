@@ -8,7 +8,7 @@ class TestCubeComponent:
 
     def test_model(self):
         frame_shape = (10, 20, 30)
-        frame = scarlet.Frame(frame_shape)
+        frame = scarlet.Frame(frame_shape, channels=np.arange(10))
 
         shape = (5,4,6)
         cube = np.zeros(shape)
@@ -18,8 +18,8 @@ class TestCubeComponent:
         origin = (2,3,4)
         bbox = scarlet.Box(shape, origin=origin)
 
-        component = scarlet.CubeComponent(frame, cube, bbox=bbox)
-        model = component.get_model()
+        component = scarlet.CubeComponent(frame, bbox, cube)
+        model = component.get_model(frame=frame)
 
         # everything zero except at one location?
         test_loc = tuple(np.array(on_location) + np.array(origin))
@@ -33,7 +33,7 @@ class TestFactorizedComponent:
 
     def test_model(self):
         frame_shape = (10, 20, 30)
-        frame = scarlet.Frame(frame_shape)
+        frame = scarlet.Frame(frame_shape, channels=np.arange(10))
 
         shape = (5,4,6)
         on_location = (1,2,3)
@@ -47,8 +47,8 @@ class TestFactorizedComponent:
         origin = (2,3,4)
         bbox = scarlet.Box(shape, origin=origin)
 
-        component = scarlet.FactorizedComponent(frame, sed, morph, bbox=bbox)
-        model = component.get_model()
+        component = scarlet.FactorizedComponent(frame, bbox, sed, morph)
+        model = component.get_model(frame=frame)
 
         # everything zero except at one location?
         test_loc = tuple(np.array(on_location) + np.array(origin))
@@ -60,8 +60,8 @@ class TestFactorizedComponent:
         # now with shift
         shift_loc = (0,1,0)
         shift = scarlet.Parameter(np.array(shift_loc[1:]))
-        component = scarlet.FactorizedComponent(frame, sed, morph, shift=shift, bbox=bbox)
-        model = component.get_model()
+        component = scarlet.FactorizedComponent(frame, bbox, sed, morph, shift=shift)
+        model = component.get_model(frame=frame)
 
         # everything zero except at one location?
         test_loc = tuple(np.array(on_location) + np.array(origin) + np.array(shift_loc))
@@ -74,7 +74,7 @@ class TestFunctionComponent:
 
     def test_model(self):
         frame_shape = (10, 20, 30)
-        frame = scarlet.Frame(frame_shape)
+        frame = scarlet.Frame(frame_shape, channels=np.arange(10))
 
         shape = (5,4,6)
         on_location = (1,2,3)
@@ -92,8 +92,8 @@ class TestFunctionComponent:
         origin = (2,3,4)
         bbox = scarlet.Box(shape, origin=origin)
 
-        component = scarlet.FunctionComponent(frame, sed, fparams, f, bbox=bbox)
-        model = component.get_model()
+        component = scarlet.FunctionComponent(frame, bbox, sed, fparams, f)
+        model = component.get_model(frame=frame)
 
         # everything zero except at one location?
         test_loc = tuple(np.array(on_location) + np.array(origin))
@@ -107,7 +107,7 @@ class TestComponentTree:
 
     def test_model(self):
         frame_shape = (10, 20, 30)
-        frame = scarlet.Frame(frame_shape)
+        frame = scarlet.Frame(frame_shape, channels=np.arange(10))
 
         shape = (5,4,6)
         on_location = (1,2,3)
@@ -116,7 +116,7 @@ class TestComponentTree:
         cube = scarlet.Parameter(cube)
         origin1 = (2,3,4)
         bbox1 = scarlet.Box(shape, origin=origin1)
-        component1 = scarlet.CubeComponent(frame, cube, bbox=bbox1)
+        component1 = scarlet.CubeComponent(frame, bbox1, cube)
 
         sed = np.zeros(shape[0])
         sed[on_location[0]] = 1
@@ -128,10 +128,10 @@ class TestComponentTree:
 
         origin2 = (5,6,7)
         bbox2 = scarlet.Box(shape, origin=origin2)
-        component2 = scarlet.FactorizedComponent(frame, sed, morph, bbox=bbox2)
+        component2 = scarlet.FactorizedComponent(frame, bbox2, sed, morph)
 
         tree = scarlet.ComponentTree([component1, component2])
-        model = tree.get_model()
+        model = tree.get_model(frame=frame)
 
         # everything zero except at one location?
         test_locs = [tuple(np.array(on_location) + np.array(origin1)), tuple(np.array(on_location) + np.array(origin2))]

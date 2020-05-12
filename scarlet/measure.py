@@ -1,13 +1,4 @@
 import numpy as np
-from .component import *
-
-
-def get_model(component):
-    frame_ = component.frame
-    component.set_frame(component.bbox)
-    model = component.get_model()
-    component.set_frame(frame_)
-    return model
 
 
 def max_pixel(component):
@@ -18,9 +9,9 @@ def max_pixel(component):
     component: `scarlet.Component` or `scarlet.ComponentTree`
         Component to analyze
     """
-    model = get_model(component)
+    model = component.get_model()
     return tuple(
-        np.unravel_index(np.argmax(model_), model.shape) + component.bbox.origin
+        np.unravel_index(np.argmax(model), model.shape) + component.bbox.origin
     )
 
 
@@ -32,7 +23,7 @@ def flux(component):
     component: `scarlet.Component` or `scarlet.ComponentTree`
         Component to analyze
     """
-    model = get_model(component)
+    model = component.get_model()
     return model.sum(axis=(1, 2))
 
 
@@ -44,7 +35,7 @@ def centroid(component):
     component: `scarlet.Component` or `scarlet.ComponentTree`
         Component to analyze
     """
-    model = get_model(component)
+    model = component.get_model()
     indices = np.indices(model.shape)
     centroid = np.array([np.sum(ind * model) for ind in indices]) / model.sum()
     return centroid + component.bbox.origin
