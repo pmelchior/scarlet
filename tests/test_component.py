@@ -8,7 +8,7 @@ class TestCubeComponent:
 
     def test_model(self):
         frame_shape = (10, 20, 30)
-        frame = scarlet.Frame(frame_shape)
+        frame = scarlet.Frame(frame_shape, channels=np.arange(10))
 
         shape = (5,4,6)
         cube = np.zeros(shape)
@@ -33,7 +33,7 @@ class TestFactorizedComponent:
 
     def test_model(self):
         frame_shape = (10, 20, 30)
-        frame = scarlet.Frame(frame_shape)
+        frame = scarlet.Frame(frame_shape, channels=np.arange(10))
 
         shape = (5,4,6)
         on_location = (1,2,3)
@@ -74,7 +74,7 @@ class TestFunctionComponent:
 
     def test_model(self):
         frame_shape = (10, 20, 30)
-        frame = scarlet.Frame(frame_shape)
+        frame = scarlet.Frame(frame_shape, channels=np.arange(10))
 
         shape = (5,4,6)
         on_location = (1,2,3)
@@ -107,7 +107,7 @@ class TestComponentTree:
 
     def test_model(self):
         frame_shape = (10, 20, 30)
-        frame = scarlet.Frame(frame_shape)
+        frame = scarlet.Frame(frame_shape, channels=np.arange(10))
 
         shape = (5,4,6)
         on_location = (1,2,3)

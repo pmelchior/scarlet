@@ -159,7 +159,7 @@ class Observation:
         return self
 
     @property
-    def convolution_bound(self):
+    def convolution_bounds(self):
         """Build the slices needed for convolution in real space
         """
         try:
