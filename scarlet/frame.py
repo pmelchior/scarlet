@@ -6,6 +6,7 @@ from . import resampling
 
 logger = logging.getLogger("scarlet.frame")
 
+
 class Frame(Box):
     """Spatial and spectral characteristics of the data
 
@@ -24,7 +25,7 @@ class Frame(Box):
     """
 
     def __init__(
-        self, shape_or_box, wcs=None, psfs=None, channels=None, dtype=np.float32
+        self, shape_or_box, channels, wcs=None, psfs=None, dtype=np.float32
     ):
         # Import PSF here to prevent a circular dependency
         from .psf import PSF
@@ -44,10 +45,7 @@ class Frame(Box):
             else:
                 self._psfs = PSF(psfs)
 
-        assert channels is None or len(channels) == self.shape[0]
-        if channels is None:
-            logger.warning(
-                "No channels specified. Possible, but multi-observation processing will likely fail!")
+        assert len(channels) == self.shape[0]
         self.channels = channels
         self.dtype = dtype
 

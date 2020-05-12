@@ -2,6 +2,7 @@ import numpy as np
 from astropy.visualization.lupton_rgb import LinearMapping, AsinhMapping
 import matplotlib.pyplot as plt
 from .component import ComponentTree
+from .observation import convolve
 
 
 def channels_to_rgb(channels):
@@ -401,7 +402,7 @@ def show_sources(
         if show_rendered:
             # Center and show the rendered model
             model = src.model_to_frame(frame=rendered_box)
-            model = observation.render(model, in_frame=False)
+            model = observation.convolve(model)
             ax[k][panel].imshow(
                 img_to_rgb(model, norm=norm, channel_map=channel_map),
                 extent=extent, origin="lower"

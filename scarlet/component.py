@@ -590,7 +590,10 @@ class ComponentTree:
             (Bands, Height, Width) data cube
         """
         if frame is None:
-            frame = Frame(self.bbox, dtype=self.model_frame.dtype, psfs=self.model_frame.psf)
+            frame = Frame(
+                self.bbox, dtype=self.model_frame.dtype,
+                psfs=self.model_frame.psf, channels=self.model_frame.channels
+            )
         # If this is the model frame then the slices are already cached
         if frame == self.model_frame:
             use_cached = True

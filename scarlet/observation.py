@@ -12,7 +12,7 @@ from scarlet.operators_pybind11 import apply_filter
 
 
 @primitive
-def _convolve(image, psf, bounds):
+def convolve(image, psf, bounds):
     """Convolve an image with a PSF in real space
     """
     result = np.empty(image.shape, dtype=image.dtype)
@@ -29,11 +29,11 @@ def _convolve(image, psf, bounds):
 def _grad_convolve(convolved, image, psf, slices):
     """Gradient of a real space convolution
     """
-    return lambda input_grad: _convolve(input_grad, psf[:, ::-1, ::-1], slices)
+    return lambda input_grad: convolve(input_grad, psf[:, ::-1, ::-1], slices)
 
 
 # Register this function in autograd
-defvjp(_convolve, _grad_convolve)
+defvjp(convolve, _grad_convolve)
 
 
 class Observation:
@@ -57,7 +57,7 @@ class Observation:
     """
 
     def __init__(
-            self, images, psfs=None, weights=None, wcs=None, channels=None, padding=10
+            self, images, channels, psfs=None, weights=None, wcs=None, padding=10
     ):
         """Create an Observation
 
@@ -91,7 +91,7 @@ class Observation:
         else:
             self.weights = np.ones(images.shape)
         assert (
-                self.weights.shape == self.images.shape
+            self.weights.shape == self.images.shape
         ), "Weights needs to have same shape as images"
         self._padding = padding
         self.slices_for_model = (slice(None), slice(None), slice(None))
@@ -154,35 +154,35 @@ class Observation:
             self._diff_kernels = diff_kernels
 
         # initialize the filter window
+        assert convolution in ["real", "fft"], "`convolution` must be either 'real' or 'fft'"
         self.convolution = convolution
         return self
 
     @property
-    def convolution(self):
-        """Whether to do a real space or k-space convolution
+    def convolution_bound(self):
+        """Build the slices needed for convolution in real space
         """
-        return self._convolution
-
-    @convolution.setter
-    def convolution(self, value):
-        assert value in ["real", "fft"], "`convolution` must be either 'real' or 'fft'"
-        self._convolution = value
-        if value == "real":
+        try:
+            return self._convolution_bounds
+        except AttributeError:
             coords = interpolation.get_filter_coords(self._diff_kernels[0])
-            self._convolution_slices = interpolation.get_filter_bounds(coords.reshape(-1, 2))
+            self._convolution_bounds = interpolation.get_filter_bounds(coords.reshape(-1, 2))
+        return self._convolution_bounds
 
-    def _convolve(self, model):
+    def convolve(self, model, convolution_type=None):
         """Convolve the model in a single band
         """
-        if self.convolution == "real":
-            result = _convolve(model, self._diff_kernels.image, self._convolution_slices)
-        elif self.convolution == "fft":
+        if convolution_type is None:
+            convolution_type = self.convolution
+        if convolution_type == "real":
+            result = convolve(model, self._diff_kernels.image, self.convolution_bounds)
+        elif convolution_type == "fft":
             result = fft.convolve(fft.Fourier(model), self._diff_kernels, axes=(1, 2)).image
         else:
-            raise ValueError("`convolution` must be either 'real' or 'fft', got {}".format(self.convolution))
+            raise ValueError("`convolution` must be either 'real' or 'fft', got {}".format(convolution_type))
         return result
 
-    def render(self, model, in_frame=True):
+    def render(self, model):
         """Convolve a model to the observation frame
 
         Parameters
@@ -198,13 +198,10 @@ class Observation:
             `model` mapped into the observation frame
         """
         if self._diff_kernels is not None:
-            model_images = self._convolve(model)
+            model_images = self.convolve(model)
         else:
             model_images = model
-
-        if in_frame:
-            model_images = model_images[:, self.slices_for_model[-2], self.slices_for_model[-1]]
-
+        model_images = model_images[:, self.slices_for_model[-2], self.slices_for_model[-1]]
         return model_images
 
     def get_loss(self, model):
@@ -284,10 +281,10 @@ class LowResObservation(Observation):
     def __init__(
             self,
             images,
+            channels,
             wcs=None,
             psfs=None,
             weights=None,
-            channels=None,
             padding=3,
     ):
 
