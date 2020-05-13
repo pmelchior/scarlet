@@ -395,3 +395,124 @@ def show_sources(
 
     fig.tight_layout()
     return fig
+
+def show_spectral_sources(
+    sources,
+    observation=None,
+    norm=None,
+    channel_map=None,
+    show_observed=False,
+    show_rendered=False,
+    show_spectra=True,
+    figsize=None,
+):
+    """Plot each source individually.
+    The functions provides an more detailed inspection of every source in the list.
+    Parameters
+    ----------
+    sources: list of source models
+    observation: `~scarlet.Observation`
+    norm: norm to compress image intensity to the range [0,255]
+    channel_map: array_like
+        Linear mapping with dimensions (3, channels)
+    show_observed: bool
+        Whether the observation is shown
+    show_rendered: bool
+        Whether the model, rendered to match the observation, is shown
+    show_spectra: bool
+        Whether source spectrum is shown.
+        For multi-component sources, spectra are shown separately.
+    figsize: matplotlib figsize argument
+    Returns
+    -------
+    matplotlib figure
+    """
+    if show_observed or show_rendered:
+        assert (
+            observation is not None
+        ), "Provide matched observation to show observed frame"
+    panels = 1 + sum((show_observed, show_rendered))
+    nrows, ncols = len(list(sources)), panels
+    if show_spectra is True:
+        nrows = nrows*2
+    if figsize is None:
+        figsize = (3 * panels, 3 * nrows)
+    fig = plt.figure(figsize=figsize)
+    from matplotlib.gridspec import GridSpec
+    gs = GridSpec(nrows=nrows, ncols=ncols)
+    ax = [None]*(nrows*ncols)
+    for k, src in enumerate(sources):
+        if show_spectra:
+            k = k*2
+        if hasattr(src, "center"):
+            center = np.array(src.center)
+            # center in src bbox coordinates
+            if src.bbox is not None:
+                center_ = center - np.array(src.bbox.origin[1:])
+            else:
+                center_ = center
+            # center in observed coordinates
+            center__ = center - np.array(src.frame.origin[1:])
+        else:
+            center = None
+
+        panel = 0
+        frame_ = src.frame
+        src.set_frame(src.bbox)
+        if isinstance(src, ComponentTree):
+            model = 0
+            spectra = []
+            for component in src:
+                model_ = component.get_model()
+                spectra.append(model_.sum(axis=(1, 2)))
+                model += model_
+        else:
+            model = src.get_model()
+            spectra = [model.sum(axis=(1, 2))]
+        src.set_frame(frame_)
+        ax[k+panel] = fig.add_subplot(gs[k, panel])
+        ax[k+panel].imshow(img_to_rgb(model, norm=norm, channel_map=channel_map, mask=model.sum(axis=0)==0))
+        ax[k+panel].set_title("Model Source {}".format(k))
+        if center is not None:
+            ax[k+panel].plot(*center_[::-1], "wx", mew=1, ms=10)
+
+        if show_rendered:
+            panel += 1
+            ax[k+panel] = fig.add_subplot(gs[k, panel])
+            model = src.get_model()
+            model = observation.render(model)
+            ax[k+panel].imshow(img_to_rgb(model, norm=norm, channel_map=channel_map))
+            ax[k+panel].set_title("Model Source {} Rendered".format(k))
+            if src.bbox is not None:
+                ax[k+panel].set_ylim(src.bbox.start[-2], src.bbox.stop[-2])
+                ax[k+panel].set_xlim(src.bbox.start[-1], src.bbox.stop[-1])
+            if center is not None:
+                ax[k+panel].plot(*center__[::-1], "wx", mew=1, ms=10)
+
+        if show_observed:
+            panel += 1
+            ax[k+panel] = fig.add_subplot(gs[k, panel])
+            ax[k+panel].imshow(
+                img_to_rgb(observation.images, norm=norm, channel_map=channel_map)
+            )
+            ax[k+panel].set_title("Observation".format(k))
+            if src.bbox is not None:
+                ax[k+panel].set_ylim(src.bbox.start[-2], src.bbox.stop[-2])
+                ax[k+panel].set_xlim(src.bbox.start[-1], src.bbox.stop[-1])
+            if center is not None:
+                ax[k+panel].plot(*center__[::-1], "wx", mew=1, ms=10)
+
+        if show_spectra:
+            k += 1
+            ax[k+panel] = fig.add_subplot(gs[k, :])
+            for spectrum in spectra:
+                ax[k+panel].plot(spectrum)
+            ax[k+panel].set_xticks(range(len(spectrum)))
+            if hasattr(src.frame, "channels") and src.frame.channels is not None:
+                ax[k+panel].set_xticklabels(src.frame.channels)
+            ax[k+panel].set_title("SED")
+            ax[k+panel].set_xlabel("Channel")
+            ax[k+panel].set_ylabel("Intensity")
+
+    fig.tight_layout()
+    return fig
