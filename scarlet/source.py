@@ -1,10 +1,11 @@
 from functools import partial
 
-from .constraint import PositivityConstraint, MonotonicityConstraint, SymmetryConstraint
+from .constraint import PositivityConstraint, MonotonicityConstraint, SymmetryConstraint, L0Constraint
 from .constraint import NormalizationConstraint, ConstraintChain, CenterOnConstraint
 from .parameter import Parameter, relative_step
 from .component import ComponentTree, FunctionComponent, FactorizedComponent
 from .bbox import Box
+from .wavelet import Starlet, mad_wavelet
 from . import operator
 
 # make sure that import * above doesn't import its own stock numpy
@@ -399,6 +400,105 @@ class PointSource(FunctionComponent):
     def _psf_wrapper(self, *parameters):
         return self.model_frame.psf.__call__(*parameters, bbox=self.bbox)[0]
 
+class StarletSource(FunctionComponent):
+    """Source intialized with starlet coefficients.
+
+    Sources are initialized with the SED of the center pixel,
+    and the morphologies are initialised as ExtendedSources
+    and transformed into starlet coefficients.
+    """
+
+    def __init__(
+        self,
+        frame,
+        sky_coord,
+        observations,
+        obs_idx=0,
+        thresh=1.0,
+        starlet_thresh = 5,
+        shifting=False,
+    ):
+        """Extended source intialized to match a set of observations
+
+        Parameters
+        ----------
+        frame: `~scarlet.Frame`
+            The frame of the model
+        sky_coord: tuple
+            Center of the source
+        observations: instance or list of `~scarlet.observation.Observation`
+            Observation(s) to initialize this source.
+        obs_idx: int
+            Index of the observation in `observations` to
+            initialize the morphology.
+        thresh: `float`
+            Multiple of the backround RMS used as a
+            flux cutoff for morphology initialization.
+        shifting: `bool`
+            Whether or not a subpixel shift is added as optimization parameter
+        """
+        center = np.array(frame.get_pixel(sky_coord), dtype="float")
+        self.pixel_center = tuple(np.round(center).astype("int"))
+
+        # initialize SED from sky_coord
+        try:
+            iter(observations)
+        except TypeError:
+            observations = [observations]
+
+        # initialize from observation
+        sed, image_morph, bbox = init_extended_source(
+            sky_coord,
+            frame,
+            observations,
+            obs_idx=obs_idx,
+            thresh=thresh,
+            symmetric=False,
+            monotonic=True,
+        )
+
+        sed = Parameter(
+            sed,
+            name="sed",
+            step=partial(relative_step, factor=1e-2),
+            constraint=PositivityConstraint(),
+        )
+
+        noise = mad_wavelet(observations[obs_idx].images) * \
+                np.sqrt(np.sum(observations[obs_idx]._diff_kernels.image**2, axis = (-2,-1)))
+        # Threshold in units of noise
+        thresh = starlet_thresh * np.sqrt(np.sum((sed*noise) ** 2))
+
+        # Starlet transform of morphologies (n1,n2) with 4 dimensions: (1,lvl,n1,n2), lvl = wavelet scales
+        self.transform = Starlet(image_morph)
+        #The starlet transform is the model
+        morph = self.transform.coefficients
+        # wavelet-scale norm
+        starlet_norm = self.transform.norm
+        #One threshold per wavelet scale: thresh*norm
+        thresh_array = np.zeros(morph.shape) + thresh
+        thresh_array = thresh_array * np.array([starlet_norm])[..., np.newaxis, np.newaxis]
+        # We don't threshold the last scale
+        thresh_array[:,-1,:,:] = 0
+
+        morph_constraint = ConstraintChain(*[L0Constraint(thresh_array), PositivityConstraint()])
+
+        morph = Parameter(morph, name="morph", step=1.e-2, constraint=morph_constraint)
+
+        super().__init__(frame, bbox, sed, morph, self._iuwt)
+
+    @property
+    def center(self):
+        if len(self.parameters) == 3:
+            return self.pixel_center + self.shift
+        else:
+            return self.pixel_center
+
+    def _iuwt(self, param):
+        """ Takes the inverse transform of parameters as starlet coefficients.
+
+        """
+        return Starlet(coefficients = param).image[0]
 
 class ExtendedSource(FactorizedComponent):
     def __init__(
