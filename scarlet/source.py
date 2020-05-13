@@ -376,14 +376,14 @@ class PointSource(FunctionComponent):
                 logger.info(msg)
 
         # set up parameters
-        sedconstraints = PositivityConstraint()
+        sed_constraints = PositivityConstraint()
         if entropic:
-            sedconstraints.append(EntropyConstraint())
+            sed_constraints = ConstraintChain(sed_constraints,EntropyConstraint())
         sed = Parameter(
             sed,
             name="sed",
             step=partial(relative_step, factor=1e-2),
-            constraint=sedconstraints,
+            constraint=sed_constraints,
         )
 
         center = Parameter(self.center, name="center", step=1e-1)
@@ -463,14 +463,14 @@ class ExtendedSource(FactorizedComponent):
             symmetric=True,
             monotonic=True,
         )
-        sedconstraints = PositivityConstraint()
+        sed_constraints = PositivityConstraint()
         if entropic:
-            sedconstraints.append(EntropyConstraint())
+            sed_constraints = ConstraintChain(sed_constraints,EntropyConstraint())
         sed = Parameter(
             sed,
             name="sed",
             step=partial(relative_step, factor=1e-2),
-            constraint=sedconstraints,
+            constraint=sed_constraints,
         )
 
         constraints = []
