@@ -80,8 +80,17 @@ def shannon_entropy(X,axis=0):
 def prox_shannon_entropy(X,step):
     """Returns proximal operator of the Shannon Entropy
     """
-    posX = X - X.min()
-    return step*np.real(lambertw(1/step*np.exp(posX/step-1)))
+
+    mask = X > 710*step
+    above = X > 0
+
+    # Dealing with high exp values
+    rlambertw = np.copy(X)
+    rlambertw[mask] = np.log(1/step) + X[mask]/step-1 \
+                     -np.log(np.log(1/step)+X[mask]/step-1)
+    rlambertw[np.logical_not(mask)*above] = np.real(
+            lambertw(1/step*np.exp(X[np.logical_not(mask)*above]/step-1)))
+    return step*rlambertw
 
 def prox_strict_monotonic(shape, use_nearest=False, thresh=0, center=None):
     """Build the prox_monotonic operator
