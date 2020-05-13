@@ -1,9 +1,39 @@
 import autograd.numpy as np
+from autograd.extend import defvjp, primitive
 
 from .frame import Frame
 from . import interpolation
 from . import fft
 from . import resampling
+
+from .bbox import overlapped_slices
+
+from scarlet.operators_pybind11 import apply_filter
+
+
+@primitive
+def convolve(image, psf, bounds):
+    """Convolve an image with a PSF in real space
+    """
+    result = np.empty(image.shape, dtype=image.dtype)
+    for band in range(len(image)):
+        if hasattr(image[band], "_value"):
+            # This is an ArrayBox
+            img = image[band]._value
+        else:
+            img = image[band]
+        apply_filter(img, psf[band].reshape(-1), bounds[0], bounds[1], bounds[2], bounds[3], result[band])
+    return result
+
+
+def _grad_convolve(convolved, image, psf, slices):
+    """Gradient of a real space convolution
+    """
+    return lambda input_grad: convolve(input_grad, psf[:, ::-1, ::-1], slices)
+
+
+# Register this function in autograd
+defvjp(convolve, _grad_convolve)
 
 
 class Observation:
@@ -27,7 +57,7 @@ class Observation:
     """
 
     def __init__(
-            self, images, psfs=None, weights=None, wcs=None, channels=None, padding=10
+            self, images, channels, psfs=None, weights=None, wcs=None, padding=10
     ):
         """Create an Observation
 
@@ -61,13 +91,14 @@ class Observation:
         else:
             self.weights = np.ones(images.shape)
         assert (
-                self.weights.shape == self.images.shape
+            self.weights.shape == self.images.shape
         ), "Weights needs to have same shape as images"
         self._padding = padding
-        self.slices = (slice(None), slice(None), slice(None))
+        self.slices_for_model = (slice(None), slice(None), slice(None))
+        self.slices_for_images = (slice(None), slice(None), slice(None))
         self._diff_kernels = None
 
-    def match(self, model_frame, diff_kernels=None):
+    def match(self, model_frame, diff_kernels=None, convolution="fft"):
         """Match the frame of `Blend` to the frame of this observation.
 
         The method sets up the mappings in spectral and spatial coordinates,
@@ -82,18 +113,23 @@ class Observation:
             The difference kernel for each band.
             If `diff_kernels` is `None` then they are
             calculated automatically.
+        convolution: str
+            The type of convolution to use.
+            - `real`: Use a real space convolution and gradient
+            - `fft`: Use a DFT to do the convolution and gradient
+
         Returns
         -------
         None
         """
-        # Find the box that contained this obs in model_frame
-        overlap = self.frame & model_frame
+        self.model_frame = model_frame
+        if model_frame.channels is not None and self.frame.channels is not None:
+            channel_origin = list(model_frame.channels).index(self.frame.channels[0])
+            self.frame.origin = (channel_origin, *self.frame.origin[1:])
 
-        # Slices of the observation in the model
-        self.slices_for_model = tuple(slice(overlap.start[d]-model_frame.origin[d],
-                                            overlap.stop[d]-model_frame.origin[d]) for d in range(self.frame.D))
-        # Slices of the model in this observation
-        self.slices_for_images = tuple(slice(overlap.start[d], overlap.stop[d]) for d in range(self.frame.D))
+        slices = overlapped_slices(self.frame, model_frame)
+        self.slices_for_images = slices[0] # Slice of images to match the model
+        self.slices_for_model = slices[1] #  Slice of model that overlaps with the observation
 
         # check dtype consistency
         if self.frame.dtype != model_frame.dtype:
@@ -117,12 +153,34 @@ class Observation:
                 diff_kernels = fft.Fourier(diff_kernels)
             self._diff_kernels = diff_kernels
 
+        # initialize the filter window
+        assert convolution in ["real", "fft"], "`convolution` must be either 'real' or 'fft'"
+        self.convolution = convolution
         return self
 
-    def _convolve(self, model):
+    @property
+    def convolution_bounds(self):
+        """Build the slices needed for convolution in real space
+        """
+        try:
+            return self._convolution_bounds
+        except AttributeError:
+            coords = interpolation.get_filter_coords(self._diff_kernels[0])
+            self._convolution_bounds = interpolation.get_filter_bounds(coords.reshape(-1, 2))
+        return self._convolution_bounds
+
+    def convolve(self, model, convolution_type=None):
         """Convolve the model in a single band
         """
-        return fft.convolve(fft.Fourier(model), self._diff_kernels, axes=(1, 2)).image
+        if convolution_type is None:
+            convolution_type = self.convolution
+        if convolution_type == "real":
+            result = convolve(model, self._diff_kernels.image, self.convolution_bounds)
+        elif convolution_type == "fft":
+            result = fft.convolve(fft.Fourier(model), self._diff_kernels, axes=(1, 2)).image
+        else:
+            raise ValueError("`convolution` must be either 'real' or 'fft', got {}".format(convolution_type))
+        return result
 
     def render(self, model):
         """Convolve a model to the observation frame
@@ -137,12 +195,10 @@ class Observation:
         image_model: array
             `model` mapped into the observation frame
         """
-
         if self._diff_kernels is not None:
-            model_images = self._convolve(model)
+            model_images = self.convolve(model)
         else:
             model_images = model
-
         return model_images[self.slices_for_model]
 
     def get_loss(self, model):
@@ -159,10 +215,14 @@ class Observation:
             Scalar tensor with the likelihood of the model
             given the image data
         """
-
         model_ = self.render(model)
-        images_ = self.images[:, self.slices_for_images[-2], self.slices_for_images[-1]]
-        weights_ = self.weights[:, self.slices_for_images[-2], self.slices_for_images[-1]]
+        if self.frame != self.model_frame:
+            images_ = self.images[self.slices_for_images]
+            weights_ = self.weights[self.slices_for_images]
+        else:
+            images_ = self.images
+            weights_ = self.weights
+
         # normalization of the single-pixel likelihood:
         # 1 / [(2pi)^1/2 (sigma^2)^1/2]
         # with inverse variance weights: sigma^2 = 1/weight
@@ -188,15 +248,40 @@ class Observation:
                                  wcs=self.frame.wcs,
                                  channels=self.frame.channels)
 
+    def _model_to_frame(self, frame, images=None):
+        """Project this observation into another frame
+
+        Note: the frame must have the same sampling and rotation,
+        but can differ in the shape and origin of the `Frame`.
+        This method is a convenience function for now but should
+        not be considered supported and could be removed in a later version
+        """
+        frame_slices, observation_slices = overlapped_slices(frame, self.bbox)
+
+        if images is None:
+            images = self.images
+
+        if hasattr(frame, "dtype"):
+            dtype = frame.dtype
+        else:
+            dtype = images.dtype
+        result = np.zeros(frame.shape, dtype=dtype)
+        result[frame_slices] = images[observation_slices]
+        return result
+
+    @property
+    def bbox(self):
+        return self.frame.bbox
+
 
 class LowResObservation(Observation):
     def __init__(
             self,
             images,
+            channels,
             wcs=None,
             psfs=None,
             weights=None,
-            channels=None,
             padding=3,
     ):
 
@@ -512,7 +597,6 @@ class LowResObservation(Observation):
         loss: float
             Loss of the model
         """
-
         model_ = self.render(model)
         images_ = self.images
         weights_ = self.weights

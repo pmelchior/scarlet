@@ -8,21 +8,6 @@ namespace py = pybind11;
 
 typedef Eigen::Array<int, Eigen::Dynamic, 1> IndexVector;
 
-void prox_monotonic(
-  // Fast implementation of monotonicity constraint
-  py::array_t<double> &X,
-  std::vector<int> const &ref_idx,
-  std::vector<int> const &dist_idx,
-  double const &thresh
-){
-  auto x = X.mutable_unchecked<1>();
-  // Start at the center of the image and set each pixel to the minimum
-  // between itself and its reference pixel (which is closer to the peak)
-  for(auto &didx: dist_idx){
-    x(didx) = std::min(x(didx), x(ref_idx[didx])*(1-thresh));
-  }
-}
-
 template <typename T, typename M, typename V>
 void prox_weighted_monotonic(
     // Fast implementation of weighted monotonicity constraint
@@ -30,7 +15,7 @@ void prox_weighted_monotonic(
     Eigen::Ref<const M> weights,
     Eigen::Ref<const IndexVector> offsets,
     Eigen::Ref<const IndexVector> dist_idx,
-    T const &thresh
+    T const &min_gradient
 ){
     // Start at the center of the image and set each pixel to the minimum
     // between itself and its reference pixel (which is closer to the peak)
@@ -43,7 +28,7 @@ void prox_weighted_monotonic(
                 ref_flux += flat_img(nidx) * weights(i, didx);
             }
         }
-        flat_img(didx) = std::min(flat_img(didx), ref_flux*(1-thresh));
+        flat_img(didx) = std::min(flat_img(didx), ref_flux*(1-min_gradient));
     }
 }
 
@@ -70,7 +55,6 @@ void apply_filter(
 PYBIND11_PLUGIN(operators_pybind11)
 {
   py::module mod("operators_pybind11", "Fast proximal operators");
-  mod.def("prox_monotonic", &prox_monotonic, "Monotonic Proximal Operator");
 
   typedef Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> MatrixF;
   typedef Eigen::Matrix<float, Eigen::Dynamic, 1> VectorF;

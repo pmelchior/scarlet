@@ -1,6 +1,7 @@
 import operator
 
 import autograd.numpy as np
+from autograd.extend import primitive, defvjp
 from scipy import fftpack
 
 
@@ -37,7 +38,46 @@ def _centered(arr, newshape):
     return arr[tuple(myslice)]
 
 
-def _pad(arr, newshape, axes=None, mode = "constant"):
+@primitive
+def fast_zero_pad(arr, pad_width):
+    """Fast version of numpy.pad when `mode="constant"`
+
+    Executing `numpy.pad` with zeros is ~1000 times slower
+    because it doesn't make use of the `zeros` method for padding.
+
+    Paramters
+    ---------
+    arr: array
+        The array to pad
+    pad_width: tuple
+        Number of values padded to the edges of each axis.
+        See numpy docs for more.
+
+    Returns
+    -------
+    result: array
+        The array padded with `constant_values`
+    """
+    newshape = tuple([a+ps[0]+ps[1] for a, ps in zip(arr.shape, pad_width)])
+
+    result = np.zeros(newshape, dtype=arr.dtype)
+    slices = tuple([slice(start, s-end) for s, (start, end) in zip(result.shape, pad_width)])
+    result[slices] = arr
+    return result
+
+
+def _fast_zero_pad_grad(result, arr, pad_width):
+    """Gradient for fast_zero_pad
+    """
+    slices = tuple([slice(start, s-end) for s, (start, end) in zip(result.shape, pad_width)])
+    return lambda grad_chain: grad_chain[slices]
+
+
+# Register this function in autograd
+defvjp(fast_zero_pad, _fast_zero_pad_grad)
+
+
+def _pad(arr, newshape, axes=None, mode="constant", constant_values=0):
     """Pad an array to fit into newshape
 
     Pad `arr` with zeros to fit into newshape,
@@ -64,7 +104,11 @@ def _pad(arr, newshape, axes=None, mode = "constant"):
             startind = (dS + 1) // 2
             endind = dS - startind
             pad_width[axis] = (startind, endind)
-    return np.pad(arr, pad_width, mode=mode)
+    if mode == "constant" and constant_values == 0:
+        result = fast_zero_pad(arr, pad_width)
+    else:
+        result = np.pad(arr, pad_width, mode=mode)
+    return result
 
 
 def _get_fft_shape(im_or_shape1, im_or_shape2, padding=3, axes=None, max=False):

@@ -6,6 +6,7 @@ from . import resampling
 
 logger = logging.getLogger("scarlet.frame")
 
+
 class Frame(Box):
     """Spatial and spectral characteristics of the data
 
@@ -24,7 +25,7 @@ class Frame(Box):
     """
 
     def __init__(
-        self, shape_or_box, wcs=None, psfs=None, channels=None, dtype=np.float32
+        self, shape_or_box, channels, wcs=None, psfs=None, dtype=np.float32
     ):
         # Import PSF here to prevent a circular dependency
         from .psf import PSF
@@ -44,11 +45,9 @@ class Frame(Box):
             else:
                 self._psfs = PSF(psfs)
 
-        assert channels is None or len(channels) == self.shape[0]
+        assert len(channels) == self.shape[0]
         self.channels = channels
         self.dtype = dtype
-
-
 
     @property
     def C(self):
@@ -71,10 +70,6 @@ class Frame(Box):
     @property
     def psf(self):
         return self._psfs
-
-    @property
-    def bbox(self):
-        return Box(self.shape, self.origin)
 
     def get_pixel(self, sky_coord):
         """Get the pixel coordinate from a world coordinate
@@ -223,36 +218,8 @@ class Frame(Box):
 
         return frame
 
-
-    def __and__(self, other):
-        """Intersection of two Frames (box and channels)
-
-        If there is no intersection between the two bounding
-        boxes then an empty bounding box is returned.
-
-        Parameters
-        ----------
-        other: `Frame`
-            The other frame in the intersection
-
-        Returns
-        -------
-        result: `Box`
-            The rectangular box that is in the overlap region
-            of both frames.
+    @property
+    def bbox(self):
+        """The `~scarlet.bbox.Box` version of this `Frame`.
         """
-        assert other.D == self.D
-        bounds = []
-        if self.channels is other.channels:
-            cmin = 0
-            cmax = self.C + 1
-        else:
-            assert self.channels is not None and other.channels is not None
-            cmin = list(other.channels).index(self.channels[0])
-            cmax = cmin + self.C + 1
-        bounds.append((cmin, cmax))
-        for d in range(self.D - 1):
-            bounds.append(
-                (max(self.start[d + 1], other.start[d + 1]), min(self.stop[d + 1], other.stop[d + 1]))
-            )
-        return Box.from_bounds(*bounds)
+        return Box(self.shape, self.origin)

@@ -2,6 +2,7 @@ import numpy as np
 from astropy.visualization.lupton_rgb import LinearMapping, AsinhMapping
 import matplotlib.pyplot as plt
 from .component import ComponentTree
+from .observation import convolve
 
 
 def channels_to_rgb(channels):
@@ -177,6 +178,7 @@ def show_scene(
     observation=None,
     norm=None,
     channel_map=None,
+    show_model=True,
     show_observed=False,
     show_rendered=False,
     show_residual=False,
@@ -194,6 +196,8 @@ def show_scene(
     norm: norm to compress image intensity to the range [0,255]
     channel_map: array_like
         Linear mapping with dimensions (3, channels)
+    show_model: bool
+        Whether the model is shown in the model frame
     show_observed: bool
         Whether the observation is shown
     show_rendered: bool
@@ -215,7 +219,7 @@ def show_scene(
             observation is not None
         ), "Provide matched observation to show observed frame"
 
-    panels = 1 + sum((show_observed, show_rendered, show_residual))
+    panels = sum((show_model, show_observed, show_rendered, show_residual))
     if linear:
         if figsize is None:
             figsize = (3 * panels, 3 * len(list(sources)))
@@ -237,45 +241,66 @@ def show_scene(
             mask = None
 
     panel = 0
-    tree = ComponentTree(sources)
-    model = tree.get_model()
-    ax[panel].imshow(img_to_rgb(model, norm=norm, channel_map=channel_map))
-    ax[panel].set_title("Model")
+    if hasattr(sources, "components"):
+        # The list of sources is already a tree, so just use it
+        tree = sources
+    else:
+        tree = ComponentTree(sources)
+    if observation is None:
+        model = tree.get_model()
+        extent = get_extent(tree.bbox)
+    else:
+        model = tree.get_model(frame=observation.frame)
+        extent = get_extent(observation.frame)
+
+    if show_model:
+        ax[panel].imshow(img_to_rgb(model, norm=norm, channel_map=channel_map), extent=extent, origin="lower")
+        ax[panel].set_title("Model")
+        ax[panel].set_xlim(extent[0], extent[1])
+        ax[panel].set_ylim(extent[2], extent[3])
+        panel += 1
 
     if show_rendered or show_residual:
         model = observation.render(model)
 
     if show_rendered:
-        panel += 1
         ax[panel].imshow(
-            img_to_rgb(model, norm=norm, channel_map=channel_map, mask=mask)
+            img_to_rgb(model, norm=norm, channel_map=channel_map, mask=mask), extent=extent, origin="lower"
         )
         ax[panel].set_title("Model Rendered")
+        ax[panel].set_xlim(extent[0], extent[1])
+        ax[panel].set_ylim(extent[2], extent[3])
+        panel += 1
 
     if show_observed:
-        panel += 1
         ax[panel].imshow(
             img_to_rgb(
                 observation.images, norm=norm, channel_map=channel_map, mask=mask
-            )
+            ), extent=extent, origin="lower"
         )
         ax[panel].set_title("Observation")
+        ax[panel].set_xlim(extent[0], extent[1])
+        ax[panel].set_ylim(extent[2], extent[3])
+        panel += 1
 
     if show_residual:
-        panel += 1
         residual = observation.images - model
         norm_ = LinearPercentileNorm(residual)
         ax[panel].imshow(
-            img_to_rgb(residual, norm=norm_, channel_map=channel_map, mask=mask)
+            img_to_rgb(residual, norm=norm_, channel_map=channel_map, mask=mask),
+            extent=extent, origin="lower"
         )
         ax[panel].set_title("Residual")
+        ax[panel].set_xlim(extent[0], extent[1])
+        ax[panel].set_ylim(extent[2], extent[3])
+        panel += 1
 
     if label_sources:
         for k, src in enumerate(sources):
             if hasattr(src, "center"):
                 center = np.array(src.center)
                 center_ = center - np.array(
-                    src.frame.origin[1:]
+                    src.model_frame.origin[1:]
                 )  # observed coordinates
             ax[0].text(*center[::-1], k, color="w")
             for panel in range(1, panels):
@@ -285,15 +310,23 @@ def show_scene(
     return fig
 
 
+def get_extent(bbox):
+    extent = np.array([bbox.start[-1], bbox.stop[-1], bbox.start[-2], bbox.stop[-2]], dtype=float) - 0.5
+    return extent
+
+
 def show_sources(
     sources,
     observation=None,
     norm=None,
     channel_map=None,
+    show_model=True,
     show_observed=False,
     show_rendered=False,
     show_sed=True,
     figsize=None,
+    model_mask=None,
+    mark_centers=True,
 ):
     """Plot each source individually.
     The functions provides an more detailed inspection of every source in the list.
@@ -304,6 +337,8 @@ def show_sources(
     norm: norm to compress image intensity to the range [0,255]
     channel_map: array_like
         Linear mapping with dimensions (3, channels)
+    show_model: bool
+        Whether the model is shown in the model frame
     show_observed: bool
         Whether the observation is shown
     show_rendered: bool
@@ -312,6 +347,14 @@ def show_sources(
         Whether source SED is shown.
         For multi-component sources, SEDs are shown separately.
     figsize: matplotlib figsize argument
+    model_mask: array
+        Mask used to hide pixels in the sparese model only.
+        This can be used to understand how the underlying model is
+        behaving, but defaults to `None`, which does not mask the
+        model at all.
+    mark_centers: bool
+        Whether or not to mark the centers of the soures
+        with their source number.
     Returns
     -------
     matplotlib figure
@@ -321,74 +364,78 @@ def show_sources(
             observation is not None
         ), "Provide matched observation to show observed frame"
 
-    panels = 1 + sum((show_observed, show_rendered, show_sed))
+    panels = sum((show_model, show_observed, show_rendered, show_sed))
     if figsize is None:
         figsize = (3 * panels, 3 * len(list(sources)))
     fig, ax = plt.subplots(len(list(sources)), panels, figsize=figsize)
     for k, src in enumerate(sources):
-
         if hasattr(src, "center"):
-            center = np.array(src.center)
-            # center in src bbox coordinates
-            if src.bbox is not None:
-                center_ = center - np.array(src.bbox.origin[1:])
-            else:
-                center_ = center
-            # center in observed coordinates
-            center__ = center - np.array(src.frame.origin[1:])
+            center = np.array(src.center)[::-1]
         else:
             center = None
 
         panel = 0
-        frame_ = src.frame
-        src.set_frame(src.bbox)
+
+        model = src.get_model()
         if isinstance(src, ComponentTree):
-            model = 0
             seds = []
             for component in src:
                 model_ = component.get_model()
                 seds.append(model_.sum(axis=(1, 2)))
-                model += model_
         else:
-            model = src.get_model()
             seds = [model.sum(axis=(1, 2))]
-        src.set_frame(frame_)
-        ax[k][panel].imshow(img_to_rgb(model, norm=norm, channel_map=channel_map, mask=model.sum(axis=0)==0))
-        ax[k][panel].set_title("Model Source {}".format(k))
-        if center is not None:
-            ax[k][panel].plot(*center_[::-1], "wx", mew=1, ms=10)
+
+        extent = get_extent(src.bbox)
+        rendered_box = src.bbox
+        if show_model:
+            # Show the unrendered model in it's bbox
+            ax[k][panel].imshow(
+                img_to_rgb(model, norm=norm, channel_map=channel_map, mask=model_mask),
+                extent=extent, origin="lower")
+            ax[k][panel].set_title("Model Source {}".format(k))
+            ax[k][panel].set_xlim(extent[0], extent[1])
+            ax[k][panel].set_ylim(extent[2], extent[3])
+            if center is not None and mark_centers:
+                ax[k][panel].plot(*center, "wx", mew=1, ms=10)
+            panel += 1
 
         if show_rendered:
-            panel += 1
-            model = src.get_model()
-            model = observation.render(model)
-            ax[k][panel].imshow(img_to_rgb(model, norm=norm, channel_map=channel_map))
+            # Center and show the rendered model
+            model = src.model_to_frame(frame=rendered_box)
+            model = observation.convolve(model)
+            ax[k][panel].imshow(
+                img_to_rgb(model, norm=norm, channel_map=channel_map),
+                extent=extent, origin="lower"
+            )
             ax[k][panel].set_title("Model Source {} Rendered".format(k))
-            if src.bbox is not None:
-                ax[k][panel].set_ylim(src.bbox.start[-2], src.bbox.stop[-2])
-                ax[k][panel].set_xlim(src.bbox.start[-1], src.bbox.stop[-1])
-            if center is not None:
-                ax[k][panel].plot(*center__[::-1], "wx", mew=1, ms=10)
+            ax[k][panel].set_xlim(extent[0], extent[1])
+            ax[k][panel].set_ylim(extent[2], extent[3])
+
+            if center is not None and mark_centers:
+                ax[k][panel].plot(*center, "wx", mew=1, ms=10)
+            panel += 1
 
         if show_observed:
-            panel += 1
+            # Center the observation on the source and display it
+            _images = observation._model_to_frame(rendered_box)
             ax[k][panel].imshow(
-                img_to_rgb(observation.images, norm=norm, channel_map=channel_map)
+                img_to_rgb(_images, norm=norm, channel_map=channel_map),
+                extent=extent, origin="lower"
             )
             ax[k][panel].set_title("Observation".format(k))
-            if src.bbox is not None:
-                ax[k][panel].set_ylim(src.bbox.start[-2], src.bbox.stop[-2])
-                ax[k][panel].set_xlim(src.bbox.start[-1], src.bbox.stop[-1])
-            if center is not None:
-                ax[k][panel].plot(*center__[::-1], "wx", mew=1, ms=10)
+            ax[k][panel].set_xlim(extent[0], extent[1])
+            ax[k][panel].set_ylim(extent[2], extent[3])
+
+            if center is not None and mark_centers:
+                ax[k][panel].plot(*center, "wx", mew=1, ms=10)
+            panel += 1
 
         if show_sed:
-            panel += 1
             for sed in seds:
                 ax[k][panel].plot(sed)
             ax[k][panel].set_xticks(range(len(sed)))
-            if hasattr(src.frame, "channels") and src.frame.channels is not None:
-                ax[k][panel].set_xticklabels(src.frame.channels)
+            if hasattr(src.model_frame, "channels") and src.model_frame.channels is not None:
+                ax[k][panel].set_xticklabels(src.model_frame.channels)
             ax[k][panel].set_title("SED")
             ax[k][panel].set_xlabel("Channel")
             ax[k][panel].set_ylabel("Intensity")

@@ -193,7 +193,7 @@ class PSFDiffKernel(Component):
             name="kernel",
             step=step,
         )
-        super().__init__(frame, kernel)
+        super().__init__(frame, frame.bbox, kernel)
 
     def get_model(self, *parameters):
         kernel = self.kernel
@@ -211,7 +211,7 @@ class PSFDiffKernel(Component):
 
 
 class PsfObservation(Observation):
-    def match(self, psfs):
+    def match(self, psfs, convolution = "real"):
         """Implement the observed PSFs as the difference kernel
 
         This is different than `~scarlet.Observation.match`,
@@ -240,10 +240,9 @@ class PsfObservation(Observation):
         self: `~scarlet.PsfObservation`
             Return this object to allow for chaining.
         """
-        self.bbox = Box(self.frame.shape)
-        self.slices_for_images = self.bbox.slices_for(self.frame.shape)
-        self.slices_for_model = self.bbox.slices_for(self.frame.shape)
+        #self.slices = (self.bbox & self.frame).as_slices()
         self._diff_kernels = Fourier(psfs)
+        self.convolution = convolution
         return self
 
     def get_loss(self, model):
@@ -254,8 +253,8 @@ class PsfObservation(Observation):
         relative error.
         """
         model_ = self.render(model)
-        images_ = self.images[self.slices_for_images]
-        weights_ = self.weights[self.slices_for_images]
+        images_ = self.images
+        weights_ = self.weights
         return np.sum(weights_ * (model_ - images_) ** 2) / 2
 
 
