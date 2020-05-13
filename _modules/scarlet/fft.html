@@ -63,6 +63,7 @@
 <span></span><span class="kn">import</span> <span class="nn">operator</span>
 
 <span class="kn">import</span> <span class="nn">autograd.numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">autograd.extend</span> <span class="kn">import</span> <span class="n">primitive</span><span class="p">,</span> <span class="n">defvjp</span>
 <span class="kn">from</span> <span class="nn">scipy</span> <span class="kn">import</span> <span class="n">fftpack</span>
 
 
@@ -99,7 +100,46 @@
     <span class="k">return</span> <span class="n">arr</span><span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="n">myslice</span><span class="p">)]</span>
 
 
-<span class="k">def</span> <span class="nf">_pad</span><span class="p">(</span><span class="n">arr</span><span class="p">,</span> <span class="n">newshape</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">mode</span> <span class="o">=</span> <span class="s2">&quot;constant&quot;</span><span class="p">):</span>
+<span class="nd">@primitive</span>
+<span class="k">def</span> <span class="nf">fast_zero_pad</span><span class="p">(</span><span class="n">arr</span><span class="p">,</span> <span class="n">pad_width</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Fast version of numpy.pad when `mode=&quot;constant&quot;`</span>
+
+<span class="sd">    Executing `numpy.pad` with zeros is ~1000 times slower</span>
+<span class="sd">    because it doesn&#39;t make use of the `zeros` method for padding.</span>
+
+<span class="sd">    Paramters</span>
+<span class="sd">    ---------</span>
+<span class="sd">    arr: array</span>
+<span class="sd">        The array to pad</span>
+<span class="sd">    pad_width: tuple</span>
+<span class="sd">        Number of values padded to the edges of each axis.</span>
+<span class="sd">        See numpy docs for more.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    result: array</span>
+<span class="sd">        The array padded with `constant_values`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">newshape</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">([</span><span class="n">a</span><span class="o">+</span><span class="n">ps</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="n">ps</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">a</span><span class="p">,</span> <span class="n">ps</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">arr</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">pad_width</span><span class="p">)])</span>
+
+    <span class="n">result</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">newshape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">arr</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+    <span class="n">slices</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">([</span><span class="nb">slice</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">s</span><span class="o">-</span><span class="n">end</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span><span class="p">,</span> <span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">pad_width</span><span class="p">)])</span>
+    <span class="n">result</span><span class="p">[</span><span class="n">slices</span><span class="p">]</span> <span class="o">=</span> <span class="n">arr</span>
+    <span class="k">return</span> <span class="n">result</span>
+
+
+<span class="k">def</span> <span class="nf">_fast_zero_pad_grad</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">arr</span><span class="p">,</span> <span class="n">pad_width</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Gradient for fast_zero_pad</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">slices</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">([</span><span class="nb">slice</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">s</span><span class="o">-</span><span class="n">end</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span><span class="p">,</span> <span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">pad_width</span><span class="p">)])</span>
+    <span class="k">return</span> <span class="k">lambda</span> <span class="n">grad_chain</span><span class="p">:</span> <span class="n">grad_chain</span><span class="p">[</span><span class="n">slices</span><span class="p">]</span>
+
+
+<span class="c1"># Register this function in autograd</span>
+<span class="n">defvjp</span><span class="p">(</span><span class="n">fast_zero_pad</span><span class="p">,</span> <span class="n">_fast_zero_pad_grad</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_pad</span><span class="p">(</span><span class="n">arr</span><span class="p">,</span> <span class="n">newshape</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;constant&quot;</span><span class="p">,</span> <span class="n">constant_values</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Pad an array to fit into newshape</span>
 
 <span class="sd">    Pad `arr` with zeros to fit into newshape,</span>
@@ -126,7 +166,11 @@
             <span class="n">startind</span> <span class="o">=</span> <span class="p">(</span><span class="n">dS</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">//</span> <span class="mi">2</span>
             <span class="n">endind</span> <span class="o">=</span> <span class="n">dS</span> <span class="o">-</span> <span class="n">startind</span>
             <span class="n">pad_width</span><span class="p">[</span><span class="n">axis</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">startind</span><span class="p">,</span> <span class="n">endind</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">pad</span><span class="p">(</span><span class="n">arr</span><span class="p">,</span> <span class="n">pad_width</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="n">mode</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;constant&quot;</span> <span class="ow">and</span> <span class="n">constant_values</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">fast_zero_pad</span><span class="p">(</span><span class="n">arr</span><span class="p">,</span> <span class="n">pad_width</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">pad</span><span class="p">(</span><span class="n">arr</span><span class="p">,</span> <span class="n">pad_width</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="n">mode</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">result</span>
 
 
 <span class="k">def</span> <span class="nf">_get_fft_shape</span><span class="p">(</span><span class="n">img1</span><span class="p">,</span> <span class="n">img2</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>

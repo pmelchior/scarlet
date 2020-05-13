@@ -197,7 +197,7 @@ where the convolution kernel is a different size than the morphology.</p>
 
 <dl class="py function">
 <dt id="scarlet.interpolation.fft_resample">
-<code class="sig-prename descclassname">scarlet.interpolation.</code><code class="sig-name descname">fft_resample</code><span class="sig-paren">(</span><em class="sig-param">img</em>, <em class="sig-param">dy</em>, <em class="sig-param">dx</em>, <em class="sig-param">kernel=&lt;function lanczos at 0x7f442be09620&gt;</em>, <em class="sig-param">\*\*kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#fft_resample"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.interpolation.fft_resample" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">scarlet.interpolation.</code><code class="sig-name descname">fft_resample</code><span class="sig-paren">(</span><em class="sig-param">img</em>, <em class="sig-param">dy</em>, <em class="sig-param">dx</em>, <em class="sig-param">kernel=&lt;function lanczos at 0x7f3b4a75b268&gt;</em>, <em class="sig-param">\*\*kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#fft_resample"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.interpolation.fft_resample" title="Permalink to this definition">¶</a></dt>
 <dd><p>Translate the image by a fraction of a pixel</p>
 <p>This method uses FFT’s to convolve the image with a
 kernel to shift the position of the image by a fraction
@@ -275,6 +275,52 @@ where the convolution kernel is a different size than the morphology.</p>
 </dd></dl>
 
 <dl class="py function">
+<dt id="scarlet.interpolation.get_filter_bounds">
+<code class="sig-prename descclassname">scarlet.interpolation.</code><code class="sig-name descname">get_filter_bounds</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">coords</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#get_filter_bounds"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.interpolation.get_filter_bounds" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the slices in x and y to apply a filter</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>coords: array</strong></dt><dd><p>The coordinates of the filter,
+defined by <cite>get_filter_coords</cite>.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>y_start, y_end, x_start, x_end: int</dt><dd><p>The start and end of each slice that is passed to <cite>apply_filter</cite>.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="scarlet.interpolation.get_filter_coords">
+<code class="sig-prename descclassname">scarlet.interpolation.</code><code class="sig-name descname">get_filter_coords</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">filter_values</span></em>, <em class="sig-param"><span class="n">center</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#get_filter_coords"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.interpolation.get_filter_coords" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create filter coordinate grid needed for the apply filter function</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>filter_values: array</strong></dt><dd><p>The 2D array of the filter to apply.</p>
+</dd>
+<dt><strong>center: tuple</strong></dt><dd><p>The center (y,x) of the filter. If <cite>center</cite> is <cite>None</cite> then
+<cite>filter_values</cite> must have an odd number of rows and columns
+and the center will be set to the center of <cite>filter_values</cite>.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>coords: array</dt><dd><p>The coordinates of the pixels in <cite>filter_values</cite>,
+where the coordinates of the <cite>center</cite> pixel are <cite>(0,0)</cite>.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
 <dt id="scarlet.interpolation.get_pixel_size">
 <code class="sig-prename descclassname">scarlet.interpolation.</code><code class="sig-name descname">get_pixel_size</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">model_affine</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#get_pixel_size"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.interpolation.get_pixel_size" title="Permalink to this definition">¶</a></dt>
 <dd><p>Extracts the pixel size from a wcs</p>
@@ -341,7 +387,7 @@ which does not require a precise measurement.</p>
 
 <dl class="py function">
 <dt id="scarlet.interpolation.get_separable_kernel">
-<code class="sig-prename descclassname">scarlet.interpolation.</code><code class="sig-name descname">get_separable_kernel</code><span class="sig-paren">(</span><em class="sig-param">dy</em>, <em class="sig-param">dx</em>, <em class="sig-param">kernel=&lt;function lanczos at 0x7f442be09620&gt;</em>, <em class="sig-param">\*\*kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#get_separable_kernel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.interpolation.get_separable_kernel" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">scarlet.interpolation.</code><code class="sig-name descname">get_separable_kernel</code><span class="sig-paren">(</span><em class="sig-param">dy</em>, <em class="sig-param">dx</em>, <em class="sig-param">kernel=&lt;function lanczos at 0x7f3b4a75b268&gt;</em>, <em class="sig-param">\*\*kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#get_separable_kernel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.interpolation.get_separable_kernel" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create a 2D kernel from a 1D kernel separable in x and y</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>

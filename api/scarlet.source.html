@@ -83,7 +83,7 @@
 <span id="scarlet-source"></span><h1>scarlet.source<a class="headerlink" href="#module-scarlet.source" title="Permalink to this headline">¶</a></h1>
 <dl class="py class">
 <dt id="scarlet.source.ExtendedSource">
-<em class="property">class </em><code class="sig-prename descclassname">scarlet.source.</code><code class="sig-name descname">ExtendedSource</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">frame</span></em>, <em class="sig-param"><span class="n">sky_coord</span></em>, <em class="sig-param"><span class="n">observations</span></em>, <em class="sig-param"><span class="n">obs_idx</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">thresh</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">monotonic</span><span class="o">=</span><span class="default_value">'flat'</span></em>, <em class="sig-param"><span class="n">symmetric</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">shifting</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/source.html#ExtendedSource"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.source.ExtendedSource" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">scarlet.source.</code><code class="sig-name descname">ExtendedSource</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">model_frame</span></em>, <em class="sig-param"><span class="n">sky_coord</span></em>, <em class="sig-param"><span class="n">observations</span></em>, <em class="sig-param"><span class="n">obs_idx</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">thresh</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">monotonic</span><span class="o">=</span><span class="default_value">'flat'</span></em>, <em class="sig-param"><span class="n">symmetric</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">shifting</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/source.html#ExtendedSource"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.source.ExtendedSource" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="scarlet.component.html#scarlet.component.FactorizedComponent" title="scarlet.component.FactorizedComponent"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.component.FactorizedComponent</span></code></a></p>
 <dl class="field-list simple">
 <dt class="field-odd">Attributes</dt>
@@ -114,10 +114,13 @@
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">check_parameters</span></code>(self)</p></td>
 <td><p>Check that all parameters have finite elements</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code>(self, \*parameters)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code>(self, \*parameters[, frame])</p></td>
 <td><p>Get the model for this component.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_frame</span></code>(self, frame)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_to_frame</span></code>(self[, frame, model])</p></td>
+<td><p>Project a model into a frame</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_model_frame</span></code>(self, model_frame)</p></td>
 <td><p>Sets the frame for this component.</p></td>
 </tr>
 </tbody>
@@ -131,7 +134,7 @@
 
 <dl class="py class">
 <dt id="scarlet.source.MultiComponentSource">
-<em class="property">class </em><code class="sig-prename descclassname">scarlet.source.</code><code class="sig-name descname">MultiComponentSource</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">frame</span></em>, <em class="sig-param"><span class="n">sky_coord</span></em>, <em class="sig-param"><span class="n">observations</span></em>, <em class="sig-param"><span class="n">obs_idx</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">thresh</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">flux_percentiles</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">symmetric</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">monotonic</span><span class="o">=</span><span class="default_value">'flat'</span></em>, <em class="sig-param"><span class="n">shifting</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/source.html#MultiComponentSource"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.source.MultiComponentSource" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">scarlet.source.</code><code class="sig-name descname">MultiComponentSource</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">model_frame</span></em>, <em class="sig-param"><span class="n">sky_coord</span></em>, <em class="sig-param"><span class="n">observations</span></em>, <em class="sig-param"><span class="n">obs_idx</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">thresh</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">flux_percentiles</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">symmetric</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">monotonic</span><span class="o">=</span><span class="default_value">'flat'</span></em>, <em class="sig-param"><span class="n">shifting</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/source.html#MultiComponentSource"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.source.MultiComponentSource" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="scarlet.component.html#scarlet.component.ComponentTree" title="scarlet.component.ComponentTree"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.component.ComponentTree</span></code></a></p>
 <p>Extended source with multiple components layered vertically.</p>
 <p>Uses <cite>~scarlet.source.ExtendedSource</cite> to define the overall morphology,
@@ -147,19 +150,22 @@ morphology to the multi-channel image in the region of the source.</p>
 <dd class="field-odd"><dl class="simple">
 <dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">K</span></code></dt><dd><p>Number of components.</p>
 </dd>
-<dt><strong>bbox</strong></dt><dd></dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">bbox</span></code></dt><dd><p>Union of all the component <a href="#id1"><span class="problematic" id="id2">`</span></a>~scarlet.bbox.Box`es</p>
+</dd>
 <dt><strong>center</strong></dt><dd></dd>
 <dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">components</span></code></dt><dd><p>Flattened tuple of all components in the tree.</p>
 </dd>
 <dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">coord</span></code></dt><dd><p>The coordinate in tree.</p>
 </dd>
-<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">frame</span></code></dt><dd><p>Frame of the components.</p>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_frame</span></code></dt><dd><p>Frame of the components.</p>
 </dd>
 <dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">n_components</span></code></dt><dd><p>Number of components.</p>
 </dd>
 <dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">n_sources</span></code></dt><dd><p>Number of initial sources or components.</p>
 </dd>
 <dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">parameters</span></code></dt><dd><p>The list of non-fixed parameters</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">shape</span></code></dt><dd><p>Shape of this model</p>
 </dd>
 <dt><strong>shift</strong></dt><dd></dd>
 <dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">sources</span></code></dt><dd><p>Initial list of components or sources that generate the tree.</p>
@@ -177,19 +183,17 @@ morphology to the multi-channel image in the region of the source.</p>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">check_parameters</span></code>(self)</p></td>
 <td><p>Check that all parameters have finite elements</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code>(self, \*params)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code>(self, \*params[, frame])</p></td>
 <td><p>Get the model of this component tree</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_frame</span></code>(self, frame)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_to_frame</span></code>(self[, frame, model])</p></td>
+<td><p>Project a model into a frame</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_model_frame</span></code>(self, model_frame)</p></td>
 <td><p>Set the frame for all components in the tree</p></td>
 </tr>
 </tbody>
 </table>
-<dl class="py method">
-<dt id="scarlet.source.MultiComponentSource.bbox">
-<em class="property">property </em><code class="sig-name descname">bbox</code><a class="headerlink" href="#scarlet.source.MultiComponentSource.bbox" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
 <dl class="py method">
 <dt id="scarlet.source.MultiComponentSource.center">
 <em class="property">property </em><code class="sig-name descname">center</code><a class="headerlink" href="#scarlet.source.MultiComponentSource.center" title="Permalink to this definition">¶</a></dt>
@@ -204,7 +208,7 @@ morphology to the multi-channel image in the region of the source.</p>
 
 <dl class="py class">
 <dt id="scarlet.source.PointSource">
-<em class="property">class </em><code class="sig-prename descclassname">scarlet.source.</code><code class="sig-name descname">PointSource</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">frame</span></em>, <em class="sig-param"><span class="n">sky_coord</span></em>, <em class="sig-param"><span class="n">observations</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/source.html#PointSource"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.source.PointSource" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">scarlet.source.</code><code class="sig-name descname">PointSource</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">model_frame</span></em>, <em class="sig-param"><span class="n">sky_coord</span></em>, <em class="sig-param"><span class="n">observations</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/source.html#PointSource"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.source.PointSource" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="scarlet.component.html#scarlet.component.FunctionComponent" title="scarlet.component.FunctionComponent"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.component.FunctionComponent</span></code></a></p>
 <p>Source intialized with a single pixel</p>
 <p>Point sources are initialized with the SED of the center pixel,
@@ -237,10 +241,13 @@ and the morphology taken from <cite>frame.psfs</cite>, centered at <cite>sky_coo
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">check_parameters</span></code>(self)</p></td>
 <td><p>Check that all parameters have finite elements</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code>(self, \*parameters)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code>(self, \*parameters[, frame])</p></td>
 <td><p>Get the model for this component.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_frame</span></code>(self, frame)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_to_frame</span></code>(self[, frame, model])</p></td>
+<td><p>Project a model into a frame</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_model_frame</span></code>(self, model_frame)</p></td>
 <td><p>Sets the frame for this component.</p></td>
 </tr>
 </tbody>
@@ -249,7 +256,7 @@ and the morphology taken from <cite>frame.psfs</cite>, centered at <cite>sky_coo
 
 <dl class="py class">
 <dt id="scarlet.source.RandomSource">
-<em class="property">class </em><code class="sig-prename descclassname">scarlet.source.</code><code class="sig-name descname">RandomSource</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">frame</span></em>, <em class="sig-param"><span class="n">observation</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/source.html#RandomSource"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.source.RandomSource" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">scarlet.source.</code><code class="sig-name descname">RandomSource</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">model_frame</span></em>, <em class="sig-param"><span class="n">observation</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/source.html#RandomSource"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.source.RandomSource" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="scarlet.component.html#scarlet.component.FactorizedComponent" title="scarlet.component.FactorizedComponent"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.component.FactorizedComponent</span></code></a></p>
 <p>Sources with uniform random morphology and sed.</p>
 <p>For cases with no well-defined spatial shape, this source initializes
@@ -283,10 +290,13 @@ observation.</p>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">check_parameters</span></code>(self)</p></td>
 <td><p>Check that all parameters have finite elements</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code>(self, \*parameters)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code>(self, \*parameters[, frame])</p></td>
 <td><p>Get the model for this component.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_frame</span></code>(self, frame)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_to_frame</span></code>(self[, frame, model])</p></td>
+<td><p>Project a model into a frame</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_model_frame</span></code>(self, model_frame)</p></td>
 <td><p>Sets the frame for this component.</p></td>
 </tr>
 </tbody>

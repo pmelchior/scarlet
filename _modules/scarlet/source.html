@@ -60,9 +60,13 @@
           <div class="body" role="main">
             
   <h1>Source code for scarlet.source</h1><div class="highlight"><pre>
-<span></span><span class="kn">from</span> <span class="nn">.constraint</span> <span class="kn">import</span> <span class="o">*</span>
-<span class="kn">from</span> <span class="nn">.component</span> <span class="kn">import</span> <span class="o">*</span>
-<span class="kn">from</span> <span class="nn">.bbox</span> <span class="kn">import</span> <span class="o">*</span>
+<span></span><span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">partial</span>
+
+<span class="kn">from</span> <span class="nn">.constraint</span> <span class="kn">import</span> <span class="n">PositivityConstraint</span><span class="p">,</span> <span class="n">MonotonicityConstraint</span><span class="p">,</span> <span class="n">SymmetryConstraint</span>
+<span class="kn">from</span> <span class="nn">.constraint</span> <span class="kn">import</span> <span class="n">NormalizationConstraint</span><span class="p">,</span> <span class="n">ConstraintChain</span><span class="p">,</span> <span class="n">CenterOnConstraint</span>
+<span class="kn">from</span> <span class="nn">.parameter</span> <span class="kn">import</span> <span class="n">Parameter</span><span class="p">,</span> <span class="n">relative_step</span>
+<span class="kn">from</span> <span class="nn">.component</span> <span class="kn">import</span> <span class="n">ComponentTree</span><span class="p">,</span> <span class="n">FunctionComponent</span><span class="p">,</span> <span class="n">FactorizedComponent</span>
+<span class="kn">from</span> <span class="nn">.bbox</span> <span class="kn">import</span> <span class="n">Box</span>
 <span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">operator</span>
 
 <span class="c1"># make sure that import * above doesn&#39;t import its own stock numpy</span>
@@ -361,7 +365,7 @@
 <span class="sd">    observation.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">observation</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model_frame</span><span class="p">,</span> <span class="n">observation</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Source intialized as random field.</span>
 
 <span class="sd">        Parameters</span>
@@ -371,13 +375,13 @@
 <span class="sd">        observation: list of `~scarlet.Observation`</span>
 <span class="sd">            Observation to initialize the SED of the source</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">C</span><span class="p">,</span> <span class="n">Ny</span><span class="p">,</span> <span class="n">Nx</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">shape</span>
+        <span class="n">C</span><span class="p">,</span> <span class="n">Ny</span><span class="p">,</span> <span class="n">Nx</span> <span class="o">=</span> <span class="n">model_frame</span><span class="o">.</span><span class="n">shape</span>
         <span class="n">morph</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="n">Ny</span><span class="p">,</span> <span class="n">Nx</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="n">observation</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">sed</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="n">C</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">sed</span> <span class="o">=</span> <span class="n">get_best_fit_seds</span><span class="p">(</span><span class="n">morph</span><span class="p">[</span><span class="kc">None</span><span class="p">],</span> <span class="n">frame</span><span class="p">,</span> <span class="n">observation</span><span class="o">.</span><span class="n">images</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">sed</span> <span class="o">=</span> <span class="n">get_best_fit_seds</span><span class="p">(</span><span class="n">morph</span><span class="p">[</span><span class="kc">None</span><span class="p">],</span> <span class="n">model_frame</span><span class="p">,</span> <span class="n">observation</span><span class="o">.</span><span class="n">images</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
 
         <span class="n">constraint</span> <span class="o">=</span> <span class="n">PositivityConstraint</span><span class="p">()</span>
         <span class="n">sed</span> <span class="o">=</span> <span class="n">Parameter</span><span class="p">(</span><span class="n">sed</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;sed&quot;</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="n">relative_step</span><span class="p">,</span> <span class="n">constraint</span><span class="o">=</span><span class="n">constraint</span><span class="p">)</span>
@@ -385,7 +389,7 @@
             <span class="n">morph</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;morph&quot;</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="n">relative_step</span><span class="p">,</span> <span class="n">constraint</span><span class="o">=</span><span class="n">constraint</span>
         <span class="p">)</span>
 
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">sed</span><span class="p">,</span> <span class="n">morph</span><span class="p">)</span></div>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">model_frame</span><span class="p">,</span> <span class="n">model_frame</span><span class="o">.</span><span class="n">bbox</span><span class="p">,</span> <span class="n">sed</span><span class="p">,</span> <span class="n">morph</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="PointSource"><a class="viewcode-back" href="../../api/scarlet.source.html#scarlet.source.PointSource">[docs]</a><span class="k">class</span> <span class="nc">PointSource</span><span class="p">(</span><span class="n">FunctionComponent</span><span class="p">):</span>
@@ -395,20 +399,20 @@
 <span class="sd">    and the morphology taken from `frame.psfs`, centered at `sky_coord`.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">sky_coord</span><span class="p">,</span> <span class="n">observations</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model_frame</span><span class="p">,</span> <span class="n">sky_coord</span><span class="p">,</span> <span class="n">observations</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Source intialized with a single pixel</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
 <span class="sd">        frame: `~scarlet.Frame`</span>
-<span class="sd">            The frame of the model</span>
+<span class="sd">            The frame of the full model</span>
 <span class="sd">        sky_coord: tuple</span>
 <span class="sd">            Center of the source</span>
 <span class="sd">        observations: instance or list of `~scarlet.Observation`</span>
 <span class="sd">            Observation(s) to initialize this source</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">C</span><span class="p">,</span> <span class="n">Ny</span><span class="p">,</span> <span class="n">Nx</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">shape</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">center</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">frame</span><span class="o">.</span><span class="n">get_pixel</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;float&quot;</span><span class="p">)</span>
+        <span class="n">C</span><span class="p">,</span> <span class="n">Ny</span><span class="p">,</span> <span class="n">Nx</span> <span class="o">=</span> <span class="n">model_frame</span><span class="o">.</span><span class="n">shape</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">center</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">model_frame</span><span class="o">.</span><span class="n">get_pixel</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;float&quot;</span><span class="p">)</span>
 
         <span class="c1"># initialize SED from sky_coord</span>
         <span class="k">try</span><span class="p">:</span>
@@ -420,7 +424,7 @@
         <span class="c1"># SED in the frame for source detection</span>
         <span class="n">seds</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">for</span> <span class="n">obs</span> <span class="ow">in</span> <span class="n">observations</span><span class="p">:</span>
-            <span class="n">_sed</span> <span class="o">=</span> <span class="n">get_psf_sed</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">,</span> <span class="n">obs</span><span class="p">,</span> <span class="n">frame</span><span class="p">)</span>
+            <span class="n">_sed</span> <span class="o">=</span> <span class="n">get_psf_sed</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">,</span> <span class="n">obs</span><span class="p">,</span> <span class="n">model_frame</span><span class="p">)</span>
             <span class="n">seds</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_sed</span><span class="p">)</span>
         <span class="n">sed</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">seds</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
 
@@ -446,22 +450,22 @@
         <span class="c1"># define bbox</span>
         <span class="n">pixel_center</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">center</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;int&quot;</span><span class="p">))</span>
         <span class="n">front</span><span class="p">,</span> <span class="n">back</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">C</span>
-        <span class="n">bottom</span> <span class="o">=</span> <span class="n">pixel_center</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">frame</span><span class="o">.</span><span class="n">psf</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">//</span> <span class="mi">2</span>
-        <span class="n">top</span> <span class="o">=</span> <span class="n">pixel_center</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">frame</span><span class="o">.</span><span class="n">psf</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">//</span> <span class="mi">2</span>
-        <span class="n">left</span> <span class="o">=</span> <span class="n">pixel_center</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">frame</span><span class="o">.</span><span class="n">psf</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">//</span> <span class="mi">2</span>
-        <span class="n">right</span> <span class="o">=</span> <span class="n">pixel_center</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">frame</span><span class="o">.</span><span class="n">psf</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">//</span> <span class="mi">2</span>
+        <span class="n">bottom</span> <span class="o">=</span> <span class="n">pixel_center</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">model_frame</span><span class="o">.</span><span class="n">psf</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">//</span> <span class="mi">2</span>
+        <span class="n">top</span> <span class="o">=</span> <span class="n">pixel_center</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">model_frame</span><span class="o">.</span><span class="n">psf</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">//</span> <span class="mi">2</span>
+        <span class="n">left</span> <span class="o">=</span> <span class="n">pixel_center</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">model_frame</span><span class="o">.</span><span class="n">psf</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">//</span> <span class="mi">2</span>
+        <span class="n">right</span> <span class="o">=</span> <span class="n">pixel_center</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">model_frame</span><span class="o">.</span><span class="n">psf</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">//</span> <span class="mi">2</span>
         <span class="n">bbox</span> <span class="o">=</span> <span class="n">Box</span><span class="o">.</span><span class="n">from_bounds</span><span class="p">((</span><span class="n">front</span><span class="p">,</span> <span class="n">back</span><span class="p">),</span> <span class="p">(</span><span class="n">bottom</span><span class="p">,</span> <span class="n">top</span><span class="p">),</span> <span class="p">(</span><span class="n">left</span><span class="p">,</span> <span class="n">right</span><span class="p">))</span>
 
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">sed</span><span class="p">,</span> <span class="n">center</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_psf_wrapper</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="n">bbox</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">model_frame</span><span class="p">,</span> <span class="n">bbox</span><span class="p">,</span> <span class="n">sed</span><span class="p">,</span> <span class="n">center</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_psf_wrapper</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">_psf_wrapper</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">parameters</span><span class="p">):</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">psf</span><span class="o">.</span><span class="fm">__call__</span><span class="p">(</span><span class="o">*</span><span class="n">parameters</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">bbox</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_frame</span><span class="o">.</span><span class="n">psf</span><span class="o">.</span><span class="fm">__call__</span><span class="p">(</span><span class="o">*</span><span class="n">parameters</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">bbox</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span></div>
 
 
 <div class="viewcode-block" id="ExtendedSource"><a class="viewcode-back" href="../../api/scarlet.source.html#scarlet.source.ExtendedSource">[docs]</a><span class="k">class</span> <span class="nc">ExtendedSource</span><span class="p">(</span><span class="n">FactorizedComponent</span><span class="p">):</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
-        <span class="n">frame</span><span class="p">,</span>
+        <span class="n">model_frame</span><span class="p">,</span>
         <span class="n">sky_coord</span><span class="p">,</span>
         <span class="n">observations</span><span class="p">,</span>
         <span class="n">obs_idx</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
@@ -475,7 +479,7 @@
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
 <span class="sd">        frame: `~scarlet.Frame`</span>
-<span class="sd">            The frame of the model</span>
+<span class="sd">            The frame of the full model</span>
 <span class="sd">        sky_coord: tuple</span>
 <span class="sd">            Center of the source</span>
 <span class="sd">        observations: instance or list of `~scarlet.observation.Observation`</span>
@@ -493,7 +497,7 @@
 <span class="sd">        shifting: `bool`</span>
 <span class="sd">            Whether or not a subpixel shift is added as optimization parameter</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">center</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">frame</span><span class="o">.</span><span class="n">get_pixel</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;float&quot;</span><span class="p">)</span>
+        <span class="n">center</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">model_frame</span><span class="o">.</span><span class="n">get_pixel</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;float&quot;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">pixel_center</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">center</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;int&quot;</span><span class="p">))</span>
 
         <span class="k">if</span> <span class="n">shifting</span><span class="p">:</span>
@@ -504,7 +508,7 @@
         <span class="c1"># initialize from observation</span>
         <span class="n">sed</span><span class="p">,</span> <span class="n">morph</span><span class="p">,</span> <span class="n">bbox</span> <span class="o">=</span> <span class="n">init_extended_source</span><span class="p">(</span>
             <span class="n">sky_coord</span><span class="p">,</span>
-            <span class="n">frame</span><span class="p">,</span>
+            <span class="n">model_frame</span><span class="p">,</span>
             <span class="n">observations</span><span class="p">,</span>
             <span class="n">obs_idx</span><span class="o">=</span><span class="n">obs_idx</span><span class="p">,</span>
             <span class="n">thresh</span><span class="o">=</span><span class="n">thresh</span><span class="p">,</span>
@@ -547,7 +551,7 @@
 
         <span class="n">morph</span> <span class="o">=</span> <span class="n">Parameter</span><span class="p">(</span><span class="n">morph</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;morph&quot;</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="mf">1e-2</span><span class="p">,</span> <span class="n">constraint</span><span class="o">=</span><span class="n">morph_constraint</span><span class="p">)</span>
 
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">sed</span><span class="p">,</span> <span class="n">morph</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="n">bbox</span><span class="p">,</span> <span class="n">shift</span><span class="o">=</span><span class="n">shift</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">model_frame</span><span class="p">,</span> <span class="n">bbox</span><span class="p">,</span> <span class="n">sed</span><span class="p">,</span> <span class="n">morph</span><span class="p">,</span> <span class="n">shift</span><span class="o">=</span><span class="n">shift</span><span class="p">)</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">center</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -572,7 +576,7 @@
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
-        <span class="n">frame</span><span class="p">,</span>
+        <span class="n">model_frame</span><span class="p">,</span>
         <span class="n">sky_coord</span><span class="p">,</span>
         <span class="n">observations</span><span class="p">,</span>
         <span class="n">obs_idx</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
@@ -586,8 +590,8 @@
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
-<span class="sd">        frame: `~scarlet.Frame`</span>
-<span class="sd">            The frame of the model</span>
+<span class="sd">        model_frame: `~scarlet.Frame`</span>
+<span class="sd">            The frame of the full model</span>
 <span class="sd">        sky_coord: tuple</span>
 <span class="sd">            Center of the source</span>
 <span class="sd">        observations: instance or list of `~scarlet.observation.Observation`</span>
@@ -612,7 +616,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">symmetric</span> <span class="o">=</span> <span class="n">symmetric</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">monotonic</span> <span class="o">=</span> <span class="n">monotonic</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">coords</span> <span class="o">=</span> <span class="n">sky_coord</span>
-        <span class="n">center</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">frame</span><span class="o">.</span><span class="n">get_pixel</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;float&quot;</span><span class="p">)</span>
+        <span class="n">center</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">model_frame</span><span class="o">.</span><span class="n">get_pixel</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;float&quot;</span><span class="p">)</span>
         <span class="n">pixel_center</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">center</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;int&quot;</span><span class="p">))</span>
 
         <span class="k">if</span> <span class="n">shifting</span><span class="p">:</span>
@@ -623,7 +627,7 @@
         <span class="c1"># initialize from observation</span>
         <span class="n">seds</span><span class="p">,</span> <span class="n">morphs</span><span class="p">,</span> <span class="n">bbox</span> <span class="o">=</span> <span class="n">init_multicomponent_source</span><span class="p">(</span>
             <span class="n">sky_coord</span><span class="p">,</span>
-            <span class="n">frame</span><span class="p">,</span>
+            <span class="n">model_frame</span><span class="p">,</span>
             <span class="n">observations</span><span class="p">,</span>
             <span class="n">obs_idx</span><span class="o">=</span><span class="n">obs_idx</span><span class="p">,</span>
             <span class="n">flux_percentiles</span><span class="o">=</span><span class="n">flux_percentiles</span><span class="p">,</span>
@@ -669,15 +673,10 @@
                 <span class="n">morphs</span><span class="p">[</span><span class="n">k</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;morph&quot;</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="mf">1e-2</span><span class="p">,</span> <span class="n">constraint</span><span class="o">=</span><span class="n">morph_constraint</span>
             <span class="p">)</span>
             <span class="n">components</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-                <span class="n">FactorizedComponent</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">sed</span><span class="p">,</span> <span class="n">morph</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="n">bbox</span><span class="p">,</span> <span class="n">shift</span><span class="o">=</span><span class="n">shift</span><span class="p">)</span>
+                <span class="n">FactorizedComponent</span><span class="p">(</span><span class="n">model_frame</span><span class="p">,</span> <span class="n">bbox</span><span class="p">,</span> <span class="n">sed</span><span class="p">,</span> <span class="n">morph</span><span class="p">,</span> <span class="n">shift</span><span class="o">=</span><span class="n">shift</span><span class="p">)</span>
             <span class="p">)</span>
             <span class="n">components</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">pixel_center</span> <span class="o">=</span> <span class="n">pixel_center</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">components</span><span class="p">)</span>
-
-    <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">bbox</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="n">c</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-        <span class="k">return</span> <span class="n">c</span><span class="o">.</span><span class="n">bbox</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">shift</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>

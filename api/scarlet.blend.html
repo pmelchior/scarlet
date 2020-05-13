@@ -80,65 +80,8 @@
 
           <div class="body" role="main">
             
-  <div class="section" id="module-scarlet.blend">
-<span id="scarlet-blend"></span><h1>scarlet.blend<a class="headerlink" href="#module-scarlet.blend" title="Permalink to this headline">¶</a></h1>
-<dl class="py class">
-<dt id="scarlet.blend.Blend">
-<em class="property">class </em><code class="sig-prename descclassname">scarlet.blend.</code><code class="sig-name descname">Blend</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">sources</span></em>, <em class="sig-param"><span class="n">observations</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/blend.html#Blend"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.blend.Blend" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="scarlet.component.html#scarlet.component.ComponentTree" title="scarlet.component.ComponentTree"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.component.ComponentTree</span></code></a></p>
-<p>The blended scene</p>
-<p>The class represents a scene as collection of components, internally as a
-<cite>~scarlet.component.ComponentTree</cite>, and provides the functions to fit it
-to data.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Attributes</dt>
-<dd class="field-odd"><dl class="simple">
-<dt><strong>mse: list</strong></dt><dd><p>Array of mean squared errors in each iteration</p>
-</dd>
-</dl>
-</dd>
-</dl>
-<p class="rubric">Methods</p>
-<table class="longtable docutils align-default">
-<colgroup>
-<col style="width: 10%" />
-<col style="width: 90%" />
-</colgroup>
-<tbody>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">check_parameters</span></code>(self)</p></td>
-<td><p>Check that all parameters have finite elements</p></td>
-</tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.blend.Blend.fit" title="scarlet.blend.Blend.fit"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fit</span></code></a>(self[, max_iter, e_rel])</p></td>
-<td><p>Fit the model for each source to the data</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code>(self, \*params)</p></td>
-<td><p>Get the model of this component tree</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_frame</span></code>(self, frame)</p></td>
-<td><p>Set the frame for all components in the tree</p></td>
-</tr>
-</tbody>
-</table>
-<dl class="py method">
-<dt id="scarlet.blend.Blend.fit">
-<code class="sig-name descname">fit</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">max_iter=200</em>, <em class="sig-param">e_rel=0.001</em>, <em class="sig-param">\*\*alg_kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/blend.html#Blend.fit"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.blend.Blend.fit" title="Permalink to this definition">¶</a></dt>
-<dd><p>Fit the model for each source to the data</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><dl class="simple">
-<dt><strong>max_iter: int</strong></dt><dd><p>Maximum number of iterations if the algorithm doesn’t converge</p>
-</dd>
-<dt><strong>e_rel: float</strong></dt><dd><p>Relative error for convergence of the loss function</p>
-</dd>
-<dt><strong>alg_kwargs: dict</strong></dt><dd><p>Keywords for the <cite>proxmin.adaprox</cite> optimizer</p>
-</dd>
-</dl>
-</dd>
-</dl>
-</dd></dl>
-
-</dd></dl>
-
+  <div class="section" id="scarlet-blend">
+<h1>scarlet.blend<a class="headerlink" href="#scarlet-blend" title="Permalink to this headline">¶</a></h1>
 </div>
 
 

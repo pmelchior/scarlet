@@ -537,8 +537,8 @@ frame, and that’s done by <code class="docutils literal notranslate"><span cla
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-CPU times: user 1.36 s, sys: 865 ms, total: 2.22 s
-Wall time: 2.22 s
+CPU times: user 1.32 s, sys: 909 ms, total: 2.23 s
+Wall time: 2.23 s
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">
@@ -569,9 +569,9 @@ Wall time: 2.22 s
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-CPU times: user 3min 29s, sys: 50.4 s, total: 4min 19s
-Wall time: 4min 19s
-scarlet ran for 19 iterations to logL = -2199670.975580201
+CPU times: user 3min 27s, sys: 50.2 s, total: 4min 17s
+Wall time: 4min 17s
+scarlet ran for 19 iterations to logL = -2199670.9745588265
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">
@@ -680,12 +680,16 @@ Text(0, 0.5, &#39;log-Likelihood&#39;)
     <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">res_rgb</span><span class="p">)</span>
     <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;LR Data - Model&quot;</span><span class="p">)</span>
 
-    <span class="n">img_hr</span> <span class="o">=</span> <span class="n">obs_hst</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
-    <span class="n">res</span> <span class="o">=</span> <span class="n">data_hst</span><span class="o">-</span><span class="n">img_hr</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">obs_slices</span><span class="p">,</span> <span class="n">model_slices</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">bbox</span><span class="o">.</span><span class="n">overlapped_slices</span><span class="p">(</span><span class="n">obs_hst</span><span class="o">.</span><span class="n">frame</span><span class="p">,</span> <span class="n">src</span><span class="o">.</span><span class="n">bbox</span><span class="p">)</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">model</span><span class="p">[</span><span class="n">model_slices</span><span class="p">]</span>
+
+    <span class="n">img_hr</span> <span class="o">=</span> <span class="n">obs_hst</span><span class="o">.</span><span class="n">convolve</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+    <span class="n">_data_hst</span> <span class="o">=</span> <span class="n">data_hst</span><span class="p">[</span><span class="n">obs_slices</span><span class="p">]</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="n">_data_hst</span><span class="o">-</span><span class="n">img_hr</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
     <span class="n">vmax</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
 
     <span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="mi">334</span><span class="p">)</span>
-    <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">data_hst</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;gist_stern&#39;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">_data_hst</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;gist_stern&#39;</span><span class="p">,</span> <span class="n">extent</span><span class="o">=</span><span class="n">scarlet</span><span class="o">.</span><span class="n">display</span><span class="o">.</span><span class="n">get_extent</span><span class="p">(</span><span class="n">src</span><span class="o">.</span><span class="n">bbox</span><span class="p">))</span>
     <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">xo</span><span class="p">[</span><span class="n">k</span><span class="p">],</span><span class="n">yo</span><span class="p">[</span><span class="n">k</span><span class="p">],</span> <span class="s1">&#39;o&#39;</span><span class="p">,</span> <span class="n">markersize</span> <span class="o">=</span> <span class="mi">5</span><span class="p">)</span>
     <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;HST Data&quot;</span><span class="p">)</span>
     <span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="mi">335</span><span class="p">)</span>

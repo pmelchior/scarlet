@@ -471,7 +471,7 @@ New channel map:
 <span class="n">sources</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">fp</span><span class="p">)</span>
 <span class="n">fp</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
 
-<span class="n">model_frame</span> <span class="o">=</span> <span class="n">sources</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">frame</span>
+<span class="n">model_frame</span> <span class="o">=</span> <span class="n">sources</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">model_frame</span>
 <span class="n">observation</span> <span class="o">=</span> <span class="n">observation</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">model_frame</span><span class="p">)</span>
 
 <span class="n">scarlet</span><span class="o">.</span><span class="n">display</span><span class="o">.</span><span class="n">show_scene</span><span class="p">(</span><span class="n">sources</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">,</span> <span class="n">channel_map</span><span class="o">=</span><span class="n">channel_map</span><span class="p">)</span>
@@ -487,13 +487,32 @@ New channel map:
 </div>
 </div>
 <p>Notice that we include the <code class="docutils literal notranslate"><span class="pre">plt.show()</span></code> at the end of the cell above. This is because <code class="docutils literal notranslate"><span class="pre">show_scene</span></code> returns the matplotlib <code class="docutils literal notranslate"><span class="pre">figure</span></code>, which is useful in cases where you might want to add annotations onto your plots, however without showing the scene or closing the figure the Jupyter notebook will display the figure twice.</p>
-<p>To compare it to data, we need to provide the observation and make sure that the observed frame is matched to the model frame:</p>
+<p>The other thing that you’ll notice is that in this case the model extends beyond the range of the observation. This is because some of the sources were initialized in a symmetrized box that extended beyond the observation. If we just want to view the region of the model inside the observed region we can pass a full blend, which only displays the cosntrained region by default:</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
-<span></span><span class="n">model_frame</span> <span class="o">=</span> <span class="n">sources</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">frame</span> <span class="c1"># any source carries the frame</span>
+<span></span><span class="n">blend</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">Blend</span><span class="p">(</span><span class="n">sources</span><span class="p">,</span> <span class="n">observation</span><span class="p">)</span>
+<span class="n">scarlet</span><span class="o">.</span><span class="n">display</span><span class="o">.</span><span class="n">show_scene</span><span class="p">(</span><span class="n">blend</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">,</span> <span class="n">channel_map</span><span class="o">=</span><span class="n">channel_map</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/tutorials_display_12_0.png" src="../_images/tutorials_display_12_0.png" />
+</div>
+</div>
+<p>To compare it to data, we need to provide the observation and make sure that the observed frame is matched to the model frame:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">model_frame</span> <span class="o">=</span> <span class="n">sources</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">model_frame</span> <span class="c1"># any source carries the frame</span>
 <span class="n">observation</span> <span class="o">=</span> <span class="n">observation</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">model_frame</span><span class="p">)</span>
 
 <span class="n">scarlet</span><span class="o">.</span><span class="n">display</span><span class="o">.</span><span class="n">show_scene</span><span class="p">(</span><span class="n">sources</span><span class="p">,</span>
@@ -511,12 +530,12 @@ New channel map:
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/tutorials_display_12_0.png" src="../_images/tutorials_display_12_0.png" />
+<img alt="../_images/tutorials_display_14_0.png" src="../_images/tutorials_display_14_0.png" />
 </div>
 </div>
 <p>The same logic goes for the individual sources, with the option of also showing the SED of the sources:</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
@@ -529,12 +548,12 @@ New channel map:
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/tutorials_display_14_0.png" src="../_images/tutorials_display_14_0.png" />
+<img alt="../_images/tutorials_display_16_0.png" src="../_images/tutorials_display_16_0.png" />
 </div>
 </div>
 <p>Source 1 is modelled with 2 components, and the SED is shown for them separately. If we wanted to see the images of the components, we can just pass the source itself to <code class="docutils literal notranslate"><span class="pre">show_sources</span></code>. For good measure, we also switch on the rendering and the observation at the same location:</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
@@ -553,7 +572,7 @@ New channel map:
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/tutorials_display_16_0.png" src="../_images/tutorials_display_16_0.png" />
+<img alt="../_images/tutorials_display_18_0.png" src="../_images/tutorials_display_18_0.png" />
 </div>
 </div>
 <div class="nbinput nblast docutils container">

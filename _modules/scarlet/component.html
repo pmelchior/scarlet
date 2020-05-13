@@ -61,11 +61,16 @@
             
   <h1>Source code for scarlet.component</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span> <span class="nn">abc</span> <span class="kn">import</span> <span class="n">ABC</span><span class="p">,</span> <span class="n">abstractmethod</span>
-<span class="kn">from</span> <span class="nn">.parameter</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">partial</span>
+
+<span class="kn">import</span> <span class="nn">autograd.numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">autograd.extend</span> <span class="kn">import</span> <span class="n">defvjp</span><span class="p">,</span> <span class="n">primitive</span>
+
+<span class="kn">from</span> <span class="nn">.frame</span> <span class="kn">import</span> <span class="n">Frame</span>
+<span class="kn">from</span> <span class="nn">.parameter</span> <span class="kn">import</span> <span class="n">Parameter</span>
 <span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">fft</span>
 <span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">interpolation</span>
-<span class="kn">from</span> <span class="nn">.bbox</span> <span class="kn">import</span> <span class="n">Box</span>
-<span class="kn">import</span> <span class="nn">autograd.numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">.bbox</span> <span class="kn">import</span> <span class="n">Box</span><span class="p">,</span> <span class="n">overlapped_slices</span>
 
 
 <div class="viewcode-block" id="Component"><a class="viewcode-back" href="../../api/scarlet.component.html#scarlet.component.Component">[docs]</a><span class="k">class</span> <span class="nc">Component</span><span class="p">(</span><span class="n">ABC</span><span class="p">):</span>
@@ -75,18 +80,18 @@
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    frame: `~scarlet.Frame`</span>
-<span class="sd">        The spectral and spatial characteristics of this component.</span>
-<span class="sd">    parameters: list of `~scarlet.Parameter`</span>
+<span class="sd">    model_frame: `~scarlet.Frame`</span>
+<span class="sd">        The spectral and spatial characteristics of the model.</span>
 <span class="sd">    bbox: `~scarlet.Box`</span>
-<span class="sd">        Hyper-spectral bounding box</span>
+<span class="sd">        Hyper-spectral bounding box of this component</span>
+<span class="sd">    parameters: list of `~scarlet.Parameter`</span>
 <span class="sd">    kwargs: dict</span>
 <span class="sd">        Auxiliary information attached to this component.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="o">*</span><span class="n">parameters</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model_frame</span><span class="p">,</span> <span class="n">bbox</span><span class="p">,</span> <span class="o">*</span><span class="n">parameters</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">bbox</span> <span class="o">=</span> <span class="n">bbox</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">set_frame</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_model_frame</span><span class="p">(</span><span class="n">model_frame</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">parameters</span><span class="p">,</span> <span class="s2">&quot;__iter__&quot;</span><span class="p">):</span>
             <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">parameters</span><span class="p">:</span>
@@ -132,12 +137,16 @@
         <span class="k">return</span> <span class="p">[</span><span class="n">p</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parameters</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">p</span><span class="o">.</span><span class="n">fixed</span><span class="p">]</span>
 
 <div class="viewcode-block" id="Component.get_model"><a class="viewcode-back" href="../../api/scarlet.component.html#scarlet.component.Component.get_model">[docs]</a>    <span class="nd">@abstractmethod</span>
-    <span class="k">def</span> <span class="nf">get_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">parameters</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">get_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">parameters</span><span class="p">,</span> <span class="n">frame</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Get the model for this component</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
 <span class="sd">        parameters: tuple of optimimzation parameters</span>
+
+<span class="sd">        frame: `~scarlet.frame.Frame`</span>
+<span class="sd">            Frame to project the model into. If `frame` is `None`</span>
+<span class="sd">            then the model contained in `bbox` is returned.</span>
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
@@ -146,50 +155,19 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">pass</span></div>
 
-<div class="viewcode-block" id="Component.set_frame"><a class="viewcode-back" href="../../api/scarlet.component.html#scarlet.component.Component.set_frame">[docs]</a>    <span class="k">def</span> <span class="nf">set_frame</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame</span><span class="p">):</span>
+<div class="viewcode-block" id="Component.set_model_frame"><a class="viewcode-back" href="../../api/scarlet.component.html#scarlet.component.Component.set_model_frame">[docs]</a>    <span class="k">def</span> <span class="nf">set_model_frame</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model_frame</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Sets the frame for this component.</span>
 
-<span class="sd">        Each component needs to know the properties of the Frame and, potentially, the</span>
-<span class="sd">        subvolume it covers.</span>
+<span class="sd">        Each component needs to know the properties of the Frame and,</span>
+<span class="sd">        potentially, the subvolume it covers.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
-<span class="sd">        frame: `~scarlet.Frame`</span>
-<span class="sd">            Frame to adopt for this component</span>
+<span class="sd">        model_frame: `~scarlet.Frame`</span>
+<span class="sd">            Frame of the model</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">frame</span> <span class="o">=</span> <span class="n">frame</span>
-
-        <span class="c1"># store padding and slicing structures</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">bbox</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bbox</span><span class="p">,</span> <span class="n">Box</span><span class="p">)</span>
-            <span class="c1"># TODO: full 3D bbox and slicing support</span>
-            <span class="c1"># determine pad from box into full frame</span>
-            <span class="c1"># yields superset of frame pixels</span>
-            <span class="c1"># pad_width is ((before1, after1), (before2, after2)...)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">pad_width</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span>
-                <span class="p">(</span>
-                    <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">bbox</span><span class="o">.</span><span class="n">start</span><span class="p">[</span><span class="n">d</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">start</span><span class="p">[</span><span class="n">d</span><span class="p">]),</span>
-                    <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">stop</span><span class="p">[</span><span class="n">d</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">bbox</span><span class="o">.</span><span class="n">stop</span><span class="p">[</span><span class="n">d</span><span class="p">]),</span>
-                <span class="p">)</span>
-                <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">D</span><span class="p">)</span>
-            <span class="p">)</span>
-
-            <span class="c1"># get slicing of padded box so that the result covers</span>
-            <span class="c1"># all of the model frame</span>
-            <span class="n">bounds</span> <span class="o">=</span> <span class="p">[]</span>
-            <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">D</span><span class="p">):</span>
-                <span class="n">bounds</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-                    <span class="p">(</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">bbox</span><span class="o">.</span><span class="n">start</span><span class="p">[</span><span class="n">d</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">pad_width</span><span class="p">[</span><span class="n">d</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">bbox</span><span class="o">.</span><span class="n">stop</span><span class="p">[</span><span class="n">d</span><span class="p">]</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">pad_width</span><span class="p">[</span><span class="n">d</span><span class="p">][</span><span class="mi">1</span><span class="p">],</span>
-                    <span class="p">)</span>
-                <span class="p">)</span>
-            <span class="n">padded_box</span> <span class="o">=</span> <span class="n">Box</span><span class="o">.</span><span class="n">from_bounds</span><span class="p">(</span><span class="o">*</span><span class="n">bounds</span><span class="p">)</span>
-
-            <span class="n">model_box</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span>
-            <span class="n">overlap</span> <span class="o">=</span> <span class="n">padded_box</span> <span class="o">&amp;</span> <span class="n">model_box</span>
-            <span class="n">overlap</span> <span class="o">-=</span> <span class="n">padded_box</span><span class="o">.</span><span class="n">origin</span>  <span class="c1"># now in padded frame</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">slices</span> <span class="o">=</span> <span class="n">overlap</span><span class="o">.</span><span class="n">slices_for</span><span class="p">(</span><span class="n">padded_box</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model_frame</span> <span class="o">=</span> <span class="n">model_frame</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model_frame_slices</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_slices</span> <span class="o">=</span> <span class="n">overlapped_slices</span><span class="p">(</span><span class="n">model_frame</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">bbox</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="Component.check_parameters"><a class="viewcode-back" href="../../api/scarlet.component.html#scarlet.component.Component.check_parameters">[docs]</a>    <span class="k">def</span> <span class="nf">check_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Check that all parameters have finite elements</span>
@@ -201,7 +179,46 @@
         <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">p</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_parameters</span><span class="p">):</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">p</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
                 <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;Component </span><span class="si">{}</span><span class="s2"> Parameter </span><span class="si">{}</span><span class="s2"> is not finite:</span><span class="se">\n</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span>
-                <span class="k">raise</span> <span class="ne">ArithmeticError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span></div></div>
+                <span class="k">raise</span> <span class="ne">ArithmeticError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Component.model_to_frame"><a class="viewcode-back" href="../../api/scarlet.component.html#scarlet.component.Component.model_to_frame">[docs]</a>    <span class="k">def</span> <span class="nf">model_to_frame</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">model</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Project a model into a frame</span>
+
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        model: array</span>
+<span class="sd">            Image of the model to project.</span>
+<span class="sd">            This must be the same shape as `self.bbox`.</span>
+<span class="sd">            If `model` is `None` then `self.get_model()` is used.</span>
+<span class="sd">        frame: `~scarlet.frame.Frame`</span>
+<span class="sd">            The frame to project the model into.</span>
+<span class="sd">            If `frame` is `None` then the model is projected</span>
+<span class="sd">            into `self.model_frame`.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        projected_model: array</span>
+<span class="sd">            (Channels, Height, Width) image of the model</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Use the current model by default</span>
+        <span class="k">if</span> <span class="n">model</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_model</span><span class="p">()</span>
+        <span class="c1"># Use the full model frame by default</span>
+        <span class="k">if</span> <span class="n">frame</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">frame</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_frame</span><span class="p">:</span>
+            <span class="n">frame</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_frame</span>
+            <span class="n">frame_slices</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_frame_slices</span>
+            <span class="n">model_slices</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_slices</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">frame_slices</span><span class="p">,</span> <span class="n">model_slices</span> <span class="o">=</span> <span class="n">overlapped_slices</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">bbox</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="s2">&quot;dtype&quot;</span><span class="p">):</span>
+            <span class="n">dtype</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">dtype</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">dtype</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dtype</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">frame</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+        <span class="n">result</span><span class="p">[</span><span class="n">frame_slices</span><span class="p">]</span> <span class="o">=</span> <span class="n">model</span><span class="p">[</span><span class="n">model_slices</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">result</span></div></div>
 
 
 <div class="viewcode-block" id="FactorizedComponent"><a class="viewcode-back" href="../../api/scarlet.component.html#scarlet.component.FactorizedComponent">[docs]</a><span class="k">class</span> <span class="nc">FactorizedComponent</span><span class="p">(</span><span class="n">Component</span><span class="p">):</span>
@@ -211,24 +228,24 @@
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    frame: `~scarlet.Frame`</span>
-<span class="sd">        The spectral and spatial characteristics of this component.</span>
+<span class="sd">    model_frame: `~scarlet.Frame`</span>
+<span class="sd">        The spectral and spatial characteristics of the full model.</span>
+<span class="sd">    bbox: `~scarlet.Box`</span>
+<span class="sd">        Hyper-spectral bounding box of this component.</span>
 <span class="sd">    sed: `~scarlet.Parameter`</span>
 <span class="sd">        1D array (channels) of the initial SED.</span>
 <span class="sd">    morph: `~scarlet.Parameter`</span>
 <span class="sd">        Image (Height, Width) of the initial morphology.</span>
 <span class="sd">    shift: `~scarlet.Parameter`</span>
 <span class="sd">        2D position for the shift of the center</span>
-<span class="sd">    bbox: `~scarlet.Box`</span>
-<span class="sd">        Hyper-spectral bounding box</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">sed</span><span class="p">,</span> <span class="n">morph</span><span class="p">,</span> <span class="n">shift</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model_frame</span><span class="p">,</span> <span class="n">bbox</span><span class="p">,</span> <span class="n">sed</span><span class="p">,</span> <span class="n">morph</span><span class="p">,</span> <span class="n">shift</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">shift</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">parameters</span> <span class="o">=</span> <span class="p">(</span><span class="n">sed</span><span class="p">,</span> <span class="n">morph</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">parameters</span> <span class="o">=</span> <span class="p">(</span><span class="n">sed</span><span class="p">,</span> <span class="n">morph</span><span class="p">,</span> <span class="n">shift</span><span class="p">)</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="o">*</span><span class="n">parameters</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="n">bbox</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">model_frame</span><span class="p">,</span> <span class="n">bbox</span><span class="p">,</span> <span class="o">*</span><span class="n">parameters</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
         <span class="c1"># store shifting structures</span>
         <span class="k">if</span> <span class="n">shift</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -240,13 +257,13 @@
     <span class="k">def</span> <span class="nf">sed</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Numpy view of the component SED</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pad_sed</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_parameters</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">_data</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parameters</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">_data</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">morph</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Numpy view of the component morphology</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pad_morph</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_shift_morph</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">shift</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parameters</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">_data</span><span class="p">))</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_shift_morph</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">shift</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parameters</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">_data</span><span class="p">)</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">shift</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -256,12 +273,16 @@
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parameters</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">_data</span>
         <span class="k">return</span> <span class="kc">None</span>
 
-<div class="viewcode-block" id="FactorizedComponent.get_model"><a class="viewcode-back" href="../../api/scarlet.component.html#scarlet.component.FactorizedComponent.get_model">[docs]</a>    <span class="k">def</span> <span class="nf">get_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">parameters</span><span class="p">):</span>
+<div class="viewcode-block" id="FactorizedComponent.get_model"><a class="viewcode-back" href="../../api/scarlet.component.html#scarlet.component.FactorizedComponent.get_model">[docs]</a>    <span class="k">def</span> <span class="nf">get_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">parameters</span><span class="p">,</span> <span class="n">frame</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Get the model for this component.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
 <span class="sd">        parameters: tuple of optimimzation parameters</span>
+
+<span class="sd">        frame: `~scarlet.frame.Frame`</span>
+<span class="sd">            Frame to project the model into. If `frame` is `None`</span>
+<span class="sd">            then the model contained in `bbox` is returned.</span>
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
@@ -283,31 +304,18 @@
         <span class="k">if</span> <span class="n">sed</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">sed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sed</span>
 
+        <span class="k">if</span> <span class="n">morph</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">morph</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parameters</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">_data</span>
+
         <span class="k">if</span> <span class="n">shift</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">shift</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">shift</span>
 
-        <span class="k">if</span> <span class="n">morph</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="c1"># dont&#39; use self._morph because we could have shift as parameter</span>
-            <span class="n">morph</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pad_morph</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_shift_morph</span><span class="p">(</span><span class="n">shift</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parameters</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">_data</span><span class="p">))</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">morph</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pad_morph</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_shift_morph</span><span class="p">(</span><span class="n">shift</span><span class="p">,</span> <span class="n">morph</span><span class="p">))</span>
-
-        <span class="k">return</span> <span class="n">sed</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">morph</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span></div>
-
-    <span class="k">def</span> <span class="nf">_pad_sed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sed</span><span class="p">):</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">bbox</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">padded</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">pad</span><span class="p">(</span><span class="n">sed</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pad_width</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;constant&quot;</span><span class="p">,</span> <span class="n">constant_values</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-            <span class="k">return</span> <span class="n">padded</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">slices</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">sed</span>
-
-    <span class="k">def</span> <span class="nf">_pad_morph</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">morph</span><span class="p">):</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">bbox</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">padded</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">pad</span><span class="p">(</span>
-                <span class="n">morph</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pad_width</span><span class="p">[</span><span class="mi">1</span><span class="p">:],</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;constant&quot;</span><span class="p">,</span> <span class="n">constant_values</span><span class="o">=</span><span class="mi">0</span>
-            <span class="p">)</span>
-            <span class="k">return</span> <span class="n">padded</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">slices</span><span class="p">[</span><span class="mi">1</span><span class="p">:]]</span>
-        <span class="k">return</span> <span class="n">morph</span>
+        <span class="n">morph</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_shift_morph</span><span class="p">(</span><span class="n">shift</span><span class="p">,</span> <span class="n">morph</span><span class="p">)</span>
+        <span class="n">model</span> <span class="o">=</span> <span class="n">sed</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">morph</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span>
+        <span class="c1"># project the model into frame (if necessary)</span>
+        <span class="k">if</span> <span class="n">frame</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_to_frame</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">model</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">model</span></div>
 
     <span class="k">def</span> <span class="nf">_shift_morph</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">shift</span><span class="p">,</span> <span class="n">morph</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">shift</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -334,41 +342,46 @@
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    frame: `~scarlet.Frame`</span>
-<span class="sd">        The spectral and spatial characteristics of this component.</span>
+<span class="sd">    model_frame: `~scarlet.Frame`</span>
+<span class="sd">        The spectral and spatial characteristics of the full model.</span>
+<span class="sd">    bbox: `~scarlet.Box`</span>
+<span class="sd">        Hyper-spectral bounding box of this component.</span>
 <span class="sd">    sed: `~scarlet.Parameter`</span>
 <span class="sd">        1D array (channels) of the initial SED.</span>
 <span class="sd">    fparams: `~scarlet.Parameter`</span>
 <span class="sd">        Parameters of the initial morphology.</span>
 <span class="sd">    func: `autograd` function</span>
 <span class="sd">        Signature: func(*fparams, y=None, x=None) -&gt; Image (Height, Width)</span>
-<span class="sd">    bbox: `~scarlet.Box`</span>
-<span class="sd">        Hyper-spectral bounding box</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">sed</span><span class="p">,</span> <span class="n">fparams</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model_frame</span><span class="p">,</span> <span class="n">bbox</span><span class="p">,</span> <span class="n">sed</span><span class="p">,</span> <span class="n">fparams</span><span class="p">,</span> <span class="n">func</span><span class="p">):</span>
         <span class="n">parameters</span> <span class="o">=</span> <span class="p">(</span><span class="n">sed</span><span class="p">,</span> <span class="n">fparams</span><span class="p">)</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="o">*</span><span class="n">parameters</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="n">bbox</span><span class="p">,</span> <span class="n">func</span><span class="o">=</span><span class="n">func</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">model_frame</span><span class="p">,</span> <span class="n">bbox</span><span class="p">,</span> <span class="o">*</span><span class="n">parameters</span><span class="p">,</span> <span class="n">func</span><span class="o">=</span><span class="n">func</span><span class="p">)</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">morph</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Numpy view of the component morphology</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">try</span><span class="p">:</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pad_morph</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_morph</span><span class="p">)</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_morph</span>
         <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+            <span class="c1"># Cache morph. This is updated in get_model if fparams changes</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_morph</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_func</span><span class="p">(</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">_parameters</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pad_morph</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_morph</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_morph</span>
 
     <span class="k">def</span> <span class="nf">_func</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">parameters</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;func&quot;</span><span class="p">](</span><span class="o">*</span><span class="n">parameters</span><span class="p">)</span>
 
-<div class="viewcode-block" id="FunctionComponent.get_model"><a class="viewcode-back" href="../../api/scarlet.component.html#scarlet.component.FunctionComponent.get_model">[docs]</a>    <span class="k">def</span> <span class="nf">get_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">parameters</span><span class="p">):</span>
+<div class="viewcode-block" id="FunctionComponent.get_model"><a class="viewcode-back" href="../../api/scarlet.component.html#scarlet.component.FunctionComponent.get_model">[docs]</a>    <span class="k">def</span> <span class="nf">get_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">parameters</span><span class="p">,</span> <span class="n">frame</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Get the model for this component.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
 <span class="sd">        parameters: tuple of optimimzation parameters</span>
+
+<span class="sd">        frame: `~scarlet.frame.Frame`</span>
+<span class="sd">            Frame to project the model into. If `frame` is `None`</span>
+<span class="sd">            then the model contained in `bbox` is returned.</span>
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
@@ -392,9 +405,11 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="n">morph</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_func</span><span class="p">(</span><span class="o">*</span><span class="n">fparams</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_morph</span> <span class="o">=</span> <span class="n">morph</span><span class="o">.</span><span class="n">_value</span>
-            <span class="n">morph</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pad_morph</span><span class="p">(</span><span class="n">morph</span><span class="p">)</span>
 
-        <span class="k">return</span> <span class="n">sed</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">morph</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span></div></div>
+        <span class="n">model</span> <span class="o">=</span> <span class="n">sed</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">morph</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span>
+        <span class="k">if</span> <span class="n">frame</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_to_frame</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">model</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">model</span></div></div>
 
 
 <div class="viewcode-block" id="CubeComponent"><a class="viewcode-back" href="../../api/scarlet.component.html#scarlet.component.CubeComponent">[docs]</a><span class="k">class</span> <span class="nc">CubeComponent</span><span class="p">(</span><span class="n">Component</span><span class="p">):</span>
@@ -409,33 +424,62 @@
 <span class="sd">    cube: `~scarlet.Parameter`</span>
 <span class="sd">        3D array (C, Height, Width) of the initial data cube.</span>
 <span class="sd">    bbox: `~scarlet.Box`</span>
-<span class="sd">        Hyper-spectral bounding box</span>
+<span class="sd">        Hyper-spectral bounding box of this component.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">cube</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">bbox</span><span class="p">,</span> <span class="n">cube</span><span class="p">):</span>
         <span class="n">parameters</span> <span class="o">=</span> <span class="p">(</span><span class="n">cube</span><span class="p">,)</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="o">*</span><span class="n">parameters</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="n">bbox</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">bbox</span><span class="p">,</span> <span class="o">*</span><span class="n">parameters</span><span class="p">)</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">cube</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pad_cube</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_parameters</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">_data</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parameters</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">_data</span>
 
-<div class="viewcode-block" id="CubeComponent.get_model"><a class="viewcode-back" href="../../api/scarlet.component.html#scarlet.component.CubeComponent.get_model">[docs]</a>    <span class="k">def</span> <span class="nf">get_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">parameters</span><span class="p">):</span>
+<div class="viewcode-block" id="CubeComponent.get_model"><a class="viewcode-back" href="../../api/scarlet.component.html#scarlet.component.CubeComponent.get_model">[docs]</a>    <span class="k">def</span> <span class="nf">get_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">parameters</span><span class="p">,</span> <span class="n">frame</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="n">cube</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">parameters</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">_value</span> <span class="ow">is</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parameters</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
-                <span class="n">cube</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pad_cube</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+                <span class="n">cube</span> <span class="o">=</span> <span class="n">p</span>
 
         <span class="k">if</span> <span class="n">cube</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">cube</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cube</span>
+        <span class="k">if</span> <span class="n">frame</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">cube</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_to_frame</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">cube</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">cube</span></div></div>
 
-        <span class="k">return</span> <span class="n">cube</span></div>
 
-    <span class="k">def</span> <span class="nf">_pad_cube</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cube</span><span class="p">):</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">bbox</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">padded</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">pad</span><span class="p">(</span><span class="n">cube</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pad_width</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;constant&quot;</span><span class="p">,</span> <span class="n">constant_values</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-            <span class="k">return</span> <span class="n">padded</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">slices</span><span class="p">]</span>
-        <span class="k">return</span> <span class="n">cube</span></div>
+<span class="nd">@primitive</span>
+<span class="k">def</span> <span class="nf">_add_models</span><span class="p">(</span><span class="o">*</span><span class="n">models</span><span class="p">,</span> <span class="n">full_model</span><span class="p">,</span> <span class="n">slices</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Insert the models into the full model</span>
+
+<span class="sd">    `slices` is a tuple `(full_model_slice, model_slices)` used</span>
+<span class="sd">    to insert a model into the full_model in the region where the</span>
+<span class="sd">    two models overlap.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">models</span><span class="p">)):</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">models</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="s2">&quot;_value&quot;</span><span class="p">):</span>
+            <span class="n">full_model</span><span class="p">[</span><span class="n">slices</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">0</span><span class="p">]]</span> <span class="o">+=</span> <span class="n">models</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">slices</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">1</span><span class="p">]]</span><span class="o">.</span><span class="n">_value</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">full_model</span><span class="p">[</span><span class="n">slices</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">0</span><span class="p">]]</span> <span class="o">+=</span> <span class="n">models</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">slices</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">1</span><span class="p">]]</span>
+    <span class="k">return</span> <span class="n">full_model</span>
+
+
+<span class="k">def</span> <span class="nf">_grad_add_models</span><span class="p">(</span><span class="n">upstream_grad</span><span class="p">,</span> <span class="o">*</span><span class="n">models</span><span class="p">,</span> <span class="n">full_model</span><span class="p">,</span> <span class="n">slices</span><span class="p">,</span> <span class="n">index</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Gradient for a single model</span>
+
+<span class="sd">    The full model is just the sum of the models,</span>
+<span class="sd">    so the gradient is 1 for each model,</span>
+<span class="sd">    we just have to slice it appropriately.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">models</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
+    <span class="n">full_model_slices</span> <span class="o">=</span> <span class="n">slices</span><span class="p">[</span><span class="n">index</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">model_slices</span> <span class="o">=</span> <span class="n">slices</span><span class="p">[</span><span class="n">index</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">result</span><span class="p">(</span><span class="n">upstream_grad</span><span class="p">):</span>
+        <span class="n">_result</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+        <span class="n">_result</span><span class="p">[</span><span class="n">model_slices</span><span class="p">]</span> <span class="o">=</span> <span class="n">upstream_grad</span><span class="p">[</span><span class="n">full_model_slices</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">_result</span>
+    <span class="k">return</span> <span class="n">result</span>
 
 
 <div class="viewcode-block" id="ComponentTree"><a class="viewcode-back" href="../../api/scarlet.component.html#scarlet.component.ComponentTree">[docs]</a><span class="k">class</span> <span class="nc">ComponentTree</span><span class="p">:</span>
@@ -463,9 +507,29 @@
                 <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
                     <span class="s2">&quot;argument needs to be list of Components or ComponentTrees&quot;</span>
                 <span class="p">)</span>
-            <span class="k">assert</span> <span class="n">c</span><span class="o">.</span><span class="n">frame</span> <span class="ow">is</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="p">,</span> <span class="s2">&quot;All components need to share the same Frame&quot;</span>
+            <span class="k">assert</span> <span class="n">c</span><span class="o">.</span><span class="n">model_frame</span> <span class="ow">is</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_frame</span><span class="p">,</span> <span class="s2">&quot;All components need to share the same model Frame&quot;</span>
             <span class="n">c</span><span class="o">.</span><span class="n">_index</span> <span class="o">=</span> <span class="n">i</span>
             <span class="n">c</span><span class="o">.</span><span class="n">_parent</span> <span class="o">=</span> <span class="bp">self</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">bbox</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Union of all the component `~scarlet.bbox.Box`es</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bbox</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+            <span class="c1"># Make the bbox of the tree the union of the component bboxes</span>
+            <span class="n">box</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">bbox</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_bbox</span> <span class="o">=</span> <span class="n">Box</span><span class="p">(</span><span class="n">box</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">box</span><span class="o">.</span><span class="n">origin</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">component</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_bbox</span> <span class="o">|=</span> <span class="n">component</span><span class="o">.</span><span class="n">bbox</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bbox</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">shape</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Shape of this model</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bbox</span><span class="o">.</span><span class="n">shape</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">components</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -508,10 +572,10 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_components</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">frame</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">model_frame</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Frame of the components.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tree</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">frame</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tree</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">model_frame</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">sources</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -575,7 +639,7 @@
         <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="p">:</span>
             <span class="n">c</span><span class="o">.</span><span class="n">check_parameters</span><span class="p">()</span></div>
 
-<div class="viewcode-block" id="ComponentTree.get_model"><a class="viewcode-back" href="../../api/scarlet.component.html#scarlet.component.ComponentTree.get_model">[docs]</a>    <span class="k">def</span> <span class="nf">get_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">params</span><span class="p">):</span>
+<div class="viewcode-block" id="ComponentTree.get_model"><a class="viewcode-back" href="../../api/scarlet.component.html#scarlet.component.ComponentTree.get_model">[docs]</a>    <span class="k">def</span> <span class="nf">get_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">params</span><span class="p">,</span> <span class="n">frame</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Get the model of this component tree</span>
 
 <span class="sd">        Parameters</span>
@@ -587,24 +651,55 @@
 <span class="sd">        model: array</span>
 <span class="sd">            (Bands, Height, Width) data cube</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">model</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
-        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">params</span><span class="p">):</span>
-            <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span>
-            <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="p">):</span>
-                <span class="n">j</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">parameters</span><span class="p">)</span>
-                <span class="n">p</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="n">i</span> <span class="p">:</span> <span class="n">i</span> <span class="o">+</span> <span class="n">j</span><span class="p">]</span>
-                <span class="n">i</span> <span class="o">+=</span> <span class="n">j</span>
-                <span class="n">model</span> <span class="o">=</span> <span class="n">model</span> <span class="o">+</span> <span class="n">c</span><span class="o">.</span><span class="n">get_model</span><span class="p">(</span><span class="o">*</span><span class="n">p</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">frame</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">frame</span> <span class="o">=</span> <span class="n">Frame</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">bbox</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">model_frame</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span>
+                <span class="n">psfs</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">model_frame</span><span class="o">.</span><span class="n">psf</span><span class="p">,</span> <span class="n">channels</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">model_frame</span><span class="o">.</span><span class="n">channels</span>
+            <span class="p">)</span>
+        <span class="c1"># If this is the model frame then the slices are already cached</span>
+        <span class="k">if</span> <span class="n">frame</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_frame</span><span class="p">:</span>
+            <span class="n">use_cached</span> <span class="o">=</span> <span class="kc">True</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="p">:</span>
-                <span class="n">model</span> <span class="o">=</span> <span class="n">model</span> <span class="o">+</span> <span class="n">c</span><span class="o">.</span><span class="n">get_model</span><span class="p">()</span>
+            <span class="n">use_cached</span> <span class="o">=</span> <span class="kc">False</span>
 
-        <span class="k">return</span> <span class="n">model</span></div>
+        <span class="n">full_model</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">frame</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">frame</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
 
-<div class="viewcode-block" id="ComponentTree.set_frame"><a class="viewcode-back" href="../../api/scarlet.component.html#scarlet.component.ComponentTree.set_frame">[docs]</a>    <span class="k">def</span> <span class="nf">set_frame</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame</span><span class="p">):</span>
+        <span class="n">models</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">slices</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">params</span><span class="p">):</span>
+                <span class="n">j</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">parameters</span><span class="p">)</span>
+                <span class="n">p</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="n">i</span><span class="p">:</span> <span class="n">i</span> <span class="o">+</span> <span class="n">j</span><span class="p">]</span>
+                <span class="n">i</span> <span class="o">+=</span> <span class="n">j</span>
+                <span class="n">model</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="n">get_model</span><span class="p">(</span><span class="o">*</span><span class="n">p</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">model</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="n">get_model</span><span class="p">()</span>
+
+            <span class="n">models</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">use_cached</span><span class="p">:</span>
+                <span class="n">slices</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">c</span><span class="o">.</span><span class="n">model_frame_slices</span><span class="p">,</span> <span class="n">c</span><span class="o">.</span><span class="n">model_slices</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Get the slices needed to insert the model</span>
+                <span class="n">slices</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">overlapped_slices</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">c</span><span class="o">.</span><span class="n">bbox</span><span class="p">))</span>
+
+        <span class="c1"># We have to declare the function that inserts sources</span>
+        <span class="c1"># into the blend with autograd.</span>
+        <span class="c1"># This has to be done each time we fit a blend,</span>
+        <span class="c1"># since the number of components =&gt; the number of arguments,</span>
+        <span class="c1"># which must be linked to the autograd primitive function.</span>
+        <span class="n">defvjp</span><span class="p">(</span><span class="n">_add_models</span><span class="p">,</span> <span class="o">*</span><span class="p">([</span><span class="n">partial</span><span class="p">(</span><span class="n">_grad_add_models</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">k</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="p">))]))</span>
+
+        <span class="n">full_model</span> <span class="o">=</span> <span class="n">_add_models</span><span class="p">(</span><span class="o">*</span><span class="n">models</span><span class="p">,</span> <span class="n">full_model</span><span class="o">=</span><span class="n">full_model</span><span class="p">,</span> <span class="n">slices</span><span class="o">=</span><span class="n">slices</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">full_model</span></div>
+
+<div class="viewcode-block" id="ComponentTree.set_model_frame"><a class="viewcode-back" href="../../api/scarlet.component.html#scarlet.component.ComponentTree.set_model_frame">[docs]</a>    <span class="k">def</span> <span class="nf">set_model_frame</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model_frame</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Set the frame for all components in the tree</span>
 
-<span class="sd">        see `~scarlet.Component.set_frame` for details.</span>
+<span class="sd">        see `~scarlet.Component.set_model_frame` for details.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -612,7 +707,7 @@
 <span class="sd">            Frame to adopt for this component</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="p">:</span>
-            <span class="n">c</span><span class="o">.</span><span class="n">set_frame</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span></div>
+            <span class="n">c</span><span class="o">.</span><span class="n">set_model_frame</span><span class="p">(</span><span class="n">model_frame</span><span class="p">)</span></div>
 
     <span class="k">def</span> <span class="fm">__iadd__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">c</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Add another component or tree.</span>
@@ -660,7 +755,45 @@
 
     <span class="k">def</span> <span class="nf">__setstate__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_tree</span> <span class="o">=</span> <span class="n">state</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_tree_to_components</span><span class="p">()</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_tree_to_components</span><span class="p">()</span>
+
+<div class="viewcode-block" id="ComponentTree.model_to_frame"><a class="viewcode-back" href="../../api/scarlet.component.html#scarlet.component.ComponentTree.model_to_frame">[docs]</a>    <span class="k">def</span> <span class="nf">model_to_frame</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">model</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Project a model into a frame</span>
+
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        model: array</span>
+<span class="sd">            Image of the model to project.</span>
+<span class="sd">            This must be the same shape as `self.bbox`.</span>
+<span class="sd">            If `model` is `None` then `self.get_model()` is used.</span>
+<span class="sd">        frame: `~scarlet.frame.Frame`</span>
+<span class="sd">            The frame to project the model into.</span>
+<span class="sd">            If `frame` is `None` then the model is projected</span>
+<span class="sd">            into `self.model_frame`.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        projected_model: array</span>
+<span class="sd">            (Channels, Height, Width) image of the model</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Use the current model by default</span>
+        <span class="k">if</span> <span class="n">model</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_model</span><span class="p">()</span>
+        <span class="c1"># Use the full model frame by default</span>
+        <span class="k">if</span> <span class="n">frame</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">frame</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_frame</span>
+
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="s2">&quot;dtype&quot;</span><span class="p">):</span>
+            <span class="n">dtype</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">dtype</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">dtype</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_frame</span><span class="o">.</span><span class="n">dtype</span>
+
+        <span class="n">frame_slices</span><span class="p">,</span> <span class="n">model_slices</span> <span class="o">=</span> <span class="n">overlapped_slices</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">bbox</span><span class="p">)</span>
+
+        <span class="n">result</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">frame</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+        <span class="n">result</span><span class="p">[</span><span class="n">frame_slices</span><span class="p">]</span> <span class="o">=</span> <span class="n">model</span><span class="p">[</span><span class="n">model_slices</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">result</span></div></div>
 </pre></div>
 
           </div>

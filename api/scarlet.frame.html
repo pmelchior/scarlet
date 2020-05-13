@@ -84,8 +84,8 @@
 <span id="scarlet-frame"></span><h1>scarlet.frame<a class="headerlink" href="#module-scarlet.frame" title="Permalink to this headline">¶</a></h1>
 <dl class="py class">
 <dt id="scarlet.frame.Frame">
-<em class="property">class </em><code class="sig-prename descclassname">scarlet.frame.</code><code class="sig-name descname">Frame</code><span class="sig-paren">(</span><em class="sig-param">shape_or_box</em>, <em class="sig-param">wcs=None</em>, <em class="sig-param">psfs=None</em>, <em class="sig-param">channels=None</em>, <em class="sig-param">dtype=&lt;class 'numpy.float32'&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/frame.html#Frame"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.frame.Frame" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="scarlet.bbox.html#scarlet.bbox.Box" title="scarlet.bbox.Box"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.bbox.Box</span></code></a></p>
+<em class="property">class </em><code class="sig-prename descclassname">scarlet.frame.</code><code class="sig-name descname">Frame</code><span class="sig-paren">(</span><em class="sig-param">shape_or_box</em>, <em class="sig-param">channels</em>, <em class="sig-param">wcs=None</em>, <em class="sig-param">psfs=None</em>, <em class="sig-param">dtype=&lt;class 'numpy.float32'&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/frame.html#Frame"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.frame.Frame" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.bbox.Box</span></code></p>
 <p>Spatial and spectral characteristics of the data</p>
 <dl class="field-list simple">
 <dt class="field-odd">Attributes</dt>
@@ -137,8 +137,19 @@
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">insert_into</span></code>(self, image, sub)</p></td>
 <td><p>Insert <cite>sub</cite> into <cite>image</cite> according to this bbox</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">slices_for</span></code>(self, im_or_shape)</p></td>
-<td><p>Slices for <cite>im_or_shape</cite> to be limited to this bounding box.</p></td>
+</tbody>
+</table>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 57%" />
+<col style="width: 43%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><strong>as_slices</strong></p></td>
+<td></td>
+</tr>
+<tr class="row-even"><td><p><strong>copy</strong></p></td>
+<td></td>
 </tr>
 </tbody>
 </table>
@@ -163,7 +174,8 @@
 <dl class="py method">
 <dt id="scarlet.frame.Frame.bbox">
 <em class="property">property </em><code class="sig-name descname">bbox</code><a class="headerlink" href="#scarlet.frame.Frame.bbox" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>The <cite>~scarlet.bbox.Box</cite> version of this <cite>Frame</cite>.</p>
+</dd></dl>
 
 <dl class="py method">
 <dt id="scarlet.frame.Frame.from_observations">
