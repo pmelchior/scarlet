@@ -111,7 +111,7 @@ class NormalizationConstraint(Constraint):
 
 
 class L0Constraint(Constraint):
-    def __init__(self, thresh, type="relative"):
+    def __init__(self, thresh, type="absolute"):
         """L0 norm (sparsity) penalty
 
         Parameters
@@ -122,11 +122,11 @@ class L0Constraint(Constraint):
             if the penalty is expressed in units of the function value (relative)
             or in units of the variable X (absolute).
         """
-        super().__init__(partial(proxmin.operators.prox_hard, thresh=thresh, type=type))
+        super().__init__(partial(proxmin.operators.prox_hard, thresh=thresh, type=type, ))
 
 
 class L1Constraint(Constraint):
-    def __init__(self, thresh, type="relative"):
+    def __init__(self, thresh, type="absolute"):
         """L1 norm (sparsity) penalty
 
         Parameters
