@@ -20,3 +20,4 @@ API Documentation
     scarlet.psf
     scarlet.resampling
     scarlet.source
+    scarlet.wavelet

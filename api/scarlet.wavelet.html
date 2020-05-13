@@ -1,0 +1,295 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>scarlet.wavelet &#8212; scarlet  documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "ignoreClass": "document", "processClass": "math|output_area"}})</script>
+    <link rel="canonical" href="api/api/scarlet.wavelet.html" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="prev" title="scarlet.source" href="scarlet.source.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../index.html">
+              <img class="logo" src="../_static/logo.svg" alt="Logo"/>
+            </a></p>
+<h3><a href="../index.html">Table of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../0-quickstart.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../1-concepts.html">Core Concepts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials.html">Tutorials</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="scarlet.html">API Documentation</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="scarlet.bbox.html">scarlet.bbox</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.blend.html">scarlet.blend</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.cache.html">scarlet.cache</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.component.html">scarlet.component</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.constraint.html">scarlet.constraint</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.display.html">scarlet.display</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.fft.html">scarlet.fft</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.frame.html">scarlet.frame</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.interpolation.html">scarlet.interpolation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.measure.html">scarlet.measure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.observation.html">scarlet.observation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.operator.html">scarlet.operator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.parameter.html">scarlet.parameter</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.prior.html">scarlet.prior</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.psf.html">scarlet.psf</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.resampling.html">scarlet.resampling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.source.html">scarlet.source</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">scarlet.wavelet</a></li>
+</ul>
+</li>
+</ul>
+
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-scarlet.wavelet">
+<span id="scarlet-wavelet"></span><h1>scarlet.wavelet<a class="headerlink" href="#module-scarlet.wavelet" title="Permalink to this headline">¶</a></h1>
+<dl class="py exception">
+<dt id="scarlet.wavelet.InputError">
+<em class="property">exception </em><code class="sig-prename descclassname">scarlet.wavelet.</code><code class="sig-name descname">InputError</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">message</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/wavelet.html#InputError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.wavelet.InputError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#Exception" title="(in Python v3.8)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Exception</span></code></a></p>
+<p>Exception raised for errors in the input.</p>
+<dl class="simple">
+<dt>Attributes:</dt><dd><p>expression – input expression in which the error occurred
+message – explanation of the error</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt id="scarlet.wavelet.Starlet">
+<em class="property">class </em><code class="sig-prename descclassname">scarlet.wavelet.</code><code class="sig-name descname">Starlet</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">image</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">lvl</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">coefficients</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">direct</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/wavelet.html#Starlet"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.wavelet.Starlet" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.8)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>A class used to create the Wavelet transform of a cube of images from the ‘a trou’ algorithm.</p>
+<p>The transform is performed by convolving the image by a seed starlet: the transform of an all-zero
+image with its central pixel set to one. This requires 2-fold padding of the image and an odd pad
+shape. The fft of the seed starlet is cached so that it can be reused in the transform of other
+images that have the same shape.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Attributes</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><a class="reference internal" href="#scarlet.wavelet.Starlet.coefficients" title="scarlet.wavelet.Starlet.coefficients"><code class="xref py py-obj docutils literal notranslate"><span class="pre">coefficients</span></code></a></dt><dd><p>Starlet coefficients</p>
+</dd>
+<dt><a class="reference internal" href="#scarlet.wavelet.Starlet.image" title="scarlet.wavelet.Starlet.image"><code class="xref py py-obj docutils literal notranslate"><span class="pre">image</span></code></a></dt><dd><p>The real space image</p>
+</dd>
+<dt><a class="reference internal" href="#scarlet.wavelet.Starlet.norm" title="scarlet.wavelet.Starlet.norm"><code class="xref py py-obj docutils literal notranslate"><span class="pre">norm</span></code></a></dt><dd><p>The norm of the seed wavelet in each wavelet level (not in coarse wavelet)</p>
+</dd>
+<dt><a class="reference internal" href="#scarlet.wavelet.Starlet.scales" title="scarlet.wavelet.Starlet.scales"><code class="xref py py-obj docutils literal notranslate"><span class="pre">scales</span></code></a></dt><dd><p>Number of starlet scales</p>
+</dd>
+<dt><a class="reference internal" href="#scarlet.wavelet.Starlet.shape" title="scarlet.wavelet.Starlet.shape"><code class="xref py py-obj docutils literal notranslate"><span class="pre">shape</span></code></a></dt><dd><p>The shape of the real space image</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.wavelet.Starlet.direct_transform" title="scarlet.wavelet.Starlet.direct_transform"><code class="xref py py-obj docutils literal notranslate"><span class="pre">direct_transform</span></code></a>(self)</p></td>
+<td><p>Computes the direct starlet transform of the starlet’s image</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.wavelet.Starlet.transform" title="scarlet.wavelet.Starlet.transform"><code class="xref py py-obj docutils literal notranslate"><span class="pre">transform</span></code></a>(self)</p></td>
+<td><p>Performs the wavelet transform of an image by convolution with the seed wavelet</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py method">
+<dt id="scarlet.wavelet.Starlet.coefficients">
+<em class="property">property </em><code class="sig-name descname">coefficients</code><a class="headerlink" href="#scarlet.wavelet.Starlet.coefficients" title="Permalink to this definition">¶</a></dt>
+<dd><p>Starlet coefficients</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="scarlet.wavelet.Starlet.direct_transform">
+<code class="sig-name descname">direct_transform</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/wavelet.html#Starlet.direct_transform"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.wavelet.Starlet.direct_transform" title="Permalink to this definition">¶</a></dt>
+<dd><p>Computes the direct starlet transform of the starlet’s image</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><dl class="simple">
+<dt>starlet: numpy ndarray</dt><dd><p>the starlet transform of the Starlet object’s image</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="scarlet.wavelet.Starlet.image">
+<em class="property">property </em><code class="sig-name descname">image</code><a class="headerlink" href="#scarlet.wavelet.Starlet.image" title="Permalink to this definition">¶</a></dt>
+<dd><p>The real space image</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="scarlet.wavelet.Starlet.norm">
+<em class="property">property </em><code class="sig-name descname">norm</code><a class="headerlink" href="#scarlet.wavelet.Starlet.norm" title="Permalink to this definition">¶</a></dt>
+<dd><p>The norm of the seed wavelet in each wavelet level (not in coarse wavelet)</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="scarlet.wavelet.Starlet.scales">
+<em class="property">property </em><code class="sig-name descname">scales</code><a class="headerlink" href="#scarlet.wavelet.Starlet.scales" title="Permalink to this definition">¶</a></dt>
+<dd><p>Number of starlet scales</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="scarlet.wavelet.Starlet.shape">
+<em class="property">property </em><code class="sig-name descname">shape</code><a class="headerlink" href="#scarlet.wavelet.Starlet.shape" title="Permalink to this definition">¶</a></dt>
+<dd><p>The shape of the real space image</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="scarlet.wavelet.Starlet.transform">
+<code class="sig-name descname">transform</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/wavelet.html#Starlet.transform"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.wavelet.Starlet.transform" title="Permalink to this definition">¶</a></dt>
+<dd><p>Performs the wavelet transform of an image by convolution with the seed wavelet</p>
+<blockquote>
+<div><p>Seed wavelets are the transform of a dirac in starlets when computed for a given shape,
+the seed is cached to be reused for images with the same shape.
+The transform is applied to <cite>self._image</cite></p>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><dl class="simple">
+<dt>starlet: numpy ndarray</dt><dd><p>the starlet transform of the Starlet object’s image</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt id="scarlet.wavelet.get_starlet_shape">
+<code class="sig-prename descclassname">scarlet.wavelet.</code><code class="sig-name descname">get_starlet_shape</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">shape</span></em>, <em class="sig-param"><span class="n">lvl</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/wavelet.html#get_starlet_shape"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.wavelet.get_starlet_shape" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the pad shape for a starlet transform</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="scarlet.wavelet.iuwt">
+<code class="sig-prename descclassname">scarlet.wavelet.</code><code class="sig-name descname">iuwt</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">starlet</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/wavelet.html#iuwt"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.wavelet.iuwt" title="Permalink to this definition">¶</a></dt>
+<dd><p>Inverse starlet transform</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>starlet: Shapelet object</strong></dt><dd><p>Starlet to be inverted</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>cJ: array</dt><dd><p>a 2D image that corresponds to the inverse transform of stralet.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="scarlet.wavelet.mad_wavelet">
+<code class="sig-prename descclassname">scarlet.wavelet.</code><code class="sig-name descname">mad_wavelet</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">image</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/wavelet.html#mad_wavelet"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.wavelet.mad_wavelet" title="Permalink to this definition">¶</a></dt>
+<dd><p>image: Median absolute deviation of the first wavelet scale.
+(WARNING: sorry to disapoint, this is not a wavelet for mad scientists)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>image: array</strong></dt><dd><p>An image or cube of images</p>
+</dd>
+<dt><strong>Returns</strong></dt><dd></dd>
+<dt><strong>——-</strong></dt><dd></dd>
+<dt><strong>mad: array</strong></dt><dd><p>median absolute deviation each image in the cube</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="scarlet.wavelet.mk_starlet">
+<code class="sig-prename descclassname">scarlet.wavelet.</code><code class="sig-name descname">mk_starlet</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">shape</span></em>, <em class="sig-param"><span class="n">image</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/wavelet.html#mk_starlet"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.wavelet.mk_starlet" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates a starlet for a given 2d shape.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>shape: tuple</strong></dt><dd><p>2D shape of the desired shapelet</p>
+</dd>
+<dt><strong>lvl: int</strong></dt><dd><p>number of shapelet levels to compute. If None, lvl is set to the log2 of the number of pixels on a side.
+if lvl is higher than this number lvl will be set to it.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>starlet: Fourier object</dt><dd><p>the starlet transform of a Dirac fonction as the <cite>image</cite> of a Fourier object</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &copy;2018-2019, Fred Moolekamp and Peter Melchior.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.0.3</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/api/scarlet.wavelet.rst"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

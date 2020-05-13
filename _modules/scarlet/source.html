@@ -62,11 +62,12 @@
   <h1>Source code for scarlet.source</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">partial</span>
 
-<span class="kn">from</span> <span class="nn">.constraint</span> <span class="kn">import</span> <span class="n">PositivityConstraint</span><span class="p">,</span> <span class="n">MonotonicityConstraint</span><span class="p">,</span> <span class="n">SymmetryConstraint</span>
+<span class="kn">from</span> <span class="nn">.constraint</span> <span class="kn">import</span> <span class="n">PositivityConstraint</span><span class="p">,</span> <span class="n">MonotonicityConstraint</span><span class="p">,</span> <span class="n">SymmetryConstraint</span><span class="p">,</span> <span class="n">L0Constraint</span>
 <span class="kn">from</span> <span class="nn">.constraint</span> <span class="kn">import</span> <span class="n">NormalizationConstraint</span><span class="p">,</span> <span class="n">ConstraintChain</span><span class="p">,</span> <span class="n">CenterOnConstraint</span>
 <span class="kn">from</span> <span class="nn">.parameter</span> <span class="kn">import</span> <span class="n">Parameter</span><span class="p">,</span> <span class="n">relative_step</span>
 <span class="kn">from</span> <span class="nn">.component</span> <span class="kn">import</span> <span class="n">ComponentTree</span><span class="p">,</span> <span class="n">FunctionComponent</span><span class="p">,</span> <span class="n">FactorizedComponent</span>
 <span class="kn">from</span> <span class="nn">.bbox</span> <span class="kn">import</span> <span class="n">Box</span>
+<span class="kn">from</span> <span class="nn">.wavelet</span> <span class="kn">import</span> <span class="n">Starlet</span><span class="p">,</span> <span class="n">mad_wavelet</span>
 <span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">operator</span>
 
 <span class="c1"># make sure that import * above doesn&#39;t import its own stock numpy</span>
@@ -461,6 +462,105 @@
     <span class="k">def</span> <span class="nf">_psf_wrapper</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">parameters</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_frame</span><span class="o">.</span><span class="n">psf</span><span class="o">.</span><span class="fm">__call__</span><span class="p">(</span><span class="o">*</span><span class="n">parameters</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">bbox</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span></div>
 
+<div class="viewcode-block" id="StarletSource"><a class="viewcode-back" href="../../api/scarlet.source.html#scarlet.source.StarletSource">[docs]</a><span class="k">class</span> <span class="nc">StarletSource</span><span class="p">(</span><span class="n">FunctionComponent</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Source intialized with starlet coefficients.</span>
+
+<span class="sd">    Sources are initialized with the SED of the center pixel,</span>
+<span class="sd">    and the morphologies are initialised as ExtendedSources</span>
+<span class="sd">    and transformed into starlet coefficients.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">frame</span><span class="p">,</span>
+        <span class="n">sky_coord</span><span class="p">,</span>
+        <span class="n">observations</span><span class="p">,</span>
+        <span class="n">obs_idx</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+        <span class="n">thresh</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+        <span class="n">starlet_thresh</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
+        <span class="n">shifting</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Extended source intialized to match a set of observations</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        frame: `~scarlet.Frame`</span>
+<span class="sd">            The frame of the model</span>
+<span class="sd">        sky_coord: tuple</span>
+<span class="sd">            Center of the source</span>
+<span class="sd">        observations: instance or list of `~scarlet.observation.Observation`</span>
+<span class="sd">            Observation(s) to initialize this source.</span>
+<span class="sd">        obs_idx: int</span>
+<span class="sd">            Index of the observation in `observations` to</span>
+<span class="sd">            initialize the morphology.</span>
+<span class="sd">        thresh: `float`</span>
+<span class="sd">            Multiple of the backround RMS used as a</span>
+<span class="sd">            flux cutoff for morphology initialization.</span>
+<span class="sd">        shifting: `bool`</span>
+<span class="sd">            Whether or not a subpixel shift is added as optimization parameter</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">center</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">frame</span><span class="o">.</span><span class="n">get_pixel</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;float&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pixel_center</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">center</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;int&quot;</span><span class="p">))</span>
+
+        <span class="c1"># initialize SED from sky_coord</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="nb">iter</span><span class="p">(</span><span class="n">observations</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
+            <span class="n">observations</span> <span class="o">=</span> <span class="p">[</span><span class="n">observations</span><span class="p">]</span>
+
+        <span class="c1"># initialize from observation</span>
+        <span class="n">sed</span><span class="p">,</span> <span class="n">image_morph</span><span class="p">,</span> <span class="n">bbox</span> <span class="o">=</span> <span class="n">init_extended_source</span><span class="p">(</span>
+            <span class="n">sky_coord</span><span class="p">,</span>
+            <span class="n">frame</span><span class="p">,</span>
+            <span class="n">observations</span><span class="p">,</span>
+            <span class="n">obs_idx</span><span class="o">=</span><span class="n">obs_idx</span><span class="p">,</span>
+            <span class="n">thresh</span><span class="o">=</span><span class="n">thresh</span><span class="p">,</span>
+            <span class="n">symmetric</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="n">monotonic</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="n">sed</span> <span class="o">=</span> <span class="n">Parameter</span><span class="p">(</span>
+            <span class="n">sed</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;sed&quot;</span><span class="p">,</span>
+            <span class="n">step</span><span class="o">=</span><span class="n">partial</span><span class="p">(</span><span class="n">relative_step</span><span class="p">,</span> <span class="n">factor</span><span class="o">=</span><span class="mf">1e-2</span><span class="p">),</span>
+            <span class="n">constraint</span><span class="o">=</span><span class="n">PositivityConstraint</span><span class="p">(),</span>
+        <span class="p">)</span>
+
+        <span class="n">noise</span> <span class="o">=</span> <span class="n">mad_wavelet</span><span class="p">(</span><span class="n">observations</span><span class="p">[</span><span class="n">obs_idx</span><span class="p">]</span><span class="o">.</span><span class="n">images</span><span class="p">)</span> <span class="o">*</span> \
+                <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">observations</span><span class="p">[</span><span class="n">obs_idx</span><span class="p">]</span><span class="o">.</span><span class="n">_diff_kernels</span><span class="o">.</span><span class="n">image</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">)))</span>
+        <span class="c1"># Threshold in units of noise</span>
+        <span class="n">thresh</span> <span class="o">=</span> <span class="n">starlet_thresh</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">((</span><span class="n">sed</span><span class="o">*</span><span class="n">noise</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">))</span>
+
+        <span class="c1"># Starlet transform of morphologies (n1,n2) with 4 dimensions: (1,lvl,n1,n2), lvl = wavelet scales</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">transform</span> <span class="o">=</span> <span class="n">Starlet</span><span class="p">(</span><span class="n">image_morph</span><span class="p">)</span>
+        <span class="c1">#The starlet transform is the model</span>
+        <span class="n">morph</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">transform</span><span class="o">.</span><span class="n">coefficients</span>
+        <span class="c1"># wavelet-scale norm</span>
+        <span class="n">starlet_norm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">transform</span><span class="o">.</span><span class="n">norm</span>
+        <span class="c1">#One threshold per wavelet scale: thresh*norm</span>
+        <span class="n">thresh_array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">morph</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">+</span> <span class="n">thresh</span>
+        <span class="n">thresh_array</span> <span class="o">=</span> <span class="n">thresh_array</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">starlet_norm</span><span class="p">])[</span><span class="o">...</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span>
+        <span class="c1"># We don&#39;t threshold the last scale</span>
+        <span class="n">thresh_array</span><span class="p">[:,</span><span class="o">-</span><span class="mi">1</span><span class="p">,:,:]</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="n">morph_constraint</span> <span class="o">=</span> <span class="n">ConstraintChain</span><span class="p">(</span><span class="o">*</span><span class="p">[</span><span class="n">L0Constraint</span><span class="p">(</span><span class="n">thresh_array</span><span class="p">),</span> <span class="n">PositivityConstraint</span><span class="p">()])</span>
+
+        <span class="n">morph</span> <span class="o">=</span> <span class="n">Parameter</span><span class="p">(</span><span class="n">morph</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;morph&quot;</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="mf">1.e-2</span><span class="p">,</span> <span class="n">constraint</span><span class="o">=</span><span class="n">morph_constraint</span><span class="p">)</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">bbox</span><span class="p">,</span> <span class="n">sed</span><span class="p">,</span> <span class="n">morph</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_iuwt</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">center</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">pixel_center</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">shift</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">pixel_center</span>
+
+    <span class="k">def</span> <span class="nf">_iuwt</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">param</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Takes the inverse transform of parameters as starlet coefficients.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">Starlet</span><span class="p">(</span><span class="n">coefficients</span> <span class="o">=</span> <span class="n">param</span><span class="p">)</span><span class="o">.</span><span class="n">image</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span></div>
 
 <div class="viewcode-block" id="ExtendedSource"><a class="viewcode-back" href="../../api/scarlet.source.html#scarlet.source.ExtendedSource">[docs]</a><span class="k">class</span> <span class="nc">ExtendedSource</span><span class="p">(</span><span class="n">FactorizedComponent</span><span class="p">):</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>

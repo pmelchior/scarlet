@@ -18,6 +18,7 @@
     <link rel="canonical" href="api/api/scarlet.source.html" />
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="scarlet.wavelet" href="scarlet.wavelet.html" />
     <link rel="prev" title="scarlet.resampling" href="scarlet.resampling.html" />
    
   <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
@@ -57,6 +58,7 @@
 <li class="toctree-l2"><a class="reference internal" href="scarlet.psf.html">scarlet.psf</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.resampling.html">scarlet.resampling</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">scarlet.source</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.wavelet.html">scarlet.wavelet</a></li>
 </ul>
 </li>
 </ul>
@@ -301,6 +303,61 @@ observation.</p>
 </tr>
 </tbody>
 </table>
+</dd></dl>
+
+<dl class="py class">
+<dt id="scarlet.source.StarletSource">
+<em class="property">class </em><code class="sig-prename descclassname">scarlet.source.</code><code class="sig-name descname">StarletSource</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">frame</span></em>, <em class="sig-param"><span class="n">sky_coord</span></em>, <em class="sig-param"><span class="n">observations</span></em>, <em class="sig-param"><span class="n">obs_idx</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">thresh</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">starlet_thresh</span><span class="o">=</span><span class="default_value">5</span></em>, <em class="sig-param"><span class="n">shifting</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/source.html#StarletSource"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.source.StarletSource" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="scarlet.component.html#scarlet.component.FunctionComponent" title="scarlet.component.FunctionComponent"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.component.FunctionComponent</span></code></a></p>
+<p>Source intialized with starlet coefficients.</p>
+<p>Sources are initialized with the SED of the center pixel,
+and the morphologies are initialised as ExtendedSources
+and transformed into starlet coefficients.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Attributes</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>center</strong></dt><dd></dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">coord</span></code></dt><dd><p>The coordinate in a <cite>~scarlet.component.ComponentTree</cite>.</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">morph</span></code></dt><dd><p>Numpy view of the component morphology</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">parameters</span></code></dt><dd><p>The list of non-fixed parameters</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">sed</span></code></dt><dd><p>Numpy view of the component SED</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">shape</span></code></dt><dd><p>Shape of the image (Channel, Height, Width)</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">shift</span></code></dt><dd><p>Numpy view of the component shift</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">check_parameters</span></code>(self)</p></td>
+<td><p>Check that all parameters have finite elements</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code>(self, \*parameters[, frame])</p></td>
+<td><p>Get the model for this component.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_to_frame</span></code>(self[, frame, model])</p></td>
+<td><p>Project a model into a frame</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_model_frame</span></code>(self, model_frame)</p></td>
+<td><p>Sets the frame for this component.</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py method">
+<dt id="scarlet.source.StarletSource.center">
+<em class="property">property </em><code class="sig-name descname">center</code><a class="headerlink" href="#scarlet.source.StarletSource.center" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
 </dd></dl>
 
 <dl class="py function">

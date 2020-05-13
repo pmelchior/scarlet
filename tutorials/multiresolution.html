@@ -321,7 +321,7 @@ div.rendered_html tbody tr:hover {
 <span class="kn">import</span> <span class="nn">matplotlib</span>
 <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
 <span class="c1"># use a better colormap and don&#39;t interpolate the pixels</span>
-<span class="n">matplotlib</span><span class="o">.</span><span class="n">rc</span><span class="p">(</span><span class="s1">&#39;image&#39;</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;inferno&#39;</span><span class="p">)</span>
+<span class="n">matplotlib</span><span class="o">.</span><span class="n">rc</span><span class="p">(</span><span class="s1">&#39;image&#39;</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;gist_stern&#39;</span><span class="p">)</span>
 <span class="n">matplotlib</span><span class="o">.</span><span class="n">rc</span><span class="p">(</span><span class="s1">&#39;image&#39;</span><span class="p">,</span> <span class="n">interpolation</span><span class="o">=</span><span class="s1">&#39;none&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -351,9 +351,6 @@ div.rendered_html tbody tr:hover {
 <span class="n">wcs_hst</span> <span class="o">=</span> <span class="n">WCS</span><span class="p">(</span><span class="n">hst_hdu</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">)</span>
 <span class="n">channels_hst</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;F814W&#39;</span><span class="p">]</span>
 
-<span class="c1"># apply wcs correction</span>
-<span class="n">wcs_hsc</span><span class="o">.</span><span class="n">wcs</span><span class="o">.</span><span class="n">crval</span> <span class="o">-=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span><span class="mf">2.22364861e-05</span><span class="p">,</span> <span class="mf">7.9102005e-06</span><span class="p">])</span>
-<span class="n">wcs_hst</span><span class="o">.</span><span class="n">wcs</span><span class="o">.</span><span class="n">crval</span> <span class="o">-=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.49868145e-06</span><span class="p">,</span> <span class="mf">1.25988294e-06</span><span class="p">])</span>
 <span class="c1"># Load the HST PSF data</span>
 <span class="n">psf_hst</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s1">&#39;../../data/test_resampling/PSF_HST.fits&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span>
 <span class="n">psf_hst</span> <span class="o">=</span> <span class="n">psf_hst</span><span class="p">[</span><span class="kc">None</span><span class="p">,:,:]</span>
@@ -374,31 +371,84 @@ div.rendered_html tbody tr:hover {
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
 <span></span><span class="kn">import</span> <span class="nn">sep</span>
-<span class="k">def</span> <span class="nf">makeCatalog</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">lvl</span> <span class="o">=</span> <span class="mi">4</span><span class="p">):</span>
-    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
-        <span class="n">detect</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="c1"># simple average for detection</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="n">detect</span> <span class="o">=</span> <span class="n">img</span>
 
+<span class="k">class</span> <span class="nc">Data</span><span class="p">():</span>
+    <span class="c1">#An object to have easier access to the data</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">images</span><span class="p">,</span> <span class="n">wcss</span><span class="p">,</span> <span class="n">psfs</span><span class="p">,</span> <span class="n">channels</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">images</span> <span class="o">=</span> <span class="n">images</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">wcs</span> <span class="o">=</span> <span class="n">wcss</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">psfs</span> <span class="o">=</span> <span class="n">psfs</span><span class="o">.</span><span class="n">image</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">channels</span> <span class="o">=</span> <span class="n">channels</span>
+
+<span class="k">def</span> <span class="nf">interpolate</span><span class="p">(</span><span class="n">data_lr</span><span class="p">,</span> <span class="n">data_hr</span><span class="p">):</span>
+    <span class="c1">#Interpolate the low resolution image to high resolution using sinc interpolation</span>
+    <span class="n">coord_lr0</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">data_lr</span><span class="o">.</span><span class="n">images</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">data_lr</span><span class="o">.</span><span class="n">images</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+    <span class="n">coord_hr</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">data_hr</span><span class="o">.</span><span class="n">images</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">data_hr</span><span class="o">.</span><span class="n">images</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+    <span class="n">coord_lr</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">resampling</span><span class="o">.</span><span class="n">convert_coordinates</span><span class="p">(</span><span class="n">coord_lr0</span><span class="p">,</span> <span class="n">data_lr</span><span class="o">.</span><span class="n">wcs</span><span class="p">,</span> <span class="n">data_hr</span><span class="o">.</span><span class="n">wcs</span><span class="p">)</span>
+
+    <span class="n">interp</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">image</span> <span class="ow">in</span> <span class="n">data_lr</span><span class="o">.</span><span class="n">images</span><span class="p">:</span>
+        <span class="n">interp</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">scarlet</span><span class="o">.</span><span class="n">interpolation</span><span class="o">.</span><span class="n">sinc_interp</span><span class="p">(</span><span class="n">image</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:,:],</span> <span class="n">coord_hr</span><span class="p">,</span> <span class="n">coord_lr</span><span class="p">,</span> <span class="n">angle</span><span class="o">=</span><span class="kc">None</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">interp</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">makeCatalog</span><span class="p">(</span><span class="n">data_lr</span><span class="p">,</span> <span class="n">data_hr</span><span class="p">,</span> <span class="n">lvl</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span> <span class="n">wave</span> <span class="o">=</span> <span class="kc">True</span><span class="p">):</span>
+    <span class="c1"># Create a catalog of detected source by running SEP on the wavelet transform</span>
+    <span class="c1"># of the sum of the high resolution images and the low resolution images interpolated to the high resolution grid</span>
+    <span class="c1">#Interpolate LR to HR</span>
+    <span class="n">interp</span> <span class="o">=</span> <span class="n">interpolate</span><span class="p">(</span><span class="n">data_lr</span><span class="p">,</span> <span class="n">data_hr</span><span class="p">)</span>
+    <span class="c1"># Normalisation</span>
+    <span class="n">interp</span> <span class="o">=</span> <span class="n">interp</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">interp</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">))[:,</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span>
+    <span class="n">hr_images</span> <span class="o">=</span> <span class="n">data_hr</span><span class="o">.</span><span class="n">images</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">data_hr</span><span class="o">.</span><span class="n">images</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">))[:,</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span>
+    <span class="c1"># Summation to create a detection image</span>
+    <span class="n">detect_image</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">interp</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">hr_images</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="c1"># Rescaling to HR image flux</span>
+    <span class="n">detect_image</span> <span class="o">*=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">data_hr</span><span class="o">.</span><span class="n">images</span><span class="p">)</span>
+    <span class="c1"># Wavelet transform</span>
+    <span class="n">wave_detect</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">Starlet</span><span class="p">(</span><span class="n">detect_image</span><span class="p">,</span> <span class="n">direct</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">coefficients</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">wave</span><span class="p">:</span>
+        <span class="c1"># Creates detection from the first 3 wavelet levels</span>
+        <span class="n">detect</span> <span class="o">=</span> <span class="n">wave_detect</span><span class="p">[:</span><span class="n">lvl</span><span class="p">,:,:]</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">detect</span> <span class="o">=</span> <span class="n">detect_image</span>
+    <span class="c1"># Runs SEP detection</span>
     <span class="n">bkg</span> <span class="o">=</span> <span class="n">sep</span><span class="o">.</span><span class="n">Background</span><span class="p">(</span><span class="n">detect</span><span class="p">)</span>
-    <span class="n">catalog</span> <span class="o">=</span> <span class="n">sep</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span><span class="n">detect</span><span class="p">,</span> <span class="n">lvl</span><span class="p">,</span> <span class="n">err</span><span class="o">=</span><span class="n">bkg</span><span class="o">.</span><span class="n">globalrms</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
-        <span class="n">bg_rms</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">sep</span><span class="o">.</span><span class="n">Background</span><span class="p">(</span><span class="n">band</span><span class="p">)</span><span class="o">.</span><span class="n">globalrms</span> <span class="k">for</span> <span class="n">band</span> <span class="ow">in</span> <span class="n">img</span><span class="p">])</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="n">bg_rms</span> <span class="o">=</span>  <span class="n">sep</span><span class="o">.</span><span class="n">Background</span><span class="p">(</span><span class="n">detect</span><span class="p">)</span><span class="o">.</span><span class="n">globalrms</span>
-    <span class="k">return</span> <span class="n">catalog</span><span class="p">,</span> <span class="n">bg_rms</span>
+    <span class="n">catalog</span> <span class="o">=</span> <span class="n">sep</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span><span class="n">detect</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">err</span><span class="o">=</span><span class="n">bkg</span><span class="o">.</span><span class="n">globalrms</span><span class="p">)</span>
+    <span class="n">bg_rms</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">data</span> <span class="ow">in</span> <span class="n">datas</span><span class="p">:</span>
+        <span class="n">img</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">images</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="n">bg_rms</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">sep</span><span class="o">.</span><span class="n">Background</span><span class="p">(</span><span class="n">band</span><span class="p">)</span><span class="o">.</span><span class="n">globalrms</span> <span class="k">for</span> <span class="n">band</span> <span class="ow">in</span> <span class="n">img</span><span class="p">]))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">bg_rms</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sep</span><span class="o">.</span><span class="n">Background</span><span class="p">(</span><span class="n">img</span><span class="p">)</span><span class="o">.</span><span class="n">globalrms</span><span class="p">)</span>
 
-<span class="n">catalog_hst</span><span class="p">,</span> <span class="n">bg_rms_hst</span> <span class="o">=</span> <span class="n">makeCatalog</span><span class="p">(</span><span class="n">data_hst</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
-<span class="n">catalog_hsc</span><span class="p">,</span> <span class="n">bg_rms_hsc</span> <span class="o">=</span> <span class="n">makeCatalog</span><span class="p">(</span><span class="n">data_hsc</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">catalog</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">bg_rms</span><span class="p">),</span> <span class="n">detect_image</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="c1">#Data</span>
+<span class="n">data_hr</span> <span class="o">=</span>  <span class="n">Data</span><span class="p">(</span><span class="n">data_hst</span><span class="p">,</span> <span class="n">wcs_hst</span><span class="p">,</span> <span class="n">psf_hst</span><span class="p">,</span> <span class="n">channels_hst</span><span class="p">)</span>
+<span class="n">data_lr</span> <span class="o">=</span>  <span class="n">Data</span><span class="p">(</span><span class="n">data_hsc</span><span class="p">,</span> <span class="n">wcs_hsc</span><span class="p">,</span> <span class="n">psf_hsc</span><span class="p">,</span> <span class="n">channels_hsc</span><span class="p">)</span>
+<span class="n">datas</span> <span class="o">=</span> <span class="p">[</span><span class="n">data_lr</span><span class="p">,</span> <span class="n">data_hr</span><span class="p">]</span>
+<span class="c1"># Making catalog.</span>
+<span class="c1"># With the wavelet option on, only the first 3 wavelet levels are used for detection. Set to 1 for better detection</span>
+<span class="n">wave</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">lvl</span> <span class="o">=</span> <span class="mi">3</span>
+<span class="n">catalog_hst</span><span class="p">,</span> <span class="n">bg_rms</span><span class="p">,</span> <span class="n">detect</span> <span class="o">=</span> <span class="n">makeCatalog</span><span class="p">(</span><span class="n">data_lr</span><span class="p">,</span> <span class="n">data_hr</span><span class="p">,</span> <span class="n">lvl</span><span class="p">,</span> <span class="n">wave</span><span class="p">)</span>
 
-<span class="n">weights_hst</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">data_hst</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">bg_rms_hst</span><span class="o">**</span><span class="mi">2</span><span class="p">)[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span>
-<span class="n">weights_hsc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">data_hsc</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">bg_rms_hsc</span><span class="o">**</span><span class="mi">2</span><span class="p">)[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span>
+<span class="n">weights_hst</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">data_hst</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">bg_rms</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">**</span><span class="mi">2</span><span class="p">)[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span>
+<span class="n">weights_hsc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">data_hsc</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">bg_rms</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">**</span><span class="mi">2</span><span class="p">)[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span>
 </pre></div>
 </div>
 </div>
 <p>Finally we can visualize both the multiband HSC and single band HST images in their native resolutions:</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
@@ -408,7 +458,6 @@ div.rendered_html tbody tr:hover {
 
 <span class="c1"># Get the source coordinates from the HST catalog</span>
 <span class="n">xo</span><span class="p">,</span><span class="n">yo</span> <span class="o">=</span> <span class="n">catalog_hst</span><span class="p">[</span><span class="s1">&#39;x&#39;</span><span class="p">],</span> <span class="n">catalog_hst</span><span class="p">[</span><span class="s1">&#39;y&#39;</span><span class="p">]</span>
-<span class="n">xi</span><span class="p">,</span><span class="n">yi</span> <span class="o">=</span> <span class="n">catalog_hsc</span><span class="p">[</span><span class="s1">&#39;x&#39;</span><span class="p">],</span> <span class="n">catalog_hsc</span><span class="p">[</span><span class="s1">&#39;y&#39;</span><span class="p">]</span>
 <span class="c1"># Convert the HST coordinates to the HSC WCS</span>
 <span class="n">ra</span><span class="p">,</span> <span class="n">dec</span> <span class="o">=</span> <span class="n">wcs_hst</span><span class="o">.</span><span class="n">wcs_pix2world</span><span class="p">(</span><span class="n">yo</span><span class="p">,</span><span class="n">xo</span><span class="p">,</span><span class="mi">0</span><span class="p">)</span>
 
@@ -421,11 +470,10 @@ div.rendered_html tbody tr:hover {
 <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">15</span><span class="p">,</span><span class="mi">30</span><span class="p">))</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="mi">121</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">img_rgb</span><span class="p">)</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">Xo</span><span class="p">,</span><span class="n">Yo</span><span class="p">,</span> <span class="s1">&#39;o&#39;</span><span class="p">)</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">xi</span><span class="p">,</span><span class="n">yi</span><span class="p">,</span> <span class="s1">&#39;o&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">Xo</span><span class="p">,</span><span class="n">Yo</span><span class="p">,</span> <span class="s1">&#39;or&#39;</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="mi">122</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">hst_img</span><span class="p">)</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">xo</span><span class="p">,</span><span class="n">yo</span><span class="p">,</span> <span class="s1">&#39;o&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">xo</span><span class="p">,</span><span class="n">yo</span><span class="p">,</span> <span class="s1">&#39;x&#39;</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </pre></div>
 </div>
@@ -434,7 +482,7 @@ div.rendered_html tbody tr:hover {
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/tutorials_multiresolution_7_0.png" src="../_images/tutorials_multiresolution_7_0.png" />
+<img alt="../_images/tutorials_multiresolution_8_0.png" src="../_images/tutorials_multiresolution_8_0.png" />
 </div>
 </div>
 </div>
@@ -444,7 +492,7 @@ div.rendered_html tbody tr:hover {
 frame, and that’s done by <code class="docutils literal notranslate"><span class="pre">LowResObservation</span></code>.</p>
 <p>Users can specify frame, Observation and LowResObservation objects by hand and match them as is usually done in single observation fitting. Alternativelly, the user can provide a list of observation (no matter what the resolution of each observation is), from which the <code class="docutils literal notranslate"><span class="pre">from_observations</span></code> method will decide which observation(s) should be a LowResObservations. If no psf or reference wcs is provided, the method will also</p>
 <div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
@@ -458,6 +506,13 @@ frame, and that’s done by <code class="docutils literal notranslate"><span cla
 <span class="n">obs</span> <span class="o">=</span> <span class="p">[</span><span class="n">obs_hsc</span><span class="p">,</span> <span class="n">obs_hst</span><span class="p">]</span>
 <span class="n">frame</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">Frame</span><span class="o">.</span><span class="n">from_observations</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">coverage</span> <span class="o">=</span> <span class="s1">&#39;intersection&#39;</span><span class="p">)</span>
 <span class="n">obs_hsc</span><span class="p">,</span> <span class="n">obs_hst</span> <span class="o">=</span> <span class="n">obs</span>
+
+<span class="n">detect</span> <span class="o">*=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">data_hst</span><span class="p">)</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">detect</span><span class="p">)</span>
+<span class="c1">#Using the detection images to initialise sources. This helps make a joint decision across observations</span>
+<span class="c1"># in particular regarding box sizes</span>
+<span class="n">obs_detect</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">Observation</span><span class="p">(</span><span class="n">detect</span><span class="p">[</span><span class="kc">None</span><span class="p">,:,:],</span> <span class="n">wcs</span><span class="o">=</span><span class="n">wcs_hst</span><span class="p">,</span> <span class="n">psfs</span><span class="o">=</span><span class="n">psf_hst</span><span class="p">,</span> <span class="n">channels</span><span class="o">=</span><span class="n">channels_hst</span><span class="p">)</span>
+<span class="n">obs_detects</span> <span class="o">=</span> <span class="p">[</span><span class="n">obs_hsc</span><span class="p">,</span> <span class="n">obs_detect</span><span class="p">]</span>
+<span class="n">frame_detect</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">Frame</span><span class="o">.</span><span class="n">from_observations</span><span class="p">(</span><span class="n">obs_detects</span><span class="p">,</span> <span class="n">coverage</span> <span class="o">=</span> <span class="s1">&#39;intersection&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -467,12 +522,13 @@ frame, and that’s done by <code class="docutils literal notranslate"><span cla
 <p>We expect all sources to be galaxies, so we initialized them as <code class="docutils literal notranslate"><span class="pre">ExtendedSources</span></code>. Because the initialization takes a list of observations, we set the <code class="docutils literal notranslate"><span class="pre">obs_idx</span></code> argument to state which observation in the list of observations is used to initialize the morphology.</p>
 <p><code class="docutils literal notranslate"><span class="pre">Blend</span></code> will hold a list of all sources and <em>all</em> observations to fit.</p>
 <div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
-<span></span><span class="n">sources</span> <span class="o">=</span> <span class="p">[</span>
-    <span class="n">scarlet</span><span class="o">.</span><span class="n">ExtendedSource</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="p">(</span><span class="n">ra</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">dec</span><span class="p">[</span><span class="n">i</span><span class="p">]),</span> <span class="n">obs</span><span class="p">,</span>
+<span></span><span class="c1"># For better detections, turn obs into obs_detect in sources</span>
+<span class="n">sources</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="n">scarlet</span><span class="o">.</span><span class="n">ExtendedSource</span><span class="p">(</span><span class="n">frame_detect</span><span class="p">,</span> <span class="p">(</span><span class="n">ra</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">dec</span><span class="p">[</span><span class="n">i</span><span class="p">]),</span> <span class="n">obs</span><span class="p">,</span>
                            <span class="n">symmetric</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                            <span class="n">monotonic</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
                            <span class="n">obs_idx</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
@@ -488,7 +544,7 @@ frame, and that’s done by <code class="docutils literal notranslate"><span cla
 <h2>Display Initial guess<a class="headerlink" href="#Display-Initial-guess" title="Permalink to this headline">¶</a></h2>
 <p>Let’s compare the initial guess of the model in both model frame and HSC observation frame:</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
@@ -537,26 +593,26 @@ frame, and that’s done by <code class="docutils literal notranslate"><span cla
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-CPU times: user 1.32 s, sys: 909 ms, total: 2.23 s
-Wall time: 2.23 s
+CPU times: user 1.26 s, sys: 913 ms, total: 2.17 s
+Wall time: 2.17 s
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/tutorials_multiresolution_13_1.png" src="../_images/tutorials_multiresolution_13_1.png" />
+<img alt="../_images/tutorials_multiresolution_14_1.png" src="../_images/tutorials_multiresolution_14_1.png" />
 </div>
 </div>
 </div>
 <div class="section" id="Fit-Model">
 <h2>Fit Model<a class="headerlink" href="#Fit-Model" title="Permalink to this headline">¶</a></h2>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
-<span></span><span class="o">%</span><span class="k">time</span> blend.fit(150)
+<span></span><span class="o">%</span><span class="k">time</span> blend.fit(20, e_rel = 1.e-5)
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;scarlet ran for </span><span class="si">{0}</span><span class="s2"> iterations to logL = </span><span class="si">{1}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">blend</span><span class="o">.</span><span class="n">loss</span><span class="p">),</span> <span class="o">-</span><span class="n">blend</span><span class="o">.</span><span class="n">loss</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]))</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">blend</span><span class="o">.</span><span class="n">loss</span><span class="p">))</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Iteration&#39;</span><span class="p">)</span>
@@ -569,13 +625,13 @@ Wall time: 2.23 s
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-CPU times: user 3min 27s, sys: 50.2 s, total: 4min 17s
-Wall time: 4min 17s
-scarlet ran for 19 iterations to logL = -2199670.9745588265
+CPU times: user 3min 34s, sys: 52.2 s, total: 4min 26s
+Wall time: 4min 26s
+scarlet ran for 20 iterations to logL = -126824.5408412671
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
 </pre></div>
 </div>
 <div class="output_area docutils container">
@@ -587,14 +643,14 @@ Text(0, 0.5, &#39;log-Likelihood&#39;)
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/tutorials_multiresolution_15_2.png" src="../_images/tutorials_multiresolution_15_2.png" />
+<img alt="../_images/tutorials_multiresolution_16_2.png" src="../_images/tutorials_multiresolution_16_2.png" />
 </div>
 </div>
 <div class="section" id="View-Full-Model">
 <h3>View Full Model<a class="headerlink" href="#View-Full-Model" title="Permalink to this headline">¶</a></h3>
 <p>First we load the model for the entire blend and its residual. Then we display the model using the same <span class="math notranslate nohighlight">\(sinh^{-1}\)</span> stretch as the full image and a linear stretch for the residual to see the improvement from our initial guess.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
@@ -641,7 +697,7 @@ Text(0, 0.5, &#39;log-Likelihood&#39;)
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/tutorials_multiresolution_17_0.png" src="../_images/tutorials_multiresolution_17_0.png" />
+<img alt="../_images/tutorials_multiresolution_18_0.png" src="../_images/tutorials_multiresolution_18_0.png" />
 </div>
 </div>
 </div>
@@ -649,7 +705,7 @@ Text(0, 0.5, &#39;log-Likelihood&#39;)
 <h3>View Source Models<a class="headerlink" href="#View-Source-Models" title="Permalink to this headline">¶</a></h3>
 <p>It can also be useful to view the model for each source. For each source we extract the portion of the image contained in the sources bounding box, the true simulated source flux, and the model of the source, scaled so that all of the images have roughly the same pixel scale.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
@@ -715,7 +771,7 @@ source number  0
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/tutorials_multiresolution_19_1.png" src="../_images/tutorials_multiresolution_19_1.png" />
+<img alt="../_images/tutorials_multiresolution_20_1.png" src="../_images/tutorials_multiresolution_20_1.png" />
 </div>
 </div>
 <div class="nboutput docutils container">
@@ -730,7 +786,7 @@ source number  1
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/tutorials_multiresolution_19_3.png" src="../_images/tutorials_multiresolution_19_3.png" />
+<img alt="../_images/tutorials_multiresolution_20_3.png" src="../_images/tutorials_multiresolution_20_3.png" />
 </div>
 </div>
 <div class="nboutput docutils container">
@@ -745,7 +801,7 @@ source number  2
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/tutorials_multiresolution_19_5.png" src="../_images/tutorials_multiresolution_19_5.png" />
+<img alt="../_images/tutorials_multiresolution_20_5.png" src="../_images/tutorials_multiresolution_20_5.png" />
 </div>
 </div>
 <div class="nboutput docutils container">
@@ -760,7 +816,7 @@ source number  3
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/tutorials_multiresolution_19_7.png" src="../_images/tutorials_multiresolution_19_7.png" />
+<img alt="../_images/tutorials_multiresolution_20_7.png" src="../_images/tutorials_multiresolution_20_7.png" />
 </div>
 </div>
 <div class="nboutput docutils container">
@@ -775,7 +831,7 @@ source number  4
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/tutorials_multiresolution_19_9.png" src="../_images/tutorials_multiresolution_19_9.png" />
+<img alt="../_images/tutorials_multiresolution_20_9.png" src="../_images/tutorials_multiresolution_20_9.png" />
 </div>
 </div>
 <div class="nboutput docutils container">
@@ -786,29 +842,101 @@ source number  4
 source number  5
 </pre></div></div>
 </div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/tutorials_multiresolution_20_11.png" src="../_images/tutorials_multiresolution_20_11.png" />
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+source number  6
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/tutorials_multiresolution_20_13.png" src="../_images/tutorials_multiresolution_20_13.png" />
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+source number  7
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/tutorials_multiresolution_20_15.png" src="../_images/tutorials_multiresolution_20_15.png" />
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+source number  8
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/tutorials_multiresolution_20_17.png" src="../_images/tutorials_multiresolution_20_17.png" />
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+source number  9
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/tutorials_multiresolution_20_19.png" src="../_images/tutorials_multiresolution_20_19.png" />
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+source number  10
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/tutorials_multiresolution_20_21.png" src="../_images/tutorials_multiresolution_20_21.png" />
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+source number  11
+</pre></div></div>
+</div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/tutorials_multiresolution_19_11.png" src="../_images/tutorials_multiresolution_19_11.png" />
-</div>
-</div>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
-<span></span>
-</pre></div>
-</div>
-</div>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
-<span></span>
-</pre></div>
+<img alt="../_images/tutorials_multiresolution_20_23.png" src="../_images/tutorials_multiresolution_20_23.png" />
 </div>
 </div>
 </div>

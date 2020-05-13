@@ -173,7 +173,7 @@
 
 
 <div class="viewcode-block" id="L0Constraint"><a class="viewcode-back" href="../../api/scarlet.constraint.html#scarlet.constraint.L0Constraint">[docs]</a><span class="k">class</span> <span class="nc">L0Constraint</span><span class="p">(</span><span class="n">Constraint</span><span class="p">):</span>
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">thresh</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;relative&quot;</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">thresh</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;absolute&quot;</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;L0 norm (sparsity) penalty</span>
 
 <span class="sd">        Parameters</span>
@@ -184,11 +184,11 @@
 <span class="sd">            if the penalty is expressed in units of the function value (relative)</span>
 <span class="sd">            or in units of the variable X (absolute).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">partial</span><span class="p">(</span><span class="n">proxmin</span><span class="o">.</span><span class="n">operators</span><span class="o">.</span><span class="n">prox_hard</span><span class="p">,</span> <span class="n">thresh</span><span class="o">=</span><span class="n">thresh</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">type</span><span class="p">))</span></div>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">partial</span><span class="p">(</span><span class="n">proxmin</span><span class="o">.</span><span class="n">operators</span><span class="o">.</span><span class="n">prox_hard</span><span class="p">,</span> <span class="n">thresh</span><span class="o">=</span><span class="n">thresh</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">type</span><span class="p">,</span> <span class="p">))</span></div>
 
 
 <div class="viewcode-block" id="L1Constraint"><a class="viewcode-back" href="../../api/scarlet.constraint.html#scarlet.constraint.L1Constraint">[docs]</a><span class="k">class</span> <span class="nc">L1Constraint</span><span class="p">(</span><span class="n">Constraint</span><span class="p">):</span>
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">thresh</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;relative&quot;</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">thresh</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;absolute&quot;</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;L1 norm (sparsity) penalty</span>
 
 <span class="sd">        Parameters</span>
