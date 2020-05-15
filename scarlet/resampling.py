@@ -1,7 +1,80 @@
 import numpy as np
 
+def _pix2radec(coord, wcs):
+    """Converts coordinates from pixels to Ra-Dec given a wcs
+    """
+    y,x = coord
+    if np.size(wcs.array_shape) == 2:
+        ra, dec = wcs.all_pix2world(x, y, 0, ra_dec_order=True)
+    elif np.size(wcs.array_shape) == 3:
+        ra, dec = wcs.all_pix2world(x, y, 0, 0, ra_dec_order=True)
+    else:
+        raise ValueError("WCSs must have either 2 or 3 dimensions. Received "+str(np.size(wcs.array_shape))+".")
+    return (ra, dec)
 
-def match_patches(shape_hr, shape_lr, wcs_hr, wcs_lr, isrot = True, coverage  = 'intersection'):
+def _radec2pix(coord, wcs):
+    """Converts coordinates from Ra-Dec to pixels given a wcs
+    """
+    ra, dec = coord
+    # Positions of coords  in the frame of the obs
+    if np.size(wcs.array_shape) == 2:
+        X, Y = wcs.all_world2pix(ra, dec, 0, ra_dec_order=True)
+    elif np.size(wcs.array_shape) == 3:
+        X, Y, _ = wcs.all_world2pix(ra, dec, 0, 0, ra_dec_order=True)
+    else:
+        raise ValueError("WCSs must have either 2 or 3 dimensions. Received "+str(np.size(wcs.array_shape))+".")
+    return (Y, X)
+
+def convert_coordinates(coord, origin_wcs, target_wcs):
+    """Converts coordinates from one reference frame to another
+    Parameters
+    ----------
+    coord: `tuple`
+        coordinates in the frame of the `origin_wcs` to convert in the frame of the `target_wcs`
+    origin_wcs: WCS
+        wcs of `coord`
+    target_wcs: WCS
+        wcs of the frame to which coord is converted
+
+    Returns
+    -------
+    coord_target: `tuple`
+        coordinates at the location of `coord` in the target frame defined by `target_wcs`
+    """
+    ra, dec = _pix2radec(coord, origin_wcs)
+    y,x = _radec2pix((ra, dec), target_wcs)
+    return (y, x)
+
+def get_to_common_frame(obs, frame_wcs):
+    """ Matches an `Observation`'s coordinates to a `Frame`'s wcs
+
+    Parameters
+    ----------
+    obs: `Observation`
+        An observation instance for which we want to know the coordinates in the frame of `frame_wcs`
+    frame_wcs: `WCS`
+        a wcs that gives the mapping between pixel coordinates and sky coordinates for a given frame
+    Returns
+    -------
+        coord_obs_frame: `tuple`
+            Coordinates of the observations's pixels in the frame of the provided wcs
+    """
+    c, ny, nx = obs.frame.shape
+    #Positions of the observation's pixels
+    y, x = np.indices((ny, nx))
+    y = y.flatten()
+    x = x.flatten()
+
+    # Positions of Observation's pixel in the frame of the wcs
+    Y,X = convert_coordinates((y,x), obs.frame.wcs, frame_wcs)
+
+    coord = (Y,X)
+    return coord
+
+
+
+
+def match_patches(obs, frame, isrot = True):
     """Matches datasets at different resolutions
 
 
@@ -26,30 +99,13 @@ def match_patches(shape_hr, shape_lr, wcs_hr, wcs_lr, isrot = True, coverage  = 
     coordhr_hr: array
         coordinates of the high resolution pixels in the intersection. Necessary for psf matching
     """
-    assert coverage in [
-        "intersection",
-        "union",
-    ], "coverage should be either intersection or union."
+    B_lr, Ny_lr, Nx_lr = obs.frame.shape
 
-
-    if np.size(shape_hr) == 3:
-        B_hr, Ny_hr, Nx_hr = shape_hr
-    elif np.size(shape_hr) == 2:
-        Ny_hr, Nx_hr = shape_hr
-    else:
-        raise ValueError("Wrong dimensions for reference image")
-
-    if np.size(shape_lr) == 3:
-        B_lr, Ny_lr, Nx_lr = shape_lr
-    elif np.size(shape_lr) == 2:
-        Ny_lr, Nx_lr = shape_lr
-    else:
-        raise ValueError("Wrong dimensions for low resolution image")
+    wcs_hr = frame.wcs
+    wcs_lr = obs.frame.wcs
 
     assert wcs_hr != None
     assert wcs_lr != None
-
-    y_hr, x_hr = np.array(range(Ny_hr)), np.array(range(Nx_hr))
 
     # Capital letters are for coordinates of low-resolution pixels
     if isrot:
@@ -61,67 +117,17 @@ def match_patches(shape_hr, shape_lr, wcs_hr, wcs_lr, isrot = True, coverage  = 
         Y_lr = Y_lr.flatten()
 
     else:
-        Y_lr, X_lr = np.array(range(Ny_lr)), np.array(range(Nx_lr))
+        # Handling rectangular scenes. I make the grid square so that wcs can be applied
+        N_lr = (Ny_lr != Nx_lr) * np.max([Ny_lr, Nx_lr]) + (Nx_lr == Ny_lr) * Ny_lr
+        Y_lr, X_lr = np.array(range(N_lr)), np.array(range(N_lr))
 
     # Corresponding angular positions
-    # of low resolution pixels
-    if np.size(wcs_lr.array_shape) == 2:
-        ra_lr, dec_lr = wcs_lr.all_pix2world(X_lr, Y_lr, 0, ra_dec_order=True)
-    elif np.size(wcs_lr.array_shape) == 3:
-        ra_lr, dec_lr = wcs_lr.all_pix2world(X_lr, Y_lr, 0, 0, ra_dec_order=True)
-    # of high resolution pixels
-    if np.size(wcs_hr.array_shape) == 2:
-        ra_hr, dec_hr = wcs_hr.all_pix2world(x_hr, y_hr, 0, ra_dec_order=True)
-    elif np.size(wcs_hr.array_shape) == 3:
-        ra_hr, dec_hr, _ = wcs_hr.all_pix2world(x_hr, y_hr, 0, 0, ra_dec_order=True)
-
     # Coordinates of the low resolution pixels in the high resolution frame
-    if np.size(wcs_hr.array_shape) == 2:
-        X_hr, Y_hr = wcs_hr.all_world2pix(ra_lr, dec_lr, 0, ra_dec_order=True)
-    elif np.size(wcs_hr.array_shape) == 3:
-        X_hr, Y_hr, _ = wcs_hr.all_world2pix(ra_lr, dec_lr, 0, 0, ra_dec_order=True)
+    Y_hr, X_hr = convert_coordinates((Y_lr, X_lr), wcs_lr, wcs_hr)
 
-    # Coordinates of the high resolution pixels in the low resolution frame
-    if np.size(wcs_lr.array_shape) == 2:
-        x_lr, y_lr = wcs_lr.all_world2pix(ra_hr, dec_hr, 0, ra_dec_order=True)
-    elif np.size(wcs_lr.array_shape) == 3:
-        x_lr, y_lr, _ = wcs_lr.all_world2pix(ra_hr, dec_hr, 0, 0, ra_dec_order=True)
 
-    # mask of low resolution pixels at high resolution in the intersection:
-    over_lr = (X_hr >= 0) * (X_hr < Nx_hr + 1) * (Y_hr >= 0) * (Y_hr < Ny_hr + 1)
-    # mask of high resolution pixels at low resolution in the intersection (needed for psf matching)
-    over_hr = (x_lr >= 0) * (x_lr < Nx_lr + 1) * (y_lr >= 0) * (y_lr < Ny_lr + 1)
-
-    # pixels of the high resolution frame in the intersection in high resolution frame (needed for PSF only)
-    coordhr_hr = (y_hr[(over_hr == 1)], x_hr[(over_hr == 1)])
-
-    class SourceInitError(Exception):
-        """
-        Datasets do not match, no intersection found. Check the coordinates of the observations or the WCS.
-        """
-
-        pass
-
-    if np.sum(over_lr) == 0:
-        raise SourceInitError
-
-    if coverage is "intersection":
-        # Coordinates of low resolution pixels in the intersection at low resolution:
-        ylr_lr = Y_lr[(over_lr == 1)]
-        xlr_lr = X_lr[(over_lr == 1)]
-        coordlr_lr = (ylr_lr, xlr_lr)
-        # Coordinates of low resolution pixels in the intersection at high resolution:
-        ylr_hr = Y_hr[(over_lr == 1)]
-        xlr_hr = X_hr[(over_lr == 1)]
-
-        coordlr_hr = (ylr_hr, xlr_hr)
-
-    elif coverage is "union":
-
-        # Coordinates of low resolution pixels at low resolution:
-        coordlr_lr = (Y_lr, X_lr)
-
-        # Coordinates of low resolution pixels at high resolution:
-        coordlr_hr = (Y_hr, X_hr)
-
-    return coordlr_lr, coordlr_hr, coordhr_hr
+    # Coordinates of low resolution pixels in the intersection at low resolution:
+    coordlr_lr = (Y_lr, X_lr)
+    # Coordinates of low resolution pixels in the intersection at high resolution:
+    coordlr_hr = (Y_hr, X_hr)
+    return coordlr_lr, coordlr_hr

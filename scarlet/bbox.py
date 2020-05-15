@@ -23,7 +23,7 @@ class Box:
     """
 
     def __init__(self, shape, origin=None):
-        self.shape = tuple(shape)
+        self._shape = tuple(shape)
         if origin is None:
             origin = (0,) * len(shape)
         assert len(origin) == len(shape)
@@ -98,27 +98,8 @@ class Box:
                 return False
         return True
 
-    def slices_for(self, im_or_shape):
-        """Slices for `im_or_shape` to be limited to this bounding box.
-
-        Parameters
-        ----------
-        im_or_shape: array or tuple
-            Array or shape of the array to be sliced
-
-        Returns
-        -------
-        slices for every dimension
-        """
-        if hasattr(im_or_shape, "shape"):
-            shape = im_or_shape.shape
-        else:
-            shape = im_or_shape
-        assert len(shape) == self.D
-
-        im_box = Box(shape)
-        overlap = self & im_box
-        return tuple(slice(overlap.start[d], overlap.stop[d]) for d in range(self.D))
+    def as_slices(self):
+        return tuple([slice(o, o+s) for o,s in zip(self.origin, self.shape)])
 
     def extract_from(self, image, sub=None):
         """Extract sub-image described by this bbox from image
@@ -138,12 +119,9 @@ class Box:
 
         if sub is None:
             sub = np.zeros(self.shape)
-        subbox = Box.from_image(sub)
 
-        # imbox now in the frame of this bbox (i.e. of box)
-        imbox -= self.origin
-        overlap = imbox & subbox
-        sub[overlap.slices_for(sub)] = image[self.slices_for(image)]
+        im_slices, sub_slices = overlapped_slices(imbox, self)
+        sub[sub_slices] = image[im_slices]
         return sub
 
     def insert_into(self, image, sub):
@@ -163,12 +141,9 @@ class Box:
         image: array
         """
         imbox = Box.from_image(image)
-        subbox = Box.from_image(sub)
 
-        # imbox now in the frame of this bbox (i.e. of box)
-        imbox -= self.origin
-        overlap = imbox & subbox
-        image[self.slices_for(image)] = sub[overlap.slices_for(sub)]
+        im_slices, sub_slices = overlapped_slices(imbox, self)
+        image[im_slices] = sub[sub_slices]
         return image
 
     @property
@@ -188,6 +163,10 @@ class Box:
         """Tuple of stop coordinates
         """
         return tuple(o + s for o, s in zip(self.origin, self.shape))
+
+    @property
+    def shape(self):
+        return self._shape
 
     def __or__(self, other):
         """Union of two bounding boxes
@@ -235,6 +214,28 @@ class Box:
             )
         return Box.from_bounds(*bounds)
 
+    def __or__(self, other):
+        """Union of two bounding boxes
+
+        Parameters
+        ----------
+        other: `Box`
+            The other bounding box in the intersection
+
+        Returns
+        -------
+        result: `Box`
+            The rectangular box that form the union region
+            of both boxes.
+        """
+        assert other.D == self.D
+        bounds = []
+        for d in range(self.D):
+            bounds.append(
+                (min(self.start[d], other.start[d]), max(self.stop[d], other.stop[d]))
+            )
+        return Box.from_bounds(*bounds)
+
     def __repr__(self):
         result = "<Box shape={0}, origin={1}>"
         return result.format(self.shape, self.origin)
@@ -243,12 +244,46 @@ class Box:
         self.origin = tuple([a + o for a, o in zip(self.origin, offset)])
         return self
 
+    def __add__(self, offset):
+        return self.copy().__iadd__(offset)
+
     def __isub__(self, offset):
         self.origin = tuple([a - o for a, o in zip(self.origin, offset)])
         return self
 
+    def __sub__(self, offset):
+        return self.copy().__isub__(offset)
+
     def __copy__(self):
-        return Box(self.shape, offset=self.offset)
+        return Box(self.shape, origin=self.origin)
+
+    def copy(self):
+        return self.__copy__()
 
     def __eq__(self, other):
         return self.shape == other.shape and self.origin == other.origin
+
+
+def overlapped_slices(bbox1, bbox2):
+    """Slices of bbox1 and bbox2 that overlap
+
+    Parameters
+    ----------
+    bbox1: `~scarlet.bbox.Box`
+    bbox2: `~scarlet.bbox.Box`
+
+    Returns
+    -------
+    slices: tuple of slices
+        The slice of an array bounded by `bbox1` and
+        the slice of an array bounded by `bbox` in the
+        overlapping region.
+    """
+    overlap = bbox1 & bbox2
+    _bbox1 = overlap-bbox1.origin
+    _bbox2 = overlap-bbox2.origin
+    slices = (
+        _bbox1.as_slices(),
+        _bbox2.as_slices(),
+    )
+    return slices
