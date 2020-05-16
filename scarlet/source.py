@@ -69,7 +69,7 @@ def get_psf_sed(sky_coord, observation, frame):
     return sed
 
 
-def get_best_fit_seds(morphs, frame, images):
+def get_best_fit_seds(morphs, images):
     """Calculate best fitting SED for multiple components.
 
     Solves min_A ||img - AS||^2 for the SED matrix A,
@@ -93,42 +93,6 @@ def get_best_fit_seds(morphs, frame, images):
     data = images.reshape(images.shape[0], -1)
     seds = np.dot(np.linalg.inv(np.dot(_morph, _morph.T)), np.dot(_morph, data.T))
     return seds
-
-
-def build_detection_coadd(sed, bg_rms, observation):
-    """Build a channel weighted coadd to use for source detection
-
-    Parameters
-    ----------
-    sed: array
-        SED at the center of the source.
-    bg_rms: array
-        Background RMS in each channel in observation.
-    observation: `~scarlet.observation.Observation`
-        Observation to use for the coadd.
-
-    Returns
-    -------
-    detect: array
-        2D image created by weighting all of the channels by SED
-    bg_cutoff: float
-        The minimum value in `detect` to include in detection.
-    """
-    C = len(sed)
-    if np.any(bg_rms <= 0):
-        raise ValueError("bg_rms must be greater than zero in all channels")
-
-    positive = [c for c in range(C) if sed[c] > 0]
-    positive_img = [observation.images[c] for c in positive]
-    positive_bgrms = np.array([bg_rms[c] for c in positive])
-    weights = np.array([sed[c] / bg_rms[c] ** 2 for c in positive])
-    jacobian = np.array([sed[c] ** 2 / bg_rms[c] ** 2 for c in positive]).sum()
-    detect = np.einsum("i,i...", weights, positive_img) / jacobian
-
-    # thresh is multiple above the rms of detect (weighted variance across channels)
-    bg_cutoff = np.sqrt((weights ** 2 * positive_bgrms ** 2).sum()) / jacobian
-    return detect, bg_cutoff
-
 
 def trim_morphology(sky_coord, frame, morph, bg_cutoff, thresh):
     # trim morph to pixels above threshold
@@ -171,19 +135,13 @@ def trim_morphology(sky_coord, frame, morph, bg_cutoff, thresh):
 
 
 def init_extended_source(
-    sky_coord, frame, observations, obs_idx=0, thresh=1, symmetric=True, monotonic=True,
+    sky_coord, frame, observations, coadd, bg_cutoff, thresh=1, symmetric=True, monotonic=True,
 ):
     """Initialize the source that is symmetric and monotonic
     See `ExtendedSource` for a description of the parameters
     """
-    try:
-        iter(observations)
-    except TypeError:
-        observations = [observations]
-
     # determine initial SED from peak position
     # SED in the frame for source detection
-
     seds = []
     for obs in observations:
         _sed = get_psf_sed(sky_coord, obs, frame)
@@ -192,33 +150,22 @@ def init_extended_source(
 
     if np.all(sed <= 0):
         # If the flux in all channels is  <=0,
-        msg = "Zero or negative SED {} at y={}, x={}".format(sed, *sky_coord)
+        msg = f"Zero or negative SED {sed} at y={sky_coord[0]}, x={sky_coord[1]}"
         logger.warning(msg)
-
-    # which observation to use for detection and morphology
-    obs_ = observations[obs_idx]
-    try:
-        bg_rms = np.array([1 / np.sqrt(w[w > 0].mean()) for w in obs_.weights])
-    except:
-        raise AttributeError(
-            "Observation.weights missing! Please set inverse variance weights"
-        )
-    morph, bg_cutoff = build_detection_coadd(seds[obs_idx], bg_rms, obs_)
 
     # Apply the necessary constraints
     center = frame.get_pixel(sky_coord)
     if symmetric:
         morph = operator.prox_uncentered_symmetry(
-            morph, 0, center=center, algorithm="sdss"
+            coadd, 0, center=center, algorithm="sdss"
         )
 
     if monotonic:
         # use finite thresh to remove flat bridges
         prox_monotonic = operator.prox_weighted_monotonic(
-            morph.shape, neighbor_weight="flat", center=center, min_gradient=0.2
+            coadd.shape, neighbor_weight="flat", center=center, min_gradient=0
         )
-        morph = prox_monotonic(morph, 0).reshape(morph.shape)
-
+        morph = prox_monotonic(coadd, 0).reshape(coadd.shape)
     morph, bbox = trim_morphology(sky_coord, frame, morph, bg_cutoff, thresh)
     return sed, morph, bbox
 
@@ -281,7 +228,7 @@ def init_multicomponent_source(
 
     # optimal SEDs given the morphologies, assuming img only has that source
     boxed_img = bbox.extract_from(observations[obs_idx].images)
-    seds = get_best_fit_seds(morphs, frame, boxed_img)
+    seds = get_best_fit_seds(morphs, boxed_img)
 
     for k in range(K):
         if np.all(seds[k] <= 0):
@@ -320,7 +267,7 @@ class RandomSource(FactorizedComponent):
         if observation is None:
             sed = np.random.rand(C)
         else:
-            sed = get_best_fit_seds(morph[None], model_frame, observation.images)[0]
+            sed = get_best_fit_seds(morph[None], observation.images)[0]
 
         constraint = PositivityConstraint()
         sed = Parameter(sed, name="sed", step=relative_step, constraint=constraint)
@@ -500,13 +447,43 @@ class StarletSource(FunctionComponent):
         """
         return Starlet(coefficients = param).image[0]
 
-class ExtendedSource(FactorizedComponent):
+class ExtendedSource:
+    """ Substitute class to initialise a `scarlet.ExtendedSource` from it keyword arguments only
+
+        Attributes
+        ----------
+        thresh: `float`
+            Multiple of the backround RMS used as a
+            flux cutoff for morphology initialization.
+        monotonic: ['flat', 'angle', 'nearest'] or None
+            Which version of monotonic decrease in flux from the center to enforce
+        symmetric: `bool`
+            Whether or not to enforce symmetry.
+        shifting: `bool`
+            Whether or not a subpixel shift is added as optimization parameter
+    """
+    def __init__(
+        self,
+        thresh=1.0,
+        monotonic="flat",
+        symmetric=False,
+        shifting=False,
+    ):
+        self.kwargs = (thresh,  monotonic,  symmetric, shifting)
+
+    def set(self, *args):
+        """Sets the actual ExtendSource with all its arguments"""
+        return ExtendedSourceSetter(*args, *self.kwargs)
+
+
+class ExtendedSourceSetter(FactorizedComponent):
     def __init__(
         self,
         model_frame,
         sky_coord,
         observations,
-        obs_idx=0,
+        coadd,
+        bg_cutoff,
         thresh=1.0,
         monotonic="flat",
         symmetric=False,
@@ -516,15 +493,16 @@ class ExtendedSource(FactorizedComponent):
 
         Parameters
         ----------
-        frame: `~scarlet.Frame`
+        model_frame: `~scarlet.Frame`
             The frame of the full model
         sky_coord: tuple
             Center of the source
         observations: instance or list of `~scarlet.observation.Observation`
             Observation(s) to initialize this source.
-        obs_idx: int
-            Index of the observation in `observations` to
-            initialize the morphology.
+        coadd: `numpy.ndarray`
+            The coaddition of all images across observations.
+        bg_cutoff: float
+            flux cutoff for morphology initialization.
         thresh: `float`
             Multiple of the backround RMS used as a
             flux cutoff for morphology initialization.
@@ -548,10 +526,11 @@ class ExtendedSource(FactorizedComponent):
             sky_coord,
             model_frame,
             observations,
-            obs_idx=obs_idx,
+            coadd,
+            bg_cutoff,
             thresh=thresh,
             symmetric=True,
-            monotonic=True,
+            monotonic=True
         )
 
         sed = Parameter(

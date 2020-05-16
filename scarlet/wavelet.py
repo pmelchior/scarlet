@@ -159,6 +159,40 @@ class Starlet(object):
     def __len__(self):
         return len(self._image)
 
+    def filter(self, niter = 20, k = 5):
+        """ Applies wavelet iterative filtering to denoise the image
+
+        Parameters
+        ----------
+        niter: int
+            number of iterations
+        k: float
+            threshold in units of noise levels below which coefficients are thresholded
+        lvl: int
+            Number of wavelet scale to use in the decomposition
+
+        Results
+        -------
+        filtered: array
+            the image of filtered images
+        """
+        if self._coeffs is None:
+            self.coefficients
+        if self._image is None:
+            self.image()
+        sigma = k * mad_wavelet(self._image)[:, None] * self.norm[None, :]
+
+        filtered = 0
+        image = self._image
+        wavelet = self._coeffs
+        support = np.where(np.abs(wavelet[:,:-1,:,:]) < sigma[:,:-1,None, None] * np.ones_like(wavelet[:,:-1,:,:]))
+        for i in range(niter):
+            R = image - filtered
+            R_coeff = Starlet(R)
+            R_coeff.coefficients[support] = 0
+            filtered += R_coeff.image
+            filtered[filtered < 0] = 0
+        return filtered
 
 def get_starlet_shape(shape, lvl = None):
     """ Get the pad shape for a starlet transform
@@ -289,7 +323,7 @@ def mad_wavelet(image):
     Returns
     -------
     mad: array
-        median absolute deviation each image in the cube
+        median absolute deviation for each image in the cube
     """
     sigma = mad(Starlet(image, lvl = 2).coefficients[:,0,...], axis = (-2,-1))
     return sigma

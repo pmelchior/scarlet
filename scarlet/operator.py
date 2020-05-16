@@ -2,7 +2,6 @@ from functools import partial
 
 import numpy as np
 from proxmin.operators import prox_unity_plus
-from proxmin.utils import MatrixAdapter
 
 from . import fft
 from . import interpolation

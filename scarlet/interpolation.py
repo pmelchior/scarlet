@@ -1,5 +1,6 @@
 import numpy as np
 from .cache import Cache
+from .resampling import convert_coordinates
 from . import fft
 
 
@@ -562,6 +563,19 @@ def sinc_interp_inplace(image, h_image, h_target, angle, pad_shape = None):
                          np.array(range(nx_hr.astype(int)))-(nx_hr-1)/2]) / h_image * h_target
     return sinc_interp(image, coord_hr, coord_lr, angle=angle)
 
+
+def interpolate_observation(observation, frame):
+    """ Interpolates the images in an observation on the grid described by a frame
+    and returns the interpolated images"""
+    # Interpolate low resolution data to high resolution
+    coord_lr0 = (np.arange(observation.frame.shape[1]), np.arange(observation.frame.shape[1]))
+    coord_hr = (np.arange(frame.shape[1]), np.arange(frame.shape[1]))
+    coord_lr = convert_coordinates(coord_lr0, observation.frame.wcs, frame.wcs)
+
+    interp = []
+    for image in observation.images:
+        interp.append(sinc_interp(image[None, :, :], coord_hr, coord_lr, angle=None)[0].T)
+    return np.array(interp)
 
 def fft_resample(img, dy, dx, kernel=lanczos, **kwargs):
     """Translate the image by a fraction of a pixel
