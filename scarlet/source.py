@@ -334,7 +334,7 @@ class Random:
     def __init__(self, observation):
         self.kwargs = observation
 
-    def set(self, *args):
+    def __call__(self, *args):
         """Sets a *Source with all its arguments"""
         return RandomSource(*args, self.kwargs)
 
@@ -375,8 +375,8 @@ class RandomSource(FactorizedComponent):
 class Point:
     """ Class used to instantiate a PointSource class from its kwargs.
     """
-    def set(self, *args):
-        return ExtendedSource(*args)
+    def __call__(self, *args):
+        return PointSource(*args)
 
 class PointSource(FunctionComponent):
     """Source intialized with a single pixel
@@ -466,7 +466,7 @@ class Starlets:
     ):
         self.kwargs = (thresh,  starlet_thresh, min_grad)
 
-    def set(self, *args, coadd = None, bg_cutoff = None):
+    def __call__(self, *args, coadd = None, bg_cutoff = None):
         """Sets a *Source with all its arguments"""
         return StarletSource(*args, coadd, bg_cutoff, *self.kwargs)
 
@@ -601,7 +601,7 @@ class Extended:
     ):
         self.kwargs = (thresh,  monotonic,  symmetric, shifting, min_grad)
 
-    def set(self, *args, coadd = None, bg_cutoff = None):
+    def __call__(self, *args, coadd = None, bg_cutoff = None):
         """Sets a *Source with all its arguments"""
         return ExtendedSource(*args, coadd, bg_cutoff, *self.kwargs)
 
@@ -737,7 +737,7 @@ class MultiComponent:
     ):
         self.kwargs = (thresh, flux_percentiles, monotonic, symmetric, shifting, min_grad)
 
-    def set(self, *args, coadd=None, bg_cutoff=None):
+    def __call__(self, *args, coadd=None, bg_cutoff=None):
         """Sets a *Source with all its arguments"""
         return MultiComponentSource(*args, coadd, bg_cutoff, *self.kwargs)
 

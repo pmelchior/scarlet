@@ -104,12 +104,12 @@ def initialise(
         else:
             source = sources[i]
         if type(source) in (Point, Random):
-            source_list.append(source.set(frame,
+            source_list.append(source(frame,
                                           coord,
                                           observations,
                                           ))
         else:
-            source_list.append(source.set(frame,
+            source_list.append(source(frame,
                                   coord,
                                   observations,
                                   coadd=coadd,
