@@ -7,11 +7,7 @@ def build_initialisation_coadd(observations):
 
     Parameters
     ----------
-    sed: array
-        SED at the center of the source.
-    bg_rms: array
-        Background RMS in each channel in observation.
-    observation: `~scarlet.observation.Observation`
+    observations: `~scarlet.observation.Observation`
         Observation to use for the coadd.
 
     Returns
@@ -25,7 +21,6 @@ def build_initialisation_coadd(observations):
         iter(observations)
     except TypeError:
         observations = [observations]
-    print(type(observations))
     # The observation that lives in the same plane as the frame
     loc = np.where([type(obs) is Observation for obs in observations])
     # If more than one element is an `Observation`, then pick the first one as a reference (arbitrary)
@@ -34,10 +29,6 @@ def build_initialisation_coadd(observations):
     coadd = 0
     jacobian = 0
     weights = 0
-    try:
-        iter(observations)
-    except TypeError:
-        print('zizi')
     for obs in observations:
         try:
             weights = np.array([w[w > 0].mean() for w in obs.weights])
@@ -70,6 +61,8 @@ def initialise(
 
     Attributes
     ----------
+    frame: `~scarlet.Frame`
+            The model's frame
     observations: list of `scarlet.Observation` or `scarlet.LowResObservation` objects
         the observation for which sources have to be initialise.
     sky_coords: list
@@ -91,6 +84,12 @@ def initialise(
     except TypeError:
         sky_coords = [sky_coords]
 
+    try:
+        iter(observations)
+    except TypeError:
+        observations = [observations]
+
+
     if len(sources) != 1:
         assert len(sky_coords) == len(sources), \
             "sky_coords should have the same length as sources, unless sources is of length 1. " \
@@ -104,11 +103,17 @@ def initialise(
             source = sources[0]
         else:
             source = sources[i]
-        source_list.append(source.set(frame,
+        if type(source) in (Point, Random):
+            source_list.append(source.set(frame,
+                                          coord,
+                                          observations,
+                                          ))
+        else:
+            source_list.append(source.set(frame,
                                   coord,
                                   observations,
-                                  coadd,
-                                  bg_cutoff,
+                                  coadd=coadd,
+                                  bg_cutoff=bg_cutoff
                                   ))
 
     return source_list

@@ -14,7 +14,7 @@ class Starlet(object):
         shape. The fft of the seed starlet is cached so that it can be reused in the transform of other
         images that have the same shape.
     """
-    def __init__(self, image = None, lvl = None, coefficients = None, direct = True):
+    def __init__(self, image=None, lvl=None, coefficients=None, direct=True):
         """ Initialise the Starlet object
 
         Paramters
