@@ -1,6 +1,7 @@
 import numpy as np
 from .cache import Cache
 from .resampling import convert_coordinates
+from .wavelet import Starlet
 from . import fft
 
 
@@ -564,7 +565,7 @@ def sinc_interp_inplace(image, h_image, h_target, angle, pad_shape = None):
     return sinc_interp(image, coord_hr, coord_lr, angle=angle)
 
 
-def interpolate_observation(observation, frame):
+def interpolate_observation(observation, frame, wave_filter = False):
     """ Interpolates the images in an observation on the grid described by a frame
     and returns the interpolated images"""
     # Interpolate low resolution data to high resolution
@@ -573,7 +574,11 @@ def interpolate_observation(observation, frame):
     coord_lr = convert_coordinates(coord_lr0, observation.frame.wcs, frame.wcs)
 
     interp = []
-    for image in observation.images:
+    if wave_filter is True:
+        images = Starlet(observation.images).filter()
+    else:
+        images = observation.images
+    for image in images:
         interp.append(sinc_interp(image[None, :, :], coord_hr, coord_lr, angle=None)[0].T)
     return np.array(interp)
 

@@ -1,8 +1,9 @@
 from .source import *
 from .interpolation import interpolate_observation
 from .observation import Observation
+from .wavelet import Starlet
 
-def build_initialisation_coadd(observations):
+def build_initialisation_coadd(observations, wavelet = False):
     """Build a channel weighted coadd to use for source detection
 
     Parameters
@@ -26,6 +27,7 @@ def build_initialisation_coadd(observations):
     # If more than one element is an `Observation`, then pick the first one as a reference (arbitrary)
     obs_ref = observations[loc[0][0]]
 
+    n_images = 0
     coadd = 0
     jacobian = 0
     weights = 0
@@ -36,26 +38,39 @@ def build_initialisation_coadd(observations):
             raise AttributeError(
                 "Observation.weights missing! Please set inverse variance weights"
             )
+
         if obs is obs_ref:
-            images = obs.images
+            if wavelet is True:
+                images = Starlet(obs.images).filter()
+            else:
+                images = obs.images
         else:
             #interpolate low-res to reference resolution
-            images = interpolate_observation(obs, obs_ref.frame)
-        # Weighted coadd
-        coadd += (images * weights[:, None, None]).sum(axis = (0))
-        jacobian += weights.sum()
+            images = interpolate_observation(obs, obs_ref.frame, wave_filter = wavelet)
+        n_images += len(images)
+        if wavelet is True:
+            coadd += np.sum(images / np.sum(images, axis=(-2,-1))[:, None, None], axis = 0)
+        else:
+            # Weighted coadd
+            coadd += (images * weights[:, None, None]).sum(axis = (0))
+            jacobian += weights.sum()
 
+    if wavelet is True:
+        coadd /= np.max(coadd)
+        bg_cutoff = 0
+        return coadd, bg_cutoff
     coadd /= jacobian
     # thresh is multiple above the rms of detect (weighted variance across channels)
     bg_cutoff = np.sqrt((weights ** 2).sum()) / jacobian
     return coadd, bg_cutoff
-
 
 def initialise(
              frame,
              observations,
              sky_coords,
              sources,
+             wavelet = False,
+             coadd_sed = True,
 ):
     """Function that initialises the sources across observations
 
@@ -95,8 +110,10 @@ def initialise(
             "sky_coords should have the same length as sources, unless sources is of length 1. " \
             f"Received len(sky_coords) = {len(sky_coords)}, len(source) = {len(sources)}."
     # Build coadds:
-    coadd, bg_cutoff= build_initialisation_coadd(observations)
-
+    if coadd_sed is False:
+        coadd, bg_cutoff= build_initialisation_coadd(observations, wavelet = wavelet)
+    else:
+        coadd, bg_cutoff = None, None
     source_list = []
     for i, coord in enumerate(sky_coords):
         if len(sources) == 1:

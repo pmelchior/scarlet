@@ -1,6 +1,6 @@
 import autograd.numpy as np
 from . import fft
-from . import Cache
+from .cache import Cache
 from scipy.stats import median_absolute_deviation as mad
 
 # Filter for the scarlet transform. Here bspline

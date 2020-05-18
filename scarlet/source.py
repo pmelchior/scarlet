@@ -212,7 +212,6 @@ def init_extended_source(
         # If the flux in all channels is  <=0,
         msg = f"Zero or negative SED {sed} at y={sky_coord[0]}, x={sky_coord[1]}"
         logger.warning(msg)
-
     if coadd is None:
         # which observation to use for detection and morphology
         try:
@@ -227,7 +226,6 @@ def init_extended_source(
             raise AttributeError(
                 "background cutoff missing! Please set argument bg_cutoff"
             )
-
     # Apply the necessary constraints
     center = frame.get_pixel(sky_coord)
     if symmetric:
@@ -617,7 +615,7 @@ class ExtendedSource(FactorizedComponent):
         monotonic="flat",
         symmetric=False,
         shifting=False,
-        min_grad = 0.2
+        min_grad = 0.2,
     ):
         """Extended source intialized to match a set of observations
 
@@ -735,7 +733,7 @@ class MultiComponent:
             shifting=False,
             min_grad=0.2
     ):
-        self.kwargs = (thresh, flux_percentiles, monotonic, symmetric, shifting, min_grad)
+        self.kwargs = (thresh, flux_percentiles, symmetric, monotonic, shifting, min_grad)
 
     def __call__(self, *args, coadd=None, bg_cutoff=None):
         """Sets a *Source with all its arguments"""
@@ -759,9 +757,9 @@ class MultiComponentSource(ComponentTree):
         model_frame,
         sky_coord,
         observations,
-        thresh=1.0,
         coadd=None,
         bg_cutoff=None,
+        thresh=1.0,
         flux_percentiles=None,
         symmetric=False,
         monotonic="flat",
@@ -811,7 +809,7 @@ class MultiComponentSource(ComponentTree):
             sky_coord,
             model_frame,
             observations,
-            coadd=None,
+            coadd=coadd,
             bg_cutoff=bg_cutoff,
             flux_percentiles=flux_percentiles,
             thresh=thresh,
