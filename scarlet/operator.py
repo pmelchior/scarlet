@@ -48,7 +48,7 @@ def sort_by_radius(shape, center=None):
     return didx
 
 
-def _prox_weighted_monotonic(X, step, weights, didx, offsets, min_gradient=0.2):
+def _prox_weighted_monotonic(X, step, weights, didx, offsets, min_gradient=0):
     """Force an intensity profile to be monotonic based on weighting neighbors
     """
     from . import operators_pybind11
@@ -59,7 +59,7 @@ def _prox_weighted_monotonic(X, step, weights, didx, offsets, min_gradient=0.2):
     return X
 
 
-def prox_weighted_monotonic(shape, neighbor_weight="flat", min_gradient=0.2, center=None):
+def prox_weighted_monotonic(shape, neighbor_weight="flat", min_gradient=0, center=None):
     """Build the prox_monotonic operator
 
     Parameters
