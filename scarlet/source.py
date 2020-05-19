@@ -61,12 +61,17 @@ def get_psf_sed(sky_coord, observation, frame):
     sed = get_pixel_sed(sky_coord, observation)
 
     # approx. correct PSF width variations from SED by normalizing heights
+    if observation._diff_kernels is not None:
+        sed /= observation._diff_kernels.image.sum(axis=(-2,-1))
+
+        return sed
+
     if observation.frame.psf is not None:
         # Account for the PSF in the intensity
-        sed /= observation.frame.psf.image.max(axis=(1, 2))
+        sed /= observation.frame.psf.image.sum(axis=(-2, -1))
 
     if frame.psf is not None:
-        sed = sed * frame.psf.image[0].max()
+        sed = sed * frame.psf.image[0].sum()
 
     return sed
 
@@ -329,12 +334,12 @@ def init_multicomponent_source(
 class Random:
     """ Class used to instantiate a RandomSource class from its kwargs.
     """
-    def __init__(self, observation):
-        self.kwargs = observation
-
+    def __init__(self, observations = None):
+        """Sets a *Source with all its arguments"""
+        self.kwargs = observations
     def __call__(self, *args):
         """Sets a *Source with all its arguments"""
-        return RandomSource(*args, self.kwargs)
+        return RandomSource(args[0], observation = self.kwargs)
 
 class RandomSource(FactorizedComponent):
     """Sources with uniform random morphology and sed.
@@ -357,13 +362,20 @@ class RandomSource(FactorizedComponent):
         C, Ny, Nx = model_frame.shape
         morph = np.random.rand(Ny, Nx)
 
+
         if observation is None:
-            sed = np.random.rand(C)
+            seds = np.random.rand(C)
         else:
-            sed = get_best_fit_seds(morph[None], observation.images)[0]
+            try:
+                iter(observation)
+            except TypeError:
+                observation = [observation]
+            seds = []
+            for obs in observation:
+                seds.append(get_best_fit_seds(morph[None], obs.images)[0])
 
         constraint = PositivityConstraint()
-        sed = Parameter(sed, name="sed", step=relative_step, constraint=constraint)
+        sed = Parameter(seds, name="sed", step=relative_step, constraint=constraint)
         morph = Parameter(
             morph, name="morph", step=relative_step, constraint=constraint
         )

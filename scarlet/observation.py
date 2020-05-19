@@ -473,7 +473,7 @@ class LowResObservation(Observation):
         if (self._fft_shape[-2] < diff_psf.shape[-2]) or (self._fft_shape[-1] < diff_psf.shape[-1]):
             diff_psf = fft._centered(diff_psf, np.array([diff_psf.shape[0]+1, *self._fft_shape])-1)
 
-        self.diff_psf = fft.Fourier(fft._pad(diff_psf.image, self._fft_shape, axes=(-2,-1)))
+        self._diff_kernels = fft.Fourier(fft._pad(diff_psf.image, self._fft_shape, axes=(-2,-1)))
 
         center_y = np.int(self._fft_shape[0] / 2. - (self._fft_shape[0] - model_frame.Ny) / 2.) + \
                    ((self._fft_shape[0] % 2) != 0) * ((model_frame.Ny % 2) == 0) + model_frame.origin[-2]
@@ -524,7 +524,7 @@ class LowResObservation(Observation):
 
             self.other_shifts = np.copy(self.shifts)
         # Computes the resampling/convolution matrix
-        resconv_op = self.sinc_shift(self.diff_psf, self.shifts, axes)
+        resconv_op = self.sinc_shift(self._diff_kernels, self.shifts, axes)
 
         self._resconv_op = np.array(resconv_op, dtype=self.frame.dtype) * self.h ** 2
 
