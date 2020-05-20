@@ -42,11 +42,12 @@ class get_pybind_include(object):
         self.user = user
 
     def __str__(self):
+        if "PYBIND11_INCLUDE" in os.environ:
+            return os.environ["PYBIND11_INCLUDE"]
         if pybind11_path is not None:
             return os.path.join(os.environ["PYBIND11_DIR"], "include")
         else:
             import pybind11
-
             return pybind11.get_include(self.user)
 
 
@@ -61,11 +62,12 @@ class get_eigen_include(object):
         self.user = user
 
     def __str__(self):
+        if "EIGEN_INCLUDE" in os.environ:
+            return os.environ["EIGEN_INCLUDE"]
         if eigen_path is not None:
             return os.path.join(os.environ["EIGEN_DIR"], "include")
         else:
             import peigen
-
             return peigen.header_path
 
 
