@@ -14,13 +14,13 @@ def pointshifter(image,points):
         l.set_offset_position('data')
         offsets = l.get_offsets()
         if event.key == "up":
-            offsets[:,1]+=1
+            offsets[:,1]+=0.25
         if event.key == "down":
-            offsets[:,1]-=1
+            offsets[:,1]-=0.25
         if event.key == "left":
-            offsets[:,0]-=1
+            offsets[:,0]-=0.25
         if event.key == "right":
-            offsets[:,0]+=1
+            offsets[:,0]+=0.25
         l.set_offsets(offsets)
         fig.canvas.draw()
 
