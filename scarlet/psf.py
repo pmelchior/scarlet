@@ -5,9 +5,10 @@ from .component import Component
 from .parameter import Parameter
 from .fft import Fourier
 from .observation import Observation
+from astropy.convolution import Kernel2D
+from astropy.modeling import models
 
-
-def moffat(y, x, alpha=4.7, beta=1.5, bbox=None):
+def moffat_old(y, x, alpha=4.7, beta=1.5, bbox=None):
     """Symmetric 2D Moffat function
 
     .. math::
@@ -24,6 +25,8 @@ def moffat(y, x, alpha=4.7, beta=1.5, bbox=None):
         Core width
     beta: float
         Power-law index
+    integrate: bool
+        Whether pixel integration is performed
     bbox: Box
         Bounding box over which to evaluate the function
 
@@ -36,8 +39,77 @@ def moffat(y, x, alpha=4.7, beta=1.5, bbox=None):
     Y = np.arange(bbox.shape[1]) + bbox.origin[1]
     X = np.arange(bbox.shape[2]) + bbox.origin[2]
     X, Y = np.meshgrid(X, Y)
-    # TODO: has no pixel-integration formula
+
     return ((1 + ((X - x) ** 2 + (Y - y) ** 2) / alpha ** 2) ** -beta)[None, :, :]
+
+def _round_up_to_odd_integer(value):
+    i = math.ceil(value)
+    if i % 2 == 0:
+        return i + 1
+    else:
+        return i
+
+class Moffat2DKernel(Kernel2D):
+
+    _is_bool = False
+
+    def __init__(self, amplitude, x_0, y_0, gamma, alpha, **kwargs):
+        self._model = models.Moffat2D(amplitude, x_0, y_0, gamma, alpha)
+        self._default_size = _round_up_to_odd_integer(4.0 * self._model.fwhm)
+        super().__init__(**kwargs)
+        self.normalize()
+        self._truncation = None
+
+def moffat(seeing, alpha=3.5, amplitude=None, center=(0,0), mode='oversample', factor=20, size=None):
+    """Symmetric 2D Moffat Function
+
+    Parameters
+    ----------
+    seeing: float
+        Seeing in pixels
+    alpha: float
+        Power-law index
+    amplitude: float
+        Center value of the Moffat function
+    center: float tuple
+        (Horizontal,Vertical) coordinates of the center
+    mode : str, optional
+        One of the following discretization modes:
+            * 'oversample' (default)
+                Discretize model by taking the average
+                on an oversampled grid.
+            * 'center'
+                Discretize model by taking the value
+                at the center of the bin.
+            * 'linear_interp'
+                Discretize model by performing a bilinear interpolation
+                between the values at the corners of the bin.
+            * 'integrate'
+                Discretize model by integrating the
+                model over the bin.
+    factor : interger, optional
+        Factor of oversampling. Default factor = 10.
+    size : interger, optional
+        Size of the kernel. Default size = fwhm.
+
+    Returns
+    -------
+    result: array
+        A 2D circular moffat sampled at the coordinates `(y_i, x_j)`
+        for all i and j in `shape`.
+    """
+    gamma = 0.5 * seeing / np.sqrt(2**(1./alpha) - 1.)
+    if amplitude == None:
+        amplitude = (alpha - 1.0) / (np.pi * gamma * gamma)
+    morph = Moffat2DKernel(amplitude,
+                            center[0],
+                            center[1],
+                            gamma,
+                            alpha,
+                            x_size=size,
+                            mode=mode,
+                            factor=factor).array
+    return morph
 
 
 def gaussian(y, x, sigma=1, integrate=True, bbox=None):
