@@ -16,13 +16,14 @@ import glob
 from functools import partial
 matplotlib.rc('image', cmap='inferno', interpolation='none', origin='lower')
 basename = ""
-def getdata(cube,ecube,w=None):
+
+def cleandata(chdu,ehdu):
     """
     Input
     -----
-    cube: astropy.io.fits object
+    chdu: astropy.io.fits object
         data cube
-    ecube: astropy.io.fits object
+    ehdu: astropy.io.fits object
         variance cube
     w: astropy.wcs.WCS object
         wcs object
@@ -34,17 +35,7 @@ def getdata(cube,ecube,w=None):
         weights array
     ifu_wl: array
         wl array
-    w:  stropy.wcs.WCS object
-        wcs object
     """
-    chdu = fits.open(cube)
-    ehdu = fits.open(ecube)
-    if w == None:
-        w = wcs.WCS(chdu[0].header, chdu)
-    else:
-        chdu[0].header.update(w.to_header())
-        w = wcs.WCS(chdu[0].header, chdu)
-    assert w.axis_type_names == ['RA', 'DEC', 'pixel']
 
     # Get wl range
     wlstart = chdu[0].header['CRVAL3']
@@ -64,11 +55,13 @@ def getdata(cube,ecube,w=None):
     weights = weights[wmask]
     ifu_wl = ifu_wl[wmask]
 
-    return images, weights, ifu_wl, w
+    return images, weights, ifu_wl
 
 def query_ps_from_wcs(w):
     """Query PanStarrs for a wcs.
     """
+    assert w.axis_type_names == ['RA', 'DEC', 'pixel']
+
     nra,ndec = w.array_shape[1:]
     dra,ddec = w.wcs.cdelt[:2]
     c = wcs.utils.pixel_to_skycoord(nra/2.,ndec/2.,w)
@@ -105,7 +98,7 @@ def select_sources(cube,ifu_wl,pd_table,stretch = 100, Q = 5, minimum = 0):
 
     return srcdic
 
-def define_model(images,weights,psf="startpsf.npy"):
+def define_model(images,weights,psf="moffatpsf.npy"):
     """ Create model psf and obsevation
     """
     start_psf = np.load(psf)
@@ -113,7 +106,7 @@ def define_model(images,weights,psf="startpsf.npy"):
     # WARNING, using same arbitray psf for all now.
     out.shape = (len(images),start_psf.shape[0],start_psf.shape[1])
     psfs = scarlet.PSF(out)
-    model_psf = scarlet.PSF(partial(scarlet.psf.gaussian, sigma=.8),
+    model_psf = scarlet.PSF(partial(scarlet.psf.moffat, sigma=.8),
                             shape=(None, 8, 8))
     model_frame = scarlet.Frame(
                   images.shape,
@@ -162,29 +155,39 @@ def blend(sources, observation):
     plt.savefig("loglikehood"+basename+".pdf")
     plt.close()
     return
-def parseargs():
 
+def parseargs():
     parser = argparse.ArgumentParser(description="Extract sources in spectral cube.")
     parser.add_argument("cubes", type=str, nargs='+', help="cube(s) you want to process")
     args = parser.parse_args()
-
     return args
+
 def main():
     global basename
 
     args = parseargs()
     for cube in args.cubes:
         path,file = os.path.split(cube)
-        basename = file.split("_cube")[0]
-        ecube = path + "/" + basename + "_error_cube.fits"
-        fcube = path + "/" + basename + ".fits"
+        chdu = fits.open(cube)
+        if chdu[0].header["INSTRUME"] == 'virus':
+            basename = file.split("_cube")[0]
+            ecube = path + "/" + basename + "_error_cube.fits"
+            fcube = path + "/" + basename + ".fits"
+            hdu = fits.open(fcube)
+            w = wcs.WCS(hdu[0].header, hdu)
+            cutout1 = Cutout2D(hdu[0].data, (hdu[0].shape[0]/2.-1,hdu[0].shape[1]/2.-1),63,w)
+            w = cutout1.wcs
+            chdu = fits.open(cube)
+            ehdu = fits.open(ecube)
+            chdu[0].header.update(w.to_header())
 
-        hdu = fits.open(fcube)
-        w = wcs.WCS(hdu[0].header, hdu)
-        cutout1 = Cutout2D(hdu[0].data, (hdu[0].shape[0]/2.-1,hdu[0].shape[1]/2.-1),63,w)
-        w = cutout1.wcs
-        images, weights, ifu_wl, w = getdata(cube,ecube,w=w)
+        if chdu[0].header["INSTRUME"] == 'lrs2':
+            print("No error cubes yet for lrs2. Exiting.")
+            exit()
+
+        w = wcs.WCS(chdu[0].header, chdu)
         pd_table = query_ps_from_wcs(w)
+        images, weights, ifu_wl = cleandata(chdu,ehdu)
         srcdic = select_sources(images*weights, ifu_wl, pd_table)
         for srctype, indexes in srcdic.items():
             srcdic[srctype] = pd_table.iloc[indexes][['x','y']].to_numpy()
@@ -212,3 +215,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
