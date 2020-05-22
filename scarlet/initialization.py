@@ -11,6 +11,89 @@ import logging
 
 logger = logging.getLogger("scarlet.initialisation")
 
+def get_best_fit_seds(morphs, images):
+    """Calculate best fitting SED for multiple components.
+
+    Solves min_A ||img - AS||^2 for the SED matrix A,
+    assuming that the images only contain a single source.
+
+    Parameters
+    ----------
+    morphs: list
+        Morphology for each component in the source.
+    frame: `scarlet.observation.frame`
+        The frame of the model
+    images: array
+        Observation to extract SEDs from.
+
+    Returns
+    -------
+    SED: `~numpy.array`
+    """
+    K = len(morphs)
+    _morph = morphs.reshape(K, -1)
+    data = images.reshape(images.shape[0], -1)
+    seds = np.dot(np.linalg.inv(np.dot(_morph, _morph.T)), np.dot(_morph, data.T))
+    return seds
+
+def get_pixel_sed(sky_coord, observation):
+    """Get the SED at `sky_coord` in `observation`
+
+    Parameters
+    ----------
+    sky_coord: tuple
+        Position in the observation
+    observation: `~scarlet.Observation`
+        Observation to extract SED from.
+
+    Returns
+    -------
+    SED: `~numpy.array`
+    """
+
+    pixel = observation.frame.get_pixel(sky_coord)
+    sed = observation.images[:, pixel[0], pixel[1]].copy()
+    return sed
+
+
+def get_psf_sed(sky_coord, observation, frame, normalization='max'):
+    """Get SED for a point source at `sky_coord` in `observation`
+
+    Identical to `get_pixel_sed`, but corrects for the different
+    peak values of the observed seds to approximately correct for PSF
+    width variations between channels.
+
+    Parameters
+    ----------
+    sky_coord: tuple
+        Position in the observation
+    observation: `~scarlet.Observation`
+        Observation to extract SED from.
+    frame: `~scarlet.Frame`
+        Frame of the model
+
+    Returns
+    -------
+    SED: `~numpy.array`
+    """
+    sed = get_pixel_sed(sky_coord, observation)
+    assert normalization in ["max", "sum"], f"normalisation should be either max or sum. Here {normalization} was given"
+    # approx. correct PSF width variations from SED by normalizing heights
+    if normalization is "sum":
+        if observation._diff_kernels is not None:
+            sed /= observation._diff_kernels.image.sum(axis=(-2,-1))
+
+            return sed/observation.h ** 2
+
+    if observation.frame.psf is not None:
+        # Account for the PSF in the intensity
+        sed /= observation.frame.psf.image.max(axis=(-2, -1))
+
+    if frame.psf is not None:
+        sed *= frame.psf.image[0].max()
+
+    return sed
+
 def trim_morphology(sky_coord, frame, morph, bg_cutoff, thresh):
     # trim morph to pixels above threshold
     mask = morph > bg_cutoff * thresh
@@ -206,64 +289,6 @@ def init_multicomponent_source(
 
     return seds, morphs, bbox
 
-def get_pixel_sed(sky_coord, observation):
-    """Get the SED at `sky_coord` in `observation`
-
-    Parameters
-    ----------
-    sky_coord: tuple
-        Position in the observation
-    observation: `~scarlet.Observation`
-        Observation to extract SED from.
-
-    Returns
-    -------
-    SED: `~numpy.array`
-    """
-
-    pixel = observation.frame.get_pixel(sky_coord)
-    sed = observation.images[:, pixel[0], pixel[1]].copy()
-    return sed
-
-
-def get_psf_sed(sky_coord, observation, frame, normalization='max'):
-    """Get SED for a point source at `sky_coord` in `observation`
-
-    Identical to `get_pixel_sed`, but corrects for the different
-    peak values of the observed seds to approximately correct for PSF
-    width variations between channels.
-
-    Parameters
-    ----------
-    sky_coord: tuple
-        Position in the observation
-    observation: `~scarlet.Observation`
-        Observation to extract SED from.
-    frame: `~scarlet.Frame`
-        Frame of the model
-
-    Returns
-    -------
-    SED: `~numpy.array`
-    """
-    sed = get_pixel_sed(sky_coord, observation)
-    assert normalization in ["max", "sum"], f"normalisation should be either max or sum. Here {normalization} was given"
-    # approx. correct PSF width variations from SED by normalizing heights
-    if normalization is "sum":
-        if observation._diff_kernels is not None:
-            sed /= observation._diff_kernels.image.sum(axis=(-2,-1))
-
-            return sed/observation.h ** 2
-
-    if observation.frame.psf is not None:
-        # Account for the PSF in the intensity
-        sed /= observation.frame.psf.image.max(axis=(-2, -1))
-
-    if frame.psf is not None:
-        sed *= frame.psf.image[0].max()
-
-    return sed
-
 def build_sed_coadd(seds, bg_rmses, observations, obs_ref = None):
     """Build a channel weighted coadd to use for source detection
     Parameters
@@ -345,32 +370,6 @@ def build_sed_coadd(seds, bg_rmses, observations, obs_ref = None):
     bg_cutoff = np.sqrt((np.array(weights) ** 2 * np.array(positive_bgrms) ** 2).sum()) / np.sum(jacobian_args)
     return detect, bg_cutoff
 
-def get_best_fit_seds(morphs, images):
-    """Calculate best fitting SED for multiple components.
-
-    Solves min_A ||img - AS||^2 for the SED matrix A,
-    assuming that the images only contain a single source.
-
-    Parameters
-    ----------
-    morphs: list
-        Morphology for each component in the source.
-    frame: `scarlet.observation.frame`
-        The frame of the model
-    images: array
-        Observation to extract SEDs from.
-
-    Returns
-    -------
-    SED: `~numpy.array`
-    """
-    K = len(morphs)
-    _morph = morphs.reshape(K, -1)
-    data = images.reshape(images.shape[0], -1)
-    seds = np.dot(np.linalg.inv(np.dot(_morph, _morph.T)), np.dot(_morph, data.T))
-    return seds
-
-
 def build_initialization_coadd(observations, filtered_coadd=False, obs_idx=None):
     """Build a channel weighted coadd to use for source detection
 
@@ -422,7 +421,14 @@ def build_initialization_coadd(observations, filtered_coadd=False, obs_idx=None)
 
         if obs is obs_ref:
             if filtered_coadd is True:
-                images = Starlet(obs.images).filter()
+                star = Starlet(obs.images)
+                # Sarlet filtering at 5 sigma
+                star.filter()
+                # Sets the last starlet scale to 0 to remove the wings of the profile introduced by psfs
+                star.coefficients[:,-1,:,:] = 0
+                # Positivity
+                star.coefficients[star.coefficients < 0] = 0
+                images = star.image
             else:
                 images = obs.images
         else:

@@ -192,6 +192,7 @@ class Starlet(object):
             R_coeff.coefficients[support] = 0
             filtered += R_coeff.image
             filtered[filtered < 0] = 0
+        self.image = filtered
         return filtered
 
 def get_starlet_shape(shape, lvl = None):
