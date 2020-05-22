@@ -97,6 +97,7 @@ class Observation:
         self.slices_for_model = (slice(None), slice(None), slice(None))
         self.slices_for_images = (slice(None), slice(None), slice(None))
         self._diff_kernels = None
+        self.h = 1
 
     def match(self, model_frame, diff_kernels=None, convolution="fft"):
         """Match the frame of `Blend` to the frame of this observation.
