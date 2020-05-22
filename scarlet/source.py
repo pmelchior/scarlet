@@ -1,6 +1,6 @@
 from functools import partial
 
-from .initialisation import *
+from .initialization import *
 from .constraint import PositivityConstraint, MonotonicityConstraint, SymmetryConstraint, L0Constraint
 from .constraint import NormalizationConstraint, ConstraintChain, CenterOnConstraint
 from .parameter import Parameter, relative_step

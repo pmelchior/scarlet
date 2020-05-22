@@ -567,7 +567,22 @@ def sinc_interp_inplace(image, h_image, h_target, angle, pad_shape = None):
 
 def interpolate_observation(observation, frame, wave_filter = False):
     """ Interpolates the images in an observation on the grid described by a frame
-    and returns the interpolated images"""
+    and returns the interpolated images.
+
+    Paramters
+    ---------
+    observation: `scarlet.Observation` object
+        observation with images to interpolate
+    frame: `scarlet.Frame` object
+        frame to which to interpolate the observation
+    wave_filter: `bool`
+        set to True to wavelet-filter the images before interpolation (avoid correlated noise)
+
+    Returns
+    -------
+    interp: `numpy.ndarray`
+        array containing the interpolated images from observation.
+    """
     # Interpolate low resolution data to high resolution
     coord_lr0 = (np.arange(observation.frame.shape[1]), np.arange(observation.frame.shape[1]))
     coord_hr = (np.arange(frame.shape[1]), np.arange(frame.shape[1]))
