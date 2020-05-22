@@ -59,8 +59,8 @@ def init_extended_source(
     bg_cutoff=None,
     thresh=1,
     symmetric=True,
-    monotonic=True,
-    min_grad=0.2,
+    monotonic="flat",
+    min_grad=0.,
 ):
     """Initialize the source that is symmetric and monotonic
     See `ExtendedSource` for a description of the parameters
@@ -73,7 +73,11 @@ def init_extended_source(
     # SED in the frame for source detection
     seds = []
     for obs in observations:
-        _sed = get_psf_sed(sky_coord, obs, frame)
+        if type(obs) is LowResObservation:
+            norm = "sum"
+        else:
+            norm = "max"
+        _sed = get_psf_sed(sky_coord, obs, frame, normalization=norm)
         seds.append(_sed)
 
     sed = np.concatenate(seds).flatten()
@@ -99,14 +103,16 @@ def init_extended_source(
     center = frame.get_pixel(sky_coord)
     if symmetric:
         morph = operator.prox_uncentered_symmetry(
-            coadd*1, 0, center=center, algorithm="sdss" # *1 is to artificially pass a variable that is not coadd
+            coadd.copy(), 0, center=center, algorithm="sdss" # *1 is to artificially pass a variable that is not coadd
         )
     else:
         morph = coadd
     if monotonic:
+        if monotonic is True:
+            monotonic = "angle"
         # use finite thresh to remove flat bridges
         prox_monotonic = operator.prox_weighted_monotonic(
-            morph.shape, neighbor_weight="flat", center=center, min_gradient=min_grad
+            morph.shape, neighbor_weight=monotonic, center=center, min_gradient=min_grad
         )
         morph = prox_monotonic(morph, 0).reshape(morph.shape)
 
@@ -123,8 +129,8 @@ def init_multicomponent_source(
     flux_percentiles=None,
     thresh=1,
     symmetric=True,
-    monotonic=True,
-    min_grad=0.2,
+    monotonic="flat",
+    min_grad=0.,
     obs_ref = None,
 ):
     """Initialize multiple components
@@ -220,7 +226,7 @@ def get_pixel_sed(sky_coord, observation):
     return sed
 
 
-def get_psf_sed(sky_coord, observation, frame):
+def get_psf_sed(sky_coord, observation, frame, normalization='max'):
     """Get SED for a point source at `sky_coord` in `observation`
 
     Identical to `get_pixel_sed`, but corrects for the different
@@ -241,12 +247,13 @@ def get_psf_sed(sky_coord, observation, frame):
     SED: `~numpy.array`
     """
     sed = get_pixel_sed(sky_coord, observation)
-
+    assert normalization in ["max", "sum"], f"normalisation should be either max or sum. Here {normalization} was given"
     # approx. correct PSF width variations from SED by normalizing heights
-    if observation._diff_kernels is not None:
-        sed /= observation._diff_kernels.image.sum(axis=(-2,-1))
+    if normalization is "sum":
+        if observation._diff_kernels is not None:
+            sed /= observation._diff_kernels.image.sum(axis=(-2,-1))
 
-        return sed/observation.h ** 2
+            return sed/observation.h ** 2
 
     if observation.frame.psf is not None:
         # Account for the PSF in the intensity

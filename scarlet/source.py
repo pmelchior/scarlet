@@ -237,7 +237,7 @@ class ExtendedSource(FactorizedComponent):
         monotonic="flat",
         symmetric=False,
         shifting=False,
-        min_grad=0.2,
+        min_grad=0.,
     ):
         """Extended source intialized to match a set of observations
 
@@ -280,7 +280,7 @@ class ExtendedSource(FactorizedComponent):
             bg_cutoff,
             thresh=thresh,
             symmetric=True,
-            monotonic=True,
+            monotonic="flat",
             min_grad = min_grad
         )
 
@@ -353,7 +353,7 @@ class MultiComponentSource(ComponentTree):
         symmetric=False,
         monotonic="flat",
         shifting=False,
-        min_grad = 0.2,
+        min_grad = 0.,
     ):
         """Create multi-component extended source.
 
