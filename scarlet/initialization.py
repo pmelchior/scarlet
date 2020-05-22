@@ -1,6 +1,6 @@
 from .source import *
 from .wavelet import Starlet
-from .observation import Observation
+from .observation import Observation, LowResObservation
 from .interpolation import interpolate_observation
 from . import operator
 from .bbox import Box
@@ -125,6 +125,7 @@ def init_multicomponent_source(
     symmetric=True,
     monotonic=True,
     min_grad=0.2,
+    obs_ref = None,
 ):
     """Initialize multiple components
     See `MultiComponentSource` for a description of the parameters
@@ -134,10 +135,14 @@ def init_multicomponent_source(
     except TypeError:
         observations = [observations]
 
-    # The observation that lives in the same plane as the frame
-    loc = np.where([type(obs) is Observation for obs in observations])
-    # If more than one element is an `Observation`, then pick the first one as a reference (arbitrary)
-    obs_ref = observations[loc[0][0]]
+    if obs_ref is None:
+        if len(observations) == 1:
+            obs_ref = observations[0]
+        else:
+            # The observation that lives in the same plane as the frame
+            loc = np.where([type(obs) is Observation for obs in observations])
+            # If more than one element is an `Observation`, then pick the first one as a reference (arbitrary)
+            obs_ref = observations[loc[0]]
 
     if flux_percentiles is None:
         flux_percentiles = [25]
@@ -252,7 +257,7 @@ def get_psf_sed(sky_coord, observation, frame):
 
     return sed
 
-def build_sed_coadd(seds, bg_rmses, observations, obs_idx = None):
+def build_sed_coadd(seds, bg_rmses, observations, obs_ref = None):
     """Build a channel weighted coadd to use for source detection
     Parameters
     ----------
@@ -262,9 +267,9 @@ def build_sed_coadd(seds, bg_rmses, observations, obs_idx = None):
         Background RMS in each channel in observation.
     observations: list of `~scarlet.observation.Observation`
         Observations to use for the coadd.
-    obs_idx: `int`
-        index of the observation in observations to use as a reference frame.
-        If set to None, the first element with type `Observation` is used.
+    obs_ref: `scarlet.Observation`
+        observation to use as a reference frame.
+        If set to None, the first (or only if applicable) element with type `Observation` is used.
     Returns
     -------
     detect: array
@@ -272,17 +277,32 @@ def build_sed_coadd(seds, bg_rmses, observations, obs_idx = None):
     bg_cutoff: float
         The minimum value in `detect` to include in detection.
     """
+    try:
+        iter(observations)
+    except TypeError:
+        observations = [observations]
+
+    if len(observations) == 1:
+        obs_ref = observations[0]
+
     # The observation that lives in the same plane as the frame
-    if obs_idx is None:
+    if obs_ref is None:
         loc = np.where([type(obs) is Observation for obs in observations])
-        obs_ref = observations[loc[0][0]]
+        obs_ref = observations[loc[0]]
     else:
         # The observation that lives in the same plane as the frame
-        assert type(observations[obs_idx]) is Observation, \
-            f"Reference observation should be an `Observation`. The observation index, {obs_idx} " \
-                f"provided refers to an observation of type: {type(observations[obs_idx])}"
-        # If more than one element is an `Observation`, then pick the first one as a reference (arbitrary)
-        obs_ref = observations[obs_idx]
+        assert type(obs_ref) is not LowResObservation, \
+            f"Reference observation should not be a `LowResObservation`. The observation, {obs_ref} " \
+                f"provided refers to an observation of type: {type(obs_ref)}"
+
+    try:
+        iter(seds)
+    except TypeError:
+        seds = [seds]
+    try:
+        iter(bg_rmses)
+    except TypeError:
+        bg_rmses = [bg_rmses]
 
     positive_img = []
     positive_bgrms = []
@@ -290,13 +310,21 @@ def build_sed_coadd(seds, bg_rmses, observations, obs_idx = None):
     jacobian_args = []
     for i,obs in enumerate(observations):
         sed = seds[i]
-        C = len(seds[i])
+        try:
+            iter(sed)
+        except TypeError:
+            sed = [sed]
+        C = len(sed)
         bg_rms = bg_rmses[i]
+        try:
+            iter(bg_rms)
+        except TypeError:
+            bg_rms = [bg_rms]
         if np.any(np.array(bg_rms) <= 0):
             raise ValueError("bg_rms must be greater than zero in all channels")
 
         positive = [c for c in range(C) if sed[c] > 0]
-        if type(obs) is Observation:
+        if type(obs) is not LowResObservation:
             positive_img += [obs.images[c] for c in positive]
         else:
             positive_img += [interpolate_observation(obs, obs_ref.frame)[c] for c in positive]
