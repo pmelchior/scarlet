@@ -302,9 +302,9 @@ def show_scene(
                 center_ = center - np.array(
                     src.model_frame.origin[1:]
                 )  # observed coordinates
-            ax[0].text(*center[::-1], k, color="w")
-            for panel in range(1, panels):
-                ax[panel].text(*center_[::-1], k, color="w")
+                ax[0].text(*center[::-1], k, color="w")
+                for panel in range(1, panels):
+                    ax[panel].text(*center_[::-1], k, color="w")
 
     fig.tight_layout()
     return fig
