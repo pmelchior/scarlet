@@ -181,7 +181,7 @@ class MonotonicityConstraint(Constraint):
     for a description of the other parameters.
     """
 
-    def __init__(self, neighbor_weight="flat", min_gradient=0):
+    def __init__(self, neighbor_weight="flat", min_gradient=0.1):
         self.neighbor_weight = neighbor_weight
         self.min_gradient = min_gradient
 

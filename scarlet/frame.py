@@ -189,9 +189,10 @@ class Frame(Box):
         # Matching observations together with the target_wcs so as to create a common frame\
         # Box for the reference observation
         ref_box = obs_ref.frame
+        from .observation import LowResObservation
         for c, obs in enumerate(observations):
             # Make observations with a different wcs LowResObservation
-            if (obs is not obs_ref) and (type(obs) is not 'LowResObservation'):
+            if (obs is not obs_ref) and (type(obs) is not LowResObservation):
                 observations[c] = obs.get_LowRes()
                 # Limits that include all observations relative to target_wcs
                 obs_coord = resampling.get_to_common_frame(obs, target_wcs)

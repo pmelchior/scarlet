@@ -2,7 +2,6 @@ from functools import partial
 
 import numpy as np
 from proxmin.operators import prox_unity_plus
-from proxmin.utils import MatrixAdapter
 
 from . import fft
 from . import interpolation
@@ -49,7 +48,7 @@ def sort_by_radius(shape, center=None):
     return didx
 
 
-def _prox_weighted_monotonic(X, step, weights, didx, offsets, min_gradient=0):
+def _prox_weighted_monotonic(X, step, weights, didx, offsets, min_gradient=0.1):
     """Force an intensity profile to be monotonic based on weighting neighbors
     """
     from . import operators_pybind11
@@ -60,7 +59,7 @@ def _prox_weighted_monotonic(X, step, weights, didx, offsets, min_gradient=0):
     return X
 
 
-def prox_weighted_monotonic(shape, neighbor_weight="flat", min_gradient=0, center=None):
+def prox_weighted_monotonic(shape, neighbor_weight="flat", min_gradient=0.1, center=None):
     """Build the prox_monotonic operator
 
     Parameters
