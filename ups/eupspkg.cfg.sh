@@ -3,6 +3,17 @@
 # This works around DM-5409, wherein mpi4py was attempting to use an OS X 10.5
 # SDK, based on querying Anaconda, and failing; and DM-6133, wherein distutils
 # refuses to let us target an earlier SDK than Python was compiled with.
+
+# Support for CONDA_PREFIX (conda-forge compilers)
+if [[ -n "$CONDA_PREFIX" ]]; then
+    export EIGEN_INCLUDE=$CONDA_PREFIX/include/eigen3
+fi
+
+# Inside conda-build (stackvana)
+if [[ "$CONDA_BUILD" == "1" ]]; then
+    export EIGEN_INCLUDE=$PREFIX/include/eigen3
+fi
+
 if [ -z "$MACOSX_DEPLOYMENT_TARGET" ]; then
     MIN_DEPLOYMENT_TARGET=9
     CFG_DEPLOYMENT_TARGET=$(python -c "import sysconfig; print((sysconfig.get_config_var('MACOSX_DEPLOYMENT_TARGET') or '10.$MIN_DEPLOYMENT_TARGET').split('.')[1])")
