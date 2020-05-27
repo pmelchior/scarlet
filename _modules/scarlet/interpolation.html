@@ -62,6 +62,8 @@
   <h1>Source code for scarlet.interpolation</h1><div class="highlight"><pre>
 <span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">from</span> <span class="nn">.cache</span> <span class="kn">import</span> <span class="n">Cache</span>
+<span class="kn">from</span> <span class="nn">.resampling</span> <span class="kn">import</span> <span class="n">convert_coordinates</span>
+<span class="kn">from</span> <span class="nn">.wavelet</span> <span class="kn">import</span> <span class="n">Starlet</span>
 <span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">fft</span>
 
 
@@ -624,6 +626,38 @@
                          <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">nx_hr</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)))</span><span class="o">-</span><span class="p">(</span><span class="n">nx_hr</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span><span class="p">])</span> <span class="o">/</span> <span class="n">h_image</span> <span class="o">*</span> <span class="n">h_target</span>
     <span class="k">return</span> <span class="n">sinc_interp</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">coord_hr</span><span class="p">,</span> <span class="n">coord_lr</span><span class="p">,</span> <span class="n">angle</span><span class="o">=</span><span class="n">angle</span><span class="p">)</span></div>
 
+
+<div class="viewcode-block" id="interpolate_observation"><a class="viewcode-back" href="../../api/scarlet.interpolation.html#scarlet.interpolation.interpolate_observation">[docs]</a><span class="k">def</span> <span class="nf">interpolate_observation</span><span class="p">(</span><span class="n">observation</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">wave_filter</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Interpolates the images in an observation on the grid described by a frame</span>
+<span class="sd">    and returns the interpolated images.</span>
+
+<span class="sd">    Paramters</span>
+<span class="sd">    ---------</span>
+<span class="sd">    observation: `scarlet.Observation` object</span>
+<span class="sd">        observation with images to interpolate</span>
+<span class="sd">    frame: `scarlet.Frame` object</span>
+<span class="sd">        frame to which to interpolate the observation</span>
+<span class="sd">    wave_filter: `bool`</span>
+<span class="sd">        set to True to wavelet-filter the images before interpolation (avoid correlated noise)</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    interp: `numpy.ndarray`</span>
+<span class="sd">        array containing the interpolated images from observation.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Interpolate low resolution data to high resolution</span>
+    <span class="n">coord_lr0</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">observation</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">observation</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+    <span class="n">coord_hr</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">frame</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">frame</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+    <span class="n">coord_lr</span> <span class="o">=</span> <span class="n">convert_coordinates</span><span class="p">(</span><span class="n">coord_lr0</span><span class="p">,</span> <span class="n">observation</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">wcs</span><span class="p">,</span> <span class="n">frame</span><span class="o">.</span><span class="n">wcs</span><span class="p">)</span>
+
+    <span class="n">interp</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">if</span> <span class="n">wave_filter</span> <span class="ow">is</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="n">images</span> <span class="o">=</span> <span class="n">Starlet</span><span class="p">(</span><span class="n">observation</span><span class="o">.</span><span class="n">images</span><span class="p">)</span><span class="o">.</span><span class="n">filter</span><span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">images</span> <span class="o">=</span> <span class="n">observation</span><span class="o">.</span><span class="n">images</span>
+    <span class="k">for</span> <span class="n">image</span> <span class="ow">in</span> <span class="n">images</span><span class="p">:</span>
+        <span class="n">interp</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sinc_interp</span><span class="p">(</span><span class="n">image</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:],</span> <span class="n">coord_hr</span><span class="p">,</span> <span class="n">coord_lr</span><span class="p">,</span> <span class="n">angle</span><span class="o">=</span><span class="kc">None</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">interp</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="fft_resample"><a class="viewcode-back" href="../../api/scarlet.interpolation.html#scarlet.interpolation.fft_resample">[docs]</a><span class="k">def</span> <span class="nf">fft_resample</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">dy</span><span class="p">,</span> <span class="n">dx</span><span class="p">,</span> <span class="n">kernel</span><span class="o">=</span><span class="n">lanczos</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Translate the image by a fraction of a pixel</span>

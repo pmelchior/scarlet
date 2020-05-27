@@ -11,6 +11,7 @@ API Documentation
     scarlet.display
     scarlet.fft
     scarlet.frame
+    scarlet.initialization
     scarlet.interpolation
     scarlet.measure
     scarlet.observation

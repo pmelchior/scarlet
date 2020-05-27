@@ -451,7 +451,7 @@ frame, in which you seek to fit a model, to the observed data frame.</p>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
 <span></span><span class="n">blend</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">Blend</span><span class="p">(</span><span class="n">sources</span><span class="p">,</span> <span class="n">observation</span><span class="p">)</span>
-<span class="o">%</span><span class="k">time</span> blend.fit(200)
+<span class="o">%</span><span class="k">time</span> blend.fit(200, e_rel = 1.e-6)
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;scarlet ran for </span><span class="si">{0}</span><span class="s2"> iterations to logL = </span><span class="si">{1}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">blend</span><span class="o">.</span><span class="n">loss</span><span class="p">),</span> <span class="o">-</span><span class="n">blend</span><span class="o">.</span><span class="n">loss</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]))</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">blend</span><span class="o">.</span><span class="n">loss</span><span class="p">))</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Iteration&#39;</span><span class="p">)</span>
@@ -464,9 +464,9 @@ frame, in which you seek to fit a model, to the observed data frame.</p>
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-CPU times: user 1.28 s, sys: 35.8 ms, total: 1.31 s
-Wall time: 1.31 s
-scarlet ran for 64 iterations to logL = 30094.448721288314
+CPU times: user 2.36 s, sys: 100 ms, total: 2.46 s
+Wall time: 2.45 s
+scarlet ran for 81 iterations to logL = 30199.624831399182
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">
@@ -578,13 +578,13 @@ Text(0, 0.5, &#39;log-Likelihood&#39;)
 <div class="output_area docutils container">
 <div class="highlight"><pre>
 ----------------- [&#39;g&#39; &#39;r&#39; &#39;i&#39; &#39;z&#39; &#39;y&#39;]
-Source 0, Fluxes: [166.45603614 265.08543282 320.55517257 345.10965342 369.09496842]
-Source 1, Fluxes: [ 73.61267 217.43848 389.33566 525.2171  648.34845]
-Source 2, Fluxes: [ 8.38399968 12.79008785 25.11876322 31.85718297 42.18338652]
-Source 3, Fluxes: [ 9.73875591 11.55266739 12.89733864 15.07730915 17.5584506 ]
-Source 4, Fluxes: [4.52481208 4.13121669 4.2662875  3.73356464 2.51564528]
-Source 5, Fluxes: [0.71264061 0.73716596 1.92296137 1.65541641 6.52497485]
-Source 6, Fluxes: [2.38620267 2.20614045 2.31402505 2.92430976 3.78574235]
+Source 0, Fluxes: [167.04913231 264.61071172 320.21322219 346.53827281 369.05326931]
+Source 1, Fluxes: [ 73.861496 215.89969  388.26984  521.70166  643.6771  ]
+Source 2, Fluxes: [ 8.3198604  12.88302194 24.95906323 31.65915006 41.4141669 ]
+Source 3, Fluxes: [ 9.12378242 10.90402913 12.13821549 14.30599766 17.04905698]
+Source 4, Fluxes: [5.08293393 4.77696457 5.11356867 4.66721915 4.18374629]
+Source 5, Fluxes: [0.90404126 0.71338597 2.3079748  1.90176436 8.49595712]
+Source 6, Fluxes: [2.33773624 2.14041605 2.24858207 2.86608769 3.77352103]
 </pre></div></div>
 </div>
 <p>Other measurements (e.g. <code class="docutils literal notranslate"><span class="pre">centroid</span></code>) are also implemented. The measurement approach is also easily extendable. The source models are generated in the model frame (which is the best-fit representation of the full hyperspectral <code class="docutils literal notranslate"><span class="pre">Frame</span></code>), from which any measurement can directly be made without having to deal with noise, PSF convolution, overlapping sources, etc.</p>
@@ -664,7 +664,7 @@ Source 6, Fluxes: [2.38620267 2.20614045 2.31402505 2.92430976 3.78574235]
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-scarlet ran for 29 iterations to logL = 31262.29858895055
+scarlet ran for 25 iterations to logL = 31136.291728672775
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">

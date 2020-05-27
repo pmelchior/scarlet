@@ -19,7 +19,7 @@
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="scarlet.measure" href="scarlet.measure.html" />
-    <link rel="prev" title="scarlet.frame" href="scarlet.frame.html" />
+    <link rel="prev" title="scarlet.initialization" href="scarlet.initialization.html" />
    
   <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
   
@@ -49,6 +49,7 @@
 <li class="toctree-l2"><a class="reference internal" href="scarlet.display.html">scarlet.display</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.fft.html">scarlet.fft</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.frame.html">scarlet.frame</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.initialization.html">scarlet.initialization</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">scarlet.interpolation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.measure.html">scarlet.measure</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.observation.html">scarlet.observation</a></li>
@@ -198,7 +199,7 @@ where the convolution kernel is a different size than the morphology.</p>
 
 <dl class="py function">
 <dt id="scarlet.interpolation.fft_resample">
-<code class="sig-prename descclassname">scarlet.interpolation.</code><code class="sig-name descname">fft_resample</code><span class="sig-paren">(</span><em class="sig-param">img</em>, <em class="sig-param">dy</em>, <em class="sig-param">dx</em>, <em class="sig-param">kernel=&lt;function lanczos at 0x7ff7b6110268&gt;</em>, <em class="sig-param">\*\*kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#fft_resample"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.interpolation.fft_resample" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">scarlet.interpolation.</code><code class="sig-name descname">fft_resample</code><span class="sig-paren">(</span><em class="sig-param">img</em>, <em class="sig-param">dy</em>, <em class="sig-param">dx</em>, <em class="sig-param">kernel=&lt;function lanczos at 0x7facc3ac8a60&gt;</em>, <em class="sig-param">\*\*kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#fft_resample"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.interpolation.fft_resample" title="Permalink to this definition">¶</a></dt>
 <dd><p>Translate the image by a fraction of a pixel</p>
 <p>This method uses FFT’s to convolve the image with a
 kernel to shift the position of the image by a fraction
@@ -388,7 +389,7 @@ which does not require a precise measurement.</p>
 
 <dl class="py function">
 <dt id="scarlet.interpolation.get_separable_kernel">
-<code class="sig-prename descclassname">scarlet.interpolation.</code><code class="sig-name descname">get_separable_kernel</code><span class="sig-paren">(</span><em class="sig-param">dy</em>, <em class="sig-param">dx</em>, <em class="sig-param">kernel=&lt;function lanczos at 0x7ff7b6110268&gt;</em>, <em class="sig-param">\*\*kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#get_separable_kernel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.interpolation.get_separable_kernel" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">scarlet.interpolation.</code><code class="sig-name descname">get_separable_kernel</code><span class="sig-paren">(</span><em class="sig-param">dy</em>, <em class="sig-param">dx</em>, <em class="sig-param">kernel=&lt;function lanczos at 0x7facc3ac8a60&gt;</em>, <em class="sig-param">\*\*kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#get_separable_kernel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.interpolation.get_separable_kernel" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create a 2D kernel from a 1D kernel separable in x and y</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -410,6 +411,21 @@ which does not require a precise measurement.</p>
 <dt>x_window: Tensor</dt><dd><p>The pixel values for the window containing the kernel in the x-direction</p>
 </dd>
 <dt>y_window: Tensor</dt><dd><p>The pixel values for the window containing the kernel in the y-direction</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="scarlet.interpolation.interpolate_observation">
+<code class="sig-prename descclassname">scarlet.interpolation.</code><code class="sig-name descname">interpolate_observation</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">observation</span></em>, <em class="sig-param"><span class="n">frame</span></em>, <em class="sig-param"><span class="n">wave_filter</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#interpolate_observation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.interpolation.interpolate_observation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Interpolates the images in an observation on the grid described by a frame
+and returns the interpolated images.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><dl class="simple">
+<dt>interp: <cite>numpy.ndarray</cite></dt><dd><p>array containing the interpolated images from observation.</p>
 </dd>
 </dl>
 </dd>

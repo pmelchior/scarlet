@@ -48,6 +48,7 @@
 <li class="toctree-l2"><a class="reference internal" href="scarlet.display.html">scarlet.display</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.fft.html">scarlet.fft</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.frame.html">scarlet.frame</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.initialization.html">scarlet.initialization</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.interpolation.html">scarlet.interpolation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.measure.html">scarlet.measure</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.observation.html">scarlet.observation</a></li>
@@ -129,7 +130,10 @@ images that have the same shape.</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.wavelet.Starlet.direct_transform" title="scarlet.wavelet.Starlet.direct_transform"><code class="xref py py-obj docutils literal notranslate"><span class="pre">direct_transform</span></code></a>(self)</p></td>
 <td><p>Computes the direct starlet transform of the starlet’s image</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.wavelet.Starlet.transform" title="scarlet.wavelet.Starlet.transform"><code class="xref py py-obj docutils literal notranslate"><span class="pre">transform</span></code></a>(self)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.wavelet.Starlet.filter" title="scarlet.wavelet.Starlet.filter"><code class="xref py py-obj docutils literal notranslate"><span class="pre">filter</span></code></a>(self[, niter, k])</p></td>
+<td><p>Applies wavelet iterative filtering to denoise the image</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.wavelet.Starlet.transform" title="scarlet.wavelet.Starlet.transform"><code class="xref py py-obj docutils literal notranslate"><span class="pre">transform</span></code></a>(self)</p></td>
 <td><p>Performs the wavelet transform of an image by convolution with the seed wavelet</p></td>
 </tr>
 </tbody>
@@ -148,6 +152,24 @@ images that have the same shape.</p>
 <dt class="field-odd">Returns</dt>
 <dd class="field-odd"><dl class="simple">
 <dt>starlet: numpy ndarray</dt><dd><p>the starlet transform of the Starlet object’s image</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="scarlet.wavelet.Starlet.filter">
+<code class="sig-name descname">filter</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">niter</span><span class="o">=</span><span class="default_value">20</span></em>, <em class="sig-param"><span class="n">k</span><span class="o">=</span><span class="default_value">5</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/wavelet.html#Starlet.filter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.wavelet.Starlet.filter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Applies wavelet iterative filtering to denoise the image</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>niter: int</strong></dt><dd><p>number of iterations</p>
+</dd>
+<dt><strong>k: float</strong></dt><dd><p>threshold in units of noise levels below which coefficients are thresholded</p>
+</dd>
+<dt><strong>lvl: int</strong></dt><dd><p>Number of wavelet scale to use in the decomposition</p>
 </dd>
 </dl>
 </dd>
@@ -237,7 +259,7 @@ The transform is applied to <cite>self._image</cite></p>
 </dd>
 <dt><strong>Returns</strong></dt><dd></dd>
 <dt><strong>——-</strong></dt><dd></dd>
-<dt><strong>mad: array</strong></dt><dd><p>median absolute deviation each image in the cube</p>
+<dt><strong>mad: array</strong></dt><dd><p>median absolute deviation for each image in the cube</p>
 </dd>
 </dl>
 </dd>

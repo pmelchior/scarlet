@@ -409,13 +409,20 @@ class RandomSource(FactorizedComponent):
         C, Ny, Nx = model_frame.shape
         morph = np.random.rand(Ny, Nx)
 
+
         if observation is None:
-            sed = np.random.rand(C)
+            seds = np.random.rand(C)
         else:
-            sed = get_best_fit_seds(morph[None], model_frame, observation.images)[0]
+            try:
+                iter(observation)
+            except TypeError:
+                observation = [observation]
+            seds = []
+            for obs in observation:
+                seds.append(get_best_fit_seds(morph[None], obs.images)[0])
 
         constraint = PositivityConstraint()
-        sed = Parameter(sed, name=&#34;sed&#34;, step=relative_step, constraint=constraint)
+        sed = Parameter(seds, name=&#34;sed&#34;, step=relative_step, constraint=constraint)
         morph = Parameter(
             morph, name=&#34;morph&#34;, step=relative_step, constraint=constraint
         )
@@ -485,7 +492,7 @@ Source 3: ExtendedSource
   Parameter &#39;morph&#39;, Shape (32, 32)
 Source 4: ExtendedSource
   Parameter &#39;sed&#39;, Shape (5,)
-  Parameter &#39;morph&#39;, Shape (16, 16)
+  Parameter &#39;morph&#39;, Shape (32, 32)
 Source 5: ExtendedSource
   Parameter &#39;sed&#39;, Shape (5,)
   Parameter &#39;morph&#39;, Shape (32, 32)
@@ -513,18 +520,18 @@ Source 6: ExtendedSource
 <div class="highlight"><pre>
 {&#39;name&#39;: &#39;sed&#39;,
  &#39;prior&#39;: None,
- &#39;constraint&#39;: &lt;scarlet.constraint.PositivityConstraint at 0x7fe4e80c74a8&gt;,
- &#39;step&#39;: functools.partial(&lt;function relative_step at 0x7fe4f4e0c510&gt;, factor=0.01),
- &#39;std&#39;: masked_array(data=[0.0038171631260879683, 0.001892168223542815,
-                    0.002921310683344047, 0.005843229030336691,
-                    0.030817792323288858],
+ &#39;constraint&#39;: &lt;scarlet.constraint.PositivityConstraint at 0x7f8ecdb7b710&gt;,
+ &#39;step&#39;: functools.partial(&lt;function relative_step at 0x7f8ef1682048&gt;, factor=0.01),
+ &#39;std&#39;: masked_array(data=[0.004800093217376052, 0.0019404572370393335,
+                    0.0029887206205252213, 0.0056997858681281715,
+                    0.03376351873569101],
               mask=[False, False, False, False, False],
         fill_value=0.0),
- &#39;m&#39;: array([28.1755972 , 26.40947982, -9.4869512 , -0.75043389,  1.05483974]),
- &#39;v&#39;: array([ 68630.72081831, 279306.15766133, 117177.57503257,  29288.30116362,
-          1052.92382219]),
- &#39;vhat&#39;: array([ 69670.87408363, 283936.2321025 , 119670.62058133,  29885.34173508,
-          1088.35948876]),
+ &#39;m&#39;: array([ 6.85693224,  0.91637557, -7.72986442, 10.93136594,  0.45047777]),
+ &#39;v&#39;: array([ 43401.09203811, 265577.8478597 , 111951.35644982,  30781.01379576,
+           877.21206765]),
+ &#39;vhat&#39;: array([ 44491.83872867, 274504.95116653, 116516.82999921,  31845.39334201,
+           923.83197532]),
  &#39;fixed&#39;: False}
 </pre></div></div>
 </div>
@@ -551,7 +558,7 @@ Source 6: ExtendedSource
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-&lt;matplotlib.colorbar.Colorbar at 0x7fe4e6337828&gt;
+&lt;matplotlib.colorbar.Colorbar at 0x7f8ecbe0bb70&gt;
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">
