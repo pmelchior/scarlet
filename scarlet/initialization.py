@@ -143,7 +143,7 @@ def init_extended_source(
     thresh=1,
     symmetric=True,
     monotonic="flat",
-    min_grad=0.,
+    min_grad=0.1,
 ):
     """Initialize the source that is symmetric and monotonic
     See `ExtendedSource` for a description of the parameters
@@ -213,7 +213,7 @@ def init_multicomponent_source(
     thresh=1,
     symmetric=True,
     monotonic="flat",
-    min_grad=0.,
+    min_grad=0.1,
     obs_ref = None,
 ):
     """Initialize multiple components

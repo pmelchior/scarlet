@@ -136,8 +136,8 @@ class StarletSource(FunctionComponent):
         coadd=None,
         bg_cutoff=None,
         thresh=1.0,
-        starlet_thresh = 5,
-        min_grad = 0,
+        starlet_thresh=5,
+        min_grad=0.1,
     ):
         """Extended source intialized to match a set of observations
 
@@ -177,7 +177,7 @@ class StarletSource(FunctionComponent):
             thresh=thresh,
             symmetric=True,
             monotonic=True,
-            min_grad = min_grad,
+            min_grad=min_grad,
         )
         noise =[]
         for obs in observations:
@@ -237,7 +237,7 @@ class ExtendedSource(FactorizedComponent):
         monotonic="flat",
         symmetric=False,
         shifting=False,
-        min_grad=0.,
+        min_grad=0.1,
     ):
         """Extended source intialized to match a set of observations
 
@@ -353,7 +353,7 @@ class MultiComponentSource(ComponentTree):
         symmetric=False,
         monotonic="flat",
         shifting=False,
-        min_grad = 0.,
+        min_grad=0.1,
     ):
         """Create multi-component extended source.
 
