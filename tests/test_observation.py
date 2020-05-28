@@ -22,7 +22,8 @@ class TestObservation(object):
         s0 = 0.9
         model_psf = scarlet.PSF(partial(scarlet.psf.gaussian, sigma=s0), shape=shape0)
         shape = (3, 43, 43)
-        model_frame = scarlet.Frame(shape, psfs=model_psf)
+        channels = np.arange(shape[0])
+        model_frame = scarlet.Frame(shape, psfs=model_psf, channels=channels)
 
         # insert point source manually into center for model
         origin = (0, shape[1]//2 - shape0[1]//2, shape[2]//2 - shape0[2]//2)
@@ -34,7 +35,7 @@ class TestObservation(object):
         # generate observation with wider PSFs
         psf = scarlet.PSF(self.get_psfs(shape[1:], [2.1, 1.1, 3.5]))
         images = np.ones(shape)
-        observation = scarlet.Observation(images, psfs=psf)
+        observation = scarlet.Observation(images, psfs=psf, channels=channels)
         observation.match(model_frame)
         model_ = observation.render(model)
         assert_almost_equal(model_, psf.image)

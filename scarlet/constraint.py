@@ -3,7 +3,6 @@ from functools import partial
 import numpy as np
 import proxmin
 
-from . import interpolation
 from . import operator
 from .cache import Cache
 
@@ -112,7 +111,7 @@ class NormalizationConstraint(Constraint):
 
 
 class L0Constraint(Constraint):
-    def __init__(self, thresh, type="relative"):
+    def __init__(self, thresh, type="absolute"):
         """L0 norm (sparsity) penalty
 
         Parameters
@@ -123,11 +122,11 @@ class L0Constraint(Constraint):
             if the penalty is expressed in units of the function value (relative)
             or in units of the variable X (absolute).
         """
-        super().__init__(partial(proxmin.operators.prox_hard, thresh=thresh, type=type))
+        super().__init__(partial(proxmin.operators.prox_hard, thresh=thresh, type=type, ))
 
 
 class L1Constraint(Constraint):
-    def __init__(self, thresh, type="relative"):
+    def __init__(self, thresh, type="absolute"):
         """L1 norm (sparsity) penalty
 
         Parameters
@@ -182,26 +181,28 @@ class MonotonicityConstraint(Constraint):
     for a description of the other parameters.
     """
 
-    def __init__(self, use_nearest=False, thresh=0):
-        self.use_nearest = use_nearest
-        self.thresh = thresh
+    def __init__(self, neighbor_weight="flat", min_gradient=0):
+        self.neighbor_weight = neighbor_weight
+        self.min_gradient = min_gradient
 
     def __call__(self, morph, step):
         shape = morph.shape
         center = (shape[0] // 2, shape[1] // 2)
 
         # get prox from the cache
-        prox_name = "operator.prox_strict_monotonic"
-        key = (shape, center, self.use_nearest, self.thresh)
+        prox_name = "operator.prox_weighted_monotonic"
+        key = (shape, center, self.neighbor_weight, self.min_gradient)
         # The creation of this operator is expensive,
         # so load it from memory if possible.
         try:
             prox = Cache.check(prox_name, key)
         except KeyError:
-            prox = operator.prox_strict_monotonic(
-                shape, use_nearest=self.use_nearest, thresh=self.thresh, center=center
+            prox = operator.prox_weighted_monotonic(
+                shape,
+                neighbor_weight=self.neighbor_weight,
+                min_gradient=self.min_gradient,
+                center=center,
             )
-
             Cache.set(prox_name, key, prox)
 
         # apply the prox
