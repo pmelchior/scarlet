@@ -320,7 +320,7 @@ def build_sed_coadd(seds, bg_rmses, observations, obs_ref = None):
     # The observation that lives in the same plane as the frame
     if obs_ref is None:
         loc = np.where([type(obs) is Observation for obs in observations])
-        obs_ref = observations[loc[0]]
+        obs_ref = observations[np.int(loc[0])]
     else:
         # The observation that lives in the same plane as the frame
         assert type(obs_ref) is not LowResObservation, \
