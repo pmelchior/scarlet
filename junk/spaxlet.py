@@ -55,7 +55,7 @@ def cleandata(chdu,ehdu):
     weights = weights[wmask]
     ifu_wl = ifu_wl[wmask]
 
-    return images, weights, ifu_wl
+    return images, weights, ifu_wl, wmask
 
 def query_ps_from_wcs(w):
     """Query PanStarrs for a wcs.
@@ -187,10 +187,12 @@ def main():
 
         w = wcs.WCS(chdu[0].header, chdu)
         pd_table = query_ps_from_wcs(w)
-        images, weights, ifu_wl = cleandata(chdu,ehdu)
+        images, weights, ifu_wl, wmask = cleandata(chdu,ehdu)
+        np.savez(path+"/"+basename+"_cleandata.npz",images=images, weights=weights, ifu_wl=ifu_wl, wmask=wmask)
         srcdic = select_sources(images*weights, ifu_wl, pd_table)
         for srctype, indexes in srcdic.items():
             srcdic[srctype] = pd_table.iloc[indexes][['x','y']].to_numpy()
+        seeing = chdu[0].header['VSEEING']
         model_frame, observation = define_model(images,weights)
         sources = define_sources(srcdic,model_frame,observation)
         blend(sources,observation)
@@ -207,8 +209,11 @@ def main():
                                  channel_map = ifu_rgb,
                                  norm=norm,
                                  show_observed=True)
-        plt.savefig("sources"+basename+".pdf")
+        plt.savefig()
         import pickle
+        fp = open(path+"/"+basename+".sca", "wb")
+        pickle.dump(sources, fp)
+        fp.close()
         fp = open(path+"/"+basename+".sca", "wb")
         pickle.dump(sources, fp)
         fp.close()
