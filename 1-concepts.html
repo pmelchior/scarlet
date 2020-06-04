@@ -420,6 +420,7 @@ class RandomSource(FactorizedComponent):
             seds = []
             for obs in observation:
                 seds.append(get_best_fit_seds(morph[None], obs.images)[0])
+            seds = np.array(seds).reshape(-1)
 
         constraint = PositivityConstraint()
         sed = Parameter(seds, name=&#34;sed&#34;, step=relative_step, constraint=constraint)
@@ -520,8 +521,8 @@ Source 6: ExtendedSource
 <div class="highlight"><pre>
 {&#39;name&#39;: &#39;sed&#39;,
  &#39;prior&#39;: None,
- &#39;constraint&#39;: &lt;scarlet.constraint.PositivityConstraint at 0x7f3766f67748&gt;,
- &#39;step&#39;: functools.partial(&lt;function relative_step at 0x7f378c26f0d0&gt;, factor=0.01),
+ &#39;constraint&#39;: &lt;scarlet.constraint.PositivityConstraint at 0x7f30bc5d6780&gt;,
+ &#39;step&#39;: functools.partial(&lt;function relative_step at 0x7f30e00da2f0&gt;, factor=0.01),
  &#39;std&#39;: masked_array(data=[0.004800093217376052, 0.0019404572370393335,
                     0.0029887206205252213, 0.0056997858681281715,
                     0.03376351873569101],
@@ -558,7 +559,7 @@ Source 6: ExtendedSource
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-&lt;matplotlib.colorbar.Colorbar at 0x7f37651f4b70&gt;
+&lt;matplotlib.colorbar.Colorbar at 0x7f30ba863b70&gt;
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">
