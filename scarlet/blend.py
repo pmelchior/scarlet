@@ -41,7 +41,7 @@ class Blend(ComponentTree):
         self.observations = observations
         self.loss = []
 
-    def fit(self, max_iter=200, e_rel=1e-3, **alg_kwargs):
+    def fit(self, max_iter=200, e_rel=1e-3, min_iter=1, **alg_kwargs):
         """Fit the model for each source to the data
 
         Parameters
@@ -50,10 +50,11 @@ class Blend(ComponentTree):
             Maximum number of iterations if the algorithm doesn't converge
         e_rel: float
             Relative error for convergence of the loss function
+        min_iter: int
+            Maximum number of iterations if the algorithm doesn't converge
         alg_kwargs: dict
             Keywords for the `proxmin.adaprox` optimizer
         """
-
         # dynamically call parameters to allow for addition / fixing
         X = self.parameters
         n_params = len(X)
@@ -74,7 +75,7 @@ class Blend(ComponentTree):
         prox_max_iter = alg_kwargs.pop("prox_max_iter", 10)
         eps = alg_kwargs.pop("eps", 1e-8)
         callback = partial(
-            self._callback, e_rel=e_rel, callback=alg_kwargs.pop("callback", None)
+            self._callback, e_rel=e_rel, callback=alg_kwargs.pop("callback", None), min_iter=min_iter,
         )
 
         # do we have a current state of the optimizer to warm start?
@@ -132,12 +133,12 @@ class Blend(ComponentTree):
         self.loss.append(total_loss._value)
         return total_loss
 
-    def _callback(self, *parameters, it=None, e_rel=1e-3, callback=None):
+    def _callback(self, *parameters, it=None, e_rel=1e-3, callback=None, min_iter=1):
 
         # raise ArithmeticError if some of the parameters have become inf/nan
         self.check_parameters()
 
-        if it > 1 and abs(self.loss[-2] - self.loss[-1]) < e_rel * np.abs(
+        if it > min_iter and abs(self.loss[-2] - self.loss[-1]) < e_rel * np.abs(
             self.loss[-1]
         ):
             raise StopIteration("scarlet.Blend.fit() converged")

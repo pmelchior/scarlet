@@ -43,6 +43,7 @@ class RandomSource(FactorizedComponent):
             seds = []
             for obs in observation:
                 seds.append(get_best_fit_seds(morph[None], obs.images)[0])
+            seds = np.array(seds).reshape(-1)
 
         constraint = PositivityConstraint()
         sed = Parameter(seds, name="sed", step=relative_step, constraint=constraint)
