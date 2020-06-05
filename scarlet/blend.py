@@ -72,7 +72,6 @@ class Blend(ComponentTree):
         # good defaults for adaprox
         scheme = alg_kwargs.pop("scheme", "amsgrad")
         prox_max_iter = alg_kwargs.pop("prox_max_iter", 10)
-        eps = alg_kwargs.pop("eps", 1e-8)
         callback = partial(
             self._callback, e_rel=e_rel, callback=alg_kwargs.pop("callback", None)
         )

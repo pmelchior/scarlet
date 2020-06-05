@@ -106,5 +106,5 @@ ArrayBox.register(Parameter)
 VSpace.register(Parameter, vspace_maker=VSpace.mappings[np.ndarray])
 
 
-def relative_step(X, it, factor=0.1):
-    return factor * X.mean(axis=0)
+def relative_step(X, it, factor=0.1, axis=None):
+    return factor * X.mean(axis=axis)
