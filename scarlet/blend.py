@@ -66,7 +66,8 @@ class Blend(ComponentTree):
         )
         _grad = lambda *X: tuple(l + p for l, p in zip(grad_logL(*X), grad_logP(*X)))
         _step = lambda *X, it: tuple(
-            x.step(x, it=it) if hasattr(x.step, "__call__") else x.step for x in X
+            x.step(x, it=it) if hasattr(x.step, "__call__") else x.step if np.random.rand() > 0 else 0
+            for x in X
         )
         _prox = tuple(x.constraint for x in X)
 
