@@ -41,7 +41,7 @@ class Blend(ComponentTree):
         self.observations = observations
         self.loss = []
 
-    def fit(self, max_iter=200, e_rel=1e-3, min_iter=1, **alg_kwargs):
+    def fit(self, max_iter=200, e_rel=1e-3, min_iter=1, random_skip=0, **alg_kwargs):
         """Fit the model for each source to the data
 
         Parameters
@@ -66,7 +66,10 @@ class Blend(ComponentTree):
         )
         _grad = lambda *X: tuple(l + p for l, p in zip(grad_logL(*X), grad_logP(*X)))
         _step = lambda *X, it: tuple(
-            x.step(x, it=it) if hasattr(x.step, "__call__") else x.step if np.random.rand() > 0 else 0
+            1e-20 if np.random.rand() < random_skip
+            else
+            x.step(x, it=it) if hasattr(x.step, "__call__")
+            else x.step
             for x in X
         )
         _prox = tuple(x.constraint for x in X)
