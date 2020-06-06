@@ -224,20 +224,33 @@ class Observation:
             images_ = self.images
             weights_ = self.weights
 
-        # normalization of the single-pixel likelihood:
-        # 1 / [(2pi)^1/2 (sigma^2)^1/2]
-        # with inverse variance weights: sigma^2 = 1/weight
-        # full likelihood is sum over all data samples: pixel in images
-        # NOTE: this assumes that all pixels are used in likelihood!
-        log_sigma = np.zeros(self.weights.shape, dtype=self.weights.dtype)
-        cuts = self.weights > 0
-        log_sigma[cuts] = np.log(1 / self.weights[cuts])
-        log_norm = (
-                np.prod(images_.shape) / 2 * np.log(2 * np.pi)
-                + np.sum(log_sigma) / 2
-        )
+        return self.log_norm + np.sum(weights_ * (model_ - images_) ** 2) / 2
 
-        return log_norm + np.sum(weights_ * (model_ - images_) ** 2) / 2
+    @property
+    def log_norm(self):
+        try:
+            return self._log_norm
+        except AttributeError:
+            if self.frame != self.model_frame:
+                images_ = self.images[self.slices_for_images]
+                weights_ = self.weights[self.slices_for_images]
+            else:
+                images_ = self.images
+                weights_ = self.weights
+
+            # normalization of the single-pixel likelihood:
+            # 1 / [(2pi)^1/2 (sigma^2)^1/2]
+            # with inverse variance weights: sigma^2 = 1/weight
+            # full likelihood is sum over all data samples: pixel in images
+            # NOTE: this assumes that all pixels are used in likelihood!
+            log_sigma = np.zeros(weights_.shape, dtype=self.weights.dtype)
+            cuts = weights_ > 0
+            log_sigma[cuts] = np.log(1 / weights_[cuts])
+            self._log_norm = (
+                    np.prod(images_.shape) / 2 * np.log(2 * np.pi)
+                    + np.sum(log_sigma) / 2
+            )
+        return self._log_norm
 
     def get_LowRes(self):
         """ Creates a LowResObservation object from an Observation object
