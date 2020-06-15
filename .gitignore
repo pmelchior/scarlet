@@ -6,6 +6,7 @@ dist/
 *.egg-info
 *.so
 .ipynb_checkpoints/
+.idea
 tmp/
 include/
 
