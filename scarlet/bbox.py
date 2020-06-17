@@ -99,7 +99,7 @@ class Box:
         return True
 
     def as_slices(self):
-        return tuple([slice(o, o+s) for o,s in zip(self.origin, self.shape)])
+        return tuple([slice(o, o + s) for o, s in zip(self.origin, self.shape)])
 
     def extract_from(self, image, sub=None):
         """Extract sub-image described by this bbox from image
@@ -214,28 +214,6 @@ class Box:
             )
         return Box.from_bounds(*bounds)
 
-    def __or__(self, other):
-        """Union of two bounding boxes
-
-        Parameters
-        ----------
-        other: `Box`
-            The other bounding box in the intersection
-
-        Returns
-        -------
-        result: `Box`
-            The rectangular box that form the union region
-            of both boxes.
-        """
-        assert other.D == self.D
-        bounds = []
-        for d in range(self.D):
-            bounds.append(
-                (min(self.start[d], other.start[d]), max(self.stop[d], other.stop[d]))
-            )
-        return Box.from_bounds(*bounds)
-
     def __repr__(self):
         result = "<Box shape={0}, origin={1}>"
         return result.format(self.shape, self.origin)
@@ -280,8 +258,8 @@ def overlapped_slices(bbox1, bbox2):
         overlapping region.
     """
     overlap = bbox1 & bbox2
-    _bbox1 = overlap-bbox1.origin
-    _bbox2 = overlap-bbox2.origin
+    _bbox1 = overlap - bbox1.origin
+    _bbox2 = overlap - bbox2.origin
     slices = (
         _bbox1.as_slices(),
         _bbox2.as_slices(),
