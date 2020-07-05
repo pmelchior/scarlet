@@ -49,6 +49,7 @@ script:
   - python bin/scarlet_test --set 3 --branch ${TRAVIS_BRANCH} -o
   - git add data
   - git add branches.json
+  - git add docs
   - git commit -m "${TRAVIS_BRANCH}"
   - git push --quiet --set-upstream origin ${TRAVIS_BRANCH} --force
   - pwd
