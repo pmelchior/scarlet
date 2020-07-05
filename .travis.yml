@@ -45,8 +45,8 @@ script:
   - python setup.py develop
   - git checkout -b ${TRAVIS_BRANCH}
   - python bin/scarlet_test --set 1 --branch ${TRAVIS_BRANCH}
-  - python bin/scarlet_test --set 2 --branch ${TRAVIS_BRANCH}
-  - python bin/scarlet_test --set 3 --branch ${TRAVIS_BRANCH}
+  - python bin/scarlet_test --set 2 --branch ${TRAVIS_BRANCH} -o
+  - python bin/scarlet_test --set 3 --branch ${TRAVIS_BRANCH} -o
   - git add data
   - git add branches.json
   - git commit -m "${TRAVIS_BRANCH}"
