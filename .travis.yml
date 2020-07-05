@@ -3,6 +3,12 @@ python:
   - 3.6
 notifications:
   email: false
+env:
+  global:
+    - USER="fred3m"
+    - EMAIL="fred.moolekamp@gmail.com"
+    - GH_REPO="github.com/fred3m/scarlet_test"
+    - secure: "aFPMljoAjSgPPcegNZAvkHMDLZ5JehBxUg/g7kbGJUD40Kf1COacmfdxcBSAK8nJDuhrYBqHtxv2u7BkOEQk8N6W64Vx+M+vLk/jBnRRbAvkc3G7EYwcZuQaW3oTR82+YE3FleZMzR9ZMfbXamKzUmPvySWcjrKmIwIkvve9KfW60U9SZqmCZNQeTaSFoHf8akpE7ONTmTx4apvv7cjP1dkslq5jmBVV4LW35ZHJa7tAxi00fBmH6u7SAvDN2hRz8/N6feYL8+aeqcDe2aZ9e2RvA/ypNyeQYmbizIH/B6IvvKS3ZUeP1j2QZBsb09uICFgfSTzTixkuzksAOB3tOsKjqpDKG0xt09gmPOs0mw78Nz869HdYa+AeAxdbMVOXaDqitMgn4QW8uspyjS0RskJW9S0hz2wqPIdGaYOwSEfVQC4NAuwTEP/LJl23jBle8ZlXr6cLz2YoDxhlK6oTP/wOdRVcLU0iwJ9kcpbBxLzECLKvjFVz1Yxl3QPt9dlCjU53BYohP0mxq13r7LEkFpSjeJRjCaztWgtKO4iLYVySBO5QDPeTat0ProARNVkv/Jm8U8yLr6ri6D5rW9iifl1OBRqNQWAIGLq3dmwwv8fpu7kUNvOG9NupdOhg/en15lYoLSN+9ZWYNmb+j2lbRATmJ/y+Z+qQSLHtm8402C4="
 
 # Setup anaconda and install packages
 # updated based on
@@ -28,6 +34,25 @@ install:
   - python setup.py install
 # Run test
 script:
+  - echo ${TRAVIS_PULL_REQUEST}
+  - echo ${TRAVIS_BRANCH}
+  - pwd
+  - cd ..
+  - git clone https://${GH_TOKEN}@${GH_REPO}
+  - cd scarlet_test
+  - git config user.email ${EMAIL}
+  - git config user.name ${USER}
+  - python setup.py develop
+  - git checkout -b ${TRAVIS_BRANCH}
+  - python bin/scarlet_test --set 1 --branch ${TRAVIS_BRANCH}
+  - python bin/scarlet_test --set 2 --branch ${TRAVIS_BRANCH}
+  - python bin/scarlet_test --set 3 --branch ${TRAVIS_BRANCH}
+  - git add data
+  - git add branches.json
+  - git commit -m "${TRAVIS_BRANCH}"
+  - git push --quiet --set-upstream origin ${TRAVIS_BRANCH} --force
+  - pwd
+  - cd $TRAVIS_BUILD_DIR
   - pytest tests
 
 # Calculate coverage
