@@ -105,7 +105,9 @@ class Component(ABC):
             Frame of the model
         """
         self.model_frame = model_frame
-        self.model_frame_slices, self.model_slices = overlapped_slices(model_frame, self.bbox)
+        self.model_frame_slices, self.model_slices = overlapped_slices(
+            model_frame, self.bbox
+        )
 
     def check_parameters(self):
         """Check that all parameters have finite elements
@@ -275,8 +277,10 @@ class FactorizedComponent(Component):
 class FunctionComponent(FactorizedComponent):
     """A single component in a blend.
 
-    Uses the non-parametric sed x morphology, with the morphology specified
-    by a functional expression.
+    Uses factorized model of SED x morphology, with SED and morphology used as
+    1) arbitrary arrays in 1D or 2D; or
+    2) parameters of functions that generate 1D or 2D arrays
+    Mixing (e.g. non-parameric SED and functional morphology) of these options is possible.
 
     Parameters
     ----------
@@ -285,30 +289,50 @@ class FunctionComponent(FactorizedComponent):
     bbox: `~scarlet.Box`
         Hyper-spectral bounding box of this component.
     sed: `~scarlet.Parameter`
-        1D array (channels) of the initial SED.
-    fparams: `~scarlet.Parameter`
-        Parameters of the initial morphology.
-    func: `autograd` function
-        Signature: func(*fparams, y=None, x=None) -> Image (Height, Width)
+        Parameters of the SED
+    morph: `~scarlet.Parameter`
+        Parameters of the morphology.
+    sed_func: `autograd` function
+        Functional form of the SED model.
+        Signature: sed_func(*sed) -> SED (Channels)
+    morph_func: `autograd` function
+        Functional form of the morphology model
+        Signature: func(*morph) -> Image (Height, Width)
     """
 
-    def __init__(self, model_frame, bbox, sed, fparams, func):
-        parameters = (sed, fparams)
-        super().__init__(model_frame, bbox, *parameters, func=func)
+    def __init__(self, model_frame, bbox, sed, morph, sed_func=None, morph_func=None):
+        parameters = (sed, morph)
+        self._sed_func = sed_func
+        self._morph_func = morph_func
+        super().__init__(model_frame, bbox, *parameters)
 
     @property
     def morph(self):
         """Numpy view of the component morphology
         """
+        # Cache morph. This is updated in get_model if fparams changes
         try:
             return self._morph
         except AttributeError:
-            # Cache morph. This is updated in get_model if fparams changes
-            self._morph = self._func(*self._parameters[1])
+            if self._morph_func is not None:
+                self._morph = self._morph_func(*self._parameters[1])
+            else:
+                self._morph = self._parameters[1]._data
         return self._morph
 
-    def _func(self, *parameters):
-        return self.kwargs["func"](*parameters)
+    @property
+    def sed(self):
+        """Numpy view of the component sed
+        """
+        # Cache sed. This is updated in get_model if fparams changes
+        try:
+            return self._sed
+        except AttributeError:
+            if self._sed_func is not None:
+                self._sed = self._sed_func(*self._parameters[0])
+            else:
+                self._sed = self._parameters[0]._data
+        return self._sed
 
     def get_model(self, *parameters, frame=None):
         """Get the model for this component.
@@ -326,24 +350,31 @@ class FunctionComponent(FactorizedComponent):
         model: array
             (Channels, Height, Width) image of the model
         """
-        sed, fparams = None, None
-
-        # if params are set they are not Parameters, but autograd ArrayBoxes
-        # need to access the wrapped class with _value
+        # unpack the parameter list, make sure all are set
+        sed, morph = None, None
         for p in parameters:
+            # if params are set they are not Parameters, but autograd ArrayBoxes
+            # need to access the wrapped class with _value
             if p._value is self._parameters[0]:
                 sed = p
-            if p._value is self._parameters[1]:
-                fparams = p
+                # if sed is parameters of given functions, evaluate the function
+                if self._sed_func is not None:
+                    sed = self._sed_func(*sed)
+                    self._sed = sed._value
 
+            if p._value is self._parameters[1]:
+                morph = p
+                if self._morph_func is not None:
+                    morph = self._morph_func(*morph)
+                    self._morph = morph._value
+
+        # if sed/morph are not parameter of this call, use saved values
         if sed is None:
             sed = self.sed
-        if fparams is None:
+        if morph is None:
             morph = self.morph
-        else:
-            morph = self._func(*fparams)
-            self._morph = morph._value
 
+        # build factorized model (and project to frame if needed)
         model = sed[:, None, None] * morph[None, :, :]
         if frame is not None:
             model = self.model_to_frame(frame, model)
@@ -417,6 +448,7 @@ def _grad_add_models(upstream_grad, *models, full_model, slices, index):
         _result = np.zeros(model.shape, dtype=model.dtype)
         _result[model_slices] = upstream_grad[full_model_slices]
         return _result
+
     return result
 
 
@@ -445,7 +477,9 @@ class ComponentTree:
                 raise NotImplementedError(
                     "argument needs to be list of Components or ComponentTrees"
                 )
-            assert c.model_frame is self.model_frame, "All components need to share the same model Frame"
+            assert (
+                c.model_frame is self.model_frame
+            ), "All components need to share the same model Frame"
             c._index = i
             c._parent = self
 
@@ -591,8 +625,10 @@ class ComponentTree:
         """
         if frame is None:
             frame = Frame(
-                self.bbox, dtype=self.model_frame.dtype,
-                psfs=self.model_frame.psf, channels=self.model_frame.channels
+                self.bbox,
+                dtype=self.model_frame.dtype,
+                psfs=self.model_frame.psf,
+                channels=self.model_frame.channels,
             )
         # If this is the model frame then the slices are already cached
         if frame == self.model_frame:
@@ -609,7 +645,7 @@ class ComponentTree:
         for k, c in enumerate(self.components):
             if len(params):
                 j = len(c.parameters)
-                p = params[i: i + j]
+                p = params[i : i + j]
                 i += j
                 model = c.get_model(*p)
             else:
@@ -628,7 +664,10 @@ class ComponentTree:
         # This has to be done each time we fit a blend,
         # since the number of components => the number of arguments,
         # which must be linked to the autograd primitive function.
-        defvjp(_add_models, *([partial(_grad_add_models, index=k) for k in range(len(self.components))]))
+        defvjp(
+            _add_models,
+            *([partial(_grad_add_models, index=k) for k in range(len(self.components))])
+        )
 
         full_model = _add_models(*models, full_model=full_model, slices=slices)
 
