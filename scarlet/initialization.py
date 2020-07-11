@@ -1,5 +1,5 @@
 from .source import *
-from .wavelet import Starlet
+from .wavelet import Starlet, mad_wavelet
 from .observation import Observation, LowResObservation
 from .interpolation import interpolate_observation
 from . import operator
@@ -242,6 +242,48 @@ def init_extended_source(
 
     morph, bbox = trim_morphology(sky_coord, frame, morph, bg_cutoff, thresh)
     return sed, morph, bbox
+
+
+def init_starlet_source(
+    sky_coord,
+    model_frame,
+    observations,
+    coadd=None,
+    bg_cutoff=None,
+    thresh=1,
+    symmetric=True,
+    monotonic="flat",
+    min_grad=0.1,
+    starlet_thresh=5,
+):
+
+    # initialize as extended from observation
+    if not hasattr(observations, "__iter__"):
+        observations = (observations,)
+
+    sed, morph, bbox = init_extended_source(
+        sky_coord,
+        model_frame,
+        observations,
+        coadd=coadd,
+        bg_cutoff=bg_cutoff,
+        thresh=thresh,
+        symmetric=True,
+        monotonic=True,
+        min_grad=min_grad,
+    )
+
+    noise = []
+    for obs in observations:
+        noise += [
+            mad_wavelet(obs.images)
+            * np.sqrt(np.sum(obs._diff_kernels.image ** 2, axis=(-2, -1)))
+        ]
+    noise = np.concatenate(noise)
+
+    # Threshold in units of noise on the coadd
+    thresh = starlet_thresh * np.sqrt(np.sum((sed * noise) ** 2))
+    return sed, morph, bbox, thresh
 
 
 def init_multicomponent_source(

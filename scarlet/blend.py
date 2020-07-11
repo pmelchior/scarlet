@@ -66,9 +66,10 @@ class Blend(ComponentTree):
         )
         _grad = lambda *X: tuple(l + p for l, p in zip(grad_logL(*X), grad_logP(*X)))
         _step = lambda *X, it: tuple(
-            1e-20 if np.random.rand() < random_skip
-            else
-            x.step(x, it=it) if hasattr(x.step, "__call__")
+            1e-20
+            if np.random.rand() < random_skip
+            else x.step(x, it=it)._data
+            if hasattr(x.step, "__call__")
             else x.step
             for x in X
         )
@@ -78,7 +79,10 @@ class Blend(ComponentTree):
         scheme = alg_kwargs.pop("scheme", "amsgrad")
         prox_max_iter = alg_kwargs.pop("prox_max_iter", 10)
         callback = partial(
-            self._callback, e_rel=e_rel, callback=alg_kwargs.pop("callback", None), min_iter=min_iter,
+            self._callback,
+            e_rel=e_rel,
+            callback=alg_kwargs.pop("callback", None),
+            min_iter=min_iter,
         )
 
         # do we have a current state of the optimizer to warm start?
