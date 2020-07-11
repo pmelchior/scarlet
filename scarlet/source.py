@@ -9,12 +9,125 @@ from .constraint import (
 )
 from .constraint import NormalizationConstraint, ConstraintChain, CenterOnConstraint
 from .parameter import Parameter, relative_step
-from .component import ComponentTree, FunctionComponent, FactorizedComponent
+from .component import ComponentTree, Factor, FactorizedComponent
 from .bbox import Box
-from .wavelet import Starlet, mad_wavelet
+from .wavelet import Starlet
+from .psf import PSF
+from . import fft
+from . import interpolation
 
 # make sure that import * above doesn't import its own stock numpy
 import autograd.numpy as np
+
+
+class Spectrum(Factor):
+    pass
+
+
+class TabulatedSpectrum(Spectrum):
+    def __init__(self, spectrum, bbox=None):
+        if isinstance(spectrum, Parameter):
+            assert spectrum.name == "spectrum"
+        else:
+            constraint = PositivityConstraint()
+            step = partial(relative_step, factor=1e-2)
+            spectrum = Parameter(
+                spectrum, name="spectrum", step=step, constraint=constraint
+            )
+        self.spectrum = spectrum
+
+        if bbox is None:
+            self._bbox = Box(spectrum.shape)
+        else:
+            assert bbox.shape == spectrum.shape
+            self._bbox = bbox
+
+        super().__init__(self.spectrum)
+
+    @property
+    def bbox(self):
+        return self._bbox
+
+    def get_model(self, *parameters):
+        spectrum = self.spectrum
+        for p in parameters:
+            if p._value.name == "spectrum":
+                spectrum = p
+        return spectrum
+
+
+class Morphology(Factor):
+    @property
+    def center(self):
+        return None
+
+
+class ImageMorphology(Morphology):
+    def __init__(self, image, bbox=None, shift=None):
+        if isinstance(image, Parameter):
+            assert image.name == "image"
+        else:
+            constraint = PositivityConstraint()
+            image = Parameter(
+                image, name="image", step=relative_step, constraint=constraint
+            )
+        self.image = image
+
+        if bbox is None:
+            self._bbox = Box(image.shape)
+        else:
+            assert bbox.shape == image.shape
+            self._bbox = bbox
+
+        if shift is None:
+            parameters = (image,)
+        else:
+            assert shift.shape == (2,)
+            if isinstance(shift, Parameter):
+                assert shift.name == "shift"
+            else:
+                shift = Parameter(shift, name="shift", step=1e-1)
+            parameters = (image, shift)
+            # fft helpers
+            padding = 10
+            self.fft_shape = fft._get_fft_shape(image, image, padding=padding)
+            self.shifter_y, self.shifter_x = interpolation.mk_shifter(self.fft_shape)
+        self.shift = shift
+
+        super().__init__(*parameters)
+
+    @property
+    def bbox(self):
+        return self._bbox
+
+    def get_model(self, *parameters):
+        image, shift = self.image, self.shift
+
+        # if params are set they are not Parameters, but autograd ArrayBoxes
+        # need to access the wrapped class with _value
+        for p in parameters:
+            if p._value.name == "image":
+                image = p
+            elif p._value.name == "shift":
+                shift = p
+
+        return self._shift_image(shift, image)
+
+    def _shift_image(self, shift, image):
+        if shift is not None:
+            X = fft.Fourier(image)
+            X_fft = X.fft(self.fft_shape, (0, 1))
+
+            # Apply shift in Fourier
+            result_fft = (
+                X_fft
+                * np.exp(self.shifter_y[:, None] * shift[0])
+                * np.exp(self.shifter_x[None, :] * shift[1])
+            )
+
+            X = fft.Fourier.from_fft(result_fft, self.fft_shape, X.shape, [0, 1])
+            return np.real(X.image)
+        return image
 
 
 class RandomSource(FactorizedComponent):
@@ -30,36 +143,68 @@ class RandomSource(FactorizedComponent):
 
         Parameters
         ----------
-        frame: `~scarlet.Frame`
+        model_frame: `~scarlet.Frame`
             The frame of the model
         observations: instance or list of `~scarlet.Observation`
             Observation to initialize the SED of the source
         """
-        C, Ny, Nx = model_frame.shape
-        morph = np.random.rand(Ny, Nx)
+        C, Ny, Nx = model_frame.bbox.shape
+        image = np.random.rand(Ny, Nx)
+        morphology = ImageMorphology(image)
 
         if observations is None:
-            seds = np.random.rand(C)
+            spectrum = np.random.rand(C)
         else:
-            try:
-                iter(observations)
-            except TypeError:
-                observations = [observations]
-            seds = []
-            for obs in observations:
-                seds.append(get_best_fit_seds(morph[None], obs.images)[0])
-            seds = np.array(seds).reshape(-1)
+            spectrum = get_best_fit_seds(image[None], observations)[0]
 
-        constraint = PositivityConstraint()
-        sed = Parameter(seds, name="sed", step=relative_step, constraint=constraint)
-        morph = Parameter(
-            morph, name="morph", step=relative_step, constraint=constraint
+        # default is step=1e-2, using larger steps here becaus SED is probably uncertain
+        spectrum = Parameter(
+            spectrum,
+            name="spectrum",
+            step=partial(relative_step, factor=1e-1),
+            constraint=PositivityConstraint(),
         )
+        spectrum = TabulatedSpectrum(spectrum)
 
-        super().__init__(model_frame, model_frame.bbox, sed, morph)
+        super().__init__(model_frame, spectrum, morphology)
 
 
-class PointSource(FunctionComponent):
+class PointSourceMorphology(Morphology):
+    def __init__(self, center, psf):
+        assert isinstance(psf, PSF)
+        self.psf = psf
+
+        # morph parameters is simply 2D center
+        self._center = Parameter(center, name="center", step=1e-1)
+        super().__init__(self._center)
+
+        # define bbox
+        pixel_center = tuple(np.round(center).astype("int"))
+        bottom = pixel_center[0] - psf.shape[1] // 2
+        top = pixel_center[0] + psf.shape[1] // 2
+        left = pixel_center[1] - psf.shape[2] // 2
+        right = pixel_center[1] + psf.shape[2] // 2
+        self._bbox = Box.from_bounds((bottom, top), (left, right))
+
+    @property
+    def bbox(self):
+        return self._bbox
+
+    @property
+    def center(self):
+        return self._center._data
+
+    def get_model(self, *parameters):
+        center = self._center
+        for p in parameters:
+            if p._value.name == "center":
+                center = p
+
+        spec_bbox = Box((0,))
+        return self.psf(*center, bbox=spec_bbox @ self._bbox)[0]
+
+
+class PointSource(FactorizedComponent):
     """Point-Source model
 
     Point sources modeled as `model_frame.psfs`, centered at `sky_coord`.
@@ -70,9 +215,7 @@ class PointSource(FunctionComponent):
     SED model function.
     """
 
-    def __init__(
-        self, model_frame, sky_coord, observations=None, sed=None, sed_func=None
-    ):
+    def __init__(self, model_frame, sky_coord, observations):
         """Source intialized with a single pixel
 
         Parameters
@@ -83,76 +226,61 @@ class PointSource(FunctionComponent):
             Center of the source
         observations: instance or list of `~scarlet.Observation`
             Observation(s) to initialize this source
-        sed: `~scarlet.Parameter`
-            Parameters of the SED
-        sed_func: `autograd` function
-            Functional form of the SED model.
-            Signature: sed_func(*sed) -> SED (Channels)
         """
-        C, Ny, Nx = model_frame.shape
-        self.center = np.array(model_frame.get_pixel(sky_coord), dtype="float")
+        spectrum = get_psf_sed(sky_coord, observations, model_frame)
+        spectrum = TabulatedSpectrum(spectrum)
 
-        assert observations is not None or sed is not None
+        center = np.array(model_frame.get_pixel(sky_coord), dtype="float")
+        morphology = PointSourceMorphology(center, model_frame.psf)
 
-        # initialize SED by reading it off the observations at sky_coord
-        if observations is not None and sed is None:
-            # initialize SED from sky_coord
-            try:
-                iter(observations)
-            except TypeError:
-                observations = [observations]
+        super().__init__(model_frame, spectrum, morphology)
 
-            # determine initial SED from peak position
-            # SED in the frame for source detection
-            seds = []
-            for obs in observations:
-                _sed = get_psf_sed(sky_coord, obs, model_frame)
-                seds.append(_sed)
-            sed = np.concatenate(seds).reshape(-1)
 
-            if np.any(sed <= 0):
-                # If the flux in all channels is  <=0,
-                # the new sed will be filled with NaN values,
-                # which will cause the code to crash later
-                msg = "Zero or negative SED {} at y={}, x={}".format(sed, *sky_coord)
-                if np.all(sed <= 0):
-                    logger.warning(msg)
-                else:
-                    logger.info(msg)
+class StarletMorphology(Morphology):
+    def __init__(self, image, bbox=None, threshold=0):
 
-            sed = Parameter(
-                sed,
-                name="sed",
-                step=partial(relative_step, factor=1e-2),
-                constraint=PositivityConstraint(),
-            )
+        if bbox is None:
+            self._bbox = Box(image.shape)
+        else:
+            assert bbox.shape == image.shape
+            self._bbox = bbox
 
-        # morph parameters is simply 2D center
-        center = Parameter(self.center, name="center", step=1e-1)
-
-        # define bbox
-        pixel_center = tuple(np.round(center).astype("int"))
-        front, back = 0, C
-        bottom = pixel_center[0] - model_frame.psf.shape[1] // 2
-        top = pixel_center[0] + model_frame.psf.shape[1] // 2
-        left = pixel_center[1] - model_frame.psf.shape[2] // 2
-        right = pixel_center[1] + model_frame.psf.shape[2] // 2
-        bbox = Box.from_bounds((front, back), (bottom, top), (left, right))
-
-        super().__init__(
-            model_frame,
-            bbox,
-            sed,
-            center,
-            sed_func=sed_func,
-            morph_func=self._psf_wrapper,
+        # Starlet transform of morphologies (n1,n2) with 4 dimensions: (1,lvl,n1,n2), lvl = wavelet scales
+        self.transform = Starlet(image)
+        # The starlet transform is the model
+        coeffs = self.transform.coefficients
+        # wavelet-scale norm
+        starlet_norm = self.transform.norm
+        # One threshold per wavelet scale: thresh*norm
+        thresh_array = np.zeros(coeffs.shape) + threshold
+        thresh_array = (
+            thresh_array * np.array([starlet_norm])[..., np.newaxis, np.newaxis]
         )
+        # We don't threshold the last scale
+        thresh_array[:, -1, :, :] = 0
 
-    def _psf_wrapper(self, *parameters):
-        return self.model_frame.psf.__call__(*parameters, bbox=self.bbox)[0]
+        constraint = ConstraintChain(L0Constraint(thresh_array), PositivityConstraint())
+
+        coeffs = Parameter(coeffs, name="coeffs", step=1e-2, constraint=constraint)
+        self.coeffs = coeffs
+        super().__init__(coeffs)
+
+    @property
+    def bbox(self):
+        return self._bbox
+
+    def get_model(self, *parameters):
+        """ Takes the inverse transform of parameters as starlet coefficients.
+
+        """
+        coeffs = self.coeffs
+        for p in parameters:
+            if p._value.name == "coeffs":
+                coeffs = p
+        return Starlet(coefficients=coeffs).image[0]
 
 
-class StarletSource(FunctionComponent):
+class StarletSource(FactorizedComponent):
     """Source intialized with starlet coefficients.
 
     Sources are initialized with the SED of the center pixel,
@@ -162,106 +290,109 @@ class StarletSource(FunctionComponent):
 
     def __init__(
         self,
-        frame,
+        model_frame,
         sky_coord,
-        observation=None,
+        observations,
         coadd=None,
         bg_cutoff=None,
         thresh=1.0,
-        starlet_thresh=5,
         min_grad=0.1,
+        starlet_thresh=5,
     ):
         """Extended source intialized to match a set of observations
 
         Parameters
         ----------
-        frame: `~scarlet.Frame`
+        model_frame: `~scarlet.Frame`
             The frame of the model
         sky_coord: tuple
             Center of the source
         observations: instance or list of `~scarlet.observation.Observation`
             Observation(s) to initialize this source.
-        obs_idx: int
-            Index of the observation in `observations` to
-            initialize the morphology.
         thresh: `float`
             Multiple of the backround RMS used as a
             flux cutoff for morphology initialization.
-        shifting: `bool`
-            Whether or not a subpixel shift is added as optimization parameter
         """
-        center = np.array(frame.get_pixel(sky_coord), dtype="float")
-        self.pixel_center = tuple(np.round(center).astype("int"))
-
-        # initialize SED from sky_coord
-        try:
-            iter(observations)
-        except TypeError:
-            observations = [observations]
 
         # initialize from observation
-        sed, image_morph, bbox = init_extended_source(
+        sed, morph, bbox, thresh = init_starlet_source(
             sky_coord,
-            frame,
+            model_frame,
             observations,
-            coadd=coadd,
-            bg_cutoff=bg_cutoff,
+            coadd,
+            bg_cutoff,
             thresh=thresh,
             symmetric=True,
-            monotonic=True,
+            monotonic="flat",
             min_grad=min_grad,
+            starlet_thresh=starlet_thresh,
         )
-        noise = []
-        for obs in observations:
-            noise += [
-                mad_wavelet(obs.images)
-                * np.sqrt(np.sum(obs._diff_kernels.image ** 2, axis=(-2, -1)))
-            ]
-        noise = np.concatenate(noise)
-        # Threshold in units of noise
-        thresh = starlet_thresh * np.sqrt(np.sum((sed * noise) ** 2))
+        spectrum = TabulatedSpectrum(sed)
+        morphology = StarletMorphology(morph, bbox[1:], thresh)
+        super().__init__(model_frame, spectrum, morphology)
 
-        # Starlet transform of morphologies (n1,n2) with 4 dimensions: (1,lvl,n1,n2), lvl = wavelet scales
-        self.transform = Starlet(image_morph)
-        # The starlet transform is the model
-        morph = self.transform.coefficients
-        # wavelet-scale norm
-        starlet_norm = self.transform.norm
-        # One threshold per wavelet scale: thresh*norm
-        thresh_array = np.zeros(morph.shape) + thresh
-        thresh_array = (
-            thresh_array * np.array([starlet_norm])[..., np.newaxis, np.newaxis]
-        )
-        # We don't threshold the last scale
-        thresh_array[:, -1, :, :] = 0
-
-        sed = Parameter(
-            sed,
-            name="sed",
-            step=partial(relative_step, factor=1e-2),
-            constraint=PositivityConstraint(),
-        )
-
-        morph_constraint = ConstraintChain(
-            *[L0Constraint(thresh_array), PositivityConstraint()]
-        )
-
-        morph = Parameter(morph, name="morph", step=1.0e-2, constraint=morph_constraint)
-
-        super().__init__(frame, bbox, sed, morph, self._iuwt)
+        # since we use the starlet for localized source: it has a center
+        self._center = np.array(model_frame.get_pixel(sky_coord), dtype="float")
 
     @property
     def center(self):
-        if len(self.parameters) == 3:
-            return self.pixel_center + self.shift
+        return self._center
+
+
+class ExtendedSourceMorphology(ImageMorphology):
+    def __init__(
+        self,
+        center,
+        image,
+        bbox,
+        monotonic="flat",
+        symmetric=False,
+        min_grad=0,
+        shifting=False,
+    ):
+
+        constraints = []
+        # backwards compatibility: monotonic was boolean
+        if monotonic is True:
+            monotonic = "angle"
+        elif monotonic is False:
+            monotonic = None
+        if monotonic is not None:
+            # most astronomical sources are monotonically decreasing
+            # from their center
+            constraints.append(
+                MonotonicityConstraint(neighbor_weight=monotonic, min_gradient=min_grad)
+            )
+
+        if symmetric:
+            # have 2-fold rotation symmetry around their center ...
+            constraints.append(SymmetryConstraint())
+
+        constraints += [
+            # ... and are positive emitters
+            PositivityConstraint(),
+            # prevent a weak source from disappearing entirely
+            CenterOnConstraint(),
+            # break degeneracies between sed and morphology
+            NormalizationConstraint("max"),
+        ]
+        morph_constraint = ConstraintChain(*constraints)
+        image = Parameter(image, name="image", step=1e-2, constraint=morph_constraint)
+
+        self.pixel_center = tuple(np.round(center).astype("int"))
+        if shifting:
+            shift = Parameter(center - self.pixel_center, name="shift", step=1e-1)
+        else:
+            shift = None
+
+        super().__init__(image, bbox=bbox, shift=shift)
+
+    @property
+    def center(self):
+        if self.shift is not None:
+            return self.pixel_center + self.shift._data
         else:
             return self.pixel_center
-
-    def _iuwt(self, param):
-        """ Takes the inverse transform of parameters as starlet coefficients.
-
-        """
-        return Starlet(coefficients=param).image[0]
 
 
 class ExtendedSource(FactorizedComponent):
@@ -302,14 +433,6 @@ class ExtendedSource(FactorizedComponent):
         shifting: `bool`
             Whether or not a subpixel shift is added as optimization parameter
         """
-        center = np.array(model_frame.get_pixel(sky_coord), dtype="float")
-        self.pixel_center = tuple(np.round(center).astype("int"))
-
-        if shifting:
-            shift = Parameter(center - self.pixel_center, name="shift", step=1e-1)
-        else:
-            shift = None
-
         # initialize from observation
         sed, morph, bbox = init_extended_source(
             sky_coord,
@@ -322,52 +445,19 @@ class ExtendedSource(FactorizedComponent):
             monotonic="flat",
             min_grad=min_grad,
         )
+        spectrum = TabulatedSpectrum(sed)
 
-        sed = Parameter(
-            sed,
-            name="sed",
-            step=partial(relative_step, factor=1e-2),
-            constraint=PositivityConstraint(),
+        center = np.array(model_frame.get_pixel(sky_coord), dtype="float")
+        morphology = ExtendedSourceMorphology(
+            center,
+            morph,
+            bbox[1:],
+            monotonic=monotonic,
+            symmetric=symmetric,
+            min_grad=min_grad,
+            shifting=shifting,
         )
-
-        constraints = []
-
-        # backwards compatibility: monotonic was boolean
-        if monotonic is True:
-            monotonic = "angle"
-        elif monotonic is False:
-            monotonic = None
-        if monotonic is not None:
-            # most astronomical sources are monotonically decreasing
-            # from their center
-            constraints.append(
-                MonotonicityConstraint(neighbor_weight=monotonic, min_gradient=min_grad)
-            )
-
-        if symmetric:
-            # have 2-fold rotation symmetry around their center ...
-            constraints.append(SymmetryConstraint())
-
-        constraints += [
-            # ... and are positive emitters
-            PositivityConstraint(),
-            # prevent a weak source from disappearing entirely
-            # CenterOnConstraint(),
-            # break degeneracies between sed and morphology
-            NormalizationConstraint("max"),
-        ]
-        morph_constraint = ConstraintChain(*constraints)
-
-        morph = Parameter(morph, name="morph", step=1e-2, constraint=morph_constraint)
-
-        super().__init__(model_frame, bbox, sed, morph, shift=shift)
-
-    @property
-    def center(self):
-        if len(self.parameters) == 3:
-            return self.pixel_center + self.shift
-        else:
-            return self.pixel_center
+        super().__init__(model_frame, spectrum, morphology)
 
 
 class MultiComponentSource(ComponentTree):
@@ -391,7 +481,7 @@ class MultiComponentSource(ComponentTree):
         coadd=None,
         bg_cutoff=None,
         thresh=1.0,
-        flux_percentiles=None,
+        flux_percentiles=[25,],
         symmetric=False,
         monotonic="flat",
         shifting=False,
@@ -415,7 +505,7 @@ class MultiComponentSource(ComponentTree):
             flux cutoff for morphology initialization.
         flux_percentiles: list
             The flux percentile of each component. If `flux_percentiles` is `None`
-            then `flux_percentiles=[25]`, a single component with 25% of the flux
+            then `flux_percentiles=[25,]`, a single component with 25% of the flux
             as the primary source.
         symmetric: `bool`
             Whether or not to enforce symmetry.
@@ -424,16 +514,6 @@ class MultiComponentSource(ComponentTree):
         shifting: `bool`
             Whether or not a subpixel shift is added as optimization parameter
         """
-        self.symmetric = symmetric
-        self.monotonic = monotonic
-        self.coords = sky_coord
-        center = np.array(model_frame.get_pixel(sky_coord), dtype="float")
-        pixel_center = tuple(np.round(center).astype("int"))
-
-        if shifting:
-            shift = Parameter(center - pixel_center, name="shift", step=1e-1)
-        else:
-            shift = None
 
         # initialize from observation
         seds, morphs, bbox = init_multicomponent_source(
@@ -449,59 +529,36 @@ class MultiComponentSource(ComponentTree):
             min_grad=min_grad,
         )
 
-        constraints = []
-
-        # backwards compatibility: monotonic was boolean
-        if monotonic is True:
-            monotonic = "angle"
-        elif monotonic is False:
-            monotonic = None
-        if monotonic is not None:
-            # most astronomical sources are monotonically decreasing
-            # from their center
-            constraints.append(
-                MonotonicityConstraint(neighbor_weight=monotonic, min_gradient=min_grad)
-            )
-
-        if symmetric:
-            # have 2-fold rotation symmetry around their center ...
-            constraints.append(SymmetryConstraint())
-        constraints += [
-            # ... and are positive emitters
-            PositivityConstraint(),
-            # prevent a weak source from disappearing entirely
-            CenterOnConstraint(),
-            # break degeneracies between sed and morphology
-            NormalizationConstraint("max"),
-        ]
-        morph_constraint = ConstraintChain(*constraints)
+        K = len(flux_percentiles) + 1
+        center = np.array(model_frame.get_pixel(sky_coord), dtype="float")
 
         components = []
-        for k in range(len(seds)):
+        for k in range(K):
+
+            # higher tolerance on SED: construct parameter explicitly with larger step
             sed = Parameter(
                 seds[k],
-                name="sed",
+                name="spectrum",
                 step=partial(relative_step, factor=1e-1),
                 constraint=PositivityConstraint(),
             )
-            morph = Parameter(
-                morphs[k], name="morph", step=1e-2, constraint=morph_constraint
-            )
-            components.append(
-                FactorizedComponent(model_frame, bbox, sed, morph, shift=shift)
-            )
-            components[-1].pixel_center = pixel_center
-        super().__init__(components)
+            spectrum = TabulatedSpectrum(sed)
 
-    @property
-    def shift(self):
-        c = self.components[0]
-        return c.shift
+            morphology = ExtendedSourceMorphology(
+                center,
+                morphs[k],
+                bbox[1:],
+                monotonic=monotonic,
+                symmetric=symmetric,
+                min_grad=min_grad,
+                shifting=shifting,
+            )
+            component = FactorizedComponent(model_frame, spectrum, morphology)
+            components.append(component)
+
+        super().__init__(components)
 
     @property
     def center(self):
         c = self.components[0]
-        if len(c.parameters) == 3:
-            return c.pixel_center + c.shift
-        else:
-            return c.pixel_center
+        return c.center
