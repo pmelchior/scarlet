@@ -240,11 +240,21 @@ class Box:
             )
         return Box.from_bounds(*bounds)
 
+    def __getitem__(self, i):
+        s_ = self.shape[i]
+        o_ = self.origin[i]
+        if not hasattr(s_, "__iter__"):
+            s_ = (s_,)
+            o_ = (o_,)
+        return Box(s_, origin=o_)
+
     def __repr__(self):
         result = "<Box shape={0}, origin={1}>"
         return result.format(self.shape, self.origin)
 
     def __iadd__(self, offset):
+        if not hasattr(offset, "__iter__"):
+            offset = (offset,) * self.D
         self.origin = tuple([a + o for a, o in zip(self.origin, offset)])
         return self
 
@@ -252,6 +262,8 @@ class Box:
         return self.copy().__iadd__(offset)
 
     def __isub__(self, offset):
+        if not hasattr(offset, "__iter__"):
+            offset = (offset,) * self.D
         self.origin = tuple([a - o for a, o in zip(self.origin, offset)])
         return self
 
@@ -264,8 +276,7 @@ class Box:
         return self
 
     def __matmul__(self, bbox):
-        bounds = self.bounds + bbox.bounds
-        return Box.from_bounds(*bounds)
+        return self.copy().__imatmul__(bbox)
 
     def __copy__(self):
         return Box(self.shape, origin=self.origin)
