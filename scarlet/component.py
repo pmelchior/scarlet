@@ -6,8 +6,6 @@ from autograd.extend import defvjp, primitive
 
 from .frame import Frame
 from .parameter import Parameter
-from . import fft
-from . import interpolation
 from .bbox import Box, overlapped_slices
 
 
@@ -161,6 +159,24 @@ class Component(ABC):
         return result
 
 
+class Factor(ABC):
+    def __init__(self, *parameters):
+        self._parameters = parameters
+
+    @property
+    def parameters(self):
+        return self._parameters
+
+    @property
+    @abstractmethod
+    def bbox(self):
+        pass
+
+    @abstractmethod
+    def get_model(self, *parameters):
+        pass
+
+
 class FactorizedComponent(Component):
     """A single component in a blend.
 
@@ -172,46 +188,39 @@ class FactorizedComponent(Component):
         The spectral and spatial characteristics of the full model.
     bbox: `~scarlet.Box`
         Hyper-spectral bounding box of this component.
-    sed: `~scarlet.Parameter`
-        1D array (channels) of the initial SED.
-    morph: `~scarlet.Parameter`
-        Image (Height, Width) of the initial morphology.
-    shift: `~scarlet.Parameter`
-        2D position for the shift of the center
+    spectrum: `~scarlet.Spectrum`
+        Parameterization of the spectrum
+    morphology: `~scarlet.Morphology`
+        Parameterization of the morphology.
     """
 
-    def __init__(self, model_frame, bbox, sed, morph, shift=None, **kwargs):
-        if shift is None:
-            parameters = (sed, morph)
-        else:
-            parameters = (sed, morph, shift)
-        super().__init__(model_frame, bbox, *parameters, **kwargs)
-
-        # store shifting structures
-        if shift is not None:
-            padding = 10
-            self.fft_shape = fft._get_fft_shape(morph, morph, padding=padding)
-            self.shifter_y, self.shifter_x = interpolation.mk_shifter(self.fft_shape)
+    def __init__(self, model_frame, spectrum, morphology):
+        assert isinstance(spectrum, Factor)
+        assert isinstance(morphology, Factor)
+        bbox = spectrum.bbox @ morphology.bbox
+        parameters = spectrum.parameters + morphology.parameters
+        super().__init__(model_frame, bbox, *parameters)
+        self._spectrum = spectrum
+        self._morphology = morphology
 
     @property
-    def sed(self):
+    def spectrum(self):
         """Numpy view of the component SED
         """
-        return self._parameters[0]._data
+        return self._spectrum.get_model()._data
 
     @property
-    def morph(self):
+    def morphology(self):
         """Numpy view of the component morphology
         """
-        return self._shift_morph(self.shift, self._parameters[1]._data)
+        return self._morphology.get_model()._data
 
     @property
-    def shift(self):
-        """Numpy view of the component shift
-        """
-        if len(self._parameters) == 3:
-            return self._parameters[2]._data
-        return None
+    def center(self):
+        if hasattr(self._morphology, "center"):
+            return self._morphology.center
+        else:
+            return None
 
     def get_model(self, *parameters, frame=None):
         """Get the model for this component.
@@ -229,153 +238,10 @@ class FactorizedComponent(Component):
         model: array
             (Channels, Height, Width) image of the model
         """
-        sed, morph, shift = None, None, None
-
-        # if params are set they are not Parameters, but autograd ArrayBoxes
-        # need to access the wrapped class with _value
-        for p in parameters:
-            if p._value is self._parameters[0]:
-                sed = p
-            if p._value is self._parameters[1]:
-                morph = p
-            if len(self._parameters) == 3 and p._value is self._parameters[2]:
-                shift = p
-
-        if sed is None:
-            sed = self.sed
-
-        if morph is None:
-            morph = self._parameters[1]._data
-
-        if shift is None:
-            shift = self.shift
-
-        morph = self._shift_morph(shift, morph)
-        model = sed[:, None, None] * morph[None, :, :]
+        spectrum = self._spectrum.get_model(*parameters)
+        morph = self._morphology.get_model(*parameters)
+        model = spectrum[:, None, None] * morph[None, :, :]
         # project the model into frame (if necessary)
-        if frame is not None:
-            model = self.model_to_frame(frame, model)
-        return model
-
-    def _shift_morph(self, shift, morph):
-        if shift is not None:
-            X = fft.Fourier(morph)
-            X_fft = X.fft(self.fft_shape, (0, 1))
-
-            # Apply shift in Fourier
-            result_fft = (
-                X_fft
-                * np.exp(self.shifter_y[:, None] * shift[0])
-                * np.exp(self.shifter_x[None, :] * shift[1])
-            )
-
-            X = fft.Fourier.from_fft(result_fft, self.fft_shape, X.shape, [0, 1])
-            return np.real(X.image)
-        return morph
-
-
-class FunctionComponent(FactorizedComponent):
-    """A single component in a blend.
-
-    Uses factorized model of SED x morphology, with SED and morphology used as
-    1) arbitrary arrays in 1D or 2D; or
-    2) parameters of functions that generate 1D or 2D arrays
-    Mixing (e.g. non-parameric SED and functional morphology) of these options is possible.
-
-    Parameters
-    ----------
-    model_frame: `~scarlet.Frame`
-        The spectral and spatial characteristics of the full model.
-    bbox: `~scarlet.Box`
-        Hyper-spectral bounding box of this component.
-    sed: `~scarlet.Parameter`
-        Parameters of the SED
-    morph: `~scarlet.Parameter`
-        Parameters of the morphology.
-    sed_func: `autograd` function
-        Functional form of the SED model.
-        Signature: sed_func(*sed) -> SED (Channels)
-    morph_func: `autograd` function
-        Functional form of the morphology model
-        Signature: func(*morph) -> Image (Height, Width)
-    """
-
-    def __init__(self, model_frame, bbox, sed, morph, sed_func=None, morph_func=None):
-        parameters = (sed, morph)
-        self._sed_func = sed_func
-        self._morph_func = morph_func
-        super().__init__(model_frame, bbox, *parameters)
-
-    @property
-    def morph(self):
-        """Numpy view of the component morphology
-        """
-        # Cache morph. This is updated in get_model if fparams changes
-        try:
-            return self._morph
-        except AttributeError:
-            if self._morph_func is not None:
-                self._morph = self._morph_func(*self._parameters[1])
-            else:
-                self._morph = self._parameters[1]._data
-        return self._morph
-
-    @property
-    def sed(self):
-        """Numpy view of the component sed
-        """
-        # Cache sed. This is updated in get_model if fparams changes
-        try:
-            return self._sed
-        except AttributeError:
-            if self._sed_func is not None:
-                self._sed = self._sed_func(*self._parameters[0])
-            else:
-                self._sed = self._parameters[0]._data
-        return self._sed
-
-    def get_model(self, *parameters, frame=None):
-        """Get the model for this component.
-
-        Parameters
-        ----------
-        parameters: tuple of optimimzation parameters
-
-        frame: `~scarlet.frame.Frame`
-            Frame to project the model into. If `frame` is `None`
-            then the model contained in `bbox` is returned.
-
-        Returns
-        -------
-        model: array
-            (Channels, Height, Width) image of the model
-        """
-        # unpack the parameter list, make sure all are set
-        sed, morph = None, None
-        for p in parameters:
-            # if params are set they are not Parameters, but autograd ArrayBoxes
-            # need to access the wrapped class with _value
-            if p._value is self._parameters[0]:
-                sed = p
-                # if sed is parameters of given functions, evaluate the function
-                if self._sed_func is not None:
-                    sed = self._sed_func(*sed)
-                    self._sed = sed._value
-
-            if p._value is self._parameters[1]:
-                morph = p
-                if self._morph_func is not None:
-                    morph = self._morph_func(*morph)
-                    self._morph = morph._value
-
-        # if sed/morph are not parameter of this call, use saved values
-        if sed is None:
-            sed = self.sed
-        if morph is None:
-            morph = self.morph
-
-        # build factorized model (and project to frame if needed)
-        model = sed[:, None, None] * morph[None, :, :]
         if frame is not None:
             model = self.model_to_frame(frame, model)
         return model
