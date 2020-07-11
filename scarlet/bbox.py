@@ -99,7 +99,7 @@ class Box:
         return True
 
     def as_slices(self):
-        return tuple([slice(o, o+s) for o,s in zip(self.origin, self.shape)])
+        return tuple([slice(o, o + s) for o, s in zip(self.origin, self.shape)])
 
     def extract_from(self, image, sub=None):
         """Extract sub-image described by this bbox from image
@@ -167,6 +167,10 @@ class Box:
     @property
     def shape(self):
         return self._shape
+
+    @property
+    def bounds(self):
+        return tuple((o, o + s) for o, s in zip(self.origin, self.shape))
 
     def __or__(self, other):
         """Union of two bounding boxes
@@ -254,6 +258,15 @@ class Box:
     def __sub__(self, offset):
         return self.copy().__isub__(offset)
 
+    def __imatmul__(self, bbox):
+        bounds = self.bounds + bbox.bounds
+        self = Box.from_bounds(*bounds)
+        return self
+
+    def __matmul__(self, bbox):
+        bounds = self.bounds + bbox.bounds
+        return Box.from_bounds(*bounds)
+
     def __copy__(self):
         return Box(self.shape, origin=self.origin)
 
@@ -280,8 +293,8 @@ def overlapped_slices(bbox1, bbox2):
         overlapping region.
     """
     overlap = bbox1 & bbox2
-    _bbox1 = overlap-bbox1.origin
-    _bbox2 = overlap-bbox2.origin
+    _bbox1 = overlap - bbox1.origin
+    _bbox2 = overlap - bbox2.origin
     slices = (
         _bbox1.as_slices(),
         _bbox2.as_slices(),
