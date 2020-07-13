@@ -4,6 +4,7 @@
 <html>
   <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>scarlet.fft &#8212; scarlet  documentation</title>
     <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
@@ -13,7 +14,7 @@
     <script src="../_static/doctools.js"></script>
     <script src="../_static/language_data.js"></script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
-    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "ignoreClass": "document", "processClass": "math|output_area"}})</script>
     <link rel="canonical" href="api/api/scarlet.fft.html" />
     <link rel="index" title="Index" href="../genindex.html" />
@@ -112,7 +113,7 @@ in a dictionary.</p>
 <col style="width: 90%" />
 </colgroup>
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.fft.Fourier.fft" title="scarlet.fft.Fourier.fft"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fft</span></code></a>(self, fft_shape, axes)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.fft.Fourier.fft" title="scarlet.fft.Fourier.fft"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fft</span></code></a>(fft_shape, axes)</p></td>
 <td><p>The FFT of an image for a given <cite>fft_shape</cite> along desired <cite>axes</cite></p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#scarlet.fft.Fourier.from_fft" title="scarlet.fft.Fourier.from_fft"><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_fft</span></code></a>(image_fft, fft_shape, image_shape)</p></td>
@@ -122,7 +123,7 @@ in a dictionary.</p>
 </table>
 <dl class="py method">
 <dt id="scarlet.fft.Fourier.fft">
-<code class="sig-name descname">fft</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">fft_shape</span></em>, <em class="sig-param"><span class="n">axes</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/fft.html#Fourier.fft"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.fft.Fourier.fft" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">fft</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">fft_shape</span></em>, <em class="sig-param"><span class="n">axes</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/fft.html#Fourier.fft"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.fft.Fourier.fft" title="Permalink to this definition">¶</a></dt>
 <dd><p>The FFT of an image for a given <cite>fft_shape</cite> along desired <cite>axes</cite></p>
 </dd></dl>
 
@@ -230,7 +231,7 @@ to supress artifacts.</p>
       &copy;2018-2019, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.0.4</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.1.2</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

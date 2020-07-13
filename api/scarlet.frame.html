@@ -4,6 +4,7 @@
 <html>
   <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>scarlet.frame &#8212; scarlet  documentation</title>
     <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
@@ -13,7 +14,7 @@
     <script src="../_static/doctools.js"></script>
     <script src="../_static/language_data.js"></script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
-    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "ignoreClass": "document", "processClass": "math|output_area"}})</script>
     <link rel="canonical" href="api/api/scarlet.frame.html" />
     <link rel="index" title="Index" href="../genindex.html" />
@@ -112,10 +113,10 @@
 <col style="width: 90%" />
 </colgroup>
 <tbody>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">contains</span></code>(self, p)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">contains</span></code>(p)</p></td>
 <td><p>Whether the box contains a given coordinate <cite>p</cite></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">extract_from</span></code>(self, image[, sub])</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">extract_from</span></code>(image[, sub])</p></td>
 <td><p>Extract sub-image described by this bbox from image</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_bounds</span></code>(*bounds)</p></td>
@@ -130,13 +131,13 @@
 <tr class="row-even"><td><p><a class="reference internal" href="#scarlet.frame.Frame.from_observations" title="scarlet.frame.Frame.from_observations"><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_observations</span></code></a>(observations[, …])</p></td>
 <td><p>Generates a frame from a set of observations.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.frame.Frame.get_pixel" title="scarlet.frame.Frame.get_pixel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_pixel</span></code></a>(self, sky_coord)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.frame.Frame.get_pixel" title="scarlet.frame.Frame.get_pixel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_pixel</span></code></a>(sky_coord)</p></td>
 <td><p>Get the pixel coordinate from a world coordinate If there is no WCS associated with the <cite>Scene</cite>, meaning the data frame and model frame are the same, then this just returns <cite>sky_coord</cite>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.frame.Frame.get_sky_coord" title="scarlet.frame.Frame.get_sky_coord"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_sky_coord</span></code></a>(self, pixel)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.frame.Frame.get_sky_coord" title="scarlet.frame.Frame.get_sky_coord"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_sky_coord</span></code></a>(pixel)</p></td>
 <td><p>Get the world coordinate for a pixel coordinate If there is no WCS associated with the <cite>Scene</cite>, meaning the data frame and model frame are the same, then this just returns <cite>pixel</cite>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">insert_into</span></code>(self, image, sub)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">insert_into</span></code>(image, sub)</p></td>
 <td><p>Insert <cite>sub</cite> into <cite>image</cite> according to this bbox</p></td>
 </tr>
 </tbody>
@@ -209,7 +210,7 @@ Default is ‘union’.</p>
 
 <dl class="py method">
 <dt id="scarlet.frame.Frame.get_pixel">
-<code class="sig-name descname">get_pixel</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">sky_coord</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/frame.html#Frame.get_pixel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.frame.Frame.get_pixel" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">get_pixel</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">sky_coord</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/frame.html#Frame.get_pixel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.frame.Frame.get_pixel" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get the pixel coordinate from a world coordinate
 If there is no WCS associated with the <cite>Scene</cite>,
 meaning the data frame and model frame are the same,
@@ -218,7 +219,7 @@ then this just returns <cite>sky_coord</cite>.</p>
 
 <dl class="py method">
 <dt id="scarlet.frame.Frame.get_sky_coord">
-<code class="sig-name descname">get_sky_coord</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">pixel</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/frame.html#Frame.get_sky_coord"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.frame.Frame.get_sky_coord" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">get_sky_coord</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">pixel</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/frame.html#Frame.get_sky_coord"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.frame.Frame.get_sky_coord" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get the world coordinate for a pixel coordinate
 If there is no WCS associated with the <cite>Scene</cite>,
 meaning the data frame and model frame are the same,
@@ -245,7 +246,7 @@ then this just returns <cite>pixel</cite>.</p>
       &copy;2018-2019, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.0.4</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.1.2</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

@@ -4,6 +4,7 @@
 <html>
   <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>scarlet.wavelet &#8212; scarlet  documentation</title>
     <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
@@ -13,7 +14,7 @@
     <script src="../../_static/doctools.js"></script>
     <script src="../../_static/language_data.js"></script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
-    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "ignoreClass": "document", "processClass": "math|output_area"}})</script>
     <link rel="canonical" href="api/_modules/scarlet/wavelet.html" />
     <link rel="index" title="Index" href="../../genindex.html" />
@@ -264,7 +265,7 @@
     <span class="n">lvl_max</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log2</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">:])))</span>
     <span class="k">if</span> <span class="p">(</span><span class="n">lvl</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="n">lvl</span> <span class="o">&gt;</span> <span class="n">lvl_max</span><span class="p">:</span>
         <span class="n">lvl</span> <span class="o">=</span> <span class="n">lvl_max</span>
-    <span class="k">return</span> <span class="n">lvl</span></div>
+    <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">lvl</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="mk_starlet"><a class="viewcode-back" href="../../api/scarlet.wavelet.html#scarlet.wavelet.mk_starlet">[docs]</a><span class="k">def</span> <span class="nf">mk_starlet</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="n">image</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot; Creates a starlet for a given 2d shape.</span>
@@ -402,7 +403,7 @@
       &copy;2018-2019, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.0.4</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.1.2</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
     </div>

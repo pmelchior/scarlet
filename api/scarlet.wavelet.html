@@ -4,6 +4,7 @@
 <html>
   <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>scarlet.wavelet &#8212; scarlet  documentation</title>
     <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
@@ -13,7 +14,7 @@
     <script src="../_static/doctools.js"></script>
     <script src="../_static/language_data.js"></script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
-    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "ignoreClass": "document", "processClass": "math|output_area"}})</script>
     <link rel="canonical" href="api/api/scarlet.wavelet.html" />
     <link rel="index" title="Index" href="../genindex.html" />
@@ -127,13 +128,13 @@ images that have the same shape.</p>
 <col style="width: 90%" />
 </colgroup>
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.wavelet.Starlet.direct_transform" title="scarlet.wavelet.Starlet.direct_transform"><code class="xref py py-obj docutils literal notranslate"><span class="pre">direct_transform</span></code></a>(self)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.wavelet.Starlet.direct_transform" title="scarlet.wavelet.Starlet.direct_transform"><code class="xref py py-obj docutils literal notranslate"><span class="pre">direct_transform</span></code></a>()</p></td>
 <td><p>Computes the direct starlet transform of the starlet’s image</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.wavelet.Starlet.filter" title="scarlet.wavelet.Starlet.filter"><code class="xref py py-obj docutils literal notranslate"><span class="pre">filter</span></code></a>(self[, niter, k])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.wavelet.Starlet.filter" title="scarlet.wavelet.Starlet.filter"><code class="xref py py-obj docutils literal notranslate"><span class="pre">filter</span></code></a>([niter, k])</p></td>
 <td><p>Applies wavelet iterative filtering to denoise the image</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.wavelet.Starlet.transform" title="scarlet.wavelet.Starlet.transform"><code class="xref py py-obj docutils literal notranslate"><span class="pre">transform</span></code></a>(self)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.wavelet.Starlet.transform" title="scarlet.wavelet.Starlet.transform"><code class="xref py py-obj docutils literal notranslate"><span class="pre">transform</span></code></a>()</p></td>
 <td><p>Performs the wavelet transform of an image by convolution with the seed wavelet</p></td>
 </tr>
 </tbody>
@@ -146,7 +147,7 @@ images that have the same shape.</p>
 
 <dl class="py method">
 <dt id="scarlet.wavelet.Starlet.direct_transform">
-<code class="sig-name descname">direct_transform</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/wavelet.html#Starlet.direct_transform"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.wavelet.Starlet.direct_transform" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">direct_transform</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/wavelet.html#Starlet.direct_transform"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.wavelet.Starlet.direct_transform" title="Permalink to this definition">¶</a></dt>
 <dd><p>Computes the direct starlet transform of the starlet’s image</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns</dt>
@@ -160,7 +161,7 @@ images that have the same shape.</p>
 
 <dl class="py method">
 <dt id="scarlet.wavelet.Starlet.filter">
-<code class="sig-name descname">filter</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">niter</span><span class="o">=</span><span class="default_value">20</span></em>, <em class="sig-param"><span class="n">k</span><span class="o">=</span><span class="default_value">5</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/wavelet.html#Starlet.filter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.wavelet.Starlet.filter" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">filter</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">niter</span><span class="o">=</span><span class="default_value">20</span></em>, <em class="sig-param"><span class="n">k</span><span class="o">=</span><span class="default_value">5</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/wavelet.html#Starlet.filter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.wavelet.Starlet.filter" title="Permalink to this definition">¶</a></dt>
 <dd><p>Applies wavelet iterative filtering to denoise the image</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -202,7 +203,7 @@ images that have the same shape.</p>
 
 <dl class="py method">
 <dt id="scarlet.wavelet.Starlet.transform">
-<code class="sig-name descname">transform</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/wavelet.html#Starlet.transform"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.wavelet.Starlet.transform" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">transform</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/wavelet.html#Starlet.transform"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.wavelet.Starlet.transform" title="Permalink to this definition">¶</a></dt>
 <dd><p>Performs the wavelet transform of an image by convolution with the seed wavelet</p>
 <blockquote>
 <div><p>Seed wavelets are the transform of a dirac in starlets when computed for a given shape,
@@ -302,7 +303,7 @@ if lvl is higher than this number lvl will be set to it.</p>
       &copy;2018-2019, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.0.4</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.1.2</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

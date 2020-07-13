@@ -4,6 +4,7 @@
 <html>
   <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Point Source Tutorial &#8212; scarlet  documentation</title>
     <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
@@ -13,7 +14,7 @@
     <script src="../_static/doctools.js"></script>
     <script src="../_static/language_data.js"></script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
-    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "ignoreClass": "document", "processClass": "math|output_area"}})</script>
     <link rel="canonical" href="api/tutorials/point_source.html" />
     <link rel="index" title="Index" href="../genindex.html" />
@@ -394,7 +395,7 @@ div.rendered_html tbody tr:hover {
 </div>
 <div class="section" id="Define-Sources">
 <h2>Define Sources<a class="headerlink" href="#Define-Sources" title="Permalink to this headline">¶</a></h2>
-<p><strong>You have to define what sources you want to fit.</strong> Since we know which sources are stars (it’s stored in the catalog), we can pick the proper source type. This is the situations e.g. <em>Gaia</em>-confirmed stars. In deeper observations or more crowded fields, additional logic will be needed (such as color priors on stars vs galaxies) to perform the star-galaxy separation.</p>
+<p><strong>You have to define what sources you want to fit.</strong> Since we know which sources are stars (it’s stored in the catalog), we can pick the proper source type. This is the situations e.g. <em>Gaia</em>-confirmed stars. In deeper observations or more crowded fields, additional logic will be needed (such as color priors on stars vs galaxies) to perform the star-galaxy separation.</p>
 <div class="nbinput nblast docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
 </pre></div>
@@ -475,8 +476,8 @@ div.rendered_html tbody tr:hover {
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-CPU times: user 1.95 s, sys: 3.44 ms, total: 1.95 s
-Wall time: 1.95 s
+CPU times: user 1.82 s, sys: 11.4 ms, total: 1.83 s
+Wall time: 1.83 s
 scarlet ran for 93 iterations to logL = -139199.38106816157
 </pre></div></div>
 </div>
@@ -554,7 +555,7 @@ Text(0, 0.5, &#39;log-Likelihood&#39;)
       &copy;2018-2019, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.0.4</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.1.2</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |
