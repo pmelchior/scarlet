@@ -30,21 +30,6 @@ class Box:
         self.origin = tuple(origin)
 
     @staticmethod
-    def from_image(image):
-        """Initialize a box to cover `image`
-
-        Parameters
-        ----------
-        image: array-like
-
-        Returns
-        -------
-        bbox: `:class:`scarlet.bbox.Box`
-            A new box bounded by the image.
-        """
-        return Box(image.shape)
-
-    @staticmethod
     def from_bounds(*bounds):
         """Initialize a box from its bounds
 
@@ -115,7 +100,7 @@ class Box:
         -------
         sub: array
         """
-        imbox = Box.from_image(image)
+        imbox = Box(image.shape)
 
         if sub is None:
             sub = np.zeros(self.shape)
@@ -140,7 +125,7 @@ class Box:
         -------
         image: array
         """
-        imbox = Box.from_image(image)
+        imbox = Box(image.shape)
 
         im_slices, sub_slices = overlapped_slices(imbox, self)
         image[im_slices] = sub[sub_slices]

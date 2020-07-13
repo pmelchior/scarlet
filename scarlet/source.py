@@ -34,7 +34,6 @@ class TabulatedSpectrum(Spectrum):
             spectrum = Parameter(
                 spectrum, name="spectrum", step=step, constraint=constraint
             )
-        self.spectrum = spectrum
 
         if bbox is None:
             self._bbox = Box(spectrum.shape)
@@ -42,14 +41,10 @@ class TabulatedSpectrum(Spectrum):
             assert bbox.shape == spectrum.shape
             self._bbox = bbox
 
-        super().__init__(self.spectrum)
-
-    @property
-    def bbox(self):
-        return self._bbox
+        super().__init__(spectrum)
 
     def get_model(self, *parameters):
-        spectrum = self.spectrum
+        spectrum = self.parameters[0]
         for p in parameters:
             if p._value.name == "spectrum":
                 spectrum = p
@@ -71,7 +66,6 @@ class ImageMorphology(Morphology):
             image = Parameter(
                 image, name="image", step=relative_step, constraint=constraint
             )
-        self.image = image
 
         if bbox is None:
             self._bbox = Box(image.shape)
@@ -96,12 +90,8 @@ class ImageMorphology(Morphology):
 
         super().__init__(*parameters)
 
-    @property
-    def bbox(self):
-        return self._bbox
-
     def get_model(self, *parameters):
-        image, shift = self.image, self.shift
+        image, shift = self.parameters[0], self.shift
 
         # if params are set they are not Parameters, but autograd ArrayBoxes
         # need to access the wrapped class with _value
@@ -187,10 +177,6 @@ class PointSourceMorphology(Morphology):
         self._bbox = Box.from_bounds((bottom, top), (left, right))
 
     @property
-    def bbox(self):
-        return self._bbox
-
-    @property
     def center(self):
         return self._center._data
 
@@ -262,18 +248,13 @@ class StarletMorphology(Morphology):
         constraint = ConstraintChain(L0Constraint(thresh_array), PositivityConstraint())
 
         coeffs = Parameter(coeffs, name="coeffs", step=1e-2, constraint=constraint)
-        self.coeffs = coeffs
         super().__init__(coeffs)
-
-    @property
-    def bbox(self):
-        return self._bbox
 
     def get_model(self, *parameters):
         """ Takes the inverse transform of parameters as starlet coefficients.
 
         """
-        coeffs = self.coeffs
+        coeffs = self.parameters[0]
         for p in parameters:
             if p._value.name == "coeffs":
                 coeffs = p

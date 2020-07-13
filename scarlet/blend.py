@@ -68,7 +68,7 @@ class Blend(ComponentTree):
         _step = lambda *X, it: tuple(
             1e-20
             if np.random.rand() < random_skip
-            else x.step(x, it=it)._data
+            else x.step(x, it=it)
             if hasattr(x.step, "__call__")
             else x.step
             for x in X

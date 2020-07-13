@@ -26,7 +26,7 @@ class Component(ABC):
     """
 
     def __init__(self, model_frame, bbox, *parameters, **kwargs):
-        self.bbox = bbox
+        self._bbox = bbox
         self.set_model_frame(model_frame)
 
         if hasattr(parameters, "__iter__"):
@@ -46,10 +46,10 @@ class Component(ABC):
         self._parent = None
 
     @property
-    def shape(self):
-        """Shape of the image (Channel, Height, Width)
+    def bbox(self):
+        """Hyper-spectral bounding box of this component (Channel, Height, Width)
         """
-        return self.bbox.shape
+        return self._bbox
 
     @property
     def coord(self):
@@ -116,7 +116,9 @@ class Component(ABC):
         """
         for k, p in enumerate(self._parameters):
             if not np.isfinite(p).all():
-                msg = "Component {} Parameter {} is not finite:\n{}".format(self, k, p)
+                msg = "Component {}, Parameter '{}' is not finite:\n{}".format(
+                    self.__class__.__name__, p.name, p
+                )
                 raise ArithmeticError(msg)
 
     def model_to_frame(self, frame=None, model=None):
@@ -168,9 +170,8 @@ class Factor(ABC):
         return self._parameters
 
     @property
-    @abstractmethod
     def bbox(self):
-        pass
+        return self._bbox
 
     @abstractmethod
     def get_model(self, *parameters):
@@ -207,13 +208,13 @@ class FactorizedComponent(Component):
     def spectrum(self):
         """Numpy view of the component SED
         """
-        return self._spectrum.get_model()._data
+        return self._spectrum.get_model()
 
     @property
     def morphology(self):
         """Numpy view of the component morphology
         """
-        return self._morphology.get_model()._data
+        return self._morphology.get_model()
 
     @property
     def center(self):
@@ -362,12 +363,6 @@ class ComponentTree:
             for component in self.components:
                 self._bbox |= component.bbox
         return self._bbox
-
-    @property
-    def shape(self):
-        """Shape of this model
-        """
-        return self._bbox.shape
 
     @property
     def components(self):
