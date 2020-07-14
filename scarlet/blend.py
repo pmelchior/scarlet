@@ -116,11 +116,13 @@ class Blend(ComponentTree):
 
         return self
 
-    def get_model(self, *parameters):
+    def get_model(self, *parameters, frame=None):
         """Override `ComponentTree.get_model` to use the model frame
 
         See `~scarlet.ComponentTree.get_model` for more info.
         """
+        if frame is None:
+            frame = self.model_frame
         return super().get_model(*parameters, frame=self.model_frame)
 
     def _loss(self, *parameters):

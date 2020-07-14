@@ -199,7 +199,7 @@ def init_extended_source(
     # determine initial SED from peak position
     # SED in the frame for source detection
     seds = [get_psf_sed(sky_coord, obs, frame) for obs in observations]
-    sed = np.array(seds).flatten()
+    sed = np.concatenate(seds).reshape(-1)
 
     if coadd is None:
         # which observation to use for detection and morphology
