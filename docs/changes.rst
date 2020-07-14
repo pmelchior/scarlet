@@ -1,3 +1,18 @@
+1.1 (2020-07-14)
+----------------
+
+General
+^^^^^^^
+- Introduction of `Spectrum` and `Morphology` classes (both inherited from `Factor`) to modularize `FactorizedComponent`. They implement `get_model` member functions which create the representation of the spectrum and morphology model from whatever it uses as parameters.
+- `Component.sed` has been renamed to `Component.spectrum`.
+- `Component.morph` has been renamed to `Component.morphology`.
+- `FunctionComponent` has been deprecated.
+- Initialization and plotting functions are now consistent for multi-observation data sets.
+
+New Features
+^^^^^^^^^^^^
+- One can now e.g. combine a custom spectrum model with an exisiting `PointSourceMorphology`.
+
 1.0 (2019-12-22)
 --------------------
 
