@@ -1,6 +1,7 @@
 import numpy as np
 from astropy.visualization.lupton_rgb import LinearMapping, AsinhMapping
 import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle, Polygon
 from .component import ComponentTree
 from .observation import convolve
 
@@ -182,7 +183,8 @@ def show_scene(
     show_observed=False,
     show_rendered=False,
     show_residual=False,
-    label_sources=True,
+    add_labels=True,
+    add_boxes=False,
     figsize=None,
     linear=True,
 ):
@@ -204,8 +206,10 @@ def show_scene(
         Whether the model, rendered to match the observation, is shown
     show_residual: bool
         Whether the residuals between rendered model and observation is shown
-    label_sources: bool
+    add_label: bool
         Whether each source is labeled with its numerical index in the source list
+    add_boxes: bool
+        Whether each source box is shown
     figsize: matplotlib figsize argument
     linear: bool
         Whether or not to display the scene in a single line (`True`) or
@@ -246,11 +250,12 @@ def show_scene(
         tree = sources
     else:
         tree = ComponentTree(sources)
-    model_frame = tree.model_frame
 
+    model_frame = tree.model_frame
     model = tree.get_model(frame=model_frame)
-    extent = get_extent(model_frame.bbox)
+
     if show_model:
+        extent = get_extent(model_frame.bbox)
         ax[panel].imshow(
             img_to_rgb(model, norm=norm, channel_map=channel_map),
             extent=extent,
@@ -294,33 +299,50 @@ def show_scene(
         ax[panel].set_title("Residual")
         panel += 1
 
-    if label_sources:
-        for k, src in enumerate(sources):
-            if hasattr(src, "center") and src.center is not None:
-                center = src.center
-                panel = 0
-                if show_model:
-                    ax[panel].text(*center[::-1], k, color="w")
-                    panel = 1
-                if observation is not None:
-                    center_ = observation.frame.get_pixel(
-                        model_frame.get_sky_coord(center)
+    for k, src in enumerate(sources):
+        if add_boxes:
+            panel = 0
+            box_kwargs = {"facecolor": "none", "edgecolor": "w", "lw": 0.5}
+            if show_model:
+                extent = get_extent(src.bbox)
+                rect = Rectangle(
+                    (extent[0], extent[2]),
+                    extent[1] - extent[0],
+                    extent[3] - extent[2],
+                    **box_kwargs
+                )
+                ax[panel].add_artist(rect)
+                panel = 1
+            if observation is not None:
+                start, stop = src.bbox.start[-2:][::-1], src.bbox.stop[-2:][::-1]
+                points = (start, (start[0], stop[1]), stop, (stop[0], start[1]))
+                coords = [
+                    observation.frame.get_pixel(model_frame.get_sky_coord(p))
+                    for p in points
+                ]
+                for panel in range(panel, panels):
+                    poly = Polygon(coords, closed=True, **box_kwargs)
+                    ax[panel].add_artist(poly)
+
+        if add_labels and hasattr(src, "center") and src.center is not None:
+            center = src.center
+            panel = 0
+            if show_model:
+                ax[panel].text(*center[::-1], k, color="w", ha="center", va="center")
+                panel = 1
+            if observation is not None:
+                center_ = observation.frame.get_pixel(model_frame.get_sky_coord(center))
+                for panel in range(panel, panels):
+                    ax[panel].text(
+                        *center_[::-1], k, color="w", ha="center", va="center"
                     )
-                    for panel in range(panel, panels):
-                        ax[panel].text(*center_[::-1], k, color="w")
 
     fig.tight_layout()
     return fig
 
 
 def get_extent(bbox):
-    extent = (
-        np.array(
-            [bbox.start[-1], bbox.stop[-1], bbox.start[-2], bbox.stop[-2]], dtype=float
-        )
-        - 0.5
-    )
-    return extent
+    return [bbox.start[-1], bbox.stop[-1], bbox.start[-2], bbox.stop[-2]]
 
 
 def show_sources(
@@ -334,7 +356,8 @@ def show_sources(
     show_spectrum=True,
     figsize=None,
     model_mask=None,
-    mark_centers=True,
+    add_markers=True,
+    add_boxes=False,
 ):
     """Plot each source individually.
     The functions provides an more detailed inspection of every source in the list.
@@ -357,9 +380,11 @@ def show_sources(
     figsize: matplotlib figsize argument
     model_mask: array
         Mask used to hide pixels in the model only.
-    mark_centers: bool
+    add_markers: bool
         Whether or not to mark the centers of the sources
         with their source number.
+    add_boxes: bool
+        Whether source boxes are shown
     Returns
     -------
     matplotlib figure
@@ -373,15 +398,32 @@ def show_sources(
     if figsize is None:
         figsize = (3 * panels, 3 * len(list(sources)))
     fig, ax = plt.subplots(len(list(sources)), panels, figsize=figsize, squeeze=False)
+
+    marker_kwargs = {"mew": 1, "ms": 10}
+    box_kwargs = {"facecolor": "none", "edgecolor": "w", "lw": 0.5}
+
     for k, src in enumerate(sources):
+
+        model_frame = src.model_frame
+
         if hasattr(src, "center") and src.center is not None:
             center = np.array(src.center)[::-1]
         else:
             center = None
 
+        if add_boxes:
+            start, stop = src.bbox.start[-2:][::-1], src.bbox.stop[-2:][::-1]
+            points = (start, (start[0], stop[1]), stop, (stop[0], start[1]))
+            box_coords = [
+                observation.frame.get_pixel(model_frame.get_sky_coord(p))
+                for p in points
+            ]
+
         # model in its bbox
         panel = 0
         model = src.get_model()
+
+        # sed needs to be evaluated in the source box to prevent truncation
         if show_spectrum:
             if isinstance(src, ComponentTree):
                 spectra = []
@@ -400,14 +442,11 @@ def show_sources(
                 origin="lower",
             )
             ax[k][panel].set_title("Model Source {}".format(k))
-            ax[k][panel].set_xlim(extent[0], extent[1])
-            ax[k][panel].set_ylim(extent[2], extent[3])
-            if center is not None and mark_centers:
-                ax[k][panel].plot(*center, "wx", mew=1, ms=10)
+            if center is not None and add_markers:
+                ax[k][panel].plot(*center, "wx", **marker_kwargs)
             panel += 1
 
         # model in observation frame
-        model_frame = src.model_frame
         if show_rendered:
             # Center and show the rendered model
             model = src.get_model(frame=model_frame)
@@ -420,9 +459,12 @@ def show_sources(
             )
             ax[k][panel].set_title("Model Source {} Rendered".format(k))
 
-            if center is not None and mark_centers:
+            if center is not None and add_markers:
                 center_ = observation.frame.get_pixel(model_frame.get_sky_coord(center))
-                ax[k][panel].plot(*center_, "wx", mew=1, ms=10)
+                ax[k][panel].plot(*center_, "wx", **marker_kwargs)
+            if add_boxes:
+                poly = Polygon(box_coords, closed=True, **box_kwargs)
+                ax[k][panel].add_artist(poly)
             panel += 1
 
         if show_observed:
@@ -435,9 +477,12 @@ def show_sources(
                 origin="lower",
             )
             ax[k][panel].set_title("Observation".format(k))
-            if center is not None and mark_centers:
+            if center is not None and add_markers:
                 center_ = observation.frame.get_pixel(model_frame.get_sky_coord(center))
-                ax[k][panel].plot(*center_, "wx", mew=1, ms=10)
+                ax[k][panel].plot(*center_, "wx", **marker_kwargs)
+            if add_boxes:
+                poly = Polygon(box_coords, closed=True, **box_kwargs)
+                ax[k][panel].add_artist(poly)
             panel += 1
 
         if show_spectrum:

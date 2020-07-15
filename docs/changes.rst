@@ -11,7 +11,9 @@ General
 
 New Features
 ^^^^^^^^^^^^
-- One can now e.g. combine a custom spectrum model with an exisiting `PointSourceMorphology`.
+- One can now e.g. combine a custom spectrum model with an existing `PointSourceMorphology`.
+- `Box` can now be sliced for lower dimensional subset; two Boxes can be combined with `@` to create a higher-dimensional box.
+- `display` functions can now show the source boxes.
 
 1.0 (2019-12-22)
 --------------------
@@ -23,7 +25,7 @@ General
 - Each `Parameter` can be further constrained by proximal constraints or priors.
 - New optimizer from the `proxmin` package: `adaprox` is an adaptive proximal gradient
   method that doesn't require Lipschitz constants and uses different steps sizes for
-  each element of a optimization parameter.
+  each element of an optimization parameter.
 
 New Features
 ^^^^^^^^^^^^
@@ -31,7 +33,7 @@ New Features
 - `PointSource` performs optimization of centroid position and flux assuming the model PSF.
 - `Fourier` helps with the bookkeeping involved with calculating FFTs to different shapes.
 - Most `scarlet` objects can be pickled. That allows to store sources and reload sources.
-- `Component` has `BBox` to confine its footprint and save memory.
+- `Component` has `Box` to confine its footprint and save memory.
 - `scarlet.display` has methods to `show_scene` and `show_sources` which allow fast inspection.
 - `scarlet.measure` has methods to perform measurements on the component models.
 
