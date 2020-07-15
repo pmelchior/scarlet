@@ -7,7 +7,7 @@ from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
 import sys
 import setuptools
-import subprocess
+from scarlet.__version__ import __version__
 
 pybind11_path = None
 if "PYBIND11_DIR" in os.environ:
@@ -16,12 +16,6 @@ eigen_path = None
 if "EIGEN_DIR" in os.environ:
     eigen_path = os.environ["EIGEN_DIR"]
 
-# Use the firt 7 digits of the git hash to set the version
-version_root = "1.0"
-try:
-    __version__ = version_root+'.dev0+'+subprocess.check_output(['git', 'rev-parse', 'HEAD'])[:7].decode("utf-8")
-except:
-    __version__ = version_root
 
 packages = []
 for root, dirs, files in os.walk("."):

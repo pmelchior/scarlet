@@ -10,3 +10,4 @@ from .observation import *
 from .blend import *
 from . import operator
 from . import measure
+from .__version__ import __version__
