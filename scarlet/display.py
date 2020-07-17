@@ -469,7 +469,6 @@ def show_sources(
 
         if show_observed:
             # Center the observation on the source and display it
-            # _images = observation._model_to_frame(rendered_box)
             _images = observation.images
             ax[k][panel].imshow(
                 img_to_rgb(_images, norm=norm, channel_map=channel_map),

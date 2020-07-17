@@ -55,7 +55,7 @@ def get_pixel_sed(sky_coord, observations):
     ----------
     sky_coord: tuple
         Position in the observation
-    observations: `~scarlet.Observation`
+    observations: instance or list of `~scarlet.Observation`
         Observation to extract SED from.
 
     Returns
@@ -99,7 +99,7 @@ def get_psf_sed(sky_coord, observations, model_frame):
     ----------
     sky_coord: tuple
         Position in the observation
-    observations: `~scarlet.Observation`
+    observations: instance or list of `~scarlet.Observation`
         Observation to extract SED from.
     model_frame: `~scarlet.Frame`
         Frame of the model
