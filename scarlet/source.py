@@ -25,7 +25,7 @@ class Spectrum(Factor):
 
 
 class TabulatedSpectrum(Spectrum):
-    def __init__(self, spectrum, bbox=None):
+    def __init__(self, model_frame, spectrum, bbox=None):
         if isinstance(spectrum, Parameter):
             assert spectrum.name == "spectrum"
         else:
@@ -36,18 +36,15 @@ class TabulatedSpectrum(Spectrum):
             )
 
         if bbox is None:
-            self._bbox = Box(spectrum.shape)
+            assert model_frame.bbox[0].shape == spectrum.shape
+            bbox = Box(spectrum.shape)
         else:
             assert bbox.shape == spectrum.shape
-            self._bbox = bbox
 
-        super().__init__(spectrum)
+        super().__init__(model_frame, spectrum, bbox=bbox)
 
     def get_model(self, *parameters):
-        spectrum = self.parameters[0]
-        for p in parameters:
-            if p._value.name == "spectrum":
-                spectrum = p
+        spectrum = self.get_parameter("spectrum", *parameters)
         return spectrum
 
 
@@ -58,7 +55,7 @@ class Morphology(Factor):
 
 
 class ImageMorphology(Morphology):
-    def __init__(self, image, bbox=None, shift=None):
+    def __init__(self, model_frame, image, bbox=None, shift=None):
         if isinstance(image, Parameter):
             assert image.name == "image"
         else:
@@ -68,10 +65,10 @@ class ImageMorphology(Morphology):
             )
 
         if bbox is None:
-            self._bbox = Box(image.shape)
+            assert model_frame.bbox[1:].shape == image.shape
+            bbox = Box(image.shape)
         else:
             assert bbox.shape == image.shape
-            self._bbox = bbox
 
         if shift is None:
             parameters = (image,)
@@ -86,21 +83,12 @@ class ImageMorphology(Morphology):
             padding = 10
             self.fft_shape = fft._get_fft_shape(image, image, padding=padding)
             self.shifter_y, self.shifter_x = interpolation.mk_shifter(self.fft_shape)
-        self.shift = shift
 
-        super().__init__(*parameters)
+        super().__init__(model_frame, *parameters, bbox=bbox)
 
     def get_model(self, *parameters):
-        image, shift = self.parameters[0], self.shift
-
-        # if params are set they are not Parameters, but autograd ArrayBoxes
-        # need to access the wrapped class with _value
-        for p in parameters:
-            if p._value.name == "image":
-                image = p
-            elif p._value.name == "shift":
-                shift = p
-
+        image = self.get_parameter("image", *parameters)
+        shift = self.get_parameter("shift", *parameters)
         return self._shift_image(shift, image)
 
     def _shift_image(self, shift, image):
@@ -160,32 +148,29 @@ class RandomSource(FactorizedComponent):
 
 
 class PointSourceMorphology(Morphology):
-    def __init__(self, center, psf):
-        assert isinstance(psf, PSF)
-        self.psf = psf
+    def __init__(self, model_frame, center):
 
-        # morph parameters is simply 2D center
-        self._center = Parameter(center, name="center", step=1e-1)
-        super().__init__(self._center)
+        assert model_frame.psf is not None
+        self.psf = model_frame.psf
 
         # define bbox
         pixel_center = tuple(np.round(center).astype("int"))
-        bottom = pixel_center[0] - psf.shape[1] // 2
-        top = pixel_center[0] + psf.shape[1] // 2
-        left = pixel_center[1] - psf.shape[2] // 2
-        right = pixel_center[1] + psf.shape[2] // 2
-        self._bbox = Box.from_bounds((bottom, top), (left, right))
+        bottom = pixel_center[0] - self.psf.shape[1] // 2
+        top = pixel_center[0] + self.psf.shape[1] // 2
+        left = pixel_center[1] - self.psf.shape[2] // 2
+        right = pixel_center[1] + self.psf.shape[2] // 2
+        bbox = Box.from_bounds((bottom, top), (left, right))
+
+        # morph parameters is simply 2D center
+        self._center = Parameter(center, name="center", step=1e-1)
+        super().__init__(model_frame, self._center, bbox=bbox)
 
     @property
     def center(self):
         return self._center._data
 
     def get_model(self, *parameters):
-        center = self._center
-        for p in parameters:
-            if p._value.name == "center":
-                center = p
-
+        center = self.get_parameter("center", *parameters)
         spec_bbox = Box((0,))
         return self.psf(*center, bbox=spec_bbox @ self._bbox)[0]
 
@@ -214,22 +199,22 @@ class PointSource(FactorizedComponent):
             Observation(s) to initialize this source
         """
         spectrum = get_psf_sed(sky_coord, observations, model_frame)
-        spectrum = TabulatedSpectrum(spectrum)
+        spectrum = TabulatedSpectrum(model_frame, spectrum)
 
         center = np.array(model_frame.get_pixel(sky_coord), dtype="float")
-        morphology = PointSourceMorphology(center, model_frame.psf)
+        morphology = PointSourceMorphology(model_frame, center)
 
         super().__init__(model_frame, spectrum, morphology)
 
 
 class StarletMorphology(Morphology):
-    def __init__(self, image, bbox=None, threshold=0):
+    def __init__(self, model_frame, image, bbox=None, threshold=0):
 
         if bbox is None:
-            self._bbox = Box(image.shape)
+            assert model_frame.bbox[1:].shape == image.shape
+            bbox = Box(image.shape)
         else:
             assert bbox.shape == image.shape
-            self._bbox = bbox
 
         # Starlet transform of morphologies (n1,n2) with 4 dimensions: (1,lvl,n1,n2), lvl = wavelet scales
         self.transform = Starlet(image)
@@ -248,16 +233,13 @@ class StarletMorphology(Morphology):
         constraint = ConstraintChain(L0Constraint(thresh_array), PositivityConstraint())
 
         coeffs = Parameter(coeffs, name="coeffs", step=1e-2, constraint=constraint)
-        super().__init__(coeffs)
+        super().__init__(model_frame, coeffs, bbox=bbox)
 
     def get_model(self, *parameters):
         """ Takes the inverse transform of parameters as starlet coefficients.
 
         """
-        coeffs = self.parameters[0]
-        for p in parameters:
-            if p._value.name == "coeffs":
-                coeffs = p
+        coeffs = self.get_parameter("coeffs", *parameters)
         return Starlet(coefficients=coeffs).image[0]
 
 
@@ -308,24 +290,20 @@ class StarletSource(FactorizedComponent):
             min_grad=min_grad,
             starlet_thresh=starlet_thresh,
         )
-        spectrum = TabulatedSpectrum(sed)
-        morphology = StarletMorphology(morph, bbox[1:], thresh)
+        spectrum = TabulatedSpectrum(model_frame, sed, bbox=bbox[0])
+        morphology = StarletMorphology(
+            model_frame, morph, bbox=bbox[1:], threshold=thresh
+        )
         super().__init__(model_frame, spectrum, morphology)
-
-        # since we use the starlet for localized source: it has a center
-        self._center = np.array(model_frame.get_pixel(sky_coord), dtype="float")
-
-    @property
-    def center(self):
-        return self._center
 
 
 class ExtendedSourceMorphology(ImageMorphology):
     def __init__(
         self,
+        model_frame,
         center,
         image,
-        bbox,
+        bbox=None,
         monotonic="flat",
         symmetric=False,
         min_grad=0,
@@ -360,13 +338,14 @@ class ExtendedSourceMorphology(ImageMorphology):
         morph_constraint = ConstraintChain(*constraints)
         image = Parameter(image, name="image", step=1e-2, constraint=morph_constraint)
 
-        self.pixel_center = tuple(np.round(center).astype("int"))
+        self.pixel_center = np.round(center).astype("int")
         if shifting:
             shift = Parameter(center - self.pixel_center, name="shift", step=1e-1)
         else:
             shift = None
+        self.shift = shift
 
-        super().__init__(image, bbox=bbox, shift=shift)
+        super().__init__(model_frame, image, bbox=bbox, shift=shift)
 
     @property
     def center(self):
@@ -426,13 +405,14 @@ class ExtendedSource(FactorizedComponent):
             monotonic="flat",
             min_grad=min_grad,
         )
-        spectrum = TabulatedSpectrum(sed)
+        spectrum = TabulatedSpectrum(model_frame, sed, bbox=bbox[0])
 
         center = np.array(model_frame.get_pixel(sky_coord), dtype="float")
         morphology = ExtendedSourceMorphology(
+            model_frame,
             center,
             morph,
-            bbox[1:],
+            bbox=bbox[1:],
             monotonic=monotonic,
             symmetric=symmetric,
             min_grad=min_grad,
@@ -523,12 +503,13 @@ class MultiComponentSource(ComponentTree):
                 step=partial(relative_step, factor=1e-1),
                 constraint=PositivityConstraint(),
             )
-            spectrum = TabulatedSpectrum(sed)
+            spectrum = TabulatedSpectrum(model_frame, sed)
 
             morphology = ExtendedSourceMorphology(
+                model_frame,
                 center,
                 morphs[k],
-                bbox[1:],
+                bbox=bbox[1:],
                 monotonic=monotonic,
                 symmetric=symmetric,
                 min_grad=min_grad,

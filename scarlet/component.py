@@ -9,6 +9,22 @@ from .parameter import Parameter
 from .bbox import Box, overlapped_slices
 
 
+def _get_parameter(self, name, *parameters):
+    # check parameters first during optimization
+    for p in parameters:
+        # if parameters are autograd ArrayBoxes
+        # need to access the wrapped class with _value
+        if p._value.name == name:
+            return p
+
+    # find them from self (use all even if fixed!)
+    names = tuple(p.name for p in self._parameters)
+    try:
+        return self._parameters[names.index(name)]
+    except ValueError:
+        return None
+
+
 class Component(ABC):
     """A single component in a blend.
 
@@ -18,14 +34,17 @@ class Component(ABC):
     ----------
     model_frame: `~scarlet.Frame`
         The spectral and spatial characteristics of the model.
+    parameters: list of `~scarlet.Parameter`
     bbox: `~scarlet.Box`
         Hyper-spectral bounding box of this component
-    parameters: list of `~scarlet.Parameter`
     kwargs: dict
         Auxiliary information attached to this component.
     """
 
-    def __init__(self, model_frame, bbox, *parameters, **kwargs):
+    def __init__(self, model_frame, *parameters, bbox=None, **kwargs):
+
+        if bbox is None:
+            bbox = model_frame.bbox
         self._bbox = bbox
         self.set_model_frame(model_frame)
 
@@ -70,7 +89,14 @@ class Component(ABC):
         list of parameters available for optimization
         If `parameter.fixed == True`, the parameter will not returned here.
         """
-        return [p for p in self._parameters if not p.fixed]
+        return tuple(p for p in self._parameters if not p.fixed)
+
+    @property
+    def parameter_names(self):
+        names = tuple(p.name for p in self._parameters if not fixed)
+
+    def get_parameter(self, name, *parameters):
+        return _get_parameter(self, name, *parameters)
 
     @abstractmethod
     def get_model(self, *parameters, frame=None):
@@ -162,8 +188,9 @@ class Component(ABC):
 
 
 class Factor(ABC):
-    def __init__(self, *parameters):
+    def __init__(self, model_frame, *parameters, bbox=None):
         self._parameters = parameters
+        self._bbox = bbox
 
     @property
     def parameters(self):
@@ -176,6 +203,9 @@ class Factor(ABC):
     @abstractmethod
     def get_model(self, *parameters):
         pass
+
+    def get_parameter(self, name, *parameters):
+        return _get_parameter(self, name, *parameters)
 
 
 class FactorizedComponent(Component):
@@ -200,7 +230,7 @@ class FactorizedComponent(Component):
         assert isinstance(morphology, Factor)
         bbox = spectrum.bbox @ morphology.bbox
         parameters = spectrum.parameters + morphology.parameters
-        super().__init__(model_frame, bbox, *parameters)
+        super().__init__(model_frame, *parameters, bbox=bbox)
         self._spectrum = spectrum
         self._morphology = morphology
 
@@ -263,7 +293,9 @@ class CubeComponent(Component):
         Hyper-spectral bounding box of this component.
     """
 
-    def __init__(self, frame, bbox, cube):
+    def __init__(self, frame, cube, bbox=None):
+        if bbox is None:
+            bbox = model_frame.bbox
         parameters = (cube,)
         super().__init__(frame, bbox, *parameters)
 
@@ -272,13 +304,7 @@ class CubeComponent(Component):
         return self._parameters[0]._data
 
     def get_model(self, *parameters, frame=None):
-        cube = None
-        for p in parameters:
-            if p._value is self._parameters[0]:
-                cube = p
-
-        if cube is None:
-            cube = self.cube
+        cube = self.get_parameter("cube", *parameters)
         if frame is not None:
             cube = self.model_to_frame(frame, cube)
         return cube
