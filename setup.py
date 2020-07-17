@@ -7,7 +7,6 @@ from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
 import sys
 import setuptools
-from scarlet.__version__ import __version__
 
 pybind11_path = None
 if "PYBIND11_DIR" in os.environ:
@@ -131,7 +130,7 @@ class BuildExt(build_ext):
         build_ext.build_extensions(self)
 
 
-install_requires = ["numpy", "proxmin>=0.6.9", "autograd>=1.3"]
+install_requires = ["numpy", "scipy", "astropy", "proxmin>=0.6.9", "autograd>=1.3"]
 # Only require the pybind11 and peigen packages if
 # the C++ headers are not already installed
 if pybind11_path is None:
@@ -139,6 +138,10 @@ if pybind11_path is None:
 if eigen_path is None:
     install_requires.append("peigen>=0.0.9")
 
+with open("scarlet/__version__.py") as fp:
+    version = {}
+    exec(fp.read(), version)
+    __version__ = version["__version__"]
 
 setup(
     name="scarlet",

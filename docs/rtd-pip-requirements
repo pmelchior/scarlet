@@ -1,12 +1,8 @@
-numpy
-scipy
-astropy
-nbsphinx
-matplotlib>=3.0.2
+proxmin
+peigen==0.0.9
 numpydoc
 jupyter
-pybind11
-git+https://github.com/pmelchior/proxmin.git
-peigen==0.0.9
+nbsphinx
+matplotlib>=3.0.2
 prompt_toolkit>=2.0.10
 sep
