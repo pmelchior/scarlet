@@ -130,7 +130,7 @@ class Component(ABC):
         """
         self.model_frame = model_frame
         self.model_frame_slices, self.model_slices = overlapped_slices(
-            model_frame, self.bbox
+            model_frame.bbox, self.bbox
         )
 
     def check_parameters(self):
@@ -176,7 +176,7 @@ class Component(ABC):
             frame_slices = self.model_frame_slices
             model_slices = self.model_slices
         else:
-            frame_slices, model_slices = overlapped_slices(frame, self.bbox)
+            frame_slices, model_slices = overlapped_slices(frame.bbox, self.bbox)
 
         if hasattr(frame, "dtype"):
             dtype = frame.dtype
@@ -294,14 +294,13 @@ class CubeComponent(Component):
     """
 
     def __init__(self, frame, cube, bbox=None):
-        if bbox is None:
-            bbox = model_frame.bbox
+        assert isinstance(cube, Parameter) and cube.name == "cube"
         parameters = (cube,)
-        super().__init__(frame, bbox, *parameters)
+        super().__init__(frame, *parameters, bbox=bbox)
 
     @property
     def cube(self):
-        return self._parameters[0]._data
+        return self.get_parameter("cube")._data
 
     def get_model(self, *parameters, frame=None):
         cube = self.get_parameter("cube", *parameters)
@@ -544,7 +543,7 @@ class ComponentTree:
                 slices.append((c.model_frame_slices, c.model_slices))
             else:
                 # Get the slices needed to insert the model
-                slices.append(overlapped_slices(frame, c.bbox))
+                slices.append(overlapped_slices(frame.bbox, c.bbox))
 
         # We have to declare the function that inserts sources
         # into the blend with autograd.

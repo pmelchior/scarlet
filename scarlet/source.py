@@ -12,7 +12,6 @@ from .parameter import Parameter, relative_step
 from .component import ComponentTree, Factor, FactorizedComponent
 from .bbox import Box
 from .wavelet import Starlet
-from .psf import PSF
 from . import fft
 from . import interpolation
 

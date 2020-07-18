@@ -266,7 +266,7 @@ def show_scene(
 
     if show_rendered or show_residual:
         model = observation.render(model)
-        extent = get_extent(observation.frame)
+        extent = get_extent(observation.frame.bbox)
 
     if show_rendered:
         ax[panel].imshow(

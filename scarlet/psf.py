@@ -168,13 +168,8 @@ class PSFDiffKernel(Component):
     from model PSF to observed PSF is calculated much
     more quickly using a DFT in `~scarlet.Observation.match`.
     """
-    def __init__(
-        self,
-        frame,
-        initial,
-        band,
-        step=1e-2
-    ):
+
+    def __init__(self, frame, initial, band, step=1e-2):
         """Initialize the Model
 
         Parameters
@@ -188,12 +183,8 @@ class PSFDiffKernel(Component):
         """
         kernel = np.zeros(initial.shape, dtype=initial.dtype)
         kernel[band] = initial[band]
-        kernel = Parameter(
-            kernel,
-            name="kernel",
-            step=step,
-        )
-        super().__init__(frame, frame.bbox, kernel)
+        kernel = Parameter(kernel, name="kernel", step=step,)
+        super().__init__(frame, kernel, bbox=frame.bbox)
 
     def get_model(self, *parameters):
         kernel = self.kernel
@@ -211,7 +202,7 @@ class PSFDiffKernel(Component):
 
 
 class PsfObservation(Observation):
-    def match(self, psfs, convolution = "real"):
+    def match(self, psfs, convolution="real"):
         """Implement the observed PSFs as the difference kernel
 
         This is different than `~scarlet.Observation.match`,
@@ -240,7 +231,7 @@ class PsfObservation(Observation):
         self: `~scarlet.PsfObservation`
             Return this object to allow for chaining.
         """
-        #self.slices = (self.bbox & self.frame).as_slices()
+        # self.slices = (self.bbox & self.frame).as_slices()
         self._diff_kernels = Fourier(psfs)
         self.convolution = convolution
         return self
@@ -268,10 +259,13 @@ class DeconvolvedObservation(Observation):
     more than once, which will have adverse affects on the
     `images` property.
     """
+
     def match(self, model_frame, kernel):
         if hasattr(self, "matched") and self.matched:
-            msg = ("Matching has already been executed. "
-                   "Matching multiple times can have unexpected results.")
+            msg = (
+                "Matching has already been executed. "
+                "Matching multiple times can have unexpected results."
+            )
             raise RuntimeError(msg)
         super().match(model_frame, kernel)
         self.images = self.render(self.images)

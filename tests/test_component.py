@@ -14,11 +14,11 @@ class TestCubeComponent:
         cube = np.zeros(shape)
         on_location = (1, 2, 3)
         cube[on_location] = 1
-        cube = scarlet.Parameter(cube)
+        cube = scarlet.Parameter(cube, name="cube")
         origin = (2, 3, 4)
         bbox = scarlet.Box(shape, origin=origin)
 
-        component = scarlet.CubeComponent(frame, bbox, cube)
+        component = scarlet.CubeComponent(frame, cube, bbox=bbox)
         model = component.get_model(frame=frame)
 
         # everything zero except at one location?
@@ -43,8 +43,8 @@ class TestFactorizedComponent:
 
         origin = (2, 3, 4)
         box = scarlet.Box(shape, origin=origin)
-        spectrum = scarlet.TabulatedSpectrum(sed, bbox=box[0])
-        morphology = scarlet.ImageMorphology(morph, bbox=box[1:])
+        spectrum = scarlet.TabulatedSpectrum(frame, sed, bbox=box[0])
+        morphology = scarlet.ImageMorphology(frame, morph, bbox=box[1:])
 
         component = scarlet.FactorizedComponent(frame, spectrum, morphology)
         model = component.get_model(frame=frame)
@@ -59,7 +59,7 @@ class TestFactorizedComponent:
         # now with shift
         shift_loc = (0, 1, 0)
         shift = scarlet.Parameter(np.array(shift_loc[1:]), step=0.1, name="shift")
-        morphology = scarlet.ImageMorphology(morph, bbox=box[1:], shift=shift)
+        morphology = scarlet.ImageMorphology(frame, morph, bbox=box[1:], shift=shift)
 
         component = scarlet.FactorizedComponent(frame, spectrum, morphology)
         model = component.get_model(frame=frame)
@@ -84,15 +84,15 @@ class TestFunctionComponent:
         on_location = (1, 2, 3)
         sed = np.zeros(shape[0])
         sed[on_location[0]] = 1
-        spectrum = scarlet.TabulatedSpectrum(sed, bbox=box[0])
+        spectrum = scarlet.TabulatedSpectrum(frame, sed, bbox=box[0])
 
         # construct functional morphology where the parameter sets
         # the locatio of single pixel that is on
         class OnePixelMorphology(scarlet.Morphology):
-            def __init__(self, on_pixel, bbox):
+            def __init__(self, model_frame, on_pixel, bbox=None):
                 self._bbox = bbox
                 self._on_pixel = scarlet.Parameter(on_pixel, step=1, name="on_pixel")
-                super().__init__(self._on_pixel)
+                super().__init__(model_frame, self._on_pixel, bbox=bbox)
 
             def get_model(self, *params):
                 on_pixel = self._on_pixel
@@ -105,7 +105,7 @@ class TestFunctionComponent:
                 return morph
 
         morphology = OnePixelMorphology(
-            np.array(on_location[1:], dtype="float"), box[1:]
+            frame, np.array(on_location[1:], dtype="float"), bbox=box[1:]
         )
         component = scarlet.FactorizedComponent(frame, spectrum, morphology)
         model = component.get_model(frame=frame)
@@ -127,10 +127,10 @@ class TestComponentTree:
         on_location = (1, 2, 3)
         cube = np.zeros(shape)
         cube[on_location] = 1
-        cube = scarlet.Parameter(cube)
+        cube = scarlet.Parameter(cube, name="cube")
         origin1 = (2, 3, 4)
         box1 = scarlet.Box(shape, origin=origin1)
-        component1 = scarlet.CubeComponent(frame, box1, cube)
+        component1 = scarlet.CubeComponent(frame, cube, bbox=box1)
 
         # make factorized component with a different origin
         sed = np.zeros(shape[0])
@@ -141,8 +141,8 @@ class TestComponentTree:
         origin2 = (5, 6, 7)
         box2 = scarlet.Box(shape, origin=origin2)
 
-        spectrum = scarlet.TabulatedSpectrum(sed, bbox=box2[0])
-        morphology = scarlet.ImageMorphology(morph, bbox=box2[1:])
+        spectrum = scarlet.TabulatedSpectrum(frame, sed, bbox=box2[0])
+        morphology = scarlet.ImageMorphology(frame, morph, bbox=box2[1:])
         component2 = scarlet.FactorizedComponent(frame, spectrum, morphology)
 
         tree = scarlet.ComponentTree([component1, component2])
