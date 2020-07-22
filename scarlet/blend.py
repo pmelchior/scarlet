@@ -1,23 +1,56 @@
 import numpy.ma as ma
 import autograd.numpy as np
 from autograd import grad
+from autograd.extend import defvjp, primitive
 import proxmin
 from functools import partial
 
-from .component import ComponentTree
+
+@primitive
+def _add_models(*models, full_model, slices):
+    """Insert the models into the full model
+
+    `slices` is a tuple `(full_model_slice, model_slices)` used
+    to insert a model into the full_model in the region where the
+    two models overlap.
+    """
+    for i in range(len(models)):
+        if hasattr(models[i], "_value"):
+            full_model[slices[i][0]] += models[i][slices[i][1]]._value
+        else:
+            full_model[slices[i][0]] += models[i][slices[i][1]]
+    return full_model
 
 
-class Blend(ComponentTree):
+def _grad_add_models(upstream_grad, *models, full_model, slices, index):
+    """Gradient for a single model
+
+    The full model is just the sum of the models,
+    so the gradient is 1 for each model,
+    we just have to slice it appropriately.
+    """
+    model = models[index]
+    full_model_slices = slices[index][0]
+    model_slices = slices[index][1]
+
+    def result(upstream_grad):
+        _result = np.zeros(model.shape, dtype=model.dtype)
+        _result[model_slices] = upstream_grad[full_model_slices]
+        return _result
+
+    return result
+
+
+class Blend:
     """The blended scene
 
-    The class represents a scene as collection of components, internally as a
-    `~scarlet.component.ComponentTree`, and provides the functions to fit it
-    to data.
+    The class represents a scene as collection of and provides the functions to
+    fit it to data.
 
     Attributes
     ----------
-    mse: list
-        Array of mean squared errors in each iteration
+    loss: list
+        Negative log likelihood in each iteration
     """
 
     def __init__(self, sources, observations):
@@ -32,13 +65,17 @@ class Blend(ComponentTree):
         observations: a `scarlet.Observation` instance or a list thereof
             Data package(s) to fit
         """
-        ComponentTree.__init__(self, sources)
 
-        try:
-            iter(observations)
-        except TypeError:
-            observations = (observations,)
-        self.observations = observations
+        if hasattr(sources, "__iter__"):
+            self.sources = sources
+        else:
+            self.sources = (sources,)
+
+        if hasattr(observations, "__iter__"):
+            self.observations = observations
+        else:
+            self.observations = (observations,)
+        self.model_frame = self.sources[0].model_frame
         self.loss = []
 
     def fit(self, max_iter=200, e_rel=1e-3, min_iter=1, random_skip=0, **alg_kwargs):
@@ -56,7 +93,9 @@ class Blend(ComponentTree):
             Keywords for the `proxmin.adaprox` optimizer
         """
         # dynamically call parameters to allow for addition / fixing
-        X = self.parameters
+        X = []
+        for src in self.sources:
+            X += src.parameters
         n_params = len(X)
 
         # compute the backward gradient tree
@@ -117,13 +156,63 @@ class Blend(ComponentTree):
         return self
 
     def get_model(self, *parameters, frame=None):
-        """Override `ComponentTree.get_model` to use the model frame
+        """Get the model of the entire blend
 
-        See `~scarlet.ComponentTree.get_model` for more info.
+        Parameters
+        ----------
+        parameters: tuple of optimization parameters
+        frame:  `scarlet.Frame`
+            Alternative Frame to project the model into
+
+        Returns
+        -------
+        model: array
+            (Bands, Height, Width) data cube
         """
         if frame is None:
             frame = self.model_frame
-        return super().get_model(*parameters, frame=self.model_frame)
+
+        # if this is the model frame then the slices are already cached
+        if frame == self.model_frame:
+            use_cached = True
+        else:
+            use_cached = False
+
+        full_model = np.zeros(frame.shape, dtype=frame.dtype)
+
+        models = []
+        slices = []
+        i = 0
+        for src in self.sources:
+            if len(parameters):
+                j = len(src.parameters)
+                p = parameters[i : i + j]
+                i += j
+                model = src.get_model(*p)
+            else:
+                model = src.get_model()
+
+            models.append(model)
+
+            if use_cached:
+                slices.append((src.model_frame_slices, src.model_slices))
+            else:
+                # Get the slices needed to insert the model
+                slices.append(overlapped_slices(frame.bbox, src.bbox))
+
+        # We have to declare the function that inserts sources
+        # into the blend with autograd.
+        # This has to be done each time we fit a blend,
+        # since the number of components => the number of arguments,
+        # which must be linked to the autograd primitive function.
+        defvjp(
+            _add_models,
+            *([partial(_grad_add_models, index=k) for k in range(len(self.sources))])
+        )
+
+        full_model = _add_models(*models, full_model=full_model, slices=slices)
+
+        return full_model
 
     def _loss(self, *parameters):
         """Loss function for autograd
@@ -145,7 +234,8 @@ class Blend(ComponentTree):
     def _callback(self, *parameters, it=None, e_rel=1e-3, callback=None, min_iter=1):
 
         # raise ArithmeticError if some of the parameters have become inf/nan
-        self.check_parameters()
+        for src in self.sources:
+            src.check_parameters()
 
         if it > min_iter and abs(self.loss[-2] - self.loss[-1]) < e_rel * np.abs(
             self.loss[-1]
@@ -158,9 +248,5 @@ class Blend(ComponentTree):
     @property
     def bbox(self):
         """Bounding box of the blend
-
-        Override the bounding box of the `ComponentTree`,
-        which includes the area of sources that extend beyond
-        the model frame boundaries.
         """
         return self.model_frame.bbox

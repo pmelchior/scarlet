@@ -9,7 +9,7 @@ from .constraint import (
 )
 from .constraint import NormalizationConstraint, ConstraintChain, CenterOnConstraint
 from .parameter import Parameter, relative_step
-from .component import ComponentTree, Factor, FactorizedComponent
+from .component import Factor, FactorizedComponent, CombinedComponent
 from .bbox import Box
 from .wavelet import Starlet
 from . import fft
@@ -420,7 +420,7 @@ class ExtendedSource(FactorizedComponent):
         super().__init__(model_frame, spectrum, morphology)
 
 
-class MultiComponentSource(ComponentTree):
+class MultiComponentSource(CombinedComponent):
     """Extended source with multiple components layered vertically.
 
     Uses `~scarlet.source.ExtendedSource` to define the overall morphology,
@@ -517,7 +517,7 @@ class MultiComponentSource(ComponentTree):
             component = FactorizedComponent(model_frame, spectrum, morphology)
             components.append(component)
 
-        super().__init__(components)
+        super().__init__(model_frame, components, mode="add")
 
     @property
     def center(self):

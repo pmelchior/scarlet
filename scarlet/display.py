@@ -2,7 +2,6 @@ import numpy as np
 from astropy.visualization.lupton_rgb import LinearMapping, AsinhMapping
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle, Polygon
-from .component import ComponentTree
 from .observation import convolve
 
 
@@ -244,16 +243,12 @@ def show_scene(
         if np.all(mask == 0):
             mask = None
 
+    model_frame = sources[0].model_frame
+    model = np.zeros(model_frame.shape)
+    for src in sources:
+        model += src.get_model(frame=model_frame)
+
     panel = 0
-    if hasattr(sources, "components"):
-        # The list of sources is already a tree, so just use it
-        tree = sources
-    else:
-        tree = ComponentTree(sources)
-
-    model_frame = tree.model_frame
-    model = tree.get_model(frame=model_frame)
-
     if show_model:
         extent = get_extent(model_frame.bbox)
         ax[panel].imshow(
@@ -425,7 +420,7 @@ def show_sources(
 
         # sed needs to be evaluated in the source box to prevent truncation
         if show_spectrum:
-            if isinstance(src, ComponentTree):
+            if hasattr(src, "__iter__"):
                 spectra = []
                 for component in src:
                     model_ = component.get_model()
