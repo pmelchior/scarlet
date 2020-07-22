@@ -10,6 +10,7 @@ from .observation import *
 from .blend import *
 from . import operator
 from . import measure
+from . import display
 
 try:
     from ._version import version
