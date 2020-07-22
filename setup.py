@@ -3,7 +3,7 @@
 # as a template to integrate pybind11
 
 import os
-from setuptools import setup, Extension
+from setuptools import setup, Extension, find_packages
 from setuptools.command.build_ext import build_ext
 import sys
 import setuptools
@@ -16,18 +16,7 @@ eigen_path = None
 if "EIGEN_DIR" in os.environ:
     eigen_path = os.environ["EIGEN_DIR"]
 
-# Use the firt 7 digits of the git hash to set the version
-version_root = "1.0"
-try:
-    __version__ = version_root+'.dev0+'+subprocess.check_output(['git', 'rev-parse', 'HEAD'])[:7].decode("utf-8")
-except:
-    __version__ = version_root
-
-packages = []
-for root, dirs, files in os.walk("."):
-    if not root.startswith("./build") and "__init__.py" in files:
-        packages.append(root[2:])
-
+packages = find_packages()
 
 class get_pybind_include(object):
     """Helper class to determine the pybind11 include path
@@ -149,7 +138,6 @@ if eigen_path is None:
 setup(
     name="scarlet",
     packages=packages,
-    version=__version__,
     description="Blind Source Separation using proximal matrix factorization",
     author="Fred Moolekamp and Peter Melchior",
     author_email="peter.m.melchior@gmail.com",
@@ -159,4 +147,6 @@ setup(
     install_requires=install_requires,
     cmdclass={"build_ext": BuildExt},
     zip_safe=False,
+    setup_requires=['setuptools_scm', 'setuptools_scm_git_archive'],
+    use_scm_version={'write_to': 'scarlet/_version.py'},
 )

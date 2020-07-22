@@ -4,10 +4,12 @@ build/
 var/
 dist/
 *.egg-info
+*.eggs
 *.so
 .ipynb_checkpoints/
 tmp/
 include/
+scarlet/_version.py
 
 docs/_build
 docs/api
