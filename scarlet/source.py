@@ -285,7 +285,7 @@ class StarletSource(FactorizedComponent):
             bg_cutoff,
             thresh=thresh,
             symmetric=True,
-            monotonic="flat",
+            monotonic="angle",
             min_grad=min_grad,
             starlet_thresh=starlet_thresh,
         )
@@ -303,7 +303,7 @@ class ExtendedSourceMorphology(ImageMorphology):
         center,
         image,
         bbox=None,
-        monotonic="flat",
+        monotonic="angle",
         symmetric=False,
         min_grad=0,
         shifting=False,
@@ -441,7 +441,7 @@ class MultiComponentSource(CombinedComponent):
         coadd=None,
         bg_cutoff=None,
         thresh=1.0,
-        flux_percentiles=[25,],
+        flux_percentiles=None,
         symmetric=False,
         monotonic="flat",
         shifting=False,
@@ -489,6 +489,8 @@ class MultiComponentSource(CombinedComponent):
             min_grad=min_grad,
         )
 
+        if flux_percentiles is None:
+            flux_percentiles = (25,)
         K = len(flux_percentiles) + 1
         center = np.array(model_frame.get_pixel(sky_coord), dtype="float")
 

@@ -418,16 +418,6 @@ def show_sources(
         panel = 0
         model = src.get_model()
 
-        # sed needs to be evaluated in the source box to prevent truncation
-        if show_spectrum:
-            if hasattr(src, "__iter__"):
-                spectra = []
-                for component in src:
-                    model_ = component.get_model()
-                    spectra.append(model_.sum(axis=(1, 2)))
-            else:
-                spectra = [model.sum(axis=(1, 2))]
-
         if show_model:
             # Show the unrendered model in it's bbox
             extent = get_extent(src.bbox)
@@ -444,11 +434,11 @@ def show_sources(
         # model in observation frame
         if show_rendered:
             # Center and show the rendered model
-            model = src.get_model(frame=model_frame)
-            model = observation.render(model)
+            model_ = src.get_model(frame=model_frame)
+            model_ = observation.render(model_)
             extent = get_extent(observation.frame.bbox)
             ax[k][panel].imshow(
-                img_to_rgb(model, norm=norm, channel_map=channel_map),
+                img_to_rgb(model_, norm=norm, channel_map=channel_map),
                 extent=extent,
                 origin="lower",
             )
@@ -480,6 +470,15 @@ def show_sources(
             panel += 1
 
         if show_spectrum:
+            # needs to be evaluated in the source box to prevent truncation
+            if hasattr(src, "__iter__"):
+                spectra = []
+                for component in src:
+                    model_ = component.get_model()
+                    spectra.append(model_.sum(axis=(1, 2)))
+            else:
+                spectra = [model.sum(axis=(1, 2))]
+
             for spectrum in spectra:
                 ax[k][panel].plot(spectrum)
             ax[k][panel].set_xticks(range(len(spectrum)))

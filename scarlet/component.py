@@ -7,7 +7,7 @@ from .parameter import Parameter
 from .bbox import Box, overlapped_slices
 
 
-def _get_parameter(self, name, *parameters):
+def _get_parameter(cls, name, *parameters):
     # check parameters first during optimization
     for p in parameters:
         # if parameters are autograd ArrayBoxes
@@ -16,9 +16,9 @@ def _get_parameter(self, name, *parameters):
             return p
 
     # find them from self (use all even if fixed!)
-    names = tuple(p.name for p in self._parameters)
+    names = tuple(p.name for p in cls._parameters)
     try:
-        return self._parameters[names.index(name)]
+        return cls._parameters[names.index(name)]
     except ValueError:
         return None
 
@@ -77,7 +77,7 @@ class Component(ABC):
 
     @property
     def parameter_names(self):
-        names = tuple(p.name for p in self._parameters if not fixed)
+        names = tuple(p.name for p in self._parameters if not p.fixed)
 
     def get_parameter(self, name, *parameters):
         return _get_parameter(self, name, *parameters)
