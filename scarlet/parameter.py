@@ -66,7 +66,7 @@ class Parameter(np.ndarray):
         obj.m = m
         obj.v = v
         obj.vhat = vhat
-        obj.fixed = fixed
+        obj.fixed = fixed  # not functional right now
         return obj
 
     def __array_finalize__(self, obj):

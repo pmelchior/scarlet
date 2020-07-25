@@ -1,47 +1,13 @@
 import numpy.ma as ma
 import autograd.numpy as np
 from autograd import grad
-from autograd.extend import defvjp, primitive
 import proxmin
 from functools import partial
 
-
-@primitive
-def _add_models(*models, full_model, slices):
-    """Insert the models into the full model
-
-    `slices` is a tuple `(full_model_slice, model_slices)` used
-    to insert a model into the full_model in the region where the
-    two models overlap.
-    """
-    for i in range(len(models)):
-        if hasattr(models[i], "_value"):
-            full_model[slices[i][0]] += models[i][slices[i][1]]._value
-        else:
-            full_model[slices[i][0]] += models[i][slices[i][1]]
-    return full_model
+from .component import CombinedComponent
 
 
-def _grad_add_models(upstream_grad, *models, full_model, slices, index):
-    """Gradient for a single model
-
-    The full model is just the sum of the models,
-    so the gradient is 1 for each model,
-    we just have to slice it appropriately.
-    """
-    model = models[index]
-    full_model_slices = slices[index][0]
-    model_slices = slices[index][1]
-
-    def result(upstream_grad):
-        _result = np.zeros(model.shape, dtype=model.dtype)
-        _result[model_slices] = upstream_grad[full_model_slices]
-        return _result
-
-    return result
-
-
-class Blend:
+class Blend(CombinedComponent):
     """The blended scene
 
     The class represents a scene as collection of and provides the functions to
