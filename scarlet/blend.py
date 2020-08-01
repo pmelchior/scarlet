@@ -6,6 +6,43 @@ from functools import partial
 
 from .component import CombinedComponent
 
+from autograd.extend import defvjp, primitive
+
+
+@primitive
+def _add_models(*models, full_model, slices):
+    """Insert the models into the full model
+
+    `slices` is a tuple `(full_model_slice, model_slices)` used
+    to insert a model into the full_model in the region where the
+    two models overlap.
+    """
+    for i in range(len(models)):
+        if hasattr(models[i], "_value"):
+            full_model[slices[i][0]] += models[i][slices[i][1]]._value
+        else:
+            full_model[slices[i][0]] += models[i][slices[i][1]]
+    return full_model
+
+
+def _grad_add_models(upstream_grad, *models, full_model, slices, index):
+    """Gradient for a single model
+
+    The full model is just the sum of the models,
+    so the gradient is 1 for each model,
+    we just have to slice it appropriately.
+    """
+    model = models[index]
+    full_model_slices = slices[index][0]
+    model_slices = slices[index][1]
+
+    def result(upstream_grad):
+        _result = np.zeros(model.shape, dtype=model.dtype)
+        _result[model_slices] = upstream_grad[full_model_slices]
+        return _result
+
+    return result
+
 
 class Blend(CombinedComponent):
     """The blended scene
@@ -41,7 +78,9 @@ class Blend(CombinedComponent):
             self.observations = observations
         else:
             self.observations = (observations,)
-        self.model_frame = self.sources[0].model_frame
+
+        super().__init__(self.sources, check_boxes=False)
+
         self.loss = []
 
     def fit(self, max_iter=200, e_rel=1e-3, min_iter=1, random_skip=0, **alg_kwargs):
@@ -135,36 +174,22 @@ class Blend(CombinedComponent):
         model: array
             (Bands, Height, Width) data cube
         """
+
+        # boxed models of every source
+        models = self.get_models_of_children(*parameters, frame=None)
+
         if frame is None:
-            frame = self.model_frame
+            frame = self.frame
 
         # if this is the model frame then the slices are already cached
-        if frame == self.model_frame:
-            use_cached = True
+        if frame == self.frame:
+            slices = tuple(
+                (src.model_frame_slices, src.model_slices) for src in self.sources
+            )
         else:
-            use_cached = False
-
-        full_model = np.zeros(frame.shape, dtype=frame.dtype)
-
-        models = []
-        slices = []
-        i = 0
-        for src in self.sources:
-            if len(parameters):
-                j = len(src.parameters)
-                p = parameters[i : i + j]
-                i += j
-                model = src.get_model(*p)
-            else:
-                model = src.get_model()
-
-            models.append(model)
-
-            if use_cached:
-                slices.append((src.model_frame_slices, src.model_slices))
-            else:
-                # Get the slices needed to insert the model
-                slices.append(overlapped_slices(frame.bbox, src.bbox))
+            slices = tuple(
+                overlapped_slices(frame.bbox, src.bbox) for src in self.sources
+            )
 
         # We have to declare the function that inserts sources
         # into the blend with autograd.
@@ -176,6 +201,7 @@ class Blend(CombinedComponent):
             *([partial(_grad_add_models, index=k) for k in range(len(self.sources))])
         )
 
+        full_model = np.zeros(frame.shape, dtype=frame.dtype)
         full_model = _add_models(*models, full_model=full_model, slices=slices)
 
         return full_model
@@ -188,7 +214,7 @@ class Blend(CombinedComponent):
         function and update the gradient for each
         parameter
         """
-        model = self.get_model(*parameters)
+        model = self.get_model(*parameters, frame=self.frame)
         # Caculate the total loss function from all of the observations
         total_loss = 0
         for observation in self.observations:
@@ -215,4 +241,4 @@ class Blend(CombinedComponent):
     def bbox(self):
         """Bounding box of the blend
         """
-        return self.model_frame.bbox
+        return self.frame.bbox

@@ -1,6 +1,9 @@
 from functools import partial
 
 from .model import Model
+from .parameter import Parameter, relative_step
+from .constraint import *
+from .frame import Frame
 from .bbox import Box
 from .wavelet import Starlet
 from .psf import PSF
@@ -12,7 +15,12 @@ import autograd.numpy as np
 
 
 class Morphology(Model):
-    pass
+    def __init__(self, frame, *parameters, bbox=None, **kwargs):
+        assert isinstance(frame, Frame)
+        self.frame = frame
+        assert isinstance(bbox, Box)
+        self.bbox = bbox
+        super().__init__(*parameters, **kwargs)
 
 
 class ImageMorphology(Morphology):

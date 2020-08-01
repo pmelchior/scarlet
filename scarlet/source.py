@@ -3,15 +3,9 @@ from functools import partial
 from .initialization import *
 from .spectrum import *
 from .morphology import *
-from .constraint import (
-    PositivityConstraint,
-    MonotonicityConstraint,
-    SymmetryConstraint,
-    L0Constraint,
-)
-from .constraint import NormalizationConstraint, ConstraintChain, CenterOnConstraint
+from .constraint import *
 from .parameter import Parameter, relative_step
-from .component import Component, FactorizedComponent
+from .component import Component, FactorizedComponent, CombinedComponent
 from .bbox import Box
 
 # make sure that import * above doesn't import its own stock numpy
@@ -308,7 +302,7 @@ class MultiComponentSource(CombinedComponent):
             component = FactorizedComponent(model_frame, spectrum, morphology)
             components.append(component)
 
-        super().__init__(model_frame, components)
+        super().__init__(components)
 
     @property
     def center(self):

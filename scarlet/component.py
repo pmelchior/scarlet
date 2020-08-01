@@ -9,32 +9,42 @@ from .bbox import Box, overlapped_slices
 
 
 class Component(Model):
-    def __init__(self, frame, parameters=None, children=None, bbox=None, **kwargs):
+    """A single component in a blend.
+
+    This class acts as base for building models from parameters.
+
+    Parameters
+    ----------
+    frame: `~scarlet.Frame`
+        Characterization of the model
+    parameters: list of `~scarlet.Parameter`
+    children: list of `~scarlet.Model`
+        Subordinate models.
+    bbox: `~scarlet.Box`
+        Bounding box of this model
+    """
+
+    def __init__(self, frame, *parameters, children=None, bbox=None, **kwargs):
+
+        assert isinstance(frame, Frame)
         if bbox is None:
             bbox = frame.bbox
+        assert isinstance(bbox, Box)
+        self.set_frame(frame, bbox=bbox)
 
-        # component should always be a data cube
-        assert bbox.D == frame.bbox.D
+        super().__init__(*parameters, children=children, **kwargs)
 
-        super().__init__(
-            frame, parameters=parameters, children=children, bbox=bbox, **kwargs
-        )
-        self.set_model_frame(frame)
-
-    def set_model_frame(self, frame):
-        """Sets the frame for this component.
-
-        Each component needs to know the properties of the Frame and,
-        potentially, the subvolume it covers.
-
-        Parameters
-        ----------
-        frame: `~scarlet.Frame`
-            Frame of the model
+    @property
+    def bbox(self):
+        """Hyper-spectral bounding box of this model
         """
-        self.model_frame_slices, self.model_slices = overlapped_slices(
-            frame.bbox, self.bbox
-        )
+        return self._bbox
+
+    @property
+    def frame(self):
+        """Hyper-spectral characteristics is this model
+        """
+        return self._frame
 
     def model_to_frame(self, frame=None, model=None):
         """Project a model into a frame
@@ -75,6 +85,25 @@ class Component(Model):
         result[frame_slices] = model[model_slices]
         return result
 
+    def set_frame(self, frame, bbox=None):
+        """Sets the frame for this component.
+
+        Each component needs to know the properties of the Frame and,
+        potentially, the subvolume it covers.
+
+        Parameters
+        ----------
+        model_frame: `~scarlet.Frame`
+            Frame of the model
+        """
+        self._frame = frame
+        if bbox is not None:
+            self._bbox = bbox
+
+        self.model_frame_slices, self.model_slices = overlapped_slices(
+            frame.bbox, self._bbox
+        )
+
 
 class FactorizedComponent(Component):
     """A single component in a blend.
@@ -97,8 +126,8 @@ class FactorizedComponent(Component):
         from .spectrum import Spectrum
         from .morphology import Morphology
 
-        assert isinstance(spectrum, Factor)
-        assert isinstance(morphology, Factor)
+        assert isinstance(spectrum, Spectrum)
+        assert isinstance(morphology, Morphology)
         bbox = spectrum.bbox @ morphology.bbox
         super().__init__(frame, children=[spectrum, morphology], bbox=bbox, **kwargs)
 
@@ -120,105 +149,8 @@ class FactorizedComponent(Component):
         """
         spectrum, morphology = self.get_models_of_children(*parameters)
         model = spectrum[:, None, None] * morphology[None, :, :]
+
         # project the model into frame (if necessary)
-        if frame is not None:
-            model = self.model_to_frame(frame, model)
-        return model
-
-
-from autograd.extend import defvjp, primitive
-
-
-@primitive
-def _add_models(*models, full_model, slices):
-    """Insert the models into the full model
-
-    `slices` is a tuple `(full_model_slice, model_slices)` used
-    to insert a model into the full_model in the region where the
-    two models overlap.
-    """
-    for i in range(len(models)):
-        if hasattr(models[i], "_value"):
-            full_model[slices[i][0]] += models[i][slices[i][1]]._value
-        else:
-            full_model[slices[i][0]] += models[i][slices[i][1]]
-    return full_model
-
-
-def _grad_add_models(upstream_grad, *models, full_model, slices, index):
-    """Gradient for a single model
-
-    The full model is just the sum of the models,
-    so the gradient is 1 for each model,
-    we just have to slice it appropriately.
-    """
-    model = models[index]
-    full_model_slices = slices[index][0]
-    model_slices = slices[index][1]
-
-    def result(upstream_grad):
-        _result = np.zeros(model.shape, dtype=model.dtype)
-        _result[model_slices] = upstream_grad[full_model_slices]
-        return _result
-
-    return result
-
-
-class CombinedComponent(Component):
-    def __init__(self, model_frame, components, mode="add"):
-        if hasattr(components, "__iter__"):
-            assert all(isinstance(c, Component) for c in components)
-        else:
-            assert isinstance(components, Component)
-            components = (components,)
-
-        assert mode in ["add"]  # , "multiply"]
-        self.mode = mode
-
-        super().__init__(model_frame, children=components, bbox=self.bbox)
-
-    def __getitem__(self, i):
-        return self.components.__getitem__(i)
-
-    def __iter__(self):
-        return self.components.__iter__()
-
-    def __next__(self):
-        return self.components.__next__()
-
-    @property
-    def bbox(self):
-        """Union of all the component `~scarlet.bbox.Box`es
-        """
-        try:
-            return self._bbox
-        except AttributeError:
-            # Make the bbox of the tree the union of the component bboxes
-            box = self.components[0].bbox
-            self._bbox = Box(box.shape, box.origin)
-            for component in self.components:
-                self._bbox |= component.bbox
-        return self._bbox
-
-    def get_model(self, *parameters, frame=None):
-
-        model = np.zeros(self.bbox.shape, dtype=self.model_frame.dtype)
-        i = 0
-        for c in self.components:
-            if len(parameters):
-                j = len(c.parameters)
-                p = parameters[i : i + j]
-                i += j
-                model_ = c.get_model(*p)
-            else:
-                model_ = c.get_model()
-
-            model_slices, sub_slices = overlapped_slices(self.bbox, c.bbox)
-            if self.mode == "add":
-                model[model_slices] += model_[sub_slices]
-            elif self.mode == "multiply":
-                model[model_slices] *= model_[sub_slices]
-
         if frame is not None:
             model = self.model_to_frame(frame, model)
         return model
@@ -250,7 +182,34 @@ class CubeComponent(Component):
         super().__init__(frame, cube, bbox=bbox, **kwargs)
 
     def get_model(self, *parameters, frame=None):
-        cube = self.get_parameter(0, *parameters)
+        model = self.get_parameter(0, *parameters)
+
         if frame is not None:
-            cube = self.model_to_frame(frame, cube)
-        return cube
+            model = self.model_to_frame(frame, model)
+        return model
+
+
+class CombinedComponent(Component):
+    def __init__(self, components, operation=np.sum, check_boxes=True):
+
+        assert len(components)
+        frame = components[0].frame
+        box = components[0].bbox
+        # all children need to have the same bbox for simple autogradable combinations
+        for c in components:
+            assert isinstance(c, Component)
+            assert c.frame is frame
+            if check_boxes:
+                assert c.bbox == box
+
+        super().__init__(frame, children=components, bbox=box)
+
+        self.op = operation
+
+    def get_model(self, *parameters, frame=None):
+        models = self.get_models_of_children(*parameters, frame=frame)
+        model = self.op(models, axis=0)
+
+        if frame is not None:
+            model = self.model_to_frame(frame, model)
+        return model

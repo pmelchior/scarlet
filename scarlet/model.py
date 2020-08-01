@@ -1,40 +1,34 @@
 from abc import ABC, abstractmethod
 
-from .frame import Frame
 from .parameter import Parameter
-from .bbox import Box
 
 
 class Model(ABC):
-    """A single component in a blend.
+    """Model base class.
 
-    This class acts as base for building models from parameters.
+    This class stores and provides access to parameters and sub-ordinate models.
 
     Parameters
     ----------
-    frame: `~scarlet.Frame`
-        Characterization of the model
-    name: string
-        Name for this model
     parameters: list of `~scarlet.Parameter`
     children: list of `~scarlet.Model`
         Subordinate models.
-    bbox: `~scarlet.Box`
-        Bounding box of this model
     """
 
-    def __init__(self, frame, parameters=None, children=None, bbox=None, **kwargs):
+    def __init__(self, *parameters, children=None, **kwargs):
 
-        if parameters is None:
-            parameters = ()
-        if hasattr(parameters, "__iter__"):
+        if len(parameters) == 0:
+            self._parameters = ()
+        elif isinstance(parameters, Parameter):
+            self._parameters = (parameters,)
+        elif isinstance(parameters, (list, tuple)):
             for p in parameters:
                 assert isinstance(p, Parameter)
             self._parameters = parameters
         else:
-            assert isinstance(parameters, Parameter)
-            self._parameters = tuple(parameters)
-        self.check_parameters()
+            raise TypeError(
+                "parameter must be None, a Parameter, or a list of Parameters"
+            )
 
         if children is None:
             children = ()
@@ -46,10 +40,7 @@ class Model(ABC):
             assert isinstance(children, Model)
             self._children = tuple(children)
 
-        assert isinstance(frame, Frame)
-        self._frame = frame
-        assert isinstance(bbox, Box)
-        self._bbox = bbox
+        self.check_parameters()
 
         for key in kwargs:
             setattr(self, key, kwargs[key])
@@ -64,17 +55,14 @@ class Model(ABC):
     def children(self):
         return self._children
 
-    @property
-    def bbox(self):
-        """Hyper-spectral bounding box of this model
-        """
-        return self._bbox
+    def __getitem__(self, i):
+        return self._children.__getitem__(i)
 
-    @property
-    def frame(self):
-        """Hyper-spectral characteristics is this model
-        """
-        return self._frame
+    def __iter__(self):
+        return self._children.__iter__()
+
+    def __next__(self):
+        return self._children.__next__()
 
     def get_parameter(self, i, *parameters):
         # NOTE: index lookup only works if order is not changed by parameter fixing!
@@ -90,16 +78,12 @@ class Model(ABC):
         return None
 
     @abstractmethod
-    def get_model(self, *parameters, frame=None):
+    def get_model(self, *parameters, **kwargs):
         """Get the model realization
 
         Parameters
         ----------
         parameters: tuple of optimimzation parameters
-
-        frame: `~scarlet.frame.Frame`
-            Frame to project the model into. If `frame` is `None`
-            then the model contained in `self.bbox` is returned.
 
         Returns
         -------
@@ -108,7 +92,7 @@ class Model(ABC):
         """
         pass
 
-    def get_models_of_children(self, *parameters):
+    def get_models_of_children(self, *parameters, **kwargs):
         models = []
         # parameters during optimization
         if len(parameters):
@@ -116,11 +100,11 @@ class Model(ABC):
             i = len(self._parameters)
             for c in self._children:
                 j = len(c.parameters)
-                models.append(c.get_model(*(parameters[i : i + j])))
+                models.append(c.get_model(*(parameters[i : i + j]), **kwargs))
                 i += j
         else:
             for c in self._children:
-                models.append(c.get_model())
+                models.append(c.get_model(**kwargs))
         return models
 
     def check_parameters(self):
@@ -131,7 +115,7 @@ class Model(ABC):
         `ArithmeticError` when non-finite elements are present
         """
         for k, p in enumerate(self.parameters):
-            if not np.isfinite(p).all():
+            if not p.is_finite:
                 msg = "Model {}, Parameter '{}' is not finite:\n{}".format(
                     self.__class__.__name__, p.name, p
                 )
