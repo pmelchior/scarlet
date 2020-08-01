@@ -79,7 +79,7 @@ class PointSource(FactorizedComponent):
 
         center = np.array(model_frame.get_pixel(sky_coord), dtype="float")
         morphology = PointSourceMorphology(model_frame, center)
-
+        self.center = morphology.center
         super().__init__(model_frame, spectrum, morphology)
 
 
@@ -200,6 +200,7 @@ class ExtendedSource(FactorizedComponent):
             min_grad=min_grad,
             shifting=shifting,
         )
+        self.center = morphology.center
         super().__init__(model_frame, spectrum, morphology)
 
 

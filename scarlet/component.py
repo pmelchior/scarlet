@@ -24,7 +24,7 @@ class Component(Model):
         Bounding box of this model
     """
 
-    def __init__(self, frame, *parameters, children=None, bbox=None, **kwargs):
+    def __init__(self, frame, *parameters, children=None, bbox=None):
 
         assert isinstance(frame, Frame)
         if bbox is None:
@@ -32,7 +32,7 @@ class Component(Model):
         assert isinstance(bbox, Box)
         self.set_frame(frame, bbox=bbox)
 
-        super().__init__(*parameters, children=children, **kwargs)
+        super().__init__(*parameters, children=children)
 
     @property
     def bbox(self):
@@ -72,8 +72,8 @@ class Component(Model):
         # Use the full model frame by default
         if frame is None or frame == self.frame:
             frame = self.frame
-            frame_slices = self.model_frame_slices
-            model_slices = self.model_slices
+            frame_slices = self._model_frame_slices
+            model_slices = self._model_slices
         else:
             frame_slices, model_slices = overlapped_slices(frame.bbox, self.bbox)
 
@@ -100,7 +100,7 @@ class Component(Model):
         if bbox is not None:
             self._bbox = bbox
 
-        self.model_frame_slices, self.model_slices = overlapped_slices(
+        self._model_frame_slices, self._model_slices = overlapped_slices(
             frame.bbox, self._bbox
         )
 
@@ -122,14 +122,18 @@ class FactorizedComponent(Component):
         Parameterization of the morphology.
     """
 
-    def __init__(self, frame, spectrum, morphology, **kwargs):
+    def __init__(self, frame, spectrum, morphology):
         from .spectrum import Spectrum
-        from .morphology import Morphology
 
         assert isinstance(spectrum, Spectrum)
+
+        from .morphology import Morphology
+
         assert isinstance(morphology, Morphology)
+
         bbox = spectrum.bbox @ morphology.bbox
-        super().__init__(frame, children=[spectrum, morphology], bbox=bbox, **kwargs)
+
+        super().__init__(frame, children=[spectrum, morphology], bbox=bbox)
 
     def get_model(self, *parameters, frame=None):
         """Get the model for this component.
@@ -171,7 +175,7 @@ class CubeComponent(Component):
         Hyper-spectral bounding box of this component.
     """
 
-    def __init__(self, frame, cube, bbox=None, **kwargs):
+    def __init__(self, frame, cube, bbox=None):
         if isinstance(image, Parameter):
             assert cube.name == "cube"
         else:
@@ -179,7 +183,7 @@ class CubeComponent(Component):
             cube = Parameter(
                 cube, name="cube", step=relative_step, constraint=constraint
             )
-        super().__init__(frame, cube, bbox=bbox, **kwargs)
+        super().__init__(frame, cube, bbox=bbox)
 
     def get_model(self, *parameters, frame=None):
         model = self.get_parameter(0, *parameters)

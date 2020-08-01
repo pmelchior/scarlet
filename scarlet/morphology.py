@@ -15,16 +15,16 @@ import autograd.numpy as np
 
 
 class Morphology(Model):
-    def __init__(self, frame, *parameters, bbox=None, **kwargs):
+    def __init__(self, frame, *parameters, bbox=None):
         assert isinstance(frame, Frame)
         self.frame = frame
         assert isinstance(bbox, Box)
         self.bbox = bbox
-        super().__init__(*parameters, **kwargs)
+        super().__init__(*parameters)
 
 
 class ImageMorphology(Morphology):
-    def __init__(self, frame, image, bbox=None, shift=None, **kwargs):
+    def __init__(self, frame, image, bbox=None, shift=None):
         if isinstance(image, Parameter):
             assert image.name == "image"
         else:
@@ -53,7 +53,7 @@ class ImageMorphology(Morphology):
             self.fft_shape = fft._get_fft_shape(image, image, padding=padding)
             self.shifter_y, self.shifter_x = interpolation.mk_shifter(self.fft_shape)
 
-        super().__init__(frame, *parameters, bbox=bbox, **kwargs)
+        super().__init__(frame, *parameters, bbox=bbox)
 
     def get_model(self, *parameters):
         image = self.get_parameter(0, *parameters)
@@ -78,7 +78,7 @@ class ImageMorphology(Morphology):
 
 
 class PointSourceMorphology(Morphology):
-    def __init__(self, frame, center, **kwargs):
+    def __init__(self, frame, center):
 
         assert frame.psf is not None and isinstance(frame.psf, PSF)
         self.psf = frame.psf
@@ -92,8 +92,8 @@ class PointSourceMorphology(Morphology):
         bbox = Box.from_bounds((bottom, top), (left, right))
 
         # morph parameters is simply 2D center
-        center = Parameter(center, name="center", step=1e-1)
-        super().__init__(frame, center, bbox=bbox, **kwargs)
+        self.center = Parameter(center, name="center", step=1e-1)
+        super().__init__(frame, self.center, bbox=bbox)
 
     def get_model(self, *parameters):
         center = self.get_parameter(0, *parameters)
@@ -190,6 +190,6 @@ class ExtendedSourceMorphology(ImageMorphology):
     @property
     def center(self):
         if self.shift is not None:
-            return self.pixel_center + self.shift._data
+            return self.pixel_center + self.shift
         else:
             return self.pixel_center

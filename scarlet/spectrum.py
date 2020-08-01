@@ -12,16 +12,17 @@ import autograd.numpy as np
 
 
 class Spectrum(Model):
-    def __init__(self, frame, *parameters, bbox=None, **kwargs):
+    def __init__(self, frame, *parameters, bbox=None):
         assert isinstance(frame, Frame)
         self.frame = frame
         assert isinstance(bbox, Box)
         self.bbox = bbox
-        super().__init__(*parameters, **kwargs)
+
+        super().__init__(*parameters)
 
 
 class TabulatedSpectrum(Spectrum):
-    def __init__(self, frame, spectrum, bbox=None, **kwargs):
+    def __init__(self, frame, spectrum, bbox=None):
         if isinstance(spectrum, Parameter):
             assert spectrum.name == "spectrum"
         else:
@@ -37,7 +38,7 @@ class TabulatedSpectrum(Spectrum):
         else:
             assert bbox.shape == spectrum.shape
 
-        super().__init__(frame, spectrum, bbox=bbox, **kwargs)
+        super().__init__(frame, spectrum, bbox=bbox)
 
     def get_model(self, *parameters):
         spectrum = self.get_parameter(0, *parameters)

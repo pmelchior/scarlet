@@ -15,7 +15,7 @@ class Model(ABC):
         Subordinate models.
     """
 
-    def __init__(self, *parameters, children=None, **kwargs):
+    def __init__(self, *parameters, children=None):
 
         if len(parameters) == 0:
             self._parameters = ()
@@ -41,9 +41,6 @@ class Model(ABC):
             self._children = tuple(children)
 
         self.check_parameters()
-
-        for key in kwargs:
-            setattr(self, key, kwargs[key])
 
     @property
     def parameters(self):

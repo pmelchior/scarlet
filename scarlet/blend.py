@@ -184,7 +184,7 @@ class Blend(CombinedComponent):
         # if this is the model frame then the slices are already cached
         if frame == self.frame:
             slices = tuple(
-                (src.model_frame_slices, src.model_slices) for src in self.sources
+                (src._model_frame_slices, src._model_slices) for src in self.sources
             )
         else:
             slices = tuple(
