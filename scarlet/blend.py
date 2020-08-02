@@ -94,18 +94,32 @@ class Blend(CombinedComponent):
         alg_kwargs: dict
             Keywords for the `proxmin.adaprox` optimizer
         """
-        # dynamically call parameters to allow for addition / fixing
-        X = []
-        for src in self.sources:
-            X += src.parameters
-        n_params = len(X)
+        X = self.parameters
 
-        # compute the backward gradient tree
-        grad_logL = grad(self._loss, tuple(range(n_params)))
+        # compute the backward gradients
+        # but only for non-fixed parameters
+        require_grad = tuple(k for k, x in enumerate(X) if not x.fixed)
+
+        def expand_grads(*X, func=None):
+            G = func(*X)
+            expanded = [0.0] * len(X)
+            for k, j in enumerate(require_grad):
+                expanded[j] = G[k]
+            return expanded
+
+        grad_logL_func = grad(self._loss, require_grad)
+        grad_logL = lambda *X: expand_grads(*X, func=grad_logL_func)
+
+        # same for prior. easier her bc we call them independently
         grad_logP = lambda *X: tuple(
-            x.prior(x.view(np.ndarray)) if x.prior is not None else 0 for x in X
+            x.prior(x.view(np.ndarray)) if x.prior is not None and not x.fixed else 0
+            for x in X
         )
+
+        # combine for log posterior
         _grad = lambda *X: tuple(l + p for l, p in zip(grad_logL(*X), grad_logP(*X)))
+
+        # step sizes, allow for random skipping of parameters
         _step = lambda *X, it: tuple(
             1e-20
             if np.random.rand() < random_skip

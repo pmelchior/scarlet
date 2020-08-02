@@ -67,10 +67,9 @@ class Model(ABC):
         if i < len(parameters):
             return parameters[i]
 
-        # find them from self (use all even if fixed!)
-        # but don't use parameter of children!
-        if i < len(self._parameters):
-            return self._parameters[i]._data
+        # eitherwise use self
+        if i < len(self.parameters):
+            return self.parameters[i]
 
         return None
 
