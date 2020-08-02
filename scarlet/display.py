@@ -3,6 +3,7 @@ from astropy.visualization.lupton_rgb import LinearMapping, AsinhMapping
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle, Polygon
 from .observation import convolve
+from .component import Component
 
 
 def channels_to_rgb(channels):
@@ -243,7 +244,7 @@ def show_scene(
         if np.all(mask == 0):
             mask = None
 
-    model_frame = sources[0].model_frame
+    model_frame = sources[0].frame
     model = np.zeros(model_frame.shape)
     for src in sources:
         model += src.get_model(frame=model_frame)
@@ -399,7 +400,7 @@ def show_sources(
 
     for k, src in enumerate(sources):
 
-        model_frame = src.model_frame
+        model_frame = src.frame
 
         if hasattr(src, "center") and src.center is not None:
             center = np.array(src.center)[::-1]
@@ -471,7 +472,7 @@ def show_sources(
 
         if show_spectrum:
             # needs to be evaluated in the source box to prevent truncation
-            if hasattr(src, "__iter__"):
+            if hasattr(src, "__iter__") and isinstance(src[0], Component):
                 spectra = []
                 for component in src:
                     model_ = component.get_model()
@@ -482,11 +483,8 @@ def show_sources(
             for spectrum in spectra:
                 ax[k][panel].plot(spectrum)
             ax[k][panel].set_xticks(range(len(spectrum)))
-            if (
-                hasattr(src.model_frame, "channels")
-                and src.model_frame.channels is not None
-            ):
-                ax[k][panel].set_xticklabels(src.model_frame.channels)
+            if hasattr(src.frame, "channels") and src.frame.channels is not None:
+                ax[k][panel].set_xticklabels(src.frame.channels)
             ax[k][panel].set_title("Spectrum")
             ax[k][panel].set_xlabel("Channel")
             ax[k][panel].set_ylabel("Intensity")

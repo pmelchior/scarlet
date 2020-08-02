@@ -118,40 +118,38 @@ class TestFunctionComponent:
         assert model[test_loc] == 1
 
 
-class TestComponentTree:
+class TestCombinedComponent:
     def test_model(self):
         frame_shape = (10, 20, 30)
         frame = scarlet.Frame(frame_shape, channels=np.arange(10))
 
         shape = (5, 4, 6)
-        on_location = (1, 2, 3)
+        origin = (2, 3, 4)
+        box = scarlet.Box(shape, origin=origin)
+        on_location1 = (1, 2, 3)
         cube = np.zeros(shape)
-        cube[on_location] = 1
+        cube[on_location1] = 1
         cube = scarlet.Parameter(cube, name="cube")
-        origin1 = (2, 3, 4)
-        box1 = scarlet.Box(shape, origin=origin1)
-        component1 = scarlet.CubeComponent(frame, cube, bbox=box1)
+        component1 = scarlet.CubeComponent(frame, cube, bbox=box)
 
         # make factorized component with a different origin
+        on_location2 = (1, 1, 1)
         sed = np.zeros(shape[0])
-        sed[on_location[0]] = 1
+        sed[on_location2[0]] = 1
         morph = np.zeros(shape[1:])
-        morph[on_location[1:]] = 1
+        morph[on_location2[1:]] = 1
 
-        origin2 = (5, 6, 7)
-        box2 = scarlet.Box(shape, origin=origin2)
-
-        spectrum = scarlet.TabulatedSpectrum(frame, sed, bbox=box2[0])
-        morphology = scarlet.ImageMorphology(frame, morph, bbox=box2[1:])
+        spectrum = scarlet.TabulatedSpectrum(frame, sed, bbox=box[0])
+        morphology = scarlet.ImageMorphology(frame, morph, bbox=box[1:])
         component2 = scarlet.FactorizedComponent(frame, spectrum, morphology)
 
-        tree = scarlet.ComponentTree([component1, component2])
-        model = tree.get_model(frame=frame)
+        combined = scarlet.CombinedComponent([component1, component2])
+        model = combined.get_model(frame=frame)
 
         # everything zero except at one location?
         test_locs = [
-            tuple(np.array(on_location) + np.array(origin1)),
-            tuple(np.array(on_location) + np.array(origin2)),
+            tuple(np.array(on_location1) + np.array(origin)),
+            tuple(np.array(on_location2) + np.array(origin)),
         ]
         mask = np.zeros(model.shape, dtype="bool")
         for test_loc in test_locs:

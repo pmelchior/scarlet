@@ -177,7 +177,7 @@ class CubeComponent(Component):
     """
 
     def __init__(self, frame, cube, bbox=None):
-        if isinstance(image, Parameter):
+        if isinstance(cube, Parameter):
             assert cube.name == "cube"
         else:
             constraint = PositivityConstraint()
@@ -213,7 +213,8 @@ class CombinedComponent(Component):
         self.operation = operation
 
     def get_model(self, *parameters, frame=None):
-        models = self.get_models_of_children(*parameters, frame=frame)
+        # boxed models
+        models = self.get_models_of_children(*parameters, frame=None)
         model = models[0]
         if self.operation == "add":
             for model_ in models[1:]:
