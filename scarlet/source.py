@@ -300,12 +300,8 @@ class MultiComponentSource(CombinedComponent):
                 min_grad=min_grad,
                 shifting=shifting,
             )
+            self.center = morphology.center
             component = FactorizedComponent(model_frame, spectrum, morphology)
             components.append(component)
 
         super().__init__(components)
-
-    @property
-    def center(self):
-        c = self.__getitem__(0)
-        return c.center

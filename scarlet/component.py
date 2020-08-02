@@ -1,11 +1,12 @@
 from abc import ABC, abstractmethod
 from functools import partial
-import autograd.numpy as np
 
 from .frame import Frame
 from .model import Model
 from .parameter import Parameter
 from .bbox import Box, overlapped_slices
+
+import autograd.numpy as np
 
 
 class Component(Model):
@@ -194,7 +195,7 @@ class CubeComponent(Component):
 
 
 class CombinedComponent(Component):
-    def __init__(self, components, operation=np.sum, check_boxes=True):
+    def __init__(self, components, operation="add", check_boxes=True):
 
         assert len(components)
         frame = components[0].frame
@@ -208,11 +209,18 @@ class CombinedComponent(Component):
 
         super().__init__(frame, children=components, bbox=box)
 
-        self.op = operation
+        assert operation in ["add", "multiply"]
+        self.operation = operation
 
     def get_model(self, *parameters, frame=None):
         models = self.get_models_of_children(*parameters, frame=frame)
-        model = self.op(models, axis=0)
+        model = models[0]
+        if self.operation == "add":
+            for model_ in models[1:]:
+                model += model_
+        elif self.operation == "multiply":
+            for model_ in models[1:]:
+                model *= model_
 
         if frame is not None:
             model = self.model_to_frame(frame, model)

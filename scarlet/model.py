@@ -46,7 +46,7 @@ class Model(ABC):
     def parameters(self):
         """List of parameters, including from the children.
         """
-        return self._parameters + tuple(p for c in self.children for p in c._parameters)
+        return self._parameters + tuple(p for c in self.children for p in c.parameters)
 
     @property
     def children(self):
@@ -70,7 +70,7 @@ class Model(ABC):
         # find them from self (use all even if fixed!)
         # but don't use parameter of children!
         if i < len(self._parameters):
-            return self._parameters[i]
+            return self._parameters[i]._data
 
         return None
 

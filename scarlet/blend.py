@@ -1,11 +1,11 @@
 import numpy.ma as ma
-import autograd.numpy as np
-from autograd import grad
 import proxmin
 from functools import partial
 
 from .component import CombinedComponent
 
+import autograd.numpy as np
+from autograd import grad
 from autograd.extend import defvjp, primitive
 
 
@@ -18,10 +18,7 @@ def _add_models(*models, full_model, slices):
     two models overlap.
     """
     for i in range(len(models)):
-        if hasattr(models[i], "_value"):
-            full_model[slices[i][0]] += models[i][slices[i][1]]._value
-        else:
-            full_model[slices[i][0]] += models[i][slices[i][1]]
+        full_model[slices[i][0]] += models[i][slices[i][1]]
     return full_model
 
 

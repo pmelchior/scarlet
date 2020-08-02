@@ -1,8 +1,9 @@
+from .constraint import Constraint, ConstraintChain
+from .prior import Prior
+
 import autograd.numpy as np
 from autograd.numpy.numpy_boxes import ArrayBox
 from autograd.core import VSpace
-from .constraint import Constraint, ConstraintChain
-from .prior import Prior
 
 
 class Parameter(np.ndarray):
