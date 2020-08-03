@@ -186,19 +186,15 @@ class PSFDiffKernel(Component):
         kernel = Parameter(kernel, name="kernel", step=step,)
         super().__init__(frame, kernel, bbox=frame.bbox)
 
-    def get_model(self, *parameters):
-        kernel = self.kernel
-        if len(parameters) == 1:
-            kernel = parameters[0]
-        elif len(parameters) > 1:
-            raise ValueError("PsfDiffKernel only takes a single parameter")
+    def get_model(self, *parameters, frame=None):
+        kernel = self.get_parameter(0, *parameters)
         return kernel
 
     @property
     def kernel(self):
         """Return the contents of the kernel parameter
         """
-        return self._parameters[0]._data
+        return self.get_parameter(0)._data
 
 
 class PsfObservation(Observation):

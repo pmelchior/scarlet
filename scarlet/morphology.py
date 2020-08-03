@@ -133,7 +133,7 @@ class StarletMorphology(Morphology):
         """ Takes the inverse transform of parameters as starlet coefficients.
 
         """
-        coeffs = self.get_parameter("coeffs", *parameters)
+        coeffs = self.get_parameter(0, *parameters)
         return Starlet(coefficients=coeffs).image[0]
 
 
