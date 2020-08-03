@@ -184,7 +184,7 @@ def init_extended_source(
     frame,
     observations,
     coadd=None,
-    bg_cutoff=None,
+    coadd_rms=None,
     thresh=1,
     symmetric=True,
     monotonic="flat",
@@ -216,10 +216,12 @@ def init_extended_source(
             )
         coadd, bg_cutoff = build_sed_coadd(seds, bg_rmses, observations)
     else:
-        if bg_cutoff is None:
+        if coadd_rms is None:
             raise AttributeError(
                 "background cutoff missing! Please set argument bg_cutoff"
             )
+        bg_cutoff = coadd_rms
+
     # Apply the necessary constraints
     center = frame.get_pixel(sky_coord)
     if symmetric:
@@ -249,7 +251,7 @@ def init_starlet_source(
     model_frame,
     observations,
     coadd=None,
-    bg_cutoff=None,
+    coadd_rms=None,
     thresh=1,
     symmetric=True,
     monotonic="flat",
@@ -266,7 +268,7 @@ def init_starlet_source(
         model_frame,
         observations,
         coadd=coadd,
-        bg_cutoff=bg_cutoff,
+        coadd_rms=coadd_rms,
         thresh=thresh,
         symmetric=True,
         monotonic=True,
@@ -291,7 +293,7 @@ def init_multicomponent_source(
     frame,
     observations,
     coadd=None,
-    bg_cutoff=None,
+    coadd_rms=None,
     flux_percentiles=None,
     thresh=1,
     symmetric=True,
@@ -325,7 +327,7 @@ def init_multicomponent_source(
         frame,
         observations,
         coadd=coadd,
-        bg_cutoff=bg_cutoff,
+        coadd_rms=coadd_rms,
         thresh=thresh,
         symmetric=symmetric,
         monotonic=monotonic,

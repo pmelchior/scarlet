@@ -149,6 +149,23 @@ class ExtendedSourceMorphology(ImageMorphology):
         min_grad=0,
         shifting=False,
     ):
+        """Non-parametric extended source morphology
+
+        Parameters
+        ----------
+        model_frame: `~scarlet.Frame`
+            The frame of the full model
+        center: tuple
+            Center of the source
+        image: `numpy.ndarray`
+            Image of the source.
+        monotonic: ['flat', 'angle', 'nearest'] or None
+            Which version of monotonic decrease in flux from the center to enforce
+        symmetric: `bool`
+            Whether or not to enforce symmetry.
+        shifting: `bool`
+            Whether or not a subpixel shift is added as optimization parameter
+        """
 
         constraints = []
         # backwards compatibility: monotonic was boolean

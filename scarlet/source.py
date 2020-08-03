@@ -137,21 +137,24 @@ class StarletSource(FactorizedComponent):
         super().__init__(model_frame, spectrum, morphology)
 
 
-class ExtendedSource(FactorizedComponent):
+class SingleExtendedSource(FactorizedComponent):
     def __init__(
         self,
         model_frame,
         sky_coord,
         observations,
         coadd=None,
-        bg_cutoff=None,
+        coadd_rms=None,
         thresh=1.0,
-        monotonic="flat",
-        symmetric=False,
         shifting=False,
-        min_grad=0.1,
     ):
-        """Extended source intialized to match a set of observations
+        """Extended source model.
+
+        The model is initialized from `observations` with a symmetric and
+        monotonic profile and a spectrum from its peak pixel.
+
+        During optimization it enforces positivitiy for spectrum and morphology,
+        as well as monotonicity of the morphology.
 
         Parameters
         ----------
@@ -163,15 +166,11 @@ class ExtendedSource(FactorizedComponent):
             Observation(s) to initialize this source.
         coadd: `numpy.ndarray`
             The coaddition of all images across observations.
-        bg_cutoff: float
-            flux cutoff for morphology initialization.
+        coadd_rms: float
+            Noise level of the coadd
         thresh: `float`
             Multiple of the backround RMS used as a
             flux cutoff for morphology initialization.
-        monotonic: ['flat', 'angle', 'nearest'] or None
-            Which version of monotonic decrease in flux from the center to enforce
-        symmetric: `bool`
-            Whether or not to enforce symmetry.
         shifting: `bool`
             Whether or not a subpixel shift is added as optimization parameter
         """
@@ -181,11 +180,11 @@ class ExtendedSource(FactorizedComponent):
             model_frame,
             observations,
             coadd,
-            bg_cutoff,
+            coadd_rms=coadd_rms,
             thresh=thresh,
             symmetric=True,
             monotonic="flat",
-            min_grad=min_grad,
+            min_grad=0,
         )
         spectrum = TabulatedSpectrum(model_frame, sed, bbox=bbox[0])
 
@@ -195,16 +194,16 @@ class ExtendedSource(FactorizedComponent):
             center,
             morph,
             bbox=bbox[1:],
-            monotonic=monotonic,
-            symmetric=symmetric,
-            min_grad=min_grad,
+            monotonic="angle",
+            symmetric=False,
+            min_grad=0,
             shifting=shifting,
         )
         self.center = morphology.center
         super().__init__(model_frame, spectrum, morphology)
 
 
-class MultiComponentSource(CombinedComponent):
+class MultiExtendedSource(CombinedComponent):
     """Extended source with multiple components layered vertically.
 
     Uses `~scarlet.source.ExtendedSource` to define the overall morphology,
@@ -222,14 +221,12 @@ class MultiComponentSource(CombinedComponent):
         model_frame,
         sky_coord,
         observations,
-        coadd=None,
-        bg_cutoff=None,
-        thresh=1.0,
+        K=2,
         flux_percentiles=None,
-        symmetric=False,
-        monotonic="flat",
+        coadd=None,
+        coadd_rms=None,
+        thresh=1.0,
         shifting=False,
-        min_grad=0.1,
     ):
         """Create multi-component extended source.
 
@@ -241,23 +238,25 @@ class MultiComponentSource(CombinedComponent):
             Center of the source
         observations: instance or list of `~scarlet.observation.Observation`
             Observation(s) to initialize this source.
-        obs_idx: int
-            Index of the observation in `observations` to
-            initialize the morphology.
-        thresh: `float`
-            Multiple of the backround RMS used as a
-            flux cutoff for morphology initialization.
+        K: int
+            Number of stacked components
         flux_percentiles: list
             The flux percentile of each component. If `flux_percentiles` is `None`
             then `flux_percentiles=[25,]`, a single component with 25% of the flux
             as the primary source.
-        symmetric: `bool`
-            Whether or not to enforce symmetry.
-        monotonic: ['flat', 'angle', 'nearest'] or None
-            Which version of monotonic decrease in flux from the center to enforce
+        coadd: `numpy.ndarray`
+            The coaddition of all images across observations.
+        coadd_rms: float
+            Noise level of the coadd
+        thresh: `float`
+            Multiple of the backround RMS used as a
+            flux cutoff for morphology initialization.
         shifting: `bool`
             Whether or not a subpixel shift is added as optimization parameter
         """
+        if flux_percentiles is None:
+            flux_percentiles = (25,)
+        assert K == len(flux_percentiles) + 1
 
         # initialize from observation
         seds, morphs, bbox = init_multicomponent_source(
@@ -265,19 +264,15 @@ class MultiComponentSource(CombinedComponent):
             model_frame,
             observations,
             coadd=coadd,
-            bg_cutoff=bg_cutoff,
+            coadd_rms=coadd_rms,
             flux_percentiles=flux_percentiles,
             thresh=thresh,
             symmetric=True,
-            monotonic=True,
-            min_grad=min_grad,
+            monotonic="flat",
+            min_grad=0,
         )
 
-        if flux_percentiles is None:
-            flux_percentiles = (25,)
-        K = len(flux_percentiles) + 1
         center = np.array(model_frame.get_pixel(sky_coord), dtype="float")
-
         components = []
         for k in range(K):
 
@@ -295,9 +290,9 @@ class MultiComponentSource(CombinedComponent):
                 center,
                 morphs[k],
                 bbox=bbox[1:],
-                monotonic=monotonic,
-                symmetric=symmetric,
-                min_grad=min_grad,
+                monotonic="angle",
+                symmetric=False,
+                min_grad=0,
                 shifting=shifting,
             )
             self.center = morphology.center
@@ -305,3 +300,54 @@ class MultiComponentSource(CombinedComponent):
             components.append(component)
 
         super().__init__(components)
+
+
+def add_docs_for(other_func):
+    def doc(func):
+        func.__doc__ = func.__doc__ + "\n\n" + other_func.__doc__
+        return func
+
+    return doc
+
+
+# factory two swith between single and multi-ExtendedSource
+@add_docs_for(MultiExtendedSource.__init__)
+def ExtendedSource(
+    model_frame,
+    sky_coord,
+    observations,
+    K=1,
+    flux_percentiles=None,
+    coadd=None,
+    coadd_rms=None,
+    thresh=1.0,
+    shifting=False,
+):
+    """Create extended sources with either a single component or multiple components.
+
+    If `K== 1`, a single instance of `SingleExtendedSource` is returned, otherwise
+    and instance of `MultiExtendedSource` is returned.
+    """
+
+    if K == 1:
+        return SingleExtendedSource(
+            model_frame,
+            sky_coord,
+            observations,
+            coadd=coadd,
+            coadd_rms=coadd_rms,
+            thresh=thresh,
+            shifting=shifting,
+        )
+    else:
+        return MultiExtendedSource(
+            model_frame,
+            sky_coord,
+            observations,
+            K=K,
+            flux_percentiles=flux_percentiles,
+            coadd=coadd,
+            coadd_rms=coadd_rms,
+            thresh=thresh,
+            shifting=shifting,
+        )

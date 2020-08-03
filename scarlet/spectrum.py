@@ -17,7 +17,6 @@ class Spectrum(Model):
         self.frame = frame
         assert isinstance(bbox, Box)
         self.bbox = bbox
-
         super().__init__(*parameters)
 
 
