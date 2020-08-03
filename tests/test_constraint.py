@@ -11,7 +11,12 @@ class TestUpdate(object):
 
         constraint = scarlet.PositivityConstraint()
         X_ = constraint(X, step)
-        assert not any(X_ < 0)
+        assert all(X_ >= 0)
+
+        threshold = 0.1
+        constraint = scarlet.PositivityConstraint(threshold=threshold)
+        X_ = constraint(X, step)
+        assert all(X_ >= threshold)
 
     def test_normalization(self):
         X = np.random.rand(100)
@@ -167,12 +172,3 @@ class TestUpdate(object):
         step = 0
         X = constraint(X, step)
         assert X[2, 2] > 0
-
-    def test_all_on(self):
-        shape = (5, 5)
-        X = np.zeros(shape)
-
-        constraint = scarlet.AllOnConstraint()
-        step = 0
-        X = constraint(X, step)
-        assert np.all(X > 0)
