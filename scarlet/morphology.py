@@ -1,5 +1,3 @@
-from functools import partial
-
 from .model import Model
 from .parameter import Parameter, relative_step
 from .constraint import *
@@ -18,8 +16,12 @@ class Morphology(Model):
     def __init__(self, frame, *parameters, bbox=None):
         assert isinstance(frame, Frame)
         self.frame = frame
+
+        if bbox is None:
+            bbox = frame.bbox
         assert isinstance(bbox, Box)
         self.bbox = bbox
+
         super().__init__(*parameters)
 
 

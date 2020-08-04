@@ -1,12 +1,11 @@
 from functools import partial
 
-from .initialization import *
-from .spectrum import *
-from .morphology import *
+from .component import CombinedComponent, FactorizedComponent
 from .constraint import *
+from .initialization import *
+from .morphology import *
 from .parameter import Parameter, relative_step
-from .component import Component, FactorizedComponent, CombinedComponent
-from .bbox import Box
+from .spectrum import *
 
 # make sure that import * above doesn't import its own stock numpy
 import autograd.numpy as np

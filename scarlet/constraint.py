@@ -81,14 +81,14 @@ class ConstraintChain:
 
 
 class PositivityConstraint(Constraint):
-    """Allow only values above threshold.
+    """Allow only values not smaller than `zero`.
     """
 
-    def __init__(self, threshold=0):
-        self.threshold = threshold
+    def __init__(self, zero=0):
+        self.zero = zero
 
     def __call__(self, X, step):
-        X = np.maximum(X, self.threshold)
+        X = np.maximum(X, self.zero)
         return X
 
 

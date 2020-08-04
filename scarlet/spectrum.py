@@ -25,7 +25,7 @@ class TabulatedSpectrum(Spectrum):
         if isinstance(spectrum, Parameter):
             assert spectrum.name == "spectrum"
         else:
-            constraint = PositivityConstraint(threshold=1e-20)
+            constraint = PositivityConstraint(zero=1e-20)  # slightly positive values
             step = partial(relative_step, factor=1e-2)
             spectrum = Parameter(
                 spectrum, name="spectrum", step=step, constraint=constraint

@@ -227,7 +227,6 @@ class PsfObservation(Observation):
         self: `~scarlet.PsfObservation`
             Return this object to allow for chaining.
         """
-        # self.slices = (self.bbox & self.frame).as_slices()
         self._diff_kernels = Fourier(psfs)
         self.convolution = convolution
         return self

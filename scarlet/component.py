@@ -1,12 +1,10 @@
-from abc import ABC, abstractmethod
-from functools import partial
+import autograd.numpy as np
 
 from .frame import Frame
 from .model import Model
-from .parameter import Parameter
+from .parameter import Parameter, relative_step
+from .constraint import PositivityConstraint
 from .bbox import Box, overlapped_slices
-
-import autograd.numpy as np
 
 
 class Component(Model):
@@ -31,7 +29,8 @@ class Component(Model):
         if bbox is None:
             bbox = frame.bbox
         assert isinstance(bbox, Box)
-        self.set_frame(frame, bbox=bbox)
+        self._bbox = bbox  # don't use th setter bc frame isn't set yet
+        self.frame = frame
 
         super().__init__(*parameters, children=children)
 
@@ -41,11 +40,42 @@ class Component(Model):
         """
         return self._bbox
 
+    @bbox.setter
+    def bbox(self, b):
+        """Sets the bounding box of this component.
+
+        Parameters
+        ----------
+        b: `~scarlet.Box`
+            New bounding box of this model
+        """
+        if b is None:
+            b = self._frame.bbox
+        self._bbox = b
+
+        self._model_frame_slices, self._model_slices = overlapped_slices(
+            self._frame.bbox, self._bbox
+        )
+
     @property
     def frame(self):
         """Hyper-spectral characteristics is this model
         """
         return self._frame
+
+    @frame.setter
+    def frame(self, f):
+        """Sets the frame for this component.
+
+        Parameters
+        ----------
+        f: `~scarlet.Frame`
+            New frame of the model
+        """
+        self._frame = f
+        self._model_frame_slices, self._model_slices = overlapped_slices(
+            self._frame.bbox, self._bbox
+        )
 
     def model_to_frame(self, frame=None, model=None):
         """Project a model into a frame
@@ -85,25 +115,6 @@ class Component(Model):
         result = np.zeros(frame.shape, dtype=dtype)
         result[frame_slices] = model[model_slices]
         return result
-
-    def set_frame(self, frame, bbox=None):
-        """Sets the frame for this component.
-
-        Each component needs to know the properties of the Frame and,
-        potentially, the subvolume it covers.
-
-        Parameters
-        ----------
-        model_frame: `~scarlet.Frame`
-            Frame of the model
-        """
-        self._frame = frame
-        if bbox is not None:
-            self._bbox = bbox
-
-        self._model_frame_slices, self._model_slices = overlapped_slices(
-            frame.bbox, self._bbox
-        )
 
 
 class FactorizedComponent(Component):

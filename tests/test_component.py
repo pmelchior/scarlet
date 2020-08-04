@@ -87,7 +87,7 @@ class TestFunctionComponent:
         spectrum = scarlet.TabulatedSpectrum(frame, sed, bbox=box[0])
 
         # construct functional morphology where the parameter sets
-        # the locatio of single pixel that is on
+        # the location of single pixel that is on
         class OnePixelMorphology(scarlet.Morphology):
             def __init__(self, model_frame, on_pixel, bbox=None):
                 self._bbox = bbox

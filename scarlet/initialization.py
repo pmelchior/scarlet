@@ -1,4 +1,3 @@
-from .source import *
 from .wavelet import Starlet, mad_wavelet
 from .observation import Observation, LowResObservation
 from .interpolation import interpolate_observation
@@ -22,8 +21,6 @@ def get_best_fit_seds(morphs, images):
     ----------
     morphs: list
         Morphology for each component in the source.
-    frame: `scarlet.observation.frame`
-        The frame of the model
     images: array
         Observation to extract SEDs from.
 
@@ -270,8 +267,8 @@ def init_starlet_source(
         coadd=coadd,
         coadd_rms=coadd_rms,
         thresh=thresh,
-        symmetric=True,
-        monotonic=True,
+        symmetric=symmetric,
+        monotonic=monotonic,
         min_grad=min_grad,
     )
 

@@ -1,12 +1,12 @@
-import numpy.ma as ma
-import proxmin
 from functools import partial
 
-from .component import CombinedComponent
-
+import numpy.ma as ma
 import autograd.numpy as np
 from autograd import grad
 from autograd.extend import defvjp, primitive
+import proxmin
+
+from .component import CombinedComponent
 
 
 @primitive

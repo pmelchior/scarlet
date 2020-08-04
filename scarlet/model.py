@@ -67,7 +67,7 @@ class Model(ABC):
         if i < len(parameters):
             return parameters[i]
 
-        # eitherwise use self
+        # otherwise use self
         if i < len(self.parameters):
             return self.parameters[i]
 

@@ -2,7 +2,6 @@ import numpy as np
 from astropy.visualization.lupton_rgb import LinearMapping, AsinhMapping
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle, Polygon
-from .observation import convolve
 from .component import Component
 
 
