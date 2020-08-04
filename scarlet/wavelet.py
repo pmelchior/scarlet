@@ -202,7 +202,7 @@ def get_starlet_shape(shape, lvl = None):
     lvl_max = np.int(np.log2(np.min(shape[-2:])))
     if (lvl is None) or lvl > lvl_max:
         lvl = lvl_max
-    return lvl
+    return int(lvl)
 
 def mk_starlet(shape, image = None):
     """ Creates a starlet for a given 2d shape.

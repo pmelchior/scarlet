@@ -203,28 +203,6 @@ class Box:
             )
         return Box.from_bounds(*bounds)
 
-    def __or__(self, other):
-        """Union of two bounding boxes
-
-        Parameters
-        ----------
-        other: `Box`
-            The other bounding box in the intersection
-
-        Returns
-        -------
-        result: `Box`
-            The rectangular box that form the union region
-            of both boxes.
-        """
-        assert other.D == self.D
-        bounds = []
-        for d in range(self.D):
-            bounds.append(
-                (min(self.start[d], other.start[d]), max(self.stop[d], other.stop[d]))
-            )
-        return Box.from_bounds(*bounds)
-
     def __getitem__(self, i):
         s_ = self.shape[i]
         o_ = self.origin[i]
