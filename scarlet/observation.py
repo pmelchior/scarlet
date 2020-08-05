@@ -105,6 +105,8 @@ class Observation:
         self._diff_kernels = None
         self.h = 1
 
+        self._parameters = ()
+
     def match(self, model_frame, diff_kernels=None, convolution="fft"):
         """Match the frame of `Blend` to the frame of this observation.
 
@@ -202,13 +204,18 @@ class Observation:
             )
         return result
 
-    def render(self, model):
+    @property
+    def parameters(self):
+        return self._parameters
+
+    def render(self, model, *parameters):
         """Convolve a model to the observation frame
 
         Parameters
         ----------
         model: array
             The model from `Blend`
+        parameters: tuple of optimization parameters
 
         Returns
         -------
@@ -221,13 +228,14 @@ class Observation:
             model_images = model
         return model_images[self.slices_for_model]
 
-    def get_loss(self, model):
+    def get_loss(self, model, *parameters):
         """Computes the loss/fidelity of a given model wrt to the observation
 
         Parameters
         ----------
         model: array
             The model from `Blend`
+        parameters: tuple of optimization parameters
 
         Returns
         -------
@@ -235,7 +243,7 @@ class Observation:
             Scalar tensor with the likelihood of the model
             given the image data
         """
-        model_ = self.render(model)
+        model_ = self.render(model, *parameters)
         if self.frame != self.model_frame:
             images_ = self.images[self.slices_for_images]
             weights_ = self.weights[self.slices_for_images]
@@ -290,7 +298,9 @@ class Observation:
         This method is a convenience function for now but should
         not be considered supported and could be removed in a later version
         """
-        frame_slices, observation_slices = overlapped_slices(frame, self.bbox)
+        frame_slices, observation_slices = overlapped_slices(
+            frame.bbox, self.frame.bbox
+        )
 
         if images is None:
             images = self.images
@@ -302,10 +312,6 @@ class Observation:
         result = np.zeros(frame.shape, dtype=dtype)
         result[frame_slices] = images[observation_slices]
         return result
-
-    @property
-    def bbox(self):
-        return self.frame.bbox
 
 
 class LowResObservation(Observation):
@@ -596,7 +602,7 @@ class LowResObservation(Observation):
             )
             return self
 
-    def render(self, model):
+    def render(self, model, *parameters):
         """Resample and convolve a model in the observation frame
         Parameters
         ----------
@@ -644,7 +650,7 @@ class LowResObservation(Observation):
                 model_image.append((self._resconv_op[c].T @ model_conv[c].T).T)
             return np.array(model_image, dtype=self.frame.dtype)
 
-    def get_loss(self, model):
+    def get_loss(self, model, *parameters):
         """Computes the loss/fidelity of a given model wrt to the observation
         Parameters
         ----------
@@ -655,7 +661,7 @@ class LowResObservation(Observation):
         loss: float
             Loss of the model
         """
-        model_ = self.render(model)
+        model_ = self.render(model, *parameters)
         images_ = self.images
         weights_ = self.weights
 

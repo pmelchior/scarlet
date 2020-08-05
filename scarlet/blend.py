@@ -94,7 +94,9 @@ class Blend(CombinedComponent):
         alg_kwargs: dict
             Keywords for the `proxmin.adaprox` optimizer
         """
-        X = self.parameters
+        X = self.parameters + tuple(
+            p for obs in self.observations for p in obs.parameters
+        )
 
         # compute the backward gradients
         # but only for non-fixed parameters
@@ -225,11 +227,16 @@ class Blend(CombinedComponent):
         function and update the gradient for each
         parameter
         """
-        model = self.get_model(*parameters, frame=self.frame)
+        n_params = len(self.parameters)
+        model = self.get_model(*parameters[:n_params], frame=self.frame)
+
         # Caculate the total loss function from all of the observations
         total_loss = 0
         for observation in self.observations:
-            total_loss = total_loss + observation.get_loss(model)
+            n_obs_params = len(observation.parameters)
+            obs_params = parameters[n_params : n_params + n_obs_params]
+            total_loss = total_loss + observation.get_loss(model, *obs_params)
+            n_params += n_obs_params
 
         self.loss.append(total_loss._value)
         return total_loss
