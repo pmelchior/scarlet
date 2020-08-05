@@ -1,7 +1,9 @@
+import astropy
+import logging
 import numpy as np
+
 from .bbox import Box
 from . import interpolation
-import logging
 from . import resampling
 
 logger = logging.getLogger("scarlet.frame")
@@ -34,10 +36,10 @@ class Frame:
         self.channels = channels
 
         if wcs is not None:
-            import astropy
-
             assert isinstance(wcs, astropy.wcs.WCS)
-        self.wcs = wcs
+            self.wcs = wcs.celestial  # only use celestial portion
+        else:
+            self.wcs = None
 
         if psfs is None:
             logger.warning("No PSF specified. Possible, but dangerous!")
@@ -91,40 +93,45 @@ class Frame:
 
     def get_pixel(self, sky_coord):
         """Get the pixel coordinate from a world coordinate
-        If there is no WCS associated with the `Scene`,
-        meaning the data frame and model frame are the same,
-        then this just returns `sky_coord`.
-        """
-        if self.wcs is not None:
-            if self.wcs.naxis == 3:
-                coord = self.wcs.wcs_world2pix(*sky_coord, 0, 0)[:2]
-            elif self.wcs.naxis == 2:
-                coord = self.wcs.wcs_world2pix(*sky_coord, 0)
-            else:
-                raise ValueError(
-                    "Invalid number of wcs dimensions: {0}".format(self.wcs.naxis)
-                )
-            return tuple(int(c.item()) for c in coord)
 
-        return tuple(int(coord) for coord in sky_coord)
+        Parameters
+        ----------
+        sky_coord: tuple, array
+            Coordinates on the sky
+        """
+        sky = np.array(sky_coord, dtype=np.float).reshape(-1, 2)
+
+        if self.wcs is not None:
+            pixel = np.array(self.wcs.world_to_pixel_values(sky)).reshape(-1, 2)
+            # y/x instead of x/y:
+            pixel = np.flip(pixel, axis=-1)
+        else:
+            pixel = sky
+
+        if pixel.size == 2:  # only one coordinate pair
+            return pixel[0]
+        return pixel
 
     def get_sky_coord(self, pixel):
-        """Get the world coordinate for a pixel coordinate
-        If there is no WCS associated with the `Scene`,
-        meaning the data frame and model frame are the same,
-        then this just returns `pixel`.
+        """Get the sky coordinate from a pixel coordinate
+
+        Parameters
+        ----------
+        pixel: tuple, array
+            Coordinates in the pixel space
         """
+        pix = np.array(pixel, dtype=np.float).reshape(-1, 2)
+
         if self.wcs is not None:
-            if self.wcs.naxis == 3:
-                coord = self.wcs.wcs_pix2world(*pixel, 0, 0)[:2]
-            elif self.wcs.naxis == 2:
-                coord = self.wcs.wcs_pix2world(*pixel, 0)
-            else:
-                raise ValueError(
-                    "Invalid number of wcs dimensions: {0}".format(self.wcs.naxis)
-                )
-            return tuple(c.item() for c in coord)
-        return tuple(pixel)
+            # x/y instead of y/x:
+            pix = np.flip(pix, axis=-1)
+            sky = np.array(self.wcs.pixel_to_world_values(pix))
+        else:
+            sky = pix
+
+        if sky.size == 2:
+            return sky[0]
+        return sky
 
     @staticmethod
     def from_observations(

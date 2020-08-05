@@ -84,7 +84,7 @@ class PointSource(FactorizedComponent):
         spectrum = get_psf_sed(sky_coord, observations, model_frame)
         spectrum = TabulatedSpectrum(model_frame, spectrum)
 
-        center = np.array(model_frame.get_pixel(sky_coord), dtype="float")
+        center = model_frame.get_pixel(sky_coord)
         morphology = PointSourceMorphology(model_frame, center)
         self.center = morphology.center
         super().__init__(model_frame, spectrum, morphology)
@@ -195,7 +195,7 @@ class SingleExtendedSource(FactorizedComponent):
         )
         spectrum = TabulatedSpectrum(model_frame, sed, bbox=bbox[0])
 
-        center = np.array(model_frame.get_pixel(sky_coord), dtype="float")
+        center = model_frame.get_pixel(sky_coord)
         morphology = ExtendedSourceMorphology(
             model_frame,
             center,
@@ -279,7 +279,7 @@ class MultiExtendedSource(CombinedComponent):
             min_grad=0,
         )
 
-        center = np.array(model_frame.get_pixel(sky_coord), dtype="float")
+        center = model_frame.get_pixel(sky_coord)
         components = []
         for k in range(K):
 
