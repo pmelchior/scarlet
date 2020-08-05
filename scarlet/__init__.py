@@ -10,8 +10,9 @@ from .prior import *
 from .psf import *
 from .source import *
 from .spectrum import *
-from . import measure
 from . import display
+from . import initialization
+from . import measure
 
 try:
     from ._version import version
