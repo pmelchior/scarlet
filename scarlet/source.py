@@ -1,14 +1,22 @@
+import autograd.numpy as np
 from functools import partial
 
 from .component import CombinedComponent, FactorizedComponent
-from .constraint import *
-from .initialization import *
-from .morphology import *
+from .constraint import PositivityConstraint
+from .initialization import (
+    get_psf_sed,
+    init_extended_source,
+    init_multicomponent_source,
+    init_starlet_source,
+)
+from .morphology import (
+    ImageMorphology,
+    PointSourceMorphology,
+    StarletMorphology,
+    ExtendedSourceMorphology,
+)
 from .parameter import Parameter, relative_step
-from .spectrum import *
-
-# make sure that import * above doesn't import its own stock numpy
-import autograd.numpy as np
+from .spectrum import TabulatedSpectrum
 
 
 class RandomSource(FactorizedComponent):
@@ -258,7 +266,7 @@ class MultiExtendedSource(CombinedComponent):
         assert K == len(flux_percentiles) + 1
 
         # initialize from observation
-        seds, morphs, bbox = init_multicomponent_source(
+        seds, morphs, boxes = init_multicomponent_source(
             sky_coord,
             model_frame,
             observations,
@@ -288,7 +296,7 @@ class MultiExtendedSource(CombinedComponent):
                 model_frame,
                 center,
                 morphs[k],
-                bbox=bbox[1:],
+                bbox=boxes[k][1:],
                 monotonic="angle",
                 symmetric=False,
                 min_grad=0,

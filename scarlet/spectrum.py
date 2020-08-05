@@ -1,14 +1,11 @@
+import autograd.numpy as np
 from functools import partial
 
-from .model import Model
-from .frame import Frame
 from .bbox import Box
-from .parameter import Parameter, relative_step
 from .constraint import PositivityConstraint
-from .bbox import Box
-
-# make sure that import * above doesn't import its own stock numpy
-import autograd.numpy as np
+from .frame import Frame
+from .model import Model
+from .parameter import Parameter, relative_step
 
 
 class Spectrum(Model):

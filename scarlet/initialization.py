@@ -136,17 +136,13 @@ def get_psf_sed(sky_coord, observations, model_frame):
     return sed
 
 
-def trim_morphology(sky_coord, frame, morph, bg_cutoff, thresh):
+def trim_morphology(sky_coord, frame, morph, bg_thresh):
     # trim morph to pixels above threshold
-    mask = morph > bg_cutoff * thresh
+    mask = morph > bg_thresh
     boxsize = 16
     pixel_center = frame.get_pixel(sky_coord)
     if mask.sum() > 0:
         morph[~mask] = 0
-
-        # normalize to unity at peak pixel
-        center_morph = morph[pixel_center[0], pixel_center[1]]
-        morph /= center_morph
 
         # find fitting bbox
         bbox = Box.from_data(morph, min_value=0)
@@ -160,7 +156,7 @@ def trim_morphology(sky_coord, frame, morph, bg_cutoff, thresh):
                 )
             )
             while boxsize < size:
-                boxsize *= 2
+                boxsize += 16  # keep box sizes quite small
     else:
         msg = "No flux above threshold for source at y={0} x={1}".format(*pixel_center)
         logger.warning(msg)
@@ -211,13 +207,13 @@ def init_extended_source(
             raise AttributeError(
                 "Observation.weights missing! Please set inverse variance weights"
             )
-        coadd, bg_cutoff = build_sed_coadd(seds, bg_rmses, observations)
+        coadd, bg_rms = build_sed_coadd(seds, bg_rmses, observations)
     else:
         if coadd_rms is None:
             raise AttributeError(
                 "background cutoff missing! Please set argument bg_cutoff"
             )
-        bg_cutoff = coadd_rms
+        bg_rms = coadd_rms
 
     # Apply the necessary constraints
     center = frame.get_pixel(sky_coord)
@@ -239,7 +235,13 @@ def init_extended_source(
         )
         morph = prox_monotonic(morph, 0).reshape(morph.shape)
 
-    morph, bbox = trim_morphology(sky_coord, frame, morph, bg_cutoff, thresh)
+    # truncated at thresh * bg_rms
+    threshold = bg_rms * thresh
+    morph, bbox = trim_morphology(sky_coord, frame, morph, threshold)
+
+    # normalize to unity at peak pixel for the imposed normalization
+    morph /= morph.max()
+
     return sed, morph, bbox
 
 
@@ -369,7 +371,19 @@ def init_multicomponent_source(
             )
             logger.warning(msg)
 
-    return seds, morphs, bbox
+    # avoid using the same box for multiple components
+    boxes = tuple(bbox.copy() for k in range(K))
+
+    # # define minimal boxes (NOTE: dangerous due to box truncation)
+    # morphs_ = []
+    # boxes = []
+    # threshold = 0
+    # for k in range(K):
+    #     morph, bbox = trim_morphology(sky_coord, frame, morphs[k], threshold)
+    #     morphs_.append(morph)
+    #     boxes.append(bbox)
+
+    return seds, morphs, boxes
 
 
 def build_sed_coadd(seds, bg_rmses, observations, obs_ref=None):

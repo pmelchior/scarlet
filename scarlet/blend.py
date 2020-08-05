@@ -76,7 +76,7 @@ class Blend(CombinedComponent):
         else:
             self.observations = (observations,)
 
-        super().__init__(self.sources, check_boxes=False)
+        super().__init__(self.sources)
 
         self.loss = []
 

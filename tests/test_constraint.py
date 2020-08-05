@@ -14,7 +14,7 @@ class TestUpdate(object):
         assert all(X_ >= 0)
 
         threshold = 0.1
-        constraint = scarlet.PositivityConstraint(threshold=threshold)
+        constraint = scarlet.PositivityConstraint(zero=threshold)
         X_ = constraint(X, step)
         assert all(X_ >= threshold)
 

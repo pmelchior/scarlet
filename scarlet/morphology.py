@@ -1,15 +1,22 @@
+import autograd.numpy as np
+
+from .bbox import Box
+from .constraint import (
+    ConstraintChain,
+    L0Constraint,
+    PositivityConstraint,
+    MonotonicityConstraint,
+    SymmetryConstraint,
+    CenterOnConstraint,
+    NormalizationConstraint,
+)
+from .frame import Frame
 from .model import Model
 from .parameter import Parameter, relative_step
-from .constraint import *
-from .frame import Frame
-from .bbox import Box
-from .wavelet import Starlet
 from .psf import PSF
+from .wavelet import Starlet
 from . import fft
 from . import interpolation
-
-# make sure that import * above doesn't import its own stock numpy
-import autograd.numpy as np
 
 
 class Morphology(Model):

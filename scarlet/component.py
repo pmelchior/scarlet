@@ -206,7 +206,7 @@ class CubeComponent(Component):
 
 
 class CombinedComponent(Component):
-    def __init__(self, components, operation="add", check_boxes=True):
+    def __init__(self, components, operation="add"):
 
         assert len(components)
         frame = components[0].frame
@@ -215,23 +215,42 @@ class CombinedComponent(Component):
         for c in components:
             assert isinstance(c, Component)
             assert c.frame is frame
-            if check_boxes:
-                assert c.bbox == box
 
         super().__init__(frame, children=components, bbox=box)
 
         assert operation in ["add", "multiply"]
         self.operation = operation
 
+    @property
+    def bbox(self):
+        """Union of all the component `~scarlet.bbox.Box`es
+        """
+        # Make the bbox of the tree the union of the component bboxes
+        box = self.children[0].bbox.copy()
+        for c in self.children[1:]:
+            box |= c.bbox
+        return box
+
     def get_model(self, *parameters, frame=None):
         # boxed models
         models = self.get_models_of_children(*parameters, frame=None)
-        model = models[0]
-        if self.operation == "add":
-            for model_ in models[1:]:
+
+        bbox = self.bbox
+        model = np.zeros(bbox.shape)
+
+        for k, model_ in enumerate(models):
+            c = self.children[k]
+
+            if c.bbox != bbox:
+                padding = tuple(
+                    (c.bbox.start[d] - bbox.start[d], bbox.stop[d] - c.bbox.stop[d])
+                    for d in range(bbox.D)
+                )
+                model_ = np.pad(model_, padding, mode="constant")
+
+            if self.operation == "add":
                 model += model_
-        elif self.operation == "multiply":
-            for model_ in models[1:]:
+            elif self.operation == "multiply":
                 model *= model_
 
         if frame is not None:
