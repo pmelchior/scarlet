@@ -81,11 +81,15 @@ class ConstraintChain:
 
 
 class PositivityConstraint(Constraint):
-    """Allow only non-negative elements.
+    """Allow only values not smaller than `zero`.
     """
 
-    def __init__(self):
-        super().__init__(proxmin.operators.prox_plus)
+    def __init__(self, zero=0):
+        self.zero = zero
+
+    def __call__(self, X, step):
+        X = np.maximum(X, self.zero)
+        return X
 
 
 class NormalizationConstraint(Constraint):
@@ -122,7 +126,9 @@ class L0Constraint(Constraint):
             if the penalty is expressed in units of the function value (relative)
             or in units of the variable X (absolute).
         """
-        super().__init__(partial(proxmin.operators.prox_hard, thresh=thresh, type=type, ))
+        super().__init__(
+            partial(proxmin.operators.prox_hard, thresh=thresh, type=type,)
+        )
 
 
 class L1Constraint(Constraint):
@@ -235,15 +241,3 @@ class CenterOnConstraint(Constraint):
         center = (shape[0] // 2, shape[1] // 2)
         morph[center] = max(morph[center], self.tiny)
         return morph
-
-
-class AllOnConstraint(Constraint):
-    """Add to all elements a tiny non-zero value
-    """
-
-    def __init__(self, tiny=1e-6):
-        self.tiny = tiny
-
-    def __call__(self, X, step):
-        X = np.maximum(X, self.tiny)
-        return X

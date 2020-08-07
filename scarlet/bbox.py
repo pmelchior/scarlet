@@ -30,21 +30,6 @@ class Box:
         self.origin = tuple(origin)
 
     @staticmethod
-    def from_image(image):
-        """Initialize a box to cover `image`
-
-        Parameters
-        ----------
-        image: array-like
-
-        Returns
-        -------
-        bbox: `:class:`scarlet.bbox.Box`
-            A new box bounded by the image.
-        """
-        return Box(image.shape)
-
-    @staticmethod
     def from_bounds(*bounds):
         """Initialize a box from its bounds
 
@@ -98,9 +83,6 @@ class Box:
                 return False
         return True
 
-    def as_slices(self):
-        return tuple([slice(o, o + s) for o, s in zip(self.origin, self.shape)])
-
     def extract_from(self, image, sub=None):
         """Extract sub-image described by this bbox from image
 
@@ -115,7 +97,7 @@ class Box:
         -------
         sub: array
         """
-        imbox = Box.from_image(image)
+        imbox = Box(image.shape)
 
         if sub is None:
             sub = np.zeros(self.shape)
@@ -140,7 +122,7 @@ class Box:
         -------
         image: array
         """
-        imbox = Box.from_image(image)
+        imbox = Box(image.shape)
 
         im_slices, sub_slices = overlapped_slices(imbox, self)
         image[im_slices] = sub[sub_slices]
@@ -166,7 +148,21 @@ class Box:
 
     @property
     def shape(self):
+        """Shape of the box
+        """
         return self._shape
+
+    @property
+    def bounds(self):
+        """Bounds of the box
+        """
+        return tuple((o, o + s) for o, s in zip(self.origin, self.shape))
+
+    @property
+    def slices(self):
+        """Bounds of the box as slices
+        """
+        return tuple([slice(o, o + s) for o, s in zip(self.origin, self.shape)])
 
     def __or__(self, other):
         """Union of two bounding boxes
@@ -214,11 +210,21 @@ class Box:
             )
         return Box.from_bounds(*bounds)
 
+    def __getitem__(self, i):
+        s_ = self.shape[i]
+        o_ = self.origin[i]
+        if not hasattr(s_, "__iter__"):
+            s_ = (s_,)
+            o_ = (o_,)
+        return Box(s_, origin=o_)
+
     def __repr__(self):
         result = "<Box shape={0}, origin={1}>"
         return result.format(self.shape, self.origin)
 
     def __iadd__(self, offset):
+        if not hasattr(offset, "__iter__"):
+            offset = (offset,) * self.D
         self.origin = tuple([a + o for a, o in zip(self.origin, offset)])
         return self
 
@@ -226,16 +232,28 @@ class Box:
         return self.copy().__iadd__(offset)
 
     def __isub__(self, offset):
+        if not hasattr(offset, "__iter__"):
+            offset = (offset,) * self.D
         self.origin = tuple([a - o for a, o in zip(self.origin, offset)])
         return self
 
     def __sub__(self, offset):
         return self.copy().__isub__(offset)
 
+    def __imatmul__(self, bbox):
+        bounds = self.bounds + bbox.bounds
+        self = Box.from_bounds(*bounds)
+        return self
+
+    def __matmul__(self, bbox):
+        return self.copy().__imatmul__(bbox)
+
     def __copy__(self):
         return Box(self.shape, origin=self.origin)
 
     def copy(self):
+        """Copy of the box
+        """
         return self.__copy__()
 
     def __eq__(self, other):
@@ -261,7 +279,7 @@ def overlapped_slices(bbox1, bbox2):
     _bbox1 = overlap - bbox1.origin
     _bbox2 = overlap - bbox2.origin
     slices = (
-        _bbox1.as_slices(),
-        _bbox2.as_slices(),
+        _bbox1.slices,
+        _bbox2.slices,
     )
     return slices

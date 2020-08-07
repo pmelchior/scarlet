@@ -10,7 +10,6 @@ dist/
 tmp/
 include/
 scarlet/_version.py
-
 docs/_build
 docs/api
 docs/_templates
