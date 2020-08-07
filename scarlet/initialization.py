@@ -382,6 +382,7 @@ def init_multicomponent_source(
     #     morph, bbox = trim_morphology(sky_coord, frame, morphs[k], threshold)
     #     morphs_.append(morph)
     #     boxes.append(bbox)
+    # morphs = morphs_
 
     return seds, morphs, boxes
 
