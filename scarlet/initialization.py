@@ -1,12 +1,14 @@
-from .wavelet import Starlet, mad_wavelet
-from .observation import Observation, LowResObservation
-from .interpolation import interpolate_observation
-from . import operator
-from .bbox import Box
-
 import numpy as np
 
 import logging
+
+from . import operator
+from .bbox import Box
+from .constraint import CenterOnConstraint
+from .interpolation import interpolate_observation
+from .observation import Observation, LowResObservation
+from .wavelet import Starlet, mad_wavelet
+
 
 logger = logging.getLogger("scarlet.initialisation")
 
@@ -68,7 +70,8 @@ def get_pixel_sed(sky_coord, observations):
     seds = []
     for obs in observations:
         pixel = obs.frame.get_pixel(sky_coord)
-        sed = obs.images[:, pixel[0], pixel[1]].copy()
+        index = np.round(pixel).astype(np.int)
+        sed = obs.images[:, index[0], index[1]].copy()
         seds.append(sed)
     sed = np.concatenate(seds).reshape(-1)
 
@@ -136,40 +139,35 @@ def get_psf_sed(sky_coord, observations, model_frame):
     return sed
 
 
-def trim_morphology(sky_coord, frame, morph, bg_thresh):
+def trim_morphology(center_index, morph, bg_thresh):
     # trim morph to pixels above threshold
     mask = morph > bg_thresh
-    boxsize = 16
-    pixel_center = frame.get_pixel(sky_coord)
-    if mask.sum() > 0:
-        morph[~mask] = 0
+    morph[~mask] = 0
 
-        # find fitting bbox
-        bbox = Box.from_data(morph, min_value=0)
-        if bbox.contains(pixel_center):
-            size = 2 * max(
-                (
-                    pixel_center[0] - bbox.start[-2],
-                    bbox.stop[0] - pixel_center[-2],
-                    pixel_center[1] - bbox.start[-1],
-                    bbox.stop[1] - pixel_center[-1],
-                )
+    # find fitting bbox
+    boxsize = 16
+    bbox = Box.from_data(morph, min_value=0)
+    if bbox.contains(center_index):
+        size = 2 * max(
+            (
+                center_index[0] - bbox.start[-2],
+                bbox.stop[0] - center_index[-2],
+                center_index[1] - bbox.start[-1],
+                bbox.stop[1] - center_index[-1],
             )
-            while boxsize < size:
-                boxsize += 16  # keep box sizes quite small
-    else:
-        msg = "No flux above threshold for source at y={0} x={1}".format(*pixel_center)
-        logger.warning(msg)
+        )
+        while boxsize < size:
+            boxsize += 16  # keep box sizes quite small
 
     # define bbox and trim to bbox
-    bottom = pixel_center[0] - boxsize // 2
-    top = pixel_center[0] + boxsize // 2
-    left = pixel_center[1] - boxsize // 2
-    right = pixel_center[1] + boxsize // 2
+    bottom = center_index[0] - boxsize // 2
+    top = center_index[0] + boxsize // 2
+    left = center_index[1] - boxsize // 2
+    right = center_index[1] + boxsize // 2
     bbox = Box.from_bounds((bottom, top), (left, right))
     morph = bbox.extract_from(morph)
-    bbox_3d = Box.from_bounds((0, frame.C), (bottom, top), (left, right))
-    return morph, bbox_3d
+    bbox = Box.from_bounds((bottom, top), (left, right))
+    return morph, bbox
 
 
 def init_extended_source(
@@ -217,11 +215,12 @@ def init_extended_source(
 
     # Apply the necessary constraints
     center = frame.get_pixel(sky_coord)
+    center_index = np.round(center).astype(np.int)
     if symmetric:
         morph = operator.prox_uncentered_symmetry(
             coadd.copy(),
             0,
-            center=center,
+            center=center_index,
             algorithm="sdss",  # *1 is to artificially pass a variable that is not coadd
         )
     else:
@@ -231,16 +230,25 @@ def init_extended_source(
             monotonic = "angle"
         # use finite thresh to remove flat bridges
         prox_monotonic = operator.prox_weighted_monotonic(
-            morph.shape, neighbor_weight=monotonic, center=center, min_gradient=min_grad
+            morph.shape,
+            neighbor_weight=monotonic,
+            center=center_index,
+            min_gradient=min_grad,
         )
         morph = prox_monotonic(morph, 0).reshape(morph.shape)
 
     # truncated at thresh * bg_rms
     threshold = bg_rms * thresh
-    morph, bbox = trim_morphology(sky_coord, frame, morph, threshold)
+    morph, bbox = trim_morphology(center_index, morph, threshold)
+    bbox = frame.bbox[0] @ bbox
 
     # normalize to unity at peak pixel for the imposed normalization
-    morph /= morph.max()
+    if morph.sum() > 0:
+        morph /= morph.max()
+    else:
+        morph = CenterOnConstraint()(morph, 0)
+        msg = "No flux above threshold for source at y={0} x={1}".format(*sky_coord)
+        logger.warning(msg)
 
     return sed, morph, bbox
 
