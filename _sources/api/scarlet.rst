@@ -14,6 +14,8 @@ API Documentation
     scarlet.initialization
     scarlet.interpolation
     scarlet.measure
+    scarlet.model
+    scarlet.morphology
     scarlet.observation
     scarlet.operator
     scarlet.parameter
@@ -21,4 +23,5 @@ API Documentation
     scarlet.psf
     scarlet.resampling
     scarlet.source
+    scarlet.spectrum
     scarlet.wavelet

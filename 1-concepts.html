@@ -318,17 +318,19 @@ div.rendered_html tbody tr:hover {
 </ol>
 <div class="section" id="Overview">
 <h2>Overview<a class="headerlink" href="#Overview" title="Permalink to this headline">¶</a></h2>
-<p>The goal of <em>scarlet</em> is to create a model of individual astrophysical sources from a collection of observations of a rectangular region of the sky. These observations can be in multiple filter bands (which we will call “channels” internally) with different PSFs, from telescopes with different resolutions, and eventually even spectroscopic instruments. A main emphasis of <em>scarlet</em> lies in deblending overlapping sources. As is pointed out by Robert Lupton, perfect reconstruction of a blended
-scene is <a class="reference external" href="https://docushare.lsst.org/docushare/dsweb/Services/Document-29071">impossible</a>, however by making a few minor assumptions <em>scarlet</em> improves on other blending algorithms by leveraging as much data as possible.</p>
-<p>The basic assumption of <em>scarlet</em> is that sources in an astrophysical image can be thought of as a collection of <code class="docutils literal notranslate"><span class="pre">Component</span></code> instances, where each component has its own internal representation of the source properties (non-parameteric or parametric), from which it computes its model of the sources in a 3D hyper-spectral data cube of pixels vs wavelegths. A common model is <code class="docutils literal notranslate"><span class="pre">FactorizedComponent</span></code>, which describes the source as a non-parametric morphology image and an intensity in every channel
-(SED). With this ansatz, more complicated objects, like galaxies, can be thought of as a combination of multiple components (a <code class="docutils literal notranslate"><span class="pre">ComponentTree</span></code>), where components with different SEDs represent different populations of stars or gases in the host galaxy. To properly separate sources, further assumptions are required, for example that all of the flux is positive and that the spatial distribution stars and galaxies monotonically decreases from their centers.</p>
-<p>A <code class="docutils literal notranslate"><span class="pre">Frame</span></code> contains metadata for the hyperspectral cube <em>scarlet</em> seeks to construct as well as those describing an <code class="docutils literal notranslate"><span class="pre">Observation</span></code>. The latter is the combination of a <code class="docutils literal notranslate"><span class="pre">Frame</span></code> with several data units. Each observation can have multiple filter bands with a different PSF in each band that is internally matched to the model PSF.</p>
+<p>The goal of <em>scarlet</em> is to create a model of individual astrophysical sources from a collection of observations of a rectangular region of the sky. These observations can be in multiple filter bands (which we will call “channels” internally) with different PSFs, from telescopes with different resolutions, and eventually even spectroscopic instruments. A main emphasis of <em>scarlet</em> lies in deblending overlapping sources. Robert Lupton points out that perfect reconstruction of a blended scene is
+<a class="reference external" href="https://docushare.lsst.org/docushare/dsweb/Services/Document-29071">impossible</a>, however by making a few minor assumptions <em>scarlet</em> improves on other blending algorithms by leveraging as much data as possible.</p>
+<p>The basic assumption of <em>scarlet</em> is that sources in an astrophysical image can be thought of as a collection of <code class="docutils literal notranslate"><span class="pre">Component</span></code> instances, where each component has its own internal representation of the source properties, from which it computes its model of the sources in a 3D hyper-spectral data cube of pixels vs wavelegths. A common model is <code class="docutils literal notranslate"><span class="pre">FactorizedComponent</span></code>, which describes the source as a <code class="docutils literal notranslate"><span class="pre">Morphology</span></code> model, which generates an image, and a <code class="docutils literal notranslate"><span class="pre">Spectrum</span></code> model, which generates the
+intensity in every channel. Both can be parameteric or non-parametric. With this ansatz, more complicated objects, like galaxies, can be thought of as a combination of multiple components (a <code class="docutils literal notranslate"><span class="pre">CombinedComponent</span></code>), where components with different spectra represent different populations of stars or other features in the host galaxy. To properly separate sources, further assumptions are required, for example that all of the flux is positive and that the spatial distribution stars and galaxies
+monotonically decreases from their centers.</p>
+<p>A <code class="docutils literal notranslate"><span class="pre">Frame</span></code> contains metadata for the hyperspectral cube <em>scarlet</em> seeks to construct as well as those describing an <code class="docutils literal notranslate"><span class="pre">Observation</span></code>. The latter is the combination of a <code class="docutils literal notranslate"><span class="pre">Frame</span></code> with several data units. Each observation can have multiple channels with a different PSF in each, and they will all be internally standardized.</p>
 <p>Into the model frame one or multiple <code class="docutils literal notranslate"><span class="pre">Component</span></code>s are inserted. Each of them can create a model of the hyperspectral data cube from its <code class="docutils literal notranslate"><span class="pre">Parameter</span></code>s. The recommended way of interacting with components is through the <code class="docutils literal notranslate"><span class="pre">source</span></code> classes.</p>
 <p>Finally, the <code class="docutils literal notranslate"><span class="pre">Blend</span></code> class links the sources with the observations and executes the optimization algorithm.</p>
-<p>For the most common type of source, we assume that the hyperspectral cube can be factorized into a 1D SED and a 2D morphology. Mathematically, the model of the scene is then</p>
+<p>For the most common type of source, we assume that the hyperspectral cube can be factorized into a 1D spectrum and a 2D morphology. Mathematically, the model of the scene is then</p>
 <div class="math notranslate nohighlight">
 \[\mathsf{M}= \sum_{k=1}^K \mathsf{A}_k^T \times \mathsf{S}_k = \mathsf{A}\mathsf{S},\]</div>
-<p>where <span class="math notranslate nohighlight">\(\mathsf{A}_k \in \mathbb{R}^C\)</span> is the SED and <span class="math notranslate nohighlight">\(\mathsf{S}_k \in \mathbb{R}^N\)</span> is the morphology of a single component in the model with <span class="math notranslate nohighlight">\(C\)</span> channels and <span class="math notranslate nohighlight">\(N\)</span> pixels in each channel. It is important to note that this so-called matrix factorization implies that SEDs and morphologies are independent, e.g. the SED of a component does not change over the region covered by its morphology.</p>
+<p>where <span class="math notranslate nohighlight">\(\mathsf{A}_k \in \mathbb{R}^C\)</span> is the spectrum and <span class="math notranslate nohighlight">\(\mathsf{S}_k \in \mathbb{R}^N\)</span> is the morphology of a single component in the model with <span class="math notranslate nohighlight">\(C\)</span> channels and <span class="math notranslate nohighlight">\(N\)</span> pixels in each channel. We call them <span class="math notranslate nohighlight">\(\mathsf{A}\)</span> and <span class="math notranslate nohighlight">\(\mathsf{S}\)</span> because they, more precisely, represent the <strong>amplitude</strong> and the <strong>shape</strong> of the components. It is important to note that this so-called matrix factorization implies that spectra and morphologies are independent, e.g. the
+spectrum of a component does not change over the region covered by its morphology.</p>
 <p>The scene is fit by minimizing the log-likelihood of the model, namely minimizing</p>
 <div class="math notranslate nohighlight">
 \[f(\mathsf{A},\mathsf{S}) \propto \frac{1}{2} || \mathsf{Y}-\mathsf{A}\mathsf{S} ||_2^2,\]</div>
@@ -371,7 +373,7 @@ set of filters and has a PSF and a pixel scale that are at least as small as the
 </div>
 <div class="section" id="Source">
 <h2>Source<a class="headerlink" href="#Source" title="Permalink to this headline">¶</a></h2>
-<p>A source is a convenient interface to specify what should be added to a model scene. Think of it as a physical unit, such as a star (<code class="docutils literal notranslate"><span class="pre">PointSource</span></code>) or a galaxy (<code class="docutils literal notranslate"><span class="pre">ExtendedSource</span></code>). It is a subclass of <code class="docutils literal notranslate"><span class="pre">Component</span></code> or <code class="docutils literal notranslate"><span class="pre">ComponentTree</span></code> (a hierarchical ordering of components) with a recipe to initialize and constrain its <code class="docutils literal notranslate"><span class="pre">Parameters</span></code>:</p>
+<p>A source is a convenient interface to specify what should be added to a model scene. Think of it as a physical unit, such as a star (<code class="docutils literal notranslate"><span class="pre">PointSource</span></code>) or a galaxy (<code class="docutils literal notranslate"><span class="pre">ExtendedSource</span></code>). It is a subclass of <code class="docutils literal notranslate"><span class="pre">Component</span></code> with a recipe to initialize and constrain its <code class="docutils literal notranslate"><span class="pre">Parameters</span></code>:</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
 </pre></div>
@@ -379,7 +381,7 @@ set of filters and has a PSF and a pixel scale that are at least as small as the
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
 <span></span><span class="kn">import</span> <span class="nn">scarlet</span>
 <span class="kn">import</span> <span class="nn">inspect</span>
-<span class="n">lines</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">getsource</span><span class="p">(</span><span class="n">scarlet</span><span class="o">.</span><span class="n">RandomSource</span><span class="p">)</span>
+<span class="n">lines</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">getsource</span><span class="p">(</span><span class="n">scarlet</span><span class="o">.</span><span class="n">PointSource</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -389,53 +391,38 @@ set of filters and has a PSF and a pixel scale that are at least as small as the
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-class RandomSource(FactorizedComponent):
-    &#34;&#34;&#34;Sources with uniform random morphology and sed.
+class PointSource(FactorizedComponent):
+    &#34;&#34;&#34;Point-Source model
 
-    For cases with no well-defined spatial shape, this source initializes
-    a uniform random field and (optionally) matches the SED to match a given
-    observation.
+    Point sources modeled as `model_frame.psfs`, centered at `sky_coord`.
+    Their SEDs are taken from `observations` at the center pixel.
     &#34;&#34;&#34;
 
-    def __init__(self, model_frame, observation=None):
-        &#34;&#34;&#34;Source intialized as random field.
+    def __init__(self, model_frame, sky_coord, observations):
+        &#34;&#34;&#34;Source intialized with a single pixel
 
         Parameters
         ----------
-        frame: `~scarlet.Frame`
-            The frame of the model
-        observation: list of `~scarlet.Observation`
-            Observation to initialize the SED of the source
+        model_frame: `~scarlet.Frame`
+            The frame of the full model
+        sky_coord: tuple
+            Center of the source
+        observations: instance or list of `~scarlet.Observation`
+            Observation(s) to initialize this source
         &#34;&#34;&#34;
-        C, Ny, Nx = model_frame.shape
-        morph = np.random.rand(Ny, Nx)
+        spectrum = get_psf_sed(sky_coord, observations, model_frame)
+        spectrum = TabulatedSpectrum(model_frame, spectrum)
 
-
-        if observation is None:
-            seds = np.random.rand(C)
-        else:
-            try:
-                iter(observation)
-            except TypeError:
-                observation = [observation]
-            seds = []
-            for obs in observation:
-                seds.append(get_best_fit_seds(morph[None], obs.images)[0])
-            seds = np.array(seds).reshape(-1)
-
-        constraint = PositivityConstraint()
-        sed = Parameter(seds, name=&#34;sed&#34;, step=relative_step, constraint=constraint)
-        morph = Parameter(
-            morph, name=&#34;morph&#34;, step=relative_step, constraint=constraint
-        )
-
-        super().__init__(model_frame, model_frame.bbox, sed, morph)
+        center = model_frame.get_pixel(sky_coord)
+        morphology = PointSourceMorphology(model_frame, center)
+        self.center = morphology.center
+        super().__init__(model_frame, spectrum, morphology)
 
 </pre></div></div>
 </div>
-<p>This is a simple but prototypical implementation. The base class is <code class="docutils literal notranslate"><span class="pre">FactorizedComponent</span></code>, which uses the SED-Morphology factorization introduced earlier. Therefore, it needs to define these two as <code class="docutils literal notranslate"><span class="pre">Parameter</span></code>s, so that the fitter will know to optimize them. Each parameter has a step size during optimization and is constrained to have only positive (actually: non-negative) elements through a <code class="docutils literal notranslate"><span class="pre">Constraint</span></code>.</p>
-<p>In addition, the initialization can make use of an observation to find suitable initial values of the <code class="docutils literal notranslate"><span class="pre">sed</span></code> parameter. As good initialization usually leads to much better results, this is where you should use your own insight to come up with guesses and step sizes that are suitable for the problem. This is the reason why <strong>scarlet implements ``source`` classes as the primary interface to create custom solutions</strong> for special analysis problems. It is layered on top of <code class="docutils literal notranslate"><span class="pre">Component</span></code> to make
-customization easier.</p>
+<p>This is a simple but prototypical implementation. The base class is <code class="docutils literal notranslate"><span class="pre">FactorizedComponent</span></code>, which uses the Spectrum-Morphology factorization introduced earlier. Therefore, it needs to define these two so that the fitter will know to optimize them.</p>
+<p>The initialization can make use of an observation to find suitable initial values of the <code class="docutils literal notranslate"><span class="pre">spectrum</span></code> parameter. As good initialization usually leads to much better results, this is where you should use your own insight to come up with guesses and step sizes that are suitable for the problem. This is the reason why <strong>scarlet implements ``source`` classes as the primary interface to create custom solutions</strong> for special analysis problems. It is layered on top of <code class="docutils literal notranslate"><span class="pre">Component</span></code>, which is derived
+from the generic <code class="docutils literal notranslate"><span class="pre">Model</span></code> classes, to make customization easier.</p>
 </div>
 <div class="section" id="Blend">
 <h2>Blend<a class="headerlink" href="#Blend" title="Permalink to this headline">¶</a></h2>
@@ -444,13 +431,12 @@ customization easier.</p>
 <div class="section" id="Component">
 <h2>Component<a class="headerlink" href="#Component" title="Permalink to this headline">¶</a></h2>
 <p><code class="docutils literal notranslate"><span class="pre">Component</span></code> is the base class for all objects that populate the model space. It generates a hyperspectral model for a list of parameters.</p>
-<p>Several model parameterizations are available:</p>
+<p>These model parameterizations are available:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">CubeComponent</span></code> is the simplest model. It specifies a free-form (often incorrectly called “non-parametric”) description of the hyperspectral frame, or a subvolume of it. Every voxel is independent.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">FactorizedModel</span></code> uses the SED-Morphology factorization. Both of these can be free-form or described by some functional form.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">FunctionComponent</span></code> uses a free-form SED, but a functional form of the morphology, which allows for point-source or Sersic-type fitting.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">FactorizedModel</span></code> uses the Spectrum-Morphology factorization. Both of these can be free-form or described by some functional form. They are specified by a <code class="docutils literal notranslate"><span class="pre">Spectrum</span></code> and a <code class="docutils literal notranslate"><span class="pre">Morphology</span></code> factor, which generate a model of the spectrum or morphology from its parameters.</p></li>
 </ul>
-<p>Most of these models can be restricted to subvolumes by specifying a bounding <code class="docutils literal notranslate"><span class="pre">Box</span></code>. Alternative parametrizations are entirely doable. Open an <a class="reference external" href="https://github.com/pmelchior/scarlet/issues">issue</a> if you need help with that.</p>
+<p>Most of these models can be restricted to subvolumes by specifying a bounding <code class="docutils literal notranslate"><span class="pre">Box</span></code>. Alternative parameterizations are entirely doable. Open an <a class="reference external" href="https://github.com/pmelchior/scarlet/issues">issue</a> if you need help with that.</p>
 </div>
 <div class="section" id="Parameter">
 <h2>Parameter<a class="headerlink" href="#Parameter" title="Permalink to this headline">¶</a></h2>
@@ -479,31 +465,31 @@ customization easier.</p>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
 Source 0: PointSource
-  Parameter &#39;sed&#39;, Shape (5,)
+  Parameter &#39;spectrum&#39;, Shape (5,)
   Parameter &#39;center&#39;, Shape (2,)
-Source 1: MultiComponentSource
-  Parameter &#39;sed&#39;, Shape (5,)
-  Parameter &#39;morph&#39;, Shape (64, 64)
-  Parameter &#39;sed&#39;, Shape (5,)
-  Parameter &#39;morph&#39;, Shape (64, 64)
-Source 2: ExtendedSource
-  Parameter &#39;sed&#39;, Shape (5,)
-  Parameter &#39;morph&#39;, Shape (32, 32)
-Source 3: ExtendedSource
-  Parameter &#39;sed&#39;, Shape (5,)
-  Parameter &#39;morph&#39;, Shape (32, 32)
-Source 4: ExtendedSource
-  Parameter &#39;sed&#39;, Shape (5,)
-  Parameter &#39;morph&#39;, Shape (32, 32)
-Source 5: ExtendedSource
-  Parameter &#39;sed&#39;, Shape (5,)
-  Parameter &#39;morph&#39;, Shape (32, 32)
-Source 6: ExtendedSource
-  Parameter &#39;sed&#39;, Shape (5,)
-  Parameter &#39;morph&#39;, Shape (16, 16)
+Source 1: MultiExtendedSource
+  Parameter &#39;spectrum&#39;, Shape (5,)
+  Parameter &#39;image&#39;, Shape (64, 64)
+  Parameter &#39;spectrum&#39;, Shape (5,)
+  Parameter &#39;image&#39;, Shape (64, 64)
+Source 2: SingleExtendedSource
+  Parameter &#39;spectrum&#39;, Shape (5,)
+  Parameter &#39;image&#39;, Shape (48, 48)
+Source 3: SingleExtendedSource
+  Parameter &#39;spectrum&#39;, Shape (5,)
+  Parameter &#39;image&#39;, Shape (32, 32)
+Source 4: SingleExtendedSource
+  Parameter &#39;spectrum&#39;, Shape (5,)
+  Parameter &#39;image&#39;, Shape (32, 32)
+Source 5: SingleExtendedSource
+  Parameter &#39;spectrum&#39;, Shape (5,)
+  Parameter &#39;image&#39;, Shape (48, 48)
+Source 6: SingleExtendedSource
+  Parameter &#39;spectrum&#39;, Shape (5,)
+  Parameter &#39;image&#39;, Shape (16, 16)
 </pre></div></div>
 </div>
-<p>Source 0 is a <code class="docutils literal notranslate"><span class="pre">PointSource</span></code>, parameterized by a SED and a center and a sed center. Source 1 has multiple components (each with a SED and a free-form morphology), the rest have a SED and morphology each.</p>
+<p>Source 0 is a <code class="docutils literal notranslate"><span class="pre">PointSource</span></code>, parameterized by a spectrum and a center, as we have seen above. Source 1 has multiple components (each with a spectrum and an image morphology), the rest have a single spectrum and image morphology.</p>
 <p><code class="docutils literal notranslate"><span class="pre">Parameter</span></code> is a souped up <code class="docutils literal notranslate"><span class="pre">numpy</span></code> array. It has a value and a name, as well as additonal attributes that store a <code class="docutils literal notranslate"><span class="pre">prior</span></code> and <code class="docutils literal notranslate"><span class="pre">constraint</span></code> that were enforced during optimization; the typical <code class="docutils literal notranslate"><span class="pre">step</span></code> size during optimization; an estimate of the standard deviate <code class="docutils literal notranslate"><span class="pre">std</span></code>; and whether the parameter was held <code class="docutils literal notranslate"><span class="pre">fixed</span></code>:</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
@@ -520,20 +506,21 @@ Source 6: ExtendedSource
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-{&#39;name&#39;: &#39;sed&#39;,
+{&#39;name&#39;: &#39;spectrum&#39;,
  &#39;prior&#39;: None,
- &#39;constraint&#39;: &lt;scarlet.constraint.PositivityConstraint at 0x7f98646285f8&gt;,
- &#39;step&#39;: functools.partial(&lt;function relative_step at 0x7f987a6de6a8&gt;, factor=0.01),
- &#39;std&#39;: masked_array(data=[0.004800093217376052, 0.0019404572370393335,
-                    0.0029887206205252213, 0.0056997858681281715,
-                    0.03376351873569101],
+ &#39;constraint&#39;: &lt;scarlet.constraint.PositivityConstraint at 0x7f2b9f63e898&gt;,
+ &#39;step&#39;: functools.partial(&lt;function relative_step at 0x7f2ba30a8488&gt;, factor=0.01),
+ &#39;std&#39;: masked_array(data=[0.005722043363271578, 0.0020610115771923,
+                    0.0031916643880181314, 0.00580608085263178,
+                    0.04086907491287137],
               mask=[False, False, False, False, False],
         fill_value=0.0),
- &#39;m&#39;: array([ 6.85693224,  0.91637557, -7.72986442, 10.93136594,  0.45047777]),
- &#39;v&#39;: array([ 43401.09203811, 265577.8478597 , 111951.35644982,  30781.01379576,
-           877.21206765]),
- &#39;vhat&#39;: array([ 44491.83872867, 274504.95116653, 116516.82999921,  31845.39334201,
-           923.83197532]),
+ &#39;m&#39;: array([ -9.02475704, -18.05422886,  10.02459027, -11.56370404,
+         -1.64589111]),
+ &#39;v&#39;: array([ 30542.01672386, 235417.71353528,  98167.01021484,  29664.28202238,
+           598.70155371]),
+ &#39;vhat&#39;: array([ 31196.22296446, 240256.83401039, 100172.43559919,  30258.61300845,
+           614.4174176 ]),
  &#39;fixed&#39;: False}
 </pre></div></div>
 </div>
@@ -560,7 +547,7 @@ Source 6: ExtendedSource
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-&lt;matplotlib.colorbar.Colorbar at 0x7f98628b5860&gt;
+&lt;matplotlib.colorbar.Colorbar at 0x7f2b9ee23c88&gt;
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">
@@ -601,18 +588,18 @@ acceptable. The transition between these two cases is generally non-differentiab
 </div>
 <div class="section" id="Normalization">
 <h3>Normalization<a class="headerlink" href="#Normalization" title="Permalink to this headline">¶</a></h3>
-<p>For <code class="docutils literal notranslate"><span class="pre">FactorizedComponent</span></code>, a fundamental degeneracy arises from the question which of the factors should capture the amplitude of the model. The overall flux could be stored in the SED or in the morphology, or some combination of both. The last option is degenerate.</p>
-<p><code class="docutils literal notranslate"><span class="pre">NormalizationConstraint</span></code> allows to normalize the parameter, either to the sum of all elements or to the maximum element. In <em>scarlet</em>, we usually normalized the component morphology with <code class="docutils literal notranslate"><span class="pre">type='max'</span></code>, which can be very easily initialized without regarding the extent of the source. It results in the SED encoding color and intensity information. The advantage of this normalization is that two sources with similar colors can still be distinguished if they have different intensities.</p>
+<p>For <code class="docutils literal notranslate"><span class="pre">FactorizedComponent</span></code>, a fundamental degeneracy arises from the question which of the factors should capture the amplitude of the model. The overall flux could be stored in the spectrum or in the morphology, or some combination of both. The last option is degenerate.</p>
+<p><code class="docutils literal notranslate"><span class="pre">NormalizationConstraint</span></code> allows to normalize the parameter, either to the sum of all elements or to the maximum element. In <em>scarlet</em>, we usually normalized the component morphology with <code class="docutils literal notranslate"><span class="pre">type='max'</span></code>, which can be very easily initialized without regarding the extent of the source. It results in the spectrum encoding color and intensity information. The advantage of this normalization is that two sources with similar colors can still be distinguished if they have different intensities.</p>
 </div>
 <div class="section" id="Symmetry">
 <h3>Symmetry<a class="headerlink" href="#Symmetry" title="Permalink to this headline">¶</a></h3>
 <p>Many traditional models for fitting galaxies (Sersic, mixture-of-Gaussian, …) implicitly employ this constraint, because most galaxies are in fact <em>largely</em> symmetric. For free-form models, demanding that astrophysical sources are symmetric reduces the number of effective degrees of freedom of the model by half. Using symmetry as a constraint has been used successfully in the SDSS deblender and also in our tests on substantially deeper HSC images. The proximal mapping for every symmetric pair of
 pixels <span class="math notranslate nohighlight">\(i,j\)</span> is <span class="math notranslate nohighlight">\(x_i,x_j\rightarrow\tfrac{1}{2}(x_i + x_j)\)</span>.</p>
-<p>To make a source symmetric requires a position to make the model symmetric about. Source models are highy sensitive to this fractional pixel location so it is necessary to include an update function that estimates the position of a symmetric source in the blend. This operation is expensive, so the stability of this constraint needs to be weighed against the cost of enforcing it.</p>
+<p>To make a source symmetric requires a position to make the model symmetric about. Source models are highly sensitive to this fractional pixel location so it is necessary to include an update function that estimates the position of a symmetric source in the blend. This operation is expensive, so the stability of this constraint needs to be weighed against the cost of enforcing it.</p>
 </div>
 <div class="section" id="Monotonicity">
 <h3>Monotonicity<a class="headerlink" href="#Monotonicity" title="Permalink to this headline">¶</a></h3>
-<p>Another useful constraint from the SDSS-HSC deblender is the assumption that most astrophysical objects are monotonically decreasing from the peak. In detail, this assumption is incorrect e.g. for spiral galaxies, especially tightly wound ones. But we can build good representations of even complex galaxies as multiple stellar populations, each with a single SED and monotonically decreasing from its peak.</p>
+<p>Another useful constraint from the SDSS-HSC deblender is the assumption that most astrophysical objects are monotonically decreasing from the peak. In detail, this assumption is incorrect e.g. for spiral galaxies, especially tightly wound ones. But we can build good representations of even complex galaxies as multiple stellar populations, each with a single spectrum and monotonically decreasing from its peak.</p>
 <p>We implemented three possible monotonic solutions in <code class="docutils literal notranslate"><span class="pre">MonotonicityConstraint</span></code>. Each of them restrict the intensity of the active pixel <span class="math notranslate nohighlight">\(i\)</span> (blue) to at most the average of the pixel intensity of its direct neighbors in the direction of the source center (ochre):</p>
 <div class="math notranslate nohighlight">
 \[x_i\leq\frac{1}{N_i}\sum_j^{N_i} w_j x_j\]</div>
@@ -622,8 +609,8 @@ pixels <span class="math notranslate nohighlight">\(i,j\)</span> is <span class=
 <col style="width: 53%" />
 </colgroup>
 <thead>
-<tr class="row-odd"><th class="head"><p><img alt="image0" src="_images/nearest_ref.png" /></p></th>
-<th class="head"><p><img alt="image1" src="_images/weighted_ref.png" /></p></th>
+<tr class="row-odd"><th class="head"><p><img alt="image1" src="_images/nearest_ref.png" /></p></th>
+<th class="head"><p><img alt="image2" src="_images/weighted_ref.png" /></p></th>
 </tr>
 </thead>
 <tbody>

@@ -53,6 +53,8 @@
 <li class="toctree-l2"><a class="reference internal" href="scarlet.initialization.html">scarlet.initialization</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.interpolation.html">scarlet.interpolation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.measure.html">scarlet.measure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.model.html">scarlet.model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.morphology.html">scarlet.morphology</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.observation.html">scarlet.observation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.operator.html">scarlet.operator</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">scarlet.parameter</a></li>
@@ -60,6 +62,7 @@
 <li class="toctree-l2"><a class="reference internal" href="scarlet.psf.html">scarlet.psf</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.resampling.html">scarlet.resampling</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.source.html">scarlet.source</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.spectrum.html">scarlet.spectrum</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.wavelet.html">scarlet.wavelet</a></li>
 </ul>
 </li>
@@ -140,6 +143,8 @@ See Kingma &amp; Ba (2015) and Reddi, Kale &amp; Kumar (2018) for details</p>
 <dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">flat</span></code></dt><dd><p>A 1-D iterator over the array.</p>
 </dd>
 <dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">imag</span></code></dt><dd><p>The imaginary part of the array.</p>
+</dd>
+<dt><a class="reference internal" href="#scarlet.parameter.Parameter.is_finite" title="scarlet.parameter.Parameter.is_finite"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_finite</span></code></a></dt><dd><p>Check if parameter values are all finite</p>
 </dd>
 <dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">itemsize</span></code></dt><dd><p>Length of one array element in bytes.</p>
 </dd>
@@ -319,7 +324,7 @@ See Kingma &amp; Ba (2015) and Reddi, Kale &amp; Kumar (2018) for details</p>
 <td><p>Return the array as an <code class="docutils literal notranslate"><span class="pre">a.ndim</span></code>-levels deep nested list of Python scalars.</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">tostring</span></code>([order])</p></td>
-<td><p>Construct Python bytes containing the raw data bytes in the array.</p></td>
+<td><p>A compatibility alias for <cite>tobytes</cite>, with exactly the same behavior.</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">trace</span></code>([offset, axis1, axis2, dtype, out])</p></td>
 <td><p>Return the sum along diagonals of the array.</p></td>
@@ -330,17 +335,24 @@ See Kingma &amp; Ba (2015) and Reddi, Kale &amp; Kumar (2018) for details</p>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">var</span></code>([axis, dtype, out, ddof, keepdims])</p></td>
 <td><p>Returns the variance of the array elements, along given axis.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">view</span></code>([dtype, type])</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">view</span></code>([dtype][, type])</p></td>
 <td><p>New view of array with the same data.</p></td>
 </tr>
 </tbody>
 </table>
+<dl class="py method">
+<dt id="scarlet.parameter.Parameter.is_finite">
+<em class="property">property </em><code class="sig-name descname">is_finite</code><a class="headerlink" href="#scarlet.parameter.Parameter.is_finite" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check if parameter values are all finite</p>
+</dd></dl>
+
 </dd></dl>
 
 <dl class="py function">
 <dt id="scarlet.parameter.relative_step">
 <code class="sig-prename descclassname">scarlet.parameter.</code><code class="sig-name descname">relative_step</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">X</span></em>, <em class="sig-param"><span class="n">it</span></em>, <em class="sig-param"><span class="n">factor</span><span class="o">=</span><span class="default_value">0.1</span></em>, <em class="sig-param"><span class="n">axis</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/parameter.html#relative_step"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.parameter.relative_step" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Step size set at <cite>factor</cite> times the mean of <cite>X</cite> in direction <cite>axis</cite></p>
+</dd></dl>
 
 </div>
 

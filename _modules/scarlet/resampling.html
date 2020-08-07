@@ -63,81 +63,55 @@
   <h1>Source code for scarlet.resampling</h1><div class="highlight"><pre>
 <span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 
-<span class="k">def</span> <span class="nf">_pix2radec</span><span class="p">(</span><span class="n">coord</span><span class="p">,</span> <span class="n">wcs</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Converts coordinates from pixels to Ra-Dec given a wcs</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">y</span><span class="p">,</span><span class="n">x</span> <span class="o">=</span> <span class="n">coord</span>
-    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">wcs</span><span class="o">.</span><span class="n">array_shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
-        <span class="n">ra</span><span class="p">,</span> <span class="n">dec</span> <span class="o">=</span> <span class="n">wcs</span><span class="o">.</span><span class="n">all_pix2world</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">ra_dec_order</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-    <span class="k">elif</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">wcs</span><span class="o">.</span><span class="n">array_shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
-        <span class="n">ra</span><span class="p">,</span> <span class="n">dec</span> <span class="o">=</span> <span class="n">wcs</span><span class="o">.</span><span class="n">all_pix2world</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">ra_dec_order</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;WCSs must have either 2 or 3 dimensions. Received &quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">wcs</span><span class="o">.</span><span class="n">array_shape</span><span class="p">))</span><span class="o">+</span><span class="s2">&quot;.&quot;</span><span class="p">)</span>
-    <span class="k">return</span> <span class="p">(</span><span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">)</span>
 
-<span class="k">def</span> <span class="nf">_radec2pix</span><span class="p">(</span><span class="n">coord</span><span class="p">,</span> <span class="n">wcs</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Converts coordinates from Ra-Dec to pixels given a wcs</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">ra</span><span class="p">,</span> <span class="n">dec</span> <span class="o">=</span> <span class="n">coord</span>
-    <span class="c1"># Positions of coords  in the frame of the obs</span>
-    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">wcs</span><span class="o">.</span><span class="n">array_shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
-        <span class="n">X</span><span class="p">,</span> <span class="n">Y</span> <span class="o">=</span> <span class="n">wcs</span><span class="o">.</span><span class="n">all_world2pix</span><span class="p">(</span><span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">ra_dec_order</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-    <span class="k">elif</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">wcs</span><span class="o">.</span><span class="n">array_shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
-        <span class="n">X</span><span class="p">,</span> <span class="n">Y</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">wcs</span><span class="o">.</span><span class="n">all_world2pix</span><span class="p">(</span><span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">ra_dec_order</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;WCSs must have either 2 or 3 dimensions. Received &quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">wcs</span><span class="o">.</span><span class="n">array_shape</span><span class="p">))</span><span class="o">+</span><span class="s2">&quot;.&quot;</span><span class="p">)</span>
-    <span class="k">return</span> <span class="p">(</span><span class="n">Y</span><span class="p">,</span> <span class="n">X</span><span class="p">)</span>
-
-<div class="viewcode-block" id="convert_coordinates"><a class="viewcode-back" href="../../api/scarlet.resampling.html#scarlet.resampling.convert_coordinates">[docs]</a><span class="k">def</span> <span class="nf">convert_coordinates</span><span class="p">(</span><span class="n">coord</span><span class="p">,</span> <span class="n">origin_wcs</span><span class="p">,</span> <span class="n">target_wcs</span><span class="p">):</span>
+<div class="viewcode-block" id="convert_coordinates"><a class="viewcode-back" href="../../api/scarlet.resampling.html#scarlet.resampling.convert_coordinates">[docs]</a><span class="k">def</span> <span class="nf">convert_coordinates</span><span class="p">(</span><span class="n">coord</span><span class="p">,</span> <span class="n">origin</span><span class="p">,</span> <span class="n">target</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Converts coordinates from one reference frame to another</span>
+
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
 <span class="sd">    coord: `tuple`</span>
-<span class="sd">        coordinates in the frame of the `origin_wcs` to convert in the frame of the `target_wcs`</span>
-<span class="sd">    origin_wcs: WCS</span>
-<span class="sd">        wcs of `coord`</span>
-<span class="sd">    target_wcs: WCS</span>
-<span class="sd">        wcs of the frame to which coord is converted</span>
+<span class="sd">        pixel coordinates in the frame of the `origin`</span>
+<span class="sd">    origin: `~scarlet.Frame`</span>
+<span class="sd">        origin frame</span>
+<span class="sd">    target: `~scarlet.Frame`</span>
+<span class="sd">        target frame</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
 <span class="sd">    coord_target: `tuple`</span>
-<span class="sd">        coordinates at the location of `coord` in the target frame defined by `target_wcs`</span>
+<span class="sd">        coordinates at the location of `coord` in the target frame</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">ra</span><span class="p">,</span> <span class="n">dec</span> <span class="o">=</span> <span class="n">_pix2radec</span><span class="p">(</span><span class="n">coord</span><span class="p">,</span> <span class="n">origin_wcs</span><span class="p">)</span>
-    <span class="n">y</span><span class="p">,</span><span class="n">x</span> <span class="o">=</span> <span class="n">_radec2pix</span><span class="p">((</span><span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">),</span> <span class="n">target_wcs</span><span class="p">)</span>
-    <span class="k">return</span> <span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span></div>
+    <span class="n">pix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">coord</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">ra_dec</span> <span class="o">=</span> <span class="n">origin</span><span class="o">.</span><span class="n">get_sky_coord</span><span class="p">(</span><span class="n">pix</span><span class="p">)</span>
+    <span class="n">yx</span> <span class="o">=</span> <span class="n">target</span><span class="o">.</span><span class="n">get_pixel</span><span class="p">(</span><span class="n">ra_dec</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">yx</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">yx</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span></div>
 
-<div class="viewcode-block" id="get_to_common_frame"><a class="viewcode-back" href="../../api/scarlet.resampling.html#scarlet.resampling.get_to_common_frame">[docs]</a><span class="k">def</span> <span class="nf">get_to_common_frame</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">frame_wcs</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot; Matches an `Observation`&#39;s coordinates to a `Frame`&#39;s wcs</span>
+
+<div class="viewcode-block" id="get_to_common_frame"><a class="viewcode-back" href="../../api/scarlet.resampling.html#scarlet.resampling.get_to_common_frame">[docs]</a><span class="k">def</span> <span class="nf">get_to_common_frame</span><span class="p">(</span><span class="n">origin</span><span class="p">,</span> <span class="n">target</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Converts all pixels from `origin` to their position in `target`.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    obs: `Observation`</span>
-<span class="sd">        An observation instance for which we want to know the coordinates in the frame of `frame_wcs`</span>
-<span class="sd">    frame_wcs: `WCS`</span>
-<span class="sd">        a wcs that gives the mapping between pixel coordinates and sky coordinates for a given frame</span>
+<span class="sd">    origin: `~scarlet.Frame`</span>
+<span class="sd">        origin frame</span>
+<span class="sd">    frame: `~scarlet.Frame`</span>
+<span class="sd">        target frame</span>
+
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
 <span class="sd">        coord_obs_frame: `tuple`</span>
-<span class="sd">            Coordinates of the observations&#39;s pixels in the frame of the provided wcs</span>
+<span class="sd">            Pixel coordinates of the observations in the target frame</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">c</span><span class="p">,</span> <span class="n">ny</span><span class="p">,</span> <span class="n">nx</span> <span class="o">=</span> <span class="n">obs</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">shape</span>
-    <span class="c1">#Positions of the observation&#39;s pixels</span>
+    <span class="n">c</span><span class="p">,</span> <span class="n">ny</span><span class="p">,</span> <span class="n">nx</span> <span class="o">=</span> <span class="n">origin</span><span class="o">.</span><span class="n">shape</span>
+    <span class="c1"># Positions of the observation&#39;s pixels</span>
     <span class="n">y</span><span class="p">,</span> <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">indices</span><span class="p">((</span><span class="n">ny</span><span class="p">,</span> <span class="n">nx</span><span class="p">))</span>
-    <span class="n">y</span> <span class="o">=</span> <span class="n">y</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
-    <span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
 
     <span class="c1"># Positions of Observation&#39;s pixel in the frame of the wcs</span>
-    <span class="n">Y</span><span class="p">,</span><span class="n">X</span> <span class="o">=</span> <span class="n">convert_coordinates</span><span class="p">((</span><span class="n">y</span><span class="p">,</span><span class="n">x</span><span class="p">),</span> <span class="n">obs</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">wcs</span><span class="p">,</span> <span class="n">frame_wcs</span><span class="p">)</span>
-
-    <span class="n">coord</span> <span class="o">=</span> <span class="p">(</span><span class="n">Y</span><span class="p">,</span><span class="n">X</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">coord</span></div>
+    <span class="n">Y</span><span class="p">,</span> <span class="n">X</span> <span class="o">=</span> <span class="n">convert_coordinates</span><span class="p">((</span><span class="n">y</span><span class="p">,</span> <span class="n">x</span><span class="p">),</span> <span class="n">origin</span><span class="p">,</span> <span class="n">target</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">Y</span><span class="p">,</span> <span class="n">X</span></div>
 
 
-
-
-<div class="viewcode-block" id="match_patches"><a class="viewcode-back" href="../../api/scarlet.resampling.html#scarlet.resampling.match_patches">[docs]</a><span class="k">def</span> <span class="nf">match_patches</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">isrot</span> <span class="o">=</span> <span class="kc">True</span><span class="p">):</span>
+<div class="viewcode-block" id="match_patches"><a class="viewcode-back" href="../../api/scarlet.resampling.html#scarlet.resampling.match_patches">[docs]</a><span class="k">def</span> <span class="nf">match_patches</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">isrot</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Matches datasets at different resolutions</span>
 
 
@@ -146,10 +120,10 @@
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    shape_hr, shape_lr: tuples</span>
-<span class="sd">        shapes of the two datasets</span>
-<span class="sd">    wcs_hr, wcs_lr: WCS objects</span>
-<span class="sd">        WCS of the Low and High resolution fields respectively</span>
+<span class="sd">    obs: `~scarlet.Observation`</span>
+<span class="sd">        An observation instance for which we want to know the coordinates in the frame of `frame`</span>
+<span class="sd">    frame: `~scarlet.Frame`</span>
+<span class="sd">        target frame</span>
 <span class="sd">    coverage: string</span>
 <span class="sd">        returns the coordinates in the intersection or union of both frames if set to &#39;intersection&#39; or &#39;union&#39; respectively</span>
 
@@ -162,13 +136,10 @@
 <span class="sd">    coordhr_hr: array</span>
 <span class="sd">        coordinates of the high resolution pixels in the intersection. Necessary for psf matching</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">assert</span> <span class="n">obs</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">wcs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+    <span class="k">assert</span> <span class="n">frame</span><span class="o">.</span><span class="n">wcs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+
     <span class="n">B_lr</span><span class="p">,</span> <span class="n">Ny_lr</span><span class="p">,</span> <span class="n">Nx_lr</span> <span class="o">=</span> <span class="n">obs</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">shape</span>
-
-    <span class="n">wcs_hr</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">wcs</span>
-    <span class="n">wcs_lr</span> <span class="o">=</span> <span class="n">obs</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">wcs</span>
-
-    <span class="k">assert</span> <span class="n">wcs_hr</span> <span class="o">!=</span> <span class="kc">None</span>
-    <span class="k">assert</span> <span class="n">wcs_lr</span> <span class="o">!=</span> <span class="kc">None</span>
 
     <span class="c1"># Capital letters are for coordinates of low-resolution pixels</span>
     <span class="k">if</span> <span class="n">isrot</span><span class="p">:</span>
@@ -186,8 +157,7 @@
 
     <span class="c1"># Corresponding angular positions</span>
     <span class="c1"># Coordinates of the low resolution pixels in the high resolution frame</span>
-    <span class="n">Y_hr</span><span class="p">,</span> <span class="n">X_hr</span> <span class="o">=</span> <span class="n">convert_coordinates</span><span class="p">((</span><span class="n">Y_lr</span><span class="p">,</span> <span class="n">X_lr</span><span class="p">),</span> <span class="n">wcs_lr</span><span class="p">,</span> <span class="n">wcs_hr</span><span class="p">)</span>
-
+    <span class="n">Y_hr</span><span class="p">,</span> <span class="n">X_hr</span> <span class="o">=</span> <span class="n">convert_coordinates</span><span class="p">((</span><span class="n">Y_lr</span><span class="p">,</span> <span class="n">X_lr</span><span class="p">),</span> <span class="n">obs</span><span class="o">.</span><span class="n">frame</span><span class="p">,</span> <span class="n">frame</span><span class="p">)</span>
 
     <span class="c1"># Coordinates of low resolution pixels in the intersection at low resolution:</span>
     <span class="n">coordlr_lr</span> <span class="o">=</span> <span class="p">(</span><span class="n">Y_lr</span><span class="p">,</span> <span class="n">X_lr</span><span class="p">)</span>

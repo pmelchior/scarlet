@@ -53,6 +53,8 @@
 <li class="toctree-l2"><a class="reference internal" href="scarlet.initialization.html">scarlet.initialization</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.interpolation.html">scarlet.interpolation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.measure.html">scarlet.measure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.model.html">scarlet.model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.morphology.html">scarlet.morphology</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.observation.html">scarlet.observation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.operator.html">scarlet.operator</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.parameter.html">scarlet.parameter</a></li>
@@ -60,6 +62,7 @@
 <li class="toctree-l2"><a class="reference internal" href="scarlet.psf.html">scarlet.psf</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.resampling.html">scarlet.resampling</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.source.html">scarlet.source</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.spectrum.html">scarlet.spectrum</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.wavelet.html">scarlet.wavelet</a></li>
 </ul>
 </li>
@@ -85,25 +88,6 @@
             
   <div class="section" id="module-scarlet.constraint">
 <span id="scarlet-constraint"></span><h1>scarlet.constraint<a class="headerlink" href="#module-scarlet.constraint" title="Permalink to this headline">¶</a></h1>
-<dl class="py class">
-<dt id="scarlet.constraint.AllOnConstraint">
-<em class="property">class </em><code class="sig-prename descclassname">scarlet.constraint.</code><code class="sig-name descname">AllOnConstraint</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">tiny</span><span class="o">=</span><span class="default_value">1e-06</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/constraint.html#AllOnConstraint"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.constraint.AllOnConstraint" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#scarlet.constraint.Constraint" title="scarlet.constraint.Constraint"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.constraint.Constraint</span></code></a></p>
-<p>Add to all elements a tiny non-zero value</p>
-<p class="rubric">Methods</p>
-<table class="longtable docutils align-default">
-<colgroup>
-<col style="width: 10%" />
-<col style="width: 90%" />
-</colgroup>
-<tbody>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">__call__</span></code>(X, step)</p></td>
-<td><p>Proximal mapping</p></td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
 <dl class="py class">
 <dt id="scarlet.constraint.CenterOnConstraint">
 <em class="property">class </em><code class="sig-prename descclassname">scarlet.constraint.</code><code class="sig-name descname">CenterOnConstraint</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">tiny</span><span class="o">=</span><span class="default_value">1e-06</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/constraint.html#CenterOnConstraint"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.constraint.CenterOnConstraint" title="Permalink to this definition">¶</a></dt>
@@ -261,9 +245,9 @@ for a description of the other parameters.</p>
 
 <dl class="py class">
 <dt id="scarlet.constraint.PositivityConstraint">
-<em class="property">class </em><code class="sig-prename descclassname">scarlet.constraint.</code><code class="sig-name descname">PositivityConstraint</code><a class="reference internal" href="../_modules/scarlet/constraint.html#PositivityConstraint"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.constraint.PositivityConstraint" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">scarlet.constraint.</code><code class="sig-name descname">PositivityConstraint</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">zero</span><span class="o">=</span><span class="default_value">0</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/constraint.html#PositivityConstraint"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.constraint.PositivityConstraint" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#scarlet.constraint.Constraint" title="scarlet.constraint.Constraint"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.constraint.Constraint</span></code></a></p>
-<p>Allow only non-negative elements.</p>
+<p>Allow only values not smaller than <cite>zero</cite>.</p>
 <p class="rubric">Methods</p>
 <table class="longtable docutils align-default">
 <colgroup>

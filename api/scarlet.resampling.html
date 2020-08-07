@@ -53,6 +53,8 @@
 <li class="toctree-l2"><a class="reference internal" href="scarlet.initialization.html">scarlet.initialization</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.interpolation.html">scarlet.interpolation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.measure.html">scarlet.measure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.model.html">scarlet.model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.morphology.html">scarlet.morphology</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.observation.html">scarlet.observation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.operator.html">scarlet.operator</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.parameter.html">scarlet.parameter</a></li>
@@ -60,6 +62,7 @@
 <li class="toctree-l2"><a class="reference internal" href="scarlet.psf.html">scarlet.psf</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">scarlet.resampling</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.source.html">scarlet.source</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.spectrum.html">scarlet.spectrum</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.wavelet.html">scarlet.wavelet</a></li>
 </ul>
 </li>
@@ -87,24 +90,22 @@
 <span id="scarlet-resampling"></span><h1>scarlet.resampling<a class="headerlink" href="#module-scarlet.resampling" title="Permalink to this headline">¶</a></h1>
 <dl class="py function">
 <dt id="scarlet.resampling.convert_coordinates">
-<code class="sig-prename descclassname">scarlet.resampling.</code><code class="sig-name descname">convert_coordinates</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">coord</span></em>, <em class="sig-param"><span class="n">origin_wcs</span></em>, <em class="sig-param"><span class="n">target_wcs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/resampling.html#convert_coordinates"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.resampling.convert_coordinates" title="Permalink to this definition">¶</a></dt>
-<dd><p>Converts coordinates from one reference frame to another
-Parameters
-———-
-coord: <cite>tuple</cite></p>
-<blockquote>
-<div><p>coordinates in the frame of the <cite>origin_wcs</cite> to convert in the frame of the <cite>target_wcs</cite></p>
-</div></blockquote>
-<dl class="simple">
-<dt>origin_wcs: WCS</dt><dd><p>wcs of <cite>coord</cite></p>
+<code class="sig-prename descclassname">scarlet.resampling.</code><code class="sig-name descname">convert_coordinates</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">coord</span></em>, <em class="sig-param"><span class="n">origin</span></em>, <em class="sig-param"><span class="n">target</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/resampling.html#convert_coordinates"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.resampling.convert_coordinates" title="Permalink to this definition">¶</a></dt>
+<dd><p>Converts coordinates from one reference frame to another</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>coord: `tuple`</strong></dt><dd><p>pixel coordinates in the frame of the <cite>origin</cite></p>
 </dd>
-<dt>target_wcs: WCS</dt><dd><p>wcs of the frame to which coord is converted</p>
+<dt><strong>origin: `~scarlet.Frame`</strong></dt><dd><p>origin frame</p>
+</dd>
+<dt><strong>target: `~scarlet.Frame`</strong></dt><dd><p>target frame</p>
 </dd>
 </dl>
-<dl class="field-list simple">
-<dt class="field-odd">Returns</dt>
-<dd class="field-odd"><dl class="simple">
-<dt>coord_target: <cite>tuple</cite></dt><dd><p>coordinates at the location of <cite>coord</cite> in the target frame defined by <cite>target_wcs</cite></p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>coord_target: <cite>tuple</cite></dt><dd><p>coordinates at the location of <cite>coord</cite> in the target frame</p>
 </dd>
 </dl>
 </dd>
@@ -113,20 +114,20 @@ coord: <cite>tuple</cite></p>
 
 <dl class="py function">
 <dt id="scarlet.resampling.get_to_common_frame">
-<code class="sig-prename descclassname">scarlet.resampling.</code><code class="sig-name descname">get_to_common_frame</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">obs</span></em>, <em class="sig-param"><span class="n">frame_wcs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/resampling.html#get_to_common_frame"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.resampling.get_to_common_frame" title="Permalink to this definition">¶</a></dt>
-<dd><p>Matches an <cite>Observation</cite>’s coordinates to a <cite>Frame</cite>’s wcs</p>
+<code class="sig-prename descclassname">scarlet.resampling.</code><code class="sig-name descname">get_to_common_frame</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">origin</span></em>, <em class="sig-param"><span class="n">target</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/resampling.html#get_to_common_frame"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.resampling.get_to_common_frame" title="Permalink to this definition">¶</a></dt>
+<dd><p>Converts all pixels from <cite>origin</cite> to their position in <cite>target</cite>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><dl class="simple">
-<dt><strong>obs: `Observation`</strong></dt><dd><p>An observation instance for which we want to know the coordinates in the frame of <cite>frame_wcs</cite></p>
+<dt><strong>origin: `~scarlet.Frame`</strong></dt><dd><p>origin frame</p>
 </dd>
-<dt><strong>frame_wcs: `WCS`</strong></dt><dd><p>a wcs that gives the mapping between pixel coordinates and sky coordinates for a given frame</p>
-</dd>
-<dt><strong>Returns</strong></dt><dd></dd>
-<dt><strong>——-</strong></dt><dd><dl class="simple">
-<dt>coord_obs_frame: <cite>tuple</cite></dt><dd><p>Coordinates of the observations’s pixels in the frame of the provided wcs</p>
+<dt><strong>frame: `~scarlet.Frame`</strong></dt><dd><p>target frame</p>
 </dd>
 </dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>coord_obs_frame: <cite>tuple</cite></dt><dd><p>Pixel coordinates of the observations in the target frame</p>
 </dd>
 </dl>
 </dd>
@@ -142,9 +143,9 @@ for the dataset pixels inside the intersection.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><dl class="simple">
-<dt><strong>shape_hr, shape_lr: tuples</strong></dt><dd><p>shapes of the two datasets</p>
+<dt><strong>obs: `~scarlet.Observation`</strong></dt><dd><p>An observation instance for which we want to know the coordinates in the frame of <cite>frame</cite></p>
 </dd>
-<dt><strong>wcs_hr, wcs_lr: WCS objects</strong></dt><dd><p>WCS of the Low and High resolution fields respectively</p>
+<dt><strong>frame: `~scarlet.Frame`</strong></dt><dd><p>target frame</p>
 </dd>
 <dt><strong>coverage: string</strong></dt><dd><p>returns the coordinates in the intersection or union of both frames if set to ‘intersection’ or ‘union’ respectively</p>
 </dd>

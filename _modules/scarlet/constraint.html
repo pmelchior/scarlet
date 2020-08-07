@@ -144,11 +144,15 @@
 
 
 <div class="viewcode-block" id="PositivityConstraint"><a class="viewcode-back" href="../../api/scarlet.constraint.html#scarlet.constraint.PositivityConstraint">[docs]</a><span class="k">class</span> <span class="nc">PositivityConstraint</span><span class="p">(</span><span class="n">Constraint</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Allow only non-negative elements.</span>
+    <span class="sd">&quot;&quot;&quot;Allow only values not smaller than `zero`.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">proxmin</span><span class="o">.</span><span class="n">operators</span><span class="o">.</span><span class="n">prox_plus</span><span class="p">)</span></div>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">zero</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">zero</span> <span class="o">=</span> <span class="n">zero</span>
+
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">step</span><span class="p">):</span>
+        <span class="n">X</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">zero</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">X</span></div>
 
 
 <div class="viewcode-block" id="NormalizationConstraint"><a class="viewcode-back" href="../../api/scarlet.constraint.html#scarlet.constraint.NormalizationConstraint">[docs]</a><span class="k">class</span> <span class="nc">NormalizationConstraint</span><span class="p">(</span><span class="n">Constraint</span><span class="p">):</span>
@@ -185,7 +189,9 @@
 <span class="sd">            if the penalty is expressed in units of the function value (relative)</span>
 <span class="sd">            or in units of the variable X (absolute).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">partial</span><span class="p">(</span><span class="n">proxmin</span><span class="o">.</span><span class="n">operators</span><span class="o">.</span><span class="n">prox_hard</span><span class="p">,</span> <span class="n">thresh</span><span class="o">=</span><span class="n">thresh</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">type</span><span class="p">,</span> <span class="p">))</span></div>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="n">partial</span><span class="p">(</span><span class="n">proxmin</span><span class="o">.</span><span class="n">operators</span><span class="o">.</span><span class="n">prox_hard</span><span class="p">,</span> <span class="n">thresh</span><span class="o">=</span><span class="n">thresh</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">type</span><span class="p">,)</span>
+        <span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="L1Constraint"><a class="viewcode-back" href="../../api/scarlet.constraint.html#scarlet.constraint.L1Constraint">[docs]</a><span class="k">class</span> <span class="nc">L1Constraint</span><span class="p">(</span><span class="n">Constraint</span><span class="p">):</span>
@@ -298,18 +304,6 @@
         <span class="n">center</span> <span class="o">=</span> <span class="p">(</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">//</span> <span class="mi">2</span><span class="p">,</span> <span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">//</span> <span class="mi">2</span><span class="p">)</span>
         <span class="n">morph</span><span class="p">[</span><span class="n">center</span><span class="p">]</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">morph</span><span class="p">[</span><span class="n">center</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">tiny</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">morph</span></div>
-
-
-<div class="viewcode-block" id="AllOnConstraint"><a class="viewcode-back" href="../../api/scarlet.constraint.html#scarlet.constraint.AllOnConstraint">[docs]</a><span class="k">class</span> <span class="nc">AllOnConstraint</span><span class="p">(</span><span class="n">Constraint</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Add to all elements a tiny non-zero value</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tiny</span><span class="o">=</span><span class="mf">1e-6</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">tiny</span> <span class="o">=</span> <span class="n">tiny</span>
-
-    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">step</span><span class="p">):</span>
-        <span class="n">X</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">tiny</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">X</span></div>
 </pre></div>
 
           </div>

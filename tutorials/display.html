@@ -43,6 +43,7 @@
 <li class="toctree-l1 current"><a class="reference internal" href="../tutorials.html">Tutorials</a><ul class="current">
 <li class="toctree-l2 current"><a class="current reference internal" href="#">Displaying Scenes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="point_source.html">Point Source Tutorial</a></li>
+<li class="toctree-l2"><a class="reference internal" href="wavelet_model.html">Wavelet toy-model</a></li>
 <li class="toctree-l2"><a class="reference internal" href="multiresolution.html">Multi-Resolution Modeling</a></li>
 <li class="toctree-l2"><a class="reference internal" href="deconvolution.html">Deconvolution Tutorial</a></li>
 </ul>
@@ -318,13 +319,9 @@ all appear as white.</p>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
 <span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">scarlet</span>
-<span class="kn">import</span> <span class="nn">scarlet.display</span>
 
 <span class="o">%</span><span class="k">matplotlib</span> inline
-<span class="kn">import</span> <span class="nn">matplotlib</span>
 <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
-<span class="c1"># use a good colormap and don&#39;t interpolate the pixels</span>
-<span class="n">matplotlib</span><span class="o">.</span><span class="n">rc</span><span class="p">(</span><span class="s1">&#39;image&#39;</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;inferno&#39;</span><span class="p">,</span> <span class="n">interpolation</span><span class="o">=</span><span class="s1">&#39;none&#39;</span><span class="p">)</span>
 
 <span class="c1"># Load the sample images</span>
 <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">&quot;../../data/hsc_cosmos_35.npz&quot;</span><span class="p">)</span>
@@ -472,9 +469,6 @@ New channel map:
 <span class="n">sources</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">fp</span><span class="p">)</span>
 <span class="n">fp</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
 
-<span class="n">model_frame</span> <span class="o">=</span> <span class="n">sources</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">model_frame</span>
-<span class="n">observation</span> <span class="o">=</span> <span class="n">observation</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">model_frame</span><span class="p">)</span>
-
 <span class="n">scarlet</span><span class="o">.</span><span class="n">display</span><span class="o">.</span><span class="n">show_scene</span><span class="p">(</span><span class="n">sources</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">,</span> <span class="n">channel_map</span><span class="o">=</span><span class="n">channel_map</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </pre></div>
@@ -488,32 +482,13 @@ New channel map:
 </div>
 </div>
 <p>Notice that we include the <code class="docutils literal notranslate"><span class="pre">plt.show()</span></code> at the end of the cell above. This is because <code class="docutils literal notranslate"><span class="pre">show_scene</span></code> returns the matplotlib <code class="docutils literal notranslate"><span class="pre">figure</span></code>, which is useful in cases where you might want to add annotations onto your plots, however without showing the scene or closing the figure the Jupyter notebook will display the figure twice.</p>
-<p>The other thing that you’ll notice is that in this case the model extends beyond the range of the observation. This is because some of the sources were initialized in a symmetrized box that extended beyond the observation. If we just want to view the region of the model inside the observed region we can pass a full blend, which only displays the cosntrained region by default:</p>
+<p>To compare it to data, we need to provide the observation and make sure that the observed frame is matched to the model frame:</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
-<span></span><span class="n">blend</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">Blend</span><span class="p">(</span><span class="n">sources</span><span class="p">,</span> <span class="n">observation</span><span class="p">)</span>
-<span class="n">scarlet</span><span class="o">.</span><span class="n">display</span><span class="o">.</span><span class="n">show_scene</span><span class="p">(</span><span class="n">blend</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">,</span> <span class="n">channel_map</span><span class="o">=</span><span class="n">channel_map</span><span class="p">)</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
-</pre></div>
-</div>
-</div>
-<div class="nboutput nblast docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<img alt="../_images/tutorials_display_12_0.png" src="../_images/tutorials_display_12_0.png" />
-</div>
-</div>
-<p>To compare it to data, we need to provide the observation and make sure that the observed frame is matched to the model frame:</p>
-<div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
-<span></span><span class="n">model_frame</span> <span class="o">=</span> <span class="n">sources</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">model_frame</span> <span class="c1"># any source carries the frame</span>
+<span></span><span class="n">model_frame</span> <span class="o">=</span> <span class="n">sources</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">frame</span> <span class="c1"># any source carries the frame</span>
 <span class="n">observation</span> <span class="o">=</span> <span class="n">observation</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">model_frame</span><span class="p">)</span>
 
 <span class="n">scarlet</span><span class="o">.</span><span class="n">display</span><span class="o">.</span><span class="n">show_scene</span><span class="p">(</span><span class="n">sources</span><span class="p">,</span>
@@ -531,12 +506,12 @@ New channel map:
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/tutorials_display_14_0.png" src="../_images/tutorials_display_14_0.png" />
+<img alt="../_images/tutorials_display_13_0.png" src="../_images/tutorials_display_13_0.png" />
 </div>
 </div>
-<p>The same logic goes for the individual sources, with the option of also showing the SED of the sources:</p>
+<p>The same logic goes for the individual sources, with the option of also showing the spectra of the sources:</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
@@ -549,12 +524,12 @@ New channel map:
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/tutorials_display_16_0.png" src="../_images/tutorials_display_16_0.png" />
+<img alt="../_images/tutorials_display_15_0.png" src="../_images/tutorials_display_15_0.png" />
 </div>
 </div>
-<p>Source 1 is modelled with 2 components, and the SED is shown for them separately. If we wanted to see the images of the components, we can just pass the source itself to <code class="docutils literal notranslate"><span class="pre">show_sources</span></code>. For good measure, we also switch on the rendering and the observation at the same location:</p>
+<p>Source 1 is modelled with 2 components, and the spectra are shown for them separately. If we wanted to see the images of the components, we can just pass the source itself to <code class="docutils literal notranslate"><span class="pre">show_sources</span></code>. For good measure, we also switch on the rendering and the observation at the same location:</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
@@ -564,6 +539,7 @@ New channel map:
                              <span class="n">observation</span><span class="o">=</span><span class="n">observation</span><span class="p">,</span>
                              <span class="n">show_rendered</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
                              <span class="n">show_observed</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                             <span class="n">add_markers</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
                             <span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </pre></div>
@@ -573,16 +549,7 @@ New channel map:
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/tutorials_display_18_0.png" src="../_images/tutorials_display_18_0.png" />
-</div>
-</div>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
-<span></span>
-</pre></div>
+<img alt="../_images/tutorials_display_17_0.png" src="../_images/tutorials_display_17_0.png" />
 </div>
 </div>
 </div>

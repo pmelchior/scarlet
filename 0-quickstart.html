@@ -313,7 +313,6 @@ div.rendered_html tbody tr:hover {
 <span></span><span class="c1"># Import Packages and setup</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">scarlet</span>
-<span class="kn">import</span> <span class="nn">scarlet.display</span>
 
 <span class="o">%</span><span class="k">matplotlib</span> inline
 <span class="kn">import</span> <span class="nn">matplotlib</span>
@@ -420,7 +419,7 @@ frame, in which you seek to fit a model, to the observed data frame.</p>
 <li><p><code class="docutils literal notranslate"><span class="pre">RandomSource</span></code> fit per-band amplitude and non-parametric morphology starting from uniform random draws for both.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">PointSource</span></code> fits centers and per-band amplitude using the observed PSF model.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">ExtendedSource</span></code> fits per-band amplitude and a non-parametric morphology (which can be constrained to be symmetric and/or monotonic with respect to the center).</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">MultiComponentSource</span></code> splits an <code class="docutils literal notranslate"><span class="pre">ExtendedSource</span></code> into multiple components that are initially radially separated.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ExtendedSource(K=2)</span></code> splits an <code class="docutils literal notranslate"><span class="pre">ExtendedSource</span></code> into <code class="docutils literal notranslate"><span class="pre">K</span></code> components that are initially radially separated and stacked on top of each other like a pyramid.</p></li>
 </ul>
 <p>In our example, we assume <em>prior</em> knowledge that object 0 is a star, and object 1 should be modeled with two components. Everything else is assumed a single-component galaxy. <strong>We generally recommend ``ExtendedSource`` as default</strong> if additional information about the source is not available.</p>
 <div class="nbinput nblast docutils container">
@@ -433,7 +432,7 @@ frame, in which you seek to fit a model, to the observed data frame.</p>
     <span class="k">if</span> <span class="n">k</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
         <span class="n">new_source</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">PointSource</span><span class="p">(</span><span class="n">model_frame</span><span class="p">,</span> <span class="p">(</span><span class="n">src</span><span class="p">[</span><span class="s1">&#39;y&#39;</span><span class="p">],</span> <span class="n">src</span><span class="p">[</span><span class="s1">&#39;x&#39;</span><span class="p">]),</span> <span class="n">observation</span><span class="p">)</span>
     <span class="k">elif</span> <span class="n">k</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
-        <span class="n">new_source</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">MultiComponentSource</span><span class="p">(</span><span class="n">model_frame</span><span class="p">,</span> <span class="p">(</span><span class="n">src</span><span class="p">[</span><span class="s1">&#39;y&#39;</span><span class="p">],</span> <span class="n">src</span><span class="p">[</span><span class="s1">&#39;x&#39;</span><span class="p">]),</span> <span class="n">observation</span><span class="p">)</span>
+        <span class="n">new_source</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">ExtendedSource</span><span class="p">(</span><span class="n">model_frame</span><span class="p">,</span> <span class="p">(</span><span class="n">src</span><span class="p">[</span><span class="s1">&#39;y&#39;</span><span class="p">],</span> <span class="n">src</span><span class="p">[</span><span class="s1">&#39;x&#39;</span><span class="p">]),</span> <span class="n">observation</span><span class="p">,</span> <span class="n">K</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">new_source</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">ExtendedSource</span><span class="p">(</span><span class="n">model_frame</span><span class="p">,</span> <span class="p">(</span><span class="n">src</span><span class="p">[</span><span class="s1">&#39;y&#39;</span><span class="p">],</span> <span class="n">src</span><span class="p">[</span><span class="s1">&#39;x&#39;</span><span class="p">]),</span> <span class="n">observation</span><span class="p">)</span>
     <span class="n">sources</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">new_source</span><span class="p">)</span>
@@ -452,7 +451,7 @@ frame, in which you seek to fit a model, to the observed data frame.</p>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
 <span></span><span class="n">blend</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">Blend</span><span class="p">(</span><span class="n">sources</span><span class="p">,</span> <span class="n">observation</span><span class="p">)</span>
-<span class="o">%</span><span class="k">time</span> blend.fit(200, e_rel = 1.e-6)
+<span class="o">%</span><span class="k">time</span> blend.fit(100, e_rel=1e-4)
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;scarlet ran for </span><span class="si">{0}</span><span class="s2"> iterations to logL = </span><span class="si">{1}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">blend</span><span class="o">.</span><span class="n">loss</span><span class="p">),</span> <span class="o">-</span><span class="n">blend</span><span class="o">.</span><span class="n">loss</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]))</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">blend</span><span class="o">.</span><span class="n">loss</span><span class="p">))</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Iteration&#39;</span><span class="p">)</span>
@@ -465,9 +464,9 @@ frame, in which you seek to fit a model, to the observed data frame.</p>
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-CPU times: user 2.09 s, sys: 80 ms, total: 2.17 s
-Wall time: 2.17 s
-scarlet ran for 81 iterations to logL = 30199.624831399182
+CPU times: user 1.96 s, sys: 132 ms, total: 2.1 s
+Wall time: 2.1 s
+scarlet ran for 71 iterations to logL = 30085.08620836616
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">
@@ -497,9 +496,11 @@ Text(0, 0.5, &#39;log-Likelihood&#39;)
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
-<span></span><span class="c1"># Load the model and calculate the residual</span>
+<span></span><span class="c1"># Compute model</span>
 <span class="n">model</span> <span class="o">=</span> <span class="n">blend</span><span class="o">.</span><span class="n">get_model</span><span class="p">()</span>
+<span class="c1"># Render it in the observed frame</span>
 <span class="n">model_</span> <span class="o">=</span> <span class="n">observation</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+<span class="c1"># Compute residual</span>
 <span class="n">residual</span> <span class="o">=</span> <span class="n">images</span><span class="o">-</span><span class="n">model_</span>
 
 <span class="c1"># Create RGB images</span>
@@ -516,11 +517,12 @@ Text(0, 0.5, &#39;log-Likelihood&#39;)
 <span class="n">ax</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">residual_rgb</span><span class="p">)</span>
 <span class="n">ax</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Residual&quot;</span><span class="p">)</span>
 
-<span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">component</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">blend</span><span class="p">):</span>
-    <span class="n">y</span><span class="p">,</span><span class="n">x</span> <span class="o">=</span> <span class="n">component</span><span class="o">.</span><span class="n">center</span>
-    <span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;w&quot;</span><span class="p">)</span>
-    <span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;w&quot;</span><span class="p">)</span>
-    <span class="n">ax</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;w&quot;</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">src</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">blend</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="s2">&quot;center&quot;</span><span class="p">):</span>
+        <span class="n">y</span><span class="p">,</span><span class="n">x</span> <span class="o">=</span> <span class="n">src</span><span class="o">.</span><span class="n">center</span>
+        <span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;w&quot;</span><span class="p">)</span>
+        <span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;w&quot;</span><span class="p">)</span>
+        <span class="n">ax</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;w&quot;</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </pre></div>
 </div>
@@ -544,8 +546,12 @@ Text(0, 0.5, &#39;log-Likelihood&#39;)
 <span></span><span class="n">scarlet</span><span class="o">.</span><span class="n">display</span><span class="o">.</span><span class="n">show_sources</span><span class="p">(</span><span class="n">sources</span><span class="p">,</span>
                              <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">,</span>
                              <span class="n">observation</span><span class="o">=</span><span class="n">observation</span><span class="p">,</span>
+                             <span class="n">show_model</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
                              <span class="n">show_rendered</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-                             <span class="n">show_observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                             <span class="n">show_observed</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                             <span class="n">add_markers</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                             <span class="n">add_boxes</span><span class="o">=</span><span class="kc">True</span>
+                            <span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </pre></div>
 </div>
@@ -557,11 +563,11 @@ Text(0, 0.5, &#39;log-Likelihood&#39;)
 <img alt="_images/0-quickstart_21_0.png" src="_images/0-quickstart_21_0.png" />
 </div>
 </div>
-<p>We can see that each source “lives” in a smaller box and is then placed into the larger scene. The model of object 0 assumes the simple Gaussian shape of the model PSF, which is the internal representation of a point source. Source 1 uses the freedom of the 2-compoent model to represent a slightly redder core; the difference in SEDs is clearly noticeable.</p>
+<p>We can see that each source “lives” in a smaller box and is then placed into the larger scene. The model of object 0 assumes the simple Gaussian shape of the model PSF, which is the internal representation of a point source. Source 1 uses the freedom of the 2-compoent model to represent a slightly redder core; the difference in spectrum is clearly noticeable.</p>
 </div>
 <div class="section" id="Measure-Fluxes">
 <h3>Measure Fluxes<a class="headerlink" href="#Measure-Fluxes" title="Permalink to this headline">¶</a></h3>
-<p>The color information in these plots stems from the per-band amplitude, which could be obtained as <code class="docutils literal notranslate"><span class="pre">source.sed</span></code>. However, it is more useful to compute per-band fluxes, which integrate over the morphology. The source SED plots above have done exactly that. The convention of these fluxes is given by the units and ordering of the original data cube. In the case of multi-component sources, the fluxes of all components are combined.</p>
+<p>The color information in these plots stems from the per-band amplitude, which could be obtained as <code class="docutils literal notranslate"><span class="pre">source.spectrum</span></code>. However, it is more useful to compute per-band fluxes, which integrate over the morphology. The source spectra plots above have done exactly that. The convention of these fluxes is given by the units and ordering of the original data cube. In the case of multi-component sources, the fluxes of all components are combined.</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
 </pre></div>
@@ -579,13 +585,13 @@ Text(0, 0.5, &#39;log-Likelihood&#39;)
 <div class="output_area docutils container">
 <div class="highlight"><pre>
 ----------------- [&#39;g&#39; &#39;r&#39; &#39;i&#39; &#39;z&#39; &#39;y&#39;]
-Source 0, Fluxes: [167.04913231 264.61071172 320.21322219 346.53827281 369.05326931]
-Source 1, Fluxes: [ 73.861496 215.89969  388.26984  521.70166  643.6771  ]
-Source 2, Fluxes: [ 8.3198604  12.88302194 24.95906323 31.65915006 41.4141669 ]
-Source 3, Fluxes: [ 9.12378242 10.90402913 12.13821549 14.30599766 17.04905698]
-Source 4, Fluxes: [5.08293393 4.77696457 5.11356867 4.66721915 4.18374629]
-Source 5, Fluxes: [0.90404126 0.71338597 2.3079748  1.90176436 8.49595712]
-Source 6, Fluxes: [2.33773624 2.14041605 2.24858207 2.86608769 3.77352103]
+Source 0, Fluxes: [166.96689397 263.61907346 319.16808845 347.37444041 367.52868495]
+Source 1, Fluxes: [ 76.75649329 216.78308462 386.45187747 525.07348179 657.94858376]
+Source 2, Fluxes: [ 8.02531134 12.36441823 23.77638535 30.06257023 40.47156494]
+Source 3, Fluxes: [ 8.34855481 10.51535581 10.49122254 13.6642766  17.47320184]
+Source 4, Fluxes: [5.07353206 4.25703995 4.48329132 3.4649401  2.15866438]
+Source 5, Fluxes: [ 1.46797415  1.33491032  4.67735035  3.55715482 17.92784217]
+Source 6, Fluxes: [2.46785328 2.22779272 2.38570653 2.94565587 3.94927404]
 </pre></div></div>
 </div>
 <p>Other measurements (e.g. <code class="docutils literal notranslate"><span class="pre">centroid</span></code>) are also implemented. The measurement approach is also easily extendable. The source models are generated in the model frame (which is the best-fit representation of the full hyperspectral <code class="docutils literal notranslate"><span class="pre">Frame</span></code>), from which any measurement can directly be made without having to deal with noise, PSF convolution, overlapping sources, etc.</p>
@@ -617,7 +623,7 @@ Source 6, Fluxes: [2.33773624 2.14041605 2.24858207 2.86608769 3.77352103]
 <span class="n">sources_</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">fp</span><span class="p">)</span>
 <span class="n">fp</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
 
-<span class="n">scarlet</span><span class="o">.</span><span class="n">display</span><span class="o">.</span><span class="n">show_scene</span><span class="p">(</span><span class="n">sources_</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">)</span>
+<span class="n">scarlet</span><span class="o">.</span><span class="n">display</span><span class="o">.</span><span class="n">show_scene</span><span class="p">(</span><span class="n">sources_</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">,</span> <span class="n">add_boxes</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </pre></div>
 </div>
@@ -637,7 +643,7 @@ Source 6, Fluxes: [2.33773624 2.14041605 2.24858207 2.86608769 3.77352103]
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
 <span></span><span class="c1"># add two sources at their approximate locations</span>
-<span class="n">model_frame_</span> <span class="o">=</span> <span class="n">sources_</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">model_frame</span>
+<span class="n">model_frame_</span> <span class="o">=</span> <span class="n">sources_</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">frame</span>
 <span class="n">yx</span> <span class="o">=</span> <span class="p">(</span><span class="mf">14.</span><span class="p">,</span> <span class="mf">44.</span><span class="p">)</span>
 <span class="n">new_source</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">ExtendedSource</span><span class="p">(</span><span class="n">model_frame_</span><span class="p">,</span> <span class="n">yx</span><span class="p">,</span> <span class="n">observation</span><span class="p">,</span> <span class="n">shifting</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="n">sources_</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">new_source</span><span class="p">)</span>
@@ -648,7 +654,7 @@ Source 6, Fluxes: [2.33773624 2.14041605 2.24858207 2.86608769 3.77352103]
 <span class="c1"># generate a new Blend instance</span>
 <span class="n">blend_</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">Blend</span><span class="p">(</span><span class="n">sources_</span><span class="p">,</span> <span class="n">observation</span><span class="p">)</span>
 <span class="c1"># tighten relative change in likelihood for convergence</span>
-<span class="n">blend_</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="mi">200</span><span class="p">,</span> <span class="n">e_rel</span><span class="o">=</span><span class="mf">1e-4</span><span class="p">)</span>
+<span class="n">blend_</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="n">e_rel</span><span class="o">=</span><span class="mf">1e-4</span><span class="p">)</span>
 
 <span class="c1"># show convergence of logL</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;scarlet ran for </span><span class="si">{0}</span><span class="s2"> iterations to logL = </span><span class="si">{1}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">blend_</span><span class="o">.</span><span class="n">loss</span><span class="p">),</span> <span class="o">-</span><span class="n">blend_</span><span class="o">.</span><span class="n">loss</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]))</span>
@@ -665,7 +671,7 @@ Source 6, Fluxes: [2.33773624 2.14041605 2.24858207 2.86608769 3.77352103]
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-scarlet ran for 25 iterations to logL = 31136.291728672775
+scarlet ran for 68 iterations to logL = 31702.682910004216
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">
@@ -698,7 +704,7 @@ scarlet ran for 25 iterations to logL = 31136.291728672775
 <img alt="_images/0-quickstart_33_0.png" src="_images/0-quickstart_33_0.png" />
 </div>
 </div>
-<p>We can see the two new sources 7 and 8, and that most of the features are very similar to before. As expected, the residuals have visibly improved and are now dominated by a Yin-Yang-shaped orange-blue pattern in the center of source 1, which we already fit with 2 components. Maybe we should try with 3 …</p>
+<p>We can see the two new sources 7 and 8, and that most of the features are very similar to before. As expected, the residuals have visibly improved and are now dominated by a red-blue pattern in the center of source 1, which we already fit with 2 components. Maybe we should try with 3 …</p>
 </div>
 </div>
 </div>

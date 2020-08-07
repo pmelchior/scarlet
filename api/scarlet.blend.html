@@ -53,6 +53,8 @@
 <li class="toctree-l2"><a class="reference internal" href="scarlet.initialization.html">scarlet.initialization</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.interpolation.html">scarlet.interpolation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.measure.html">scarlet.measure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.model.html">scarlet.model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.morphology.html">scarlet.morphology</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.observation.html">scarlet.observation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.operator.html">scarlet.operator</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.parameter.html">scarlet.parameter</a></li>
@@ -60,6 +62,7 @@
 <li class="toctree-l2"><a class="reference internal" href="scarlet.psf.html">scarlet.psf</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.resampling.html">scarlet.resampling</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.source.html">scarlet.source</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.spectrum.html">scarlet.spectrum</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.wavelet.html">scarlet.wavelet</a></li>
 </ul>
 </li>
@@ -83,8 +86,107 @@
 
           <div class="body" role="main">
             
-  <div class="section" id="scarlet-blend">
-<h1>scarlet.blend<a class="headerlink" href="#scarlet-blend" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="module-scarlet.blend">
+<span id="scarlet-blend"></span><h1>scarlet.blend<a class="headerlink" href="#module-scarlet.blend" title="Permalink to this headline">¶</a></h1>
+<dl class="py class">
+<dt id="scarlet.blend.Blend">
+<em class="property">class </em><code class="sig-prename descclassname">scarlet.blend.</code><code class="sig-name descname">Blend</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">sources</span></em>, <em class="sig-param"><span class="n">observations</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/blend.html#Blend"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.blend.Blend" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="scarlet.component.html#scarlet.component.CombinedComponent" title="scarlet.component.CombinedComponent"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.component.CombinedComponent</span></code></a></p>
+<p>The blended scene</p>
+<p>The class represents a scene as collection of and provides the functions to
+fit it to data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Attributes</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>loss: list</strong></dt><dd><p>Negative log likelihood in each iteration</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">check_parameters</span></code>()</p></td>
+<td><p>Check that all parameters have finite elements</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.blend.Blend.fit" title="scarlet.blend.Blend.fit"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fit</span></code></a>([max_iter, e_rel, min_iter, random_skip])</p></td>
+<td><p>Fit the model for each source to the data</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.blend.Blend.get_model" title="scarlet.blend.Blend.get_model"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code></a>(*parameters[, frame])</p></td>
+<td><p>Get the model of the entire blend</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_to_frame</span></code>([frame, model])</p></td>
+<td><p>Project a model into a frame</p></td>
+</tr>
+</tbody>
+</table>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 72%" />
+<col style="width: 28%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><strong>get_models_of_children</strong></p></td>
+<td></td>
+</tr>
+<tr class="row-even"><td><p><strong>get_parameter</strong></p></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<dl class="py method">
+<dt id="scarlet.blend.Blend.bbox">
+<em class="property">property </em><code class="sig-name descname">bbox</code><a class="headerlink" href="#scarlet.blend.Blend.bbox" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bounding box of the blend</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="scarlet.blend.Blend.fit">
+<code class="sig-name descname">fit</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">max_iter</span><span class="o">=</span><span class="default_value">200</span></em>, <em class="sig-param"><span class="n">e_rel</span><span class="o">=</span><span class="default_value">0.001</span></em>, <em class="sig-param"><span class="n">min_iter</span><span class="o">=</span><span class="default_value">1</span></em>, <em class="sig-param"><span class="n">random_skip</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">alg_kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/blend.html#Blend.fit"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.blend.Blend.fit" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fit the model for each source to the data</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>max_iter: int</strong></dt><dd><p>Maximum number of iterations if the algorithm doesn’t converge</p>
+</dd>
+<dt><strong>e_rel: float</strong></dt><dd><p>Relative error for convergence of the loss function</p>
+</dd>
+<dt><strong>min_iter: int</strong></dt><dd><p>Maximum number of iterations if the algorithm doesn’t converge</p>
+</dd>
+<dt><strong>alg_kwargs: dict</strong></dt><dd><p>Keywords for the <cite>proxmin.adaprox</cite> optimizer</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="scarlet.blend.Blend.get_model">
+<code class="sig-name descname">get_model</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">*</span><span class="n">parameters</span></em>, <em class="sig-param"><span class="n">frame</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/blend.html#Blend.get_model"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.blend.Blend.get_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the model of the entire blend</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>parameters: tuple of optimization parameters</strong></dt><dd></dd>
+<dt><strong>frame:  `scarlet.Frame`</strong></dt><dd><p>Alternative Frame to project the model into</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>model: array</dt><dd><p>(Bands, Height, Width) data cube</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
 </div>
 
 
