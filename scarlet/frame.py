@@ -227,12 +227,15 @@ class Frame:
         ref_box = obs_ref.frame.bbox
         from .observation import LowResObservation
 
+        target_frame = Frame(
+            (len(channels), 0, 0), psfs=target_psf, channels=channels, wcs=target_wcs
+        )
         for c, obs in enumerate(observations):
             # Make observations with a different wcs LowResObservation
             if (obs is not obs_ref) and (type(obs) is not LowResObservation):
                 observations[c] = obs.get_LowRes()
                 # Limits that include all observations relative to target_wcs
-                obs_coord = resampling.get_to_common_frame(obs, target_wcs)
+                obs_coord = resampling.get_to_common_frame(obs.frame, target_frame)
                 y_min = np.min(obs_coord[0])
                 x_min = np.min(obs_coord[1])
                 y_max = np.max(obs_coord[0])
@@ -261,9 +264,10 @@ class Frame:
                 np.int(o_x - fat_pixel_size / 2),
             ),
         )
-        frame = Frame(fbox, wcs=target_wcs, psfs=target_psf, channels=channels)
+        target_frame._bbox = fbox
+
         # Match observations to this frame
         for obs in observations:
-            obs.match(frame)
+            obs.match(target_frame)
 
-        return frame
+        return target_frame
