@@ -20,6 +20,20 @@ from . import interpolation
 
 
 class Morphology(Model):
+    """Morphology base class
+
+    The class describes the 2D image of the spatial dependence of
+    `~scarlet.FactorizedComponent`.
+
+    Parameters
+    ----------
+    frame: `~scarlet.Frame`
+        Characterization of the model
+    parameters: list of `~scarlet.Parameter`
+    bbox: `~scarlet.Box`
+        2D bounding box of this model
+    """
+
     def __init__(self, frame, *parameters, bbox=None):
         assert isinstance(frame, Frame)
         self.frame = frame
@@ -33,6 +47,23 @@ class Morphology(Model):
 
 
 class ImageMorphology(Morphology):
+    """Morphology from an image
+
+    The class uses an arbitrary image as non-parametric model. To allow for subpixel
+    offsets, a Fourier-based shifting transformation is available.
+
+    Parameters
+    ----------
+    frame: `~scarlet.Frame`
+        Characterization of the model
+    image: 2D array or `~scarlet.Parameter`
+        Image parameter
+    bbox: `~scarlet.Box`
+        2D bounding box for focation of the image in `frame`
+    shift: None or `~scarlet.Parameter`
+        2D shift parameter (in units of image pixels)
+    """
+
     def __init__(self, frame, image, bbox=None, shift=None):
         if isinstance(image, Parameter):
             assert image.name == "image"
@@ -87,6 +118,18 @@ class ImageMorphology(Morphology):
 
 
 class PointSourceMorphology(Morphology):
+    """Morphology from a PSF
+
+    The class uses `frame.psf` as model, evaluated at `center`
+
+    Parameters
+    ----------
+    frame: `~scarlet.Frame`
+        Characterization of the model
+    center: array or `~scarlet.Parameter`
+        2D center parameter (in units of frame pixels)
+    """
+
     def __init__(self, frame, center):
 
         assert frame.psf is not None and isinstance(frame.psf, PSF)
@@ -101,7 +144,12 @@ class PointSourceMorphology(Morphology):
         bbox = Box.from_bounds((bottom, top), (left, right))
 
         # morph parameters is simply 2D center
-        self.center = Parameter(center, name="center", step=1e-1)
+        if isinstance(center, Parameter):
+            assert center.name == "center"
+            self.center = center
+        else:
+            self.center = Parameter(center, name="center", step=1e-1)
+
         super().__init__(frame, self.center, bbox=bbox)
 
     def get_model(self, *parameters):
@@ -111,10 +159,26 @@ class PointSourceMorphology(Morphology):
 
 
 class StarletMorphology(Morphology):
-    def __init__(self, model_frame, image, bbox=None, threshold=0):
+    """Morphology from a starlet representation of an image
+
+    The class uses the starlet parameterization as an overcomplete, non-parametric model.
+
+    Parameters
+    ----------
+    frame: `~scarlet.Frame`
+        Characterization of the model
+    image: 2D array
+        Initial image to construct starlet transform
+    bbox: `~scarlet.Box`
+        2D bounding box for focation of the image in `frame`
+    threshold: float
+        Lower bound on threshold for all but the last starlet scale
+    """
+
+    def __init__(self, frame, image, bbox=None, threshold=0):
 
         if bbox is None:
-            assert model_frame.bbox[1:].shape == image.shape
+            assert frame.bbox[1:].shape == image.shape
             bbox = Box(image.shape)
         else:
             assert bbox.shape == image.shape
@@ -136,12 +200,10 @@ class StarletMorphology(Morphology):
         constraint = ConstraintChain(L0Constraint(thresh_array), PositivityConstraint())
 
         coeffs = Parameter(coeffs, name="coeffs", step=1e-2, constraint=constraint)
-        super().__init__(model_frame, coeffs, bbox=bbox)
+        super().__init__(frame, coeffs, bbox=bbox)
 
     def get_model(self, *parameters):
-        """ Takes the inverse transform of parameters as starlet coefficients.
-
-        """
+        # Takes the inverse transform of parameters as starlet coefficients
         coeffs = self.get_parameter(0, *parameters)
         return Starlet(coefficients=coeffs).image[0]
 
@@ -149,7 +211,7 @@ class StarletMorphology(Morphology):
 class ExtendedSourceMorphology(ImageMorphology):
     def __init__(
         self,
-        model_frame,
+        frame,
         center,
         image,
         bbox=None,
@@ -158,20 +220,24 @@ class ExtendedSourceMorphology(ImageMorphology):
         min_grad=0,
         shifting=False,
     ):
-        """Non-parametric extended source morphology
+        """Non-parametric image morphology designed for galaxies as extended sources.
 
         Parameters
         ----------
-        model_frame: `~scarlet.Frame`
+        frame: `~scarlet.Frame`
             The frame of the full model
         center: tuple
             Center of the source
         image: `numpy.ndarray`
             Image of the source.
+        bbox: `~scarlet.Box`
+            2D bounding box for focation of the image in `frame`
         monotonic: ['flat', 'angle', 'nearest'] or None
             Which version of monotonic decrease in flux from the center to enforce
         symmetric: `bool`
             Whether or not to enforce symmetry.
+        min_grad: float in [0,1)
+            Minimal radial decline for monotonicity (in units of reference pixel value)
         shifting: `bool`
             Whether or not a subpixel shift is added as optimization parameter
         """
@@ -211,7 +277,7 @@ class ExtendedSourceMorphology(ImageMorphology):
             shift = None
         self.shift = shift
 
-        super().__init__(model_frame, image, bbox=bbox, shift=shift)
+        super().__init__(frame, image, bbox=bbox, shift=shift)
 
     @property
     def center(self):

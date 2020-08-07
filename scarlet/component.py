@@ -5,12 +5,13 @@ from .model import Model
 from .parameter import Parameter, relative_step
 from .constraint import PositivityConstraint
 from .bbox import Box, overlapped_slices
+from .fft import fast_zero_pad
 
 
 class Component(Model):
-    """A single component in a blend.
+    """Base class for hyperspectral models given parameters.
 
-    This class acts as base for building models from parameters.
+    The class allows for hierarchical ordering through `children`.
 
     Parameters
     ----------
@@ -118,9 +119,9 @@ class Component(Model):
 
 
 class FactorizedComponent(Component):
-    """A single component in a blend.
+    """A single component in a blend
 
-    Uses the non-parametric factorization sed x morphology.
+    Uses the non-parametric factorization Spectrum x Morphology.
 
     Parameters
     ----------
@@ -138,11 +139,9 @@ class FactorizedComponent(Component):
         from .spectrum import Spectrum
 
         assert isinstance(spectrum, Spectrum)
-
         from .morphology import Morphology
 
         assert isinstance(morphology, Morphology)
-
         bbox = spectrum.bbox @ morphology.bbox
 
         super().__init__(frame, children=[spectrum, morphology], bbox=bbox)
@@ -173,16 +172,16 @@ class FactorizedComponent(Component):
 
 
 class CubeComponent(Component):
-    """A single component in a blend.
+    """A single component in a blend
 
-    Uses full cube parameterization.
+    Uses full hyperspectral cube parameterization.
 
     Parameters
     ----------
     frame: `~scarlet.Frame`
         The spectral and spatial characteristics of this component.
     cube: `~scarlet.Parameter`
-        3D array (C, Height, Width) of the initial data cube.
+        3D array (C, Height, Width) of the hyperspectral cube.
     bbox: `~scarlet.Box`
         Hyper-spectral bounding box of this component.
     """
@@ -206,6 +205,15 @@ class CubeComponent(Component):
 
 
 class CombinedComponent(Component):
+    """Combination of multiple `~scarlet.Component` instances
+
+    Parameters
+    ----------
+    components: list of `~scarlet.Component`
+    operation: 'add' or 'multiply'
+        The combination operation of the children's models
+    """
+
     def __init__(self, components, operation="add"):
 
         assert len(components)
@@ -246,7 +254,7 @@ class CombinedComponent(Component):
                     (c.bbox.start[d] - bbox.start[d], bbox.stop[d] - c.bbox.stop[d])
                     for d in range(bbox.D)
                 )
-                model_ = np.pad(model_, padding, mode="constant")
+                model_ = fast_zero_pad(model_, padding)
 
             if self.operation == "add":
                 model += model_

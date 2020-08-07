@@ -62,11 +62,7 @@ class PointSource(FactorizedComponent):
     """Point-Source model
 
     Point sources modeled as `model_frame.psfs`, centered at `sky_coord`.
-
-    Their SEDs are either taken from `observations` at the center pixel or specified
-    by `sed` and/or `sed_func`. In the former case, `sed` is a parameter array with
-    the same size of `model_frame.C`, in the latter case it is the parameters of the
-    SED model function.
+    Their SEDs are taken from `observations` at the center pixel.
     """
 
     def __init__(self, model_frame, sky_coord, observations):
@@ -91,10 +87,10 @@ class PointSource(FactorizedComponent):
 
 
 class StarletSource(FactorizedComponent):
-    """Source intialized with starlet coefficients.
+    """Source intialized with starlet coefficients
 
     Sources are initialized with the SED of the center pixel,
-    and the morphologies are initialised as ExtendedSources
+    and the morphologies are initialised as `~scarlet.ExtendedSource`
     and transformed into starlet coefficients.
     """
 
@@ -155,7 +151,7 @@ class SingleExtendedSource(FactorizedComponent):
         thresh=1.0,
         shifting=False,
     ):
-        """Extended source model.
+        """Extended source model
 
         The model is initialized from `observations` with a symmetric and
         monotonic profile and a spectrum from its peak pixel.
@@ -211,9 +207,9 @@ class SingleExtendedSource(FactorizedComponent):
 
 
 class MultiExtendedSource(CombinedComponent):
-    """Extended source with multiple components layered vertically.
+    """Extended source with multiple components layered vertically
 
-    Uses `~scarlet.source.ExtendedSource` to define the overall morphology,
+    Uses `~scarlet.ExtendedSource` to define the overall morphology,
     then erodes the outer footprint until it reaches the specified size percentile.
     For the narrower footprint, it evaluates the mean value at the perimeter and
     sets the inside to the perimeter value, creating a flat distribution inside.
@@ -248,9 +244,11 @@ class MultiExtendedSource(CombinedComponent):
         K: int
             Number of stacked components
         flux_percentiles: list
-            The flux percentile of each component. If `flux_percentiles` is `None`
-            then `flux_percentiles=[25,]`, a single component with 25% of the flux
-            as the primary source.
+            Flux percentile of each component as the transition point between components.
+            If pixel value is below the first precentile, it becomes part of the
+            outermost component. If it is above, the percentile value will be subtracted
+            and the remainder attributed to the next component.
+            If `flux_percentiles` is `None` then `flux_percentiles=[25,]`. 
         coadd: `numpy.ndarray`
             The coaddition of all images across observations.
         coadd_rms: float
@@ -288,7 +286,7 @@ class MultiExtendedSource(CombinedComponent):
                 seds[k],
                 name="spectrum",
                 step=partial(relative_step, factor=1e-1),
-                constraint=PositivityConstraint(),
+                constraint=PositivityConstraint(zero=1e-20),
             )
             spectrum = TabulatedSpectrum(model_frame, sed)
 
@@ -309,7 +307,7 @@ class MultiExtendedSource(CombinedComponent):
         super().__init__(components)
 
 
-def add_docs_for(other_func):
+def append_docs_from(other_func):
     def doc(func):
         func.__doc__ = func.__doc__ + "\n\n" + other_func.__doc__
         return func
@@ -317,8 +315,8 @@ def add_docs_for(other_func):
     return doc
 
 
-# factory two swith between single and multi-ExtendedSource
-@add_docs_for(MultiExtendedSource.__init__)
+# factory two switch between single and multi-ExtendedSource
+@append_docs_from(MultiExtendedSource.__init__)
 def ExtendedSource(
     model_frame,
     sky_coord,

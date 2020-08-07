@@ -382,6 +382,16 @@ def init_multicomponent_source(
     # avoid using the same box for multiple components
     boxes = tuple(bbox.copy() for k in range(K))
 
+    # # define minimal boxes (NOTE: dangerous due to box truncation)
+    # morphs_ = []
+    # boxes = []
+    # threshold = 0
+    # for k in range(K):
+    #     morph, bbox = trim_morphology(sky_coord, frame, morphs[k], threshold)
+    #     morphs_.append(morph)
+    #     boxes.append(bbox)
+    # morphs = morphs_
+
     return seds, morphs, boxes
 
 

@@ -102,6 +102,8 @@ class Parameter(np.ndarray):
 
     @property
     def is_finite(self):
+        """Check if parameter values are all finite
+        """
         return np.isfinite(self._data).all()
 
 
@@ -112,4 +114,6 @@ VSpace.register(Parameter, vspace_maker=VSpace.mappings[np.ndarray])
 
 
 def relative_step(X, it, factor=0.1, axis=None):
+    """Step size set at `factor` times the mean of `X` in direction `axis`
+    """
     return factor * X.mean(axis=axis)
