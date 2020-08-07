@@ -288,7 +288,7 @@ class MultiExtendedSource(CombinedComponent):
                 seds[k],
                 name="spectrum",
                 step=partial(relative_step, factor=1e-1),
-                constraint=PositivityConstraint(),
+                constraint=PositivityConstraint(zero=1e-20),
             )
             spectrum = TabulatedSpectrum(model_frame, sed)
 
