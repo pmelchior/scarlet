@@ -128,10 +128,10 @@ def get_psf_sed(sky_coord, observations, model_frame):
         else:
             if obs.frame.psf is not None:
                 # Account for the PSF in the intensity
-                sed /= obs.frame.psf.image.max(axis=(-2, -1))
+                sed /= obs.frame.psf.get_model().max(axis=(-2, -1))
 
             if model_frame.psf is not None:
-                sed *= model_frame.psf.image[0].max()
+                sed *= model_frame.psf.get_model().max(axis=(-2, -1))
 
         seds.append(sed)
 

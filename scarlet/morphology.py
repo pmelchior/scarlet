@@ -137,13 +137,10 @@ class PointSourceMorphology(Morphology):
 
         # define bbox
         pixel_center = tuple(np.round(center).astype("int"))
-        bottom = pixel_center[0] - self.psf.shape[1] // 2
-        top = pixel_center[0] + self.psf.shape[1] // 2
-        left = pixel_center[1] - self.psf.shape[2] // 2
-        right = pixel_center[1] + self.psf.shape[2] // 2
-        bbox = Box.from_bounds((bottom, top), (left, right))
+        shift = (0, *pixel_center)
+        bbox = self.psf.bbox + shift
 
-        # morph parameters is simply 2D center
+        # parameters is simply 2D center
         if isinstance(center, Parameter):
             assert center.name == "center"
             self.center = center
@@ -154,8 +151,9 @@ class PointSourceMorphology(Morphology):
 
     def get_model(self, *parameters):
         center = self.get_parameter(0, *parameters)
-        spec_bbox = Box((0,))
-        return self.psf(*center, bbox=spec_bbox @ self.bbox)[0]
+        box_center = np.mean(self.bbox.bounds[1:], axis=1)
+        offset = center - box_center
+        return self.psf.get_model(offset=offset)  # no "internal" PSF parameters here
 
 
 class StarletMorphology(Morphology):

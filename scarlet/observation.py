@@ -154,9 +154,9 @@ class Observation:
             self._diff_kernels = None
             if self.frame.psf is not model_frame.psf:
                 assert self.frame.psf is not None and model_frame.psf is not None
-                psf = fft.Fourier(self.frame.psf.update_dtype(model_frame.dtype).image)
+                psf = fft.Fourier(self.frame.psf.get_model().astype(model_frame.dtype))
                 model_psf = fft.Fourier(
-                    model_frame.psf.update_dtype(model_frame.dtype).image
+                    model_frame.psf.get_model().astype(model_frame.dtype)
                 )
                 self._diff_kernels = fft.match_psfs(psf, model_psf)
         else:

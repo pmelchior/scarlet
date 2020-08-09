@@ -1,72 +1,88 @@
 import autograd.numpy as np
 import autograd.scipy as scipy
 from .bbox import Box
-from .component import Component
+from .model import Model, abstractmethod
 from .parameter import Parameter
 from .fft import Fourier
 from .observation import Observation
 
 
-def moffat(y, x, alpha=4.7, beta=1.5, bbox=None):
-    """Symmetric 2D Moffat function
+class PSF(Model):
+    @abstractmethod
+    def get_model(self, *parameter, offset=None):
+        """Get the PSF realization
 
-    .. math::
+        Parameters
+        ----------
+        parameters: tuple of optimimzation parameters
+        offset: 2D tuple or ``~scarlet.Parameter`
+            Optional subpixel offset of the model, in units of frame pixels
 
-        (1+\frac{(x-x0)^2+(y-y0)^2}{\alpha^2})^{-\beta}
+        Returns
+        -------
+        result: array
+            A centered PSF model defined by its parameters, shifted by `offset`
+        """
+        pass
 
-    Parameters
-    ----------
-    y: float
-        Vertical coordinate of the center
-    x: float
-        Horizontal coordinate of the center
-    alpha: float
-        Core width
-    beta: float
-        Power-law index
-    bbox: Box
-        Bounding box over which to evaluate the function
-
-    Returns
-    -------
-    result: array
-        A 2D circular gaussian sampled at the coordinates `(y_i, x_j)`
-        for all i and j in `shape`.
-    """
-    Y = np.arange(bbox.shape[1]) + bbox.origin[1]
-    X = np.arange(bbox.shape[2]) + bbox.origin[2]
-    X, Y = np.meshgrid(X, Y)
-    # TODO: has no pixel-integration formula
-    return ((1 + ((X - x) ** 2 + (Y - y) ** 2) / alpha ** 2) ** -beta)[None, :, :]
+    def prepare_param(self, X, name):
+        if isinstance(X, Parameter):
+            assert X.name == name
+        else:
+            if np.isscalar(X):
+                X = (X,)
+            X = Parameter(np.array(X, dtype=np.float), name=name, fixed=True)
+        return X
 
 
-def gaussian(y, x, sigma=1, integrate=True, bbox=None):
+class GaussianPSF(PSF):
     """Circular Gaussian Function
 
     Parameters
     ----------
-    y: float
-        Vertical coordinate of the center
-    x: float
-        Horizontal coordinate of the center
-    sigma: float
-        Standard deviation of the gaussian
+    sigma: float, array, or `~scarlet.Parameter`
+        Standard deviation of the Gaussian in frame pixels
+        If the width is to be optimized, provide a full defined `Parameter`.
     integrate: bool
         Whether pixel integration is performed
-    bbox: Box
-        Bounding box over which to evaluate the function
-
-    Returns
-    -------
-    result: array
-        A 2D circular gaussian sampled at the coordinates `(y_i, x_j)`
-        for all i and j in `shape`.
+    boxsize: Box
+        Size of bounding box over which to evaluate the function, in frame pixels
     """
-    Y = np.arange(bbox.shape[1]) + bbox.origin[1]
-    X = np.arange(bbox.shape[2]) + bbox.origin[2]
 
-    def f(X):
-        if not integrate:
+    def __init__(self, sigma, integrate=True, boxsize=None):
+
+        sigma = self.prepare_param(sigma, "sigma")
+        self.integrate = integrate
+
+        if boxsize is None:
+            boxsize = int(np.ceil(8 * np.max(sigma)))
+        if boxsize % 2 == 1:
+            boxsize += 1
+
+        shape = (len(sigma), boxsize, boxsize)
+        origin = (0, -boxsize // 2, -boxsize // 2)
+        self.bbox = Box(shape, origin=origin)
+
+        super().__init__(sigma)
+
+    def get_model(self, *parameters, offset=None):
+
+        sigma = self.get_parameter(0, *parameters)
+        Y = np.arange(self.bbox.shape[1]) + self.bbox.origin[1]
+        X = np.arange(self.bbox.shape[2]) + self.bbox.origin[2]
+        if offset is None:
+            offset = (0, 0)
+
+        return np.stack(
+            (
+                self._f(Y - offset[0], s)[:, None] * self._f(X - offset[1], s)[None, :]
+                for s in sigma
+            ),
+            axis=0,
+        )
+
+    def _f(self, X, sigma):
+        if not self.integrate:
             return np.exp(-(X ** 2) / (2 * sigma ** 2))
         else:
             sqrt2 = np.sqrt(2)
@@ -79,190 +95,94 @@ def gaussian(y, x, sigma=1, integrate=True, bbox=None):
                 )
             )
 
-    return (f(Y - y)[:, None] * f(X - x)[None, :])[None, :, :]
 
+class MoffatPSF(PSF):
+    """Symmetric 2D Moffat function
 
-class PSF:
-    """Class to represent PSFs
+    .. math::
+
+        (1+\frac{(x-x0)^2+(y-y0)^2}{\alpha^2})^{-\beta}
+
+    Note: This PSF has not in-pixel integration!
 
     Parameters
     ----------
-    X: array-like or method
-        If `X` is an array, it represent an image of the PSF in every band.
-        If `X` is a callable method, it describes a function that can generate a PSF when given coordinates (y, x).
-    shape: tuple
-        Shape of the 2D image to generate an PSF image for. Only used if `X` is a method.
+    alpha: float
+        Core width, in frame pixels
+    beta: float
+        Power-law index
+    boxsize: Box
+        Size of bounding box over which to evaluate the function, in frame pixels
     """
 
-    def __init__(self, X, shape=None):
-        if hasattr(X, "shape"):
-            self._image = X.copy()
-            self.normalize()
-            self._func = None
-            self.shape = X.shape
-        elif hasattr(X, "__call__"):
-            assert shape is not None, "Functional PSFs must set shape argument"
-            self._image = None
-            self._func = X
-            self.shape = shape
-        else:
-            msg = "A PSF must be initialized with either an image or function"
-            raise ValueError(msg)
+    def __init__(self, alpha=4.7, beta=1.5, boxsize=None):
 
-    def __call__(self, y, x, bbox=None):
-        """Generate analytic PSF image at coordinate (y,x)
+        alpha = self.prepare_param(alpha, "alpha")
+        beta = self.prepare_param(beta, "beta")
+        assert len(alpha) == len(beta)
 
-        Parameters
-        ----------
-        y: float
-            Vertical model frame coordinates for the center of PSF image
-        x: float
-            Horizontal model frame coordinates for the center of PSF image
-        bbox: `~scarlet.Box`
-            Bounding Box for the PSF image in model coordinates
+        if boxsize is None:
+            boxsize = int(np.ceil(4 * np.max(alpha)))
+        if boxsize % 2 == 1:
+            boxsize += 1
 
-        Returns
-        -------
-        image: array-like
-            Centered image of the PSF at given coordinate.
-        """
-        if bbox is None:
-            bbox = Box(self.shape)
-        if self._func is not None:
-            return self._func(y, x, bbox=bbox)
-        return None
+        shape = (len(alpha), boxsize, boxsize)
+        origin = (0, -boxsize // 2, -boxsize // 2)
+        self.bbox = Box(shape, origin=origin)
 
-    @property
-    def image(self):
-        """Centered image of the PSF
-        """
-        if self._image is None:
-            assert self.shape is not None, "Set PSF.shape first"
-            y, x = self.shape[1] // 2, self.shape[2] // 2
-            self._image = self.__call__(y, x)
-            self.normalize()
-        return self._image
+        super().__init__(alpha, beta)
+
+    def get_model(self, *parameters, offset=None):
+
+        alpha = self.get_parameter(0, *parameters)
+        beta = self.get_parameter(1, *parameters)
+        Y = np.arange(self.bbox.shape[1]) + self.bbox.origin[1]
+        X = np.arange(self.bbox.shape[2]) + self.bbox.origin[2]
+        if offset is None:
+            offset = (0, 0)
+
+        return np.stack(
+            (self._f(Y - offset[0], X - offset[1], a, b) for a, b in zip(alpha, beta)),
+            axis=0,
+        )
+
+    def _f(self, Y, X, a, b):
+        # TODO: has no pixel-integration formula
+        return ((1 + ((X - x) ** 2 + (Y - y) ** 2) / a ** 2) ** -b)[None, :, :]
+
+
+class ImagePSF(PSF):
+    """Image PSF
+
+    Creates a PSF model from a image of the centered PSF.
+
+    Parameters
+    ----------
+    image: 2D or 3D array
+    """
+
+    def __init__(self, image):
+
+        if len(image.shape) == 2:
+            shape = image.shape
+            image = image.reshape(1, *shape)
+
+        image = self.prepare_param(image, "image")
+        super().__init__(image)
+        self.normalize()
+
+        origin = (0, -image.shape[1] // 2, -image.shape[2] // 2)
+        self.bbox = Box(image.shape, origin=origin)
+
+    def get_model(self, *parameters, offset=None):
+        assert offset is None, "ImagePSF cannot be offset"
+
+        image = self.get_parameter(0, *parameters)
+        return image
 
     def normalize(self):
         """Normalize to PSF image in every band to unity
         """
-        sums = self._image.sum(axis=(1, 2))
-        self._image /= sums[:, None, None]
-        return self
-
-    def update_dtype(self, dtype):
-        """Update data type of `image` to `dtype`
-        """
-        if self.image.dtype != dtype:
-            self._image = self._image.astype(dtype)
-        return self
-
-
-class PSFDiffKernel(Component):
-    """PSF Difference Kernel Source
-
-    "Source" used to model the difference kernel to match one
-    PSF to another. Typically this should be modeling the
-    deconvolution kernel to convolve an image from an
-    observed PSF into a model PSF, as the difference
-    from model PSF to observed PSF is calculated much
-    more quickly using a DFT in `~scarlet.Observation.match`.
-    """
-
-    def __init__(self, frame, initial, band, step=1e-2):
-        """Initialize the Model
-
-        Parameters
-        ----------
-        frame: `~scarlet.Frame`
-            The spectral and spatial characteristics of this component.
-        initial: `numpy.array`
-            Initial guess for the kernel.
-        step: `double`
-            Step size for the kernel parameter.
-        """
-        kernel = np.zeros(initial.shape, dtype=initial.dtype)
-        kernel[band] = initial[band]
-        kernel = Parameter(kernel, name="kernel", step=step,)
-        super().__init__(frame, kernel, bbox=frame.bbox)
-
-    def get_model(self, *parameters, frame=None):
-        kernel = self.get_parameter(0, *parameters)
-        return kernel
-
-    @property
-    def kernel(self):
-        """Return the contents of the kernel parameter
-        """
-        return self.get_parameter(0)._data
-
-
-class PsfObservation(Observation):
-    def match(self, psfs, convolution="real"):
-        """Implement the observed PSFs as the difference kernel
-
-        This is different than `~scarlet.Observation.match`,
-        where the difference kernel that matches the model
-        PSF to the observed PSF is calculated and stored.
-        For a `PsfObservation` the input PSF, which
-        should be the observed PSF (see below) is stored
-        as the "difference kernel" while the actual
-        deconvolution (difference) kernel is calculated
-        by the model.
-
-        Parameters
-        ----------
-        psfs: `~numpy.array`
-            The input PSF that is being convolved.
-            For deconvolution this is the observed PSF,
-            since the observed PSF is convolved with the
-            deconvolution kernel to match the model PSF.
-            For matching a model PSF to a wider observed
-            PSF use the `Observation` class,
-            which calculates the difference kernel much
-            more quickly using a DFT.
-
-        Returns
-        -------
-        self: `~scarlet.PsfObservation`
-            Return this object to allow for chaining.
-        """
-        self._diff_kernels = Fourier(psfs)
-        self.convolution = convolution
-        return self
-
-    def get_loss(self, model):
-        """get_loss
-
-        We override `scarlet.Observation.get_loss` since the lognorm
-        is the dominant term, which interferes with calculating
-        relative error.
-        """
-        model_ = self.render(model)
-        images_ = self.images
-        weights_ = self.weights
-        return np.sum(weights_ * (model_ - images_) ** 2) / 2
-
-
-class DeconvolvedObservation(Observation):
-    """Deconvolved image using a deconvolution kernel
-
-    This is the same as `~scarlet.Observation` except that the matching
-    algorithm uses a precalculated deconvolution kernel and the
-    images are deconolved using that kernel. A separate class exists
-    to make it less likely that the user executes this operation
-    more than once, which will have adverse affects on the
-    `images` property.
-    """
-
-    def match(self, model_frame, kernel):
-        if hasattr(self, "matched") and self.matched:
-            msg = (
-                "Matching has already been executed. "
-                "Matching multiple times can have unexpected results."
-            )
-            raise RuntimeError(msg)
-        super().match(model_frame, kernel)
-        self.images = self.render(self.images)
-        self.matched = True
-        return self
+        image = self.get_parameter(0)
+        sums = image.sum(axis=(1, 2))
+        image /= sums[:, None, None]
