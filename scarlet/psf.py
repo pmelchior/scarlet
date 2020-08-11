@@ -25,6 +25,16 @@ class PSF(Model):
         """
         pass
 
+    def normalize(self, image):
+        """Normalize to PSF image in every band to unity
+        """
+        sums = image.sum(axis=(1, 2))
+        if isinstance(image, Parameter):
+            image._data /= sums[:, None, None]
+        else:
+            image /= sums[:, None, None]
+        return image
+
     def prepare_param(self, X, name):
         if isinstance(X, Parameter):
             assert X.name == name
@@ -73,13 +83,15 @@ class GaussianPSF(PSF):
         if offset is None:
             offset = (0, 0)
 
-        return np.stack(
+        psfs = np.stack(
             (
                 self._f(Y - offset[0], s)[:, None] * self._f(X - offset[1], s)[None, :]
                 for s in sigma
             ),
             axis=0,
         )
+        # use image integration instead of analytic for consistency with other PSFs
+        return self.normalize(psfs)
 
     def _f(self, X, sigma):
         if not self.integrate:
@@ -141,10 +153,11 @@ class MoffatPSF(PSF):
         if offset is None:
             offset = (0, 0)
 
-        return np.stack(
+        psfs = np.stack(
             (self._f(Y - offset[0], X - offset[1], a, b) for a, b in zip(alpha, beta)),
             axis=0,
         )
+        return self.normalize(psfs)
 
     def _f(self, Y, X, a, b):
         # TODO: has no pixel-integration formula
@@ -167,9 +180,9 @@ class ImagePSF(PSF):
             shape = image.shape
             image = image.reshape(1, *shape)
 
+        image = self.normalize(image)
         image = self.prepare_param(image, "image")
         super().__init__(image)
-        self.normalize()
 
         origin = (0, -image.shape[1] // 2, -image.shape[2] // 2)
         self.bbox = Box(image.shape, origin=origin)
@@ -179,10 +192,3 @@ class ImagePSF(PSF):
 
         image = self.get_parameter(0, *parameters)
         return image
-
-    def normalize(self):
-        """Normalize to PSF image in every band to unity
-        """
-        image = self.get_parameter(0)
-        sums = image.sum(axis=(1, 2))
-        image /= sums[:, None, None]

@@ -13,8 +13,8 @@ from .wavelet import Starlet, mad_wavelet
 logger = logging.getLogger("scarlet.initialisation")
 
 
-def get_best_fit_seds(morphs, images):
-    """Calculate best fitting SED for multiple components.
+def get_best_fit_spectra(morphs, images):
+    """Calculate best fitting spectra for multiple components.
 
     Solves min_A ||img - AS||^2 for the SED matrix A,
     assuming that the images only contain a single source.
@@ -47,53 +47,12 @@ def get_best_fit_seds(morphs, images):
     return seds
 
 
-def get_pixel_sed(sky_coord, observations):
-    """Get the SED at `sky_coord` in `observation`
+def get_pixel_spectrum(sky_coord, observations, model_frame, correct_psf=True):
+    """Get the spectrum at `sky_coord` in `observation`.
 
-    Parameters
-    ----------
-    sky_coord: tuple
-        Position in the observation
-    observations: instance or list of `~scarlet.Observation`
-        Observation to extract SED from.
-
-    Returns
-    -------
-    SED: `~numpy.array`
-    """
-
-    if not hasattr(observations, "__iter__"):
-        observations = (observations,)
-
-    # determine initial SED from peak position
-    # SED in the frame for source detection
-    seds = []
-    for obs in observations:
-        pixel = obs.frame.get_pixel(sky_coord)
-        index = np.round(pixel).astype(np.int)
-        sed = obs.images[:, index[0], index[1]].copy()
-        seds.append(sed)
-    sed = np.concatenate(seds).reshape(-1)
-
-    if np.any(sed <= 0):
-        # If the flux in all channels is  <=0,
-        # the new sed will be filled with NaN values,
-        # which will cause the code to crash later
-        msg = "Zero or negative SED {} at y={}, x={}".format(sed, *sky_coord)
-        if np.all(sed <= 0):
-            logger.warning(msg)
-        else:
-            logger.info(msg)
-
-    return sed
-
-
-def get_psf_sed(sky_coord, observations, model_frame):
-    """Get SED for a point source at `sky_coord` in `observation`
-
-    Identical to `get_pixel_sed`, but corrects for the different
-    peak values of the observed seds to approximately correct for PSF
-    width variations between channels.
+    Be default, this method corrects for different widths of the observation PSF.
+    Yields the spectrum of a PSF-homogenized source of flux 1 in every channel,
+    concatenated for all observations.
 
     Parameters
     ----------
@@ -104,39 +63,112 @@ def get_psf_sed(sky_coord, observations, model_frame):
     model_frame: `~scarlet.Frame`
         Frame of the model
 
+
     Returns
     -------
-    SED: `~numpy.array`
+    spectrum: `~numpy.array`
     """
 
     if not hasattr(observations, "__iter__"):
         observations = (observations,)
 
-    seds = []
+    # determine initial SED from peak position
+    # SED in the frame for source detection
+    spectra = []
     for obs in observations:
-        sed = get_pixel_sed(sky_coord, obs)
-
-        if type(obs) is LowResObservation:
-            normalization = "sum"
-        else:
-            normalization = "max"
+        pixel = obs.frame.get_pixel(sky_coord)
+        index = np.round(pixel).astype(np.int)
+        spectrum = obs.images[:, index[0], index[1]].copy()
 
         # approx. correct PSF width variations from SED by normalizing heights
-        if normalization is "sum":
-            if obs._diff_kernels is not None:
-                sed /= obs._diff_kernels.image.sum(axis=(-2, -1)) * obs.h ** 2
+        if correct_psf:
+            if type(obs) is LowResObservation:
+                if obs._diff_kernels is not None:
+                    spectrum /= obs._diff_kernels.image.sum(axis=(-2, -1)) * obs.h ** 2
+            else:
+                if obs.frame.psf is not None:
+                    # Account for the PSF in the intensity
+                    spectrum /= obs.frame.psf.get_model().max(axis=(-2, -1))
+
+            # if model_frame.psf is not None and normalization == "max":
+            #     sed *= model_frame.psf.get_model().max(axis=(-2, -1))
+
+        spectra.append(spectrum)
+
+    spectrum = np.concatenate(spectra).reshape(-1)
+
+    if np.any(sed <= 0):
+        # If the flux in all channels is  <=0,
+        # the new sed will be filled with NaN values,
+        # which will cause the code to crash later
+        msg = "Zero or negative spectrum {} at y={}, x={}".format(spectrum, *sky_coord)
+        if np.all(spectrum <= 0):
+            logger.warning(msg)
         else:
-            if obs.frame.psf is not None:
-                # Account for the PSF in the intensity
-                sed /= obs.frame.psf.get_model().max(axis=(-2, -1))
+            logger.info(msg)
 
-            if model_frame.psf is not None:
-                sed *= model_frame.psf.get_model().max(axis=(-2, -1))
+    return spectrum
 
-        seds.append(sed)
 
-    sed = np.concatenate(seds).reshape(-1)
-    return sed
+def get_psf_spectrum(sky_coord, observations):
+    """Get spectrum for a point source at `sky_coord` in `observation`
+
+    Equivalent to point source photometry for isolated sources. For extended source,
+    this will underestimate the actual source flux in every channel. In case of crowding,
+    the resulting photometry is likely contaminated by neighbors.
+
+    Yields the spectrum of a PSF-homogenized source of flux 1 in every channel,
+    concatenated for all observations.
+
+    Parameters
+    ----------
+    sky_coord: tuple
+        Position in the observation
+    observations: instance or list of `~scarlet.Observation`
+        Observation to extract SED from.
+
+    Returns
+    -------
+    spectrum: `~numpy.array`
+    """
+
+    # assert normalization in ["max", "sum"]
+
+    if not hasattr(observations, "__iter__"):
+        observations = (observations,)
+
+    spectra = []
+    for obs in observations:
+
+        pixel = obs.frame.get_pixel(sky_coord)
+        index = np.round(pixel).astype(np.int)
+
+        psf = obs.frame.psf.get_model()
+        bbox = obs.frame.psf.bbox + (0, *index)
+        img = bbox.extract_from(obs.images)
+
+        # img now 0 outside of observation, psf is not:
+        # restrict both to observed pixels to avoid truncation effects
+        mask = img[0] > 0
+        psf = psf[:, mask]  # flattens array in last two axes
+        img = img[:, mask]
+
+        spectrum = (img * psf).sum(axis=1) / (psf * psf).sum(axis=1)
+        spectra.append(spectrum)
+
+    spectrum = np.concatenate(spectra).reshape(-1)
+
+    if np.any(spectrum <= 0):
+        # If the flux in all channels is  <=0,
+        # the new sed will be filled with NaN values,
+        # which will cause the code to crash later
+        msg = "Zero or negative spectrum {} at y={}, x={}".format(spectrum, *sky_coord)
+        if np.all(spectrum <= 0):
+            logger.warning(msg)
+        else:
+            logger.info(msg)
+
+    return spectrum
 
 
 def trim_morphology(center_index, morph, bg_thresh):
@@ -189,7 +221,7 @@ def init_extended_source(
 
     # determine initial SED from peak position
     # SED in the frame for source detection
-    seds = [get_psf_sed(sky_coord, obs, frame) for obs in observations]
+    seds = [get_psf_spectrum(sky_coord, obs) for obs in observations]
     sed = np.concatenate(seds).reshape(-1)
 
     if coadd is None:
@@ -245,9 +277,10 @@ def init_extended_source(
     # normalize to unity at peak pixel for the imposed normalization
     if morph.sum() > 0:
         morph /= morph.max()
+        sed /= morph.sum()  # sed is defined for source of total flux 1
     else:
         morph = CenterOnConstraint()(morph, 0)
-        msg = "No flux above threshold for source at y={0} x={1}".format(*sky_coord)
+        msg = "No flux in morphology model for source at y={0} x={1}".format(*sky_coord)
         logger.warning(msg)
 
     return sed, morph, bbox
@@ -367,15 +400,15 @@ def init_multicomponent_source(
 
     # optimal SEDs given the morphologies, assuming img only has that source
     boxed_img = bbox.extract_from(obs_ref.images)
-    seds = get_best_fit_seds(morphs, boxed_img)
+    spectra = get_best_fit_spectra(morphs, boxed_img)
 
     for k in range(K):
-        if np.all(seds[k] <= 0):
+        if np.all(spectra[k] <= 0):
             # If the flux in all channels is  <=0,
             # the new sed will be filled with NaN values,
             # which will cause the code to crash later
-            msg = "Zero or negative SED {} for component {} at y={}, x={}".format(
-                seds[k], k, *sky_coord
+            msg = "Zero or negative spectrum {} for component {} at y={}, x={}".format(
+                spectra[k], k, *sky_coord
             )
             logger.warning(msg)
 
@@ -392,7 +425,7 @@ def init_multicomponent_source(
     #     boxes.append(bbox)
     # morphs = morphs_
 
-    return seds, morphs, boxes
+    return spectra, morphs, boxes
 
 
 def build_sed_coadd(seds, bg_rmses, observations, obs_ref=None):
