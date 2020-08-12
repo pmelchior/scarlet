@@ -47,12 +47,8 @@ def get_best_fit_spectra(morphs, images):
     return seds
 
 
-def get_pixel_spectrum(sky_coord, observations, model_frame, correct_psf=True):
+def get_pixel_spectrum(sky_coord, observations):
     """Get the spectrum at `sky_coord` in `observation`.
-
-    Be default, this method corrects for different widths of the observation PSF.
-    Yields the spectrum of a PSF-homogenized source of flux 1 in every channel,
-    concatenated for all observations.
 
     Parameters
     ----------
@@ -63,7 +59,6 @@ def get_pixel_spectrum(sky_coord, observations, model_frame, correct_psf=True):
     model_frame: `~scarlet.Frame`
         Frame of the model
 
-
     Returns
     -------
     spectrum: `~numpy.array`
@@ -72,32 +67,16 @@ def get_pixel_spectrum(sky_coord, observations, model_frame, correct_psf=True):
     if not hasattr(observations, "__iter__"):
         observations = (observations,)
 
-    # determine initial SED from peak position
-    # SED in the frame for source detection
     spectra = []
     for obs in observations:
         pixel = obs.frame.get_pixel(sky_coord)
         index = np.round(pixel).astype(np.int)
         spectrum = obs.images[:, index[0], index[1]].copy()
-
-        # approx. correct PSF width variations from SED by normalizing heights
-        if correct_psf:
-            if type(obs) is LowResObservation:
-                if obs._diff_kernels is not None:
-                    spectrum /= obs._diff_kernels.image.sum(axis=(-2, -1)) * obs.h ** 2
-            else:
-                if obs.frame.psf is not None:
-                    # Account for the PSF in the intensity
-                    spectrum /= obs.frame.psf.get_model().max(axis=(-2, -1))
-
-            # if model_frame.psf is not None and normalization == "max":
-            #     sed *= model_frame.psf.get_model().max(axis=(-2, -1))
-
         spectra.append(spectrum)
 
     spectrum = np.concatenate(spectra).reshape(-1)
 
-    if np.any(sed <= 0):
+    if np.any(spectrum <= 0):
         # If the flux in all channels is  <=0,
         # the new sed will be filled with NaN values,
         # which will cause the code to crash later
@@ -177,7 +156,7 @@ def trim_morphology(center_index, morph, bg_thresh):
     morph[~mask] = 0
 
     # find fitting bbox
-    boxsize = 16
+    boxsize = 15
     bbox = Box.from_data(morph, min_value=0)
     if bbox.contains(center_index):
         size = 2 * max(
@@ -193,9 +172,9 @@ def trim_morphology(center_index, morph, bg_thresh):
 
     # define bbox and trim to bbox
     bottom = center_index[0] - boxsize // 2
-    top = center_index[0] + boxsize // 2
+    top = center_index[0] + boxsize // 2 + 1
     left = center_index[1] - boxsize // 2
-    right = center_index[1] + boxsize // 2
+    right = center_index[1] + boxsize // 2 + 1
     bbox = Box.from_bounds((bottom, top), (left, right))
     morph = bbox.extract_from(morph)
     bbox = Box.from_bounds((bottom, top), (left, right))
@@ -220,9 +199,8 @@ def init_extended_source(
         observations = (observations,)
 
     # determine initial SED from peak position
-    # SED in the frame for source detection
-    seds = [get_psf_spectrum(sky_coord, obs) for obs in observations]
-    sed = np.concatenate(seds).reshape(-1)
+    spectra = [get_pixel_spectrum(sky_coord, obs) for obs in observations]
+    spectrum = np.concatenate(spectra).reshape(-1)
 
     if coadd is None:
         # which observation to use for detection and morphology
@@ -237,7 +215,7 @@ def init_extended_source(
             raise AttributeError(
                 "Observation.weights missing! Please set inverse variance weights"
             )
-        coadd, bg_rms = build_sed_coadd(seds, bg_rmses, observations)
+        coadd, bg_rms = build_sed_coadd(spectra, bg_rmses, observations)
     else:
         if coadd_rms is None:
             raise AttributeError(
@@ -277,13 +255,13 @@ def init_extended_source(
     # normalize to unity at peak pixel for the imposed normalization
     if morph.sum() > 0:
         morph /= morph.max()
-        sed /= morph.sum()  # sed is defined for source of total flux 1
+        spectrum /= morph.sum()  # sed is defined for source of total flux 1
     else:
         morph = CenterOnConstraint()(morph, 0)
         msg = "No flux in morphology model for source at y={0} x={1}".format(*sky_coord)
         logger.warning(msg)
 
-    return sed, morph, bbox
+    return spectrum, morph, bbox
 
 
 def init_starlet_source(

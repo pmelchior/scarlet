@@ -137,10 +137,10 @@ class Observation:
             self.frame._bbox.origin = (channel_origin, *self.frame._bbox.origin[1:])
 
         slices = overlapped_slices(self.frame.bbox, model_frame.bbox)
-        self.slices_for_images = slices[0]  # Slice of images to match the model
-        self.slices_for_model = slices[
-            1
-        ]  #  Slice of model that overlaps with the observation
+        # Slice of images to match the model
+        self.slices_for_images = slices[0]
+        # Slice of model that overlaps with the observation
+        self.slices_for_model = slices[1]
 
         # check dtype consistency
         if self.frame.dtype != model_frame.dtype:
@@ -400,7 +400,6 @@ class LowResObservation(Observation):
         # Computes spatially matching observation and target psfs. The observation psf is also resampled \\
         # to the model frame resolution
         new_target, observed_psfs = self.match_psfs(_target, whr)
-        diff_psf = fft.match_psfs(fft.Fourier(observed_psfs), fft.Fourier(new_target))
 
         return diff_psf, new_target
 

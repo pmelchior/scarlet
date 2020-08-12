@@ -58,10 +58,12 @@ def fast_zero_pad(arr, pad_width):
     result: array
         The array padded with `constant_values`
     """
-    newshape = tuple([a+ps[0]+ps[1] for a, ps in zip(arr.shape, pad_width)])
+    newshape = tuple([a + ps[0] + ps[1] for a, ps in zip(arr.shape, pad_width)])
 
     result = np.zeros(newshape, dtype=arr.dtype)
-    slices = tuple([slice(start, s-end) for s, (start, end) in zip(result.shape, pad_width)])
+    slices = tuple(
+        [slice(start, s - end) for s, (start, end) in zip(result.shape, pad_width)]
+    )
     result[slices] = arr
     return result
 
@@ -69,7 +71,9 @@ def fast_zero_pad(arr, pad_width):
 def _fast_zero_pad_grad(result, arr, pad_width):
     """Gradient for fast_zero_pad
     """
-    slices = tuple([slice(start, s-end) for s, (start, end) in zip(result.shape, pad_width)])
+    slices = tuple(
+        [slice(start, s - end) for s, (start, end) in zip(result.shape, pad_width)]
+    )
     return lambda grad_chain: grad_chain[slices]
 
 
@@ -138,7 +142,7 @@ def _get_fft_shape(im_or_shape1, im_or_shape2, padding=3, axes=None, max=False):
         else:
             shape = shape1 + shape2
     else:
-        shape = np.zeros(len(axes), dtype='int')
+        shape = np.zeros(len(axes), dtype="int")
         try:
             len(axes)
         except TypeError:
@@ -151,6 +155,7 @@ def _get_fft_shape(im_or_shape1, im_or_shape2, padding=3, axes=None, max=False):
     shape += padding
     # Use the next fastest shape in each dimension
     shape = [fftpack.helper.next_fast_len(s) for s in shape]
+
     # autograd.numpy.fft does not currently work
     # if the last dimension is odd
     while shape[-1] % 2 != 0:

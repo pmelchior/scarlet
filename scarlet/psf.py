@@ -66,11 +66,11 @@ class GaussianPSF(PSF):
 
         if boxsize is None:
             boxsize = int(np.ceil(8 * np.max(sigma)))
-        if boxsize % 2 == 1:
+        if boxsize % 2 == 0:
             boxsize += 1
 
         shape = (len(sigma), boxsize, boxsize)
-        origin = (0, -boxsize // 2, -boxsize // 2)
+        origin = (0, -(boxsize // 2), -(boxsize // 2))
         self.bbox = Box(shape, origin=origin)
 
         super().__init__(sigma)
@@ -135,11 +135,11 @@ class MoffatPSF(PSF):
 
         if boxsize is None:
             boxsize = int(np.ceil(4 * np.max(alpha)))
-        if boxsize % 2 == 1:
+        if boxsize % 2 == 0:
             boxsize += 1
 
         shape = (len(alpha), boxsize, boxsize)
-        origin = (0, -boxsize // 2, -boxsize // 2)
+        origin = (0, -(boxsize // 2), -(boxsize // 2))
         self.bbox = Box(shape, origin=origin)
 
         super().__init__(alpha, beta)
