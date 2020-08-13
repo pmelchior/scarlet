@@ -65,7 +65,7 @@ class GaussianPSF(PSF):
         self.integrate = integrate
 
         if boxsize is None:
-            boxsize = int(np.ceil(8 * np.max(sigma)))
+            boxsize = int(np.ceil(10 * np.max(sigma)))
         if boxsize % 2 == 0:
             boxsize += 1
 
@@ -134,7 +134,7 @@ class MoffatPSF(PSF):
         assert len(alpha) == len(beta)
 
         if boxsize is None:
-            boxsize = int(np.ceil(4 * np.max(alpha)))
+            boxsize = int(np.ceil(5 * np.max(alpha)))
         if boxsize % 2 == 0:
             boxsize += 1
 

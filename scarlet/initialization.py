@@ -3,7 +3,7 @@ import numpy as np
 import logging
 
 from . import operator
-from .bbox import Box
+from .bbox import Box, overlapped_slices
 from .constraint import CenterOnConstraint
 from .interpolation import interpolate_observation
 from .observation import Observation, LowResObservation
@@ -164,14 +164,21 @@ def get_psf_spectrum(sky_coord, observations):
     return spectrum
 
 
-def trim_morphology(center_index, morph, bg_thresh):
+def get_minimal_boxsize(size, min_size=15, increment=8):
+    boxsize = min_size
+    while boxsize < size:
+        boxsize += 8  # keep box sizes quite small
+    return boxsize
+
+
+def trim_morphology(center_index, morph, bg_thresh=0):
     # trim morph to pixels above threshold
     mask = morph > bg_thresh
     morph[~mask] = 0
 
-    # find fitting bbox
-    boxsize = 15
     bbox = Box.from_data(morph, min_value=0)
+
+    # find fitting bbox
     if bbox.contains(center_index):
         size = 2 * max(
             (
@@ -181,18 +188,61 @@ def trim_morphology(center_index, morph, bg_thresh):
                 bbox.stop[1] - center_index[-1],
             )
         )
-        while boxsize < size:
-            boxsize += 16  # keep box sizes quite small
+    else:
+        size = 0
 
-    # define bbox and trim to bbox
+    # define new box and cut morphology accordingly
+    boxsize = get_minimal_boxsize(size)
     bottom = center_index[0] - boxsize // 2
-    top = center_index[0] + boxsize // 2 + 1
+    top = center_index[0] + boxsize // 2
     left = center_index[1] - boxsize // 2
-    right = center_index[1] + boxsize // 2 + 1
+    right = center_index[1] + boxsize // 2
     bbox = Box.from_bounds((bottom, top), (left, right))
     morph = bbox.extract_from(morph)
-    bbox = Box.from_bounds((bottom, top), (left, right))
     return morph, bbox
+
+
+def init_compact_source(
+    sky_coord, frame, observations,
+):
+
+    # get PSF-corrected center pixel spectrum
+    spectrum = get_pixel_spectrum(sky_coord, observations, correct_psf=True)
+
+    # position in frame coordinates
+    center = frame.get_pixel(sky_coord)
+    center_index = np.round(center).astype(np.int)
+
+    # morphology initialized as a point source
+    morph_ = frame.psf.get_model().mean(axis=0)
+    origin = (
+        center_index[0] - (morph_.shape[0] // 2),
+        center_index[1] - (morph_.shape[1] // 2),
+    )
+    bbox_ = Box(morph_.shape, origin=origin)
+
+    # adjust box size to conform with extended sources
+    size = max(morph_.shape)
+    boxsize = get_minimal_boxsize(size)
+    morph = np.zeros((boxsize, boxsize))
+    origin = (
+        center_index[0] - (morph.shape[0] // 2),
+        center_index[1] - (morph.shape[1] // 2),
+    )
+    bbox = Box(morph.shape, origin=origin)
+
+    slices = overlapped_slices(bbox, bbox_)
+    morph[slices[0]] = morph_[slices[1]]
+
+    # apply max normalization
+    morph_max = morph.max()
+    morph /= morph_max
+    spectrum *= morph_max
+
+    # expand to full bbox
+    bbox = frame.bbox[0] @ bbox
+
+    return spectrum, morph, bbox
 
 
 def init_extended_source(
@@ -202,6 +252,7 @@ def init_extended_source(
     coadd=None,
     coadd_rms=None,
     thresh=1,
+    compact=False,
     symmetric=True,
     monotonic="flat",
     min_grad=0.1,
@@ -211,6 +262,13 @@ def init_extended_source(
     """
     if not hasattr(observations, "__iter__"):
         observations = (observations,)
+
+    # get PSF-corrected center pixel spectrum
+    spectrum = get_pixel_spectrum(sky_coord, observations, correct_psf=True)
+
+    # position in frame coordinates
+    center = frame.get_pixel(sky_coord)
+    center_index = np.round(center).astype(np.int)
 
     if coadd is None:
         # determine initial SED from peak position
@@ -241,8 +299,6 @@ def init_extended_source(
         bg_rms = coadd_rms
 
     # Apply the necessary constraints
-    center = frame.get_pixel(sky_coord)
-    center_index = np.round(center).astype(np.int)
     if symmetric:
         morph = operator.prox_uncentered_symmetry(
             coadd,
@@ -266,11 +322,8 @@ def init_extended_source(
 
     # truncate morph at thresh * bg_rms
     threshold = bg_rms * thresh
-    morph, bbox = trim_morphology(center_index, morph, threshold)
+    morph, bbox = trim_morphology(center_index, morph, bg_thresh=threshold)
     bbox = frame.bbox[0] @ bbox
-
-    # get PSF-corrected center pixel spectrum
-    spectrum = get_pixel_spectrum(sky_coord, observations, correct_psf=True)
 
     # normalize to unity at peak pixel for the imposed normalization
     if morph.sum() > 0:
