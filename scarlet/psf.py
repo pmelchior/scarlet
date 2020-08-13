@@ -184,7 +184,7 @@ class ImagePSF(PSF):
         image = self.prepare_param(image, "image")
         super().__init__(image)
 
-        origin = (0, -image.shape[1] // 2, -image.shape[2] // 2)
+        origin = (0, -(image.shape[1] // 2), -(image.shape[2] // 2))
         self.bbox = Box(image.shape, origin=origin)
 
     def get_model(self, *parameters, offset=None):

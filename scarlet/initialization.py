@@ -278,11 +278,29 @@ def init_extended_source(
 
         # since the spectrum assumes a point source:
         # determine the optimal amplitude for matching morph and the model psf
+        # TODO: morph is still convolved with the observed PSF, but we compute
+        # amplitude correction as if it were not..
         if frame.psf is not None:
-            psf = frame.psf.get_model()[0]
-            # TODO: match psf and morph boxes
+            psf = frame.psf.get_model()
 
-            factor = (morph * psf).sum() / (psf * psf).sum()
+            shape = (psf.shape[0], *morph.shape)
+            bbox_ = Box(
+                shape,
+                origin=(
+                    psf.shape[0] - shape[0],
+                    psf.shape[1] // 2 - shape[1] // 2,
+                    psf.shape[2] // 2 - shape[2] // 2,
+                ),
+            )
+            psf = bbox_.extract_from(psf)
+
+            # if model PSF is constant across bands (as it should) then factor
+            # is constant as well
+            factor = (morph[None, :, :] * psf).sum(axis=(1, 2)) / (psf * psf).sum(
+                axis=(1, 2)
+            )
+
+            # correct amplitude from point source to this morph
             spectrum /= factor
 
     else:
