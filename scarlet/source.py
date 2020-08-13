@@ -4,7 +4,7 @@ from functools import partial
 from .component import CombinedComponent, FactorizedComponent
 from .constraint import PositivityConstraint
 from .initialization import (
-    get_psf_spectrum,
+    get_psf_sed,
     init_extended_source,
     init_multicomponent_source,
     init_starlet_source,
@@ -79,7 +79,7 @@ class PointSource(FactorizedComponent):
         observations: instance or list of `~scarlet.Observation`
             Observation(s) to initialize this source
         """
-        spectrum = get_psf_spectrum(sky_coord, observations, model_frame)
+        spectrum = get_psf_sed(sky_coord, observations, model_frame)
         spectrum = TabulatedSpectrum(model_frame, spectrum)
 
         center = model_frame.get_pixel(sky_coord)

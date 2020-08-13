@@ -88,7 +88,7 @@ def get_pixel_sed(sky_coord, observations):
     return sed
 
 
-def get_psf_spectrum(sky_coord, observations, model_frame):
+def get_psf_sed(sky_coord, observations, model_frame):
     """Get SED for a point source at `sky_coord` in `observation`
 
     Identical to `get_pixel_sed`, but corrects for the different
@@ -250,7 +250,7 @@ def init_extended_source(
 
     # determine initial SED from peak position
     # SED in the frame for source detection
-    spectrums = [get_psf_spectrum(sky_coord, obs, frame) for obs in observations]
+    spectrums = [get_psf_sed(sky_coord, obs, frame) for obs in observations]
     spectrum = np.concatenate(spectrums).reshape(-1)
 
     morph, bg_rms, center_index = morph_init(sky_coord,
