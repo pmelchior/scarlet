@@ -47,8 +47,12 @@ def get_best_fit_spectra(morphs, images):
     return seds
 
 
-def get_pixel_spectrum(sky_coord, observations):
+def get_pixel_spectrum(sky_coord, observations, correct_psf=False):
     """Get the spectrum at `sky_coord` in `observation`.
+
+    Yields the spectrum of a single-pixel source with flux 1 in every channel,
+    concatenated for all observations. If `correct_psf`, it homogenizes the PSFs of the
+    observations, which yields the correct spectrum for a point source.
 
     Parameters
     ----------
@@ -56,8 +60,8 @@ def get_pixel_spectrum(sky_coord, observations):
         Position in the observation
     observations: instance or list of `~scarlet.Observation`
         Observation to extract SED from.
-    model_frame: `~scarlet.Frame`
-        Frame of the model
+    correct_psf: bool
+        If PSF shape variations in the observations should be corrected.
 
     Returns
     -------
@@ -72,6 +76,16 @@ def get_pixel_spectrum(sky_coord, observations):
         pixel = obs.frame.get_pixel(sky_coord)
         index = np.round(pixel).astype(np.int)
         spectrum = obs.images[:, index[0], index[1]].copy()
+
+        if obs.frame.psf is not None and correct_psf:
+            # image of point source in observed = obs.frame.psf
+            psf_model = obs.frame.psf.get_model()
+            psf_center = psf_model.max(axis=(1, 2))
+            # best fit solution for the model amplitude of the center pixel
+            # to yield to PSF center: (spectrum * psf_center) / psf_center**2
+            # or shorter:
+            spectrum /= psf_center
+
         spectra.append(spectrum)
 
     spectrum = np.concatenate(spectra).reshape(-1)
@@ -198,12 +212,14 @@ def init_extended_source(
     if not hasattr(observations, "__iter__"):
         observations = (observations,)
 
-    # determine initial SED from peak position
-    spectra = [get_pixel_spectrum(sky_coord, obs) for obs in observations]
-    spectrum = np.concatenate(spectra).reshape(-1)
-
     if coadd is None:
-        # which observation to use for detection and morphology
+        # determine initial SED from peak position
+        # don't correct for PSF variation: emphasize sharper bands
+        spectra = [
+            get_pixel_spectrum(sky_coord, obs, correct_psf=False)
+            for obs in observations
+        ]
+
         try:
             bg_rmses = np.array(
                 [
@@ -221,6 +237,7 @@ def init_extended_source(
             raise AttributeError(
                 "background cutoff missing! Please set argument bg_cutoff"
             )
+        coadd = coadd.copy()  # will be reused by other sources
         bg_rms = coadd_rms
 
     # Apply the necessary constraints
@@ -228,7 +245,7 @@ def init_extended_source(
     center_index = np.round(center).astype(np.int)
     if symmetric:
         morph = operator.prox_uncentered_symmetry(
-            coadd.copy(),
+            coadd,
             0,
             center=center_index,
             algorithm="sdss",  # *1 is to artificially pass a variable that is not coadd
@@ -247,15 +264,27 @@ def init_extended_source(
         )
         morph = prox_monotonic(morph, 0).reshape(morph.shape)
 
-    # truncated at thresh * bg_rms
+    # truncate morph at thresh * bg_rms
     threshold = bg_rms * thresh
     morph, bbox = trim_morphology(center_index, morph, threshold)
     bbox = frame.bbox[0] @ bbox
 
+    # get PSF-corrected center pixel spectrum
+    spectrum = get_pixel_spectrum(sky_coord, observations, correct_psf=True)
+
     # normalize to unity at peak pixel for the imposed normalization
     if morph.sum() > 0:
         morph /= morph.max()
-        spectrum /= morph.sum()  # sed is defined for source of total flux 1
+
+        # since the spectrum assumes a point source:
+        # determine the optimal amplitude for matching morph and the model psf
+        if frame.psf is not None:
+            psf = frame.psf.get_model()[0]
+            # TODO: match psf and morph boxes
+
+            factor = (morph * psf).sum() / (psf * psf).sum()
+            spectrum /= factor
+
     else:
         morph = CenterOnConstraint()(morph, 0)
         msg = "No flux in morphology model for source at y={0} x={1}".format(*sky_coord)
