@@ -4,10 +4,12 @@ from functools import partial
 from .component import CombinedComponent, FactorizedComponent
 from .constraint import PositivityConstraint
 from .initialization import (
-    get_psf_sed,
+    get_psf_spectrum,
     init_extended_source,
     init_multicomponent_source,
     init_starlet_source,
+    get_pixel_sed,
+    get_best_fit_seds
 )
 from .morphology import (
     ImageMorphology,
@@ -77,7 +79,7 @@ class PointSource(FactorizedComponent):
         observations: instance or list of `~scarlet.Observation`
             Observation(s) to initialize this source
         """
-        spectrum = get_psf_sed(sky_coord, observations, model_frame)
+        spectrum = get_psf_spectrum(sky_coord, observations, model_frame)
         spectrum = TabulatedSpectrum(model_frame, spectrum)
 
         center = model_frame.get_pixel(sky_coord)
@@ -99,10 +101,10 @@ class StarletSource(FactorizedComponent):
         model_frame,
         sky_coord,
         observations,
+        spectrum = None,
         coadd=None,
         bg_cutoff=None,
-        thresh=1.0,
-        min_grad=0.1,
+        min_grad=0,
         starlet_thresh=5,
     ):
         """Extended source intialized to match a set of observations
@@ -119,24 +121,28 @@ class StarletSource(FactorizedComponent):
             Multiple of the backround RMS used as a
             flux cutoff for morphology initialization.
         """
+        if spectrum is None:
+            spectrum = get_pixel_sed(sky_coord, observations)
 
         # initialize from observation
-        sed, morph, bbox, thresh = init_starlet_source(
+        morph, thresh_starlet = init_starlet_source(
             sky_coord,
             model_frame,
             observations,
-            coadd,
-            bg_cutoff,
-            thresh=thresh,
-            symmetric=True,
+            spectrum,
+            coadd=coadd,
+            coadd_rms=bg_cutoff,
+            symmetric=False,
             monotonic="angle",
             min_grad=min_grad,
             starlet_thresh=starlet_thresh,
         )
-        spectrum = TabulatedSpectrum(model_frame, sed, bbox=bbox[0])
+
+        spectrum = TabulatedSpectrum(model_frame, spectrum, step = 1.e-6)
         morphology = StarletMorphology(
-            model_frame, morph, bbox=bbox[1:], threshold=thresh
+            model_frame, morph, threshold=thresh_starlet
         )
+
         super().__init__(model_frame, spectrum, morphology)
 
 
@@ -248,7 +254,7 @@ class MultiExtendedSource(CombinedComponent):
             If pixel value is below the first precentile, it becomes part of the
             outermost component. If it is above, the percentile value will be subtracted
             and the remainder attributed to the next component.
-            If `flux_percentiles` is `None` then `flux_percentiles=[25,]`. 
+            If `flux_percentiles` is `None` then `flux_percentiles=[25,]`.
         coadd: `numpy.ndarray`
             The coaddition of all images across observations.
         coadd_rms: float
