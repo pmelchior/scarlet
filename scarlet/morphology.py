@@ -145,7 +145,7 @@ class PointSourceMorphology(Morphology):
             assert center.name == "center"
             self.center = center
         else:
-            self.center = Parameter(center, name="center", step=1e-1)
+            self.center = Parameter(center, name="center", step=1e-2)
 
         super().__init__(frame, self.center, bbox=bbox)
 

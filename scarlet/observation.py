@@ -353,7 +353,7 @@ class LowResObservation(Observation):
         psf_match_lr: array
             low resolution psf at matching size and resolution
         """
-        psf_lr = self.frame._psfs.image
+        psf_lr = self.frame.psf.get_model().astype(psf_hr.dtype)
         # Odd pad shape
         pad_shape = (
             np.array((self.images.shape[-2:] + np.array(psf_lr.shape[-2:])) / 2).astype(
@@ -395,11 +395,12 @@ class LowResObservation(Observation):
         whr = model_frame.wcs
 
         # Reference PSF
-        _target = model_frame._psfs.image
+        _target = model_frame.psf.get_model()
 
         # Computes spatially matching observation and target psfs. The observation psf is also resampled \\
         # to the model frame resolution
         new_target, observed_psfs = self.match_psfs(_target, whr)
+        diff_psf = fft.match_psfs(fft.Fourier(observed_psfs), fft.Fourier(new_target))
 
         return diff_psf, new_target
 
@@ -477,11 +478,9 @@ class LowResObservation(Observation):
             coordinates of the pixels in the frame to fit
         """
         if self.frame.dtype != model_frame.dtype:
-            self.images = self.images.copy().astype(model_frame.dtype)
+            self.images = self.images.astype(model_frame.dtype)
             if type(self.weights) is np.ndarray:
-                self.weights = self.weights.copy().astype(model_frame.dtype)
-            if self.frame._psfs is not None:
-                self.frame._psfs.update_dtype(model_frame.dtype)
+                self.weights = self.weights.astype(model_frame.dtype)
 
         self.angle, self.h = interpolation.get_angles(self.frame.wcs, model_frame.wcs)
 

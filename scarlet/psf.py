@@ -4,7 +4,6 @@ from .bbox import Box
 from .model import Model, abstractmethod
 from .parameter import Parameter
 from .fft import Fourier
-from .observation import Observation
 
 
 class PSF(Model):
