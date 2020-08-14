@@ -21,7 +21,7 @@ install:
   - conda info -a
 
   # Replace dep1 dep2 ... with your dependencies
-  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION numpy scipy astropy pybind11 pytest
+  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION numpy scipy astropy pybind11 pytest pandoc
   - conda activate test-environment
   # Use pip to install our rtd required packages
   - pip install -r docs/rtd-pip-requirements
