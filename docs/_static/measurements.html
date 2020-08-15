@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<meta charset="UTF-8">
+<head>
+    <title></title>
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://sdk.amazonaws.com/js/aws-sdk-2.7.16.min.js"></script>
+    <script src="https://code.highcharts.com/highcharts.js"></script>
+    <script src="https://code.highcharts.com/highcharts-more.js"></script>
+    <script src="aws_scarlet.js"></script>
+    <script src="measurements.js"></script>
+    <link rel="stylesheet" type="text/css" href="common.css">
+    <link rel="stylesheet" type="text/css" href="measurements.css">
+</head>
+<body>
+
+<div id="div-heading" class="data-heading">
+    <div id="div-inner-heading" class="div-inner-heading">
+        <div  id="div-dataset">
+            <label id="lbl-dataset">Dataset</label>
+            <select id="select-dataset">
+                <option disabled selected value> -- select an option -- </option>
+                <option value=1>1</option>
+                <option value=2>2</option>
+                <option value=3>3</option>
+            </select>
+        </div>
+        <div id="div-branch">
+            <label id="lbl-branch">Branch</label>
+            <select id="select-branch">
+                <option disabled selected value> -- select an option -- </option>
+            </select>
+            <button id="button-branch">Add</button>
+        </div>
+        <div id="history">
+            <label id="lbl-history-max">Plot last</label>
+            <input type="text" id="input-history" value=10>
+            <label id="lbl-history-commits">merged commits</label>
+        </div>
+        <a href="../regression.html">back</a>
+    </div>
+</div>
+
+<div id="div-plots" class="data-contents">
+    <figure id="fig-box" class="highcharts-figure">
+        <div id="div-box"></div>
+    </figure>
+    <figure id="fig-scatter" class="highcharts-figure">
+        <div id="div-scatter"></div>
+    </figure>
+</div>
+
+<script>
+    // Initialize the page
+    $(document).ready(function(){
+        AWS.config.region = 'us-east-2';
+        AWS.config.credentials = new AWS.CognitoIdentityCredentials({
+            IdentityPoolId: 'us-east-2:711d9591-15eb-4468-b0ca-a9439e516042'
+        });
+
+        // Initialize the AWS client
+        docClient = new AWS.DynamoDB.DocumentClient();
+
+        // Populate the branches in the options
+        get_branches(branchesOnLoad);
+
+        // Add new measurements when the branch is updated
+        $("#button-branch").click(function(){
+            var dataset = parseInt($("#select-dataset").val());
+            var branch = $("#select-branch").val();
+            if([1,2,3].includes(dataset)){
+                get_branch_measurements(dataset, branch, function() {
+                    measurementOnLoad(branch);
+                });
+            } else {
+                console.log(dataset);
+                alert("You must choose a valid dataset to plot");
+            }
+        });
+
+        function branchesOnLoad(){
+            // Populate the drop downs
+            initBranches(["select-branch"]);
+            // Load the forms for all of the plots
+            initPlots();
+        }
+
+        function measurementOnLoad(branch){
+            for(let i=0; i<plotMeasurements.length; i++){
+                let measurement = plotMeasurements[i];
+
+                // Add measurements to the plot
+                var data = getBoxPlotData(branch, measurement);
+                var chart = boxCharts[measurement];
+                console.log(data);
+                chart.xAxis[0].setCategories([branch]);
+                chart.addSeries({
+                    name: branch,
+                    data: [data["measurements"]],
+                    events: {
+                        click: function(event){
+                            populateScatterPlot(branch);
+                        }
+                    }
+                });
+            }
+
+            populateScatterPlot(branch);
+        }
+
+        function populateScatterPlot(branch){
+            for(let j=0; j<plotMeasurements.length; j++){
+                let measurement = plotMeasurements[j];
+                let data = getScatterData(branch, measurement);
+                let scatter = scatterCharts[measurement];
+                scatter.series[0].setData(data);
+                scatter.setTitle({text:measurement+": "+branch});
+            }
+        }
+    })
+</script>
+
+</body>
+</html>

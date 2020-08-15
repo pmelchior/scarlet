@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<meta charset="UTF-8">
+<head>
+    <title>Residual Comparison</title>
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://sdk.amazonaws.com/js/aws-sdk-2.7.16.min.js"></script>
+    <script src="aws_scarlet.js"></script>
+    <script src="residuals.js"></script>
+    <link rel="stylesheet" type="text/css" href="common.css">
+    <link rel="stylesheet" type="text/css" href="residuals.css">
+</head>
+<body>
+
+<div id="div-heading" class="data-heading">
+    <div id="div-inner-heading" class="div-inner-heading">
+        <div id='branch1-div'>
+            <label>Branch 1</label>
+            <select id='select-branch1'>
+                <option disabled selected value> -- select an option -- </option>
+            </select>
+        </div>
+
+        <div id='branch2-div'>
+            <label>Branch 2</label>
+            <select id='select-branch2'>
+                <option disabled selected value> -- select an option -- </option>
+            </select>
+        </div>
+        <a href="../regression.html">back</a>
+    </div>
+</div>
+
+<div id="div-blends" class="data-contents"></div>
+
+<script>
+    // Initialize the page
+    $(document).ready(function(){
+        AWS.config.region = 'us-east-2';
+        AWS.config.credentials = new AWS.CognitoIdentityCredentials({
+            IdentityPoolId: 'us-east-2:711d9591-15eb-4468-b0ca-a9439e516042'
+        });
+
+        docClient = new AWS.DynamoDB.DocumentClient();
+
+        // First load the blends
+        get_blends(3, blendsOnLoad);
+
+        function blendsOnLoad(){
+            // Next load the branches
+            get_branches(branchesOnLoad);
+            // Fill the div's with the residual image tags
+            initResiduals();
+        }
+
+        function branchesOnLoad(){
+            // Populate the drop downs
+            initBranches();
+        }
+    })
+</script>
+
+</body>
+</html>
