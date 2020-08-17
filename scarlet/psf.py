@@ -101,8 +101,10 @@ class GaussianPSF(PSF):
                 np.sqrt(np.pi / 2)
                 * sigma
                 * (
-                    scipy.special.erf((0.5 - X) / (sqrt2 * sigma))
-                    + scipy.special.erf((2 * X + 1) / (2 * sqrt2 * sigma))
+                    1
+                    - scipy.special.erfc((0.5 - X) / (sqrt2 * sigma))
+                    + 1
+                    - scipy.special.erfc((2 * X + 1) / (2 * sqrt2 * sigma))
                 )
             )
 
