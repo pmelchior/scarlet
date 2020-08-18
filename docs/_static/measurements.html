@@ -17,7 +17,7 @@
 <div id="div-heading" class="data-heading">
     <div id="div-inner-heading" class="div-inner-heading">
         <div  id="div-dataset">
-            <label id="lbl-dataset">Dataset</label>
+            <label id="lbl-dataset" for="select-dataset">Dataset</label>
             <select id="select-dataset">
                 <option disabled selected value> -- select an option -- </option>
                 <option value=1>1</option>
@@ -26,15 +26,15 @@
             </select>
         </div>
         <div id="div-branch">
-            <label id="lbl-branch">Branch</label>
+            <label id="lbl-branch" for="select-branch">Branch</label>
             <select id="select-branch">
                 <option disabled selected value> -- select an option -- </option>
             </select>
             <button id="button-branch">Add</button>
         </div>
         <div id="history">
-            <label id="lbl-history-max">Plot last</label>
-            <input type="text" id="input-history" value=10>
+            <label id="lbl-history-max" for="input-history">Plot last</label>
+            <input type="text" id="input-history" value=5>
             <label id="lbl-history-commits">merged commits</label>
         </div>
         <a href="../regression.html">back</a>
@@ -58,65 +58,17 @@
             IdentityPoolId: 'us-east-2:711d9591-15eb-4468-b0ca-a9439e516042'
         });
 
+        // Add new measurements when the branch is updated
+        $("#button-branch").click(onClickAdd);
+
+        // Update the plots when the dataset is changed
+        $("#select-dataset").change(addMergedMeasurements);
+
         // Initialize the AWS client
         docClient = new AWS.DynamoDB.DocumentClient();
 
-        // Populate the branches in the options
-        get_branches(branchesOnLoad);
-
-        // Add new measurements when the branch is updated
-        $("#button-branch").click(function(){
-            var dataset = parseInt($("#select-dataset").val());
-            var branch = $("#select-branch").val();
-            if([1,2,3].includes(dataset)){
-                get_branch_measurements(dataset, branch, function() {
-                    measurementOnLoad(branch);
-                });
-            } else {
-                console.log(dataset);
-                alert("You must choose a valid dataset to plot");
-            }
-        });
-
-        function branchesOnLoad(){
-            // Populate the drop downs
-            initBranches(["select-branch"]);
-            // Load the forms for all of the plots
-            initPlots();
-        }
-
-        function measurementOnLoad(branch){
-            for(let i=0; i<plotMeasurements.length; i++){
-                let measurement = plotMeasurements[i];
-
-                // Add measurements to the plot
-                var data = getBoxPlotData(branch, measurement);
-                var chart = boxCharts[measurement];
-                console.log(data);
-                chart.xAxis[0].setCategories([branch]);
-                chart.addSeries({
-                    name: branch,
-                    data: [data["measurements"]],
-                    events: {
-                        click: function(event){
-                            populateScatterPlot(branch);
-                        }
-                    }
-                });
-            }
-
-            populateScatterPlot(branch);
-        }
-
-        function populateScatterPlot(branch){
-            for(let j=0; j<plotMeasurements.length; j++){
-                let measurement = plotMeasurements[j];
-                let data = getScatterData(branch, measurement);
-                let scatter = scatterCharts[measurement];
-                scatter.series[0].setData(data);
-                scatter.setTitle({text:measurement+": "+branch});
-            }
-        }
+        // Initialize the page by loading the relevant data from AWS S3 and DynamoDB
+        initPage();
     })
 </script>
 
