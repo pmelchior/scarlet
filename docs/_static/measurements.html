@@ -42,12 +42,6 @@
 </div>
 
 <div id="div-plots" class="data-contents">
-    <figure id="fig-box" class="highcharts-figure">
-        <div id="div-box"></div>
-    </figure>
-    <figure id="fig-scatter" class="highcharts-figure">
-        <div id="div-scatter"></div>
-    </figure>
 </div>
 
 <script>
@@ -63,6 +57,9 @@
 
         // Update the plots when the dataset is changed
         $("#select-dataset").change(addMergedMeasurements);
+
+        // Update the plots when the max number of commits changes
+        $("#input-history").change(addMergedMeasurements);
 
         // Initialize the AWS client
         docClient = new AWS.DynamoDB.DocumentClient();

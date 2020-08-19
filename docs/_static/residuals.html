@@ -41,6 +41,13 @@
             IdentityPoolId: 'us-east-2:711d9591-15eb-4468-b0ca-a9439e516042'
         });
 
+        // Load the residuals when the user changes branches
+        let $select1 = $("#select-branch1");
+        let $select2 = $("#select-branch2");
+        $select1.change(function(){loadResiduals(1)});
+        $select2.change(function(){loadResiduals(2)});
+
+        // Initialize the client that connects to AWS
         docClient = new AWS.DynamoDB.DocumentClient();
 
         // First load the blends
@@ -48,14 +55,14 @@
 
         function blendsOnLoad(){
             // Next load the branches
-            get_branches(branchesOnLoad);
+            get_branches(function(){
+                get_merged_branches(function(){
+                    // Populate the drop downs
+                    initBranches(["select-branch1", "select-branch2"]);
+                })
+            });
             // Fill the div's with the residual image tags
             initResiduals();
-        }
-
-        function branchesOnLoad(){
-            // Populate the drop downs
-            initBranches();
         }
     })
 </script>

@@ -1,18 +1,22 @@
-.residual{
+.residual {
     padding: 10px;
 }
 
-.blend-id{
+.blend-id {
     text-align: center;
     display: inline-block;
     width: 100%;
     margin: 0 auto;
 }
 
-.residual-image{
+.residual-image {
     width: 80%;
     height: auto;
     display: block;
     margin-left: auto;
     margin-right: auto;
+}
+
+.div-blend-header {
+    margin-top: 50px;
 }

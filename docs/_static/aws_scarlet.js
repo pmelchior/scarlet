@@ -11,6 +11,7 @@ let branches = [];
 let merged_branches = [];
 
 
+// Get all of the blends for a given set
 function get_blends(set_id, callback){
     const params = {
         TableName: "scarlet_blend_ids",
@@ -23,6 +24,7 @@ function get_blends(set_id, callback){
         }
     }
 
+    // Query AWS to get all of the blend id's for the chosen set
     docClient.query(params, function(err, data){
         let blend_data = data["Items"];
         if (err) {
@@ -40,6 +42,7 @@ function get_blends(set_id, callback){
 }
 
 
+// Get all of the branches that have been analyzed by the test framework
 function get_branches(callback){
     let params = {
         TableName: "scarlet_branches",
@@ -61,6 +64,7 @@ function get_branches(callback){
 }
 
 
+// Get all of the branches that have already been merged
 function get_merged_branches(callback){
     let params = {
         TableName: "scarlet_merged",
@@ -96,6 +100,7 @@ function get_merged_branches(callback){
 }
 
 
+// Add the branches as options to a list of select objects (drop downs)
 function initBranches(options){
     for(let i=0; i<options.length; i++){
         let $select = $("#"+options[i]);

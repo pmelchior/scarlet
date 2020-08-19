@@ -16,7 +16,10 @@ let loadingBranches = [];
 // Branches that have been added to the box plots
 let addedBranches = [];
 
+// Color of plots for merged branches
 const mergedColor = "#2f7ed8";
+
+// Color of plots for unmerged branches
 const branchColor = "#910000";
 
 // Measurements that are plotted
@@ -89,6 +92,7 @@ const logLookup = {
     "y diff": "linear",
 }
 
+// Amount to multiply (Q3-Q1) by to get the whisker size
 const whiskerFactor = 1.5;
 
 
@@ -121,6 +125,7 @@ function initPage(){
 }
 
 
+// Load measurements fom AWS for a given branch and the currently selected set
 function getBranchMeasurements(branch, callback){
     let set_id = parseInt($("#select-dataset").val());
     if(!([1,2,3].includes(set_id))){
@@ -155,6 +160,8 @@ function getBranchMeasurements(branch, callback){
 }
 
 
+// Create the HTML elements that contain all of the measurement plots
+// and initialize the box plots and scatter plots
 function initPlots(){
     let $div = $("#div-plots");
     for(let i=0; i<plotMeasurements.length; i++){
@@ -185,6 +192,7 @@ function initPlots(){
 }
 
 
+// Create the box plot for a given measurement
 function initBoxChart(measurement){
     boxCharts[measurement] = new Highcharts.chart("div-"+measurement+"-box", {
         chart: {
@@ -220,6 +228,7 @@ function initBoxChart(measurement){
 }
 
 
+// Create the scatter plot for a given measurement
 function initScatterChart(measurement){
     let xUnit = xUnitLookup[measurement];
     let yUnit = yUnitLookup[measurement];
@@ -277,6 +286,7 @@ function initScatterChart(measurement){
 }
 
 
+// Combine all of the boxplot data into a series
 function getBoxSeries(data){
     return {
         name: "Measurements",
@@ -290,10 +300,8 @@ function getBoxSeries(data){
 }
 
 
-function getOutlierSeries(data, measurement){
-    let xUnit = xUnitLookup[measurement];
-    let yUnit = yUnitLookup[measurement];
-
+// Combine all of the outlier data into a series
+function getOutlierSeries(data){
     return {
         name: "Outliers",
         type: "scatter",
@@ -303,21 +311,15 @@ function getOutlierSeries(data, measurement){
                 populateScatterPlot(event.point.branch);
             }
         },
+        enableMouseTracking: false,
         tooltip: {
-            useHTML: true,
-            formatter: function(){
-                return "Blend ID: "+this.point.blendId+"<br>"
-                    + "Source index: "+this.point.sourceId+"<br>"
-                    + "x: "+this.point.xPos+"<br>"
-                    + "y: "+this.point.yPos+"<br>"
-                    + xUnit+": "+this.x.toFixed(2)+"<br>"
-                    + yUnit+": "+this.y.toFixed(2)+"<br>";
-            }
+            enabled: false,
         },
     }
 }
 
 
+// When an unmerged measurement has been loaded from AWS update the charts
 function onLoadMeasurements(branch){
     for(let i=0; i<plotMeasurements.length; i++){
         let measurement = plotMeasurements[i];
@@ -341,13 +343,16 @@ function onLoadMeasurements(branch){
 }
 
 
+// When a merged measurement has been loaded from AWS update the charts
 function onLoadMergedMeasurements(branch){
     let datapoints = Math.min(merged_branches.length, parseInt($("#input-history").val()));
+    // If this is a branch that was just loaded, mark it as loaded
     let idx = loadingBranches.indexOf(branch);
     if(idx >= 0){
         loadingBranches.splice(idx, 1);
     }
 
+    // Only update the plots once all of the measurements have been loaded
     if(loadingBranches.length === 0){
         for(let i=0; i<plotMeasurements.length; i++){
             let measurement = plotMeasurements[i];
@@ -364,7 +369,7 @@ function onLoadMergedMeasurements(branch){
                 outliers.push(...data["outliers"]);
             }
             chart.addSeries(getBoxSeries(series));
-            chart.addSeries(getOutlierSeries(outliers, measurement));
+            chart.addSeries(getOutlierSeries(outliers));
 
             // Set the x-axis for the chart
             chart.xAxis[0].setCategories(categories);
@@ -373,6 +378,7 @@ function onLoadMergedMeasurements(branch){
 }
 
 
+// Convert measurement data into data that can be inserted into a Highcharts series
 function getBoxPlotData(branch, measurement, color){
     let meas = [];
     let set_id = $("#select-dataset").val();
@@ -424,6 +430,7 @@ function getBoxPlotData(branch, measurement, color){
                     fillColor: 'white',
                     lineWidth: 1,
                     lineColor: color,
+                    symbol: "circle",
                 },
             });
         }
@@ -467,6 +474,8 @@ function addMergedMeasurements(){
 }
 
 
+// Reset all of the scatter plots to use the measurements
+// from a given branch.
 function populateScatterPlot(branch){
     for(let j=0; j<plotMeasurements.length; j++){
         let measurement = plotMeasurements[j];
@@ -478,6 +487,7 @@ function populateScatterPlot(branch){
 }
 
 
+// The the y-value for a given plot
 function getYData(measData, measName){
     let y;
     if(measName.includes("diff")){
@@ -491,6 +501,7 @@ function getYData(measData, measName){
 }
 
 
+// Convert measurement data into a format for a highcharts scatter plot
 function getScatterData(branch, measurement){
     let set_id = $("#select-dataset").val();
     let meas = measurements[set_id-1][branch];
@@ -513,6 +524,8 @@ function getScatterData(branch, measurement){
 }
 
 
+// A hack to copy the blend ID to the clipboard because
+// javascript cannot do that natively
 function textToClipboard(text) {
     let dummy = document.createElement("textarea");
     document.body.appendChild(dummy);
