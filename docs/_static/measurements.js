@@ -13,6 +13,9 @@ let scatterCharts = {};
 
 let loadingBranches = [];
 
+// Branches that have been added to the box plots
+let addedBranches = [];
+
 const mergedColor = "#2f7ed8";
 const branchColor = "#910000";
 
@@ -72,15 +75,33 @@ const xColLookup = {
     "y diff": "y truth",
 }
 
+// Default scaling for each plot
+const logLookup = {
+    "init time": "linear",
+    "runtime": "linear",
+    "iterations": "linear",
+    "init logL": "logarithmic",
+    "logL": "logarithmic",
+    "g diff": "linear",
+    "r diff": "linear",
+    "i diff": "linear",
+    "z diff": "linear",
+    "y diff": "linear",
+}
+
 const whiskerFactor = 1.5;
 
 
 // When the add button is clicked, add the currently selected branch to the plots
 function onClickAdd(){
     let branch = $("#select-branch").val();
-    getBranchMeasurements(branch, function() {
-        onLoadMeasurements(branch);
-    });
+    // Only add the branch if it hasn't already been added
+    if(!addedBranches.includes(branch)){
+        addedBranches.push(branch);
+        getBranchMeasurements(branch, function() {
+            onLoadMeasurements(branch);
+        });
+    }
 }
 
 
@@ -192,6 +213,7 @@ function initBoxChart(measurement){
                 text: yUnitLookup[measurement],
             },
             gridLineWidth: 0,
+            type: logLookup[measurement],
         },
         series: [],
     });
@@ -226,6 +248,7 @@ function initScatterChart(measurement){
                 text: yUnit
             },
             gridLineWidth: 0,
+            type: logLookup[measurement],
         },
         tooltip: {
             useHTML: true,
@@ -307,9 +330,11 @@ function onLoadMeasurements(branch){
         chart.xAxis[0].setCategories(categories);
         chart.series[0].addPoint(data["measurements"], true);
         for(let j=0; j<data["outliers"].length; j++){
-            chart.series[1].addPoint(data["outliers"][j]);
+            chart.series[1].addPoint(data["outliers"][j], false);
         }
+        chart.redraw();
     }
+
 
     // Update the scatter plots with the current branch
     populateScatterPlot(branch);
@@ -413,19 +438,30 @@ function getBoxPlotData(branch, measurement, color){
 
 // Populate the box plot with measurements from merged branches
 function addMergedMeasurements(){
+    console.log("calling addMergedMeasurements");
     // First clear all of the plot data
     for(let i=0; i<plotMeasurements.length; i++){
         let chart = boxCharts[plotMeasurements[i]];
         while(chart.series.length > 0)
             chart.series[0].remove(true);
+        chart = scatterCharts[plotMeasurements[i]];
+        chart.series[0].setData([]);
     }
 
     let datapoints = Math.min(merged_branches.length, parseInt($("#input-history").val()));
+    loadingBranches = merged_branches.slice(0, datapoints);
+
     for(let i=datapoints-1; i>=0; i--){
         let branch = merged_branches[i];
-        loadingBranches.push(branch);
         getBranchMeasurements(branch, function() {
             onLoadMergedMeasurements(branch);
+        });
+    }
+
+    for(let i=0; i<addedBranches.length; i++){
+        let branch = addedBranches[i];
+        getBranchMeasurements(branch, function() {
+            onLoadMeasurements(branch);
         });
     }
 }
