@@ -45,7 +45,7 @@ script:
   - git clone https://${GH_REPO}
   - cd scarlet_extensions
   - # Checkout the scarlet_extensions branch, if one is available (otherwise it will use master)
-  - git rev-parse --verify ${TRAVIS_BRANCH} && git checkout ${TRAVIS_BRANCH}
+  - git rev-parse --verify origin/${TRAVIS_BRANCH} && git checkout ${TRAVIS_BRANCH}
   - python setup.py develop
   # Run the script on all three datasets
   - python bin/scarlet_test --set 1 --branch ${TRAVIS_BRANCH} -r ${TRAVIS_BUILD_DIR} -a ${AWS_ACCESS} -s ${AWS_SECRET}
