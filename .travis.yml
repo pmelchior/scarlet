@@ -46,7 +46,7 @@ script:
   - cd scarlet_extensions
   - python setup.py develop
   # Checkout the scarlet_extensions branch, if one is available (otherwise it will use master)
-  - git rev-parse --quiet --verify <branch-name> && ${TRAVIS_BRANCH} -b ${TRAVIS_BRANCH}
+  - git rev-parse --quiet --verify <branch-name> && git checkout ${TRAVIS_BRANCH}
   # Run the script on all three datasets
   - python bin/scarlet_test --set 1 --branch ${TRAVIS_BRANCH} -r ${TRAVIS_BUILD_DIR} -a ${AWS_ACCESS} -s ${AWS_SECRET}
   - python bin/scarlet_test --set 2 --branch ${TRAVIS_BRANCH} -r ${TRAVIS_BUILD_DIR} -a ${AWS_ACCESS} -s ${AWS_SECRET}
