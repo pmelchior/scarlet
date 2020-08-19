@@ -267,11 +267,30 @@ function getBoxSeries(data){
 }
 
 
-function getOutlierSeries(data, branch){
+function getOutlierSeries(data, measurement){
+    let xUnit = xUnitLookup[measurement];
+    let yUnit = yUnitLookup[measurement];
+
     return {
-        name: branch + " outliers",
+        name: "Outliers",
         type: "scatter",
-        data: data["outliers"],
+        data: data,
+        events: {
+            click: function(event){
+                populateScatterPlot(event.point.branch);
+            }
+        },
+        tooltip: {
+            useHTML: true,
+            formatter: function(){
+                return "Blend ID: "+this.point.blendId+"<br>"
+                    + "Source index: "+this.point.sourceId+"<br>"
+                    + "x: "+this.point.xPos+"<br>"
+                    + "y: "+this.point.yPos+"<br>"
+                    + xUnit+": "+this.x.toFixed(2)+"<br>"
+                    + yUnit+": "+this.y.toFixed(2)+"<br>";
+            }
+        },
     }
 }
 
@@ -287,7 +306,9 @@ function onLoadMeasurements(branch){
         categories.push(branch);
         chart.xAxis[0].setCategories(categories);
         chart.series[0].addPoint(data["measurements"], true);
-        console.log("measurement", data["measurements"]);
+        for(let j=0; j<data["outliers"].length; j++){
+            chart.series[1].addPoint(data["outliers"][j]);
+        }
     }
 
     // Update the scatter plots with the current branch
@@ -308,14 +329,17 @@ function onLoadMergedMeasurements(branch){
             let chart = boxCharts[measurement];
             let categories = [];
             let series = [];
+            let outliers = [];
 
             for(let j=datapoints-1; j>=0; j--){
                 let _branch = merged_branches[j];
                 let data = getBoxPlotData(_branch, measurement, mergedColor);
                 categories.push(_branch);
                 series.push(data["measurements"]);
+                outliers.push(...data["outliers"]);
             }
             chart.addSeries(getBoxSeries(series));
+            chart.addSeries(getOutlierSeries(outliers, measurement));
 
             // Set the x-axis for the chart
             chart.xAxis[0].setCategories(categories);
@@ -367,7 +391,16 @@ function getBoxPlotData(branch, measurement, color){
     for(let i=0; i<meas.length; i++){
         let observation = meas[i];
         if(observation<lowWhisker || observation>highWhisker){
-            outliers.push([x, observation]);
+            outliers.push({
+                x: x,
+                y: observation,
+                branch: branch,
+                marker: {
+                    fillColor: 'white',
+                    lineWidth: 1,
+                    lineColor: color,
+                },
+            });
         }
     }
 
