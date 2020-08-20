@@ -53,8 +53,7 @@ script:
   - python bin/scarlet_test --set 2 --branch ${TRAVIS_BRANCH} -r ${TRAVIS_BUILD_DIR} -a ${AWS_ACCESS} -k ${AWS_SECRET}
   - python bin/scarlet_test --set 3 --branch ${TRAVIS_BRANCH} -r ${TRAVIS_BUILD_DIR} -a ${AWS_ACCESS} -k ${AWS_SECRET}
   - cd $TRAVIS_BUILD_DIR
-  # Temporarily disable to make running faster
-  #- pytest tests
+  - pytest tests
 
 # Calculate coverage
 #after_success:
