@@ -10,3 +10,5 @@ peigen>=0.0.9
 autograd>=1.3
 prompt_toolkit>=2.0.10
 sep
+gitpython
+boto3

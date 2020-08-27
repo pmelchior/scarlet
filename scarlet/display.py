@@ -225,7 +225,7 @@ def show_scene(
     panels = sum((show_model, show_observed, show_rendered, show_residual))
     if linear:
         if figsize is None:
-            figsize = (3 * panels, 3 * len(list(sources)))
+            figsize = (5 * panels, 5)
         fig, ax = plt.subplots(1, panels, figsize=figsize)
     else:
         columns = int(np.ceil(panels / 2))

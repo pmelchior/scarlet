@@ -3,6 +3,15 @@ python:
   - 3.6
 notifications:
   email: false
+env:
+  global:
+    - USER="fred3m"
+    - EMAIL="fred.moolekamp@gmail.com"
+    - TESTING_REPO="github.com/fred3m/scarlet_extensions"
+    - secure: "aFPMljoAjSgPPcegNZAvkHMDLZ5JehBxUg/g7kbGJUD40Kf1COacmfdxcBSAK8nJDuhrYBqHtxv2u7BkOEQk8N6W64Vx+M+vLk/jBnRRbAvkc3G7EYwcZuQaW3oTR82+YE3FleZMzR9ZMfbXamKzUmPvySWcjrKmIwIkvve9KfW60U9SZqmCZNQeTaSFoHf8akpE7ONTmTx4apvv7cjP1dkslq5jmBVV4LW35ZHJa7tAxi00fBmH6u7SAvDN2hRz8/N6feYL8+aeqcDe2aZ9e2RvA/ypNyeQYmbizIH/B6IvvKS3ZUeP1j2QZBsb09uICFgfSTzTixkuzksAOB3tOsKjqpDKG0xt09gmPOs0mw78Nz869HdYa+AeAxdbMVOXaDqitMgn4QW8uspyjS0RskJW9S0hz2wqPIdGaYOwSEfVQC4NAuwTEP/LJl23jBle8ZlXr6cLz2YoDxhlK6oTP/wOdRVcLU0iwJ9kcpbBxLzECLKvjFVz1Yxl3QPt9dlCjU53BYohP0mxq13r7LEkFpSjeJRjCaztWgtKO4iLYVySBO5QDPeTat0ProARNVkv/Jm8U8yLr6ri6D5rW9iifl1OBRqNQWAIGLq3dmwwv8fpu7kUNvOG9NupdOhg/en15lYoLSN+9ZWYNmb+j2lbRATmJ/y+Z+qQSLHtm8402C4="
+    - secure: "TvGHw5/Ky8hfw1sVo3oX9t0jvXcCtJDVibn2nVcV/eiWjAnTwAykfF4mdBn89f4cSqL2KeF+SNafEmOhEIrX9f/0d0+/LEouQ8k7BQmE+xNqYXk2oa2BtyC0ZGunvaRuekSxCnY0HOyWK/7Vhtpca4mukqh66+oS4ht9+Wz8PyuTHRO/09NljNT+Zsf0Pwpfc1QNAhR8NXk4Z6lzMQR4HVAdF0DOvPeoSJmV3akaDCqbzc22U15/xZWcCtfs5sN5HlJ7PG2ONRgR12GbSog+pFH+TCDyksT+Ya/suDEKvzu6qdpZhUmajvEm3uRT03e8UN3ZcIhNE6vV4dlgodt+ILDlXqnjKFnj1gGN4Tp94wfHon2NEUbUw695p/rNiIh9r3DUbmqLD25JoDURn4qiGIYr4AEP+7tOnvsY13r+r1ReWcpAYVOAtVJL0kBrfU4k6wkficg3LhPYfUCd2FOZ3vo9bSv68+e5TMFmp7B03VLGPmB4W8Ww0ff6qInAJwsyRFsdiWOUIJnH7DBltREpEM7q3JiPrZ46jmZshtTEUatd6OenLEDog8C1m//zVAqZvjcv3BeMq8p7+cpzmk/PaPW4XAqNsp1N+JzcHtADeGVJjHqHLrPu+Y6+7O9WuSy8OLvb+TGSrRP+vxd0DuLek9Le5mfkQvfTgfNUe0xMwaI="
+    - secure: "kFmj5GNfw4n3LKZr6+RFbeLjDMSu5Axk1aoQwjNw8FSvbCC4h9A6m3Hx/vsCe4fV2zHpUW+xhcZxvnr5gas/fM150IO6PlwdIMqaNv40zW4fP7QJzRSsfRERTJKDXoPDzJfGmKZElXmPkatg7/HWjj7Icx481UvIzD8Nhui0EdCa3BG7SEgt6yBVJA42uLQ8LA6vo+H8IdbrxqSabP5tw183g/UrVzRsklcwRjQqOlAZzI0Bm6oZfywotEFuTnQyxoedXq1TvAzVkIuoc8xNZ75Ij3bHKMCeDnllCgkkSx0GzG5E51JrE1tVXI79glNEe0NvmB5PACge4j4v+Xh3ASYyZ2YlFtyoyGRj/32/cm7icpa1obd1G5KZHsKiExvzPOpSjlEkuacIKTpHNEu1qb9lfc0TcJO7foHSRPdVFxDNP2+UznPOz3h34Qvr3IiOpmNvV6Ol1C3X2grF8S7Mfv9vt0AmirEMPfLR/emMq//CwCemf+eWF6J1Q+sfcAwWdTCjBJZdNH8D5nbc76+lFfgRArbaS8MppPdP20/tyxZ00QJOI6P6pXgoLKYh3zSSSPWQnYBVxhG+CO3wpQBNJSxv3E7xD5uzZVPcT0fUiP3fk4V8vvtEn2ks40GJ7uzlq5QynrBdsX9G3/MqGq63FZ9AlEC6aUxOBXrYHILc4qA="
+
 
 # Setup anaconda and install packages
 # updated based on
@@ -28,6 +37,22 @@ install:
   - python setup.py install
 # Run test
 script:
+  - echo ${TRAVIS_PULL_REQUEST}
+  - echo ${TRAVIS_BRANCH}
+  - pwd
+  - cd ..
+  # Clone scarlet_extensions (we do it here because we might need to checkout a branch)
+  - git clone https://${TESTING_REPO}
+  - cd scarlet_extensions
+  - # Checkout the scarlet_extensions branch, if one is available (otherwise it will use master)
+  - git rev-parse --verify origin/${TRAVIS_BRANCH} && git checkout ${TRAVIS_BRANCH}
+  - git branch
+  - python setup.py develop
+  # Run the script on all three datasets
+  - python bin/scarlet_test --set 1 --branch ${TRAVIS_BRANCH} -r ${TRAVIS_BUILD_DIR} -a ${AWS_ACCESS} -k ${AWS_SECRET}
+  - python bin/scarlet_test --set 2 --branch ${TRAVIS_BRANCH} -r ${TRAVIS_BUILD_DIR} -a ${AWS_ACCESS} -k ${AWS_SECRET}
+  - python bin/scarlet_test --set 3 --branch ${TRAVIS_BRANCH} -r ${TRAVIS_BUILD_DIR} -a ${AWS_ACCESS} -k ${AWS_SECRET}
+  - cd $TRAVIS_BUILD_DIR
   - pytest tests
 
 # Calculate coverage
