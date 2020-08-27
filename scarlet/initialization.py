@@ -293,9 +293,9 @@ def init_extended_source(
     else:
         if coadd_rms is None:
             raise AttributeError(
-                "background cutoff missing! Please set argument bg_cutoff"
+                "background cutoff missing! Please set argument coadd_rms"
             )
-        coadd = coadd.copy()  # will be reused by other sources
+        coadd = coadd.copy()  # will likely be reused by other sources
         bg_rms = coadd_rms
 
     # Apply the necessary constraints
@@ -508,6 +508,7 @@ def init_multicomponent_source(
 
 def build_sed_coadd(seds, bg_rmses, observations, obs_ref=None):
     """Build a channel weighted coadd to use for source detection
+
     Parameters
     ----------
     sed: array
@@ -519,6 +520,7 @@ def build_sed_coadd(seds, bg_rmses, observations, obs_ref=None):
     obs_ref: `scarlet.Observation`
         observation to use as a reference frame.
         If set to None, the first (or only if applicable) element with type `Observation` is used.
+
     Returns
     -------
     detect: array
@@ -528,6 +530,8 @@ def build_sed_coadd(seds, bg_rmses, observations, obs_ref=None):
     """
     if not hasattr(observations, "__iter__"):
         observations = (observations,)
+        seds = (seds,)
+        bg_rmses = (bg_rmses,)
 
     if len(observations) == 1:
         obs_ref = observations[0]

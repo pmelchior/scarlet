@@ -244,7 +244,7 @@ class Observation:
             given the image data
         """
         model_ = self.render(model, *parameters)
-        if self.frame != self.model_frame:
+        if self.frame != self.frame:
             images_ = self.images[self.slices_for_images]
             weights_ = self.weights[self.slices_for_images]
         else:
