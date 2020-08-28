@@ -5,8 +5,11 @@ import autograd.numpy as np
 from autograd import grad
 from autograd.extend import defvjp, primitive
 import proxmin
+import logging
 
 from .component import CombinedComponent
+
+logger = logging.getLogger("scarlet.blend")
 
 
 @primitive
@@ -78,7 +81,7 @@ class Blend(CombinedComponent):
 
         super().__init__(self.sources)
 
-        self.loss = []
+        self.log_likelihood = []
 
     def fit(self, max_iter=200, e_rel=1e-3, min_iter=1, random_skip=0, **alg_kwargs):
         """Fit the model for each source to the data
@@ -164,6 +167,12 @@ class Blend(CombinedComponent):
             **alg_kwargs
         )
 
+        logger.warning(
+            "scarlet ran for {0} iterations to logL = {1}".format(
+                len(self.log_likelihood), self.log_likelihood[-1]
+            )
+        )
+
         # set convergence and standard deviation from optimizer
         for p, m, v, vhat in zip(X, M, V, Vhat):
             p.m = m
@@ -235,10 +244,10 @@ class Blend(CombinedComponent):
         for observation in self.observations:
             n_obs_params = len(observation.parameters)
             obs_params = parameters[n_params : n_params + n_obs_params]
-            total_loss = total_loss + observation.get_loss(model, *obs_params)
+            total_loss = total_loss - observation.get_log_likelihood(model, *obs_params)
             n_params += n_obs_params
 
-        self.loss.append(total_loss._value)
+        self.log_likelihood.append(-total_loss._value)
         return total_loss
 
     def _callback(self, *parameters, it=None, e_rel=1e-3, callback=None, min_iter=1):
@@ -247,9 +256,9 @@ class Blend(CombinedComponent):
         for src in self.sources:
             src.check_parameters()
 
-        if it > min_iter and abs(self.loss[-2] - self.loss[-1]) < e_rel * np.abs(
-            self.loss[-1]
-        ):
+        if it > min_iter and abs(
+            self.log_likelihood[-1] - self.log_likelihood[-2]
+        ) < e_rel * np.abs(self.log_likelihood[-1]):
             raise StopIteration("scarlet.Blend.fit() converged")
 
         if callback is not None:
