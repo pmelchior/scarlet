@@ -76,7 +76,7 @@ function get_merged_branches(callback){
         } else {
             // Initialize the dropdown buttons
             let branch_data = data["Items"];
-            branch_data.sort(function(a,b){
+            branch_data.sort(function(b,a){
                 if(a["merge_order"] < b["merge_order"]){
                     return -1;
                 } else if(a["merge_order"] > b["merge_order"]){
