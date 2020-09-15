@@ -9,6 +9,7 @@ dist/
 .ipynb_checkpoints/
 tmp/
 include/
+_version.txt
 scarlet/_version.py
 docs/_build
 docs/api
