@@ -45,7 +45,7 @@ script:
   - git clone https://${TESTING_REPO}
   - cd scarlet_extensions
   - # Checkout the scarlet_extensions branch, if one is available (otherwise it will use master)
-  - git rev-parse -q --verify origin/${TRAVIS_BRANCH} && git checkout ${TRAVIS_BRANCH}
+  - git rev-parse -q --verify origin/${TRAVIS_BRANCH} && git checkout -q ${TRAVIS_BRANCH}
   - git branch
   - python setup.py develop
   # Run the script on all three datasets
