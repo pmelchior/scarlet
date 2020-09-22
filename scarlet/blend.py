@@ -50,10 +50,6 @@ class Blend(CombinedComponent):
     The class represents a scene as collection of and provides the functions to
     fit it to data.
 
-    Attributes
-    ----------
-    loss: list
-        Negative log likelihood in each iteration
     """
 
     def __init__(self, sources, observations):
@@ -81,7 +77,8 @@ class Blend(CombinedComponent):
 
         super().__init__(self.sources)
 
-        self.log_likelihood = []
+        # only for backward compatibility, use log_likelihood instead
+        self.loss = []
 
     def fit(self, max_iter=200, e_rel=1e-3, min_iter=1, random_skip=0, **alg_kwargs):
         """Fit the model for each source to the data
@@ -112,7 +109,7 @@ class Blend(CombinedComponent):
                 expanded[j] = G[k]
             return expanded
 
-        grad_logL_func = grad(self._loss, require_grad)
+        grad_logL_func = grad(self._loss_func, require_grad)
         grad_logL = lambda *X: expand_grads(*X, func=grad_logL_func)
 
         # same for prior. easier her bc we call them independently
@@ -228,14 +225,20 @@ class Blend(CombinedComponent):
 
         return full_model
 
-    def _loss(self, *parameters):
-        """Loss function for autograd
+    @property
+    def log_likelihood(self):
+        """Log likelihood at each iteration
 
-        This method combines the seds and morphologies
-        into a model that is used to calculate the loss
-        function and update the gradient for each
-        parameter
+        The fitting method computes and sums the negative log-likelihood for the each
+        observation given the current model as loss function for the optimization.
+
+        Returns
+        -------
+        log_likelihood: array of (positive) log-likelihood
         """
+        return -np.array(self.loss)
+
+    def _loss_func(self, *parameters):
         n_params = len(self.parameters)
         model = self.get_model(*parameters[:n_params], frame=self.frame)
 
@@ -247,7 +250,7 @@ class Blend(CombinedComponent):
             total_loss = total_loss - observation.get_log_likelihood(model, *obs_params)
             n_params += n_obs_params
 
-        self.log_likelihood.append(-total_loss._value)
+        self.loss.append(total_loss._value)
         return total_loss
 
     def _callback(self, *parameters, it=None, e_rel=1e-3, callback=None, min_iter=1):
@@ -256,9 +259,9 @@ class Blend(CombinedComponent):
         for src in self.sources:
             src.check_parameters()
 
-        if it > min_iter and abs(
-            self.log_likelihood[-1] - self.log_likelihood[-2]
-        ) < e_rel * np.abs(self.log_likelihood[-1]):
+        if it > min_iter and abs(self.loss[-1] - self.loss[-2]) < e_rel * np.abs(
+            self.loss[-1]
+        ):
             raise StopIteration("scarlet.Blend.fit() converged")
 
         if callback is not None:
