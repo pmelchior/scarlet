@@ -8,10 +8,14 @@ class TestObservation(object):
     def get_psfs(self, shape, sigmas):
 
         shape_ = (None, *shape)
-        psfs = np.array([
-            scarlet.PSF(partial(scarlet.psf.gaussian, sigma=s), shape=shape_).image[0]
-            for s in sigmas
-        ])
+        psfs = np.array(
+            [
+                scarlet.PSF(partial(scarlet.psf.gaussian, sigma=s), shape=shape_).image[
+                    0
+                ]
+                for s in sigmas
+            ]
+        )
 
         psfs /= psfs.sum(axis=(1, 2))[:, None, None]
         return psfs
@@ -26,7 +30,7 @@ class TestObservation(object):
         model_frame = scarlet.Frame(shape, psfs=model_psf, channels=channels)
 
         # insert point source manually into center for model
-        origin = (0, shape[1]//2 - shape0[1]//2, shape[2]//2 - shape0[2]//2)
+        origin = (0, shape[1] // 2 - shape0[1] // 2, shape[2] // 2 - shape0[2] // 2)
         bbox = scarlet.Box(shape0, origin=origin)
         model = np.zeros(shape)
         box = np.stack([model_psf.image[0] for c in range(shape[0])], axis=0)
@@ -42,6 +46,10 @@ class TestObservation(object):
 
         # compute the expected loss
         weights = 1
-        log_norm = np.prod(images.shape) / 2 * np.log(2*np.pi) + np.sum(np.log(1 / weights)) / 2
-        true_loss = log_norm + np.sum(weights * (model_ - images)** 2) / 2
-        assert_almost_equal(observation.get_loss(model), true_loss)
+        log_norm = (
+            np.prod(images.shape) / 2 * np.log(2 * np.pi)
+            + np.sum(np.log(1 / weights)) / 2
+        )
+        true_loss = log_norm + np.sum(weights * (model_ - images) ** 2) / 2
+        # loss is negative logL
+        assert_almost_equal(observation.get_log_likelihood(model), -true_loss)
