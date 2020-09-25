@@ -18,6 +18,7 @@ if "EIGEN_DIR" in os.environ:
 
 packages = find_packages()
 
+
 class get_pybind_include(object):
     """Helper class to determine the pybind11 include path
     The purpose of this class is to postpone importing pybind11
