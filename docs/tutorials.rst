@@ -8,4 +8,4 @@ Tutorials
    tutorials/point_source
    tutorials/wavelet_model
    tutorials/multiresolution
-   tutorials/deconvolution
+   
