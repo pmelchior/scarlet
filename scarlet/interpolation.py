@@ -1,5 +1,7 @@
 import numpy as np
 from .cache import Cache
+from .resampling import convert_coordinates
+from .wavelet import Starlet
 from . import fft
 
 
@@ -30,7 +32,7 @@ def get_filter_coords(filter_values, center=None):
                      with an odd number of rows and columns or
                      calculate `coords` on your own."""
             raise ValueError(msg)
-        center = [filter_values.shape[0]//2, filter_values.shape[1]//2]
+        center = [filter_values.shape[0] // 2, filter_values.shape[1] // 2]
     x = np.arange(filter_values.shape[1])
     y = np.arange(filter_values.shape[0])
     x, y = np.meshgrid(x, y)
@@ -392,12 +394,13 @@ def mk_shifter(shape, real=False):
             freq_y = np.fft.fftfreq(shape[-2])
         # Shift the signal to recenter it, negative because math is opposite from
         # pixel direction
-        shift_y = (-1j * 2 * np.pi * freq_y)
-        shift_x = (-1j * 2 * np.pi * freq_x)
+        shift_y = -1j * 2 * np.pi * freq_y
+        shift_x = -1j * 2 * np.pi * freq_x
 
         shifters = (shift_y, shift_x)
     Cache.set(name, key, shifters)
     return shifters
+
 
 def get_affine(wcs):
     try:
@@ -407,13 +410,16 @@ def get_affine(wcs):
 
     return model_affine
 
+
 def get_pixel_size(model_affine):
     """ Extracts the pixel size from a wcs
     """
     pix = np.sqrt(
         np.abs(model_affine[0, 0])
-        * np.abs(model_affine[1, 1] - model_affine[0, 1] * model_affine[1, 0]))
+        * np.abs(model_affine[1, 1] - model_affine[0, 1] * model_affine[1, 0])
+    )
     return pix
+
 
 def get_angles(frame_wcs, model_wcs):
 
@@ -443,6 +449,7 @@ def get_angles(frame_wcs, model_wcs):
     # cos of the angle. (normalised scalar product)
     cos_rot = np.dot(self_framevector, model_framevector)
     return [cos_rot, sin_rot], h
+
 
 def sinc_interp(images, coord_hr, coord_lr, angle=None, padding=3):
     """
@@ -494,10 +501,10 @@ def sinc_interp(images, coord_hr, coord_lr, angle=None, padding=3):
     # Shift elementary kernel
     shifter_y, shifter_x = mk_shifter(fft_shape)
 
-    #Shifts values
-    shift_y = np.exp(shifter_y[np.newaxis, :] * (- (y_hr[:, np.newaxis]) * cos))
-    shift_x = np.exp(shifter_x[np.newaxis, :] * (- (y_hr[:, np.newaxis]) * sin))
-    #Apply shifts
+    # Shifts values
+    shift_y = np.exp(shifter_y[np.newaxis, :] * (-(y_hr[:, np.newaxis]) * cos))
+    shift_x = np.exp(shifter_x[np.newaxis, :] * (-(y_hr[:, np.newaxis]) * sin))
+    # Apply shifts
 
     result_fft = X_fft[:, np.newaxis, :, :] * shift_y[np.newaxis, :, :, np.newaxis]
     result_fft = result_fft * shift_x[np.newaxis, :, np.newaxis, :]
@@ -522,7 +529,7 @@ def sinc_interp(images, coord_hr, coord_lr, angle=None, padding=3):
     return result
 
 
-def sinc_interp_inplace(image, h_image, h_target, angle, pad_shape = None):
+def sinc_interp_inplace(image, h_image, h_target, angle, pad_shape=None):
     """ In place interpolation of a cube of images
 
     Performs interpolation from a grid defined by the grid of `image` to a grid spanning the same physical area scaled
@@ -544,23 +551,78 @@ def sinc_interp_inplace(image, h_image, h_target, angle, pad_shape = None):
     interp_image: `ndarray`
         padded interpolated image
     """
-    assert len(image.shape) == 3, "images should be provided as a cube. If only one image is provided, " \
-                                  "image should be a cube with image.shape[0] = 1"
+    assert len(image.shape) == 3, (
+        "images should be provided as a cube. If only one image is provided, "
+        "image should be a cube with image.shape[0] = 1"
+    )
     if pad_shape is not None:
         # Padding. This is never explicitelly undone in this function on purpose. Proceed with caution.
-        image = fft._pad(image, pad_shape, axes = [-2,-1])
+        image = fft._pad(image, pad_shape, axes=[-2, -1])
 
     ny_lr, nx_lr = image.shape[-2:]
-    coord_lr = np.array([np.array(range(ny_lr)) - (ny_lr-1)/2, np.array(range(nx_lr))-(nx_lr-1)/2])
-    ny_hr, nx_hr = (image.shape[-2] * h_image / h_target).astype(int), \
-                   (image.shape[-1] * h_image / h_target).astype(int)
+    coord_lr = np.array(
+        [
+            np.array(range(ny_lr)) - (ny_lr - 1) / 2,
+            np.array(range(nx_lr)) - (nx_lr - 1) / 2,
+        ]
+    )
+    ny_hr, nx_hr = (
+        (image.shape[-2] * h_image / h_target).astype(int),
+        (image.shape[-1] * h_image / h_target).astype(int),
+    )
     if (ny_hr % 2) == 0:
         ny_hr += 1
     if (nx_hr % 2) == 0:
         nx_hr += 1
-    coord_hr = np.array([np.array(range(ny_hr.astype(int)))-(ny_hr-1)/2,
-                         np.array(range(nx_hr.astype(int)))-(nx_hr-1)/2]) / h_image * h_target
+    coord_hr = (
+        np.array(
+            [
+                np.array(range(ny_hr.astype(int))) - (ny_hr - 1) / 2,
+                np.array(range(nx_hr.astype(int))) - (nx_hr - 1) / 2,
+            ]
+        )
+        / h_image
+        * h_target
+    )
     return sinc_interp(image, coord_hr, coord_lr, angle=angle)
+
+
+def interpolate_observation(observation, frame, wave_filter=False):
+    """ Interpolates the images in an observation on the grid described by a frame
+    and returns the interpolated images.
+
+    Paramters
+    ---------
+    observation: `scarlet.Observation` object
+        observation with images to interpolate
+    frame: `scarlet.Frame` object
+        frame to which to interpolate the observation
+    wave_filter: `bool`
+        set to True to wavelet-filter the images before interpolation (avoid correlated noise)
+
+    Returns
+    -------
+    interp: `numpy.ndarray`
+        array containing the interpolated images from observation.
+    """
+    # Interpolate low resolution data to high resolution
+    coord_lr0 = (
+        np.arange(observation.frame.shape[1]),
+        np.arange(observation.frame.shape[1]),
+    )
+    coord_hr = (np.arange(frame.shape[1]), np.arange(frame.shape[1]))
+    coord_lr = convert_coordinates(coord_lr0, observation.frame, frame)
+
+    interp = []
+    if wave_filter is True:
+        images = Starlet(observation.images).filter()
+    else:
+        images = observation.images
+    for image in images:
+        interp.append(
+            sinc_interp(image[None, :, :], coord_hr, coord_lr, angle=None)[0].T
+        )
+    return np.array(interp)
 
 
 def fft_resample(img, dy, dx, kernel=lanczos, **kwargs):
@@ -728,19 +790,19 @@ def get_psf_size(psf):
             radius of the area inside 3 sigma around the center in pixels
     """
     # Normalisation by maximum
-    psf_frame = psf/np.max(psf)
+    psf_frame = psf / np.max(psf)
 
     # Pixels in the FWHM set to one, others to 0:
-    psf_frame[psf_frame>0.5] = 1
-    psf_frame[psf_frame<=0.5] = 0
+    psf_frame[psf_frame > 0.5] = 1
+    psf_frame[psf_frame <= 0.5] = 0
 
     # Area in the FWHM:
     area = np.sum(psf_frame)
 
     # Diameter of this area
-    d = 2*(area/np.pi)**0.5
+    d = 2 * (area / np.pi) ** 0.5
 
     # 3-sigma:
-    sigma3 = 3*d/(2*(2*np.log(2))**0.5)
+    sigma3 = 3 * d / (2 * (2 * np.log(2)) ** 0.5)
 
     return sigma3

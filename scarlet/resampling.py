@@ -1,80 +1,54 @@
 import numpy as np
 
-def _pix2radec(coord, wcs):
-    """Converts coordinates from pixels to Ra-Dec given a wcs
-    """
-    y,x = coord
-    if np.size(wcs.array_shape) == 2:
-        ra, dec = wcs.all_pix2world(x, y, 0, ra_dec_order=True)
-    elif np.size(wcs.array_shape) == 3:
-        ra, dec = wcs.all_pix2world(x, y, 0, 0, ra_dec_order=True)
-    else:
-        raise ValueError("WCSs must have either 2 or 3 dimensions. Received "+str(np.size(wcs.array_shape))+".")
-    return (ra, dec)
 
-def _radec2pix(coord, wcs):
-    """Converts coordinates from Ra-Dec to pixels given a wcs
-    """
-    ra, dec = coord
-    # Positions of coords  in the frame of the obs
-    if np.size(wcs.array_shape) == 2:
-        X, Y = wcs.all_world2pix(ra, dec, 0, ra_dec_order=True)
-    elif np.size(wcs.array_shape) == 3:
-        X, Y, _ = wcs.all_world2pix(ra, dec, 0, 0, ra_dec_order=True)
-    else:
-        raise ValueError("WCSs must have either 2 or 3 dimensions. Received "+str(np.size(wcs.array_shape))+".")
-    return (Y, X)
-
-def convert_coordinates(coord, origin_wcs, target_wcs):
+def convert_coordinates(coord, origin, target):
     """Converts coordinates from one reference frame to another
+
     Parameters
     ----------
     coord: `tuple`
-        coordinates in the frame of the `origin_wcs` to convert in the frame of the `target_wcs`
-    origin_wcs: WCS
-        wcs of `coord`
-    target_wcs: WCS
-        wcs of the frame to which coord is converted
+        pixel coordinates in the frame of the `origin`
+    origin: `~scarlet.Frame`
+        origin frame
+    target: `~scarlet.Frame`
+        target frame
 
     Returns
     -------
     coord_target: `tuple`
-        coordinates at the location of `coord` in the target frame defined by `target_wcs`
+        coordinates at the location of `coord` in the target frame
     """
-    ra, dec = _pix2radec(coord, origin_wcs)
-    y,x = _radec2pix((ra, dec), target_wcs)
-    return (y, x)
+    pix = np.stack(coord, axis=1)
+    ra_dec = origin.get_sky_coord(pix)
+    yx = target.get_pixel(ra_dec)
+    return yx[:, 0], yx[:, 1]
 
-def get_to_common_frame(obs, frame_wcs):
-    """ Matches an `Observation`'s coordinates to a `Frame`'s wcs
+
+def get_to_common_frame(origin, target):
+    """ Converts all pixels from `origin` to their position in `target`.
 
     Parameters
     ----------
-    obs: `Observation`
-        An observation instance for which we want to know the coordinates in the frame of `frame_wcs`
-    frame_wcs: `WCS`
-        a wcs that gives the mapping between pixel coordinates and sky coordinates for a given frame
+    origin: `~scarlet.Frame`
+        origin frame
+    frame: `~scarlet.Frame`
+        target frame
+
     Returns
     -------
         coord_obs_frame: `tuple`
-            Coordinates of the observations's pixels in the frame of the provided wcs
+            Pixel coordinates of the observations in the target frame
     """
-    c, ny, nx = obs.frame.shape
-    #Positions of the observation's pixels
+    c, ny, nx = origin.shape
+    # Positions of the observation's pixels
     y, x = np.indices((ny, nx))
-    y = y.flatten()
-    x = x.flatten()
 
     # Positions of Observation's pixel in the frame of the wcs
-    Y,X = convert_coordinates((y,x), obs.frame.wcs, frame_wcs)
-
-    coord = (Y,X)
-    return coord
+    Y, X = convert_coordinates((y, x), origin, target)
+    return Y, X
 
 
-
-
-def match_patches(obs, frame, isrot = True):
+def match_patches(obs, frame, isrot=True):
     """Matches datasets at different resolutions
 
 
@@ -83,10 +57,10 @@ def match_patches(obs, frame, isrot = True):
 
     Parameters
     ----------
-    shape_hr, shape_lr: tuples
-        shapes of the two datasets
-    wcs_hr, wcs_lr: WCS objects
-        WCS of the Low and High resolution fields respectively
+    obs: `~scarlet.Observation`
+        An observation instance for which we want to know the coordinates in the frame of `frame`
+    frame: `~scarlet.Frame`
+        target frame
     coverage: string
         returns the coordinates in the intersection or union of both frames if set to 'intersection' or 'union' respectively
 
@@ -99,13 +73,10 @@ def match_patches(obs, frame, isrot = True):
     coordhr_hr: array
         coordinates of the high resolution pixels in the intersection. Necessary for psf matching
     """
+    assert obs.frame.wcs is not None
+    assert frame.wcs is not None
+
     B_lr, Ny_lr, Nx_lr = obs.frame.shape
-
-    wcs_hr = frame.wcs
-    wcs_lr = obs.frame.wcs
-
-    assert wcs_hr != None
-    assert wcs_lr != None
 
     # Capital letters are for coordinates of low-resolution pixels
     if isrot:
@@ -123,8 +94,7 @@ def match_patches(obs, frame, isrot = True):
 
     # Corresponding angular positions
     # Coordinates of the low resolution pixels in the high resolution frame
-    Y_hr, X_hr = convert_coordinates((Y_lr, X_lr), wcs_lr, wcs_hr)
-
+    Y_hr, X_hr = convert_coordinates((Y_lr, X_lr), obs.frame, frame)
 
     # Coordinates of low resolution pixels in the intersection at low resolution:
     coordlr_lr = (Y_lr, X_lr)

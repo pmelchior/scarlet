@@ -159,7 +159,7 @@ def _get_fft_shape(im_or_shape1, im_or_shape2, padding=3, axes=None, max=False):
     if shape2[-2] % 2 == 0:
         while shape[-2] % 2 != 0:
             shape[-2] += 1
-            shape[-2] = fftpack.helper.next_fast_len(shape[-1])
+            shape[-2] = fftpack.helper.next_fast_len(shape[-2])
 
     return shape
 

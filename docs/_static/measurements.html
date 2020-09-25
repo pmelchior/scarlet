@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<meta charset="UTF-8">
+<head>
+    <title></title>
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://sdk.amazonaws.com/js/aws-sdk-2.7.16.min.js"></script>
+    <script src="https://code.highcharts.com/highcharts.js"></script>
+    <script src="https://code.highcharts.com/highcharts-more.js"></script>
+    <script src="aws_scarlet.js"></script>
+    <script src="measurements.js"></script>
+    <link rel="stylesheet" type="text/css" href="common.css">
+    <link rel="stylesheet" type="text/css" href="measurements.css">
+</head>
+<body>
+
+<div id="div-heading" class="data-heading">
+    <div id="div-inner-heading" class="div-inner-heading">
+        <div  id="div-dataset">
+            <label id="lbl-dataset" for="select-dataset">Dataset</label>
+            <select id="select-dataset">
+                <option disabled selected value> -- select an option -- </option>
+                <option value=1>1</option>
+                <option value=2>2</option>
+                <option value=3>3</option>
+            </select>
+        </div>
+        <div id="div-branch">
+            <label id="lbl-branch" for="select-branch">Branch</label>
+            <select id="select-branch">
+                <option disabled selected value> -- select an option -- </option>
+            </select>
+            <button id="button-branch">Add</button>
+        </div>
+        <div id="history">
+            <label id="lbl-history-max" for="input-history">Plot last</label>
+            <input type="text" id="input-history" value=5>
+            <label id="lbl-history-commits">merged commits</label>
+        </div>
+        <a href="../regression.html">back</a>
+    </div>
+</div>
+
+<div id="div-plots" class="data-contents">
+</div>
+
+<script>
+    // Initialize the page
+    $(document).ready(function(){
+        AWS.config.region = 'us-east-2';
+        AWS.config.credentials = new AWS.CognitoIdentityCredentials({
+            IdentityPoolId: 'us-east-2:711d9591-15eb-4468-b0ca-a9439e516042'
+        });
+
+        // Add new measurements when the branch is updated
+        $("#button-branch").click(onClickAdd);
+
+        // Update the plots when the dataset is changed
+        $("#select-dataset").change(addMergedMeasurements);
+
+        // Update the plots when the max number of commits changes
+        $("#input-history").change(addMergedMeasurements);
+
+        // Initialize the AWS client
+        docClient = new AWS.DynamoDB.DocumentClient();
+
+        // Initialize the page by loading the relevant data from AWS S3 and DynamoDB
+        initPage();
+    })
+</script>
+
+</body>
+</html>
