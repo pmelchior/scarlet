@@ -99,7 +99,14 @@ fit it to data.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Attributes</dt>
 <dd class="field-odd"><dl class="simple">
-<dt><strong>loss: list</strong></dt><dd><p>Negative log likelihood in each iteration</p>
+<dt><a class="reference internal" href="#scarlet.blend.Blend.bbox" title="scarlet.blend.Blend.bbox"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bbox</span></code></a></dt><dd><p>Bounding box of the blend</p>
+</dd>
+<dt><strong>children</strong></dt><dd></dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">frame</span></code></dt><dd><p>Hyper-spectral characteristics is this model</p>
+</dd>
+<dt><a class="reference internal" href="#scarlet.blend.Blend.log_likelihood" title="scarlet.blend.Blend.log_likelihood"><code class="xref py py-obj docutils literal notranslate"><span class="pre">log_likelihood</span></code></a></dt><dd><p>Log likelihood at each iteration</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">parameters</span></code></dt><dd><p>List of parameters, including from the children.</p>
 </dd>
 </dl>
 </dd>
@@ -181,6 +188,21 @@ fit it to data.</p>
 <dd class="field-even"><dl class="simple">
 <dt>model: array</dt><dd><p>(Bands, Height, Width) data cube</p>
 </dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="scarlet.blend.Blend.log_likelihood">
+<em class="property">property </em><code class="sig-name descname">log_likelihood</code><a class="headerlink" href="#scarlet.blend.Blend.log_likelihood" title="Permalink to this definition">¶</a></dt>
+<dd><p>Log likelihood at each iteration</p>
+<p>The fitting method computes and sums the negative log-likelihood for the each
+observation given the current model as loss function for the optimization.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><dl class="simple">
+<dt>log_likelihood: array of (positive) log-likelihood</dt><dd></dd>
 </dl>
 </dd>
 </dl>
