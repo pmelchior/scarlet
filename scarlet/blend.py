@@ -164,7 +164,7 @@ class Blend(CombinedComponent):
             **alg_kwargs
         )
 
-        logger.warning(
+        logger.info(
             "scarlet ran for {0} iterations to logL = {1}".format(
                 len(self.log_likelihood), self.log_likelihood[-1]
             )
@@ -177,7 +177,7 @@ class Blend(CombinedComponent):
             p.vhat = vhat
             p.std = 1 / np.sqrt(ma.masked_equal(v, 0))  # this is rough estimate!
 
-        return self
+        return len(self.log_likelihood), self.log_likelihood[-1]
 
     def get_model(self, *parameters, frame=None):
         """Get the model of the entire blend
