@@ -53,7 +53,9 @@ def get_version():
             public_version = tag
 
     if public_version is None:
-        raise Exception("Could not find a public version of scarlet in the repo")
+        # We aren't in a github repo. so the exact version of scarlet is unknown
+        loger.warn("Could not find a public version of scarlet in the repo")
+        return "1.0+unknown"
 
     local_version = get_local_version(public_version)
     full_version = public_version
