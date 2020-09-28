@@ -88,33 +88,16 @@ class ImageMorphology(Morphology):
             else:
                 shift = Parameter(shift, name="shift", step=1e-2)
             parameters = (image, shift)
-            # fft helpers
-            padding = 10
-            self.fft_shape = fft._get_fft_shape(image, image, padding=padding)
-            self.shifter_y, self.shifter_x = interpolation.mk_shifter(self.fft_shape)
 
         super().__init__(frame, *parameters, bbox=bbox)
 
     def get_model(self, *parameters):
         image = self.get_parameter(0, *parameters)
         shift = self.get_parameter(1, *parameters)
-        return self._shift_image(shift, image)
-
-    def _shift_image(self, shift, image):
-        if shift is not None:
-            X = fft.Fourier(image)
-            X_fft = X.fft(self.fft_shape, (0, 1))
-
-            # Apply shift in Fourier
-            result_fft = (
-                X_fft
-                * np.exp(self.shifter_y[:, None] * shift[0])
-                * np.exp(self.shifter_x[None, :] * shift[1])
-            )
-
-            X = fft.Fourier.from_fft(result_fft, self.fft_shape, X.shape, [0, 1])
-            return np.real(X.image)
-        return image
+        if shift is None:
+            return image
+        else:
+            return fft.shift(image, shift, return_Fourier=False)
 
 
 class PointSourceMorphology(Morphology):

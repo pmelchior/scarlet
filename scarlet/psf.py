@@ -3,7 +3,7 @@ import autograd.scipy as scipy
 from .bbox import Box
 from .model import Model, abstractmethod
 from .parameter import Parameter
-from .fft import Fourier
+from .fft import Fourier, shift
 
 
 class PSF(Model):
@@ -117,23 +117,24 @@ class MoffatPSF(PSF):
 
         (1+\frac{(x-x0)^2+(y-y0)^2}{\alpha^2})^{-\beta}
 
-    Note: This PSF has not in-pixel integration!
-
     Parameters
     ----------
     alpha: float
         Core width, in frame pixels
     beta: float
         Power-law index
+    integrate: bool
+        Whether pixel integration is performed. Not implemented!
     boxsize: Box
         Size of bounding box over which to evaluate the function, in frame pixels
     """
 
-    def __init__(self, alpha=4.7, beta=1.5, boxsize=None):
+    def __init__(self, alpha=4.7, beta=1.5, integrate=False, boxsize=None):
 
         alpha = self.prepare_param(alpha, "alpha")
         beta = self.prepare_param(beta, "beta")
         assert len(alpha) == len(beta)
+        assert integrate is False, "In-pixel integration not implemented (yet)!"
 
         if boxsize is None:
             boxsize = int(np.ceil(5 * np.max(alpha)))
@@ -190,7 +191,9 @@ class ImagePSF(PSF):
         self.bbox = Box(image.shape, origin=origin)
 
     def get_model(self, *parameters, offset=None):
-        assert offset is None, "ImagePSF cannot be offset"
-
         image = self.get_parameter(0, *parameters).copy()
+
+        if offset is not None:
+            image = shift(image, offset, return_Fourier=False)
+
         return image
