@@ -24,16 +24,6 @@ class PSF(Model):
         """
         pass
 
-    def normalize(self, image):
-        """Normalize to PSF image in every band to unity
-        """
-        sums = image.sum(axis=(1, 2))
-        if isinstance(image, Parameter):
-            image._data /= sums[:, None, None]
-        else:
-            image /= sums[:, None, None]
-        return image
-
     def prepare_param(self, X, name):
         if isinstance(X, Parameter):
             assert X.name == name
@@ -42,6 +32,17 @@ class PSF(Model):
                 X = (X,)
             X = Parameter(np.array(X, dtype=np.float), name=name, fixed=True)
         return X
+
+
+def normalize(image):
+    """Normalize to PSF image in every band to unity
+    """
+    sums = image.sum(axis=(1, 2))
+    if isinstance(image, Parameter):
+        image._data /= sums[:, None, None]
+    else:
+        image /= sums[:, None, None]
+    return image
 
 
 class GaussianPSF(PSF):
@@ -90,7 +91,7 @@ class GaussianPSF(PSF):
             axis=0,
         )
         # use image integration instead of analytic for consistency with other PSFs
-        return self.normalize(psfs)
+        return normalize(psfs)
 
     def _f(self, X, sigma):
         if not self.integrate:
@@ -158,7 +159,7 @@ class MoffatPSF(PSF):
             (self._f(Y - offset[0], X - offset[1], a, b) for a, b in zip(alpha, beta)),
             axis=0,
         )
-        return self.normalize(psfs)
+        return normalize(psfs)
 
     def _f(self, Y, X, a, b):
         # TODO: has no pixel-integration formula
@@ -181,7 +182,7 @@ class ImagePSF(PSF):
             shape = image.shape
             image = image.reshape(1, *shape)
 
-        image = self.normalize(image)
+        image = normalize(image)
         image = self.prepare_param(image, "image")
         super().__init__(image)
 
@@ -191,5 +192,5 @@ class ImagePSF(PSF):
     def get_model(self, *parameters, offset=None):
         assert offset is None, "ImagePSF cannot be offset"
 
-        image = self.get_parameter(0, *parameters)
+        image = self.get_parameter(0, *parameters).copy()
         return image
