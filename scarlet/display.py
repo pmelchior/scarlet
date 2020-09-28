@@ -2,6 +2,7 @@ import numpy as np
 from astropy.visualization.lupton_rgb import LinearMapping, AsinhMapping
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle, Polygon
+from .bbox import Box
 from .component import Component
 
 
@@ -173,6 +174,83 @@ def img_to_rgb(img, channel_map=None, fill_value=0, norm=None, mask=None):
     return rgb
 
 
+panel_size = 4.0
+
+
+def show_likelihood(blend, figsize=None, **kwargs):
+    fig, ax = plt.subplots(1, 1, figsize=figsize)
+    ax.plot(blend.log_likelihood, **kwargs)
+    ax.set_xlabel("Iteration")
+    ax.set_ylabel("log-Likelihood")
+    return fig
+
+
+def show_observation(
+    observation,
+    norm=None,
+    channel_map=None,
+    sky_coords=None,
+    show_psf=False,
+    add_labels=True,
+    figsize=None,
+):
+    """Plot observation in standardized form.
+    """
+    panels = 1 if show_psf is False else 2
+    if figsize is None:
+        figsize = (panel_size * panels, panel_size)
+    fig, ax = plt.subplots(1, panels, figsize=figsize)
+    if not hasattr(ax, "__iter__"):
+        ax = (ax,)
+
+    # Mask any pixels with zero weight in all bands
+    mask = np.sum(observation.weights, axis=0) == 0
+    # if there are no masked pixels, do not use a mask
+    if np.all(mask == 0):
+        mask = None
+
+    panel = 0
+    extent = get_extent(observation.frame.bbox)
+    ax[panel].imshow(
+        img_to_rgb(observation.images, norm=norm, channel_map=channel_map, mask=mask),
+        extent=extent,
+        origin="lower",
+    )
+    ax[panel].set_title("Observation")
+
+    if add_labels:
+        assert sky_coords is not None, "Provide sky_coords for labeled objects"
+
+        for k, center in enumerate(sky_coords):
+            center_ = observation.frame.get_pixel(center)
+            ax[panel].text(*center_[::-1], k, color="w", ha="center", va="center")
+
+    panel += 1
+    if show_psf:
+        psf_image = np.zeros(observation.images.shape)
+
+        if observation.frame.psf is not None:
+            psf_model = observation.frame.psf.image.copy()  # get_model()
+            # make PSF as bright as the brightest pixel of the observation
+            psf_model *= (
+                observation.images.mean(axis=0).max() / psf_model.mean(axis=0).max()
+            )
+            # insert into middle of "blank" observation
+            full_box = Box(psf_image.shape)
+            shift = tuple(
+                psf_image.shape[c] // 2 - psf_model.shape[c] // 2
+                for c in range(full_box.D)
+            )
+            model_box = Box(psf_model.shape) + shift
+            model_box.insert_into(psf_image, psf_model)
+            # slices = scarlet.box.overlapped_slices
+        ax[panel].imshow(img_to_rgb(psf_image, norm=norm), origin="lower")
+        ax[panel].set_title("PSF")
+
+    fig.tight_layout()
+    return fig
+
+
 def show_scene(
     sources,
     observation=None,
@@ -225,12 +303,12 @@ def show_scene(
     panels = sum((show_model, show_observed, show_rendered, show_residual))
     if linear:
         if figsize is None:
-            figsize = (3 * panels, 3 * len(list(sources)))
+            figsize = (panel_size * panels, panel_size)
         fig, ax = plt.subplots(1, panels, figsize=figsize)
     else:
         columns = int(np.ceil(panels / 2))
         if figsize is None:
-            figsize = (7 * columns, 4 * columns)
+            figsize = (panel_size * columns, panel_size * 2)
         fig = plt.figure(figsize=figsize)
         ax = [fig.add_subplot(2, columns, n + 1) for n in range(panels)]
     if not hasattr(ax, "__iter__"):
@@ -391,7 +469,7 @@ def show_sources(
 
     panels = sum((show_model, show_observed, show_rendered, show_spectrum))
     if figsize is None:
-        figsize = (3 * panels, 3 * len(list(sources)))
+        figsize = (panel_size * panels, panel_size * len(list(sources)))
     fig, ax = plt.subplots(len(list(sources)), panels, figsize=figsize, squeeze=False)
 
     marker_kwargs = {"mew": 1, "ms": 10}

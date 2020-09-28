@@ -43,4 +43,5 @@ class TestObservation(object):
             + np.sum(np.log(1 / weights)) / 2
         )
         true_loss = log_norm + np.sum(weights * (model_ - images) ** 2) / 2
-        assert_almost_equal(observation.get_loss(model), true_loss)
+        # loss is negative logL
+        assert_almost_equal(observation.get_log_likelihood(model), -true_loss)

@@ -19,6 +19,7 @@ Getting Started
    1-concepts
    tutorials
    api/scarlet
+   regression
 
 Change Log
 ==========

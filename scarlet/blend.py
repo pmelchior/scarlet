@@ -5,8 +5,11 @@ import autograd.numpy as np
 from autograd import grad
 from autograd.extend import defvjp, primitive
 import proxmin
+import logging
 
 from .component import CombinedComponent
+
+logger = logging.getLogger("scarlet.blend")
 
 
 @primitive
@@ -47,10 +50,6 @@ class Blend(CombinedComponent):
     The class represents a scene as collection of and provides the functions to
     fit it to data.
 
-    Attributes
-    ----------
-    loss: list
-        Negative log likelihood in each iteration
     """
 
     def __init__(self, sources, observations):
@@ -78,6 +77,7 @@ class Blend(CombinedComponent):
 
         super().__init__(self.sources)
 
+        # only for backward compatibility, use log_likelihood instead
         self.loss = []
 
     def fit(self, max_iter=200, e_rel=1e-3, min_iter=1, random_skip=0, **alg_kwargs):
@@ -109,7 +109,7 @@ class Blend(CombinedComponent):
                 expanded[j] = G[k]
             return expanded
 
-        grad_logL_func = grad(self._loss, require_grad)
+        grad_logL_func = grad(self._loss_func, require_grad)
         grad_logL = lambda *X: expand_grads(*X, func=grad_logL_func)
 
         # same for prior. easier her bc we call them independently
@@ -164,6 +164,12 @@ class Blend(CombinedComponent):
             **alg_kwargs
         )
 
+        logger.info(
+            "scarlet ran for {0} iterations to logL = {1}".format(
+                len(self.log_likelihood), self.log_likelihood[-1]
+            )
+        )
+
         # set convergence and standard deviation from optimizer
         for p, m, v, vhat in zip(X, M, V, Vhat):
             p.m = m
@@ -171,7 +177,7 @@ class Blend(CombinedComponent):
             p.vhat = vhat
             p.std = 1 / np.sqrt(ma.masked_equal(v, 0))  # this is rough estimate!
 
-        return self
+        return len(self.log_likelihood), self.log_likelihood[-1]
 
     def get_model(self, *parameters, frame=None):
         """Get the model of the entire blend
@@ -219,14 +225,20 @@ class Blend(CombinedComponent):
 
         return full_model
 
-    def _loss(self, *parameters):
-        """Loss function for autograd
+    @property
+    def log_likelihood(self):
+        """Log likelihood at each iteration
 
-        This method combines the seds and morphologies
-        into a model that is used to calculate the loss
-        function and update the gradient for each
-        parameter
+        The fitting method computes and sums the negative log-likelihood for the each
+        observation given the current model as loss function for the optimization.
+
+        Returns
+        -------
+        log_likelihood: array of (positive) log-likelihood
         """
+        return -np.array(self.loss)
+
+    def _loss_func(self, *parameters):
         n_params = len(self.parameters)
         model = self.get_model(*parameters[:n_params], frame=self.frame)
 
@@ -235,7 +247,7 @@ class Blend(CombinedComponent):
         for observation in self.observations:
             n_obs_params = len(observation.parameters)
             obs_params = parameters[n_params : n_params + n_obs_params]
-            total_loss = total_loss + observation.get_loss(model, *obs_params)
+            total_loss = total_loss - observation.get_log_likelihood(model, *obs_params)
             n_params += n_obs_params
 
         self.loss.append(total_loss._value)
@@ -247,7 +259,7 @@ class Blend(CombinedComponent):
         for src in self.sources:
             src.check_parameters()
 
-        if it > min_iter and abs(self.loss[-2] - self.loss[-1]) < e_rel * np.abs(
+        if it > min_iter and abs(self.loss[-1] - self.loss[-2]) < e_rel * np.abs(
             self.loss[-1]
         ):
             raise StopIteration("scarlet.Blend.fit() converged")

@@ -228,8 +228,8 @@ class Observation:
             model_images = model
         return model_images[self.slices_for_model]
 
-    def get_loss(self, model, *parameters):
-        """Computes the loss/fidelity of a given model wrt to the observation
+    def get_log_likelihood(self, model, *parameters):
+        """Computes the log-Likelihood of a given model wrt to the observation
 
         Parameters
         ----------
@@ -239,9 +239,7 @@ class Observation:
 
         Returns
         -------
-        result: array
-            Scalar tensor with the likelihood of the model
-            given the image data
+        logL: float
         """
         model_ = self.render(model, *parameters)
         if self.frame != self.frame:
@@ -251,7 +249,7 @@ class Observation:
             images_ = self.images
             weights_ = self.weights
 
-        return self.log_norm + np.sum(weights_ * (model_ - images_) ** 2) / 2
+        return -self.log_norm - np.sum(weights_ * (model_ - images_) ** 2) / 2
 
     @property
     def log_norm(self):
@@ -648,16 +646,17 @@ class LowResObservation(Observation):
                 model_image.append((self._resconv_op[c].T @ model_conv[c].T).T)
             return np.array(model_image, dtype=self.frame.dtype)
 
-    def get_loss(self, model, *parameters):
-        """Computes the loss/fidelity of a given model wrt to the observation
+    def get_log_likelihood(self, model, *parameters):
+        """Computes the log-Likelihood of a given model wrt to the observation
+
         Parameters
         ----------
         model: array
             A model from `Blend`
+
         Returns
         -------
-        loss: float
-            Loss of the model
+        logL: float
         """
         model_ = self.render(model, *parameters)
         images_ = self.images
@@ -671,4 +670,4 @@ class LowResObservation(Observation):
             np.prod(images_.shape) / 2 * np.log(2 * np.pi) + np.sum(log_sigma) / 2
         )
 
-        return log_norm + 0.5 * np.sum(weights_ * (model_ - images_) ** 2)
+        return -log_norm - 0.5 * np.sum(weights_ * (model_ - images_) ** 2)
