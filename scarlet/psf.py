@@ -6,6 +6,17 @@ from .parameter import Parameter
 from .fft import Fourier, shift
 
 
+def normalize(image):
+    """Normalize to PSF image in every band to unity
+    """
+    sums = image.sum(axis=(1, 2))
+    if isinstance(image, Parameter):
+        image._data /= sums[:, None, None]
+    else:
+        image /= sums[:, None, None]
+    return image
+
+
 class PSF(Model):
     @abstractmethod
     def get_model(self, *parameter, offset=None):
@@ -34,18 +45,48 @@ class PSF(Model):
         return X
 
 
-def normalize(image):
-    """Normalize to PSF image in every band to unity
+class FunctionPSF(PSF):
+    """Base class for PSFs with functional forms.
+
+    Parameters
+    ----------
+    parameters: `~scarlet.Parameter` or list thereof
+        Optimization parameters. Can be fixed.
+    integrate: bool
+        Whether pixel integration is performed
+    boxsize: Box
+        Size of bounding box over which to evaluate the function, in frame pixels
     """
-    sums = image.sum(axis=(1, 2))
-    if isinstance(image, Parameter):
-        image._data /= sums[:, None, None]
-    else:
-        image /= sums[:, None, None]
-    return image
+
+    def __init__(self, *parameters, integrate=True, boxsize=None):
+
+        super().__init__(*parameters)
+
+        self.integrate = integrate
+
+        if boxsize is None:
+            boxsize = 15
+        if boxsize % 2 == 0:
+            boxsize += 1
+
+        # length of 0 parameter gives number of channels
+        p0 = self.get_parameter(0, *parameters)
+        shape = (len(p0), boxsize, boxsize)
+        origin = (0, -(boxsize // 2), -(boxsize // 2))
+        self.bbox = Box(shape, origin=origin)
+
+        self._Y = np.arange(self.bbox.shape[-2]) + self.bbox.origin[-2]
+        self._X = np.arange(self.bbox.shape[-1]) + self.bbox.origin[-1]
+
+        # same across all bands
+        self.is_same = np.all(p0 == p0[0])
+        self._d = self.bbox.D - 2
+
+    def expand_dims(self, model):
+        return np.expand_dims(model, axis=np.arange(self._d))
 
 
-class GaussianPSF(PSF):
+class GaussianPSF(FunctionPSF):
     """Circular Gaussian Function
 
     Parameters
@@ -62,34 +103,34 @@ class GaussianPSF(PSF):
     def __init__(self, sigma, integrate=True, boxsize=None):
 
         sigma = self.prepare_param(sigma, "sigma")
-        self.integrate = integrate
 
         if boxsize is None:
             boxsize = int(np.ceil(10 * np.max(sigma)))
-        if boxsize % 2 == 0:
-            boxsize += 1
 
-        shape = (len(sigma), boxsize, boxsize)
-        origin = (0, -(boxsize // 2), -(boxsize // 2))
-        self.bbox = Box(shape, origin=origin)
-
-        super().__init__(sigma)
+        super().__init__(sigma, integrate=integrate, boxsize=boxsize)
 
     def get_model(self, *parameters, offset=None):
 
         sigma = self.get_parameter(0, *parameters)
-        Y = np.arange(self.bbox.shape[1]) + self.bbox.origin[1]
-        X = np.arange(self.bbox.shape[2]) + self.bbox.origin[2]
+
         if offset is None:
             offset = (0, 0)
 
-        psfs = np.stack(
-            (
-                self._f(Y - offset[0], s)[:, None] * self._f(X - offset[1], s)[None, :]
-                for s in sigma
-            ),
-            axis=0,
-        )
+        if self.is_same:
+            s = sigma[0]
+            psfs = self.expand_dims(
+                self._f(self._Y - offset[0], s)[:, None]
+                * self._f(self._X - offset[1], s)[None, :]
+            )
+        else:
+            psfs = np.stack(
+                (
+                    self._f(self._Y - offset[0], s)[:, None]
+                    * self._f(self._X - offset[1], s)[None, :]
+                    for s in sigma
+                ),
+                axis=0,
+            )
         # use image integration instead of analytic for consistency with other PSFs
         return normalize(psfs)
 
@@ -110,7 +151,7 @@ class GaussianPSF(PSF):
             )
 
 
-class MoffatPSF(PSF):
+class MoffatPSF(FunctionPSF):
     """Symmetric 2D Moffat function
 
     .. math::
@@ -138,33 +179,36 @@ class MoffatPSF(PSF):
 
         if boxsize is None:
             boxsize = int(np.ceil(5 * np.max(alpha)))
-        if boxsize % 2 == 0:
-            boxsize += 1
 
-        shape = (len(alpha), boxsize, boxsize)
-        origin = (0, -(boxsize // 2), -(boxsize // 2))
-        self.bbox = Box(shape, origin=origin)
-
-        super().__init__(alpha, beta)
+        super().__init__(alpha, beta, integrate=integrate, boxsize=boxsize)
 
     def get_model(self, *parameters, offset=None):
 
         alpha = self.get_parameter(0, *parameters)
         beta = self.get_parameter(1, *parameters)
-        Y = np.arange(self.bbox.shape[1]) + self.bbox.origin[1]
-        X = np.arange(self.bbox.shape[2]) + self.bbox.origin[2]
+
         if offset is None:
             offset = (0, 0)
 
-        psfs = np.stack(
-            (self._f(Y - offset[0], X - offset[1], a, b) for a, b in zip(alpha, beta)),
-            axis=0,
-        )
+        if self.is_same:
+            a, b = alpha[0], beta[0]
+            psfs = self.expand_dims(
+                self._f(self._Y - offset[0], self._X - offset[1], a, b)
+            )
+        else:
+            psfs = np.stack(
+                (
+                    self._f(Y - offset[0], X - offset[1], a, b)
+                    for a, b in zip(alpha, beta)
+                ),
+                axis=0,
+            )
+        # use image integration instead of analytic for consistency with other PSFs
         return normalize(psfs)
 
     def _f(self, Y, X, a, b):
         # TODO: has no pixel-integration formula
-        return ((1 + ((X - x) ** 2 + (Y - y) ** 2) / a ** 2) ** -b)[None, :, :]
+        return (1 + (X[None, :] ** 2 + Y[:, None] ** 2) / a ** 2) ** -b
 
 
 class ImagePSF(PSF):
