@@ -18,7 +18,7 @@ def deblend(data: Dict[str, np.ndarray], max_iter: int, e_rel: float):
         * `sources`: The deblended models.
     """
     import scarlet
-    from scarlet_extensions.initialization import initAllSources
+    from ..initialization import initAllSources
 
     # Load the sample images
     images = data["images"]

@@ -8,7 +8,6 @@ from .constraint import CenterOnConstraint
 from .interpolation import interpolate_observation
 from .observation import Observation, LowResObservation
 from .wavelet import Starlet, mad_wavelet
-from .source import PointSource, ExtendedSource
 from . import measure
 
 
@@ -713,6 +712,7 @@ def initSource(frame, center, observation,
         but can be useful for troubleshooting when an error can cause
         a particular source class to fail every time.
     """
+    from .source import PointSource, ExtendedSource
     while maxComponents > 1:
         try:
             source = ExtendedSource(frame, center, observation, thresh=thresh, shifting=shifting, K=maxComponents)

@@ -3,7 +3,7 @@ import os
 
 
 # Either security should be set, or the environment variables
-# `AWS_KEY`, `AWS_SECRET` should be set.
+# `AWS_ACCESS`, `AWS_SECRET` should be set.
 # if using security credentials use:
 # ```
 # scarlet_extensions.testing.aws.security = {
@@ -24,8 +24,8 @@ def get_client(service:str):
 
     if security is None:
         _security = {
-            "aws_access_key_id": os.environ["AWS_KEY"],
-            "aws_security_access_key": os.environ["AWS_SECRET"]
+            "aws_access_key_id": os.environ["AWS_ACCESS"],
+            "aws_secret_access_key": os.environ["AWS_SECRET"]
         }
     else:
         _security = security
@@ -108,7 +108,7 @@ def get_table(table_name:str):
     if security is None:
         _security = {
             "aws_access_key_id": os.environ["AWS_KEY"],
-            "aws_security_access_key": os.environ["AWS_SECRET"]
+            "aws_secret_access_key": os.environ["AWS_SECRET"]
         }
     else:
         _security = security
