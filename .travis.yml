@@ -21,7 +21,7 @@ install:
   - conda info -a
 
   # Replace dep1 dep2 ... with your dependencies
-  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION numpy scipy astropy pybind11 numpydoc jupyter pytest
+  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION numpy scipy astropy pybind11 pytest pandoc
   - conda activate test-environment
   # Use pip to install our rtd required packages
   - pip install -r docs/rtd-pip-requirements
@@ -33,16 +33,3 @@ script:
 # Calculate coverage
 #after_success:
 #  - coveralls --config_file .coveragerc
-
-# deploy to github pages
-before_deploy:
-  - cd docs && make html && touch _build/html/.nojekyll && cd ..
-
-deploy:
-  provider: pages:git
-  cleanup: false
-  token: $github_token
-  local_dir: docs/_build/html/
-  edge: true
-  on:
-    branch: master

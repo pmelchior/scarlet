@@ -4,12 +4,14 @@ build/
 var/
 dist/
 *.egg-info
+*.eggs
 *.so
 .ipynb_checkpoints/
 tmp/
 include/
 _eupspkg/
-
+_version.txt
+scarlet/_version.py
 docs/_build
 docs/api
 docs/_templates

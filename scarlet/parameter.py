@@ -1,6 +1,7 @@
 import autograd.numpy as np
 from autograd.numpy.numpy_boxes import ArrayBox
 from autograd.core import VSpace
+
 from .constraint import Constraint, ConstraintChain
 from .prior import Prior
 
@@ -66,7 +67,7 @@ class Parameter(np.ndarray):
         obj.m = m
         obj.v = v
         obj.vhat = vhat
-        obj.fixed = fixed
+        obj.fixed = fixed  # not functional right now
         return obj
 
     def __array_finalize__(self, obj):
@@ -99,6 +100,12 @@ class Parameter(np.ndarray):
     def _data(self):
         return self.view(np.ndarray)
 
+    @property
+    def is_finite(self):
+        """Check if parameter values are all finite
+        """
+        return np.isfinite(self._data).all()
+
 
 # autograd needs to consider Parameter a class that in can compute gradients for
 # in that regard, it behaves like an ordinary ndarray
@@ -106,5 +113,7 @@ ArrayBox.register(Parameter)
 VSpace.register(Parameter, vspace_maker=VSpace.mappings[np.ndarray])
 
 
-def relative_step(X, it, factor=0.1):
-    return factor * X.mean(axis=0)
+def relative_step(X, it, factor=0.1, axis=None):
+    """Step size set at `factor` times the mean of `X` in direction `axis`
+    """
+    return factor * X.mean(axis=axis)
