@@ -107,7 +107,7 @@ def get_table(table_name:str):
 
     if security is None:
         _security = {
-            "aws_access_key_id": os.environ["AWS_KEY"],
+            "aws_access_key_id": os.environ["AWS_ACCESS"],
             "aws_secret_access_key": os.environ["AWS_SECRET"]
         }
     else:
