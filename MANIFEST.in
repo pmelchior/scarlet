@@ -1,1 +1,2 @@
 include _version.txt
+include scarlet/testing/lookup.db
