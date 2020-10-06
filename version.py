@@ -23,10 +23,7 @@ def get_public_version():
         f.close()
         return _version
     except FileNotFoundError:
-        msg = ("Could not find either a git repo or pre-installed version." +
-               "This should never happen, please open an issue at www.github.com/pmelchior/scarlet" +
-               "so that it can be corrected.")
-        raise Exception(msg)
+        return "1.0.1+unknown"
 
 
 def get_version():
