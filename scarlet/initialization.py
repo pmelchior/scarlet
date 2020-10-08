@@ -126,8 +126,6 @@ def get_psf_spectrum(sky_coord, observations):
     spectrum: `~numpy.array`
     """
 
-    # assert normalization in ["max", "sum"]
-
     if not hasattr(observations, "__iter__"):
         observations = (observations,)
 
@@ -147,6 +145,8 @@ def get_psf_spectrum(sky_coord, observations):
         psf = psf[:, mask]  # flattens array in last two axes
         img = img[:, mask]
 
+        # amplitude of img when projected onto psf
+        # i.e. factor to multiply psf with to get img (if img looked like psf)
         spectrum = (img * psf).sum(axis=1) / (psf * psf).sum(axis=1)
         spectra.append(spectrum)
 
@@ -168,7 +168,7 @@ def get_psf_spectrum(sky_coord, observations):
 def get_minimal_boxsize(size, min_size=15, increment=8):
     boxsize = min_size
     while boxsize < size:
-        boxsize += 8  # keep box sizes quite small
+        boxsize += increment  # keep box sizes quite small
     return boxsize
 
 
@@ -206,6 +206,9 @@ def trim_morphology(center_index, morph, bg_thresh=0):
 def init_compact_source(
     sky_coord, frame, observations,
 ):
+    """Initialize a source just like `init_extended_source`,
+    but with the morphology of a point source.
+    """
 
     # get PSF-corrected center pixel spectrum
     spectrum = get_pixel_spectrum(sky_coord, observations, correct_psf=True)
@@ -348,7 +351,11 @@ def init_extended_source(
             )
             psf = bbox_.extract_from(psf)
 
-            # if model PSF is constant across bands (as it should) then factor
+            # spectrum assumes the source to have point-source morphology,
+            # otherwise get_pixel_spectrum is not well-defined.
+            # factor corrects that by finding out how much (in terms of a scalar number)
+            # morph looks like the (model) psf.
+            # if model psf is constant across bands (as it should) then factor
             # is constant as well
             factor = (morph[None, :, :] * psf).sum(axis=(1, 2)) / (psf * psf).sum(
                 axis=(1, 2)
@@ -711,19 +718,29 @@ def hasEdgeFlux(source, edgeDistance=1):
     model = source.get_model()[band]
     for edge in range(edgeDistance):
         if (
-            np.any(model[edge-1] > 0)
+            np.any(model[edge - 1] > 0)
             or np.any(model[-edge] > 0)
-            or np.any(model[:, edge-1] > 0)
+            or np.any(model[:, edge - 1] > 0)
             or np.any(model[:, -edge] > 0)
         ):
             return True
     return False
 
 
-def initAllSources(frame, centers, observation,
-                   symmetric=False, monotonic=True,
-                   thresh=1, maxComponents=1, edgeDistance=1, shifting=False,
-                   downgrade=True, fallback=True, minGradient=0):
+def initAllSources(
+    frame,
+    centers,
+    observation,
+    symmetric=False,
+    monotonic=True,
+    thresh=1,
+    maxComponents=1,
+    edgeDistance=1,
+    shifting=False,
+    downgrade=True,
+    fallback=True,
+    minGradient=0,
+):
     """Initialize all sources in a blend
 
     Any sources which cannot be initialized are returned as a `skipped`
@@ -748,10 +765,19 @@ def initAllSources(frame, centers, observation,
     skipped = []
     for k, center in enumerate(centers):
         source = initSource(
-            frame, center, observation,
-            symmetric, monotonic,
-            thresh, maxComponents, edgeDistance, shifting,
-            downgrade, fallback, minGradient)
+            frame,
+            center,
+            observation,
+            symmetric,
+            monotonic,
+            thresh,
+            maxComponents,
+            edgeDistance,
+            shifting,
+            downgrade,
+            fallback,
+            minGradient,
+        )
         if source is not None:
             sources.append(source)
         else:
@@ -759,10 +785,20 @@ def initAllSources(frame, centers, observation,
     return sources, skipped
 
 
-def initSource(frame, center, observation,
-               symmetric=False, monotonic=True,
-               thresh=1, maxComponents=1, edgeDistance=1, shifting=False,
-               downgrade=True, fallback=True, minGradient=0):
+def initSource(
+    frame,
+    center,
+    observation,
+    symmetric=False,
+    monotonic=True,
+    thresh=1,
+    maxComponents=1,
+    edgeDistance=1,
+    shifting=False,
+    downgrade=True,
+    fallback=True,
+    minGradient=0,
+):
     """Initialize a Source
 
     The user can specify the number of desired components
@@ -828,16 +864,31 @@ def initSource(frame, center, observation,
         a particular source class to fail every time.
     """
     from .source import PointSource, ExtendedSource
+
     while maxComponents > 1:
         try:
-            source = ExtendedSource(frame, center, observation, thresh=thresh, shifting=shifting, K=maxComponents)
+            source = ExtendedSource(
+                frame,
+                center,
+                observation,
+                thresh=thresh,
+                shifting=shifting,
+                K=maxComponents,
+            )
             try:
                 source.check_parameters()
                 # Make sure that SED is >0 in at least 1 band
-                if np.any([np.all(child.children[0].get_model() <= 0) for child in source.children]):
+                if np.any(
+                    [
+                        np.all(child.children[0].get_model() <= 0)
+                        for child in source.children
+                    ]
+                ):
                     raise ArithmeticError
             except ArithmeticError:
-                msg = "Could not initialize source at {} with {} components".format(center, maxComponents)
+                msg = "Could not initialize source at {} with {} components".format(
+                    center, maxComponents
+                )
                 logger.warning(msg)
                 raise ValueError(msg)
 
@@ -861,14 +912,18 @@ def initSource(frame, center, observation,
 
     if maxComponents == 1:
         try:
-            source = ExtendedSource(frame, center, observation, thresh=thresh, shifting=shifting)
+            source = ExtendedSource(
+                frame, center, observation, thresh=thresh, shifting=shifting
+            )
 
             try:
                 source.check_parameters()
                 if np.all(source.children[0].get_model() <= 0):
                     raise ArithmeticError
             except ArithmeticError:
-                msg = "Could not initlialize source at {} with 1 component".format(center)
+                msg = "Could not initlialize source at {} with 1 component".format(
+                    center
+                )
                 logger.warning(msg)
                 raise ValueError(msg)
 
@@ -900,9 +955,17 @@ def initSource(frame, center, observation,
         # may ruin an entire blend. So we reinitialize edge sources
         # to allow for shifting and return the result.
         if not isinstance(source, PointSource) and not shifting:
-            return initSource(frame, center, observation,
-                              symmetric, monotonic, thresh, maxComponents,
-                              edgeDistance, shifting=True)
+            return initSource(
+                frame,
+                center,
+                observation,
+                symmetric,
+                monotonic,
+                thresh,
+                maxComponents,
+                edgeDistance,
+                shifting=True,
+            )
         source.isEdge = True
     else:
         source.isEdge = False
