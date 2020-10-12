@@ -2,7 +2,6 @@ from decimal import Decimal
 from io import BytesIO
 import os
 import sqlite3
-import subprocess
 from typing import List, Callable, Dict
 from functools import partial
 
@@ -83,13 +82,11 @@ def get_branches() -> List[str]:
 
 
 def update_merged_branches() -> None:
-    gitlog = subprocess.check_output(["git", "log", "--pretty=oneline", "--merges"]).decode("ascii").split("\n")
-    messages = []
-    for l in gitlog[:-1]:
-        record = l.split(" ")
-        msg = " ".join(record[1:])
-        messages.append(msg)
+    import git
+    repo = git.Repo()
 
+    commits = [c for c in repo.iter_commits(merges=True)]
+    messages = [c.message.split("\n")[0] for c in commits]
     branches = [(m.split("pmelchior/")[1]) for m in messages if "pmelchior" in m][::-1]
     table = aws.get_table("scarlet_merged")
     with table.batch_writer() as batch:
@@ -198,8 +195,9 @@ def deblend_and_measure(
             max_iter=settings.max_iter,
             e_rel=settings.e_rel,
         )
-
-    branch = subprocess.check_output(["git", "rev-parse", "--abbrev-ref", "HEAD"]).decode("ascii").split("\n")[0]
+    import git
+    repo = git.Repo()
+    branch = repo.active_branch.name
 
     # If this is the master branch then update the list of merged branches
     if branch == "master" and save_records:
