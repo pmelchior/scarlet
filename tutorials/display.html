@@ -329,7 +329,7 @@ all appear as white.</p>
 <span class="n">catalog</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;catalog&quot;</span><span class="p">]</span>
 <span class="n">filters</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;filters&quot;</span><span class="p">]</span>
 <span class="n">weights</span> <span class="o">=</span> <span class="mi">1</span><span class="o">/</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;variance&quot;</span><span class="p">]</span>
-<span class="n">psfs</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">PSF</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;psfs&quot;</span><span class="p">])</span>
+<span class="n">psfs</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">ImagePSF</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;psfs&quot;</span><span class="p">])</span>
 
 <span class="n">observation</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">Observation</span><span class="p">(</span>
     <span class="n">images</span><span class="p">,</span>

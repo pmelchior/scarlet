@@ -67,13 +67,11 @@
 <span class="kn">import</span> <span class="nn">autograd.numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">from</span> <span class="nn">autograd.extend</span> <span class="kn">import</span> <span class="n">primitive</span><span class="p">,</span> <span class="n">defvjp</span>
 <span class="kn">from</span> <span class="nn">scipy</span> <span class="kn">import</span> <span class="n">fftpack</span>
+<span class="kn">from</span> <span class="nn">.interpolation</span> <span class="kn">import</span> <span class="n">mk_shifter</span>
 
 
 <span class="k">def</span> <span class="nf">_centered</span><span class="p">(</span><span class="n">arr</span><span class="p">,</span> <span class="n">newshape</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Return the center newshape portion of the array.</span>
-
-<span class="sd">    This function is used by `fft_convolve` to remove</span>
-<span class="sd">    the zero padded region of the convolution.</span>
 
 <span class="sd">    Note: If the array shape is odd and the target is even,</span>
 <span class="sd">    the center of `arr` is shifted to the center-right</span>
@@ -122,10 +120,12 @@
 <span class="sd">    result: array</span>
 <span class="sd">        The array padded with `constant_values`</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">newshape</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">([</span><span class="n">a</span><span class="o">+</span><span class="n">ps</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="n">ps</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">a</span><span class="p">,</span> <span class="n">ps</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">arr</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">pad_width</span><span class="p">)])</span>
+    <span class="n">newshape</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">([</span><span class="n">a</span> <span class="o">+</span> <span class="n">ps</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">ps</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">a</span><span class="p">,</span> <span class="n">ps</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">arr</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">pad_width</span><span class="p">)])</span>
 
     <span class="n">result</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">newshape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">arr</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
-    <span class="n">slices</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">([</span><span class="nb">slice</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">s</span><span class="o">-</span><span class="n">end</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span><span class="p">,</span> <span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">pad_width</span><span class="p">)])</span>
+    <span class="n">slices</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span>
+        <span class="p">[</span><span class="nb">slice</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">s</span> <span class="o">-</span> <span class="n">end</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span><span class="p">,</span> <span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">pad_width</span><span class="p">)]</span>
+    <span class="p">)</span>
     <span class="n">result</span><span class="p">[</span><span class="n">slices</span><span class="p">]</span> <span class="o">=</span> <span class="n">arr</span>
     <span class="k">return</span> <span class="n">result</span>
 
@@ -133,7 +133,9 @@
 <span class="k">def</span> <span class="nf">_fast_zero_pad_grad</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">arr</span><span class="p">,</span> <span class="n">pad_width</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Gradient for fast_zero_pad</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">slices</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">([</span><span class="nb">slice</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">s</span><span class="o">-</span><span class="n">end</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span><span class="p">,</span> <span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">pad_width</span><span class="p">)])</span>
+    <span class="n">slices</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span>
+        <span class="p">[</span><span class="nb">slice</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">s</span> <span class="o">-</span> <span class="n">end</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span><span class="p">,</span> <span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">pad_width</span><span class="p">)]</span>
+    <span class="p">)</span>
     <span class="k">return</span> <span class="k">lambda</span> <span class="n">grad_chain</span><span class="p">:</span> <span class="n">grad_chain</span><span class="p">[</span><span class="n">slices</span><span class="p">]</span>
 
 
@@ -202,7 +204,7 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="n">shape</span> <span class="o">=</span> <span class="n">shape1</span> <span class="o">+</span> <span class="n">shape2</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="n">shape</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">axes</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;int&#39;</span><span class="p">)</span>
+        <span class="n">shape</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">axes</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;int&quot;</span><span class="p">)</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="nb">len</span><span class="p">(</span><span class="n">axes</span><span class="p">)</span>
         <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
@@ -215,6 +217,7 @@
     <span class="n">shape</span> <span class="o">+=</span> <span class="n">padding</span>
     <span class="c1"># Use the next fastest shape in each dimension</span>
     <span class="n">shape</span> <span class="o">=</span> <span class="p">[</span><span class="n">fftpack</span><span class="o">.</span><span class="n">helper</span><span class="o">.</span><span class="n">next_fast_len</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">shape</span><span class="p">]</span>
+
     <span class="c1"># autograd.numpy.fft does not currently work</span>
     <span class="c1"># if the last dimension is odd</span>
     <span class="k">while</span> <span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
@@ -385,51 +388,108 @@
     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">image1</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">image2</span><span class="o">.</span><span class="n">shape</span><span class="p">):</span>
         <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;Both images must have the same number of axes, got </span><span class="si">{0}</span><span class="s2"> and </span><span class="si">{1}</span><span class="s2">&quot;</span>
         <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="n">msg</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">image1</span><span class="o">.</span><span class="n">shape</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">image2</span><span class="o">.</span><span class="n">shape</span><span class="p">)))</span>
+
     <span class="n">fft_shape</span> <span class="o">=</span> <span class="n">_get_fft_shape</span><span class="p">(</span><span class="n">image1</span><span class="o">.</span><span class="n">image</span><span class="p">,</span> <span class="n">image2</span><span class="o">.</span><span class="n">image</span><span class="p">,</span> <span class="n">padding</span><span class="p">,</span> <span class="n">axes</span><span class="p">)</span>
-    <span class="n">convolved_fft</span> <span class="o">=</span> <span class="n">op</span><span class="p">(</span><span class="n">image1</span><span class="o">.</span><span class="n">fft</span><span class="p">(</span><span class="n">fft_shape</span><span class="p">,</span> <span class="n">axes</span><span class="p">),</span> <span class="n">image2</span><span class="o">.</span><span class="n">fft</span><span class="p">(</span><span class="n">fft_shape</span><span class="p">,</span> <span class="n">axes</span><span class="p">))</span>
+    <span class="n">transformed_fft</span> <span class="o">=</span> <span class="n">op</span><span class="p">(</span><span class="n">image1</span><span class="o">.</span><span class="n">fft</span><span class="p">(</span><span class="n">fft_shape</span><span class="p">,</span> <span class="n">axes</span><span class="p">),</span> <span class="n">image2</span><span class="o">.</span><span class="n">fft</span><span class="p">(</span><span class="n">fft_shape</span><span class="p">,</span> <span class="n">axes</span><span class="p">))</span>
     <span class="c1"># why is shape not image1.shape? images are never padded</span>
-    <span class="n">convolved</span> <span class="o">=</span> <span class="n">Fourier</span><span class="o">.</span><span class="n">from_fft</span><span class="p">(</span><span class="n">convolved_fft</span><span class="p">,</span> <span class="n">fft_shape</span><span class="p">,</span> <span class="n">shape</span><span class="p">,</span> <span class="n">axes</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">convolved</span>
+    <span class="k">return</span> <span class="n">Fourier</span><span class="o">.</span><span class="n">from_fft</span><span class="p">(</span><span class="n">transformed_fft</span><span class="p">,</span> <span class="n">fft_shape</span><span class="p">,</span> <span class="n">shape</span><span class="p">,</span> <span class="n">axes</span><span class="p">)</span>
 
 
-<div class="viewcode-block" id="match_psfs"><a class="viewcode-back" href="../../api/scarlet.fft.html#scarlet.fft.match_psfs">[docs]</a><span class="k">def</span> <span class="nf">match_psfs</span><span class="p">(</span><span class="n">psf1</span><span class="p">,</span> <span class="n">psf2</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)):</span>
-    <span class="sd">&quot;&quot;&quot;Calculate the difference kernel between two psfs</span>
+<div class="viewcode-block" id="match_psfs"><a class="viewcode-back" href="../../api/scarlet.fft.html#scarlet.fft.match_psfs">[docs]</a><span class="k">def</span> <span class="nf">match_psfs</span><span class="p">(</span><span class="n">psf1</span><span class="p">,</span> <span class="n">psf2</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">),</span> <span class="n">return_Fourier</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Calculate the difference kernel to match psf1 to psf2</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    psf1: `Fourier`</span>
-<span class="sd">        `Fourier` object representing the psf and it&#39;s FFT.</span>
-<span class="sd">    psf2: `Fourier`</span>
-<span class="sd">        `Fourier` object representing the psf and it&#39;s FFT.</span>
+<span class="sd">    psf1: array or `Fourier`</span>
+<span class="sd">        PSF1 either as array or as `Fourier` object</span>
+<span class="sd">    psf2: array or `Fourier`</span>
+<span class="sd">        PSF1 either as array or as `Fourier` object</span>
 <span class="sd">    padding: int</span>
 <span class="sd">        Additional padding to use when generating the FFT</span>
 <span class="sd">        to supress artifacts.</span>
 <span class="sd">    axes: tuple or None</span>
 <span class="sd">        Axes that contain the spatial information for the PSFs.</span>
+<span class="sd">    return_Fourier: bool</span>
+<span class="sd">        Whether to return `Fourier` or array</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">psf1</span><span class="p">,</span> <span class="n">Fourier</span><span class="p">):</span>
+        <span class="n">psf1</span> <span class="o">=</span> <span class="n">Fourier</span><span class="p">(</span><span class="n">psf1</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">psf2</span><span class="p">,</span> <span class="n">Fourier</span><span class="p">):</span>
+        <span class="n">psf2</span> <span class="o">=</span> <span class="n">Fourier</span><span class="p">(</span><span class="n">psf2</span><span class="p">)</span>
+
     <span class="k">if</span> <span class="n">psf1</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">psf2</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
         <span class="n">shape</span> <span class="o">=</span> <span class="n">psf2</span><span class="o">.</span><span class="n">shape</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">shape</span> <span class="o">=</span> <span class="n">psf1</span><span class="o">.</span><span class="n">shape</span>
-    <span class="k">return</span> <span class="n">_kspace_operation</span><span class="p">(</span><span class="n">psf1</span><span class="p">,</span> <span class="n">psf2</span><span class="p">,</span> <span class="n">padding</span><span class="p">,</span> <span class="n">operator</span><span class="o">.</span><span class="n">truediv</span><span class="p">,</span> <span class="n">shape</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="n">axes</span><span class="p">)</span></div>
+
+    <span class="n">diff</span> <span class="o">=</span> <span class="n">_kspace_operation</span><span class="p">(</span><span class="n">psf1</span><span class="p">,</span> <span class="n">psf2</span><span class="p">,</span> <span class="n">padding</span><span class="p">,</span> <span class="n">operator</span><span class="o">.</span><span class="n">truediv</span><span class="p">,</span> <span class="n">shape</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="n">axes</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">return_Fourier</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">diff</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">real</span><span class="p">(</span><span class="n">diff</span><span class="o">.</span><span class="n">image</span><span class="p">)</span></div>
 
 
-<div class="viewcode-block" id="convolve"><a class="viewcode-back" href="../../api/scarlet.fft.html#scarlet.fft.convolve">[docs]</a><span class="k">def</span> <span class="nf">convolve</span><span class="p">(</span><span class="n">image1</span><span class="p">,</span> <span class="n">image2</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)):</span>
-    <span class="sd">&quot;&quot;&quot;Convolve two images</span>
+<div class="viewcode-block" id="convolve"><a class="viewcode-back" href="../../api/scarlet.fft.html#scarlet.fft.convolve">[docs]</a><span class="k">def</span> <span class="nf">convolve</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">kernel</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">),</span> <span class="n">return_Fourier</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Convolve image with a kernel</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    image1: `Fourier`</span>
-<span class="sd">        `Fourier` object represeting the image and it&#39;s FFT.</span>
-<span class="sd">    image2: `Fourier`</span>
-<span class="sd">        `Fourier` object represeting the image and it&#39;s FFT.</span>
+<span class="sd">    image: array or `Fourier`</span>
+<span class="sd">        Image either as array or as `Fourier` object</span>
+<span class="sd">    kernel: array or `Fourier`</span>
+<span class="sd">        Convolution kernel either as array or as `Fourier` object</span>
 <span class="sd">    padding: int</span>
 <span class="sd">        Additional padding to use when generating the FFT</span>
 <span class="sd">        to supress artifacts.</span>
+<span class="sd">    axes: tuple or None</span>
+<span class="sd">        Axes that contain the spatial information for the PSFs.</span>
+<span class="sd">    return_Fourier: bool</span>
+<span class="sd">        Whether to return `Fourier` or array</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="n">_kspace_operation</span><span class="p">(</span>
-        <span class="n">image1</span><span class="p">,</span> <span class="n">image2</span><span class="p">,</span> <span class="n">padding</span><span class="p">,</span> <span class="n">operator</span><span class="o">.</span><span class="n">mul</span><span class="p">,</span> <span class="n">image1</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="n">axes</span>
-    <span class="p">)</span></div>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">Fourier</span><span class="p">):</span>
+        <span class="n">image</span> <span class="o">=</span> <span class="n">Fourier</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">Fourier</span><span class="p">):</span>
+        <span class="n">kernel</span> <span class="o">=</span> <span class="n">Fourier</span><span class="p">(</span><span class="n">kernel</span><span class="p">)</span>
+
+    <span class="n">convolved</span> <span class="o">=</span> <span class="n">_kspace_operation</span><span class="p">(</span>
+        <span class="n">image</span><span class="p">,</span> <span class="n">kernel</span><span class="p">,</span> <span class="n">padding</span><span class="p">,</span> <span class="n">operator</span><span class="o">.</span><span class="n">mul</span><span class="p">,</span> <span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="n">axes</span>
+    <span class="p">)</span>
+    <span class="k">if</span> <span class="n">return_Fourier</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">convolved</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">real</span><span class="p">(</span><span class="n">convolved</span><span class="o">.</span><span class="n">image</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="shift"><a class="viewcode-back" href="../../api/scarlet.fft.html#scarlet.fft.shift">[docs]</a><span class="k">def</span> <span class="nf">shift</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">shift</span><span class="p">,</span> <span class="n">fft_shape</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">),</span> <span class="n">return_Fourier</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+
+    <span class="k">if</span> <span class="n">fft_shape</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">padding</span> <span class="o">=</span> <span class="mi">10</span>
+        <span class="n">fft_shape</span> <span class="o">=</span> <span class="n">_get_fft_shape</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="n">padding</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="n">axes</span><span class="p">)</span>
+
+    <span class="n">shifter_y</span><span class="p">,</span> <span class="n">shifter_x</span> <span class="o">=</span> <span class="n">mk_shifter</span><span class="p">(</span><span class="n">fft_shape</span><span class="p">)</span>  <span class="c1"># is cached!</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">Fourier</span><span class="p">):</span>
+        <span class="n">image</span> <span class="o">=</span> <span class="n">Fourier</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+
+    <span class="n">image_fft</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">fft</span><span class="p">(</span><span class="n">fft_shape</span><span class="p">,</span> <span class="n">axes</span><span class="p">)</span>
+
+    <span class="c1"># Apply shift in Fourier</span>
+    <span class="n">D</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+    <span class="n">shifter</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">shifter_y</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">shift</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span>
+        <span class="n">shifter_x</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:]</span> <span class="o">*</span> <span class="n">shift</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="p">)</span>
+    <span class="k">if</span> <span class="n">D</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="n">expand_dims</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">d</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">D</span><span class="p">)</span> <span class="k">if</span> <span class="n">d</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">axes</span> <span class="ow">and</span> <span class="n">d</span> <span class="o">-</span> <span class="n">D</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">axes</span><span class="p">)</span>
+        <span class="n">shifter</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">shifter</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="n">expand_dims</span><span class="p">)</span>
+
+    <span class="n">result_fft</span> <span class="o">=</span> <span class="n">image_fft</span> <span class="o">*</span> <span class="n">shifter</span>
+
+    <span class="n">result</span> <span class="o">=</span> <span class="n">Fourier</span><span class="o">.</span><span class="n">from_fft</span><span class="p">(</span><span class="n">result_fft</span><span class="p">,</span> <span class="n">fft_shape</span><span class="p">,</span> <span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">axes</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">return_Fourier</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">result</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">real</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">image</span><span class="p">)</span></div>
 </pre></div>
 
           </div>

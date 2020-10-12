@@ -338,7 +338,7 @@ div.rendered_html tbody tr:hover {
 <span class="n">filters</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;filters&quot;</span><span class="p">]</span>
 <span class="n">catalog</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;catalog&quot;</span><span class="p">]</span>
 <span class="n">weights</span> <span class="o">=</span> <span class="mi">1</span><span class="o">/</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;variance&quot;</span><span class="p">]</span>
-<span class="n">psfs</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">PSF</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;psfs&quot;</span><span class="p">])</span>
+<span class="n">psfs</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">ImagePSF</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;psfs&quot;</span><span class="p">])</span>
 </pre></div>
 </div>
 </div>
@@ -386,8 +386,7 @@ frame, in which you seek to fit a model, to the observed data frame.</p>
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
-<span></span><span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">partial</span>
-<span class="n">model_psf</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">PSF</span><span class="p">(</span><span class="n">partial</span><span class="p">(</span><span class="n">scarlet</span><span class="o">.</span><span class="n">psf</span><span class="o">.</span><span class="n">gaussian</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=.</span><span class="mi">8</span><span class="p">),</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">8</span><span class="p">))</span>
+<span></span><span class="n">model_psf</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">GaussianPSF</span><span class="p">(</span><span class="n">sigma</span><span class="o">=</span><span class="p">(</span><span class="mf">0.8</span><span class="p">,)</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="n">filters</span><span class="p">))</span>
 </pre></div>
 </div>
 </div>
@@ -442,9 +441,9 @@ frame, in which you seek to fit a model, to the observed data frame.</p>
 <h2>Initialize sources<a class="headerlink" href="#Initialize-sources" title="Permalink to this headline">¶</a></h2>
 <p>You now need to define sources that are going to be fit. The full model, which we will call <code class="docutils literal notranslate"><span class="pre">Blend</span></code>, is a collection of those sources. We provide several pre-built source types, e.g.:</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">RandomSource</span></code> fit per-band amplitude and non-parametric morphology starting from uniform random draws for both.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">RandomSource</span></code> fits per-band amplitude and non-parametric morphology starting from uniform random draws for both.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">PointSource</span></code> fits centers and per-band amplitude using the observed PSF model.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">ExtendedSource</span></code> fits per-band amplitude and a non-parametric morphology (which can be constrained to be symmetric and/or monotonic with respect to the center).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ExtendedSource</span></code> fits per-band amplitude and a non-parametric morphology (which is constrained to be monotonically decreasing from the center).</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">ExtendedSource(K=2)</span></code> splits an <code class="docutils literal notranslate"><span class="pre">ExtendedSource</span></code> into <code class="docutils literal notranslate"><span class="pre">K</span></code> components that are initially radially separated and stacked on top of each other like a pyramid.</p></li>
 </ul>
 <p>In our example, we assume <em>prior</em> knowledge that object 0 is a star, and object 1 should be modeled with two components. Everything else is assumed a single-component galaxy. <strong>We generally recommend ``ExtendedSource`` as default</strong> if additional information about the source is not available.</p>
@@ -460,7 +459,7 @@ frame, in which you seek to fit a model, to the observed data frame.</p>
     <span class="k">elif</span> <span class="n">k</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
         <span class="n">new_source</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">ExtendedSource</span><span class="p">(</span><span class="n">model_frame</span><span class="p">,</span> <span class="p">(</span><span class="n">src</span><span class="p">[</span><span class="s1">&#39;y&#39;</span><span class="p">],</span> <span class="n">src</span><span class="p">[</span><span class="s1">&#39;x&#39;</span><span class="p">]),</span> <span class="n">observation</span><span class="p">,</span> <span class="n">K</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="n">new_source</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">ExtendedSource</span><span class="p">(</span><span class="n">model_frame</span><span class="p">,</span> <span class="p">(</span><span class="n">src</span><span class="p">[</span><span class="s1">&#39;y&#39;</span><span class="p">],</span> <span class="n">src</span><span class="p">[</span><span class="s1">&#39;x&#39;</span><span class="p">]),</span> <span class="n">observation</span><span class="p">)</span>
+        <span class="n">new_source</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">ExtendedSource</span><span class="p">(</span><span class="n">model_frame</span><span class="p">,</span> <span class="p">(</span><span class="n">src</span><span class="p">[</span><span class="s1">&#39;y&#39;</span><span class="p">],</span> <span class="n">src</span><span class="p">[</span><span class="s1">&#39;x&#39;</span><span class="p">]),</span> <span class="n">observation</span><span class="p">,</span> <span class="n">compact</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="n">sources</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">new_source</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -487,9 +486,9 @@ frame, in which you seek to fit a model, to the observed data frame.</p>
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-CPU times: user 2.07 s, sys: 91.3 ms, total: 2.16 s
-Wall time: 2.16 s
-scarlet ran for 71 iterations to logL = 30085.08620836616
+CPU times: user 1.84 s, sys: 76 ms, total: 1.91 s
+Wall time: 1.91 s
+scarlet ran for 76 iterations to logL = 30420.93855546932
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">
@@ -581,7 +580,7 @@ scarlet ran for 71 iterations to logL = 30085.08620836616
 </div>
 <div class="section" id="Measure-Fluxes">
 <h3>Measure Fluxes<a class="headerlink" href="#Measure-Fluxes" title="Permalink to this headline">¶</a></h3>
-<p>The color information in these plots stems from the per-band amplitude, which could be obtained as <code class="docutils literal notranslate"><span class="pre">source.spectrum</span></code>. However, it is more useful to compute per-band fluxes, which integrate over the morphology. The source spectra plots above have done exactly that. The convention of these fluxes is given by the units and ordering of the original data cube. In the case of multi-component sources, the fluxes of all components are combined.</p>
+<p>The color information in these plots stems from the per-band amplitude, which are computed from the hyperspectral model by integrating over the morphology. The source spectra plots in the right panels above have done exactly that. The convention of these fluxes is given by the units and ordering of the original data cube. In the case of multi-component sources, the fluxes of all components are combined.</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
 </pre></div>
@@ -599,13 +598,13 @@ scarlet ran for 71 iterations to logL = 30085.08620836616
 <div class="output_area docutils container">
 <div class="highlight"><pre>
 ----------------- [&#39;g&#39; &#39;r&#39; &#39;i&#39; &#39;z&#39; &#39;y&#39;]
-Source 0, Fluxes: [166.96689397 263.61907346 319.16808845 347.37444041 367.52868495]
-Source 1, Fluxes: [ 76.75649329 216.78308462 386.45187747 525.07348179 657.94858376]
-Source 2, Fluxes: [ 8.02531134 12.36441823 23.77638535 30.06257023 40.47156494]
-Source 3, Fluxes: [ 8.34855481 10.51535581 10.49122254 13.6642766  17.47320184]
-Source 4, Fluxes: [5.07353206 4.25703995 4.48329132 3.4649401  2.15866438]
-Source 5, Fluxes: [ 1.46797415  1.33491032  4.67735035  3.55715482 17.92784217]
-Source 6, Fluxes: [2.46785328 2.22779272 2.38570653 2.94565587 3.94927404]
+Source 0, Fluxes: [166.73342896 264.24725342 320.42593384 346.56771851 369.79064941]
+Source 1, Fluxes: [ 76.06994402 216.49224546 389.2291805  524.02492024 645.87189014]
+Source 2, Fluxes: [ 8.19902296 12.47504214 24.06217125 30.50565505 39.89469824]
+Source 3, Fluxes: [ 6.95130652  8.20273069  9.4054347  10.80244959 12.32419085]
+Source 4, Fluxes: [4.79260438 4.79008755 5.41589698 4.98050183 4.15358423]
+Source 5, Fluxes: [3.05431783 3.12153773 4.56772172 5.63545565 8.06293258]
+Source 6, Fluxes: [2.44008361 2.21877808 2.30261111 2.95269689 4.0384793 ]
 </pre></div></div>
 </div>
 <p>Other measurements (e.g. <code class="docutils literal notranslate"><span class="pre">centroid</span></code>) are also implemented. The measurement approach is also easily extendable. The source models are generated in the model frame (which is the best-fit representation of the full hyperspectral <code class="docutils literal notranslate"><span class="pre">Frame</span></code>), from which any measurement can directly be made without having to deal with noise, PSF convolution, overlapping sources, etc.</p>
@@ -682,9 +681,9 @@ Source 6, Fluxes: [2.46785328 2.22779272 2.38570653 2.94565587 3.94927404]
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-CPU times: user 2.37 s, sys: 7.74 ms, total: 2.38 s
-Wall time: 2.38 s
-scarlet ran for 68 iterations to logL = 31702.682910004216
+CPU times: user 556 ms, sys: 0 ns, total: 556 ms
+Wall time: 556 ms
+scarlet ran for 18 iterations to logL = 31289.190724027532
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">

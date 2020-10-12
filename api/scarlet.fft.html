@@ -184,17 +184,21 @@ padding stripped.</p>
 
 <dl class="py function">
 <dt id="scarlet.fft.convolve">
-<code class="sig-prename descclassname">scarlet.fft.</code><code class="sig-name descname">convolve</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">image1</span></em>, <em class="sig-param"><span class="n">image2</span></em>, <em class="sig-param"><span class="n">padding</span><span class="o">=</span><span class="default_value">3</span></em>, <em class="sig-param"><span class="n">axes</span><span class="o">=</span><span class="default_value">- 2, - 1</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/fft.html#convolve"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.fft.convolve" title="Permalink to this definition">¶</a></dt>
-<dd><p>Convolve two images</p>
+<code class="sig-prename descclassname">scarlet.fft.</code><code class="sig-name descname">convolve</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">image</span></em>, <em class="sig-param"><span class="n">kernel</span></em>, <em class="sig-param"><span class="n">padding</span><span class="o">=</span><span class="default_value">3</span></em>, <em class="sig-param"><span class="n">axes</span><span class="o">=</span><span class="default_value">- 2, - 1</span></em>, <em class="sig-param"><span class="n">return_Fourier</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/fft.html#convolve"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.fft.convolve" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convolve image with a kernel</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><dl class="simple">
-<dt><strong>image1: `Fourier`</strong></dt><dd><p><cite>Fourier</cite> object represeting the image and it’s FFT.</p>
+<dt><strong>image: array or `Fourier`</strong></dt><dd><p>Image either as array or as <cite>Fourier</cite> object</p>
 </dd>
-<dt><strong>image2: `Fourier`</strong></dt><dd><p><cite>Fourier</cite> object represeting the image and it’s FFT.</p>
+<dt><strong>kernel: array or `Fourier`</strong></dt><dd><p>Convolution kernel either as array or as <cite>Fourier</cite> object</p>
 </dd>
 <dt><strong>padding: int</strong></dt><dd><p>Additional padding to use when generating the FFT
 to supress artifacts.</p>
+</dd>
+<dt><strong>axes: tuple or None</strong></dt><dd><p>Axes that contain the spatial information for the PSFs.</p>
+</dd>
+<dt><strong>return_Fourier: bool</strong></dt><dd><p>Whether to return <cite>Fourier</cite> or array</p>
 </dd>
 </dl>
 </dd>
@@ -203,24 +207,31 @@ to supress artifacts.</p>
 
 <dl class="py function">
 <dt id="scarlet.fft.match_psfs">
-<code class="sig-prename descclassname">scarlet.fft.</code><code class="sig-name descname">match_psfs</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">psf1</span></em>, <em class="sig-param"><span class="n">psf2</span></em>, <em class="sig-param"><span class="n">padding</span><span class="o">=</span><span class="default_value">3</span></em>, <em class="sig-param"><span class="n">axes</span><span class="o">=</span><span class="default_value">- 2, - 1</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/fft.html#match_psfs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.fft.match_psfs" title="Permalink to this definition">¶</a></dt>
-<dd><p>Calculate the difference kernel between two psfs</p>
+<code class="sig-prename descclassname">scarlet.fft.</code><code class="sig-name descname">match_psfs</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">psf1</span></em>, <em class="sig-param"><span class="n">psf2</span></em>, <em class="sig-param"><span class="n">padding</span><span class="o">=</span><span class="default_value">3</span></em>, <em class="sig-param"><span class="n">axes</span><span class="o">=</span><span class="default_value">- 2, - 1</span></em>, <em class="sig-param"><span class="n">return_Fourier</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/fft.html#match_psfs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.fft.match_psfs" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate the difference kernel to match psf1 to psf2</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><dl class="simple">
-<dt><strong>psf1: `Fourier`</strong></dt><dd><p><cite>Fourier</cite> object representing the psf and it’s FFT.</p>
+<dt><strong>psf1: array or `Fourier`</strong></dt><dd><p>PSF1 either as array or as <cite>Fourier</cite> object</p>
 </dd>
-<dt><strong>psf2: `Fourier`</strong></dt><dd><p><cite>Fourier</cite> object representing the psf and it’s FFT.</p>
+<dt><strong>psf2: array or `Fourier`</strong></dt><dd><p>PSF1 either as array or as <cite>Fourier</cite> object</p>
 </dd>
 <dt><strong>padding: int</strong></dt><dd><p>Additional padding to use when generating the FFT
 to supress artifacts.</p>
 </dd>
 <dt><strong>axes: tuple or None</strong></dt><dd><p>Axes that contain the spatial information for the PSFs.</p>
 </dd>
+<dt><strong>return_Fourier: bool</strong></dt><dd><p>Whether to return <cite>Fourier</cite> or array</p>
+</dd>
 </dl>
 </dd>
 </dl>
 </dd></dl>
+
+<dl class="py function">
+<dt id="scarlet.fft.shift">
+<code class="sig-prename descclassname">scarlet.fft.</code><code class="sig-name descname">shift</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">image</span></em>, <em class="sig-param"><span class="n">shift</span></em>, <em class="sig-param"><span class="n">fft_shape</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">axes</span><span class="o">=</span><span class="default_value">- 2, - 1</span></em>, <em class="sig-param"><span class="n">return_Fourier</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/fft.html#shift"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.fft.shift" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
 
 </div>
 

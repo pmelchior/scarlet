@@ -1,0 +1,154 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>scarlet.spectrum &#8212; scarlet  documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/language_data.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "ignoreClass": "document", "processClass": "math|output_area"}})</script>
+    <link rel="canonical" href="api/_modules/scarlet/spectrum.html" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../index.html">
+              <img class="logo" src="../../_static/logo.svg" alt="Logo"/>
+            </a></p>
+<h3><a href="../../index.html">Table of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../0-quickstart.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../1-concepts.html">Core Concepts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorials.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/scarlet.html">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../regression.html">Regression Testing</a></li>
+</ul>
+
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for scarlet.spectrum</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">autograd.numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">partial</span>
+
+<span class="kn">from</span> <span class="nn">.bbox</span> <span class="kn">import</span> <span class="n">Box</span>
+<span class="kn">from</span> <span class="nn">.constraint</span> <span class="kn">import</span> <span class="n">PositivityConstraint</span>
+<span class="kn">from</span> <span class="nn">.frame</span> <span class="kn">import</span> <span class="n">Frame</span>
+<span class="kn">from</span> <span class="nn">.model</span> <span class="kn">import</span> <span class="n">Model</span>
+<span class="kn">from</span> <span class="nn">.parameter</span> <span class="kn">import</span> <span class="n">Parameter</span><span class="p">,</span> <span class="n">relative_step</span>
+
+
+<div class="viewcode-block" id="Spectrum"><a class="viewcode-back" href="../../api/scarlet.spectrum.html#scarlet.spectrum.Spectrum">[docs]</a><span class="k">class</span> <span class="nc">Spectrum</span><span class="p">(</span><span class="n">Model</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Spectrum base class</span>
+
+<span class="sd">    The class describes the 1D spectral dependence of`~scarlet.FactorizedComponent`.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    frame: `~scarlet.Frame`</span>
+<span class="sd">        Characterization of the model</span>
+<span class="sd">    parameters: list of `~scarlet.Parameter`</span>
+<span class="sd">    bbox: `~scarlet.Box`</span>
+<span class="sd">        2D bounding box of this model</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="o">*</span><span class="n">parameters</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">Frame</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">frame</span> <span class="o">=</span> <span class="n">frame</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">bbox</span><span class="p">,</span> <span class="n">Box</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bbox</span> <span class="o">=</span> <span class="n">bbox</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">parameters</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TabulatedSpectrum"><a class="viewcode-back" href="../../api/scarlet.spectrum.html#scarlet.spectrum.TabulatedSpectrum">[docs]</a><span class="k">class</span> <span class="nc">TabulatedSpectrum</span><span class="p">(</span><span class="n">Spectrum</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Spectrum from a array/table</span>
+
+<span class="sd">    The class uses an arbitrary array as non-parametric model.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    frame: `~scarlet.Frame`</span>
+<span class="sd">        Characterization of the model</span>
+<span class="sd">    spectrum: 1D array or `~scarlet.Parameter`</span>
+<span class="sd">        Spectrum parameter</span>
+<span class="sd">    bbox: `~scarlet.Box`</span>
+<span class="sd">        1D bounding box for focation of the spectrum in `frame`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">spectrum</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">spectrum</span><span class="p">,</span> <span class="n">Parameter</span><span class="p">):</span>
+            <span class="k">assert</span> <span class="n">spectrum</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;spectrum&quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">constraint</span> <span class="o">=</span> <span class="n">PositivityConstraint</span><span class="p">(</span><span class="n">zero</span><span class="o">=</span><span class="mf">1e-20</span><span class="p">)</span>  <span class="c1"># slightly positive values</span>
+            <span class="n">step</span> <span class="o">=</span> <span class="n">partial</span><span class="p">(</span><span class="n">relative_step</span><span class="p">,</span> <span class="n">factor</span><span class="o">=</span><span class="mf">1e-2</span><span class="p">)</span>
+            <span class="n">spectrum</span> <span class="o">=</span> <span class="n">Parameter</span><span class="p">(</span>
+                <span class="n">spectrum</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;spectrum&quot;</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="n">step</span><span class="p">,</span> <span class="n">constraint</span><span class="o">=</span><span class="n">constraint</span>
+            <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">bbox</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="n">frame</span><span class="o">.</span><span class="n">bbox</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="n">spectrum</span><span class="o">.</span><span class="n">shape</span>
+            <span class="n">bbox</span> <span class="o">=</span> <span class="n">Box</span><span class="p">(</span><span class="n">spectrum</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="n">bbox</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="n">spectrum</span><span class="o">.</span><span class="n">shape</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">spectrum</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="n">bbox</span><span class="p">)</span>
+
+<div class="viewcode-block" id="TabulatedSpectrum.get_model"><a class="viewcode-back" href="../../api/scarlet.spectrum.html#scarlet.spectrum.TabulatedSpectrum.get_model">[docs]</a>    <span class="k">def</span> <span class="nf">get_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">parameters</span><span class="p">):</span>
+        <span class="n">spectrum</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_parameter</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="o">*</span><span class="n">parameters</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">spectrum</span></div></div>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &copy;2018-2019, Fred Moolekamp and Peter Melchior.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.2.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

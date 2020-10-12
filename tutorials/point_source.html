@@ -315,7 +315,7 @@ div.rendered_html tbody tr:hover {
 <span class="kn">import</span> <span class="nn">matplotlib</span>
 <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
 <span class="c1"># use a better colormap and don&#39;t interpolate the pixels</span>
-<span class="n">matplotlib</span><span class="o">.</span><span class="n">rc</span><span class="p">(</span><span class="s1">&#39;image&#39;</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;inferno&#39;</span><span class="p">,</span> <span class="n">interpolation</span><span class="o">=</span><span class="s1">&#39;none&#39;</span><span class="p">)</span>
+<span class="n">matplotlib</span><span class="o">.</span><span class="n">rc</span><span class="p">(</span><span class="s1">&#39;image&#39;</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;inferno&#39;</span><span class="p">,</span> <span class="n">interpolation</span><span class="o">=</span><span class="s1">&#39;none&#39;</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="s1">&#39;lower&#39;</span><span class="p">)</span>
 
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">scarlet</span>
@@ -380,12 +380,11 @@ div.rendered_html tbody tr:hover {
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
-<span></span><span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">partial</span>
-<span class="n">model_psf</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">PSF</span><span class="p">(</span><span class="n">partial</span><span class="p">(</span><span class="n">scarlet</span><span class="o">.</span><span class="n">psf</span><span class="o">.</span><span class="n">gaussian</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">0.9</span><span class="p">),</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span><span class="mi">31</span><span class="p">,</span><span class="mi">31</span><span class="p">))</span>
+<span></span><span class="n">model_psf</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">GaussianPSF</span><span class="p">(</span><span class="n">sigma</span><span class="o">=</span><span class="mf">0.9</span><span class="p">)</span>
 <span class="n">model_frame</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">Frame</span><span class="p">(</span><span class="n">images</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">psfs</span><span class="o">=</span><span class="n">model_psf</span><span class="p">,</span> <span class="n">channels</span><span class="o">=</span><span class="n">filters</span><span class="p">)</span>
 
 <span class="n">observation</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">Observation</span><span class="p">(</span><span class="n">images</span><span class="p">,</span>
-                                  <span class="n">psfs</span><span class="o">=</span><span class="n">scarlet</span><span class="o">.</span><span class="n">PSF</span><span class="p">(</span><span class="n">psfs</span><span class="p">),</span>
+                                  <span class="n">psfs</span><span class="o">=</span><span class="n">scarlet</span><span class="o">.</span><span class="n">ImagePSF</span><span class="p">(</span><span class="n">psfs</span><span class="p">),</span>
                                   <span class="n">weights</span><span class="o">=</span><span class="n">weights</span><span class="p">,</span>
                                   <span class="n">channels</span><span class="o">=</span><span class="n">filters</span><span class="p">)</span>
 <span class="n">observation</span> <span class="o">=</span> <span class="n">observation</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">model_frame</span><span class="p">)</span>
@@ -462,7 +461,7 @@ div.rendered_html tbody tr:hover {
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
-<span></span><span class="o">%</span><span class="k">time</span> it, logL = blend.fit(100, e_rel=1e-4)
+<span></span><span class="o">%</span><span class="k">time</span> it, logL = blend.fit(200, e_rel=1e-4)
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;scarlet ran for </span><span class="si">{</span><span class="n">it</span><span class="si">}</span><span class="s2"> iterations to logL = </span><span class="si">{</span><span class="n">logL</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 <span class="n">scarlet</span><span class="o">.</span><span class="n">display</span><span class="o">.</span><span class="n">show_likelihood</span><span class="p">(</span><span class="n">blend</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
@@ -474,9 +473,9 @@ div.rendered_html tbody tr:hover {
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-CPU times: user 2.26 s, sys: 7.69 ms, total: 2.27 s
-Wall time: 2.27 s
-scarlet ran for 100 iterations to logL = -140232.51093975367
+CPU times: user 1.64 s, sys: 11.8 ms, total: 1.66 s
+Wall time: 1.65 s
+scarlet ran for 71 iterations to logL = -119297.17788646725
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">
@@ -517,7 +516,9 @@ scarlet ran for 100 iterations to logL = -140232.51093975367
                              <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">,</span>
                              <span class="n">observation</span><span class="o">=</span><span class="n">observation</span><span class="p">,</span>
                              <span class="n">show_rendered</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-                             <span class="n">show_observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                             <span class="n">show_observed</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                             <span class="n">add_boxes</span><span class="o">=</span><span class="kc">True</span>
+                            <span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </pre></div>
 </div>
@@ -529,7 +530,7 @@ scarlet ran for 100 iterations to logL = -140232.51093975367
 <img alt="../_images/tutorials_point_source_12_0.png" src="../_images/tutorials_point_source_12_0.png" />
 </div>
 </div>
-<p>We can see that the model overall performs well, especially in fitting the amplitude and locations of the point sources. It is worth noting that the stellar residuals have red rings and blue cores, which suggest that the PSF model of the observation is not quite correct across all bands. The extended sources are less convincing. The effects of the symmetry constraint are clearly visible, and the color between the two galaxies is not very different, so these two sources remain poorly separated.</p>
+<p>We can see that the model overall performs well, especially in fitting the amplitude and locations of the point sources. It is worth noting that the stellar residuals have red rings and blue cores, which suggest that the PSF model of the observation is not quite correct across all bands. The extended sources are less convincing. The colors of the two galaxies are not very different, so these two sources remain poorly separated.</p>
 </div>
 </div>
 

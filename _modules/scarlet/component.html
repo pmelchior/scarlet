@@ -70,6 +70,8 @@
 <span class="kn">from</span> <span class="nn">.constraint</span> <span class="kn">import</span> <span class="n">PositivityConstraint</span>
 <span class="kn">from</span> <span class="nn">.bbox</span> <span class="kn">import</span> <span class="n">Box</span><span class="p">,</span> <span class="n">overlapped_slices</span>
 <span class="kn">from</span> <span class="nn">.fft</span> <span class="kn">import</span> <span class="n">fast_zero_pad</span>
+<span class="kn">from</span> <span class="nn">.morphology</span> <span class="kn">import</span> <span class="n">Morphology</span>
+<span class="kn">from</span> <span class="nn">.spectrum</span> <span class="kn">import</span> <span class="n">Spectrum</span>
 
 
 <div class="viewcode-block" id="Component"><a class="viewcode-back" href="../../api/scarlet.component.html#scarlet.component.Component">[docs]</a><span class="k">class</span> <span class="nc">Component</span><span class="p">(</span><span class="n">Model</span><span class="p">):</span>
@@ -200,13 +202,10 @@
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">spectrum</span><span class="p">,</span> <span class="n">morphology</span><span class="p">):</span>
-        <span class="kn">from</span> <span class="nn">.spectrum</span> <span class="kn">import</span> <span class="n">Spectrum</span>
-
         <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">spectrum</span><span class="p">,</span> <span class="n">Spectrum</span><span class="p">)</span>
-        <span class="kn">from</span> <span class="nn">.morphology</span> <span class="kn">import</span> <span class="n">Morphology</span>
-
         <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">morphology</span><span class="p">,</span> <span class="n">Morphology</span><span class="p">)</span>
-        <span class="n">bbox</span> <span class="o">=</span> <span class="n">spectrum</span><span class="o">.</span><span class="n">bbox</span> <span class="o">@</span> <span class="n">morphology</span><span class="o">.</span><span class="n">bbox</span>
+
+        <span class="n">bbox</span> <span class="o">=</span> <span class="n">spectrum</span><span class="o">.</span><span class="n">bbox</span> <span class="o">@</span> <span class="n">morphology</span><span class="o">.</span><span class="n">bbox</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">:]</span>
 
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">children</span><span class="o">=</span><span class="p">[</span><span class="n">spectrum</span><span class="p">,</span> <span class="n">morphology</span><span class="p">],</span> <span class="n">bbox</span><span class="o">=</span><span class="n">bbox</span><span class="p">)</span>
 
@@ -227,7 +226,12 @@
 <span class="sd">            (Channels, Height, Width) image of the model</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">spectrum</span><span class="p">,</span> <span class="n">morphology</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_models_of_children</span><span class="p">(</span><span class="o">*</span><span class="n">parameters</span><span class="p">)</span>
-        <span class="n">model</span> <span class="o">=</span> <span class="n">spectrum</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">morphology</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">morphology</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="n">model</span> <span class="o">=</span> <span class="n">spectrum</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">morphology</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span>
+        <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">morphology</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="n">model</span> <span class="o">=</span> <span class="n">spectrum</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">morphology</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span><span class="s2">&quot;morphology must be 2D or 3D&quot;</span><span class="p">)</span>
 
         <span class="c1"># project the model into frame (if necessary)</span>
         <span class="k">if</span> <span class="n">frame</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>

@@ -238,32 +238,6 @@
     <span class="k">return</span> <span class="n">project_image</span><span class="p">(</span><span class="n">img1</span><span class="p">,</span> <span class="n">shape</span><span class="p">),</span> <span class="n">project_image</span><span class="p">(</span><span class="n">img2</span><span class="p">,</span> <span class="n">shape</span><span class="p">)</span></div>
 
 
-<div class="viewcode-block" id="fft_convolve"><a class="viewcode-back" href="../../api/scarlet.interpolation.html#scarlet.interpolation.fft_convolve">[docs]</a><span class="k">def</span> <span class="nf">fft_convolve</span><span class="p">(</span><span class="o">*</span><span class="n">images</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Use FFT&#39;s to convove an image with a kernel</span>
-
-<span class="sd">    Parameters</span>
-<span class="sd">    ----------</span>
-<span class="sd">    images: list of array-like</span>
-<span class="sd">        A list of images to convolve.</span>
-
-<span class="sd">    Returns</span>
-<span class="sd">    -------</span>
-<span class="sd">    result: array</span>
-<span class="sd">        The convolution in pixel space of `img` with `kernel`.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="kn">from</span> <span class="nn">autograd.numpy.numpy_boxes</span> <span class="kn">import</span> <span class="n">ArrayBox</span>
-
-    <span class="n">Images</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">fft2</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">ifftshift</span><span class="p">(</span><span class="n">img</span><span class="p">))</span> <span class="k">for</span> <span class="n">img</span> <span class="ow">in</span> <span class="n">images</span><span class="p">]</span>
-    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">([</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">ArrayBox</span><span class="p">)</span> <span class="k">for</span> <span class="n">img</span> <span class="ow">in</span> <span class="n">images</span><span class="p">]):</span>
-        <span class="n">Convolved</span> <span class="o">=</span> <span class="n">Images</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-        <span class="k">for</span> <span class="n">img</span> <span class="ow">in</span> <span class="n">Images</span><span class="p">[</span><span class="mi">1</span><span class="p">:]:</span>
-            <span class="n">Convolved</span> <span class="o">=</span> <span class="n">Convolved</span> <span class="o">*</span> <span class="n">img</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="n">Convolved</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">Images</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
-    <span class="n">convolved</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">ifft2</span><span class="p">(</span><span class="n">Convolved</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">fftshift</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">real</span><span class="p">(</span><span class="n">convolved</span><span class="p">))</span></div>
-
-
 <div class="viewcode-block" id="bilinear"><a class="viewcode-back" href="../../api/scarlet.interpolation.html#scarlet.interpolation.bilinear">[docs]</a><span class="k">def</span> <span class="nf">bilinear</span><span class="p">(</span><span class="n">dx</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Bilinear interpolation kernel</span>
 
@@ -687,49 +661,6 @@
             <span class="n">sinc_interp</span><span class="p">(</span><span class="n">image</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:],</span> <span class="n">coord_hr</span><span class="p">,</span> <span class="n">coord_lr</span><span class="p">,</span> <span class="n">angle</span><span class="o">=</span><span class="kc">None</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">T</span>
         <span class="p">)</span>
     <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">interp</span><span class="p">)</span></div>
-
-
-<div class="viewcode-block" id="fft_resample"><a class="viewcode-back" href="../../api/scarlet.interpolation.html#scarlet.interpolation.fft_resample">[docs]</a><span class="k">def</span> <span class="nf">fft_resample</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">dy</span><span class="p">,</span> <span class="n">dx</span><span class="p">,</span> <span class="n">kernel</span><span class="o">=</span><span class="n">lanczos</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Translate the image by a fraction of a pixel</span>
-
-<span class="sd">    This method uses FFT&#39;s to convolve the image with a</span>
-<span class="sd">    kernel to shift the position of the image by a fraction</span>
-<span class="sd">    of a pixel.</span>
-
-<span class="sd">    Parameters</span>
-<span class="sd">    ----------</span>
-<span class="sd">    img: array-like</span>
-<span class="sd">        Image</span>
-<span class="sd">    dx: float</span>
-<span class="sd">        Fractional amount to shift the convolution kernel in x.</span>
-<span class="sd">    dy: float</span>
-<span class="sd">        Fractional amount to shift the convolution kernel in y.</span>
-<span class="sd">    kernel: function</span>
-<span class="sd">        Kernel to use for the convolution.</span>
-<span class="sd">    kwargs: dict</span>
-<span class="sd">        Keyword arguments to build the kernel.</span>
-
-<span class="sd">    Returns</span>
-<span class="sd">    -------</span>
-<span class="sd">    result: Tensor</span>
-<span class="sd">        The convolved image.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="c1"># Build the kernel</span>
-    <span class="n">kernel</span><span class="p">,</span> <span class="n">ywin</span><span class="p">,</span> <span class="n">xwin</span> <span class="o">=</span> <span class="n">get_separable_kernel</span><span class="p">(</span><span class="n">dy</span><span class="p">,</span> <span class="n">dx</span><span class="p">,</span> <span class="n">kernel</span><span class="o">=</span><span class="n">kernel</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-    <span class="c1"># We have to project the image and kernels to the same</span>
-    <span class="c1"># shape to multiply them in Fourier space</span>
-    <span class="n">hx</span><span class="p">,</span> <span class="n">wx</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">shape</span>
-    <span class="n">hk</span><span class="p">,</span> <span class="n">wk</span> <span class="o">=</span> <span class="n">kernel</span><span class="o">.</span><span class="n">shape</span>
-    <span class="c1"># We have to pad the input image by the width of the kernel,</span>
-    <span class="c1"># because the Fourier Transform is periodic and will wrap the solution</span>
-    <span class="n">shape</span> <span class="o">=</span> <span class="p">(</span><span class="n">hx</span> <span class="o">+</span> <span class="n">hk</span> <span class="o">+</span> <span class="mi">3</span><span class="p">,</span> <span class="n">wx</span> <span class="o">+</span> <span class="n">wk</span> <span class="o">+</span> <span class="mi">3</span><span class="p">)</span>
-
-    <span class="c1"># Project the kernel onto the same space as the output image</span>
-    <span class="n">yx0</span> <span class="o">=</span> <span class="p">(</span><span class="n">ywin</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">xwin</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-    <span class="n">_kernel</span> <span class="o">=</span> <span class="n">project_image</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">shape</span><span class="p">,</span> <span class="n">yx0</span><span class="p">)</span>
-    <span class="n">_img</span> <span class="o">=</span> <span class="n">project_image</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">shape</span><span class="p">)</span>
-    <span class="n">result</span> <span class="o">=</span> <span class="n">fft_convolve</span><span class="p">(</span><span class="n">_img</span><span class="p">,</span> <span class="n">_kernel</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">project_image</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="get_common_padding"><a class="viewcode-back" href="../../api/scarlet.interpolation.html#scarlet.interpolation.get_common_padding">[docs]</a><span class="k">def</span> <span class="nf">get_common_padding</span><span class="p">(</span><span class="n">img1</span><span class="p">,</span> <span class="n">img2</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>

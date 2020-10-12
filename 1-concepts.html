@@ -411,7 +411,7 @@ class PointSource(FactorizedComponent):
         observations: instance or list of `~scarlet.Observation`
             Observation(s) to initialize this source
         &#34;&#34;&#34;
-        spectrum = get_psf_sed(sky_coord, observations, model_frame)
+        spectrum = get_pixel_spectrum(sky_coord, observations, correct_psf=True)
         spectrum = TabulatedSpectrum(model_frame, spectrum)
 
         center = model_frame.get_pixel(sky_coord)
@@ -470,24 +470,24 @@ Source 0: PointSource
   Parameter &#39;center&#39;, Shape (2,)
 Source 1: MultiExtendedSource
   Parameter &#39;spectrum&#39;, Shape (5,)
-  Parameter &#39;image&#39;, Shape (64, 64)
+  Parameter &#39;image&#39;, Shape (62, 62)
   Parameter &#39;spectrum&#39;, Shape (5,)
-  Parameter &#39;image&#39;, Shape (64, 64)
+  Parameter &#39;image&#39;, Shape (62, 62)
 Source 2: SingleExtendedSource
   Parameter &#39;spectrum&#39;, Shape (5,)
-  Parameter &#39;image&#39;, Shape (48, 48)
+  Parameter &#39;image&#39;, Shape (15, 15)
 Source 3: SingleExtendedSource
   Parameter &#39;spectrum&#39;, Shape (5,)
-  Parameter &#39;image&#39;, Shape (32, 32)
+  Parameter &#39;image&#39;, Shape (15, 15)
 Source 4: SingleExtendedSource
   Parameter &#39;spectrum&#39;, Shape (5,)
-  Parameter &#39;image&#39;, Shape (32, 32)
+  Parameter &#39;image&#39;, Shape (15, 15)
 Source 5: SingleExtendedSource
   Parameter &#39;spectrum&#39;, Shape (5,)
-  Parameter &#39;image&#39;, Shape (48, 48)
+  Parameter &#39;image&#39;, Shape (15, 15)
 Source 6: SingleExtendedSource
   Parameter &#39;spectrum&#39;, Shape (5,)
-  Parameter &#39;image&#39;, Shape (16, 16)
+  Parameter &#39;image&#39;, Shape (15, 15)
 </pre></div></div>
 </div>
 <p>Source 0 is a <code class="docutils literal notranslate"><span class="pre">PointSource</span></code>, parameterized by a spectrum and a center, as we have seen above. Source 1 has multiple components (each with a spectrum and an image morphology), the rest have a single spectrum and image morphology.</p>
@@ -509,19 +509,18 @@ Source 6: SingleExtendedSource
 <div class="highlight"><pre>
 {&#39;name&#39;: &#39;spectrum&#39;,
  &#39;prior&#39;: None,
- &#39;constraint&#39;: &lt;scarlet.constraint.PositivityConstraint at 0x7f35373cec18&gt;,
- &#39;step&#39;: functools.partial(&lt;function relative_step at 0x7f353ad2d6a8&gt;, factor=0.01),
- &#39;std&#39;: masked_array(data=[0.005722043363271578, 0.0020610115771923,
-                    0.0031916643880181314, 0.00580608085263178,
-                    0.04086907491287137],
+ &#39;constraint&#39;: &lt;scarlet.constraint.PositivityConstraint at 0x7ffa9d12f6a0&gt;,
+ &#39;step&#39;: functools.partial(&lt;function relative_step at 0x7ffaa1d098c8&gt;, factor=0.01),
+ &#39;std&#39;: masked_array(data=[0.04389490916756766, 0.06517846062284369,
+                    0.07375149048833486, 0.10927850145924377,
+                    0.2927479371108809],
               mask=[False, False, False, False, False],
         fill_value=0.0),
- &#39;m&#39;: array([ -9.02475704, -18.05422886,  10.02459027, -11.56370404,
-         -1.64589111]),
- &#39;v&#39;: array([ 30542.01672386, 235417.71353528,  98167.01021484,  29664.28202238,
-           598.70155371]),
- &#39;vhat&#39;: array([ 31196.22296446, 240256.83401039, 100172.43559919,  30258.61300845,
-           614.4174176 ]),
+ &#39;m&#39;: array([ 0.14318326,  0.43828976,  0.3513184 , -0.06075501, -0.23812295]),
+ &#39;v&#39;: array([519.00517792, 235.39205574, 183.84778281,  83.73953371,
+         11.66842699]),
+ &#39;vhat&#39;: array([532.76541958, 239.03731859, 184.32261318,  86.2186948 ,
+         11.78452515]),
  &#39;fixed&#39;: False}
 </pre></div></div>
 </div>
@@ -548,7 +547,7 @@ Source 6: SingleExtendedSource
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-&lt;matplotlib.colorbar.Colorbar at 0x7f3536bb6ef0&gt;
+&lt;matplotlib.colorbar.Colorbar at 0x7ffa9c9119e8&gt;
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">

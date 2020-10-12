@@ -67,6 +67,7 @@
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 
 <span class="kn">from</span> <span class="nn">.bbox</span> <span class="kn">import</span> <span class="n">Box</span>
+<span class="kn">from</span> <span class="nn">.psf</span> <span class="kn">import</span> <span class="n">PSF</span><span class="p">,</span> <span class="n">ImagePSF</span>
 <span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">interpolation</span>
 <span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">resampling</span>
 
@@ -109,8 +110,6 @@
             <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;No PSF specified. Possible, but dangerous!&quot;</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_psfs</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="c1"># Import PSF here to prevent a circular dependency</span>
-            <span class="kn">from</span> <span class="nn">.psf</span> <span class="kn">import</span> <span class="n">PSF</span>
 
             <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">psfs</span><span class="p">,</span> <span class="n">PSF</span><span class="p">):</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_psfs</span> <span class="o">=</span> <span class="n">psfs</span>
@@ -223,9 +222,6 @@
 <span class="sd">            or sets the frame to incorporate only the pixels vovered by all the observations (&#39;intersection&#39;).</span>
 <span class="sd">            Default is &#39;union&#39;.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="c1"># Import PSF here to prevent a circular dependency</span>
-        <span class="kn">from</span> <span class="nn">.psf</span> <span class="kn">import</span> <span class="n">PSF</span>
-
         <span class="k">assert</span> <span class="n">coverage</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;union&quot;</span><span class="p">,</span> <span class="s2">&quot;intersection&quot;</span><span class="p">]</span>
         <span class="c1"># Array of pixel sizes for each observation</span>
         <span class="n">pix_tab</span> <span class="o">=</span> <span class="p">[]</span>
@@ -245,7 +241,8 @@
                 <span class="n">interpolation</span><span class="o">.</span><span class="n">get_affine</span><span class="p">(</span><span class="n">obs</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">wcs</span><span class="p">)</span>
             <span class="p">)</span>
             <span class="c1"># Looking for the sharpest and the fatest psf</span>
-            <span class="k">for</span> <span class="n">psf</span> <span class="ow">in</span> <span class="n">obs</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">_psfs</span><span class="o">.</span><span class="n">image</span><span class="p">:</span>
+            <span class="n">psfs</span> <span class="o">=</span> <span class="n">obs</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">psf</span><span class="o">.</span><span class="n">get_model</span><span class="p">()</span><span class="o">.</span><span class="n">_data</span>
+            <span class="k">for</span> <span class="n">psf</span> <span class="ow">in</span> <span class="n">psfs</span><span class="p">:</span>
                 <span class="n">psf_size</span> <span class="o">=</span> <span class="n">interpolation</span><span class="o">.</span><span class="n">get_psf_size</span><span class="p">(</span><span class="n">psf</span><span class="p">)</span> <span class="o">*</span> <span class="n">h_temp</span>
                 <span class="k">if</span> <span class="p">(</span><span class="n">fat_psf_size</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">psf_size</span> <span class="o">&gt;</span> <span class="n">fat_psf_size</span><span class="p">):</span>
                     <span class="n">fat_psf_size</span> <span class="o">=</span> <span class="n">psf_size</span>
@@ -254,7 +251,7 @@
                         <span class="p">(</span><span class="n">small_psf_size</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">psf_size</span> <span class="o">&lt;</span> <span class="n">small_psf_size</span><span class="p">)</span>
                     <span class="p">):</span>
                         <span class="n">small_psf_size</span> <span class="o">=</span> <span class="n">psf_size</span>
-                        <span class="n">target_psf_temp</span> <span class="o">=</span> <span class="n">PSF</span><span class="p">(</span><span class="n">psf</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:])</span>
+                        <span class="n">target_psf_temp</span> <span class="o">=</span> <span class="n">ImagePSF</span><span class="p">(</span><span class="n">psf</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:])</span>
                         <span class="n">psf_h</span> <span class="o">=</span> <span class="n">h_temp</span>
 
         <span class="c1"># Find a reference observation. Either provided by obs_id or as the observation with the smallest pixel</span>

@@ -344,7 +344,7 @@ div.rendered_html tbody tr:hover {
 <span class="c1"># Load the HSC PSF data</span>
 <span class="n">psf_hsc</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s1">&#39;../../data/test_resampling/PSF_HSC.fits&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span>
 <span class="n">Np1</span><span class="p">,</span> <span class="n">Np2</span> <span class="o">=</span> <span class="n">psf_hsc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span>
-<span class="n">psf_hsc</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">PSF</span><span class="p">(</span><span class="n">psf_hsc</span><span class="p">)</span>
+<span class="n">psf_hsc</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">ImagePSF</span><span class="p">(</span><span class="n">psf_hsc</span><span class="p">)</span>
 
 <span class="c1"># Load the HST image data</span>
 <span class="n">hst_hdu</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s1">&#39;../../data/test_resampling/Cut_HST1.fits&#39;</span><span class="p">)</span>
@@ -355,7 +355,7 @@ div.rendered_html tbody tr:hover {
 <span class="c1"># Load the HST PSF data</span>
 <span class="n">psf_hst</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s1">&#39;../../data/test_resampling/PSF_HST.fits&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span>
 <span class="n">psf_hst</span> <span class="o">=</span> <span class="n">psf_hst</span><span class="p">[</span><span class="kc">None</span><span class="p">,:,:]</span>
-<span class="n">psf_hst</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">PSF</span><span class="p">(</span><span class="n">psf_hst</span><span class="p">)</span>
+<span class="n">psf_hst</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">ImagePSF</span><span class="p">(</span><span class="n">psf_hst</span><span class="p">)</span>
 
 <span class="c1"># Scale the HST data</span>
 <span class="n">n1</span><span class="p">,</span><span class="n">n2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">data_hst</span><span class="p">)</span>
@@ -584,9 +584,9 @@ frame, and that’s done by <code class="docutils literal notranslate"><span cla
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-CPU times: user 3min 44s, sys: 53.5 s, total: 4min 38s
+CPU times: user 3min 45s, sys: 52.7 s, total: 4min 38s
 Wall time: 4min 38s
-scarlet ran for 20 iterations to logL = -139094.31490724543
+scarlet ran for 20 iterations to logL = -328507.3597610564
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">

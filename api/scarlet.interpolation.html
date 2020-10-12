@@ -183,57 +183,6 @@ where the convolution kernel is a different size than the morphology.</p>
 </dd></dl>
 
 <dl class="py function">
-<dt id="scarlet.interpolation.fft_convolve">
-<code class="sig-prename descclassname">scarlet.interpolation.</code><code class="sig-name descname">fft_convolve</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">*</span><span class="n">images</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#fft_convolve"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.interpolation.fft_convolve" title="Permalink to this definition">¶</a></dt>
-<dd><p>Use FFT’s to convove an image with a kernel</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><dl class="simple">
-<dt><strong>images: list of array-like</strong></dt><dd><p>A list of images to convolve.</p>
-</dd>
-</dl>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><dl class="simple">
-<dt>result: array</dt><dd><p>The convolution in pixel space of <cite>img</cite> with <cite>kernel</cite>.</p>
-</dd>
-</dl>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
-<dt id="scarlet.interpolation.fft_resample">
-<code class="sig-prename descclassname">scarlet.interpolation.</code><code class="sig-name descname">fft_resample</code><span class="sig-paren">(</span><em class="sig-param">img</em>, <em class="sig-param">dy</em>, <em class="sig-param">dx</em>, <em class="sig-param">kernel=&lt;function lanczos&gt;</em>, <em class="sig-param">**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#fft_resample"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.interpolation.fft_resample" title="Permalink to this definition">¶</a></dt>
-<dd><p>Translate the image by a fraction of a pixel</p>
-<p>This method uses FFT’s to convolve the image with a
-kernel to shift the position of the image by a fraction
-of a pixel.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><dl class="simple">
-<dt><strong>img: array-like</strong></dt><dd><p>Image</p>
-</dd>
-<dt><strong>dx: float</strong></dt><dd><p>Fractional amount to shift the convolution kernel in x.</p>
-</dd>
-<dt><strong>dy: float</strong></dt><dd><p>Fractional amount to shift the convolution kernel in y.</p>
-</dd>
-<dt><strong>kernel: function</strong></dt><dd><p>Kernel to use for the convolution.</p>
-</dd>
-<dt><strong>kwargs: dict</strong></dt><dd><p>Keyword arguments to build the kernel.</p>
-</dd>
-</dl>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><dl class="simple">
-<dt>result: Tensor</dt><dd><p>The convolved image.</p>
-</dd>
-</dl>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
 <dt id="scarlet.interpolation.get_affine">
 <code class="sig-prename descclassname">scarlet.interpolation.</code><code class="sig-name descname">get_affine</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">wcs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#get_affine"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.interpolation.get_affine" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
