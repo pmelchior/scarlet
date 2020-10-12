@@ -3,6 +3,7 @@ import logging
 import numpy as np
 
 from .bbox import Box
+from .psf import PSF, ImagePSF
 from . import interpolation
 from . import resampling
 
@@ -45,8 +46,6 @@ class Frame:
             logger.warning("No PSF specified. Possible, but dangerous!")
             self._psfs = None
         else:
-            # Import PSF here to prevent a circular dependency
-            from .psf import PSF
 
             if isinstance(psfs, PSF):
                 self._psfs = psfs
@@ -159,9 +158,6 @@ class Frame:
             or sets the frame to incorporate only the pixels vovered by all the observations ('intersection').
             Default is 'union'.
         """
-        # Import PSF here to prevent a circular dependency
-        from .psf import PSF
-
         assert coverage in ["union", "intersection"]
         # Array of pixel sizes for each observation
         pix_tab = []
@@ -181,7 +177,8 @@ class Frame:
                 interpolation.get_affine(obs.frame.wcs)
             )
             # Looking for the sharpest and the fatest psf
-            for psf in obs.frame._psfs.image:
+            psfs = obs.frame.psf.get_model()._data
+            for psf in psfs:
                 psf_size = interpolation.get_psf_size(psf) * h_temp
                 if (fat_psf_size is None) or (psf_size > fat_psf_size):
                     fat_psf_size = psf_size
@@ -190,7 +187,7 @@ class Frame:
                         (small_psf_size is None) or (psf_size < small_psf_size)
                     ):
                         small_psf_size = psf_size
-                        target_psf_temp = PSF(psf[np.newaxis, :, :])
+                        target_psf_temp = ImagePSF(psf[np.newaxis, :, :])
                         psf_h = h_temp
 
         # Find a reference observation. Either provided by obs_id or as the observation with the smallest pixel

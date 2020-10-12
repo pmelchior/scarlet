@@ -137,10 +137,10 @@ class Observation:
             self.frame._bbox.origin = (channel_origin, *self.frame._bbox.origin[1:])
 
         slices = overlapped_slices(self.frame.bbox, model_frame.bbox)
-        self.slices_for_images = slices[0]  # Slice of images to match the model
-        self.slices_for_model = slices[
-            1
-        ]  #  Slice of model that overlaps with the observation
+        # Slice of images to match the model
+        self.slices_for_images = slices[0]
+        # Slice of model that overlaps with the observation
+        self.slices_for_model = slices[1]
 
         # check dtype consistency
         if self.frame.dtype != model_frame.dtype:
@@ -154,9 +154,9 @@ class Observation:
             self._diff_kernels = None
             if self.frame.psf is not model_frame.psf:
                 assert self.frame.psf is not None and model_frame.psf is not None
-                psf = fft.Fourier(self.frame.psf.update_dtype(model_frame.dtype).image)
+                psf = fft.Fourier(self.frame.psf.get_model().astype(model_frame.dtype))
                 model_psf = fft.Fourier(
-                    model_frame.psf.update_dtype(model_frame.dtype).image
+                    model_frame.psf.get_model().astype(model_frame.dtype)
                 )
                 self._diff_kernels = fft.match_psfs(psf, model_psf)
         else:
@@ -242,7 +242,7 @@ class Observation:
         logL: float
         """
         model_ = self.render(model, *parameters)
-        if self.frame != self.model_frame:
+        if self.frame != self.frame:
             images_ = self.images[self.slices_for_images]
             weights_ = self.weights[self.slices_for_images]
         else:
@@ -351,7 +351,7 @@ class LowResObservation(Observation):
         psf_match_lr: array
             low resolution psf at matching size and resolution
         """
-        psf_lr = self.frame._psfs.image
+        psf_lr = self.frame.psf.get_model().astype(psf_hr.dtype)
         # Odd pad shape
         pad_shape = (
             np.array((self.images.shape[-2:] + np.array(psf_lr.shape[-2:])) / 2).astype(
@@ -393,7 +393,7 @@ class LowResObservation(Observation):
         whr = model_frame.wcs
 
         # Reference PSF
-        _target = model_frame._psfs.image
+        _target = model_frame.psf.get_model()
 
         # Computes spatially matching observation and target psfs. The observation psf is also resampled \\
         # to the model frame resolution
@@ -476,11 +476,9 @@ class LowResObservation(Observation):
             coordinates of the pixels in the frame to fit
         """
         if self.frame.dtype != model_frame.dtype:
-            self.images = self.images.copy().astype(model_frame.dtype)
+            self.images = self.images.astype(model_frame.dtype)
             if type(self.weights) is np.ndarray:
-                self.weights = self.weights.copy().astype(model_frame.dtype)
-            if self.frame._psfs is not None:
-                self.frame._psfs.update_dtype(model_frame.dtype)
+                self.weights = self.weights.astype(model_frame.dtype)
 
         self.angle, self.h = interpolation.get_angles(self.frame.wcs, model_frame.wcs)
 
