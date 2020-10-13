@@ -37,7 +37,7 @@ install:
 
 # Run test
 script:
-  - pytest tests
+  - pytest tests --branch ${TRAVIS_BRANCH}
 
 # Calculate coverage
 #after_success:

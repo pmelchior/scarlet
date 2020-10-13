@@ -12,3 +12,4 @@ prompt_toolkit>=2.0.10
 sep
 gitpython
 boto3
+gitpython

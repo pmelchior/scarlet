@@ -2,7 +2,6 @@ from decimal import Decimal
 from io import BytesIO
 import os
 import sqlite3
-import subprocess
 from typing import List, Callable, Dict
 from functools import partial
 
@@ -83,13 +82,11 @@ def get_branches() -> List[str]:
 
 
 def update_merged_branches() -> None:
-    gitlog = subprocess.check_output(["git", "log", "--pretty=oneline", "--merges"]).decode("ascii").split("\n")
-    messages = []
-    for l in gitlog[:-1]:
-        record = l.split(" ")
-        msg = " ".join(record[1:])
-        messages.append(msg)
+    import git
+    repo = git.Repo()
 
+    commits = [c for c in repo.iter_commits(merges=True)]
+    messages = [c.message.split("\n")[0] for c in commits]
     branches = [(m.split("pmelchior/")[1]) for m in messages if "pmelchior" in m][::-1]
     table = aws.get_table("scarlet_merged")
     with table.batch_writer() as batch:
@@ -153,6 +150,7 @@ def save_residual(residual_img, blend_id:str, branch:str):
 
 def deblend_and_measure(
         set_id: int = None,
+        branch: str = None,
         data_path: str = None,
         save_records: bool = False,
         save_residuals: bool = False,
@@ -164,6 +162,8 @@ def deblend_and_measure(
     :param set_id: ID of the set to analyze.
         This is only needed if `data_path` is `None` and
         `save` is `True`.
+    :param branch: The scarlet branch to test
+        (only needed if `save_records` or `save_residuals` is `True`)
     :param data_path: The path to the blend data. If no `data_path is specified
         then __BLEND_PATH__ is used.
     :param save_records: Whether or not to save the measurements records.
@@ -172,11 +172,11 @@ def deblend_and_measure(
     :param plot_residuals: Whether or not to plot the residuals.
     :param deblender: The function to use to deblend. This function should only take
         1 argument:
-        
+
         * `data` The data from the npz file for the blend.
-        
+
         The function should return a tuple with the following three items:
-        
+
         * `measurements`: The measurement dictionary entry for the blend
         * `observation`: The observation used for deblending.
         * `sources`: The deblended source models.
@@ -198,8 +198,6 @@ def deblend_and_measure(
             max_iter=settings.max_iter,
             e_rel=settings.e_rel,
         )
-
-    branch = subprocess.check_output(["git", "rev-parse", "--abbrev-ref", "HEAD"]).decode("ascii").split("\n")[0]
 
     # If this is the master branch then update the list of merged branches
     if branch == "master" and save_records:
