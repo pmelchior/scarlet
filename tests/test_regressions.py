@@ -6,7 +6,6 @@ from scarlet.testing import api
 class TestRegressions(object):
     def test_set1(self, branch):
         api.deblend_and_measure(1, branch=branch, save_records=True)
-        raise NotImplementedError("stop")
 
     def test_set2(self, branch):
         api.deblend_and_measure(2, branch=branch, save_records=True)
