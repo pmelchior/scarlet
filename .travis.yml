@@ -37,7 +37,9 @@ install:
 
 # Run test
 script:
-  - pytest tests
+  #- pytest tests --branch ${TRAVIS_BRANCH}
+  # Temporary to test changes
+  - pytest tests/test_regressions.py --branch ${TRAVIS_BRANCH}
 
 # Calculate coverage
 #after_success:
