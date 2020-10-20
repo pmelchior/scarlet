@@ -8,6 +8,7 @@ from .constraint import CenterOnConstraint
 from .interpolation import interpolate_observation
 from .observation import Observation, LowResObservation
 from .wavelet import Starlet, mad_wavelet
+from . import fft
 from . import measure
 
 
@@ -256,7 +257,6 @@ def init_extended_source(
     coadd=None,
     coadd_rms=None,
     thresh=1,
-    compact=False,
     symmetric=True,
     monotonic="flat",
     min_grad=0.1,
@@ -500,17 +500,6 @@ def init_multicomponent_source(
 
     # avoid using the same box for multiple components
     boxes = tuple(bbox.copy() for k in range(K))
-
-    # # define minimal boxes (NOTE: dangerous due to box truncation)
-    # morphs_ = []
-    # boxes = []
-    # threshold = 0
-    # for k in range(K):
-    #     morph, bbox = trim_morphology(sky_coord, frame, morphs[k], threshold)
-    #     morphs_.append(morph)
-    #     boxes.append(bbox)
-    # morphs = morphs_
-
     return spectra, morphs, boxes
 
 
@@ -534,7 +523,7 @@ def build_sed_coadd(seds, bg_rmses, observations, obs_ref=None):
     detect: array
         2D image created by weighting all of the channels by SED
     bg_cutoff: float
-        The minimum value in `detect` to include in detection.
+        he effective noise threshold
     """
     if not hasattr(observations, "__iter__"):
         observations = (observations,)
@@ -616,7 +605,7 @@ def build_initialization_coadd(observations, filtered_coadd=False, obs_idx=None)
     detect: array
         2D image created by weighting all of the channels by SED
     bg_cutoff: float
-        The minimum value in `detect` to include in detection.
+        The effective noise threshold
     """
     try:
         iter(observations)
@@ -680,6 +669,87 @@ def build_initialization_coadd(observations, filtered_coadd=False, obs_idx=None)
     # thresh is multiple above the rms of detect (weighted variance across channels)
     bg_cutoff = np.sqrt((weights ** 2).sum()) / jacobian
     return coadd, bg_cutoff
+
+
+def build_deconvolution_coadd(seds, bg_rmses, observations, obs_ref=None):
+    """Build a channel weighted deconvolution coadd to use for source detection
+
+    Parameters
+    ----------
+    seds: array
+        SED at the center of the source.
+    bg_rms: array
+        Background RMS in each channel in observation.
+    observations: list of `~scarlet.observation.Observation`
+        Observations to use for the coadd.
+    obs_ref: `scarlet.Observation`
+        observation to use as a reference frame.
+        If set to None, the first (or only if applicable) element with type `Observation` is used.
+
+    Returns
+    -------
+    detect: array
+        2D image created by deconvolution and weighting all of the channels by SED
+    bg_cutoff: float
+        The effective noise threshold
+    """
+    if not hasattr(observations, "__iter__"):
+        observations = (observations,)
+        seds = (seds,)
+        bg_rmses = (bg_rmses,)
+
+    if len(observations) == 1:
+        obs_ref = observations[0]
+        spectrum = seds[0]
+
+    # The observation that lives in the same plane as the frame
+    if obs_ref is None:
+        loc = np.where([type(obs) is Observation for obs in observations])
+        obs_ref = observations[np.int(loc[0])]
+    else:
+        # The observation that lives in the same plane as the frame
+        assert type(obs_ref) is not LowResObservation, (
+            f"Reference observation should not be a `LowResObservation`. The observation, {obs_ref} "
+            f"provided refers to an observation of type: {type(obs_ref)}"
+        )
+
+    # diff kernel built by Observation.match
+    diff_kernel = obs_ref._diff_kernels
+
+    # divide Fourier transform of images by Fourier transform of diff kernel, padded by 3 pixels.
+    deconv = fft._kspace_operation(
+        fft.Fourier(obs_ref.images),
+        diff_kernel,
+        3,
+        fft.operator.truediv,
+        obs_ref.images.shape,
+        axes=(-2, -1),
+    ).image  # then get the image from Fourier
+
+    # deconvolve noise field to estimate its noise level
+    noise = np.random.normal(scale=1 / np.sqrt(obs_ref.weights))
+    noise_deconv = fft._kspace_operation(
+        fft.Fourier(noise),
+        diff_kernel,
+        3,
+        fft.operator.truediv,
+        obs_ref.images.shape,
+        axes=(-2, -1),
+    ).image
+    bg_rms_deconv = noise_deconv.std(axis=(1, 2))
+
+    # create observation with deconvolved image and noise field: assumes flat noise
+    model_frame = obs_ref.model_frame
+    channels = obs_ref.frame.channels
+    deconvolved_observation = Observation(
+        deconv,
+        psfs=model_frame.psf,
+        weights=np.ones(deconv.shape) / (bg_rms_deconv ** 2)[:, None, None],
+        channels=channels,
+    ).match(model_frame)
+
+    detect, cut = build_sed_coadd(spectrum, bg_rms_deconv, deconvolved_observation)
+    return detect, cut
 
 
 def hasEdgeFlux(source, edgeDistance=1):
