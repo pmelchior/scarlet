@@ -4,7 +4,9 @@ from functools import partial
 from .component import CombinedComponent, FactorizedComponent
 from .constraint import PositivityConstraint
 from .initialization import (
-    get_psf_sed,
+    get_pixel_spectrum,
+    get_psf_spectrum,
+    init_compact_source,
     init_extended_source,
     init_multicomponent_source,
     init_starlet_source,
@@ -44,7 +46,7 @@ class RandomSource(FactorizedComponent):
         if observations is None:
             spectrum = np.random.rand(C)
         else:
-            spectrum = get_best_fit_seds(image[None], observations)[0]
+            spectrum = get_best_fit_spectra(image[None], observations)[0]
 
         # default is step=1e-2, using larger steps here becaus SED is probably uncertain
         spectrum = Parameter(
@@ -77,7 +79,7 @@ class PointSource(FactorizedComponent):
         observations: instance or list of `~scarlet.Observation`
             Observation(s) to initialize this source
         """
-        spectrum = get_psf_sed(sky_coord, observations, model_frame)
+        spectrum = get_pixel_spectrum(sky_coord, observations, correct_psf=True)
         spectrum = TabulatedSpectrum(model_frame, spectrum)
 
         center = model_frame.get_pixel(sky_coord)
@@ -149,6 +151,7 @@ class SingleExtendedSource(FactorizedComponent):
         coadd=None,
         coadd_rms=None,
         thresh=1.0,
+        compact=False,
         shifting=False,
     ):
         """Extended source model
@@ -174,22 +177,32 @@ class SingleExtendedSource(FactorizedComponent):
         thresh: `float`
             Multiple of the backround RMS used as a
             flux cutoff for morphology initialization.
+        compact: `bool`
+            Initialize with the shape of a point source
         shifting: `bool`
             Whether or not a subpixel shift is added as optimization parameter
         """
         # initialize from observation
-        sed, morph, bbox = init_extended_source(
-            sky_coord,
-            model_frame,
-            observations,
-            coadd,
-            coadd_rms=coadd_rms,
-            thresh=thresh,
-            symmetric=True,
-            monotonic="flat",
-            min_grad=0,
-        )
-        spectrum = TabulatedSpectrum(model_frame, sed, bbox=bbox[0])
+        if compact:
+            spectrum, morph, bbox = init_compact_source(
+                sky_coord, model_frame, observations
+            )
+
+        else:
+            spectrum, morph, bbox = init_extended_source(
+                sky_coord,
+                model_frame,
+                observations,
+                coadd,
+                coadd_rms=coadd_rms,
+                thresh=thresh,
+                compact=compact,
+                symmetric=True,
+                monotonic="flat",
+                min_grad=0,
+            )
+
+        spectrum = TabulatedSpectrum(model_frame, spectrum, bbox=bbox[0])
 
         center = model_frame.get_pixel(sky_coord)
         morphology = ExtendedSourceMorphology(
@@ -248,7 +261,7 @@ class MultiExtendedSource(CombinedComponent):
             If pixel value is below the first precentile, it becomes part of the
             outermost component. If it is above, the percentile value will be subtracted
             and the remainder attributed to the next component.
-            If `flux_percentiles` is `None` then `flux_percentiles=[25,]`. 
+            If `flux_percentiles` is `None` then `flux_percentiles=[25,]`.
         coadd: `numpy.ndarray`
             The coaddition of all images across observations.
         coadd_rms: float
@@ -264,7 +277,7 @@ class MultiExtendedSource(CombinedComponent):
         assert K == len(flux_percentiles) + 1
 
         # initialize from observation
-        seds, morphs, boxes = init_multicomponent_source(
+        spectra, morphs, boxes = init_multicomponent_source(
             sky_coord,
             model_frame,
             observations,
@@ -282,13 +295,13 @@ class MultiExtendedSource(CombinedComponent):
         for k in range(K):
 
             # higher tolerance on SED: construct parameter explicitly with larger step
-            sed = Parameter(
-                seds[k],
+            spectrum = Parameter(
+                spectra[k],
                 name="spectrum",
                 step=partial(relative_step, factor=1e-1),
                 constraint=PositivityConstraint(zero=1e-20),
             )
-            spectrum = TabulatedSpectrum(model_frame, sed)
+            spectrum = TabulatedSpectrum(model_frame, spectrum)
 
             morphology = ExtendedSourceMorphology(
                 model_frame,
@@ -326,6 +339,7 @@ def ExtendedSource(
     coadd=None,
     coadd_rms=None,
     thresh=1.0,
+    compact=False,
     shifting=False,
 ):
     """Create extended sources with either a single component or multiple components.
@@ -342,6 +356,7 @@ def ExtendedSource(
             coadd=coadd,
             coadd_rms=coadd_rms,
             thresh=thresh,
+            compact=compact,
             shifting=shifting,
         )
     else:

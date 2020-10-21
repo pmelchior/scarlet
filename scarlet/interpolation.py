@@ -174,32 +174,6 @@ def common_projections(img1, img2):
     return project_image(img1, shape), project_image(img2, shape)
 
 
-def fft_convolve(*images):
-    """Use FFT's to convove an image with a kernel
-
-    Parameters
-    ----------
-    images: list of array-like
-        A list of images to convolve.
-
-    Returns
-    -------
-    result: array
-        The convolution in pixel space of `img` with `kernel`.
-    """
-    from autograd.numpy.numpy_boxes import ArrayBox
-
-    Images = [np.fft.fft2(np.fft.ifftshift(img)) for img in images]
-    if np.any([isinstance(img, ArrayBox) for img in images]):
-        Convolved = Images[0]
-        for img in Images[1:]:
-            Convolved = Convolved * img
-    else:
-        Convolved = np.prod(Images, 0)
-    convolved = np.fft.ifft2(Convolved)
-    return np.fft.fftshift(np.real(convolved))
-
-
 def bilinear(dx):
     """Bilinear interpolation kernel
 
@@ -623,49 +597,6 @@ def interpolate_observation(observation, frame, wave_filter=False):
             sinc_interp(image[None, :, :], coord_hr, coord_lr, angle=None)[0].T
         )
     return np.array(interp)
-
-
-def fft_resample(img, dy, dx, kernel=lanczos, **kwargs):
-    """Translate the image by a fraction of a pixel
-
-    This method uses FFT's to convolve the image with a
-    kernel to shift the position of the image by a fraction
-    of a pixel.
-
-    Parameters
-    ----------
-    img: array-like
-        Image
-    dx: float
-        Fractional amount to shift the convolution kernel in x.
-    dy: float
-        Fractional amount to shift the convolution kernel in y.
-    kernel: function
-        Kernel to use for the convolution.
-    kwargs: dict
-        Keyword arguments to build the kernel.
-
-    Returns
-    -------
-    result: Tensor
-        The convolved image.
-    """
-    # Build the kernel
-    kernel, ywin, xwin = get_separable_kernel(dy, dx, kernel=kernel, **kwargs)
-    # We have to project the image and kernels to the same
-    # shape to multiply them in Fourier space
-    hx, wx = img.shape
-    hk, wk = kernel.shape
-    # We have to pad the input image by the width of the kernel,
-    # because the Fourier Transform is periodic and will wrap the solution
-    shape = (hx + hk + 3, wx + wk + 3)
-
-    # Project the kernel onto the same space as the output image
-    yx0 = (ywin[0], xwin[0])
-    _kernel = project_image(kernel, shape, yx0)
-    _img = project_image(img, shape)
-    result = fft_convolve(_img, _kernel)
-    return project_image(result, img.shape)
 
 
 def get_common_padding(img1, img2, padding=None):

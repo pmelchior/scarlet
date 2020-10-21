@@ -26,9 +26,10 @@ install:
   # Use pip to install our rtd required packages
   - pip install -r docs/rtd-pip-requirements
   - python setup.py install
+
 # Run test
 script:
-  - pytest tests
+  - pytest tests --ignore=tests/test_regressions.py --ignore=tests/test_docs.py --ignore=tests/test_multiresolution.py
 
 # Calculate coverage
 #after_success:
