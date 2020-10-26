@@ -159,6 +159,30 @@ class Observation:
             )
             self._diff_kernels = fft.match_psfs(psf, model_psf)
 
+        # construct deconvolved image for detection:
+        # divide Fourier transform of images by Fourier transform of diff kernel
+        self.images_prerender = fft._kspace_operation(
+            fft.Fourier(self.images),
+            self._diff_kernels,
+            3,
+            fft.operator.truediv,
+            self.images.shape,
+            axes=(-2, -1),
+        ).image  # then get the image from Fourier
+
+        # deconvolve noise field to estimate its noise level
+        noise = np.random.normal(scale=1 / np.sqrt(self.weights))
+        noise_deconv = fft._kspace_operation(
+            fft.Fourier(noise),
+            self._diff_kernels,
+            3,
+            fft.operator.truediv,
+            self.images.shape,
+            axes=(-2, -1),
+        ).image
+        # spatiall flat noise, ignores any variation in self.weights
+        self.weights_prerender = noise_deconv.std(axis=(1, 2))[:, None, None]
+
         assert convolution_type in [
             "real",
             "fft",
