@@ -107,7 +107,7 @@ class Observation:
 
         self._parameters = ()
 
-    def match(self, model_frame, diff_kernels=None, convolution="fft"):
+    def match(self, model_frame, convolution_type="fft"):
         """Match the frame of `Blend` to the frame of this observation.
 
         The method sets up the mappings in spectral and spatial coordinates,
@@ -122,7 +122,7 @@ class Observation:
             The difference kernel for each band.
             If `diff_kernels` is `None` then they are
             calculated automatically.
-        convolution: str
+        convolution_type: str
             The type of convolution to use.
             - `real`: Use a real space convolution and gradient
             - `fft`: Use a DFT to do the convolution and gradient
@@ -150,26 +150,20 @@ class Observation:
                 self.weights = self.weights.copy().astype(model_frame.dtype)
 
         # construct diff kernels
-        if diff_kernels is None:
-            self._diff_kernels = None
-            if self.frame.psf is not model_frame.psf:
-                assert self.frame.psf is not None and model_frame.psf is not None
-                psf = fft.Fourier(self.frame.psf.get_model().astype(model_frame.dtype))
-                model_psf = fft.Fourier(
-                    model_frame.psf.get_model().astype(model_frame.dtype)
-                )
-                self._diff_kernels = fft.match_psfs(psf, model_psf)
-        else:
-            if not isinstance(diff_kernels, fft.Fourier):
-                diff_kernels = fft.Fourier(diff_kernels)
-            self._diff_kernels = diff_kernels
+        self._diff_kernels = None
+        if self.frame.psf is not model_frame.psf:
+            assert self.frame.psf is not None and model_frame.psf is not None
+            psf = fft.Fourier(self.frame.psf.get_model().astype(model_frame.dtype))
+            model_psf = fft.Fourier(
+                model_frame.psf.get_model().astype(model_frame.dtype)
+            )
+            self._diff_kernels = fft.match_psfs(psf, model_psf)
 
-        # initialize the filter window
-        assert convolution in [
+        assert convolution_type in [
             "real",
             "fft",
         ], "`convolution` must be either 'real' or 'fft'"
-        self.convolution = convolution
+        self._convolution_type = convolution_type
         return self
 
     @property
@@ -189,9 +183,9 @@ class Observation:
         """Convolve the model in a single band
         """
         if convolution_type is None:
-            convolution_type = self.convolution
+            convolution_type = self._convolution_type
         if convolution_type == "real":
-            result = convolve(model, self._diff_kernels.image, self.convolution_bounds)
+            result = convolve(model, self._diff_kernels.image, self._convolution_bounds)
         elif convolution_type == "fft":
             result = fft.convolve(
                 fft.Fourier(model), self._diff_kernels, axes=(1, 2)

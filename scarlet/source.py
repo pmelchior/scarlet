@@ -196,7 +196,6 @@ class SingleExtendedSource(FactorizedComponent):
                 coadd,
                 coadd_rms=coadd_rms,
                 thresh=thresh,
-                compact=compact,
                 symmetric=True,
                 monotonic="flat",
                 min_grad=0,
