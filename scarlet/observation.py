@@ -256,19 +256,19 @@ class Observation:
 
         from autograd.numpy.numpy_boxes import ArrayBox
 
-        if self.masks is not None and isinstance(model, ArrayBox):
-            # for masked pixels: replace image with rendered model
-            overlap_mask = self.masks[self.slices_for_images]
-            self.images[self.slices_for_images][overlap_mask] = model_._value[
-                overlap_mask
-            ]
-
         if self.frame != self.frame:
             images_ = self.images[self.slices_for_images]
             weights_ = self.weights[self.slices_for_images]
         else:
             images_ = self.images
             weights_ = self.weights
+
+        if self.masks is not None and isinstance(model, ArrayBox):
+            # for masked pixels: replace image with rendered model
+            overlap_mask = self.masks[self.slices_for_images]
+            images_[overlap_mask] = model_._value[overlap_mask] + np.random.normal(
+                scale=1 / np.sqrt(weights_[overlap_mask])
+            )
 
         return -self.log_norm - np.sum(weights_ * (model_ - images_) ** 2) / 2
 
