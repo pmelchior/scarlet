@@ -161,7 +161,7 @@ class Observation:
 
         # construct deconvolved image for detection:
         # divide Fourier transform of images by Fourier transform of diff kernel
-        self.images_prerender = fft._kspace_operation(
+        self.prerender_images = fft._kspace_operation(
             fft.Fourier(self.images),
             self._diff_kernels,
             3,
@@ -181,7 +181,7 @@ class Observation:
             axes=(-2, -1),
         ).image
         # spatiall flat noise, ignores any variation in self.weights
-        self.weights_prerender = noise_deconv.std(axis=(1, 2))[:, None, None]
+        self.prerender_sigma = noise_deconv.std(axis=(1, 2))
 
         assert convolution_type in [
             "real",
@@ -606,15 +606,18 @@ class LowResObservation(Observation):
 
         if self.isrot:
             self._resconv_op = self._resconv_op.reshape(*self._resconv_op.shape[:2], -1)
-            return self
-        if self.small_axis:
+        elif self.small_axis:
             self._resconv_op = self._resconv_op.reshape(*self._resconv_op.shape[:2], -1)
-            return self
         else:
             self._resconv_op = self._resconv_op.reshape(
                 self._resconv_op.shape[0], -1, self._resconv_op.shape[-1]
             )
-            return self
+
+        # TODO: interpolate obs to model and deconvolve with diff kernel
+        # do same thing with noise field
+        # ... interpolate_observation(obs, model_frame)
+
+        return self
 
     def render(self, model, *parameters):
         """Resample and convolve a model in the observation frame

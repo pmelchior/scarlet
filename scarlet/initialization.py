@@ -503,86 +503,54 @@ def init_multicomponent_source(
     return spectra, morphs, boxes
 
 
-def build_sed_coadd(seds, bg_rmses, observations, obs_ref=None):
-    """Build a channel weighted coadd to use for source detection
+def build_detection_image(observations, spectra=None):
+    """Build a spectrum-weighted detection image from all observations.
 
     Parameters
     ----------
-    sed: array
-        SED at the center of the source.
-    bg_rms: array
-        Background RMS in each channel in observation.
     observations: list of `~scarlet.observation.Observation`
-        Observations to use for the coadd.
-    obs_ref: `scarlet.Observation`
-        observation to use as a reference frame.
-        If set to None, the first (or only if applicable) element with type `Observation` is used.
+        Every Observation with a `image_prerender` member will contribute to the
+        detection image, according to the noise level of that prerender image
+    spectra: list of array
+        for every observation: spectrum at the center of the source
+        If not set, assumes a flat spectrum with amplitude 1 in every channel.
 
     Returns
     -------
     detect: array
         2D image created by weighting all of the channels by SED
-    bg_cutoff: float
-        he effective noise threshold
+    std: float
+        the effective noise standard deviation of `detect`
     """
+
     if not hasattr(observations, "__iter__"):
         observations = (observations,)
-        seds = (seds,)
-        bg_rmses = (bg_rmses,)
+        if spectra is not None:
+            spectra = (spectra,)
 
-    if len(observations) == 1:
-        obs_ref = observations[0]
-
-    # The observation that lives in the same plane as the frame
-    if obs_ref is None:
-        loc = np.where([type(obs) is Observation for obs in observations])
-        obs_ref = observations[np.int(loc[0])]
-    else:
-        # The observation that lives in the same plane as the frame
-        assert type(obs_ref) is not LowResObservation, (
-            f"Reference observation should not be a `LowResObservation`. The observation, {obs_ref} "
-            f"provided refers to an observation of type: {type(obs_ref)}"
-        )
-
-    positive_img = []
-    positive_bgrms = []
-    weights = []
-    jacobian_args = []
+    model_frame = observations[0].model_frame
+    img = np.zeros(model_frame.shape, dtype=model_frame.dtype)
+    std = np.zeros(model_frame.shape, dtype=model_frame.dtype)
     for i, obs in enumerate(observations):
-        sed = seds[i]
-        try:
-            iter(sed)
-        except TypeError:
-            sed = [sed]
-        C = len(sed)
-        bg_rms = bg_rmses[i]
-        try:
-            iter(bg_rms)
-        except TypeError:
-            bg_rms = [bg_rms]
-        if np.any(np.array(bg_rms) <= 0):
-            raise ValueError("bg_rms must be greater than zero in all channels")
 
-        positive = [c for c in range(C) if sed[c] > 0]
-        if type(obs) is not LowResObservation:
-            positive_img += [obs.images[c] for c in positive]
+        if not hasattr(obs.prerender_images) or obs.prerender_images is None:
+            continue
+
+        C = obs.frame.C
+        bg_rms = obs.prerender_sigma
+
+        if spectra is None:
+            spectrum = np.ones(C)
         else:
-            positive_img += [
-                interpolate_observation(obs, obs_ref.frame)[c] for c in positive
-            ]
-        positive_bgrms += [bg_rms[c] for c in positive]
-        weights += [sed[c] / bg_rms[c] ** 2 for c in positive]
-        jacobian_args += [sed[c] ** 2 / bg_rms[c] ** 2 for c in positive]
+            spectrum = spectra[i]
 
-    detect = np.einsum("i,i...", np.array(weights), positive_img) / np.sum(
-        jacobian_args
-    )
+        img[obs.slices_for_model] += (
+            obs.prerender_images[obs.slices_for_image]
+            * (spectrum / bg_rms ** 2)[:, None, None]
+        )
+        std[obs.slices_for_model] += (spectrum ** 2 / bg_rms ** 2)[:, None, None]
 
-    # thresh is multiple above the rms of detect (weighted variance across channels)
-    bg_cutoff = np.sqrt(
-        (np.array(weights) ** 2 * np.array(positive_bgrms) ** 2).sum()
-    ) / np.sum(jacobian_args)
-    return detect, bg_cutoff
+    return detect, std
 
 
 def build_initialization_coadd(observations, filtered_coadd=False, obs_idx=None):
