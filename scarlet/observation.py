@@ -54,30 +54,36 @@ class Observation:
     frame: a `scarlet.Frame` instance
         The spectral and spatial characteristics of these data
     weights: array or tensor
-        Weight for each pixel in `images`.
-        If a set of masks exists for the observations then
-        then any masked pixels should have their `weight` set
-        to zero.
+        Inverse variance weight for each pixel in `images`.
     padding: int
         Number of pixels to pad each side with, in addition to
         half the width of the PSF, for FFTs. This is needed to
         prevent artifacts from the FFT.
     """
 
-    def __init__(self, images, channels, psfs=None, weights=None, wcs=None, padding=10):
+    def __init__(
+        self,
+        images,
+        channels,
+        psfs=None,
+        weights=None,
+        masks=None,
+        wcs=None,
+        padding=10,
+    ):
         """Create an Observation
 
         Parameters
         ---------
-        images: array or tensor
+        images: array
             3D data cube (Channel, Height, Width) of the image in each band.
         psfs: `scarlet.PSF` or its arguments
             PSF in each channel. Can be 3D cube of images stacked in channel direction.
-        weights: array or tensor
-            Weight for each pixel in `images`.
-            If a set of masks exists for the observations then
-            then any masked pixels should have their `weight` set
-            to zero.
+        weights: array
+            Inverse variance weight for each pixel in `images`.
+        masks: array or slice
+            Pixels that should be ignored in `images.`
+            During model fitting, these pixels will be replaced by the current model
         wcs: TBD
             World Coordinate System associated with the images.
         channels: list of hashable elements
@@ -92,6 +98,10 @@ class Observation:
         )
 
         self.images = images
+        self.masks = masks
+        if masks is not None:
+            self.images = images.copy()  # masked pixels will be overwritten
+
         if weights is not None:
             self.weights = weights
         else:
@@ -99,6 +109,7 @@ class Observation:
         assert (
             self.weights.shape == self.images.shape
         ), "Weights needs to have same shape as images"
+
         self._padding = padding
         self.slices_for_model = (slice(None), slice(None), slice(None))
         self.slices_for_images = (slice(None), slice(None), slice(None))
@@ -145,9 +156,9 @@ class Observation:
         # check dtype consistency
         if self.frame.dtype != model_frame.dtype:
             self.frame.dtype = model_frame.dtype
-            self.images = self.images.copy().astype(model_frame.dtype)
+            self.images = self.images.astype(model_frame.dtype)
             if type(self.weights) is np.ndarray:
-                self.weights = self.weights.copy().astype(model_frame.dtype)
+                self.weights = self.weights.astype(model_frame.dtype)
 
         # construct diff kernels
         if diff_kernels is None:
@@ -242,6 +253,16 @@ class Observation:
         logL: float
         """
         model_ = self.render(model, *parameters)
+
+        from autograd.numpy.numpy_boxes import ArrayBox
+
+        if self.masks is not None and isinstance(model, ArrayBox):
+            # for masked pixels: replace image with rendered model
+            overlap_mask = self.masks[self.slices_for_images]
+            self.images[self.slices_for_images][overlap_mask] = model_._value[
+                overlap_mask
+            ]
+
         if self.frame != self.frame:
             images_ = self.images[self.slices_for_images]
             weights_ = self.weights[self.slices_for_images]
@@ -267,12 +288,14 @@ class Observation:
             # 1 / [(2pi)^1/2 (sigma^2)^1/2]
             # with inverse variance weights: sigma^2 = 1/weight
             # full likelihood is sum over all data samples: pixel in images
-            # NOTE: this assumes that all pixels are used in likelihood!
             log_sigma = np.zeros(weights_.shape, dtype=self.weights.dtype)
             cuts = weights_ > 0
+            if self.masks is not None:
+                cuts &= ~self.masks
             log_sigma[cuts] = np.log(1 / weights_[cuts])
             self._log_norm = (
-                np.prod(images_.shape) / 2 * np.log(2 * np.pi) + np.sum(log_sigma) / 2
+                np.prod(weights_[cuts].shape) / 2 * np.log(2 * np.pi)
+                + np.sum(log_sigma) / 2
             )
         return self._log_norm
 
