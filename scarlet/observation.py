@@ -142,7 +142,7 @@ class Observation:
         # this has to be done first because convolution is only determined for these
         self._channel_map = self.get_channel_map_for(model_frame)
 
-        # same of the 2D soatial region covered by data
+        # same of the 2D spatial region covered by data
         pixel_in_model_frame = self.frame.convert_pixel_to(model_frame)
         # since there cannot be rotation or scaling, it's only translation
         ll = pixel_in_model_frame.min(axis=0).astype("int")
@@ -214,6 +214,19 @@ class Observation:
         return self._parameters
 
     def get_channel_map_for(self, target):
+        """Compute the mapping between channels in the target frame and this observation
+
+        Parameters
+        ----------
+        target: a `scarlet.Frame` instance
+            The frame to match
+
+        Returns
+        -------
+        channel_map: None, slice, or array
+            None for identical channels in both frames; slice for concatenated channels;
+            array for linear mapping of target channels onto observation channels
+        """
 
         if list(self.frame.channels) == list(target.channels):
             return None
@@ -241,6 +254,18 @@ class Observation:
         return channel_map
 
     def map_channels(self, model):
+        """Map to model channels onto the observation channels
+
+        Parameters
+        ----------
+        model: array
+            The hyperspectral model
+
+        Returns
+        -------
+        obs_model: array
+            `model` mapped onto the observation channels
+        """
         if self._channel_map is None:
             return model
         if isinstance(self._channel_map, slice):
@@ -253,7 +278,7 @@ class Observation:
         Parameters
         ----------
         model: array
-            The model from `Blend`
+            The hyperspectral model
         parameters: tuple of optimization parameters
 
         Returns
