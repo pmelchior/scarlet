@@ -9,7 +9,8 @@ from .initialization import (
     init_compact_source,
     init_extended_source,
     init_multicomponent_source,
-    init_starlet_source,
+    build_detection_image,
+    rescale_spectrum,
 )
 from .morphology import (
     ImageMorphology,
@@ -88,60 +89,6 @@ class PointSource(FactorizedComponent):
         super().__init__(model_frame, spectrum, morphology)
 
 
-class StarletSource(FactorizedComponent):
-    """Source intialized with starlet coefficients
-
-    Sources are initialized with the SED of the center pixel,
-    and the morphologies are initialised as `~scarlet.ExtendedSource`
-    and transformed into starlet coefficients.
-    """
-
-    def __init__(
-        self,
-        model_frame,
-        sky_coord,
-        observations,
-        coadd=None,
-        bg_cutoff=None,
-        thresh=1.0,
-        min_grad=0.1,
-        starlet_thresh=5,
-    ):
-        """Extended source intialized to match a set of observations
-
-        Parameters
-        ----------
-        model_frame: `~scarlet.Frame`
-            The frame of the model
-        sky_coord: tuple
-            Center of the source
-        observations: instance or list of `~scarlet.observation.Observation`
-            Observation(s) to initialize this source.
-        thresh: `float`
-            Multiple of the backround RMS used as a
-            flux cutoff for morphology initialization.
-        """
-
-        # initialize from observation
-        sed, morph, bbox, thresh = init_starlet_source(
-            sky_coord,
-            model_frame,
-            observations,
-            coadd,
-            bg_cutoff,
-            thresh=thresh,
-            symmetric=True,
-            monotonic="angle",
-            min_grad=min_grad,
-            starlet_thresh=starlet_thresh,
-        )
-        spectrum = TabulatedSpectrum(model_frame, sed, bbox=bbox[0])
-        morphology = StarletMorphology(
-            model_frame, morph, bbox=bbox[1:], threshold=thresh
-        )
-        super().__init__(model_frame, spectrum, morphology)
-
-
 class SingleExtendedSource(FactorizedComponent):
     def __init__(
         self,
@@ -182,39 +129,115 @@ class SingleExtendedSource(FactorizedComponent):
         shifting: `bool`
             Whether or not a subpixel shift is added as optimization parameter
         """
-        # initialize from observation
-        if compact:
-            spectrum, morph, bbox = init_compact_source(
-                sky_coord, model_frame, observations
-            )
+        if not hasattr(observations, "__iter__"):
+            observations = (observations,)
 
+        # get PSF-corrected center pixel spectrum
+        spectra = get_pixel_spectrum(sky_coord, observations, correct_psf=True)
+        spectrum = np.concatenate(spectra, axis=0)
+
+        # initialize morphology
+        if compact:
+            morph, bbox = init_compact_source(sky_coord, model_frame)
         else:
-            spectrum, morph, bbox = init_extended_source(
+            # compute optimal SNR deconvolved coadd for detection
+            detect, std = build_detection_image(observations, spectra=spectra)
+            # make monotonic morphology, trimmed to box with pixels above std
+            morph, bbox = init_extended_source(
                 sky_coord,
                 model_frame,
-                observations,
-                coadd,
-                coadd_rms=coadd_rms,
+                detect,
+                std,
                 thresh=thresh,
                 symmetric=True,
                 monotonic="flat",
                 min_grad=0,
             )
-
-        spectrum = TabulatedSpectrum(model_frame, spectrum, bbox=bbox[0])
-
         center = model_frame.get_pixel(sky_coord)
         morphology = ExtendedSourceMorphology(
             model_frame,
             center,
             morph,
-            bbox=bbox[1:],
+            bbox=bbox,
             monotonic="angle",
             symmetric=False,
             min_grad=0,
             shifting=shifting,
         )
+
+        # correct spectrum for deviation from PSF shape and amplitude
+        rescale_spectrum(spectrum, morph, model_frame)
+        spectrum = TabulatedSpectrum(model_frame, spectrum)
+
+        # set up model with its parameters
+        super().__init__(model_frame, spectrum, morphology)
+
+        # retain center as attribute
         self.center = morphology.center
+
+
+class StarletSource(FactorizedComponent):
+    """Source intialized with starlet coefficients
+
+    Sources are initialized with the SED of the center pixel,
+    and the morphologies are initialised as `~scarlet.ExtendedSource`
+    and transformed into starlet coefficients.
+    """
+
+    def __init__(
+        self,
+        model_frame,
+        sky_coord,
+        observations,
+        thresh=1.0,
+        min_grad=0.1,
+        starlet_thresh=5e-3,
+    ):
+        """Extended source intialized to match a set of observations
+
+        Parameters
+        ----------
+        model_frame: `~scarlet.Frame`
+            The frame of the model
+        sky_coord: tuple
+            Center of the source
+        observations: instance or list of `~scarlet.observation.Observation`
+            Observation(s) to initialize this source.
+        thresh: `float`
+            Multiple of the backround RMS used as a
+            flux cutoff for morphology initialization.
+        """
+
+        if not hasattr(observations, "__iter__"):
+            observations = (observations,)
+
+        # get PSF-corrected center pixel spectrum
+        spectra = get_pixel_spectrum(sky_coord, observations, correct_psf=True)
+        spectrum = np.concatenate(spectra, axis=0)
+
+        # initialize morphology
+        detect, std = build_detection_image(observations, spectra=spectra)
+        # make monotonic morphology, trimmed to box with pixels above std
+        morph, bbox = init_extended_source(
+            sky_coord,
+            model_frame,
+            detect,
+            std,
+            thresh=thresh,
+            symmetric=True,
+            monotonic="flat",
+            min_grad=0,
+        )
+        # transform to starlets
+        morphology = StarletMorphology(
+            model_frame, morph, bbox=bbox, threshold=starlet_thresh
+        )
+
+        # correct spectrum for deviation from PSF shape and amplitude
+        morph = morphology.get_model()
+        rescale_spectrum(spectrum, morph, model_frame)
+        spectrum = TabulatedSpectrum(model_frame, spectrum)
+
         super().__init__(model_frame, spectrum, morphology)
 
 

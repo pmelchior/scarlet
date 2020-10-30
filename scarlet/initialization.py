@@ -67,11 +67,14 @@ def get_pixel_spectrum(sky_coord, observations, correct_psf=False):
 
     Returns
     -------
-    spectrum: `~numpy.array`
+    spectrum: `~numpy.array` or list thereof
     """
 
     if not hasattr(observations, "__iter__"):
+        single = True
         observations = (observations,)
+    else:
+        single = False
 
     spectra = []
     for obs in observations:
@@ -90,19 +93,19 @@ def get_pixel_spectrum(sky_coord, observations, correct_psf=False):
 
         spectra.append(spectrum)
 
-    spectrum = np.concatenate(spectra).reshape(-1)
+        if np.any(spectrum <= 0):
+            # If the flux in all channels is  <=0,
+            # the new sed will be filled with NaN values,
+            # which will cause the code to crash later
+            msg = f"Zero or negative spectrum {spectrum} at {sky_coord}"
+            if np.all(spectrum <= 0):
+                logger.warning(msg)
+            else:
+                logger.info(msg)
 
-    if np.any(spectrum <= 0):
-        # If the flux in all channels is  <=0,
-        # the new sed will be filled with NaN values,
-        # which will cause the code to crash later
-        msg = "Zero or negative spectrum {} at y={}, x={}".format(spectrum, *sky_coord)
-        if np.all(spectrum <= 0):
-            logger.warning(msg)
-        else:
-            logger.info(msg)
-
-    return spectrum
+    if single:
+        return spectra[0]
+    return spectra
 
 
 def get_psf_spectrum(sky_coord, observations):
@@ -124,15 +127,17 @@ def get_psf_spectrum(sky_coord, observations):
 
     Returns
     -------
-    spectrum: `~numpy.array`
+    spectrum: ~numpy.array` or list thereof
     """
 
     if not hasattr(observations, "__iter__"):
+        single = True
         observations = (observations,)
+    else:
+        single = False
 
     spectra = []
     for obs in observations:
-
         pixel = obs.frame.get_pixel(sky_coord)
         index = np.round(pixel).astype(np.int)
 
@@ -151,19 +156,19 @@ def get_psf_spectrum(sky_coord, observations):
         spectrum = (img * psf).sum(axis=1) / (psf * psf).sum(axis=1)
         spectra.append(spectrum)
 
-    spectrum = np.concatenate(spectra).reshape(-1)
+        if np.any(spectrum <= 0):
+            # If the flux in all channels is  <=0,
+            # the new sed will be filled with NaN values,
+            # which will cause the code to crash later
+            msg = f"Zero or negative spectrum {spectrum} at {sky_coord}"
+            if np.all(spectrum <= 0):
+                logger.warning(msg)
+            else:
+                logger.info(msg)
 
-    if np.any(spectrum <= 0):
-        # If the flux in all channels is  <=0,
-        # the new sed will be filled with NaN values,
-        # which will cause the code to crash later
-        msg = "Zero or negative spectrum {} at y={}, x={}".format(spectrum, *sky_coord)
-        if np.all(spectrum <= 0):
-            logger.warning(msg)
-        else:
-            logger.info(msg)
-
-    return spectrum
+    if single:
+        return spectra[0]
+    return spectra
 
 
 def get_minimal_boxsize(size, min_size=15, increment=8):
@@ -204,15 +209,10 @@ def trim_morphology(center_index, morph, bg_thresh=0):
     return morph, bbox
 
 
-def init_compact_source(
-    sky_coord, frame, observations,
-):
+def init_compact_source(sky_coord, frame):
     """Initialize a source just like `init_extended_source`,
     but with the morphology of a point source.
     """
-
-    # get PSF-corrected center pixel spectrum
-    spectrum = get_pixel_spectrum(sky_coord, observations, correct_psf=True)
 
     # position in frame coordinates
     center = frame.get_pixel(sky_coord)
@@ -240,22 +240,16 @@ def init_compact_source(
     morph[slices[0]] = morph_[slices[1]]
 
     # apply max normalization
-    morph_max = morph.max()
-    morph /= morph_max
-    spectrum *= morph_max
+    morph /= morph.max()
 
-    # expand to full bbox
-    bbox = frame.bbox[0] @ bbox
-
-    return spectrum, morph, bbox
+    return morph, bbox
 
 
 def init_extended_source(
     sky_coord,
     frame,
-    observations,
-    coadd=None,
-    coadd_rms=None,
+    detect,
+    detect_std,
     thresh=1,
     symmetric=True,
     monotonic="flat",
@@ -264,154 +258,80 @@ def init_extended_source(
     """Initialize the source that is symmetric and monotonic
     See `ExtendedSource` for a description of the parameters
     """
-    if not hasattr(observations, "__iter__"):
-        observations = (observations,)
-
-    # get PSF-corrected center pixel spectrum
-    spectrum = get_pixel_spectrum(sky_coord, observations, correct_psf=True)
 
     # position in frame coordinates
     center = frame.get_pixel(sky_coord)
     center_index = np.round(center).astype(np.int)
 
-    if coadd is None:
-        # determine initial SED from peak position
-        # don't correct for PSF variation: emphasize sharper bands
-        spectra = [
-            get_pixel_spectrum(sky_coord, obs, correct_psf=False)
-            for obs in observations
-        ]
-
-        try:
-            bg_rmses = np.array(
-                [
-                    [1 / np.sqrt(w[w > 0].mean()) for w in obs.weights]
-                    for obs in observations
-                ]
-            )
-        except:
-            raise AttributeError(
-                "Observation.weights missing! Please set inverse variance weights"
-            )
-        coadd, bg_rms = build_sed_coadd(spectra, bg_rmses, observations)
-    else:
-        if coadd_rms is None:
-            raise AttributeError(
-                "background cutoff missing! Please set argument coadd_rms"
-            )
-        coadd = coadd.copy()  # will likely be reused by other sources
-        bg_rms = coadd_rms
+    # Copy detect if reused for other sources
+    im = detect.copy()
 
     # Apply the necessary constraints
     if symmetric:
-        morph = operator.prox_uncentered_symmetry(
-            coadd,
+        im = operator.prox_uncentered_symmetry(
+            im,
             0,
             center=center_index,
             algorithm="sdss",  # *1 is to artificially pass a variable that is not coadd
         )
-    else:
-        morph = coadd
     if monotonic:
         if monotonic is True:
             monotonic = "angle"
         # use finite thresh to remove flat bridges
         prox_monotonic = operator.prox_weighted_monotonic(
-            morph.shape,
+            im.shape,
             neighbor_weight=monotonic,
             center=center_index,
             min_gradient=min_grad,
         )
-        morph = prox_monotonic(morph, 0).reshape(morph.shape)
+        im = prox_monotonic(im, 0).reshape(im.shape)
 
     # truncate morph at thresh * bg_rms
-    threshold = bg_rms * thresh
-    morph, bbox = trim_morphology(center_index, morph, bg_thresh=threshold)
-    bbox = frame.bbox[0] @ bbox
+    threshold = detect_std * thresh
+    morph, bbox = trim_morphology(center_index, im, bg_thresh=threshold)
 
     # normalize to unity at peak pixel for the imposed normalization
     if morph.sum() > 0:
         morph /= morph.max()
-
-        # since the spectrum assumes a point source:
-        # determine the optimal amplitude for matching morph and the model psf
-        # TODO: morph is still convolved with the observed PSF, but we compute
-        # amplitude correction as if it were not..
-        if frame.psf is not None:
-            psf = frame.psf.get_model()
-
-            shape = (psf.shape[0], *morph.shape)
-            bbox_ = Box(
-                shape,
-                origin=(
-                    psf.shape[0] - shape[0],
-                    psf.shape[1] // 2 - shape[1] // 2,
-                    psf.shape[2] // 2 - shape[2] // 2,
-                ),
-            )
-            psf = bbox_.extract_from(psf)
-
-            # spectrum assumes the source to have point-source morphology,
-            # otherwise get_pixel_spectrum is not well-defined.
-            # factor corrects that by finding out how much (in terms of a scalar number)
-            # morph looks like the (model) psf.
-            # if model psf is constant across bands (as it should) then factor
-            # is constant as well
-            factor = (morph[None, :, :] * psf).sum(axis=(1, 2)) / (psf * psf).sum(
-                axis=(1, 2)
-            )
-
-            # correct amplitude from point source to this morph
-            spectrum /= factor
-
     else:
-        morph = CenterOnConstraint()(morph, 0)
+        morph = CenterOnConstraint(tiny=1)(morph, 0)
         msg = "No flux in morphology model for source at y={0} x={1}".format(*sky_coord)
         logger.warning(msg)
 
-    return spectrum, morph, bbox
+    return morph, bbox
 
 
-def init_starlet_source(
-    sky_coord,
-    model_frame,
-    observations,
-    coadd=None,
-    coadd_rms=None,
-    thresh=1,
-    symmetric=True,
-    monotonic="flat",
-    min_grad=0.1,
-    starlet_thresh=5,
-):
+def rescale_spectrum(spectrum, morph, frame):
+    # since the spectrum assumes a point source:
+    # determine the optimal amplitude for matching morph and the model psf
+    # TODO: morph is still convolved with the observed PSF, but we compute
+    # amplitude correction as if it were not..
+    if frame.psf is not None:
+        psf = frame.psf.get_model()
 
-    # initialize as extended from observation
-    if not hasattr(observations, "__iter__"):
-        observations = (observations,)
+        shape = (psf.shape[0], *morph.shape)
+        bbox_ = Box(
+            shape,
+            origin=(
+                psf.shape[0] - shape[0],
+                psf.shape[1] // 2 - shape[1] // 2,
+                psf.shape[2] // 2 - shape[2] // 2,
+            ),
+        )
+        psf = bbox_.extract_from(psf)
 
-    sed, morph, bbox = init_extended_source(
-        sky_coord,
-        model_frame,
-        observations,
-        coadd=coadd,
-        coadd_rms=coadd_rms,
-        thresh=thresh,
-        symmetric=symmetric,
-        monotonic=monotonic,
-        min_grad=min_grad,
-    )
+        # spectrum assumes the source to have point-source morphology,
+        # otherwise get_pixel_spectrum is not well-defined.
+        # factor corrects that by finding out how much (in terms of a scalar number)
+        # morph looks like the (model) psf.
+        # if model psf is constant across bands (as it should) then factor
+        # is constant as well
+        factor = (morph[None, :, :] * psf).sum(axis=(1, 2)) / (psf * psf).sum(
+            axis=(1, 2)
+        )
 
-    noise = []
-    for obs in observations:
-        noise += [
-            mad_wavelet(obs.images)
-            * np.sqrt(np.sum(obs._diff_kernels.image ** 2, axis=(-2, -1)))
-        ]
-    noise = np.concatenate(noise)
-
-    # Threshold in units of noise on the coadd
-    thresh = starlet_thresh * np.sqrt(np.sum((sed * noise) ** 2))
-    return sed, morph, bbox, thresh
+        # correct amplitude from point source to this morph
+        spectrum /= factor
 
 
 def init_multicomponent_source(
@@ -529,11 +449,11 @@ def build_detection_image(observations, spectra=None):
             spectra = (spectra,)
 
     model_frame = observations[0].model_frame
-    img = np.zeros(model_frame.shape, dtype=model_frame.dtype)
+    detect = np.zeros(model_frame.shape, dtype=model_frame.dtype)
     std = np.zeros(model_frame.shape, dtype=model_frame.dtype)
     for i, obs in enumerate(observations):
 
-        if not hasattr(obs.prerender_images) or obs.prerender_images is None:
+        if not hasattr(obs, "prerender_images") or obs.prerender_images is None:
             continue
 
         C = obs.frame.C
@@ -544,11 +464,15 @@ def build_detection_image(observations, spectra=None):
         else:
             spectrum = spectra[i]
 
-        img[obs.slices_for_model] += (
-            obs.prerender_images[obs.slices_for_image]
+        detect[obs.slices_for_model] += (
+            obs.prerender_images[obs.slices_for_images]
             * (spectrum / bg_rms ** 2)[:, None, None]
         )
+
         std[obs.slices_for_model] += (spectrum ** 2 / bg_rms ** 2)[:, None, None]
+
+    detect = detect.sum(axis=0)
+    std = np.sqrt(std.sum(axis=0))
 
     return detect, std
 
