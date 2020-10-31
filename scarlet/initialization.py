@@ -33,7 +33,6 @@ def get_best_fit_spectra(morphs, images):
     SED: `~numpy.array`
     """
     K = len(morphs)
-    _morph = morphs.reshape(K, -1)
     if isinstance(images, np.ndarray):
         images_ = images
     elif isinstance(images, Observation):
@@ -45,7 +44,12 @@ def get_best_fit_spectra(morphs, images):
         images_ = np.stack(tuple(obs.images for obs in images), axis=0)
 
     data = images_.reshape(images_.shape[0], -1)
-    seds = np.dot(np.linalg.inv(np.dot(_morph, _morph.T)), np.dot(_morph, data.T))
+    if K == 1:
+        morph = morphs.reshape(-1)
+        seds = (np.dot(data, morph) / np.dot(morph, morph),)
+    else:
+        morph = morphs.reshape(K, -1)
+        seds = np.dot(np.linalg.inv(np.dot(morph, morph.T)), np.dot(morph, data.T))
     return seds
 
 
@@ -295,7 +299,7 @@ def init_extended_source(
         morph /= morph.max()
     else:
         morph = CenterOnConstraint(tiny=1)(morph, 0)
-        msg = "No flux in morphology model for source at y={0} x={1}".format(*sky_coord)
+        msg = f"No flux in morphology model for source at {sky_coord}"
         logger.warning(msg)
 
     return morph, bbox
@@ -337,48 +341,30 @@ def rescale_spectrum(spectrum, morph, frame):
 def init_multicomponent_source(
     sky_coord,
     frame,
-    observations,
-    coadd=None,
-    coadd_rms=None,
-    flux_percentiles=None,
+    detect,
+    detect_std,
+    flux_percentiles,
     thresh=1,
     symmetric=True,
     monotonic="flat",
-    min_grad=0.1,
-    obs_ref=None,
+    min_grad=0,
 ):
     """Initialize multiple components
     See `MultiComponentSource` for a description of the parameters
     """
-    try:
-        iter(observations)
-    except TypeError:
-        observations = [observations]
 
-    if obs_ref is None:
-        if len(observations) == 1:
-            obs_ref = observations[0]
-        else:
-            # The observation that lives in the same plane as the frame
-            loc = np.where([type(obs) is Observation for obs in observations])
-            # If more than one element is an `Observation`, then pick the first one as a reference (arbitrary)
-            obs_ref = observations[loc[0]]
-
-    if flux_percentiles is None:
-        flux_percentiles = [25]
-
-    # Initialize the first component as an extended source
-    sed, morph, bbox = init_extended_source(
+    # Initialize the whole component as an extended source
+    morph, bbox = init_extended_source(
         sky_coord,
         frame,
-        observations,
-        coadd=coadd,
-        coadd_rms=coadd_rms,
+        detect,
+        detect_std,
         thresh=thresh,
         symmetric=symmetric,
         monotonic=monotonic,
         min_grad=min_grad,
     )
+
     # create a list of components from base morph by layering them on top of
     # each other so that they sum up to morph
     K = len(flux_percentiles) + 1
@@ -400,27 +386,13 @@ def init_multicomponent_source(
     # renormalize morphs: initially Smax
     for k in range(K):
         if np.all(morphs[k] <= 0):
-            msg = "Zero or negative morphology for component {} at y={}, x={}"
-            logger.warning(msg.format(k, *sky_coord))
-        morphs[k] /= morphs[k].max()
-
-    # optimal SEDs given the morphologies, assuming img only has that source
-    boxed_img = bbox.extract_from(obs_ref.images)
-    spectra = get_best_fit_spectra(morphs, boxed_img)
-
-    for k in range(K):
-        if np.all(spectra[k] <= 0):
-            # If the flux in all channels is  <=0,
-            # the new sed will be filled with NaN values,
-            # which will cause the code to crash later
-            msg = "Zero or negative spectrum {} for component {} at y={}, x={}".format(
-                spectra[k], k, *sky_coord
-            )
+            msg = f"Zero or negative morphology for component {k} at {sky_coord}"
             logger.warning(msg)
+        morphs[k] /= morphs[k].max()
 
     # avoid using the same box for multiple components
     boxes = tuple(bbox.copy() for k in range(K))
-    return spectra, morphs, boxes
+    return morphs, boxes
 
 
 def build_detection_image(observations, spectra=None):
@@ -433,7 +405,7 @@ def build_detection_image(observations, spectra=None):
         detection image, according to the noise level of that prerender image
     spectra: list of array
         for every observation: spectrum at the center of the source
-        If not set, assumes a flat spectrum with amplitude 1 in every channel.
+        If not set, returns the detection image in all channels, instead of averaging.
 
     Returns
     -------
@@ -450,7 +422,7 @@ def build_detection_image(observations, spectra=None):
 
     model_frame = observations[0].model_frame
     detect = np.zeros(model_frame.shape, dtype=model_frame.dtype)
-    std = np.zeros(model_frame.shape, dtype=model_frame.dtype)
+    var = np.zeros(model_frame.shape, dtype=model_frame.dtype)
     for i, obs in enumerate(observations):
 
         if not hasattr(obs, "prerender_images") or obs.prerender_images is None:
@@ -460,21 +432,21 @@ def build_detection_image(observations, spectra=None):
         bg_rms = obs.prerender_sigma
 
         if spectra is None:
-            spectrum = np.ones(C)
+            spectrum = weights = 1
         else:
-            spectrum = spectra[i]
+            spectrum = spectra[i][:, None, None]
+            weights = spectrum / (bg_rms ** 2)[:, None, None]
 
         detect[obs.slices_for_model] += (
-            obs.prerender_images[obs.slices_for_images]
-            * (spectrum / bg_rms ** 2)[:, None, None]
+            weights * obs.prerender_images[obs.slices_for_images]
         )
+        var[obs.slices_for_model] += spectrum * weights
 
-        std[obs.slices_for_model] += (spectrum ** 2 / bg_rms ** 2)[:, None, None]
+    if spectra is not None:
+        detect = detect.sum(axis=0)
+        var = var.sum(axis=0)
 
-    detect = detect.sum(axis=0)
-    std = np.sqrt(std.sum(axis=0))
-
-    return detect, std
+    return detect, np.sqrt(var)
 
 
 def build_initialization_coadd(observations, filtered_coadd=False, obs_idx=None):

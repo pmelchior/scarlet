@@ -1,11 +1,12 @@
 import autograd.numpy as np
 from functools import partial
 
+from .bbox import Box
 from .component import CombinedComponent, FactorizedComponent
 from .constraint import PositivityConstraint
 from .initialization import (
+    get_best_fit_spectra,
     get_pixel_spectrum,
-    get_psf_spectrum,
     init_compact_source,
     init_extended_source,
     init_multicomponent_source,
@@ -95,8 +96,6 @@ class SingleExtendedSource(FactorizedComponent):
         model_frame,
         sky_coord,
         observations,
-        coadd=None,
-        coadd_rms=None,
         thresh=1.0,
         compact=False,
         shifting=False,
@@ -117,10 +116,6 @@ class SingleExtendedSource(FactorizedComponent):
             Center of the source
         observations: instance or list of `~scarlet.observation.Observation`
             Observation(s) to initialize this source.
-        coadd: `numpy.ndarray`
-            The coaddition of all images across observations.
-        coadd_rms: float
-            Noise level of the coadd
         thresh: `float`
             Multiple of the backround RMS used as a
             flux cutoff for morphology initialization.
@@ -261,8 +256,6 @@ class MultiExtendedSource(CombinedComponent):
         observations,
         K=2,
         flux_percentiles=None,
-        coadd=None,
-        coadd_rms=None,
         thresh=1.0,
         shifting=False,
     ):
@@ -284,52 +277,65 @@ class MultiExtendedSource(CombinedComponent):
             outermost component. If it is above, the percentile value will be subtracted
             and the remainder attributed to the next component.
             If `flux_percentiles` is `None` then `flux_percentiles=[25,]`.
-        coadd: `numpy.ndarray`
-            The coaddition of all images across observations.
-        coadd_rms: float
-            Noise level of the coadd
         thresh: `float`
             Multiple of the backround RMS used as a
             flux cutoff for morphology initialization.
         shifting: `bool`
             Whether or not a subpixel shift is added as optimization parameter
         """
+
         if flux_percentiles is None:
             flux_percentiles = (25,)
         assert K == len(flux_percentiles) + 1
 
         # initialize from observation
-        spectra, morphs, boxes = init_multicomponent_source(
+        if not hasattr(observations, "__iter__"):
+            observations = (observations,)
+
+        # initialize morphology
+        spectra = get_pixel_spectrum(sky_coord, observations, correct_psf=True)
+        detect, std = build_detection_image(observations, spectra=spectra)
+        morphs, boxes = init_multicomponent_source(
             sky_coord,
             model_frame,
-            observations,
-            coadd=coadd,
-            coadd_rms=coadd_rms,
-            flux_percentiles=flux_percentiles,
+            detect,
+            std,
+            flux_percentiles,
             thresh=thresh,
             symmetric=True,
             monotonic="flat",
             min_grad=0,
         )
 
-        center = model_frame.get_pixel(sky_coord)
+        # find best-fit spectra for each of morph from unweighted deconvolution coadd
+        # assumes img only has that source in region of the box
+        detect, std = build_detection_image(observations)
+        box_3D = Box((model_frame.C,)) @ boxes[0]
+        boxed_img = box_3D.extract_from(detect)
+        spectra = get_best_fit_spectra(morphs, boxed_img)
+
+        for k in range(K):
+            if np.all(spectra[k] <= 0):
+                # If the flux in all channels is  <=0,
+                # the new sed will be filled with NaN values,
+                # which will cause the code to crash later
+                msg = "Zero or negative spectrum {} for component {} at y={}, x={}".format(
+                    spectra[k], k, *sky_coord
+                )
+                logger.warning(msg)
+
+        # create one component for each spectrum and morphology
         components = []
+        center = model_frame.get_pixel(sky_coord)
         for k in range(K):
 
-            # higher tolerance on SED: construct parameter explicitly with larger step
-            spectrum = Parameter(
-                spectra[k],
-                name="spectrum",
-                step=partial(relative_step, factor=1e-1),
-                constraint=PositivityConstraint(zero=1e-20),
-            )
-            spectrum = TabulatedSpectrum(model_frame, spectrum)
+            spectrum = TabulatedSpectrum(model_frame, spectra[k])
 
             morphology = ExtendedSourceMorphology(
                 model_frame,
                 center,
                 morphs[k],
-                bbox=boxes[k][1:],
+                bbox=boxes[k],
                 monotonic="angle",
                 symmetric=False,
                 min_grad=0,
@@ -358,8 +364,6 @@ def ExtendedSource(
     observations,
     K=1,
     flux_percentiles=None,
-    coadd=None,
-    coadd_rms=None,
     thresh=1.0,
     compact=False,
     shifting=False,
@@ -375,8 +379,6 @@ def ExtendedSource(
             model_frame,
             sky_coord,
             observations,
-            coadd=coadd,
-            coadd_rms=coadd_rms,
             thresh=thresh,
             compact=compact,
             shifting=shifting,
@@ -388,8 +390,6 @@ def ExtendedSource(
             observations,
             K=K,
             flux_percentiles=flux_percentiles,
-            coadd=coadd,
-            coadd_rms=coadd_rms,
             thresh=thresh,
             shifting=shifting,
         )
