@@ -117,13 +117,16 @@
 <col style="width: 90%" />
 </colgroup>
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.frame.Frame.from_observations" title="scarlet.frame.Frame.from_observations"><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_observations</span></code></a>(observations[, …])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.frame.Frame.convert_pixel_to" title="scarlet.frame.Frame.convert_pixel_to"><code class="xref py py-obj docutils literal notranslate"><span class="pre">convert_pixel_to</span></code></a>(target[, pixel])</p></td>
+<td><p>Converts pixel coordinates from this frame to <cite>target</cite> Frame</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.frame.Frame.from_observations" title="scarlet.frame.Frame.from_observations"><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_observations</span></code></a>(observations[, …])</p></td>
 <td><p>Generates a frame from a set of observations.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.frame.Frame.get_pixel" title="scarlet.frame.Frame.get_pixel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_pixel</span></code></a>(sky_coord)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.frame.Frame.get_pixel" title="scarlet.frame.Frame.get_pixel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_pixel</span></code></a>(sky_coord)</p></td>
 <td><p>Get the pixel coordinate from a world coordinate</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.frame.Frame.get_sky_coord" title="scarlet.frame.Frame.get_sky_coord"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_sky_coord</span></code></a>(pixel)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.frame.Frame.get_sky_coord" title="scarlet.frame.Frame.get_sky_coord"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_sky_coord</span></code></a>(pixel)</p></td>
 <td><p>Get the sky coordinate from a pixel coordinate</p></td>
 </tr>
 </tbody>
@@ -150,6 +153,29 @@
 <dt id="scarlet.frame.Frame.bbox">
 <em class="property">property </em><code class="sig-name descname">bbox</code><a class="headerlink" href="#scarlet.frame.Frame.bbox" title="Permalink to this definition">¶</a></dt>
 <dd><p>The <cite>~scarlet.bbox.Box</cite> of this <cite>Frame</cite>.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="scarlet.frame.Frame.convert_pixel_to">
+<code class="sig-name descname">convert_pixel_to</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">target</span></em>, <em class="sig-param"><span class="n">pixel</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/frame.html#Frame.convert_pixel_to"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.frame.Frame.convert_pixel_to" title="Permalink to this definition">¶</a></dt>
+<dd><p>Converts pixel coordinates from this frame to <cite>target</cite> Frame</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>target: `~scarlet.Frame`</strong></dt><dd><p>target frame</p>
+</dd>
+<dt><strong>pixel: `tuple` or list ((y1,y2, …), (x1, x2, …))</strong></dt><dd><p>pixel coordinates in this frame
+If not set, convert all pixels in this frame</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>coord_target: <cite>tuple</cite></dt><dd><p>coordinates at the location of <cite>coord</cite> in the target frame</p>
+</dd>
+</dl>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
