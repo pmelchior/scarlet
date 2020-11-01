@@ -132,6 +132,34 @@ class Frame:
             return sky[0]
         return sky
 
+    def convert_pixel_to(self, target, pixel=None):
+        """Converts pixel coordinates from this frame to `target` Frame
+
+        Parameters
+        ----------
+        target: `~scarlet.Frame`
+            target frame
+        pixel: `tuple` or list ((y1,y2, ...), (x1, x2, ...))
+            pixel coordinates in this frame
+            If not set, convert all pixels in this frame
+
+        Returns
+        -------
+        coord_target: `tuple`
+            coordinates at the location of `coord` in the target frame
+        """
+        if pixel is None:
+            bounds = self._bbox.bounds
+            y, x = np.meshgrid(np.arange(*(bounds[1])), np.arange(*(bounds[2])))
+            pixel = np.stack((y.flatten(), x.flatten()), axis=1)
+
+        ra_dec = self.get_sky_coord(pixel)
+        pixel_ = target.get_pixel(ra_dec)
+
+        if pixel_.size == 2:  # only one coordinate pair
+            return pixel_[0]
+        return pixel_
+
     @staticmethod
     def from_observations(
         observations, target_psf=None, target_wcs=None, obs_id=None, coverage="union"
