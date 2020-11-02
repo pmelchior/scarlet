@@ -493,6 +493,7 @@ class LowResObservation(Observation):
         coord: `array`
             coordinates of the pixels in the frame to fit
         """
+        self.model_frame = model_frame
         if self.frame.dtype != model_frame.dtype:
             self.images = self.images.astype(model_frame.dtype)
             if type(self.weights) is np.ndarray:
@@ -613,9 +614,36 @@ class LowResObservation(Observation):
                 self._resconv_op.shape[0], -1, self._resconv_op.shape[-1]
             )
 
-        # TODO: interpolate obs to model and deconvolve with diff kernel
+        # construct deconvolved image for detection:
+        # * interpolate to model frame
+        # * divide Fourier transform of images by Fourier transform of diff kernel
+        self.prerender_images = interpolation.interpolate_observation(self, model_frame)
+        self.prerender_images = fft._kspace_operation(
+            fft.Fourier(self.prerender_images),
+            self._diff_kernels,
+            3,
+            fft.operator.truediv,
+            self.prerender_images.shape,
+            axes=(-2, -1),
+        ).image  # then get the image from Fourier
+
         # do same thing with noise field
-        # ... interpolate_observation(obs, model_frame)
+        noise = np.random.normal(scale=1 / np.sqrt(self.weights))
+        # temporarily replace obs.images with noise
+        images = self.images
+        self.images = noise
+        noise = interpolation.interpolate_observation(self, model_frame)
+        self.images = images
+        noise_deconv = fft._kspace_operation(
+            fft.Fourier(noise),
+            self._diff_kernels,
+            3,
+            fft.operator.truediv,
+            self.images.shape,
+            axes=(-2, -1),
+        ).image
+        # spatially flat noise, ignores any variation in self.weights
+        self.prerender_sigma = noise_deconv.std(axis=(1, 2))
 
         return self
 
