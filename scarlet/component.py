@@ -6,6 +6,8 @@ from .parameter import Parameter, relative_step
 from .constraint import PositivityConstraint
 from .bbox import Box, overlapped_slices
 from .fft import fast_zero_pad
+from .morphology import Morphology
+from .spectrum import Spectrum
 
 
 class Component(Model):
@@ -136,13 +138,10 @@ class FactorizedComponent(Component):
     """
 
     def __init__(self, frame, spectrum, morphology):
-        from .spectrum import Spectrum
-
         assert isinstance(spectrum, Spectrum)
-        from .morphology import Morphology
-
         assert isinstance(morphology, Morphology)
-        bbox = spectrum.bbox @ morphology.bbox
+
+        bbox = spectrum.bbox @ morphology.bbox[-2:]
 
         super().__init__(frame, children=[spectrum, morphology], bbox=bbox)
 
@@ -163,7 +162,12 @@ class FactorizedComponent(Component):
             (Channels, Height, Width) image of the model
         """
         spectrum, morphology = self.get_models_of_children(*parameters)
-        model = spectrum[:, None, None] * morphology[None, :, :]
+        if len(morphology.shape) == 2:
+            model = spectrum[:, None, None] * morphology[None, :, :]
+        elif len(morphology.shape) == 3:
+            model = spectrum[:, None, None] * morphology
+        else:
+            raise AttributeError("morphology must be 2D or 3D")
 
         # project the model into frame (if necessary)
         if frame is not None:

@@ -13,6 +13,7 @@ from .spectrum import *
 from . import display
 from . import initialization
 from . import measure
+from . import testing
 
 try:
     from ._version import version

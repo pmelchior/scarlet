@@ -2,6 +2,7 @@ import numpy as np
 from astropy.visualization.lupton_rgb import LinearMapping, AsinhMapping
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle, Polygon
+from matplotlib.ticker import MaxNLocator
 from .bbox import Box
 from .component import Component
 
@@ -181,6 +182,7 @@ def show_likelihood(blend, figsize=None, **kwargs):
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     ax.plot(blend.log_likelihood, **kwargs)
     ax.set_xlabel("Iteration")
+    ax.xaxis.set_major_locator(MaxNLocator(integer=True))
     ax.set_ylabel("log-Likelihood")
     return fig
 
@@ -230,7 +232,7 @@ def show_observation(
         psf_image = np.zeros(observation.images.shape)
 
         if observation.frame.psf is not None:
-            psf_model = observation.frame.psf.image.copy()  # get_model()
+            psf_model = observation.frame.psf.get_model()
             # make PSF as bright as the brightest pixel of the observation
             psf_model *= (
                 observation.images.mean(axis=0).max() / psf_model.mean(axis=0).max()
