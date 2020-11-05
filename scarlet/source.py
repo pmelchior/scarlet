@@ -5,7 +5,8 @@ from .bbox import Box
 from .component import CombinedComponent, FactorizedComponent
 from .constraint import PositivityConstraint
 from .initialization import (
-    get_best_fit_spectra,
+    get_best_fit_spectrum,
+    get_snr,
     get_pixel_spectrum,
     init_compact_source,
     init_extended_morphology,
@@ -48,7 +49,7 @@ class RandomSource(FactorizedComponent):
         if observations is None:
             spectrum = np.random.rand(C)
         else:
-            spectrum = get_best_fit_spectra(image[None], observations)[0]
+            spectrum = get_best_fit_spectrum(image[None], observations)[0]
 
         # default is step=1e-2, using larger steps here becaus SED is probably uncertain
         spectrum = Parameter(
@@ -195,6 +196,14 @@ class SingleExtendedSource(FactorizedComponent):
             monotonic="flat",
             min_grad=0,
         )
+
+        # compute SNR for this component
+        detect_all, std_all = build_detection_image(observations)
+        box_3D = Box((model_frame.C,)) @ bbox
+        boxed_detect = box_3D.extract_from(detect_all)
+        boxed_std = box_3D.extract_from(std_all)
+        self.snr = get_snr(morph, boxed_detect, boxed_std)
+
         center = model_frame.get_pixel(sky_coord)
         morphology = ExtendedSourceMorphology(
             model_frame,
@@ -270,6 +279,14 @@ class StarletSource(FactorizedComponent):
             monotonic="flat",
             min_grad=0,
         )
+
+        # compute SNR for this component
+        detect_all, std_all = build_detection_image(observations)
+        box_3D = Box((model_frame.C,)) @ bbox
+        boxed_detect = box_3D.extract_from(detect_all)
+        boxed_std = box_3D.extract_from(std_all)
+        self.snr = get_snr(morph, boxed_detect, boxed_std)
+
         # transform to starlets
         morphology = StarletMorphology(
             model_frame, morph, bbox=bbox, threshold=starlet_thresh
@@ -356,20 +373,14 @@ class MultiExtendedSource(CombinedComponent):
 
         # find best-fit spectra for each of morph from unweighted deconvolution coadd
         # assumes img only has that source in region of the box
-        detect, std = build_detection_image(observations)
+        detect_all, std_all = build_detection_image(observations)
         box_3D = Box((model_frame.C,)) @ boxes[0]
-        boxed_img = box_3D.extract_from(detect)
-        spectra = get_best_fit_spectra(morphs, boxed_img)
+        boxed_detect = box_3D.extract_from(detect_all)
+        spectra = get_best_fit_spectrum(morphs, boxed_detect)
 
-        for k in range(K):
-            if np.all(spectra[k] <= 0):
-                # If the flux in all channels is  <=0,
-                # the new sed will be filled with NaN values,
-                # which will cause the code to crash later
-                msg = "Zero or negative spectrum {} for component {} at y={}, x={}".format(
-                    spectra[k], k, *sky_coord
-                )
-                logger.warning(msg)
+        # compute SNR for each component to see if multiple components are justified
+        boxed_std = box_3D.extract_from(std_all)
+        self.snr = get_snr(morphs, boxed_detect, boxed_std)
 
         # create one component for each spectrum and morphology
         components = []

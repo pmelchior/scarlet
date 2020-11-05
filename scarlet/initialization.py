@@ -15,42 +15,84 @@ from . import measure
 logger = logging.getLogger("scarlet.initialisation")
 
 
-def get_best_fit_spectra(morphs, images):
-    """Calculate best fitting spectra for multiple components.
+def get_best_fit_spectrum(morph, images):
+    """Calculate best fitting spectra for one or multiple morphologies.
 
-    Solves min_A ||img - AS||^2 for the SED matrix A,
+    Solves min_A ||img - AS||^2 for the spectrum matrix A,
     assuming that the images only contain a single source.
 
     Parameters
     ----------
-    morphs: list
-        Morphology for each component in the source.
+    morph: array or list thereof
+        Morphology for each component in the source
     images: array
-        Observation to extract SEDs from.
+        images to get the spectrum amplitude from
 
     Returns
     -------
-    SED: `~numpy.array`
+    spectrum: `~numpy.array`
     """
-    K = len(morphs)
-    if isinstance(images, np.ndarray):
-        images_ = images
-    elif isinstance(images, Observation):
-        images_ = images.images
-    elif hasattr(images, "__iter__") and all(
-        tuple(obs.frame == images[0].frame for obs in images)
-    ):
-        # all observations need to have the same frame for this mapping to work
-        images_ = np.stack(tuple(obs.images for obs in images), axis=0)
 
-    data = images_.reshape(images_.shape[0], -1)
-    if K == 1:
-        morph = morphs.reshape(-1)
-        seds = (np.dot(data, morph) / np.dot(morph, morph),)
+    if isinstance(morph, (list, tuple)) or (
+        isinstance(morph, np.ndarray) and len(morph.shape) == 3
+    ):
+        morphs = morph
     else:
-        morph = morphs.reshape(K, -1)
-        seds = np.dot(np.linalg.inv(np.dot(morph, morph.T)), np.dot(morph, data.T))
-    return seds
+        morphs = (morph,)
+
+    K = len(morphs)
+    C = images.shape[0]
+    data = images.reshape(C, -1)
+
+    if K == 1:
+        morph = morphs[0].reshape(-1)
+        return np.dot(data, morph) / np.dot(morph, morph)
+    else:
+        morph = np.array(morphs).reshape(K, -1)
+        return np.dot(np.linalg.inv(np.dot(morph, morph.T)), np.dot(morph, data.T))
+
+
+def get_snr(morph, images, stds):
+    """Calculate SNR with morphology as weight function
+
+    Parameters
+    ----------
+    morph: array or list thereof
+        Morphology for each component in the source
+    images: array
+        images to get the spectrum amplitude from
+    stds: array
+        noise standard variation in every pixel of `images`
+
+    Returns
+    -------
+    SNR
+    """
+    if isinstance(morph, (list, tuple)) or (
+        isinstance(morph, np.ndarray) and len(morph.shape) == 3
+    ):
+        morphs = morph
+    else:
+        morphs = (morph,)
+
+    K = len(morphs)
+    C = images.shape[0]
+
+    data = images.reshape(C, -1)
+    var = (stds ** 2).reshape(C, -1)
+
+    snrs = []
+    # SNR from Erben (2001), eq. 16, extended to multiple bands
+    # SNR = (I @ W) / sqrt(W @ Sigma^2 @ W)
+    # with W = morph, Sigma^2 = diagonal variance matrix
+    for morph in morphs:
+        morph = morph.reshape(-1)
+        snr = (data @ morph).sum() / np.sqrt(((var * morph[None, :]) @ morph).sum())
+        snrs.append(snr)
+
+    if K == 1:
+        return snrs[0]
+    return snrs
 
 
 def get_pixel_spectrum(sky_coord, observations, correct_psf=False):
@@ -540,61 +582,16 @@ def build_initialization_coadd(observations, filtered_coadd=False, obs_idx=None)
     return coadd, bg_cutoff
 
 
-def hasEdgeFlux(source, edgeDistance=1):
-    """hasEdgeFlux
-
-    Determine whether or not a source has flux within `edgeDistance`
-    of the edge.
-
-    Parameters
-    ----------
-    source : `scarlet.Component`
-        The source to check for edge flux
-    edgeDistance : int
-        The distance from the edge of the image to consider
-        a source an edge source. For example if `edgeDistance=3`
-        then any source within 3 pixels of the edge will be
-        considered to have edge flux.
-        If `edgeDistance` is `None` then the edge check is ignored.
-
-    Returns
-    -------
-    isEdge: `bool`
-        Whether or not the source has flux on the edge.
-    """
-    if edgeDistance is None:
-        return False
-
-    assert edgeDistance > 0
-
-    # Use the first band that has a non-zero SED
-    flux = measure.flux(source)
-    band = np.min(np.where(flux > 0)[0])
-    model = source.get_model()[band]
-    for edge in range(edgeDistance):
-        if (
-            np.any(model[edge - 1] > 0)
-            or np.any(model[-edge] > 0)
-            or np.any(model[:, edge - 1] > 0)
-            or np.any(model[:, -edge] > 0)
-        ):
-            return True
-    return False
-
-
 def initAllSources(
     frame,
     centers,
     observation,
-    symmetric=False,
-    monotonic=True,
     thresh=1,
     maxComponents=1,
+    minSNR=5,
     edgeDistance=1,
     shifting=False,
-    downgrade=True,
     fallback=True,
-    minGradient=0,
 ):
     """Initialize all sources in a blend
 
@@ -624,15 +621,12 @@ def initAllSources(
                 frame,
                 center,
                 observation,
-                symmetric,
-                monotonic,
-                thresh,
-                maxComponents,
-                edgeDistance,
-                shifting,
-                downgrade,
-                fallback,
-                minGradient,
+                thresh=thresh,
+                maxComponents=maxComponents,
+                minSNR=minSNR,
+                edgeDistance=edgeDistance,
+                shifting=shifting,
+                fallback=fallback,
             )
             sources.append(source)
         except Exception:
@@ -644,15 +638,12 @@ def initSource(
     frame,
     center,
     observation,
-    symmetric=False,
-    monotonic=True,
     thresh=1,
     maxComponents=1,
+    minSNR=5,
     edgeDistance=1,
     shifting=False,
-    downgrade=True,
     fallback=True,
-    minGradient=0,
 ):
     """Initialize a Source
 
@@ -681,11 +672,6 @@ def initSource(
     observation : `~scarlet.Observation`
         The `Observation` that contains the images, weights, and PSF
         used to generate the model.
-    symmetric : `bool`
-        Whether or not the object is symmetric
-    monotonic : `bool`
-        Whether or not the object has flux monotonically
-        decreasing from its center
     thresh : `float`
         Fraction of the background to use as a threshold for
         each pixel in the initialization
@@ -706,11 +692,6 @@ def initSource(
         Whether or not to fit the position of a source.
         This is an expensive operation and is typically only used when
         a source is on the edge of the detector.
-    downgrade : bool
-        Whether or not to decrease the number of components for sources
-        with small bounding boxes. For example, a source with no flux
-        outside of its 16x16 box is unlikely to be resolved enough
-        for multiple components, so a single source can be used.
     fallback : bool
         Whether to reduce the number of components
         if the model cannot be initialized with `maxComponents`.
@@ -733,11 +714,10 @@ def initSource(
             )
             try:
                 source.check_parameters()
-                # Make sure that spectrum is >0 in at least 1 channel
-                if any(
-                    [all(p <= 0) for p in source.parameters if p.name == "spectrum"]
-                ):
+                # make sure to have enough SNR for every component
+                if any(np.array(source.snr) < minSNR):
                     raise ArithmeticError
+
             except ArithmeticError:
                 msg = f"Could not initialize source at {center} with {maxComponents} components"
                 logger.warning(msg)
@@ -779,3 +759,45 @@ def initSource(
 
     except Exception as e:
         raise e
+
+
+def hasEdgeFlux(source, edgeDistance=1):
+    """hasEdgeFlux
+
+    Determine whether or not a source has flux within `edgeDistance`
+    of the edge.
+
+    Parameters
+    ----------
+    source : `scarlet.Component`
+        The source to check for edge flux
+    edgeDistance : int
+        The distance from the edge of the image to consider
+        a source an edge source. For example if `edgeDistance=3`
+        then any source within 3 pixels of the edge will be
+        considered to have edge flux.
+        If `edgeDistance` is `None` then the edge check is ignored.
+
+    Returns
+    -------
+    isEdge: `bool`
+        Whether or not the source has flux on the edge.
+    """
+    if edgeDistance is None:
+        return False
+
+    assert edgeDistance > 0
+
+    # Use the first band that has a non-zero SED
+    flux = measure.flux(source)
+    band = np.min(np.where(flux > 0)[0])
+    model = source.get_model()[band]
+    for edge in range(edgeDistance):
+        if (
+            np.any(model[edge - 1] > 0)
+            or np.any(model[-edge] > 0)
+            or np.any(model[:, edge - 1] > 0)
+            or np.any(model[:, -edge] > 0)
+        ):
+            return True
+    return False
