@@ -107,6 +107,9 @@ class Frame:
         else:
             pixel = sky
 
+        # # correct for box offset
+        # pixel -= self.bbox.origin[-2:]
+
         if pixel.size == 2:  # only one coordinate pair
             return pixel[0]
         return pixel
@@ -121,6 +124,9 @@ class Frame:
         """
         pix = np.array(pixel, dtype=np.float).reshape(-1, 2)
 
+        # # correct for box offset
+        # pix += self.bbox.origin[-2:]
+
         if self.wcs is not None:
             # x/y instead of y/x:
             pix = np.flip(pix, axis=-1)
@@ -131,6 +137,35 @@ class Frame:
         if sky.size == 2:
             return sky[0]
         return sky
+
+    def convert_pixel_to(self, target, pixel=None):
+        """Converts pixel coordinates from this frame to `target` Frame
+
+        Parameters
+        ----------
+        target: `~scarlet.Frame`
+            target frame
+        pixel: `tuple` or list ((y1,y2, ...), (x1, x2, ...))
+            pixel coordinates in this frame
+            If not set, convert all pixels in this frame
+
+        Returns
+        -------
+        coord_target: `tuple`
+            coordinates at the location of `coord` in the target frame
+        """
+        if pixel is None:
+            bounds = self._bbox.bounds
+            y, x = np.meshgrid(np.arange(*(bounds[1])), np.arange(*(bounds[2])))
+            # y, x = np.indices(self.shape[-2:], dtype=np.float)
+            pixel = np.stack((y.flatten(), x.flatten()), axis=1)
+
+        ra_dec = self.get_sky_coord(pixel)
+        pixel_ = target.get_pixel(ra_dec)
+
+        if pixel_.size == 2:  # only one coordinate pair
+            return pixel_[0]
+        return pixel_
 
     @staticmethod
     def from_observations(

@@ -81,7 +81,11 @@ class PointSource(FactorizedComponent):
         observations: instance or list of `~scarlet.Observation`
             Observation(s) to initialize this source
         """
-        spectrum = get_pixel_spectrum(sky_coord, observations, correct_psf=True)
+        if not hasattr(observations, "__iter__"):
+            observations = (observations,)
+
+        spectra = get_pixel_spectrum(sky_coord, observations, correct_psf=True)
+        spectrum = np.concatenate(spectra, axis=0)
         spectrum = TabulatedSpectrum(model_frame, spectrum)
 
         center = model_frame.get_pixel(sky_coord)
