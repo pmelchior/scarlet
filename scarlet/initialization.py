@@ -214,7 +214,7 @@ def trim_morphology(center_index, morph, bg_thresh=0):
 
 
 def init_compact_source(sky_coord, frame):
-    """Initialize a source just like `init_extended_source`,
+    """Initialize a source just like `init_extended_morphology`,
     but with the morphology of a point source.
     """
 
@@ -249,7 +249,7 @@ def init_compact_source(sky_coord, frame):
     return morph, bbox
 
 
-def init_extended_source(
+def init_extended_morphology(
     sky_coord,
     frame,
     detect,
@@ -343,7 +343,7 @@ def rescale_spectrum(spectrum, morph, frame):
         spectrum /= factor
 
 
-def init_multicomponent_source(
+def init_multicomponent_morphology(
     sky_coord,
     frame,
     detect,
@@ -359,7 +359,7 @@ def init_multicomponent_source(
     """
 
     # Initialize the whole component as an extended source
-    morph, bbox = init_extended_source(
+    morph, bbox = init_extended_morphology(
         sky_coord,
         frame,
         detect,
@@ -569,10 +569,7 @@ def hasEdgeFlux(source, edgeDistance=1):
 
     # Use the first band that has a non-zero SED
     flux = measure.flux(source)
-    if hasattr(source, "sed"):
-        band = np.min(np.where(flux > 0)[0])
-    else:
-        band = np.min(np.where(flux > 0)[0])
+    band = np.min(np.where(flux > 0)[0])
     model = source.get_model()[band]
     for edge in range(edgeDistance):
         if (
@@ -622,23 +619,23 @@ def initAllSources(
     sources = []
     skipped = []
     for k, center in enumerate(centers):
-        source = initSource(
-            frame,
-            center,
-            observation,
-            symmetric,
-            monotonic,
-            thresh,
-            maxComponents,
-            edgeDistance,
-            shifting,
-            downgrade,
-            fallback,
-            minGradient,
-        )
-        if source is not None:
+        try:
+            source = initSource(
+                frame,
+                center,
+                observation,
+                symmetric,
+                monotonic,
+                thresh,
+                maxComponents,
+                edgeDistance,
+                shifting,
+                downgrade,
+                fallback,
+                minGradient,
+            )
             sources.append(source)
-        else:
+        except Exception:
             skipped.append(k)
     return sources, skipped
 
@@ -721,46 +718,43 @@ def initSource(
         but can be useful for troubleshooting when an error can cause
         a particular source class to fail every time.
     """
-    from .source import PointSource, ExtendedSource
+    from .source import ExtendedSource
 
-    while maxComponents > 1:
+    source_shifting = shifting
+    while maxComponents >= 1:
         try:
             source = ExtendedSource(
                 frame,
                 center,
                 observation,
                 thresh=thresh,
-                shifting=shifting,
+                shifting=source_shifting,
                 K=maxComponents,
             )
             try:
                 source.check_parameters()
-                # Make sure that SED is >0 in at least 1 band
-                if np.any(
-                    [
-                        np.all(child.children[0].get_model() <= 0)
-                        for child in source.children
-                    ]
+                # Make sure that spectrum is >0 in at least 1 channel
+                if any(
+                    [all(p <= 0) for p in source.parameters if p.name == "spectrum"]
                 ):
                     raise ArithmeticError
             except ArithmeticError:
-                msg = "Could not initialize source at {} with {} components".format(
-                    center, maxComponents
-                )
+                msg = f"Could not initialize source at {center} with {maxComponents} components"
                 logger.warning(msg)
                 raise ValueError(msg)
 
-            if downgrade and np.all(np.array(source.bbox.shape[1:]) <= 8):
-                # the source is in a small box so it must be a point source
-                maxComponents = 0
-            elif downgrade and np.all(np.array(source.bbox.shape[1:]) <= 16):
-                # if the source is in a slightly larger box
-                # it is not big enough to model with 2 components
-                maxComponents = 1
-            elif hasEdgeFlux(source, edgeDistance):
-                source.shifting = True
+            # The LSST DM detection algorithm implemented in meas_algorithms
+            # does not place sources within the edge mask
+            # (roughly 5 pixels from the edge). This results in poor
+            # deblending of the edge source, which for bright sources
+            # may ruin an entire blend. So we reinitialize edge sources
+            # to allow for shifting and return the result.
+            if source_shifting is False and hasEdgeFlux(source, edgeDistance):
+                source_shifting = True
+                continue
 
-            break
+            return source
+
         except Exception as e:
             if not fallback:
                 raise e
@@ -768,64 +762,20 @@ def initSource(
             # try an ExtendedSource
             maxComponents -= 1
 
-    if maxComponents == 1:
-        try:
+    # nothing worked so far:
+    # use most robust initialization as compact source
+    try:
+        source = ExtendedSource(
+            frame, center, observation, shifting=source_shifting, compact=True
+        )
+
+        if source_shifting is False and hasEdgeFlux(source, edgeDistance):
+            source_shifting = True
             source = ExtendedSource(
-                frame, center, observation, thresh=thresh, shifting=shifting
+                frame, center, observation, shifting=source_shifting, compact=True
             )
 
-            try:
-                source.check_parameters()
-                if np.all(source.children[0].get_model() <= 0):
-                    raise ArithmeticError
-            except ArithmeticError:
-                msg = "Could not initlialize source at {} with 1 component".format(
-                    center
-                )
-                logger.warning(msg)
-                raise ValueError(msg)
+        return source
 
-            if downgrade and np.all(np.array(source.bbox.shape[1:]) <= 16):
-                # the source is in a small box so it must be a point source
-                maxComponents = 0
-            elif hasEdgeFlux(source, edgeDistance):
-                source.shifting = True
-        except Exception as e:
-            if not fallback:
-                raise e
-            # If the source is too faint for background detection,
-            # initialize it as a PointSource
-            maxComponents -= 1
-
-    if maxComponents == 0:
-        try:
-            source = PointSource(frame, center, observation)
-        except Exception:
-            # None of the models worked to initialize the source,
-            # so skip this source
-            return None
-
-    if hasEdgeFlux(source, edgeDistance):
-        # The detection algorithm implemented in meas_algorithms
-        # does not place sources within the edge mask
-        # (roughly 5 pixels from the edge). This results in poor
-        # deblending of the edge source, which for bright sources
-        # may ruin an entire blend. So we reinitialize edge sources
-        # to allow for shifting and return the result.
-        if not isinstance(source, PointSource) and not shifting:
-            return initSource(
-                frame,
-                center,
-                observation,
-                symmetric,
-                monotonic,
-                thresh,
-                maxComponents,
-                edgeDistance,
-                shifting=True,
-            )
-        source.isEdge = True
-    else:
-        source.isEdge = False
-
-    return source
+    except Exception as e:
+        raise e

@@ -8,8 +8,8 @@ from .initialization import (
     get_best_fit_spectra,
     get_pixel_spectrum,
     init_compact_source,
-    init_extended_source,
-    init_multicomponent_source,
+    init_extended_morphology,
+    init_multicomponent_morphology,
     build_detection_image,
     rescale_spectrum,
 )
@@ -94,15 +94,61 @@ class PointSource(FactorizedComponent):
         super().__init__(model_frame, spectrum, morphology)
 
 
+class CompactExtendedSource(FactorizedComponent):
+    def __init__(
+        self, model_frame, sky_coord, observations, shifting=False,
+    ):
+        """Compact extended source model
+
+        The model is initialized from `observations` with a point-source morphology
+        and a spectrum from its peak pixel.
+
+        During optimization it enforces positivitiy for spectrum and morphology,
+        as well as monotonicity of the morphology.
+
+        Parameters
+        ----------
+        model_frame: `~scarlet.Frame`
+            The frame of the full model
+        sky_coord: tuple
+            Center of the source
+        observations: instance or list of `~scarlet.observation.Observation`
+            Observation(s) to initialize this source.
+        shifting: `bool`
+            Whether or not a subpixel shift is added as optimization parameter
+        """
+        if not hasattr(observations, "__iter__"):
+            observations = (observations,)
+
+        # get PSF-corrected center pixel spectrum
+        spectra = get_pixel_spectrum(sky_coord, observations, correct_psf=True)
+        spectrum = np.concatenate(spectra, axis=0)
+        spectrum = TabulatedSpectrum(model_frame, spectrum)
+
+        # initialize morphology from model_frame psf
+        morph, bbox = init_compact_source(sky_coord, model_frame)
+        center = model_frame.get_pixel(sky_coord)
+        morphology = ExtendedSourceMorphology(
+            model_frame,
+            center,
+            morph,
+            bbox=bbox,
+            monotonic="angle",
+            symmetric=False,
+            min_grad=0,
+            shifting=shifting,
+        )
+
+        # set up model with its parameters
+        super().__init__(model_frame, spectrum, morphology)
+
+        # retain center as attribute
+        self.center = morphology.center
+
+
 class SingleExtendedSource(FactorizedComponent):
     def __init__(
-        self,
-        model_frame,
-        sky_coord,
-        observations,
-        thresh=1.0,
-        compact=False,
-        shifting=False,
+        self, model_frame, sky_coord, observations, thresh=1.0, shifting=False,
     ):
         """Extended source model
 
@@ -136,22 +182,19 @@ class SingleExtendedSource(FactorizedComponent):
         spectrum = np.concatenate(spectra, axis=0)
 
         # initialize morphology
-        if compact:
-            morph, bbox = init_compact_source(sky_coord, model_frame)
-        else:
-            # compute optimal SNR deconvolved coadd for detection
-            detect, std = build_detection_image(observations, spectra=spectra)
-            # make monotonic morphology, trimmed to box with pixels above std
-            morph, bbox = init_extended_source(
-                sky_coord,
-                model_frame,
-                detect,
-                std,
-                thresh=thresh,
-                symmetric=True,
-                monotonic="flat",
-                min_grad=0,
-            )
+        # compute optimal SNR deconvolved coadd for detection
+        detect, std = build_detection_image(observations, spectra=spectra)
+        # make monotonic morphology, trimmed to box with pixels above std
+        morph, bbox = init_extended_morphology(
+            sky_coord,
+            model_frame,
+            detect,
+            std,
+            thresh=thresh,
+            symmetric=True,
+            monotonic="flat",
+            min_grad=0,
+        )
         center = model_frame.get_pixel(sky_coord)
         morphology = ExtendedSourceMorphology(
             model_frame,
@@ -217,7 +260,7 @@ class StarletSource(FactorizedComponent):
         # initialize morphology
         detect, std = build_detection_image(observations, spectra=spectra)
         # make monotonic morphology, trimmed to box with pixels above std
-        morph, bbox = init_extended_source(
+        morph, bbox = init_extended_morphology(
             sky_coord,
             model_frame,
             detect,
@@ -299,7 +342,7 @@ class MultiExtendedSource(CombinedComponent):
         # initialize morphology
         spectra = get_pixel_spectrum(sky_coord, observations, correct_psf=True)
         detect, std = build_detection_image(observations, spectra=spectra)
-        morphs, boxes = init_multicomponent_source(
+        morphs, boxes = init_multicomponent_morphology(
             sky_coord,
             model_frame,
             detect,
@@ -378,14 +421,13 @@ def ExtendedSource(
     and instance of `MultiExtendedSource` is returned.
     """
 
+    if compact:
+        return CompactExtendedSource(
+            model_frame, sky_coord, observations, shifting=shifting,
+        )
     if K == 1:
         return SingleExtendedSource(
-            model_frame,
-            sky_coord,
-            observations,
-            thresh=thresh,
-            compact=compact,
-            shifting=shifting,
+            model_frame, sky_coord, observations, thresh=thresh, shifting=shifting,
         )
     else:
         return MultiExtendedSource(
