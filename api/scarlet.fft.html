@@ -6,8 +6,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>scarlet.fft &#8212; scarlet  documentation</title>
-    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
     <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
     <script src="../_static/jquery.js"></script>
     <script src="../_static/underscore.js"></script>
@@ -184,7 +184,7 @@ padding stripped.</p>
 
 <dl class="py function">
 <dt id="scarlet.fft.convolve">
-<code class="sig-prename descclassname">scarlet.fft.</code><code class="sig-name descname">convolve</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">image</span></em>, <em class="sig-param"><span class="n">kernel</span></em>, <em class="sig-param"><span class="n">padding</span><span class="o">=</span><span class="default_value">3</span></em>, <em class="sig-param"><span class="n">axes</span><span class="o">=</span><span class="default_value">- 2, - 1</span></em>, <em class="sig-param"><span class="n">return_Fourier</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/fft.html#convolve"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.fft.convolve" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">scarlet.fft.</code><code class="sig-name descname">convolve</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">image</span></em>, <em class="sig-param"><span class="n">kernel</span></em>, <em class="sig-param"><span class="n">padding</span><span class="o">=</span><span class="default_value">3</span></em>, <em class="sig-param"><span class="n">axes</span><span class="o">=</span><span class="default_value">(- 2, - 1)</span></em>, <em class="sig-param"><span class="n">return_Fourier</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/fft.html#convolve"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.fft.convolve" title="Permalink to this definition">¶</a></dt>
 <dd><p>Convolve image with a kernel</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -207,7 +207,7 @@ to supress artifacts.</p>
 
 <dl class="py function">
 <dt id="scarlet.fft.match_psfs">
-<code class="sig-prename descclassname">scarlet.fft.</code><code class="sig-name descname">match_psfs</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">psf1</span></em>, <em class="sig-param"><span class="n">psf2</span></em>, <em class="sig-param"><span class="n">padding</span><span class="o">=</span><span class="default_value">3</span></em>, <em class="sig-param"><span class="n">axes</span><span class="o">=</span><span class="default_value">- 2, - 1</span></em>, <em class="sig-param"><span class="n">return_Fourier</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/fft.html#match_psfs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.fft.match_psfs" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">scarlet.fft.</code><code class="sig-name descname">match_psfs</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">psf1</span></em>, <em class="sig-param"><span class="n">psf2</span></em>, <em class="sig-param"><span class="n">padding</span><span class="o">=</span><span class="default_value">3</span></em>, <em class="sig-param"><span class="n">axes</span><span class="o">=</span><span class="default_value">(- 2, - 1)</span></em>, <em class="sig-param"><span class="n">return_Fourier</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/fft.html#match_psfs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.fft.match_psfs" title="Permalink to this definition">¶</a></dt>
 <dd><p>Calculate the difference kernel to match psf1 to psf2</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -230,7 +230,7 @@ to supress artifacts.</p>
 
 <dl class="py function">
 <dt id="scarlet.fft.shift">
-<code class="sig-prename descclassname">scarlet.fft.</code><code class="sig-name descname">shift</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">image</span></em>, <em class="sig-param"><span class="n">shift</span></em>, <em class="sig-param"><span class="n">fft_shape</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">axes</span><span class="o">=</span><span class="default_value">- 2, - 1</span></em>, <em class="sig-param"><span class="n">return_Fourier</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/fft.html#shift"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.fft.shift" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">scarlet.fft.</code><code class="sig-name descname">shift</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">image</span></em>, <em class="sig-param"><span class="n">shift</span></em>, <em class="sig-param"><span class="n">fft_shape</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">axes</span><span class="o">=</span><span class="default_value">(- 2, - 1)</span></em>, <em class="sig-param"><span class="n">return_Fourier</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/fft.html#shift"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.fft.shift" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </div>
@@ -246,7 +246,7 @@ to supress artifacts.</p>
       &copy;2018-2019, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.2.1</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.3.0</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |
