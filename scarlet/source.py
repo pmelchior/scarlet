@@ -6,7 +6,6 @@ from .component import CombinedComponent, FactorizedComponent
 from .constraint import PositivityConstraint
 from .initialization import (
     get_best_fit_spectrum,
-    get_snr,
     get_pixel_spectrum,
     init_compact_source,
     init_extended_morphology,
@@ -124,7 +123,6 @@ class CompactExtendedSource(FactorizedComponent):
         # get PSF-corrected center pixel spectrum
         spectra = get_pixel_spectrum(sky_coord, observations, correct_psf=True)
         spectrum = np.concatenate(spectra, axis=0)
-        spectrum = TabulatedSpectrum(model_frame, spectrum)
 
         # initialize morphology from model_frame psf
         morph, bbox = init_compact_source(sky_coord, model_frame)
@@ -139,6 +137,10 @@ class CompactExtendedSource(FactorizedComponent):
             min_grad=0,
             shifting=shifting,
         )
+
+        # morph uses max=1 normalization, so need to rescale
+        rescale_spectrum(spectrum, morph, model_frame)
+        spectrum = TabulatedSpectrum(model_frame, spectrum)
 
         # set up model with its parameters
         super().__init__(model_frame, spectrum, morphology)
@@ -196,13 +198,6 @@ class SingleExtendedSource(FactorizedComponent):
             monotonic="flat",
             min_grad=0,
         )
-
-        # compute SNR for this component
-        detect_all, std_all = build_detection_image(observations)
-        box_3D = Box((model_frame.C,)) @ bbox
-        boxed_detect = box_3D.extract_from(detect_all)
-        boxed_std = box_3D.extract_from(std_all)
-        self.snr = get_snr(morph, boxed_detect, boxed_std)
 
         center = model_frame.get_pixel(sky_coord)
         morphology = ExtendedSourceMorphology(
@@ -279,13 +274,6 @@ class StarletSource(FactorizedComponent):
             monotonic="flat",
             min_grad=0,
         )
-
-        # compute SNR for this component
-        detect_all, std_all = build_detection_image(observations)
-        box_3D = Box((model_frame.C,)) @ bbox
-        boxed_detect = box_3D.extract_from(detect_all)
-        boxed_std = box_3D.extract_from(std_all)
-        self.snr = get_snr(morph, boxed_detect, boxed_std)
 
         # transform to starlets
         morphology = StarletMorphology(
@@ -377,10 +365,6 @@ class MultiExtendedSource(CombinedComponent):
         box_3D = Box((model_frame.C,)) @ boxes[0]
         boxed_detect = box_3D.extract_from(detect_all)
         spectra = get_best_fit_spectrum(morphs, boxed_detect)
-
-        # compute SNR for each component to see if multiple components are justified
-        boxed_std = box_3D.extract_from(std_all)
-        self.snr = get_snr(morphs, boxed_detect, boxed_std)
 
         # create one component for each spectrum and morphology
         components = []

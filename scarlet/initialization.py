@@ -4,6 +4,7 @@ import logging
 
 from . import operator
 from .bbox import Box, overlapped_slices
+from .cache import Cache
 from .constraint import CenterOnConstraint
 from .interpolation import interpolate_observation
 from .observation import Observation, LowResObservation
@@ -50,49 +51,6 @@ def get_best_fit_spectrum(morph, images):
     else:
         morph = np.array(morphs).reshape(K, -1)
         return np.dot(np.linalg.inv(np.dot(morph, morph.T)), np.dot(morph, data.T))
-
-
-def get_snr(morph, images, stds):
-    """Calculate SNR with morphology as weight function
-
-    Parameters
-    ----------
-    morph: array or list thereof
-        Morphology for each component in the source
-    images: array
-        images to get the spectrum amplitude from
-    stds: array
-        noise standard variation in every pixel of `images`
-
-    Returns
-    -------
-    SNR
-    """
-    if isinstance(morph, (list, tuple)) or (
-        isinstance(morph, np.ndarray) and len(morph.shape) == 3
-    ):
-        morphs = morph
-    else:
-        morphs = (morph,)
-
-    K = len(morphs)
-    C = images.shape[0]
-
-    data = images.reshape(C, -1)
-    var = (stds ** 2).reshape(C, -1)
-
-    snrs = []
-    # SNR from Erben (2001), eq. 16, extended to multiple bands
-    # SNR = (I @ W) / sqrt(W @ Sigma^2 @ W)
-    # with W = morph, Sigma^2 = diagonal variance matrix
-    for morph in morphs:
-        morph = morph.reshape(-1)
-        snr = (data @ morph).sum() / np.sqrt(((var * morph[None, :]) @ morph).sum())
-        snrs.append(snr)
-
-    if K == 1:
-        return snrs[0]
-    return snrs
 
 
 def get_pixel_spectrum(sky_coord, observations, correct_psf=False):
@@ -467,6 +425,16 @@ def build_detection_image(observations, spectra=None):
         if spectra is not None:
             spectra = (spectra,)
 
+    # only use cache for the unweighted images
+    # otherwise we have one per source!
+    name = "build_detection_image"
+    key = tuple(observations)
+    if spectra is None:
+        try:
+            return Cache.check(name, key)
+        except KeyError:
+            pass
+
     model_frame = observations[0].model_frame
     detect = np.zeros(model_frame.shape, dtype=model_frame.dtype)
     var = np.zeros(model_frame.shape, dtype=model_frame.dtype)
@@ -493,6 +461,10 @@ def build_detection_image(observations, spectra=None):
         detect = detect.sum(axis=0)
         var = var.sum(axis=0)
 
+    # only save the unweighted one
+    if spectra is None:
+        Cache.set(name, key, (detect, np.sqrt(var)))
+
     return detect, np.sqrt(var)
 
 
@@ -518,10 +490,8 @@ def build_initialization_coadd(observations, filtered_coadd=False, obs_idx=None)
     bg_cutoff: float
         The effective noise threshold
     """
-    try:
-        iter(observations)
-    except TypeError:
-        observations = [observations]
+    if not hasattr(observations, "__iter__"):
+        observations = (observations,)
 
     if obs_idx is None:
         loc = np.where([type(obs) is Observation for obs in observations])
@@ -637,7 +607,7 @@ def initAllSources(
 def initSource(
     frame,
     center,
-    observation,
+    observations,
     thresh=1,
     maxComponents=1,
     minSNR=5,
@@ -669,7 +639,7 @@ def initSource(
         The model frame for the scene
     center : `tuple` of `float``
         `(y, x)` location for the center of the source.
-    observation : `~scarlet.Observation`
+    observations : `~scarlet.Observation`
         The `Observation` that contains the images, weights, and PSF
         used to generate the model.
     thresh : `float`
@@ -701,13 +671,16 @@ def initSource(
     """
     from .source import ExtendedSource
 
+    if not hasattr(observations, "__iter__"):
+        observations = (observations,)
+
     source_shifting = shifting
     while maxComponents >= 1:
         try:
             source = ExtendedSource(
                 frame,
                 center,
-                observation,
+                observations,
                 thresh=thresh,
                 shifting=source_shifting,
                 K=maxComponents,
@@ -715,7 +688,16 @@ def initSource(
             try:
                 source.check_parameters()
                 # make sure to have enough SNR for every component
-                if any(np.array(source.snr) < minSNR):
+                if maxComponents > 1:
+                    components = source.children
+                else:
+                    components = (source,)
+                if any(
+                    [
+                        measure.snr(component, observations) < minSNR
+                        for component in components
+                    ]
+                ):
                     raise ArithmeticError
 
             except ArithmeticError:
@@ -746,13 +728,13 @@ def initSource(
     # use most robust initialization as compact source
     try:
         source = ExtendedSource(
-            frame, center, observation, shifting=source_shifting, compact=True
+            frame, center, observations, shifting=source_shifting, compact=True
         )
 
         if source_shifting is False and hasEdgeFlux(source, edgeDistance):
             source_shifting = True
             source = ExtendedSource(
-                frame, center, observation, shifting=source_shifting, compact=True
+                frame, center, observations, shifting=source_shifting, compact=True
             )
 
         return source
