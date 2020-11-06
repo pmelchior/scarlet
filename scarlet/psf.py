@@ -83,7 +83,8 @@ class FunctionPSF(PSF):
         self._d = self.bbox.D - 2
 
     def expand_dims(self, model):
-        return np.expand_dims(model, axis=np.arange(self._d))
+        return np.expand_dims(model, axis=tuple(range(self._d)))
+
 
 
 class GaussianPSF(FunctionPSF):
