@@ -400,7 +400,7 @@ def init_multicomponent_morphology(
     return morphs, boxes
 
 
-def build_detection_image(observations, spectra=None):
+def build_detection_image(observations, spectra=None, prerender=False):
     """Build a spectrum-weighted detection image from all observations.
 
     Parameters
@@ -452,8 +452,13 @@ def build_detection_image(observations, spectra=None):
             spectrum = spectra[i][:, None, None]
             weights = spectrum / (bg_rms ** 2)[:, None, None]
 
+        if prerender:
+            images = obs.prerender_images
+        else:
+            images = obs.images
+
         obs.map_channels(detect)[obs._slices_for_model] += (
-            weights * obs.prerender_images[obs._slices_for_images]
+            weights * images[obs._slices_for_images]
         )
         obs.map_channels(var)[obs._slices_for_model] += spectrum * weights
 
