@@ -75,3 +75,34 @@ def snr(component, observations):
     snr = (model * W).sum() / np.sqrt(((var * W) * W).sum())
 
     return snr
+
+
+# adapted from https://github.com/pmelchior/shapelens/blob/master/src/Moments.cc
+def moments(component, N=2, centroid=None, weight=None):
+
+    if hasattr(component, "get_model"):
+        model = component.get_model()
+        if len(model.shape) == 3 and model.shape[0] == 1:
+            model = model[0]
+    else:
+        model = component
+    assert len(model.shape) == 2, "Moment measurement requires a 2D image"
+
+    if weight is None:
+        weight = 1
+    else:
+        assert model.shape == weight.shape
+
+    grid_x, grid_y = np.indices(model.shape, dtype=np.float)
+
+    if centroid is None:
+        centroid = np.array(model.shape) // 2
+    grid_y -= centroid[0]
+    grid_x -= centroid[1]
+
+    M = dict()
+    for n in range(N + 1):
+        for m in range(n + 1):
+            # moments ordered by power in y, then x
+            M[m, n - m] = (grid_y ** m * grid_x ** (n - m) * model * weight).sum()
+    return M
