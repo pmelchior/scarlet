@@ -606,19 +606,20 @@ class LowResObservation(Observation):
             fft._pad(diff_psf.image, self._fft_shape, axes=(-2, -1))
         )
 
+        frame_offset = model_frame.get_pixel(self.frame.get_sky_coord((0, 0)))
         center_y = (
             np.int(
                 self._fft_shape[0] / 2.0 - (self._fft_shape[0] - model_frame.Ny) / 2.0
             )
             + ((self._fft_shape[0] % 2) != 0) * ((model_frame.Ny % 2) == 0)
-            + model_frame.origin[-2]
+            + frame_offset[0]
         )
         center_x = (
             np.int(
                 self._fft_shape[1] / 2.0 - (self._fft_shape[1] - model_frame.Nx) / 2.0
             )
             - ((self._fft_shape[1] % 2) != 0) * ((model_frame.Nx % 2) == 0)
-            + model_frame.origin[-1]
+            + frame_offset[1]
         )
 
         if self.isrot:

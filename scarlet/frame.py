@@ -5,7 +5,6 @@ import numpy as np
 from .bbox import Box
 from .psf import PSF, ImagePSF
 from . import interpolation
-from . import resampling
 
 logger = logging.getLogger("scarlet.frame")
 
@@ -154,32 +153,33 @@ class Frame:
         return pixel_
 
     @staticmethod
-    def from_observations(
-        observations, target_psf=None, target_wcs=None, obs_id=None, coverage="union"
-    ):
-        """Generates a frame from a set of observations.
+    def from_observations(observations, target_psf=None, obs_id=None, coverage="union"):
+        """Generates a suitable model frame for a set of observations.
 
-        By default, this method will generate a frame from a set of observations by indentifying the highest resolution
+        This method generates a frame from a set of observations by indentifying the highest resolution
         and the smallest PSF and use them to construct a common frome for all observations in the set.
 
         Parameters
         ----------
         observations: array of `scarlet.Observation` objects
             array that contains Observations to match onto a common frame
-        psfs: `scarlet.PSF` or its arguments
-            Target PSF to which oll observations are to be deconvolved.If set to None we use the smallest PSF across
-            all observations and channels.
-        wcs: TBD
-            World Coordinates of the target frame
-        obs_id:
-            index of the reference observation. If not set to None, the observation with the smallest PSF and smallest
-            pixel is used
-        coverage: `string`
-            Sets the frame to incorporate all the pixels covered by all the model ('union')
-            or sets the frame to incorporate only the pixels vovered by all the observations ('intersection').
-            Default is 'union'.
+        target_psfs: `scarlet.PSF`
+            Target PSF to which oll observations are to be deconvolved.
+            If set to None, uses the smallest PSF across all observations and channels.
+        obs_id: int
+            index of the reference observation
+            If set to None, uses the observation with the smallest pixels.
+        coverage: "union" or "intersection"
+            Sets the frame to incorporate the pixels covered by any observation ('union')
+            or by all observations ('intersection').
         """
+        from scarlet.observation import LowResObservation
+
         assert coverage in ["union", "intersection"]
+
+        if not hasattr(observations, "__iter__"):
+            observations = (observations,)
+
         # Array of pixel sizes for each observation
         pix_tab = []
         # Array of psf size for each psf of each observation
@@ -217,11 +217,9 @@ class Frame:
         else:
             # Frame defined from obs_id
             obs_ref = observations[obs_id]
-        # Reference wcs
-        if target_wcs is None:
-            target_wcs = obs_ref.frame.wcs
+
         # Scale of the smallest pixel
-        h = interpolation.get_pixel_size(interpolation.get_affine(target_wcs))
+        h = interpolation.get_pixel_size(interpolation.get_affine(obs_ref.frame.wcs))
 
         # If needed and psf is not provided: interpolate psf to smallest pixel
         if target_psf is None:
@@ -234,55 +232,46 @@ class Frame:
             else:
                 target_psf = target_psf_temp
 
-        # Margin in pixels
-        fat_pixel_size = (fat_psf_size / h).astype(int)
-        # Padding by the size of the psf
-        if fat_pixel_size % 2 != 0:
-            fat_pixel_size += 1
-
-        # Matching observations together with the target_wcs so as to create a common frame\
-        # Box for the reference observation
-        ref_box = obs_ref.frame.bbox
-        from .observation import LowResObservation
-
-        target_frame = Frame(
-            (len(channels), 0, 0), psfs=target_psf, channels=channels, wcs=target_wcs
-        )
+        # Determine overlap with respect to the frame of obs_ref
+        ref_box = obs_ref.frame.bbox[-2:]
         for c, obs in enumerate(observations):
-            # Make observations with a different wcs LowResObservation
-            if (obs is not obs_ref) and (type(obs) is not LowResObservation):
-                observations[c] = obs.get_LowRes()
+            if obs is not obs_ref:
+                # Make observations with a different wcs LowResObservation
+                # TODO (see #220)
+                if type(obs) is not LowResObservation:
+                    observations[c] = obs.get_LowRes()
+
                 # Limits that include all observations relative to target_wcs
-                obs_coord = resampling.get_to_common_frame(obs.frame, target_frame)
-                y_min = np.min(obs_coord[0])
-                x_min = np.min(obs_coord[1])
-                y_max = np.max(obs_coord[0])
-                x_max = np.max(obs_coord[1])
-                new_box = Box(
-                    (obs.frame.C, y_max - y_min + 1, x_max - x_min + 1),
-                    origin=(0, y_min, x_min),
-                )
+                obs_coord = obs.frame.convert_pixel_to(obs_ref.frame)
+                y_min = np.min(obs_coord[:, 0])
+                x_min = np.min(obs_coord[:, 1])
+                y_max = np.max(obs_coord[:, 0])
+                x_max = np.max(obs_coord[:, 1])
+                new_box = Box.from_bounds((y_min, y_max + 1), (x_min, x_max + 1))
                 if coverage == "union":
                     ref_box |= new_box
                 else:
                     ref_box = new_box & ref_box
 
-        _, ny, nx = ref_box.shape
-        frame_shape = (
+        # Margin in pixels
+        # Padding by the size of the psf
+        fat_pixel_size = fat_psf_size / h
+        ny, nx = ref_box.shape
+        target_shape = (
             len(channels),
-            np.int((ny + fat_pixel_size)),
-            np.int((nx + fat_pixel_size)),
+            np.round((ny + fat_pixel_size)).astype("int"),
+            np.round((nx + fat_pixel_size)).astype("int"),
         )
-        _, o_y, o_x = ref_box.origin
-        fbox = Box(
-            frame_shape,
-            origin=(
-                0,
-                np.int(o_y - fat_pixel_size / 2),
-                np.int(o_x - fat_pixel_size / 2),
-            ),
+        target_origin = np.round(np.array(ref_box.origin) - fat_pixel_size / 2).astype(
+            "int"
         )
-        target_frame._bbox = fbox
+
+        # create new wcs as a copy from obs_ref, but shifted to new origin
+        target_wcs = obs_ref.frame.wcs.deepcopy()
+        target_wcs.wcs.crpix -= target_origin
+        target_frame = Frame(
+            target_shape, psfs=target_psf, channels=channels, wcs=target_wcs
+        )
 
         # Match observations to this frame
         for obs in observations:
