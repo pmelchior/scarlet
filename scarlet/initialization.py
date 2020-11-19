@@ -58,7 +58,7 @@ def get_pixel_spectrum(sky_coord, observations, correct_psf=False):
 
     Yields the spectrum of a single-pixel source with flux 1 in every channel,
     concatenated for all observations. If `correct_psf`, it homogenizes the PSFs of the
-    observations, which yields the correct spectrum for a point source.
+    observations, which yields the correct spectrum for a flux=1 point source.
 
     Parameters
     ----------
@@ -86,14 +86,11 @@ def get_pixel_spectrum(sky_coord, observations, correct_psf=False):
         index = np.round(pixel).astype(np.int)
         spectrum = obs.images[:, index[0], index[1]].copy()
 
-        if obs.frame.psf is not None and correct_psf:
-            # image of point source in observed = obs.frame.psf
-            psf_model = obs.frame.psf.get_model()
-            psf_center = psf_model.max(axis=(1, 2))
-            # best fit solution for the model amplitude of the center pixel
-            # to yield to PSF center: (spectrum * psf_center) / psf_center**2
-            # or shorter:
-            spectrum /= psf_center
+        if obs.frame.psf is not None:
+            # correct spectrum for PSF-induced change in peak pixel intensity
+            psf_model = obs.frame.psf.get_model()._data
+            psf_peak = psf_model.max(axis=(1, 2))
+            spectrum /= psf_peak
 
         spectra.append(spectrum)
 
@@ -310,39 +307,6 @@ def init_extended_morphology(
     return morph, bbox
 
 
-def rescale_spectrum(spectrum, morph, frame):
-    # since the spectrum assumes a point source:
-    # determine the optimal amplitude for matching morph and the model psf
-    # TODO: morph is still convolved with the observed PSF, but we compute
-    # amplitude correction as if it were not..
-    if frame.psf is not None:
-        psf = frame.psf.get_model()
-
-        shape = (psf.shape[0], *morph.shape)
-        bbox_ = Box(
-            shape,
-            origin=(
-                psf.shape[0] - shape[0],
-                psf.shape[1] // 2 - shape[1] // 2,
-                psf.shape[2] // 2 - shape[2] // 2,
-            ),
-        )
-        psf = bbox_.extract_from(psf)
-
-        # spectrum assumes the source to have point-source morphology,
-        # otherwise get_pixel_spectrum is not well-defined.
-        # factor corrects that by finding out how much (in terms of a scalar number)
-        # morph looks like the (model) psf.
-        # if model psf is constant across bands (as it should) then factor
-        # is constant as well
-        factor = (morph[None, :, :] * psf).sum(axis=(1, 2)) / (psf * psf).sum(
-            axis=(1, 2)
-        )
-
-        # correct amplitude from point source to this morph
-        spectrum /= factor
-
-
 def init_multicomponent_morphology(
     sky_coord,
     frame,
@@ -400,7 +364,7 @@ def init_multicomponent_morphology(
     return morphs, boxes
 
 
-def build_detection_image(observations, spectra=None, prerender=False):
+def build_detection_image(observations, spectra=None, prerender=True):
     """Build a spectrum-weighted detection image from all observations.
 
     Parameters
@@ -428,7 +392,7 @@ def build_detection_image(observations, spectra=None, prerender=False):
     # only use cache for the unweighted images
     # otherwise we have one per source!
     name = "build_detection_image"
-    key = tuple(observations)
+    key = tuple(observations), prerender
     if spectra is None:
         try:
             return Cache.check(name, key)
@@ -471,90 +435,6 @@ def build_detection_image(observations, spectra=None, prerender=False):
         Cache.set(name, key, (detect, np.sqrt(var)))
 
     return detect, np.sqrt(var)
-
-
-def build_initialization_coadd(observations, filtered_coadd=False, obs_idx=None):
-    """Build a channel weighted coadd to use for source detection
-
-    For `LowResObservation`, images are interpolated to a reference frame
-
-    Parameters
-    ----------
-    observations: `~scarlet.observation.Observation`
-        Observation to use for the coadd.
-    filtered_coadd: `bool`
-        if set to True, images are filtered using wavelet filtering before interpolation/coadding
-    obs_idx: `int`
-        index of the observation in observations to use as a reference frame.
-        If set to None, the first element with type `Observation` is used.
-
-    Returns
-    -------
-    detect: array
-        2D image created by weighting all of the channels by SED
-    bg_cutoff: float
-        The effective noise threshold
-    """
-    if not hasattr(observations, "__iter__"):
-        observations = (observations,)
-
-    if obs_idx is None:
-        loc = np.where([type(obs) is Observation for obs in observations])
-        obs_ref = observations[loc[0][0]]
-    else:
-        # The observation that lives in the same plane as the frame
-        assert type(observations[obs_idx]) is Observation, (
-            f"Reference observation should be an `Observation`. The observation index, {obs_idx} "
-            f"provided refers to an observation of type: {type(observations[obs_idx])}"
-        )
-        # If more than one element is an `Observation`, then pick the first one as a reference (arbitrary)
-        obs_ref = observations[obs_idx]
-
-    coadd = 0
-    jacobian = 0
-    weights = 0
-    for obs in observations:
-        try:
-            weights = np.array([w[w > 0].mean() for w in obs.weights])
-        except:
-            raise AttributeError(
-                "Observation.weights missing! Please set inverse variance weights"
-            )
-
-        if obs is obs_ref:
-            if filtered_coadd is True:
-                star = Starlet(obs.images)
-                # Sarlet filtering at 5 sigma
-                star.filter()
-                # Sets the last starlet scale to 0 to remove the wings of the profile introduced by psfs
-                star.coefficients[:, -1, :, :] = 0
-                # Positivity
-                star.coefficients[star.coefficients < 0] = 0
-                images = star.image
-            else:
-                images = obs.images
-        else:
-            # interpolate low-res to reference resolution
-            images = interpolate_observation(
-                obs, obs_ref.frame, wave_filter=filtered_coadd
-            )
-        if filtered_coadd is True:
-            coadd += np.sum(
-                images / np.sum(images, axis=(-2, -1))[:, None, None], axis=0
-            )
-        else:
-            # Weighted coadd
-            coadd += (images * weights[:, None, None]).sum(axis=(0))
-            jacobian += weights.sum()
-
-    if filtered_coadd is True:
-        coadd /= np.max(coadd)
-        bg_cutoff = 0.01
-        return coadd, bg_cutoff
-    coadd /= jacobian
-    # thresh is multiple above the rms of detect (weighted variance across channels)
-    bg_cutoff = np.sqrt((weights ** 2).sum()) / jacobian
-    return coadd, bg_cutoff
 
 
 def initAllSources(

@@ -11,7 +11,6 @@ from .initialization import (
     init_extended_morphology,
     init_multicomponent_morphology,
     build_detection_image,
-    rescale_spectrum,
 )
 from .morphology import (
     ImageMorphology,
@@ -84,14 +83,18 @@ class PointSource(FactorizedComponent):
         if not hasattr(observations, "__iter__"):
             observations = (observations,)
 
+        center = model_frame.get_pixel(sky_coord)
+        morphology = PointSourceMorphology(model_frame, center)
+
+        # get spectrum from peak pixel, correct for PSF
         spectra = get_pixel_spectrum(sky_coord, observations, correct_psf=True)
         spectrum = np.concatenate(spectra, axis=0)
         spectrum = TabulatedSpectrum(model_frame, spectrum)
 
-        center = model_frame.get_pixel(sky_coord)
-        morphology = PointSourceMorphology(model_frame, center)
-        self.center = morphology.center
         super().__init__(model_frame, spectrum, morphology)
+
+        # retain center as attribute
+        self.center = morphology.center
 
 
 class CompactExtendedSource(FactorizedComponent):
@@ -120,10 +123,6 @@ class CompactExtendedSource(FactorizedComponent):
         if not hasattr(observations, "__iter__"):
             observations = (observations,)
 
-        # get PSF-corrected center pixel spectrum
-        spectra = get_pixel_spectrum(sky_coord, observations, correct_psf=True)
-        spectrum = np.concatenate(spectra, axis=0)
-
         # initialize morphology from model_frame psf
         morph, bbox = init_compact_source(sky_coord, model_frame)
         center = model_frame.get_pixel(sky_coord)
@@ -138,8 +137,10 @@ class CompactExtendedSource(FactorizedComponent):
             shifting=shifting,
         )
 
-        # morph uses max=1 normalization, so need to rescale
-        rescale_spectrum(spectrum, morph, model_frame)
+        # get spectrum from peak pixel, correct for PSF
+        spectra = get_pixel_spectrum(sky_coord, observations, correct_psf=True)
+        spectrum = np.concatenate(spectra, axis=0)
+        spectrum /= morph.sum()
         spectrum = TabulatedSpectrum(model_frame, spectrum)
 
         # set up model with its parameters
@@ -180,9 +181,9 @@ class SingleExtendedSource(FactorizedComponent):
         if not hasattr(observations, "__iter__"):
             observations = (observations,)
 
-        # get PSF-corrected center pixel spectrum
-        spectra = get_pixel_spectrum(sky_coord, observations, correct_psf=True)
-        spectrum = np.concatenate(spectra, axis=0)
+        # get center pixel spectrum
+        # this is from convolved image: weighs higher emission *and* narrow PSF
+        spectra = get_pixel_spectrum(sky_coord, observations)
 
         # initialize morphology
         # compute optimal SNR deconvolved coadd for detection
@@ -211,8 +212,12 @@ class SingleExtendedSource(FactorizedComponent):
             shifting=shifting,
         )
 
-        # correct spectrum for deviation from PSF shape and amplitude
-        rescale_spectrum(spectrum, morph, model_frame)
+        # find best-fit spectra for morph from unweighted deconvolution coadd
+        # assumes img only has that source in region of the box
+        detect_all, std_all = build_detection_image(observations)
+        box_3D = Box((model_frame.C,)) @ bbox
+        boxed_detect = box_3D.extract_from(detect_all)
+        spectrum = get_best_fit_spectrum((morph,), boxed_detect)
         spectrum = TabulatedSpectrum(model_frame, spectrum)
 
         # set up model with its parameters
@@ -257,9 +262,9 @@ class StarletSource(FactorizedComponent):
         if not hasattr(observations, "__iter__"):
             observations = (observations,)
 
-        # get PSF-corrected center pixel spectrum
-        spectra = get_pixel_spectrum(sky_coord, observations, correct_psf=True)
-        spectrum = np.concatenate(spectra, axis=0)
+        # get center pixel spectrum
+        # this is from convolved image: weighs higher emission *and* narrow PSF
+        spectra = get_pixel_spectrum(sky_coord, observations)
 
         # initialize morphology
         detect, std = build_detection_image(observations, spectra=spectra)
@@ -280,9 +285,13 @@ class StarletSource(FactorizedComponent):
             model_frame, morph, bbox=bbox, threshold=starlet_thresh
         )
 
-        # correct spectrum for deviation from PSF shape and amplitude
+        # find best-fit spectra for morph from unweighted deconvolution coadd
+        # assumes img only has that source in region of the box
         morph = morphology.get_model()
-        rescale_spectrum(spectrum, morph, model_frame)
+        detect_all, std_all = build_detection_image(observations)
+        box_3D = Box((model_frame.C,)) @ bbox
+        boxed_detect = box_3D.extract_from(detect_all)
+        spectrum = get_best_fit_spectrum((morph,), boxed_detect)
         spectrum = TabulatedSpectrum(model_frame, spectrum)
 
         super().__init__(model_frame, spectrum, morphology)
@@ -344,8 +353,9 @@ class MultiExtendedSource(CombinedComponent):
         if not hasattr(observations, "__iter__"):
             observations = (observations,)
 
-        # initialize morphology
-        spectra = get_pixel_spectrum(sky_coord, observations, correct_psf=True)
+        # get center pixel spectrum
+        # this is from convolved image: weighs higher emission *and* narrow PSF
+        spectra = get_pixel_spectrum(sky_coord, observations)
         detect, std = build_detection_image(observations, spectra=spectra)
         morphs, boxes = init_multicomponent_morphology(
             sky_coord,
