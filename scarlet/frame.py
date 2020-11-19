@@ -15,8 +15,8 @@ class Frame:
 
     Attributes
     ----------
-    shape_or_box: tuple
-        shape tuple (Channel, Height, Width) or image/cube with a shape
+    shape: tuple
+        shape tuple (Channel, Height, Width)
     wcs: TBD
         World Coordinates
     psfs: `scarlet.PSF` or its arguments
@@ -27,12 +27,8 @@ class Frame:
         Dtype to represent the data.
     """
 
-    def __init__(self, shape_or_box, channels, wcs=None, psfs=None, dtype=np.float32):
-        if isinstance(shape_or_box, Box):
-            self._bbox = shape_or_box
-        else:
-            self._bbox = Box(shape_or_box)
-
+    def __init__(self, shape, channels, wcs=None, psfs=None, dtype=np.float32):
+        self._bbox = Box(shape)
         assert len(channels) == self.C
         self.channels = channels
 
@@ -63,10 +59,6 @@ class Frame:
     @property
     def shape(self):
         return self._bbox.shape
-
-    @property
-    def origin(self):
-        return self._bbox.origin
 
     @property
     def C(self):
@@ -107,9 +99,6 @@ class Frame:
         else:
             pixel = sky
 
-        # # correct for box offset
-        # pixel -= self.bbox.origin[-2:]
-
         if pixel.size == 2:  # only one coordinate pair
             return pixel[0]
         return pixel
@@ -123,9 +112,6 @@ class Frame:
             Coordinates in the pixel space
         """
         pix = np.array(pixel, dtype=np.float).reshape(-1, 2)
-
-        # # correct for box offset
-        # pix += self.bbox.origin[-2:]
 
         if self.wcs is not None:
             # x/y instead of y/x:

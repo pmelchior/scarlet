@@ -262,8 +262,6 @@ def init_extended_morphology(
 
     # position in frame coordinates
     center = frame.get_pixel(sky_coord)
-    # TODO: temporary hack to account for frame.bbox.origin
-    center -= frame.bbox.origin[-2:]
     center_index = np.round(center).astype(np.int)
 
     # Copy detect if reused for other sources
@@ -292,9 +290,6 @@ def init_extended_morphology(
     # truncate morph at thresh * bg_rms
     threshold = detect_std * thresh
     morph, bbox = trim_morphology(center_index, im, bg_thresh=threshold)
-
-    # TODO: temporary hack to account for frame.bbox.origin
-    bbox += frame.bbox.origin[-2:]
 
     # normalize to unity at peak pixel for the imposed normalization
     if morph.sum() > 0:
