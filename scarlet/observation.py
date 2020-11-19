@@ -155,7 +155,6 @@ class Observation:
         self._slices_for_model = slices[1]
 
         # construct diff kernels
-        self._diff_kernels = None
         if self.frame.psf is not model_frame.psf:
             assert self.frame.psf is not None and model_frame.psf is not None
             psf = fft.Fourier(self.frame.psf.get_model().astype(model_frame.dtype))
@@ -164,29 +163,33 @@ class Observation:
             )
             self._diff_kernels = fft.match_psfs(psf, model_psf)
 
-        # construct deconvolved image for detection:
-        # divide Fourier transform of images by Fourier transform of diff kernel
-        self.prerender_images = fft._kspace_operation(
-            fft.Fourier(self.images),
-            self._diff_kernels,
-            3,
-            fft.operator.truediv,
-            self.images.shape,
-            axes=(-2, -1),
-        ).image  # then get the image from Fourier
+            # construct deconvolved image for detection:
+            # divide Fourier transform of images by Fourier transform of diff kernel
+            self.prerender_images = fft._kspace_operation(
+                fft.Fourier(self.images),
+                self._diff_kernels,
+                3,
+                fft.operator.truediv,
+                self.images.shape,
+                axes=(-2, -1),
+            ).image  # then get the image from Fourier
 
-        # deconvolve noise field to estimate its noise level
-        noise = np.random.normal(scale=1 / np.sqrt(self.weights))
-        noise_deconv = fft._kspace_operation(
-            fft.Fourier(noise),
-            self._diff_kernels,
-            3,
-            fft.operator.truediv,
-            self.images.shape,
-            axes=(-2, -1),
-        ).image
-        # spatially flat noise, ignores any variation in self.weights
-        self.prerender_sigma = noise_deconv.std(axis=(1, 2))
+            # deconvolve noise field to estimate its noise level
+            noise = np.random.normal(scale=1 / np.sqrt(self.weights))
+            noise_deconv = fft._kspace_operation(
+                fft.Fourier(noise),
+                self._diff_kernels,
+                3,
+                fft.operator.truediv,
+                self.images.shape,
+                axes=(-2, -1),
+            ).image
+            # spatially flat noise, ignores any variation in self.weights
+            self.prerender_sigma = noise_deconv.std(axis=(1, 2))
+        else:
+            self._diff_kernels = None
+            self.prerender_images = self.images
+            self.prerender_sigma = np.mean(1 / np.sqrt(self.weights), axis=(1, 2))
 
         assert convolution_type in [
             "real",
