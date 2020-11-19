@@ -249,7 +249,7 @@ class ExtendedSourceMorphology(ImageMorphology):
             NormalizationConstraint("max"),
         ]
         morph_constraint = ConstraintChain(*constraints)
-        image = Parameter(image, name="image", step=1e-2, constraint=morph_constraint)
+        image = Parameter(image, name="image", step=5e-3, constraint=morph_constraint)
 
         self.pixel_center = np.round(center).astype("int")
         if shifting:
