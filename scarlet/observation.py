@@ -4,10 +4,7 @@ from autograd.extend import defvjp, primitive
 from .frame import Frame
 from . import interpolation
 from . import fft
-from . import resampling
-
 from .bbox import Box, overlapped_slices
-
 from scarlet.operators_pybind11 import apply_filter
 
 
@@ -570,20 +567,16 @@ class LowResObservation(Observation):
         self.angle, self.h = interpolation.get_angles(self.frame.wcs, model_frame.wcs)
         self.isrot = (np.abs(self.angle[1]) ** 2) > np.finfo(float).eps
 
-        # Get pixel coordinates in each frame
-        # TODO: can this be done with frame.convert_pixel_to???
-        # If so, we can remove all code in resampling
-        coord_lr, coord_hr = resampling.match_patches(
-            self, model_frame, isrot=self.isrot
-        )
-        # shape of the low resolution image in the intersection or union
-        lr_shape = (
-            np.max(coord_lr[0]) - np.min(coord_lr[0]) + 1,
-            np.max(coord_lr[1]) - np.min(coord_lr[1]) + 1,
-        )
-        # TODO: should coords define a _slices_for_model/images?
+        # Get pixel coordinates alinged with x and y axes  of this observation
+        # in model frame
+        lr_shape = self.frame.shape[1:]
+        pixels = np.stack((np.arange(lr_shape[0]), np.arange(lr_shape[1])), axis=1)
+        coord_hr = self.frame.convert_pixel_to(model_frame, pixel=pixels)
 
-        # compute diff kenel in model_frame pixels
+        # TODO: should coords define a _slices_for_model/images?
+        # lr_inside_hr = model_frame.bbox.contains(coord_hr)
+
+        # compute diff kernel in model_frame pixels
         diff_psf, target = self.build_diffkernel(model_frame)
 
         # 1D convolutions convolutions of the model are done along the smaller axis, therefore,
@@ -625,12 +618,12 @@ class LowResObservation(Observation):
         if self.isrot:
             # Unrotated coordinates:
             Y_unrot = (
-                (coord_hr[0] - center_y) * self.angle[0]
-                - (coord_hr[1] - center_x) * self.angle[1]
+                (coord_hr[:, 0] - center_y) * self.angle[0]
+                - (coord_hr[:, 1] - center_x) * self.angle[1]
             ).reshape(lr_shape)
             X_unrot = (
-                (coord_hr[1] - center_x) * self.angle[0]
-                + (coord_hr[0] - center_y) * self.angle[1]
+                (coord_hr[:, 1] - center_x) * self.angle[0]
+                + (coord_hr[:, 0] - center_y) * self.angle[1]
             ).reshape(lr_shape)
 
             # Removing redundancy
@@ -657,7 +650,7 @@ class LowResObservation(Observation):
         # aligned case.
         else:
             axes = [int(not self.small_axis) + 1]
-            self.shifts = np.array(coord_hr)
+            self.shifts = coord_hr.T
 
             self.shifts[0] -= center_y
             self.shifts[1] -= center_x
@@ -677,7 +670,7 @@ class LowResObservation(Observation):
                 self._resconv_op.shape[0], -1, self._resconv_op.shape[-1]
             )
 
-        # TODO: DOES NOT WORK!!!
+        # # TODO: DOES NOT WORK!!!
         # # construct deconvolved image for detection:
         # # * interpolate to model frame
         # # * divide Fourier transform of images by Fourier transform of diff kernel
