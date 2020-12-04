@@ -138,7 +138,7 @@ class Blend(CombinedComponent):
                 _prox = tuple(x.constraint for x in X)
 
                 # good defaults for adaprox
-                scheme = alg_kwargs.pop("scheme", "amsgrad")
+                scheme = alg_kwargs.pop("scheme", "nadam")
                 prox_max_iter = alg_kwargs.pop("prox_max_iter", 10)
                 callback = partial(
                     self._callback,
