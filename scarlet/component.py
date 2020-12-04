@@ -1,7 +1,7 @@
 import autograd.numpy as np
 
 from .frame import Frame
-from .model import Model
+from .model import Model, UpdateException
 from .parameter import Parameter, relative_step
 from .constraint import PositivityConstraint
 from .bbox import Box, overlapped_slices
@@ -174,6 +174,16 @@ class FactorizedComponent(Component):
             model = self.model_to_frame(frame, model)
         return model
 
+    def update(self):
+        for child in self.children:
+            try:
+                child.update()
+            except UpdateException as e:
+                spectrum, morphology = self.children
+                bbox = spectrum.bbox @ morphology.bbox[-2:]
+                self.bbox = bbox
+                raise e
+
 
 class CubeComponent(Component):
     """A single component in a blend
@@ -233,16 +243,6 @@ class CombinedComponent(Component):
         assert operation in ["add", "multiply"]
         self.operation = operation
 
-    @property
-    def bbox(self):
-        """Union of all the component `~scarlet.bbox.Box`es
-        """
-        # Make the bbox of the tree the union of the component bboxes
-        box = self.children[0].bbox.copy()
-        for c in self.children[1:]:
-            box |= c.bbox
-        return box
-
     def get_model(self, *parameters, frame=None):
         # boxed models
         models = self.get_models_of_children(*parameters, frame=None)
@@ -268,3 +268,15 @@ class CombinedComponent(Component):
         if frame is not None:
             model = self.model_to_frame(frame, model)
         return model
+
+    def update(self):
+        for child in self.children:
+            try:
+                child.update()
+            except UpdateException as e:
+                # Make the bbox of the tree the union of the component bboxes
+                box = self.children[0].bbox.copy()
+                for c in self.children[1:]:
+                    box |= c.bbox
+                self.bbox = box  # super setter method
+                raise e
