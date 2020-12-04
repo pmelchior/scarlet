@@ -10,7 +10,7 @@ from .initialization import (
     init_compact_source,
     init_extended_morphology,
     init_multicomponent_morphology,
-    build_detection_image,
+    build_initialization_image,
 )
 from .morphology import (
     ImageMorphology,
@@ -187,12 +187,12 @@ class SingleExtendedSource(FactorizedComponent):
 
         # initialize morphology
         # compute optimal SNR deconvolved coadd for detection
-        detect, std = build_detection_image(observations, spectra=spectra)
+        image, std = build_initialization_image(observations, spectra=spectra)
         # make monotonic morphology, trimmed to box with pixels above std
         morph, bbox = init_extended_morphology(
             sky_coord,
             model_frame,
-            detect,
+            image,
             std,
             thresh=thresh,
             symmetric=True,
@@ -214,7 +214,7 @@ class SingleExtendedSource(FactorizedComponent):
 
         # find best-fit spectra for morph from unweighted deconvolution coadd
         # assumes img only has that source in region of the box
-        detect_all, std_all = build_detection_image(observations)
+        detect_all, std_all = build_initialization_image(observations)
         box_3D = Box((model_frame.C,)) @ bbox
         boxed_detect = box_3D.extract_from(detect_all)
         spectrum = get_best_fit_spectrum((morph,), boxed_detect)
@@ -267,12 +267,12 @@ class StarletSource(FactorizedComponent):
         spectra = get_pixel_spectrum(sky_coord, observations)
 
         # initialize morphology
-        detect, std = build_detection_image(observations, spectra=spectra)
+        image, std = build_initialization_image(observations, spectra=spectra)
         # make monotonic morphology, trimmed to box with pixels above std
         morph, bbox = init_extended_morphology(
             sky_coord,
             model_frame,
-            detect,
+            image,
             std,
             thresh=thresh,
             symmetric=True,
@@ -288,7 +288,7 @@ class StarletSource(FactorizedComponent):
         # find best-fit spectra for morph from unweighted deconvolution coadd
         # assumes img only has that source in region of the box
         morph = morphology.get_model()
-        detect_all, std_all = build_detection_image(observations)
+        detect_all, std_all = build_initialization_image(observations)
         box_3D = Box((model_frame.C,)) @ bbox
         boxed_detect = box_3D.extract_from(detect_all)
         spectrum = get_best_fit_spectrum((morph,), boxed_detect)
@@ -356,11 +356,11 @@ class MultiExtendedSource(CombinedComponent):
         # get center pixel spectrum
         # this is from convolved image: weighs higher emission *and* narrow PSF
         spectra = get_pixel_spectrum(sky_coord, observations)
-        detect, std = build_detection_image(observations, spectra=spectra)
+        image, std = build_initialization_image(observations, spectra=spectra)
         morphs, boxes = init_multicomponent_morphology(
             sky_coord,
             model_frame,
-            detect,
+            image,
             std,
             flux_percentiles,
             thresh=thresh,
@@ -371,7 +371,7 @@ class MultiExtendedSource(CombinedComponent):
 
         # find best-fit spectra for each of morph from unweighted deconvolution coadd
         # assumes img only has that source in region of the box
-        detect_all, std_all = build_detection_image(observations)
+        detect_all, std_all = build_initialization_image(observations)
         box_3D = Box((model_frame.C,)) @ boxes[0]
         boxed_detect = box_3D.extract_from(detect_all)
         spectra = get_best_fit_spectrum(morphs, boxed_detect)

@@ -23,7 +23,7 @@ class Box:
     """
 
     def __init__(self, shape, origin=None):
-        self._shape = tuple(shape)
+        self.shape = tuple(shape)
         if origin is None:
             origin = (0,) * len(shape)
         assert len(origin) == len(shape)
@@ -145,12 +145,6 @@ class Box:
         """Tuple of stop coordinates
         """
         return tuple(o + s for o, s in zip(self.origin, self.shape))
-
-    @property
-    def shape(self):
-        """Shape of the box
-        """
-        return self._shape
 
     @property
     def bounds(self):

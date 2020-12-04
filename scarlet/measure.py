@@ -87,7 +87,7 @@ def snr(component, observations, prerender=True):
         W = M / M.sum(axis=1)[:, None]
 
         # get variance of the deconvolved coadd
-        detect_all, std_all = initialization.build_detection_image(
+        detect_all, std_all = initialization.build_initialization_image(
             observations, prerender=prerender
         )
         boxed_std = bbox.extract_from(std_all)
