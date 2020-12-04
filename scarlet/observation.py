@@ -312,7 +312,7 @@ class Observation:
             model_ = model
         return model_[self._slices_for_model]
 
-    def get_log_likelihood(self, model, *parameters):
+    def get_log_likelihood(self, model, *parameters, noise_factor=0):
         """Computes the log-Likelihood of a given model wrt to the observation
 
         Parameters
@@ -328,6 +328,14 @@ class Observation:
         model_ = self.render(model, *parameters)
         images_ = self.images[self._slices_for_images]
         weights_ = self.weights[self._slices_for_images]
+
+        # noise injection to soften the gradient
+        if noise_factor > 0:
+            std = 1 / np.sqrt(weights_)
+            noise = np.random.normal(loc=0, scale=std)
+            images_ = images_.copy() + noise
+            weights_ = weights_.copy() / (noise_factor + 1)
+
         return -self.log_norm - np.sum(weights_ * (model_ - images_) ** 2) / 2
 
     @property
@@ -599,21 +607,12 @@ class LowResObservation(Observation):
             fft._pad(diff_psf.image, self._fft_shape, axes=(-2, -1))
         )
 
-        frame_offset = model_frame.get_pixel(self.frame.get_sky_coord((0, 0)))
-        center_y = (
-            np.int(
-                self._fft_shape[0] / 2.0 - (self._fft_shape[0] - model_frame.Ny) / 2.0
-            )
-            + ((self._fft_shape[0] % 2) != 0) * ((model_frame.Ny % 2) == 0)
-            + frame_offset[0]
-        )
-        center_x = (
-            np.int(
-                self._fft_shape[1] / 2.0 - (self._fft_shape[1] - model_frame.Nx) / 2.0
-            )
-            - ((self._fft_shape[1] % 2) != 0) * ((model_frame.Nx % 2) == 0)
-            + frame_offset[1]
-        )
+        center_y = np.int(
+            self._fft_shape[0] / 2.0 - (self._fft_shape[0] - model_frame.Ny) / 2.0
+        ) + ((self._fft_shape[0] % 2) != 0) * ((model_frame.Ny % 2) == 0)
+        center_x = np.int(
+            self._fft_shape[1] / 2.0 - (self._fft_shape[1] - model_frame.Nx) / 2.0
+        ) - ((self._fft_shape[1] % 2) != 0) * ((model_frame.Nx % 2) == 0)
 
         if self.isrot:
             # Unrotated coordinates:
