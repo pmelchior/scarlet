@@ -18,7 +18,7 @@ def deblend(data: Dict[str, np.ndarray], max_iter: int, e_rel: float):
         * `sources`: The deblended models.
     """
     import scarlet
-    from ..initialization import init_all_sources
+    from ..initialization import init_all_sources, set_spectra_to_match
 
     # Load the sample images
     images = data["images"]
@@ -45,8 +45,10 @@ def deblend(data: Dict[str, np.ndarray], max_iter: int, e_rel: float):
         observation,
         max_components=2,
         edge_distance=None,
-        min_snr=15,
+        min_snr=10,
+        thresh=0.1,
     )
+    set_spectra_to_match(sources, observation)
 
     # Fit the blend
     t1 = time.time()

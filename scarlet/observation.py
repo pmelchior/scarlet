@@ -172,7 +172,9 @@ class Observation:
             ).image  # then get the image from Fourier
 
             # deconvolve noise field to estimate its noise level
-            noise = np.random.normal(scale=1 / np.sqrt(self.weights))
+            noise = np.random.normal(
+                scale=1 / np.where(self.weights > 0, np.sqrt(self.weights), np.inf)
+            )
             noise_deconv = fft._kspace_operation(
                 fft.Fourier(noise),
                 self._diff_kernels,
