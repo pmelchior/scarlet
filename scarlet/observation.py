@@ -172,9 +172,9 @@ class Observation:
             ).image  # then get the image from Fourier
 
             # deconvolve noise field to estimate its noise level
-            noise = np.random.normal(
-                scale=1 / np.where(self.weights > 0, np.sqrt(self.weights), np.inf)
-            )
+            # this is non-deterministic
+            noise_rms = 1 / np.where(self.weights > 0, np.sqrt(self.weights), np.inf)
+            noise = np.random.normal(scale=noise_rms)
             noise_deconv = fft._kspace_operation(
                 fft.Fourier(noise),
                 self._diff_kernels,
@@ -188,7 +188,10 @@ class Observation:
         else:
             self._diff_kernels = None
             self.prerender_images = self.images
-            self.prerender_sigma = np.mean(1 / np.sqrt(self.weights), axis=(1, 2))
+            import numpy.ma as ma
+
+            noise_rms = 1 / np.sqrt(ma.masked_equal(self.weights, 0))
+            self.prerender_sigma = np.mean(noise_rms, axis=(1, 2))
 
         assert convolution_type in [
             "real",
@@ -333,7 +336,7 @@ class Observation:
 
         # noise injection to soften the gradient
         if noise_factor > 0:
-            std = 1 / np.sqrt(weights_)
+            std = 1 / np.sqrt(np.where(weights_ > 0, weights_, np.inf))
             noise = np.random.normal(loc=0, scale=std)
             images_ = images_.copy() + noise
             weights_ = weights_.copy() / (noise_factor + 1)

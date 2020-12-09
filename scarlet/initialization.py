@@ -376,13 +376,13 @@ def init_multicomponent_morphology(
     return morphs, boxes
 
 
-def build_initialization_image(observations, spectra=None, prerender=True):
+def build_initialization_image(observations, spectra=None, prerender=False):
     """Build a spectrum-weighted image from all observations.
 
     Parameters
     ----------
     observations: list of `~scarlet.observation.Observation`
-        Every Observation with a `image_prerender` member will contribute to the
+        Every Observation with a `image_prerender` attribute will contribute to the
         detection image, according to the noise level of that prerender image
     spectra: list of array
         for every observation: spectrum at the center of the source
@@ -416,22 +416,23 @@ def build_initialization_image(observations, spectra=None, prerender=True):
     var = np.zeros(model_frame.shape, dtype=model_frame.dtype)
     for i, obs in enumerate(observations):
 
-        if not hasattr(obs, "prerender_images") or obs.prerender_images is None:
-            continue
+        if prerender:
+            # onlyse use observations that have a prerender image
+            if not hasattr(obs, "prerender_images") or obs.prerender_images is None:
+                continue
+            images = obs.prerender_images
+            bg_rms = obs.prerender_sigma
 
-        C = obs.frame.C
-        bg_rms = obs.prerender_sigma
+        else:
+            images = obs.images
+            noise_rms = 1 / np.where(obs.weights > 0, np.sqrt(obs.weights), np.inf)
+            bg_rms = np.mean(noise_rms, axis=(1, 2))
 
         if spectra is None:
             spectrum = weights = 1
         else:
             spectrum = spectra[i][:, None, None]
             weights = spectrum / (bg_rms ** 2)[:, None, None]
-
-        if prerender:
-            images = obs.prerender_images
-        else:
-            images = obs.images
 
         obs.map_channels(detect)[obs._slices_for_model] += (
             weights * images[obs._slices_for_images]
@@ -459,6 +460,7 @@ def init_all_sources(
     edge_distance=None,
     shifting=False,
     fallback=True,
+    prerender=True,
 ):
     """Initialize all sources in a blend
 
@@ -497,9 +499,10 @@ def init_all_sources(
                 edge_distance=edge_distance,
                 shifting=shifting,
                 fallback=fallback,
+                prerender=prerender,
             )
             sources.append(source)
-        except Exception:
+        except Exception as e:
             skipped.append(k)
     return sources, skipped
 
@@ -514,6 +517,7 @@ def init_source(
     edge_distance=None,
     shifting=False,
     fallback=True,
+    prerender=True,
 ):
     """Initialize a Source
 
@@ -584,6 +588,7 @@ def init_source(
                 thresh=thresh,
                 shifting=source_shifting,
                 K=max_components,
+                prerender=prerender,
             )
             try:
                 source.check_parameters()
@@ -594,7 +599,8 @@ def init_source(
                     components = (source,)
                 if any(
                     [
-                        measure.snr(component, observations) < min_snr
+                        measure.snr(component, observations, prerender=prerender)
+                        < min_snr
                         for component in components
                     ]
                 ):

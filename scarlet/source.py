@@ -152,7 +152,13 @@ class CompactExtendedSource(FactorizedComponent):
 
 class SingleExtendedSource(FactorizedComponent):
     def __init__(
-        self, model_frame, sky_coord, observations, thresh=1.0, shifting=False,
+        self,
+        model_frame,
+        sky_coord,
+        observations,
+        thresh=1.0,
+        shifting=False,
+        prerender=True,
     ):
         """Extended source model
 
@@ -186,8 +192,10 @@ class SingleExtendedSource(FactorizedComponent):
         spectra = get_pixel_spectrum(sky_coord, observations)
 
         # initialize morphology
-        # compute optimal SNR deconvolved coadd for detection
-        image, std = build_initialization_image(observations, spectra=spectra)
+        # compute optimal SNR coadd for detection
+        image, std = build_initialization_image(
+            observations, spectra=spectra, prerender=prerender
+        )
         # make monotonic morphology, trimmed to box with pixels above std
         morph, bbox = init_extended_morphology(
             sky_coord,
@@ -212,9 +220,11 @@ class SingleExtendedSource(FactorizedComponent):
             shifting=shifting,
         )
 
-        # find best-fit spectra for morph from unweighted deconvolution coadd
+        # find best-fit spectra for morph from init coadd
         # assumes img only has that source in region of the box
-        detect_all, std_all = build_initialization_image(observations)
+        detect_all, std_all = build_initialization_image(
+            observations, prerender=prerender
+        )
         box_3D = Box((model_frame.C,)) @ bbox
         boxed_detect = box_3D.extract_from(detect_all)
         spectrum = get_best_fit_spectrum((morph,), boxed_detect)
@@ -243,6 +253,7 @@ class StarletSource(FactorizedComponent):
         thresh=1.0,
         min_grad=0.1,
         starlet_thresh=5e-3,
+        prerender=True,
     ):
         """Extended source intialized to match a set of observations
 
@@ -267,7 +278,9 @@ class StarletSource(FactorizedComponent):
         spectra = get_pixel_spectrum(sky_coord, observations)
 
         # initialize morphology
-        image, std = build_initialization_image(observations, spectra=spectra)
+        image, std = build_initialization_image(
+            observations, spectra=spectra, prerender=prerender
+        )
         # make monotonic morphology, trimmed to box with pixels above std
         morph, bbox = init_extended_morphology(
             sky_coord,
@@ -288,7 +301,9 @@ class StarletSource(FactorizedComponent):
         # find best-fit spectra for morph from unweighted deconvolution coadd
         # assumes img only has that source in region of the box
         morph = morphology.get_model()
-        detect_all, std_all = build_initialization_image(observations)
+        detect_all, std_all = build_initialization_image(
+            observations, prerender=prerender
+        )
         box_3D = Box((model_frame.C,)) @ bbox
         boxed_detect = box_3D.extract_from(detect_all)
         spectrum = get_best_fit_spectrum((morph,), boxed_detect)
@@ -319,6 +334,7 @@ class MultiExtendedSource(CombinedComponent):
         flux_percentiles=None,
         thresh=1.0,
         shifting=False,
+        prerender=True,
     ):
         """Create multi-component extended source.
 
@@ -356,7 +372,9 @@ class MultiExtendedSource(CombinedComponent):
         # get center pixel spectrum
         # this is from convolved image: weighs higher emission *and* narrow PSF
         spectra = get_pixel_spectrum(sky_coord, observations)
-        image, std = build_initialization_image(observations, spectra=spectra)
+        image, std = build_initialization_image(
+            observations, spectra=spectra, prerender=prerender
+        )
         morphs, boxes = init_multicomponent_morphology(
             sky_coord,
             model_frame,
@@ -371,7 +389,9 @@ class MultiExtendedSource(CombinedComponent):
 
         # find best-fit spectra for each of morph from unweighted deconvolution coadd
         # assumes img only has that source in region of the box
-        detect_all, std_all = build_initialization_image(observations)
+        detect_all, std_all = build_initialization_image(
+            observations, prerender=prerender
+        )
         box_3D = Box((model_frame.C,)) @ boxes[0]
         boxed_detect = box_3D.extract_from(detect_all)
         spectra = get_best_fit_spectrum(morphs, boxed_detect)
@@ -419,6 +439,7 @@ def ExtendedSource(
     thresh=1.0,
     compact=False,
     shifting=False,
+    prerender=True,
 ):
     """Create extended sources with either a single component or multiple components.
 
@@ -432,7 +453,12 @@ def ExtendedSource(
         )
     if K == 1:
         return SingleExtendedSource(
-            model_frame, sky_coord, observations, thresh=thresh, shifting=shifting,
+            model_frame,
+            sky_coord,
+            observations,
+            thresh=thresh,
+            shifting=shifting,
+            prerender=prerender,
         )
     else:
         return MultiExtendedSource(
@@ -443,4 +469,5 @@ def ExtendedSource(
             flux_percentiles=flux_percentiles,
             thresh=thresh,
             shifting=shifting,
+            prerender=prerender,
         )

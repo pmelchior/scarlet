@@ -45,8 +45,9 @@ def deblend(data: Dict[str, np.ndarray], max_iter: int, e_rel: float):
         observation,
         max_components=2,
         edge_distance=None,
-        min_snr=10,
+        min_snr=5,
         thresh=0.1,
+        prerender=True,
     )
     set_spectra_to_match(sources, observation)
 
