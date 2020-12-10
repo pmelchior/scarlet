@@ -6,7 +6,7 @@ from . import interpolation
 from . import fft
 from . import resampling
 
-from .bbox import overlapped_slices
+from .bbox import Box, overlapped_slices
 
 from scarlet.operators_pybind11 import apply_filter
 
@@ -95,16 +95,14 @@ class Observation:
         if weights is not None:
             self.weights = weights
         else:
-            self.weights = np.ones(images.shape)
+            self.weights = np.ones(images.shape, dtype=images.dtype)
         assert (
             self.weights.shape == self.images.shape
         ), "Weights needs to have same shape as images"
         self._padding = padding
-        self.slices_for_model = (slice(None), slice(None), slice(None))
-        self.slices_for_images = (slice(None), slice(None), slice(None))
         self._diff_kernels = None
-        self.h = 1
-
+        self._slices_for_model = slice(None)
+        self._slices_for_images = slice(None)
         self._parameters = ()
 
     def match(self, model_frame, diff_kernels=None, convolution="fft"):
@@ -132,15 +130,6 @@ class Observation:
         None
         """
         self.model_frame = model_frame
-        if model_frame.channels is not None and self.frame.channels is not None:
-            channel_origin = list(model_frame.channels).index(self.frame.channels[0])
-            self.frame._bbox.origin = (channel_origin, *self.frame._bbox.origin[1:])
-
-        slices = overlapped_slices(self.frame.bbox, model_frame.bbox)
-        self.slices_for_images = slices[0]  # Slice of images to match the model
-        self.slices_for_model = slices[
-            1
-        ]  #  Slice of model that overlaps with the observation
 
         # check dtype consistency
         if self.frame.dtype != model_frame.dtype:
@@ -149,14 +138,30 @@ class Observation:
             if type(self.weights) is np.ndarray:
                 self.weights = self.weights.copy().astype(model_frame.dtype)
 
+        # determine which channels are covered by data
+        # this has to be done first because convolution is only determined for these
+        self._channel_map = self.get_channel_map_for(model_frame)
+
+        # same of the 2D spatial region covered by data
+        pixel_in_model_frame = self.frame.convert_pixel_to(model_frame)
+        # since there cannot be rotation or scaling, it's only translation
+        ll = pixel_in_model_frame.min(axis=0).astype("int")
+        ur = pixel_in_model_frame.max(axis=0).astype("int") + 1
+        bounds = (ll[0], ur[0]), (ll[1], ur[1])
+        data_box = model_frame.bbox[0] @ Box.from_bounds(*bounds)
+        # properly treats truncation in both boxes
+        slices = overlapped_slices(data_box, model_frame.bbox)
+        self._slices_for_images = slices[0]
+        self._slices_for_model = slices[1]
+
         # construct diff kernels
         if diff_kernels is None:
             self._diff_kernels = None
             if self.frame.psf is not model_frame.psf:
                 assert self.frame.psf is not None and model_frame.psf is not None
-                psf = fft.Fourier(self.frame.psf.update_dtype(model_frame.dtype).image)
+                psf = fft.Fourier(self.frame.psf.get_model().astype(model_frame.dtype))
                 model_psf = fft.Fourier(
-                    model_frame.psf.update_dtype(model_frame.dtype).image
+                    model_frame.psf.get_model().astype(model_frame.dtype)
                 )
                 self._diff_kernels = fft.match_psfs(psf, model_psf)
         else:
@@ -208,13 +213,72 @@ class Observation:
     def parameters(self):
         return self._parameters
 
+    def get_channel_map_for(self, target):
+        """Compute the mapping between channels in the target frame and this observation
+
+        Parameters
+        ----------
+        target: a `scarlet.Frame` instance
+            The frame to match
+
+        Returns
+        -------
+        channel_map: None, slice, or array
+            None for identical channels in both frames; slice for concatenated channels;
+            array for linear mapping of target channels onto observation channels
+        """
+
+        if list(self.frame.channels) == list(target.channels):
+            return None
+
+        channel_map = [
+            list(target.channels).index(c) for c in list(self.frame.channels)
+        ]
+        min_channel = min(channel_map)
+        max_channel = max(channel_map)
+        if max_channel + 1 - min_channel == len(channel_map):
+            channel_map = slice(min_channel, max_channel + 1)
+        return channel_map
+
+        # full-fledged linear mixing model to allow for spectrophotometry later
+        channel_map = np.zeros((self.C, target.C))
+        for i, c in enumerate(list(self.frame.channels)):
+            j = list(target.channels).index(c)
+            assert j != -1, f"Could not find channel {c} in target frame"
+            channel_map[i, j] = 1
+            # TODO: for overlap computation:
+            # * turn channels into dict channel['g'] = (lambdas, R_lambdas)
+            # * extrapolate obs R_lambda onto model lambdas
+            # * compute np.dot(model_R_lambda, obs_R_lambda) for every
+            #   combination of obs and model channels
+        return channel_map
+
+    def map_channels(self, model):
+        """Map to model channels onto the observation channels
+
+        Parameters
+        ----------
+        model: array
+            The hyperspectral model
+
+        Returns
+        -------
+        obs_model: array
+            `model` mapped onto the observation channels
+        """
+        if self._channel_map is None:
+            return model
+        if isinstance(self._channel_map, slice):
+            return model[self._channel_map]
+        return np.dot(self._channel_map, model)
+
     def render(self, model, *parameters):
         """Convolve a model to the observation frame
 
         Parameters
         ----------
         model: array
-            The model from `Blend`
+            The hyperspectral model
         parameters: tuple of optimization parameters
 
         Returns
@@ -222,14 +286,16 @@ class Observation:
         image_model: array
             `model` mapped into the observation frame
         """
+        # restrict to observed portion
+        model = self.map_channels(model)
         if self._diff_kernels is not None:
-            model_images = self.convolve(model)
+            model_ = self.convolve(model)
         else:
-            model_images = model
-        return model_images[self.slices_for_model]
+            model_ = model
+        return model_[self._slices_for_model]
 
-    def get_loss(self, model, *parameters):
-        """Computes the loss/fidelity of a given model wrt to the observation
+    def get_log_likelihood(self, model, *parameters):
+        """Computes the log-Likelihood of a given model wrt to the observation
 
         Parameters
         ----------
@@ -239,31 +305,20 @@ class Observation:
 
         Returns
         -------
-        result: array
-            Scalar tensor with the likelihood of the model
-            given the image data
+        logL: float
         """
         model_ = self.render(model, *parameters)
-        if self.frame != self.model_frame:
-            images_ = self.images[self.slices_for_images]
-            weights_ = self.weights[self.slices_for_images]
-        else:
-            images_ = self.images
-            weights_ = self.weights
-
-        return self.log_norm + np.sum(weights_ * (model_ - images_) ** 2) / 2
+        images_ = self.images[self._slices_for_images]
+        weights_ = self.weights[self._slices_for_images]
+        return -self.log_norm - np.sum(weights_ * (model_ - images_) ** 2) / 2
 
     @property
     def log_norm(self):
         try:
             return self._log_norm
         except AttributeError:
-            if self.frame != self.model_frame:
-                images_ = self.images[self.slices_for_images]
-                weights_ = self.weights[self.slices_for_images]
-            else:
-                images_ = self.images
-                weights_ = self.weights
+            images_ = self.images[self._slices_for_images]
+            weights_ = self.weights[self._slices_for_images]
 
             # normalization of the single-pixel likelihood:
             # 1 / [(2pi)^1/2 (sigma^2)^1/2]
@@ -290,7 +345,7 @@ class Observation:
             channels=self.frame.channels,
         )
 
-    def _model_to_frame(self, frame, images=None):
+    def _to_frame(self, frame, images=None):
         """Project this observation into another frame
 
         Note: the frame must have the same sampling and rotation,
@@ -353,7 +408,7 @@ class LowResObservation(Observation):
         psf_match_lr: array
             low resolution psf at matching size and resolution
         """
-        psf_lr = self.frame._psfs.image
+        psf_lr = self.frame.psf.get_model().astype(psf_hr.dtype)
         # Odd pad shape
         pad_shape = (
             np.array((self.images.shape[-2:] + np.array(psf_lr.shape[-2:])) / 2).astype(
@@ -395,7 +450,7 @@ class LowResObservation(Observation):
         whr = model_frame.wcs
 
         # Reference PSF
-        _target = model_frame._psfs.image
+        _target = model_frame.psf.get_model()
 
         # Computes spatially matching observation and target psfs. The observation psf is also resampled \\
         # to the model frame resolution
@@ -477,21 +532,26 @@ class LowResObservation(Observation):
         coord: `array`
             coordinates of the pixels in the frame to fit
         """
+        self.model_frame = model_frame
+
+        # check dtype consistency
         if self.frame.dtype != model_frame.dtype:
+            self.frame.dtype = model_frame.dtype
             self.images = self.images.copy().astype(model_frame.dtype)
             if type(self.weights) is np.ndarray:
                 self.weights = self.weights.copy().astype(model_frame.dtype)
-            if self.frame._psfs is not None:
-                self.frame._psfs.update_dtype(model_frame.dtype)
 
+        # determine which channels are covered by data
+        # this has to be done first because convolution is only determined for these
+        self._channel_map = self.get_channel_map_for(model_frame)
+
+        # check if data is rotated wrt to model_frame
         self.angle, self.h = interpolation.get_angles(self.frame.wcs, model_frame.wcs)
-
-        # Is the angle larger than machine precision?
         self.isrot = (np.abs(self.angle[1]) ** 2) > np.finfo(float).eps
-        if not self.isrot:
-            self.angle = None
 
-        # Get pixel coordinates in each frame.
+        # Get pixel coordinates in each frame
+        # TODO: can this be done with frame.convert_pixel_to???
+        # If so, we can remove all code in resampling
         coord_lr, coord_hr = resampling.match_patches(
             self, model_frame, isrot=self.isrot
         )
@@ -500,12 +560,9 @@ class LowResObservation(Observation):
             np.max(coord_lr[0]) - np.min(coord_lr[0]) + 1,
             np.max(coord_lr[1]) - np.min(coord_lr[1]) + 1,
         )
+        # TODO: should coords define a _slices_for_model/images?
 
-        # Coordinates for all model frame pixels
-        self.frame_coord = (
-            np.array(range(model_frame.Ny)),
-            np.array(range(model_frame.Nx)),
-        )
+        # compute diff kenel in model_frame pixels
         diff_psf, target = self.build_diffkernel(model_frame)
 
         # 1D convolutions convolutions of the model are done along the smaller axis, therefore,
@@ -542,8 +599,8 @@ class LowResObservation(Observation):
             - ((self._fft_shape[1] % 2) != 0) * ((model_frame.Nx % 2) == 0)
             + model_frame.origin[-1]
         )
-        if self.isrot:
 
+        if self.isrot:
             # Unrotated coordinates:
             Y_unrot = (
                 (coord_hr[0] - center_y) * self.angle[0]
@@ -577,7 +634,6 @@ class LowResObservation(Observation):
 
         # aligned case.
         else:
-
             axes = [int(not self.small_axis) + 1]
             self.shifts = np.array(coord_hr)
 
@@ -613,64 +669,56 @@ class LowResObservation(Observation):
         image_model: array
             `model` mapped into the observation frame
         """
-        # Padding the psf to the fast_shape size
+        # restrict to observed portion
+        model = self.map_channels(model)
+        # FFT of model, padding the psf to the fast_shape size
         model_ = fft.Fourier(fft._pad(model, self._fft_shape, axes=(-2, -1)))
 
-        model_image = []
         if self.isrot:
             axes = (1, 2)
-
         else:
             axes = [int(self.small_axis) + 1]
-
         model_conv = self.sinc_shift(model_, -self.other_shifts, axes)
+
         # Transposes are all over the place to make arrays F-contiguous
+        # -> faster than np.einsum
         if self.isrot:
+            model_conv = model_conv.reshape(*model_conv.shape[:2], -1)
+
             if self.small_axis:
-                model_conv = model_conv.reshape(*model_conv.shape[:2], -1)
-                for c in range(self.frame.C):
-                    model_image.append((self._resconv_op[c] @ model_conv[c].T))
-                return np.array(model_image, dtype=self.frame.dtype)
+                return np.array(
+                    [
+                        np.dot(self._resconv_op[c], model_conv[c].T)
+                        for c in range(self.frame.C)
+                    ],
+                    dtype=self.frame.dtype,
+                )
             else:
-                model_conv = model_conv.reshape(*model_conv.shape[:2], -1)
-                for c in range(self.frame.C):
-                    model_image.append((self._resconv_op[c] @ model_conv[c].T).T)
-                return np.array(model_image, dtype=self.frame.dtype)
+                return np.array(
+                    [
+                        np.dot(self._resconv_op[c], model_conv[c].T).T
+                        for c in range(self.frame.C)
+                    ],
+                    dtype=self.frame.dtype,
+                )
 
         if self.small_axis:
             model_conv = model_conv.reshape(
                 model_conv.shape[0], -1, model_conv.shape[-1]
             )
-            for c in range(self.frame.C):
-                model_image.append((model_conv[c].T @ self._resconv_op[c].T).T)
-            return np.array(model_image, dtype=self.frame.dtype)
+            return np.array(
+                [
+                    np.dot(model_conv[c].T, self._resconv_op[c].T).T
+                    for c in range(self.frame.C)
+                ],
+                dtype=self.frame.dtype,
+            )
         else:
-            model_conv = model_conv.reshape(*model_conv.shape[:2], -2)
-            for c in range(self.frame.C):
-                model_image.append((self._resconv_op[c].T @ model_conv[c].T).T)
-            return np.array(model_image, dtype=self.frame.dtype)
-
-    def get_loss(self, model, *parameters):
-        """Computes the loss/fidelity of a given model wrt to the observation
-        Parameters
-        ----------
-        model: array
-            A model from `Blend`
-        Returns
-        -------
-        loss: float
-            Loss of the model
-        """
-        model_ = self.render(model, *parameters)
-        images_ = self.images
-        weights_ = self.weights
-
-        # properly normalized likelihood
-        log_sigma = np.zeros(weights_.shape, dtype=weights_.dtype)
-        cuts = weights_ > 0
-        log_sigma[cuts] = np.log(1 / weights_[cuts])
-        log_norm = (
-            np.prod(images_.shape) / 2 * np.log(2 * np.pi) + np.sum(log_sigma) / 2
-        )
-
-        return log_norm + 0.5 * np.sum(weights_ * (model_ - images_) ** 2)
+            model_conv = model_conv.reshape(*model_conv.shape[:2], -1)
+            return np.array(
+                [
+                    np.dot(self._resconv_op[c].T, model_conv[c].T).T
+                    for c in range(self.frame.C)
+                ],
+                dtype=self.frame.dtype,
+            )

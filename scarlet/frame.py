@@ -3,6 +3,7 @@ import logging
 import numpy as np
 
 from .bbox import Box
+from .psf import PSF, ImagePSF
 from . import interpolation
 from . import resampling
 
@@ -45,8 +46,6 @@ class Frame:
             logger.warning("No PSF specified. Possible, but dangerous!")
             self._psfs = None
         else:
-            # Import PSF here to prevent a circular dependency
-            from .psf import PSF
 
             if isinstance(psfs, PSF):
                 self._psfs = psfs
@@ -133,6 +132,34 @@ class Frame:
             return sky[0]
         return sky
 
+    def convert_pixel_to(self, target, pixel=None):
+        """Converts pixel coordinates from this frame to `target` Frame
+
+        Parameters
+        ----------
+        target: `~scarlet.Frame`
+            target frame
+        pixel: `tuple` or list ((y1,y2, ...), (x1, x2, ...))
+            pixel coordinates in this frame
+            If not set, convert all pixels in this frame
+
+        Returns
+        -------
+        coord_target: `tuple`
+            coordinates at the location of `coord` in the target frame
+        """
+        if pixel is None:
+            bounds = self._bbox.bounds
+            y, x = np.meshgrid(np.arange(*(bounds[1])), np.arange(*(bounds[2])))
+            pixel = np.stack((y.flatten(), x.flatten()), axis=1)
+
+        ra_dec = self.get_sky_coord(pixel)
+        pixel_ = target.get_pixel(ra_dec)
+
+        if pixel_.size == 2:  # only one coordinate pair
+            return pixel_[0]
+        return pixel_
+
     @staticmethod
     def from_observations(
         observations, target_psf=None, target_wcs=None, obs_id=None, coverage="union"
@@ -159,9 +186,6 @@ class Frame:
             or sets the frame to incorporate only the pixels vovered by all the observations ('intersection').
             Default is 'union'.
         """
-        # Import PSF here to prevent a circular dependency
-        from .psf import PSF
-
         assert coverage in ["union", "intersection"]
         # Array of pixel sizes for each observation
         pix_tab = []
@@ -181,7 +205,8 @@ class Frame:
                 interpolation.get_affine(obs.frame.wcs)
             )
             # Looking for the sharpest and the fatest psf
-            for psf in obs.frame._psfs.image:
+            psfs = obs.frame.psf.get_model()._data
+            for psf in psfs:
                 psf_size = interpolation.get_psf_size(psf) * h_temp
                 if (fat_psf_size is None) or (psf_size > fat_psf_size):
                     fat_psf_size = psf_size
@@ -190,7 +215,7 @@ class Frame:
                         (small_psf_size is None) or (psf_size < small_psf_size)
                     ):
                         small_psf_size = psf_size
-                        target_psf_temp = PSF(psf[np.newaxis, :, :])
+                        target_psf_temp = ImagePSF(psf[np.newaxis, :, :])
                         psf_h = h_temp
 
         # Find a reference observation. Either provided by obs_id or as the observation with the smallest pixel

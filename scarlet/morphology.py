@@ -88,33 +88,16 @@ class ImageMorphology(Morphology):
             else:
                 shift = Parameter(shift, name="shift", step=1e-2)
             parameters = (image, shift)
-            # fft helpers
-            padding = 10
-            self.fft_shape = fft._get_fft_shape(image, image, padding=padding)
-            self.shifter_y, self.shifter_x = interpolation.mk_shifter(self.fft_shape)
 
         super().__init__(frame, *parameters, bbox=bbox)
 
     def get_model(self, *parameters):
         image = self.get_parameter(0, *parameters)
         shift = self.get_parameter(1, *parameters)
-        return self._shift_image(shift, image)
-
-    def _shift_image(self, shift, image):
-        if shift is not None:
-            X = fft.Fourier(image)
-            X_fft = X.fft(self.fft_shape, (0, 1))
-
-            # Apply shift in Fourier
-            result_fft = (
-                X_fft
-                * np.exp(self.shifter_y[:, None] * shift[0])
-                * np.exp(self.shifter_x[None, :] * shift[1])
-            )
-
-            X = fft.Fourier.from_fft(result_fft, self.fft_shape, X.shape, [0, 1])
-            return np.real(X.image)
-        return image
+        if shift is None:
+            return image
+        else:
+            return fft.shift(image, shift, return_Fourier=False)
 
 
 class PointSourceMorphology(Morphology):
@@ -137,25 +120,23 @@ class PointSourceMorphology(Morphology):
 
         # define bbox
         pixel_center = tuple(np.round(center).astype("int"))
-        bottom = pixel_center[0] - self.psf.shape[1] // 2
-        top = pixel_center[0] + self.psf.shape[1] // 2
-        left = pixel_center[1] - self.psf.shape[2] // 2
-        right = pixel_center[1] + self.psf.shape[2] // 2
-        bbox = Box.from_bounds((bottom, top), (left, right))
+        shift = (0, *pixel_center)
+        bbox = self.psf.bbox + shift
 
-        # morph parameters is simply 2D center
+        # parameters is simply 2D center
         if isinstance(center, Parameter):
             assert center.name == "center"
             self.center = center
         else:
-            self.center = Parameter(center, name="center", step=1e-1)
+            self.center = Parameter(center, name="center", step=1e-2)
 
         super().__init__(frame, self.center, bbox=bbox)
 
     def get_model(self, *parameters):
         center = self.get_parameter(0, *parameters)
-        spec_bbox = Box((0,))
-        return self.psf(*center, bbox=spec_bbox @ self.bbox)[0]
+        box_center = np.mean(self.bbox.bounds[1:], axis=1)
+        offset = center - box_center
+        return self.psf.get_model(offset=offset)  # no "internal" PSF parameters here
 
 
 class StarletMorphology(Morphology):
@@ -180,8 +161,6 @@ class StarletMorphology(Morphology):
         if bbox is None:
             assert frame.bbox[1:].shape == image.shape
             bbox = Box(image.shape)
-        else:
-            assert bbox.shape == image.shape
 
         # Starlet transform of morphologies (n1,n2) with 4 dimensions: (1,lvl,n1,n2), lvl = wavelet scales
         self.transform = Starlet(image)

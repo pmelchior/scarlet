@@ -76,10 +76,8 @@ class TestUpdate(object):
         np.random.seed(0)
         noise = np.random.rand(21, 21) * 2  # noise background to eliminate
         signal = np.zeros(noise.shape)
-        func = scarlet.psf.gaussian
-        signal[7:14, 7:14] = (
-            10 * scarlet.PSF(func, shape=(None, 21, 21)).image[0, 7:14, 7:14]
-        )
+        psf = scarlet.GaussianPSF(sigma=1, boxsize=21).get_model()
+        signal[7:14, 7:14] = psf[0, 7:14, 7:14]
         X = signal + noise
 
         step = 0

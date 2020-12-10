@@ -3,13 +3,11 @@ import operator
 import autograd.numpy as np
 from autograd.extend import primitive, defvjp
 from scipy import fftpack
+from .interpolation import mk_shifter
 
 
 def _centered(arr, newshape):
     """Return the center newshape portion of the array.
-
-    This function is used by `fft_convolve` to remove
-    the zero padded region of the convolution.
 
     Note: If the array shape is odd and the target is even,
     the center of `arr` is shifted to the center-right
@@ -58,10 +56,12 @@ def fast_zero_pad(arr, pad_width):
     result: array
         The array padded with `constant_values`
     """
-    newshape = tuple([a+ps[0]+ps[1] for a, ps in zip(arr.shape, pad_width)])
+    newshape = tuple([a + ps[0] + ps[1] for a, ps in zip(arr.shape, pad_width)])
 
     result = np.zeros(newshape, dtype=arr.dtype)
-    slices = tuple([slice(start, s-end) for s, (start, end) in zip(result.shape, pad_width)])
+    slices = tuple(
+        [slice(start, s - end) for s, (start, end) in zip(result.shape, pad_width)]
+    )
     result[slices] = arr
     return result
 
@@ -69,7 +69,9 @@ def fast_zero_pad(arr, pad_width):
 def _fast_zero_pad_grad(result, arr, pad_width):
     """Gradient for fast_zero_pad
     """
-    slices = tuple([slice(start, s-end) for s, (start, end) in zip(result.shape, pad_width)])
+    slices = tuple(
+        [slice(start, s - end) for s, (start, end) in zip(result.shape, pad_width)]
+    )
     return lambda grad_chain: grad_chain[slices]
 
 
@@ -138,7 +140,7 @@ def _get_fft_shape(im_or_shape1, im_or_shape2, padding=3, axes=None, max=False):
         else:
             shape = shape1 + shape2
     else:
-        shape = np.zeros(len(axes), dtype='int')
+        shape = np.zeros(len(axes), dtype="int")
         try:
             len(axes)
         except TypeError:
@@ -151,6 +153,7 @@ def _get_fft_shape(im_or_shape1, im_or_shape2, padding=3, axes=None, max=False):
     shape += padding
     # Use the next fastest shape in each dimension
     shape = [fftpack.helper.next_fast_len(s) for s in shape]
+
     # autograd.numpy.fft does not currently work
     # if the last dimension is odd
     while shape[-1] % 2 != 0:
@@ -321,48 +324,105 @@ def _kspace_operation(image1, image2, padding, op, shape, axes):
     if len(image1.shape) != len(image2.shape):
         msg = "Both images must have the same number of axes, got {0} and {1}"
         raise Exception(msg.format(len(image1.shape), len(image2.shape)))
+
     fft_shape = _get_fft_shape(image1.image, image2.image, padding, axes)
-    convolved_fft = op(image1.fft(fft_shape, axes), image2.fft(fft_shape, axes))
+    transformed_fft = op(image1.fft(fft_shape, axes), image2.fft(fft_shape, axes))
     # why is shape not image1.shape? images are never padded
-    convolved = Fourier.from_fft(convolved_fft, fft_shape, shape, axes)
-    return convolved
+    return Fourier.from_fft(transformed_fft, fft_shape, shape, axes)
 
 
-def match_psfs(psf1, psf2, padding=3, axes=(-2, -1)):
-    """Calculate the difference kernel between two psfs
+def match_psfs(psf1, psf2, padding=3, axes=(-2, -1), return_Fourier=True):
+    """Calculate the difference kernel to match psf1 to psf2
 
     Parameters
     ----------
-    psf1: `Fourier`
-        `Fourier` object representing the psf and it's FFT.
-    psf2: `Fourier`
-        `Fourier` object representing the psf and it's FFT.
+    psf1: array or `Fourier`
+        PSF1 either as array or as `Fourier` object
+    psf2: array or `Fourier`
+        PSF1 either as array or as `Fourier` object
     padding: int
         Additional padding to use when generating the FFT
         to supress artifacts.
     axes: tuple or None
         Axes that contain the spatial information for the PSFs.
+    return_Fourier: bool
+        Whether to return `Fourier` or array
     """
+    if not isinstance(psf1, Fourier):
+        psf1 = Fourier(psf1)
+    if not isinstance(psf2, Fourier):
+        psf2 = Fourier(psf2)
+
     if psf1.shape[0] < psf2.shape[0]:
         shape = psf2.shape
     else:
         shape = psf1.shape
-    return _kspace_operation(psf1, psf2, padding, operator.truediv, shape, axes=axes)
+
+    diff = _kspace_operation(psf1, psf2, padding, operator.truediv, shape, axes=axes)
+    if return_Fourier:
+        return diff
+    else:
+        return np.real(diff.image)
 
 
-def convolve(image1, image2, padding=3, axes=(-2, -1)):
-    """Convolve two images
+def convolve(image, kernel, padding=3, axes=(-2, -1), return_Fourier=True):
+    """Convolve image with a kernel
 
     Parameters
     ----------
-    image1: `Fourier`
-        `Fourier` object represeting the image and it's FFT.
-    image2: `Fourier`
-        `Fourier` object represeting the image and it's FFT.
+    image: array or `Fourier`
+        Image either as array or as `Fourier` object
+    kernel: array or `Fourier`
+        Convolution kernel either as array or as `Fourier` object
     padding: int
         Additional padding to use when generating the FFT
         to supress artifacts.
+    axes: tuple or None
+        Axes that contain the spatial information for the PSFs.
+    return_Fourier: bool
+        Whether to return `Fourier` or array
     """
-    return _kspace_operation(
-        image1, image2, padding, operator.mul, image1.shape, axes=axes
+    if not isinstance(image, Fourier):
+        image = Fourier(image)
+    if not isinstance(kernel, Fourier):
+        kernel = Fourier(kernel)
+
+    convolved = _kspace_operation(
+        image, kernel, padding, operator.mul, image.shape, axes=axes
     )
+    if return_Fourier:
+        return convolved
+    else:
+        return np.real(convolved.image)
+
+
+def shift(image, shift, fft_shape=None, axes=(-2, -1), return_Fourier=True):
+
+    if fft_shape is None:
+        padding = 10
+        fft_shape = _get_fft_shape(image, image, padding=padding, axes=axes)
+
+    shifter_y, shifter_x = mk_shifter(fft_shape)  # is cached!
+
+    if not isinstance(image, Fourier):
+        image = Fourier(image)
+
+    image_fft = image.fft(fft_shape, axes)
+
+    # Apply shift in Fourier
+    D = len(image.shape)
+    shifter = np.exp(shifter_y[:, None] * shift[0]) * np.exp(
+        shifter_x[None, :] * shift[1]
+    )
+    if D > 2:
+        expand_dims = tuple(d for d in range(D) if d not in axes and d - D not in axes)
+        shifter = np.expand_dims(shifter, axis=expand_dims)
+
+    result_fft = image_fft * shifter
+
+    result = Fourier.from_fft(result_fft, fft_shape, image.shape, axes)
+
+    if return_Fourier:
+        return result
+    else:
+        return np.real(result.image)

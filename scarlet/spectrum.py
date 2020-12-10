@@ -1,4 +1,3 @@
-import autograd.numpy as np
 from functools import partial
 
 from .bbox import Box
@@ -45,12 +44,12 @@ class TabulatedSpectrum(Spectrum):
         1D bounding box for focation of the spectrum in `frame`
     """
 
-    def __init__(self, frame, spectrum, bbox=None, step=1e-2):
+    def __init__(self, frame, spectrum, bbox=None):
         if isinstance(spectrum, Parameter):
             assert spectrum.name == "spectrum"
         else:
             constraint = PositivityConstraint(zero=1e-20)  # slightly positive values
-            step = partial(relative_step, factor=step)
+            step = partial(relative_step, factor=1.e-2)
             spectrum = Parameter(
                 spectrum, name="spectrum", step=step, constraint=constraint
             )
