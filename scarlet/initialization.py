@@ -1,5 +1,4 @@
 import numpy as np
-
 import logging
 
 from . import operator
@@ -9,6 +8,9 @@ from .interpolation import interpolate_observation
 from .observation import Observation, LowResObservation
 from .wavelet import Starlet, mad_wavelet
 from . import measure
+from functools import partial
+from .constraint import PositivityConstraint
+from .parameter import Parameter, relative_step
 
 
 logger = logging.getLogger("scarlet.initialisation")
@@ -202,7 +204,6 @@ def trim_morphology(center_index, morph, bg_thresh=0):
     morph = bbox.extract_from(morph)
     return morph, bbox
 
-
 def init_compact_source(
     sky_coord, frame, observations,
 ):
@@ -255,20 +256,20 @@ def init_extended_source(
     observations,
     coadd=None,
     coadd_rms=None,
-    thresh=1,
     compact=False,
+    thresh=1,
     symmetric=True,
     monotonic="flat",
     min_grad=0.1,
+    spectrum = None,
+    full = False,
 ):
-    """Initialize the source that is symmetric and monotonic
-    See `ExtendedSource` for a description of the parameters
-    """
     if not hasattr(observations, "__iter__"):
         observations = (observations,)
 
-    # get PSF-corrected center pixel spectrum
-    spectrum = get_pixel_spectrum(sky_coord, observations, correct_psf=True)
+    if spectrum is None:
+        # get PSF-corrected center pixel spectrum
+        spectrum = get_pixel_spectrum(sky_coord, observations, correct_psf=True)
 
     # position in frame coordinates
     center = frame.get_pixel(sky_coord)
@@ -308,7 +309,7 @@ def init_extended_source(
             coadd,
             0,
             center=center_index,
-            algorithm="sdss",  # *1 is to artificially pass a variable that is not coadd
+            algorithm="sdss",
         )
     else:
         morph = coadd
@@ -324,10 +325,13 @@ def init_extended_source(
         )
         morph = prox_monotonic(morph, 0).reshape(morph.shape)
 
-    # truncate morph at thresh * bg_rms
-    threshold = bg_rms * thresh
-    morph, bbox = trim_morphology(center_index, morph, bg_thresh=threshold)
-    bbox = frame.bbox[0] @ bbox
+    if full == False:
+        # truncate morph at thresh * bg_rms
+        threshold = bg_rms * thresh
+        morph, bbox = trim_morphology(center_index, morph, bg_thresh=threshold)
+        bbox = frame.bbox[0] @ bbox
+    else:
+        bbox = None
 
     # normalize to unity at peak pixel for the imposed normalization
     if morph.sum() > 0:
@@ -376,30 +380,41 @@ def init_starlet_source(
     sky_coord,
     model_frame,
     observations,
+    thresh = 1,
+    spectrum = None,
+    full=False,
     coadd=None,
     coadd_rms=None,
-    thresh=1,
-    symmetric=True,
+    symmetric=False,
     monotonic="flat",
-    min_grad=0.1,
+    min_grad=0.,
     starlet_thresh=5,
 ):
 
     # initialize as extended from observation
     if not hasattr(observations, "__iter__"):
         observations = (observations,)
+    if spectrum is not None:
+        constraint = PositivityConstraint(zero=1e-20)  # slightly positive values
+        step = partial(relative_step, factor=1e-6)
+        spectrum = Parameter(spectrum,
+                             name="spectrum",
+                             step=step,
+                             constraint=constraint,
+                             )
 
-    sed, morph, bbox = init_extended_source(
-        sky_coord,
-        model_frame,
-        observations,
-        coadd=coadd,
-        coadd_rms=coadd_rms,
-        thresh=thresh,
-        symmetric=symmetric,
-        monotonic=monotonic,
-        min_grad=min_grad,
-    )
+    spectrum, morph, bbox = init_extended_source(sky_coord,
+                                                 model_frame,
+                                                 observations,
+                                                 spectrum = spectrum,
+                                                 coadd=coadd,
+                                                 thresh = thresh,
+                                                 coadd_rms=coadd_rms,
+                                                 symmetric=symmetric,
+                                                 monotonic=monotonic,
+                                                 min_grad=min_grad,
+                                                 full=full,
+                                                 )
 
     noise = []
     for obs in observations:
@@ -410,8 +425,8 @@ def init_starlet_source(
     noise = np.concatenate(noise)
 
     # Threshold in units of noise on the coadd
-    thresh = starlet_thresh * np.sqrt(np.sum((sed * noise) ** 2))
-    return sed, morph, bbox, thresh
+    starlet_thresh = starlet_thresh * np.sqrt(np.sum((spectrum._data * noise) ** 2))
+    return morph, starlet_thresh, bbox
 
 
 def init_multicomponent_source(
