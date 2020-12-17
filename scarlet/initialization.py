@@ -456,11 +456,11 @@ def init_all_sources(
     observations,
     thresh=1,
     max_components=1,
-    min_snr=10,
+    min_snr=30,
     edge_distance=None,
     shifting=False,
     fallback=True,
-    prerender=True,
+    prerender=False,
     silent=False,
 ):
     """Initialize all sources in a blend
@@ -525,11 +525,11 @@ def init_source(
     observations,
     thresh=1,
     max_components=1,
-    min_snr=10,
+    min_snr=30,
     edge_distance=None,
     shifting=False,
     fallback=True,
-    prerender=True,
+    prerender=False,
 ):
     """Initialize a Source
 
@@ -734,3 +734,7 @@ def set_spectra_to_match(sources, observations):
 
         for p, spectrum in zip(parameters, spectra):
             obs.map_channels(p)[:] = spectrum
+
+    # enforce constraints
+    for p in parameters:
+        p[:] = p.constraint(p, 0)

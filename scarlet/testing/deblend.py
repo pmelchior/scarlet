@@ -45,9 +45,11 @@ def deblend(data: Dict[str, np.ndarray], max_iter: int, e_rel: float):
         observation,
         max_components=2,
         edge_distance=None,
-        min_snr=5,
-        thresh=0.1,
-        prerender=True,
+        min_snr=30,
+        thresh=1,
+        prerender=False,
+        fallback=True,
+        silent=True,
     )
     set_spectra_to_match(sources, observation)
 
@@ -75,6 +77,8 @@ def deblend(data: Dict[str, np.ndarray], max_iter: int, e_rel: float):
         "iterations": len(blend.loss),
         "logL": blend.loss[-1] - log_norm,
         "init logL": blend.loss[0] - log_norm,
+        # TODO: adding the number of skipped sources would be helpful
+        # "skipped": len(skipped),
     }
 
     for k in skipped:

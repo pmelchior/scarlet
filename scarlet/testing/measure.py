@@ -8,7 +8,9 @@ from matplotlib import ticker as mticker
 from .api import get_branches
 
 
-def adjacent_values(vals: np.ndarray, q1: int, q3: int) -> Tuple[np.ndarray, np.ndarray]:
+def adjacent_values(
+    vals: np.ndarray, q1: int, q3: int
+) -> Tuple[np.ndarray, np.ndarray]:
     """Get adjacent values for whiskers
 
     :param vals: The array that is being plotted
@@ -25,12 +27,13 @@ def adjacent_values(vals: np.ndarray, q1: int, q3: int) -> Tuple[np.ndarray, np.
 
 
 def measure_blend(
-        data: Dict[str, np.ndarray],
-        sources: List,
-        filters: Sequence[str],
+    data: Dict[str, np.ndarray], sources: List, filters: Sequence[str],
 ) -> List[Dict[str, float]]:
     """
     Measure all of the fake sources in a single blend
+
+    NOTE: Will silently drop sources that were skipped during initialization or
+    optimization.
 
     :param data: The numpy file with blend data
     :param sources: The sources in the blend
@@ -53,21 +56,22 @@ def measure_blend(
 
         # Calculate the flux difference in each band
         source = sources[matched_idx]
-        flux = 27 - 2.5*np.log10(scarlet.measure.flux(source))
+        if source is not None:
+            flux = 27 - 2.5 * np.log10(scarlet.measure.flux(source))
 
-        truth = true_flux[:, k]
+            truth = true_flux[:, k]
 
-        measurement = {
-            "x": cx,
-            "y": cy,
-            "source_id": k,
-        }
+            measurement = {
+                "x": cx,
+                "y": cy,
+                "source_id": k,
+            }
 
-        for f in range(len(filters)):
-            measurement[filters[f]+" truth"] = truth[f]
-            measurement[filters[f]+" mag"] = flux[f]
+            for f in range(len(filters)):
+                measurement[filters[f] + " truth"] = truth[f]
+                measurement[filters[f] + " mag"] = flux[f]
 
-        measurements.append(measurement)
+            measurements.append(measurement)
 
     return measurements
 
@@ -84,11 +88,16 @@ def check_log(data: np.ndarray, ax: plt.axis):
     # Use a log scale if the range is more than 2 orders of magnitude
     if ymax - ymin > 2:
         ymin = int(np.max([1e-50, ymin - 1]))
-        ymax = int(ymax+1)
+        ymax = int(ymax + 1)
         ax.yaxis.set_major_formatter(mticker.StrMethodFormatter("$10^{{{x:.0f}}}$"))
-        ax.yaxis.set_ticks([
-            np.log10(x) for p in range(ymin, ymax)
-            for x in np.linspace(10 ** p, 10 ** (p + 1), 10)], minor=True)
+        ax.yaxis.set_ticks(
+            [
+                np.log10(x)
+                for p in range(ymin, ymax)
+                for x in np.linspace(10 ** p, 10 ** (p + 1), 10)
+            ],
+            minor=True,
+        )
         return True
     return False
 
@@ -96,10 +105,9 @@ def check_log(data: np.ndarray, ax: plt.axis):
 class Metric:
     """A metric to be calculated based on a set of deblended sources
     """
+
     def __init__(
-            self,
-            name: str,
-            units: str,
+        self, name: str, units: str,
     ):
         """Initialize the class
 
@@ -111,11 +119,11 @@ class Metric:
         self.units = units
 
     def plot(
-            self,
-            set_id: str,
-            measurements: Dict[str, np.rec.recarray] = None,
-            plot_indices: Sequence = None,
-            scatter_indices: Sequence = None,
+        self,
+        set_id: str,
+        measurements: Dict[str, np.rec.recarray] = None,
+        plot_indices: Sequence = None,
+        scatter_indices: Sequence = None,
     ) -> plt.Figure:
         """Create a plot using the records for a given set ID.
 
@@ -132,7 +140,9 @@ class Metric:
         if measurements is None:
             branches = get_branches()
             measurements = {
-                branch: np.load(os.path.join(__DATA_PATH__, set_id, get_filename(branch)))["records"]
+                branch: np.load(
+                    os.path.join(__DATA_PATH__, set_id, get_filename(branch))
+                )["records"]
                 for branch in branches
             }
         if plot_indices is None:
@@ -142,7 +152,9 @@ class Metric:
 
         # First display the scatter plots
         fig, ax = plt.subplots(1, 3, figsize=(15, 5))
-        records = {m: measurements[m] for m in list(measurements.keys())[scatter_indices]}
+        records = {
+            m: measurements[m] for m in list(measurements.keys())[scatter_indices]
+        }
         num_prs = len(records)
 
         # Check to see if we need to plot a log axis
@@ -178,29 +190,38 @@ class Metric:
 
             if plot_type == "violin":
                 # Make the violin plot
-                ax[ax_n].violinplot(data, x, showmeans=False, showextrema=False, showmedians=False)
+                ax[ax_n].violinplot(
+                    data, x, showmeans=False, showextrema=False, showmedians=False
+                )
 
                 # Calculate the quartile whiskers
-                quartile1, medians, quartile3 = np.percentile(data, [25, 50, 75], axis=1)
-                whiskers = np.array([
-                    adjacent_values(sorted_array, q1, q3)
-                    for sorted_array, q1, q3 in zip(data, quartile1, quartile3)])
+                quartile1, medians, quartile3 = np.percentile(
+                    data, [25, 50, 75], axis=1
+                )
+                whiskers = np.array(
+                    [
+                        adjacent_values(sorted_array, q1, q3)
+                        for sorted_array, q1, q3 in zip(data, quartile1, quartile3)
+                    ]
+                )
                 whiskers_min, whiskers_max = whiskers[:, 0], whiskers[:, 1]
                 # Display the whiskers
-                ax[ax_n].scatter(x, medians, marker='o', color='white', s=30, zorder=3)
-                ax[ax_n].vlines(x, quartile1, quartile3, color='k', linestyle='-', lw=5)
-                ax[ax_n].vlines(x, whiskers_min, whiskers_max, color='k', linestyle='-', lw=1)
+                ax[ax_n].scatter(x, medians, marker="o", color="white", s=30, zorder=3)
+                ax[ax_n].vlines(x, quartile1, quartile3, color="k", linestyle="-", lw=5)
+                ax[ax_n].vlines(
+                    x, whiskers_min, whiskers_max, color="k", linestyle="-", lw=1
+                )
             else:
                 # Make the box plot
                 ax[ax_n].boxplot(data)
 
         x_labels = tuple(records.keys())
         ax[1].xaxis.set_ticks(np.arange(len(x_labels)))
-        ax[0].set_xticklabels(x_labels, size='small', rotation='vertical')
-        ax[1].set_xticklabels(x_labels, size='small', rotation='vertical')
+        ax[0].set_xticklabels(x_labels, size="small", rotation="vertical")
+        ax[1].set_xticklabels(x_labels, size="small", rotation="vertical")
 
         ax[0].set_ylabel(self.units)
-        fig.suptitle(self.name, y=.95)
+        fig.suptitle(self.name, y=0.95)
         plt.tight_layout()
 
         return fig

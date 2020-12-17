@@ -158,7 +158,7 @@ class SingleExtendedSource(FactorizedComponent):
         observations,
         thresh=1.0,
         shifting=False,
-        prerender=True,
+        prerender=False,
     ):
         """Extended source model
 
@@ -253,7 +253,7 @@ class StarletSource(FactorizedComponent):
         thresh=1.0,
         min_grad=0.1,
         starlet_thresh=5e-3,
-        prerender=True,
+        prerender=False,
     ):
         """Extended source intialized to match a set of observations
 
@@ -334,7 +334,7 @@ class MultiExtendedSource(CombinedComponent):
         flux_percentiles=None,
         thresh=1.0,
         shifting=False,
-        prerender=True,
+        prerender=False,
     ):
         """Create multi-component extended source.
 
@@ -439,7 +439,7 @@ def ExtendedSource(
     thresh=1.0,
     compact=False,
     shifting=False,
-    prerender=True,
+    prerender=False,
 ):
     """Create extended sources with either a single component or multiple components.
 
