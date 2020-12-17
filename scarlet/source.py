@@ -5,7 +5,6 @@ from .component import CombinedComponent, FactorizedComponent
 from .constraint import PositivityConstraint
 from .initialization import (
     get_pixel_spectrum,
-    get_psf_spectrum,
     init_compact_source,
     init_extended_source,
     init_multicomponent_source,
@@ -101,11 +100,12 @@ class StarletSource(FactorizedComponent):
         model_frame,
         sky_coord,
         observations,
+        spectrum=None,
         coadd=None,
-        bg_cutoff=None,
-        thresh=1.0,
-        min_grad=0.1,
-        starlet_thresh=5,
+        coadd_rms=None,
+        min_grad=0,
+        full=False,
+        starlet_thresh=3,
     ):
         """Extended source intialized to match a set of observations
 
@@ -117,28 +117,59 @@ class StarletSource(FactorizedComponent):
             Center of the source
         observations: instance or list of `~scarlet.observation.Observation`
             Observation(s) to initialize this source.
-        thresh: `float`
+        spectrum: `numpy.ndarray`
+            initial spectrum.
+        coadd: `numpy.ndarray`
+            The coaddition of all images across observations.
+        coadd_rms: float
+            Noise level of the coadd
+        full: `bool`
+            If set to False, use the full image as a box for the starlet model.
+            Otherwise, use the same bbox as for ExtendedSource init.
+        starlet_thresh: `float`
             Multiple of the backround RMS used as a
-            flux cutoff for morphology initialization.
+            flux cutoff for starlet threshold (usually between 5 and 3).
         """
+        if spectrum is None:
+            spectrum = get_pixel_spectrum(sky_coord, observations)
+            constraint = PositivityConstraint(zero=1e-20)  # slightly positive values
+            step = partial(relative_step, factor=1e-2)
+            spectrum = Parameter(spectrum,
+                                 name="spectrum",
+                                 step=step,
+                                 constraint=constraint,
+                                 )
+        else:
+            constraint = PositivityConstraint(zero=1e-20)  # slightly positive values
+            step = partial(relative_step, factor=1e-6)
+            spectrum = Parameter(spectrum,
+                                 name="spectrum",
+                                 step=step,
+                                 constraint=constraint,
+                                 )
 
         # initialize from observation
-        sed, morph, bbox, thresh = init_starlet_source(
+        morph, thresh_starlet, bbox = init_starlet_source(
             sky_coord,
             model_frame,
             observations,
-            coadd,
-            bg_cutoff,
-            thresh=thresh,
-            symmetric=True,
+            spectrum=spectrum,
+            coadd=coadd,
+            coadd_rms=coadd_rms,
+            symmetric=False,
             monotonic="angle",
             min_grad=min_grad,
+            full=full,
             starlet_thresh=starlet_thresh,
         )
-        spectrum = TabulatedSpectrum(model_frame, sed, bbox=bbox[0])
-        morphology = StarletMorphology(
-            model_frame, morph, bbox=bbox[1:], threshold=thresh
-        )
+
+        spectrum = TabulatedSpectrum(model_frame, spectrum)
+        morphology = StarletMorphology(model_frame,
+                                       morph,
+                                       threshold=thresh_starlet,
+                                       bbox=bbox,
+                                       )
+
         super().__init__(model_frame, spectrum, morphology)
 
 
