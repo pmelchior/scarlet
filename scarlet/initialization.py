@@ -461,6 +461,7 @@ def init_all_sources(
     shifting=False,
     fallback=True,
     prerender=True,
+    silent=False,
 ):
     """Initialize all sources in a blend
 
@@ -468,18 +469,23 @@ def init_all_sources(
     index, the index needed to reinsert them into a catalog to preserve
     their index in the output catalog.
 
-    See `~initSources` for a description of the arguments
+    See `~init_sources` for a description of the arguments
 
     Parameters
     ----------
     centers : list of tuples
         `(y, x)` center location for each source in sky coordinates
+    silent: bool
+        If set to True, will prevent exceptions from being thrown abd register the
+        source index in a list of skipped sources.
 
     Returns
     -------
     sources: list
         List of intialized sources, where each source derives from the
         `~scarlet.Component` class.
+    skipped: list
+        This list contains sources that failed to initialize with `silent` = True
     """
     if not hasattr(observations, "__iter__"):
         observations = (observations,)
@@ -503,7 +509,13 @@ def init_all_sources(
             )
             sources.append(source)
         except Exception as e:
-            skipped.append(k)
+            msg = f"Failed to initialize source {k}"
+            logger.warning(msg)
+            if silent:
+                skipped.append(k)
+            else:
+                raise e
+
     return sources, skipped
 
 
@@ -554,7 +566,7 @@ def init_source(
         If `fallback` is `True` then when
         a source fails to initialize with `max_components` it
         will continue to subtract one from the number of components
-        until it reaches zero (which fits a point source).
+        until it reaches zero (which fits a `CompactExtendedSource`).
         If a point source cannot be fit then the source is skipped.
     edge_distance : int
         The distance from the edge of the image to consider
@@ -579,74 +591,60 @@ def init_source(
         observations = (observations,)
 
     source_shifting = shifting
-    while max_components >= 1:
+    while max_components >= 0:
         try:
-            source = ExtendedSource(
-                frame,
-                center,
-                observations,
-                thresh=thresh,
-                shifting=source_shifting,
-                K=max_components,
-                prerender=prerender,
-            )
-            try:
-                source.check_parameters()
-                # make sure to have enough SNR for every component
-                if max_components > 1:
-                    components = source.children
-                else:
-                    components = (source,)
-                if any(
-                    [
-                        measure.snr(component, observations, prerender=prerender)
-                        < min_snr
-                        for component in components
-                    ]
-                ):
-                    raise ArithmeticError
+            if max_components > 0:
+                source = ExtendedSource(
+                    frame,
+                    center,
+                    observations,
+                    thresh=thresh,
+                    shifting=source_shifting,
+                    K=max_components,
+                    prerender=prerender,
+                )
+            else:
+                source = ExtendedSource(
+                    frame, center, observations, shifting=source_shifting, compact=True
+                )
 
-            except ArithmeticError:
-                msg = f"Could not initialize source at {center} with {max_components} components"
+            # test if parameters are fine, otherwise throw ArithmeticError
+            source.check_parameters()
+
+            # make sure to have enough SNR for every component
+            if max_components > 1:
+                components = source.children
+            else:
+                components = (source,)
+            if max_components > 0 and any(
+                [
+                    measure.snr(component, observations, prerender=prerender) < min_snr
+                    for component in components
+                ]
+            ):
+                raise ArithmeticError("Insufficient SNR")
+
+        except ArithmeticError as e:
+
+            if fallback:
+                msg = f"Could not initialize source at {center} with {max_components} components: {e}"
                 logger.info(msg)
-                raise ValueError(msg)
-
-            # The LSST DM detection algorithm implemented in meas_algorithms
-            # does not place sources within the edge mask
-            # (roughly 5 pixels from the edge). This results in poor
-            # deblending of the edge source, which for bright sources
-            # may ruin an entire blend. So we reinitialize edge sources
-            # to allow for shifting and return the result.
-            if source_shifting is False and hasEdgeFlux(source, edge_distance):
-                source_shifting = True
+                max_components -= 1
                 continue
-
-            return source
-
-        except Exception as e:
-            if not fallback:
+            else:
                 raise e
-            # If the MultiComponentSource failed to initialize
-            # try an ExtendedSource
-            max_components -= 1
 
-    # nothing worked so far:
-    # use most robust initialization as compact source
-    try:
-        source = ExtendedSource(
-            frame, center, observations, shifting=source_shifting, compact=True
-        )
-
+        # The LSST DM detection algorithm implemented in meas_algorithms
+        # does not place sources within the edge mask
+        # (roughly 5 pixels from the edge). This results in poor
+        # deblending of the edge source, which for bright sources
+        # may ruin an entire blend. So we reinitialize edge sources
+        # to allow for shifting and return the result.
         if source_shifting is False and hasEdgeFlux(source, edge_distance):
             source_shifting = True
-            source = ExtendedSource(
-                frame, center, observations, shifting=source_shifting, compact=True
-            )
+            continue
 
         return source
-
-    except Exception as e:
-        raise e
 
 
 def hasEdgeFlux(source, edge_distance=1):
