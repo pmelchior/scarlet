@@ -980,6 +980,8 @@ def initSource(
                 maxComponents,
                 edgeDistance,
                 shifting=True,
+                downgrade=downgrade,
+                fallback=fallback,
             )
         source.isEdge = True
     else:
