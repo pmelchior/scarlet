@@ -418,11 +418,10 @@ def build_initialization_image(observations, spectra=None, prerender=False):
 
         if prerender:
             # only use observations that have a prerender image
-            if not hasattr(obs, "prerender_images") or obs.prerender_images is None:
+            if obs.prerender_images is None:
                 continue
             images = obs.prerender_images
             bg_rms = obs.prerender_sigma
-
         else:
             images = obs.images
             bg_rms = np.mean(obs.noise_rms, axis=(1, 2))
@@ -433,10 +432,14 @@ def build_initialization_image(observations, spectra=None, prerender=False):
             spectrum = spectra[i][:, None, None]
             weights = spectrum / (bg_rms ** 2)[:, None, None]
 
-        obs.map_channels(detect)[obs._slices_for_model] += (
-            weights * images[obs._slices_for_images]
-        )
-        obs.map_channels(var)[obs._slices_for_model] += spectrum * weights
+        try:
+            obs.map_channels(detect)[obs._slices_for_model] += (
+                weights * images[obs._slices_for_images]
+            )
+            obs.map_channels(var)[obs._slices_for_model] += spectrum * weights
+        # LowResObservation cannot be sliced into the model frame, continue without it
+        except ValueError:
+            continue
 
     if spectra is not None:
         detect = detect.sum(axis=0)

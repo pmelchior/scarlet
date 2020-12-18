@@ -689,39 +689,15 @@ class LowResObservation(Observation):
                 self._resconv_op.shape[0], -1, self._resconv_op.shape[-1]
             )
 
-        # # TODO: DOES NOT WORK!!!
-        # # construct deconvolved image for detection:
-        # # * interpolate to model frame
-        # # * divide Fourier transform of images by Fourier transform of diff kernel
-        # self.prerender_images = interpolation.interpolate_observation(self, model_frame)
-        # self.prerender_images = fft._kspace_operation(
-        #     fft.Fourier(self.prerender_images),
-        #     self._diff_kernels,
-        #     3,
-        #     fft.operator.truediv,
-        #     self.prerender_images.shape,
-        #     axes=(-2, -1),
-        # ).image  # then get the image from Fourier
-        #
-        # # do same thing with noise field
-        # noise = np.random.normal(scale=1 / np.sqrt(self.weights))
-        # # temporarily replace obs.images with noise
-        # images = self.images
-        # self.images = noise
-        # noise = interpolation.interpolate_observation(self, model_frame)
-        # self.images = images
-        # noise_deconv = fft._kspace_operation(
-        #     fft.Fourier(noise),
-        #     self._diff_kernels,
-        #     3,
-        #     fft.operator.truediv,
-        #     self.images.shape,
-        #     axes=(-2, -1),
-        # ).image
-        # # spatially flat noise, ignores any variation in self.weights
-        # self.prerender_sigma = noise_deconv.std(axis=(1, 2))
-
         return self
+
+    @property
+    def prerender_images(self):
+        return None
+
+    @property
+    def prerender_sigma(self):
+        return None
 
     def render(self, model, *parameters):
         """Resample and convolve a model in the observation frame
