@@ -160,9 +160,29 @@ class Observation:
             )
             self._diff_kernels = fft.match_psfs(psf, model_psf)
 
+        assert convolution_type in [
+            "real",
+            "fft",
+        ], "`convolution` must be either 'real' or 'fft'"
+        self._convolution_type = convolution_type
+        return self
+
+    @property
+    def noise_rms(self):
+        import numpy.ma as ma
+
+        return 1 / np.sqrt(ma.masked_equal(self.weights, 0))
+
+    @property
+    def prerender_images(self):
+        if hasattr(self, "_prerender_images"):
+            return self._prerender_images
+        if self._diff_kernels is None:
+            return self.images
+        else:
             # construct deconvolved image for detection:
             # divide Fourier transform of images by Fourier transform of diff kernel
-            self.prerender_images = fft._kspace_operation(
+            self._prerender_images = fft._kspace_operation(
                 fft.Fourier(self.images),
                 self._diff_kernels,
                 3,
@@ -170,7 +190,15 @@ class Observation:
                 self.images.shape,
                 axes=(-2, -1),
             ).image  # then get the image from Fourier
+            return self._prerender_images
 
+    @property
+    def prerender_sigma(self):
+        if hasattr(self, "_prerender_sigma"):
+            return self._prerender_sigma
+        if self._diff_kernels is None:
+            return np.mean(self.noise_rms, axis=(1, 2))
+        else:
             # deconvolve noise field to estimate its noise level
             # this is non-deterministic
             noise_rms = 1 / np.where(self.weights > 0, np.sqrt(self.weights), np.inf)
@@ -184,21 +212,8 @@ class Observation:
                 axes=(-2, -1),
             ).image
             # spatially flat noise, ignores any variation in self.weights
-            self.prerender_sigma = noise_deconv.std(axis=(1, 2))
-        else:
-            self._diff_kernels = None
-            self.prerender_images = self.images
-            import numpy.ma as ma
-
-            noise_rms = 1 / np.sqrt(ma.masked_equal(self.weights, 0))
-            self.prerender_sigma = np.mean(noise_rms, axis=(1, 2))
-
-        assert convolution_type in [
-            "real",
-            "fft",
-        ], "`convolution` must be either 'real' or 'fft'"
-        self._convolution_type = convolution_type
-        return self
+            self._prerender_sigma = noise_deconv.std(axis=(1, 2))
+            return self._prerender_sigma
 
     @property
     def convolution_bounds(self):

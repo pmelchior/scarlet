@@ -57,7 +57,7 @@ def centroid(component):
     return centroid + origin
 
 
-def snr(component, observations, prerender=True):
+def snr(component, observations, prerender=False):
     """Determine SNR with morphology as weight function
 
     Parameters
@@ -103,7 +103,7 @@ def snr(component, observations, prerender=True):
             model_ = obs.render(model)
             M.append(model_.reshape(-1))
             W.append((model_ / (model_.sum(axis=(-2, -1))[:, None, None])).reshape(-1))
-            noise_var = 1 / np.where(obs.weights > 0, obs.weights, np.inf)
+            noise_var = obs.noise_rms ** 2
             var.append(noise_var.reshape(-1))
         M = np.concatenate(M)
         W = np.concatenate(W)
