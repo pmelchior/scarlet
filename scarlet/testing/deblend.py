@@ -82,7 +82,7 @@ def deblend(data: Dict[str, np.ndarray], max_iter: int, e_rel: float):
     }
 
     for k in skipped:
-        sources.insert(k, None)
+        sources.insert(k, scarlet.NullSource(model_frame))
 
     source_measurements = measure_blend(data, sources, observation.frame.channels)
     for measurement in source_measurements:

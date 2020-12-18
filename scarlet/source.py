@@ -2,7 +2,7 @@ import autograd.numpy as np
 from functools import partial
 
 from .bbox import Box
-from .component import CombinedComponent, FactorizedComponent
+from .component import Component, CombinedComponent, FactorizedComponent
 from .constraint import PositivityConstraint
 from .initialization import (
     get_best_fit_spectrum,
@@ -20,6 +20,43 @@ from .morphology import (
 )
 from .parameter import Parameter, relative_step
 from .spectrum import TabulatedSpectrum
+
+
+class NullSource(Component):
+    """Source that does nothing"""
+
+    def __init__(self, model_frame):
+        """
+        Initialize a NullSource
+
+        Parameters
+        ----------
+        model_frame: `~scarlet.Frame`
+            The frame of the model
+        """
+        super().__init__(model_frame)
+
+    def get_model(self, *parameters, frame=None):
+        """Get the model for this component.
+
+        Parameters
+        ----------
+        parameters: tuple of optimimzation parameters
+
+        frame: `~scarlet.frame.Frame`
+            Frame to project the model into. If `frame` is `None`
+            then the model contained in `bbox` is returned.
+
+        Returns
+        -------
+        model: array
+            (Channels, Height, Width) image of the model
+        """
+        model = np.zeros(self.frame.shape)
+        # project the model into frame (if necessary)
+        if frame is not None:
+            model = self.model_to_frame(frame, model)
+        return model
 
 
 class RandomSource(FactorizedComponent):

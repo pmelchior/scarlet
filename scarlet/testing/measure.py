@@ -56,22 +56,21 @@ def measure_blend(
 
         # Calculate the flux difference in each band
         source = sources[matched_idx]
-        if source is not None:
-            flux = 27 - 2.5 * np.log10(scarlet.measure.flux(source))
+        flux = 27 - 2.5 * np.log10(scarlet.measure.flux(source))
 
-            truth = true_flux[:, k]
+        truth = true_flux[:, k]
 
-            measurement = {
-                "x": cx,
-                "y": cy,
-                "source_id": k,
-            }
+        measurement = {
+            "x": cx,
+            "y": cy,
+            "source_id": k,
+        }
 
-            for f in range(len(filters)):
-                measurement[filters[f] + " truth"] = truth[f]
-                measurement[filters[f] + " mag"] = flux[f]
+        for f in range(len(filters)):
+            measurement[filters[f] + " truth"] = truth[f]
+            measurement[filters[f] + " mag"] = flux[f]
 
-            measurements.append(measurement)
+        measurements.append(measurement)
 
     return measurements
 
