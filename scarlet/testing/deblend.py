@@ -50,8 +50,8 @@ def deblend(data: Dict[str, np.ndarray], max_iter: int, e_rel: float):
         prerender=False,
         fallback=True,
         silent=True,
+        set_spectra=True,
     )
-    set_spectra_to_match(sources, observation)
 
     # Fit the blend
     t1 = time.time()

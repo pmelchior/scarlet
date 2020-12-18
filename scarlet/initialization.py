@@ -461,6 +461,7 @@ def init_all_sources(
     fallback=True,
     prerender=False,
     silent=False,
+    set_spectra=True,
 ):
     """Initialize all sources in a blend
 
@@ -477,6 +478,9 @@ def init_all_sources(
     silent: bool
         If set to True, will prevent exceptions from being thrown abd register the
         source index in a list of skipped sources.
+    set_spectra: bool
+        If set to True, will solve for the best spectra of all sources given the
+        observations. See `set_spectra_to_match` for details.
 
     Returns
     -------
@@ -514,6 +518,9 @@ def init_all_sources(
                 skipped.append(k)
             else:
                 raise e
+
+    if set_spectra:
+        set_spectra_to_match(sources, observations)
 
     return sources, skipped
 
