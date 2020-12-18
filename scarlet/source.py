@@ -141,7 +141,10 @@ class CompactExtendedSource(FactorizedComponent):
         spectra = get_pixel_spectrum(sky_coord, observations, correct_psf=True)
         spectrum = np.concatenate(spectra, axis=0)
         spectrum /= morph.sum()
-        spectrum = TabulatedSpectrum(model_frame, spectrum)
+        noise_rms = np.array(
+            [np.mean(obs.noise_rms, axis=(1, 2)) for obs in observations]
+        )
+        spectrum = TabulatedSpectrum(model_frame, spectrum, noise_rms=noise_rms)
 
         # set up model with its parameters
         super().__init__(model_frame, spectrum, morphology)
@@ -228,7 +231,10 @@ class SingleExtendedSource(FactorizedComponent):
         box_3D = Box((model_frame.C,)) @ bbox
         boxed_detect = box_3D.extract_from(detect_all)
         spectrum = get_best_fit_spectrum((morph,), boxed_detect)
-        spectrum = TabulatedSpectrum(model_frame, spectrum)
+        noise_rms = np.array(
+            [np.mean(obs.noise_rms, axis=(1, 2)) for obs in observations]
+        )
+        spectrum = TabulatedSpectrum(model_frame, spectrum, noise_rms=noise_rms)
 
         # set up model with its parameters
         super().__init__(model_frame, spectrum, morphology)
@@ -307,7 +313,10 @@ class StarletSource(FactorizedComponent):
         box_3D = Box((model_frame.C,)) @ bbox
         boxed_detect = box_3D.extract_from(detect_all)
         spectrum = get_best_fit_spectrum((morph,), boxed_detect)
-        spectrum = TabulatedSpectrum(model_frame, spectrum)
+        noise_rms = np.array(
+            [np.mean(obs.noise_rms, axis=(1, 2)) for obs in observations]
+        )
+        spectrum = TabulatedSpectrum(model_frame, spectrum, noise_rms=noise_rms)
 
         super().__init__(model_frame, spectrum, morphology)
 
@@ -395,13 +404,16 @@ class MultiExtendedSource(CombinedComponent):
         box_3D = Box((model_frame.C,)) @ boxes[0]
         boxed_detect = box_3D.extract_from(detect_all)
         spectra = get_best_fit_spectrum(morphs, boxed_detect)
+        noise_rms = np.array(
+            [np.mean(obs.noise_rms, axis=(1, 2)) for obs in observations]
+        )
 
         # create one component for each spectrum and morphology
         components = []
         center = model_frame.get_pixel(sky_coord)
         for k in range(K):
 
-            spectrum = TabulatedSpectrum(model_frame, spectra[k])
+            spectrum = TabulatedSpectrum(model_frame, spectra[k], noise_rms=noise_rms)
 
             morphology = ExtendedSourceMorphology(
                 model_frame,

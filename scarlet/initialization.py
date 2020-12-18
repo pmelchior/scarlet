@@ -417,7 +417,7 @@ def build_initialization_image(observations, spectra=None, prerender=False):
     for i, obs in enumerate(observations):
 
         if prerender:
-            # onlyse use observations that have a prerender image
+            # only use observations that have a prerender image
             if not hasattr(obs, "prerender_images") or obs.prerender_images is None:
                 continue
             images = obs.prerender_images
@@ -425,8 +425,7 @@ def build_initialization_image(observations, spectra=None, prerender=False):
 
         else:
             images = obs.images
-            noise_rms = 1 / np.where(obs.weights > 0, np.sqrt(obs.weights), np.inf)
-            bg_rms = np.mean(noise_rms, axis=(1, 2))
+            bg_rms = np.mean(obs.noise_rms, axis=(1, 2))
 
         if spectra is None:
             spectrum = weights = 1
