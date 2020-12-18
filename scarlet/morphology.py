@@ -102,13 +102,53 @@ class ImageMorphology(Morphology):
             return fft.shift(image, shift, return_Fourier=False)
 
     def update(self):
-        if not self._resize:
+        image = self._parameters[0]
+        size = max(image.shape)
+
+        if not self._resize or image.fixed:
             return
 
-        image = self._parameters[0]
+        # shrink the box? peel the onion
+        dist = 0
+        while (
+            np.all(image[dist, :] == 0)
+            and np.all(image[-dist, :] == 0)
+            and np.all(image[:, dist] == 0)
+            and np.all(image[:, -dist] == 0)
+        ):
+            dist += 1
 
-        # next gradient update: check gradients at edge
+        newsize = initialization.get_minimal_boxsize(size - 2 * dist)
+        if newsize < size:
+            dist = (size - newsize) // 2
+            # Create new parameter for smaller image
+            image = Parameter(
+                image[dist:-dist, dist:-dist],
+                name=image.name,
+                prior=image.prior,
+                constraint=image.constraint,
+                step=image.step / 2,
+                fixed=image.fixed,
+                m=image.m[dist:-dist, dist:-dist] if image.m is not None else None,
+                v=image.v[dist:-dist, dist:-dist] if image.v is not None else None,
+                vhat=image.vhat[dist:-dist, dist:-dist]
+                if image.vhat is not None
+                else None,
+            )
+
+            # set new parameters
+            self._parameters = (image,) + self._parameters[1:]
+
+            # adjust bbox
+            self.bbox.origin = tuple(o + dist for o in self.bbox.origin)
+            self.bbox.shape = (newsize, newsize)
+            raise UpdateException
+
+        # grow the box?
+        # because the PSF moves power across the box, the gradients at the edge
+        # accummulate flux from beyond the box
         if image.m is not None:
+            # next adam gradient update
             gu = -image.m / np.sqrt(np.sqrt(ma.masked_equal(image.v, 0))) * image.step
             gu_pull = gu * (image > 0)  # check if model has flux at the edge at all
             edge_pull = np.array(
@@ -120,11 +160,9 @@ class ImageMorphology(Morphology):
                 )
             )
 
-            if not image.fixed and np.any(
-                edge_pull > 0.1
-            ):  # 0.1 compared to 1 at center
+            # 0.1 compared to 1 at center
+            if np.any(edge_pull > 0.1):
                 # find next larger boxsize
-                size = max(image.shape)
                 newsize = initialization.get_minimal_boxsize(size + 1)
                 pad_width = (newsize - size) // 2
 
@@ -151,7 +189,7 @@ class ImageMorphology(Morphology):
 
                 # adjust bbox
                 self.bbox.origin = tuple(o - pad_width for o in self.bbox.origin)
-                self.bbox.shape = tuple(s + 2 * pad_width for s in self.bbox.shape)
+                self.bbox.shape = (newsize, newsize)
                 raise UpdateException
 
 
