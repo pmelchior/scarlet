@@ -1,23 +1,17 @@
 import autograd.numpy as np
 from functools import partial
 
-from .bbox import Box
+from .bbox import Box, overlapped_slices
 from .component import Component, CombinedComponent, FactorizedComponent
-from .constraint import PositivityConstraint
-from .initialization import (
-    get_best_fit_spectrum,
-    get_pixel_spectrum,
-    init_compact_source,
-    init_extended_morphology,
-    init_multicomponent_morphology,
-    build_initialization_image,
-)
+from .constraint import CenterOnConstraint, PositivityConstraint
+from . import initialization as init
 from .morphology import (
     ImageMorphology,
     PointSourceMorphology,
     StarletMorphology,
     ExtendedSourceMorphology,
 )
+from . import operator
 from .parameter import Parameter, relative_step
 from .spectrum import TabulatedSpectrum
 
@@ -84,7 +78,7 @@ class RandomSource(FactorizedComponent):
         if observations is None:
             spectrum = np.random.rand(C)
         else:
-            spectrum = get_best_fit_spectrum(image[None], observations)[0]
+            spectrum = init.get_best_fit_spectrum(image[None], observations)[0]
 
         # default is step=1e-2, using larger steps here becaus SED is probably uncertain
         spectrum = Parameter(
@@ -124,7 +118,7 @@ class PointSource(FactorizedComponent):
         morphology = PointSourceMorphology(model_frame, center)
 
         # get spectrum from peak pixel, correct for PSF
-        spectra = get_pixel_spectrum(sky_coord, observations, correct_psf=True)
+        spectra = init.get_pixel_spectrum(sky_coord, observations, correct_psf=True)
         spectrum = np.concatenate(spectra, axis=0)
         spectrum = TabulatedSpectrum(model_frame, spectrum)
 
@@ -161,7 +155,7 @@ class CompactExtendedSource(FactorizedComponent):
             observations = (observations,)
 
         # initialize morphology from model_frame psf
-        morph, bbox = init_compact_source(sky_coord, model_frame)
+        morph, bbox = self.init_morph(sky_coord, model_frame)
         center = model_frame.get_pixel(sky_coord)
         morphology = ExtendedSourceMorphology(
             model_frame,
@@ -175,12 +169,12 @@ class CompactExtendedSource(FactorizedComponent):
         )
 
         # get spectrum from peak pixel, correct for PSF
-        spectra = get_pixel_spectrum(sky_coord, observations, correct_psf=True)
+        spectra = init.get_pixel_spectrum(sky_coord, observations, correct_psf=True)
         spectrum = np.concatenate(spectra, axis=0)
         spectrum /= morph.sum()
-        noise_rms = np.array(
-            [np.mean(obs.noise_rms, axis=(1, 2)) for obs in observations]
-        )
+        noise_rms = np.concatenate(
+            [np.array(np.mean(obs.noise_rms, axis=(1, 2))) for obs in observations]
+        ).reshape(-1)
         spectrum = TabulatedSpectrum(model_frame, spectrum, min_step=noise_rms)
 
         # set up model with its parameters
@@ -188,6 +182,41 @@ class CompactExtendedSource(FactorizedComponent):
 
         # retain center as attribute
         self.center = morphology.center
+
+    def init_morph(self, sky_coord, frame):
+        """Initialize a source just like `init_extended_morphology`,
+        but with the morphology of a point source.
+        """
+
+        # position in frame coordinates
+        center = frame.get_pixel(sky_coord)
+        center_index = np.round(center).astype("int")
+
+        # morphology initialized as a point source
+        morph_ = frame.psf.get_model().mean(axis=0)
+        origin = (
+            center_index[0] - (morph_.shape[0] // 2),
+            center_index[1] - (morph_.shape[1] // 2),
+        )
+        bbox_ = Box(morph_.shape, origin=origin)
+
+        # adjust box size to conform with extended sources
+        size = max(morph_.shape)
+        boxsize = init.get_minimal_boxsize(size)
+        morph = np.zeros((boxsize, boxsize))
+        origin = (
+            center_index[0] - (morph.shape[0] // 2),
+            center_index[1] - (morph.shape[1] // 2),
+        )
+        bbox = Box(morph.shape, origin=origin)
+
+        slices = overlapped_slices(bbox, bbox_)
+        morph[slices[0]] = morph_[slices[1]]
+
+        # apply max normalization
+        morph /= morph.max()
+
+        return morph, bbox
 
 
 class SingleExtendedSource(FactorizedComponent):
@@ -229,15 +258,15 @@ class SingleExtendedSource(FactorizedComponent):
 
         # get center pixel spectrum
         # this is from convolved image: weighs higher emission *and* narrow PSF
-        spectra = get_pixel_spectrum(sky_coord, observations)
+        spectra = init.get_pixel_spectrum(sky_coord, observations)
 
         # initialize morphology
         # compute optimal SNR coadd for detection
-        image, std = build_initialization_image(
+        image, std = init.build_initialization_image(
             observations, spectra=spectra, prerender=prerender
         )
         # make monotonic morphology, trimmed to box with pixels above std
-        morph, bbox = init_extended_morphology(
+        morph, bbox = self.init_morph(
             sky_coord,
             model_frame,
             image,
@@ -262,15 +291,15 @@ class SingleExtendedSource(FactorizedComponent):
 
         # find best-fit spectra for morph from init coadd
         # assumes img only has that source in region of the box
-        detect_all, std_all = build_initialization_image(
+        detect_all, std_all = init.build_initialization_image(
             observations, prerender=prerender
         )
         box_3D = Box((model_frame.C,)) @ bbox
         boxed_detect = box_3D.extract_from(detect_all)
-        spectrum = get_best_fit_spectrum((morph,), boxed_detect)
+        spectrum = init.get_best_fit_spectrum((morph,), boxed_detect)
         noise_rms = np.concatenate(
             [np.array(np.mean(obs.noise_rms, axis=(1, 2))) for obs in observations]
-        )
+        ).reshape(-1)
         spectrum = TabulatedSpectrum(model_frame, spectrum, min_step=noise_rms)
 
         # set up model with its parameters
@@ -279,13 +308,68 @@ class SingleExtendedSource(FactorizedComponent):
         # retain center as attribute
         self.center = morphology.center
 
+    def init_morph(
+        self,
+        sky_coord,
+        frame,
+        detect,
+        detect_std,
+        thresh=1,
+        symmetric=True,
+        monotonic="flat",
+        min_grad=0,
+    ):
+        """Initialize the source that is symmetric and monotonic
+        See `ExtendedSource` for a description of the parameters
+        """
+
+        # position in frame coordinates
+        center = frame.get_pixel(sky_coord)
+        center_index = np.round(center).astype("int")
+
+        # Copy detect if reused for other sources
+        im = detect.copy()
+
+        # Apply the necessary constraints
+        if symmetric:
+            im = operator.prox_uncentered_symmetry(
+                im,
+                0,
+                center=center_index,
+                algorithm="sdss",  # *1 is to artificially pass a variable that is not coadd
+            )
+        if monotonic:
+            if monotonic is True:
+                monotonic = "angle"
+            # use finite thresh to remove flat bridges
+            prox_monotonic = operator.prox_weighted_monotonic(
+                im.shape,
+                neighbor_weight=monotonic,
+                center=center_index,
+                min_gradient=min_grad,
+            )
+            im = prox_monotonic(im, 0).reshape(im.shape)
+
+        # truncate morph at thresh * bg_rms
+        threshold = detect_std * thresh
+        morph, bbox = init.trim_morphology(center_index, im, bg_thresh=threshold)
+
+        # normalize to unity at peak pixel for the imposed normalization
+        if morph.sum() > 0:
+            morph /= morph.max()
+        else:
+            morph = CenterOnConstraint(tiny=1)(morph, 0)
+            msg = f"No flux in morphology model for source at {sky_coord}"
+            logger.warning(msg)
+
+        return morph, bbox
+
 
 class StarletSource(FactorizedComponent):
-    """Source intialized with starlet coefficients
+    """Source with a starlet morphology model
 
-    Sources are initialized with the SED of the center pixel,
-    and the morphologies are initialised as `~scarlet.ExtendedSource`
-    and transformed into starlet coefficients.
+    Sources are initialized as `~scarlet.ExtendedSource`, and the morphology is then
+    transformed into starlet coefficients.
     """
 
     def __init__(
@@ -294,7 +378,6 @@ class StarletSource(FactorizedComponent):
         sky_coord,
         observations,
         thresh=1.0,
-        min_grad=0.1,
         starlet_thresh=5e-3,
         prerender=False,
     ):
@@ -313,49 +396,31 @@ class StarletSource(FactorizedComponent):
             flux cutoff for morphology initialization.
         """
 
-        if not hasattr(observations, "__iter__"):
-            observations = (observations,)
-
-        # get center pixel spectrum
-        # this is from convolved image: weighs higher emission *and* narrow PSF
-        spectra = get_pixel_spectrum(sky_coord, observations)
-
-        # initialize morphology
-        image, std = build_initialization_image(
-            observations, spectra=spectra, prerender=prerender
+        source = ExtendedSource(
+            model_frame, sky_coord, observations, thresh=thresh, prerender=prerender
         )
-        # make monotonic morphology, trimmed to box with pixels above std
-        morph, bbox = init_extended_morphology(
-            sky_coord,
-            model_frame,
-            image,
-            std,
-            thresh=thresh,
-            symmetric=True,
-            monotonic="flat",
-            min_grad=0,
-        )
+        source = StarletSource.from_source(source)
+        # still need to init *this* source
+        super().__init__(source.frame, *source.children)
+
+    @classmethod
+    def from_source(cls, source, starlet_thresh=5e-3):
+        assert isinstance(source, FactorizedComponent)
+
+        frame = source.frame
+        spectrum, morphology = source.children
+        morph = morphology.get_model()
+        bbox = morphology.bbox
 
         # transform to starlets
         morphology = StarletMorphology(
-            model_frame, morph, bbox=bbox, threshold=starlet_thresh
+            frame, morph, bbox=bbox, threshold=starlet_thresh
         )
 
-        # find best-fit spectra for morph from unweighted deconvolution coadd
-        # assumes img only has that source in region of the box
-        morph = morphology.get_model()
-        detect_all, std_all = build_initialization_image(
-            observations, prerender=prerender
-        )
-        box_3D = Box((model_frame.C,)) @ bbox
-        boxed_detect = box_3D.extract_from(detect_all)
-        spectrum = get_best_fit_spectrum((morph,), boxed_detect)
-        noise_rms = np.concatenate(
-            [np.array(np.mean(obs.noise_rms, axis=(1, 2))) for obs in observations]
-        )
-        spectrum = TabulatedSpectrum(model_frame, spectrum, min_step=noise_rms)
-
-        super().__init__(model_frame, spectrum, morphology)
+        # this trick gets us the proper class while call init on the base class
+        obj = cls.__new__(cls)
+        super(StarletSource, obj).__init__(frame, spectrum, morphology)
+        return obj
 
 
 class MultiExtendedSource(CombinedComponent):
@@ -415,42 +480,33 @@ class MultiExtendedSource(CombinedComponent):
         if not hasattr(observations, "__iter__"):
             observations = (observations,)
 
-        # get center pixel spectrum
-        # this is from convolved image: weighs higher emission *and* narrow PSF
-        spectra = get_pixel_spectrum(sky_coord, observations)
-        image, std = build_initialization_image(
-            observations, spectra=spectra, prerender=prerender
+        # start off with regular ExtendedSource
+        source = ExtendedSource(
+            model_frame, sky_coord, observations, thresh=thresh, prerender=prerender
         )
-        morphs, boxes = init_multicomponent_morphology(
-            sky_coord,
-            model_frame,
-            image,
-            std,
-            flux_percentiles,
-            thresh=thresh,
-            symmetric=True,
-            monotonic="flat",
-            min_grad=0,
-        )
+        _, morphology = source.children
+        morphs, boxes = self.init_morphs(morphology, flux_percentiles)
 
-        # find best-fit spectra for each of morph from unweighted deconvolution coadd
-        # assumes img only has that source in region of the box
-        detect_all, std_all = build_initialization_image(
+        # find best-fit spectra for each of morph from the observations
+        # assumes observations only have that one source in region of the box
+        detect_all, std_all = init.build_initialization_image(
             observations, prerender=prerender
         )
         box_3D = Box((model_frame.C,)) @ boxes[0]
         boxed_detect = box_3D.extract_from(detect_all)
-        spectra = get_best_fit_spectrum(morphs, boxed_detect)
+        spectra = init.get_best_fit_spectrum(morphs, boxed_detect)
         noise_rms = np.concatenate(
             [np.array(np.mean(obs.noise_rms, axis=(1, 2))) for obs in observations]
-        )
+        ).reshape(-1)
 
         # create one component for each spectrum and morphology
         components = []
         center = model_frame.get_pixel(sky_coord)
         for k in range(K):
 
-            spectrum = TabulatedSpectrum(model_frame, spectra[k], noise_rms=noise_rms)
+            spectrum = TabulatedSpectrum(
+                model_frame, spectra[k], min_step=noise_rms / 10
+            )
 
             morphology = ExtendedSourceMorphology(
                 model_frame,
@@ -467,6 +523,40 @@ class MultiExtendedSource(CombinedComponent):
             components.append(component)
 
         super().__init__(components)
+
+    def init_morphs(self, morphology, flux_percentiles):
+
+        morph = morphology.get_model()
+        bbox = morphology.bbox
+
+        # create a list of components from base morph by layering them on top of
+        # each other so that they sum up to morph
+        K = len(flux_percentiles) + 1
+
+        Ny, Nx = morph.shape
+        morphs = np.zeros((K, Ny, Nx), dtype=morph.dtype)
+        morphs[0, :, :] = morph[:, :]
+        max_flux = morph.max()
+        percentiles_ = np.sort(flux_percentiles)
+        last_thresh = 0
+        for k in range(1, K):
+            perc = percentiles_[k - 1]
+            flux_thresh = perc * max_flux / 100
+            mask_ = morph > flux_thresh
+            morphs[k - 1][mask_] = flux_thresh - last_thresh
+            morphs[k][mask_] = morph[mask_] - flux_thresh
+            last_thresh = flux_thresh
+
+        # renormalize morphs: initially Smax
+        for k in range(K):
+            if np.all(morphs[k] <= 0):
+                msg = f"Zero or negative morphology for component {k} at {sky_coord}"
+                logger.warning(msg)
+            morphs[k] /= morphs[k].max()
+
+        # avoid using the same box for multiple components
+        boxes = tuple(bbox.copy() for k in range(K))
+        return morphs, boxes
 
 
 def append_docs_from(other_func):
