@@ -181,7 +181,7 @@ class CompactExtendedSource(FactorizedComponent):
         noise_rms = np.array(
             [np.mean(obs.noise_rms, axis=(1, 2)) for obs in observations]
         )
-        spectrum = TabulatedSpectrum(model_frame, spectrum, noise_rms=noise_rms)
+        spectrum = TabulatedSpectrum(model_frame, spectrum, min_step=noise_rms)
 
         # set up model with its parameters
         super().__init__(model_frame, spectrum, morphology)
@@ -268,10 +268,10 @@ class SingleExtendedSource(FactorizedComponent):
         box_3D = Box((model_frame.C,)) @ bbox
         boxed_detect = box_3D.extract_from(detect_all)
         spectrum = get_best_fit_spectrum((morph,), boxed_detect)
-        noise_rms = np.array(
-            [np.mean(obs.noise_rms, axis=(1, 2)) for obs in observations]
+        noise_rms = np.concatenate(
+            [np.array(np.mean(obs.noise_rms, axis=(1, 2))) for obs in observations]
         )
-        spectrum = TabulatedSpectrum(model_frame, spectrum, noise_rms=noise_rms)
+        spectrum = TabulatedSpectrum(model_frame, spectrum, min_step=noise_rms)
 
         # set up model with its parameters
         super().__init__(model_frame, spectrum, morphology)
@@ -350,10 +350,10 @@ class StarletSource(FactorizedComponent):
         box_3D = Box((model_frame.C,)) @ bbox
         boxed_detect = box_3D.extract_from(detect_all)
         spectrum = get_best_fit_spectrum((morph,), boxed_detect)
-        noise_rms = np.array(
-            [np.mean(obs.noise_rms, axis=(1, 2)) for obs in observations]
+        noise_rms = np.concatenate(
+            [np.array(np.mean(obs.noise_rms, axis=(1, 2))) for obs in observations]
         )
-        spectrum = TabulatedSpectrum(model_frame, spectrum, noise_rms=noise_rms)
+        spectrum = TabulatedSpectrum(model_frame, spectrum, min_step=noise_rms)
 
         super().__init__(model_frame, spectrum, morphology)
 
@@ -441,8 +441,8 @@ class MultiExtendedSource(CombinedComponent):
         box_3D = Box((model_frame.C,)) @ boxes[0]
         boxed_detect = box_3D.extract_from(detect_all)
         spectra = get_best_fit_spectrum(morphs, boxed_detect)
-        noise_rms = np.array(
-            [np.mean(obs.noise_rms, axis=(1, 2)) for obs in observations]
+        noise_rms = np.concatenate(
+            [np.array(np.mean(obs.noise_rms, axis=(1, 2))) for obs in observations]
         )
 
         # create one component for each spectrum and morphology
