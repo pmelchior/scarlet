@@ -57,7 +57,7 @@ def centroid(component):
     return centroid + origin
 
 
-def snr(component, observations, prerender=False):
+def snr(component, observations):
     """Determine SNR with morphology as weight function
 
     Parameters
@@ -80,34 +80,21 @@ def snr(component, observations, prerender=False):
         model = component
         bbox = Box(model.shape)
 
-    if prerender:
-        C = model.shape[0]
-        M = model.reshape(C, -1)
-        # weights are given by normalized model
-        W = M / M.sum(axis=1)[:, None]
-
-        # get variance of the deconvolved coadd
-        detect_all, std_all = initialization.build_initialization_image(
-            observations, prerender=prerender
-        )
-        boxed_std = bbox.extract_from(std_all)
-        var = (boxed_std ** 2).reshape(C, -1)
-    else:
-        M = []
-        W = []
-        var = []
-        # convolve model for every observation;
-        # flatten in channel direction because it may not have all C channels; concatenate
-        # do same thing for noise variance
-        for obs in observations:
-            model_ = obs.render(model)
-            M.append(model_.reshape(-1))
-            W.append((model_ / (model_.sum(axis=(-2, -1))[:, None, None])).reshape(-1))
-            noise_var = obs.noise_rms ** 2
-            var.append(noise_var.reshape(-1))
-        M = np.concatenate(M)
-        W = np.concatenate(W)
-        var = np.concatenate(var)
+    M = []
+    W = []
+    var = []
+    # convolve model for every observation;
+    # flatten in channel direction because it may not have all C channels; concatenate
+    # do same thing for noise variance
+    for obs in observations:
+        model_ = obs.render(model)
+        M.append(model_.reshape(-1))
+        W.append((model_ / (model_.sum(axis=(-2, -1))[:, None, None])).reshape(-1))
+        noise_var = obs.noise_rms ** 2
+        var.append(noise_var.reshape(-1))
+    M = np.concatenate(M)
+    W = np.concatenate(W)
+    var = np.concatenate(var)
 
     # SNR from Erben (2001), eq. 16, extended to multiple bands
     # SNR = (I @ W) / sqrt(W @ Sigma^2 @ W)

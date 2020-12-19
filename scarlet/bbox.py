@@ -100,7 +100,7 @@ class Box:
         imbox = Box(image.shape)
 
         if sub is None:
-            sub = np.zeros(self.shape)
+            sub = np.zeros(self.shape, dtype=image.dtype)
 
         im_slices, sub_slices = overlapped_slices(imbox, self)
         sub[sub_slices] = image[im_slices]

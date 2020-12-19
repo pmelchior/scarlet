@@ -124,7 +124,7 @@ def get_pixel_spectrum(sky_coord, observations, correct_psf=False, models=None):
     return spectra
 
 
-def get_psf_spectrum(sky_coord, observations):
+def get_psf_spectrum(sky_coord, observations, compute_snr=False):
     """Get spectrum for a point source at `sky_coord` in `observation`
 
     Equivalent to point source photometry for isolated sources. For extended source,
@@ -139,7 +139,9 @@ def get_psf_spectrum(sky_coord, observations):
     sky_coord: tuple
         Position in the observation
     observations: instance or list of `~scarlet.Observation`
-        Observation to extract SED from.
+        Observation to extract the spectrum from.
+    compute_snr: bool
+        Whether the compute the SNR of a PSF at `sky_coord`
 
     Returns
     -------
@@ -153,37 +155,57 @@ def get_psf_spectrum(sky_coord, observations):
         single = False
 
     spectra = []
-    for obs in observations:
+    if compute_snr:
+        snr_num, snr_denom = [], []
+
+    for i, obs in enumerate(observations):
         pixel = obs.frame.get_pixel(sky_coord)
-        index = np.round(pixel).astype(np.int)
+        index = np.round(pixel).astype("int")
 
         psf = obs.frame.psf.get_model()
         bbox = obs.frame.psf.bbox + (0, *index)
         img = bbox.extract_from(obs.images)
+        noise_rms = obs.noise_rms
+        # masked array doesn't survive extract_from
+        noise = bbox.extract_from(noise_rms)
+        noise_mask = bbox.extract_from(noise_rms.mask)
 
-        # img now 0 outside of observation, psf is not:
-        # restrict both to observed pixels to avoid truncation effects
-        mask = img[0] > 0
-        psf = psf[:, mask]  # flattens array in last two axes
-        img = img[:, mask]
+        spectra.append([])
+        # apply mask: needs to be done separately in each channel
+        for c in range(obs.frame.C):
+            # outside of observation or masked pixels have noise_mask = 0
+            mask = ~(noise_mask[c])
+            psf_ = psf[c, mask]
+            img_ = img[c, mask]
 
-        # amplitude of img when projected onto psf
-        # i.e. factor to multiply psf with to get img (if img looked like psf)
-        spectrum = (img * psf).sum(axis=1) / (psf * psf).sum(axis=1)
-        spectra.append(spectrum)
+            # amplitude of img when projected onto psf
+            # i.e. factor to multiply psf with to get img (if img looked like psf)
+            spectrum = (img_ @ psf_) / (psf_ @ psf_)
+            spectra[i].append(spectrum)
 
-        if np.any(spectrum <= 0):
+            if compute_snr:
+                noise_ = noise[c, mask]
+                snr_num.append(img_ @ psf_)
+                snr_denom.append((psf_ * noise_ ** 2) @ psf_)
+
+        spectra[i] = np.array(spectra[i])
+
+        if np.any(spectra[i] <= 0):
             # If the flux in all channels is  <=0,
             # the new sed will be filled with NaN values,
             # which will cause the code to crash later
-            msg = f"Zero or negative spectrum {spectrum} at {sky_coord}"
-            if np.all(spectrum <= 0):
+            msg = f"Zero or negative spectrum {spectra[i]} at {sky_coord}"
+            if np.all(spectra[i] <= 0):
                 logger.warning(msg)
             else:
                 logger.info(msg)
 
     if single:
-        return spectra[0]
+        spectra = spectra[0]
+
+    if compute_snr:
+        snr = np.sum(snr_num) / np.sqrt(np.sum(snr_denom))
+        return spectra, snr
     return spectra
 
 
@@ -449,8 +471,13 @@ def init_source(
         observations = (observations,)
 
     source_shifting = shifting
+    _, psf_snr = get_psf_spectrum(center, observations, compute_snr=True)
+
     while max_components >= 0:
         try:
+            if np.abs(psf_snr) < min_snr * max_components:
+                raise ArithmeticError("Insufficient SNR, try fewer components")
+
             if max_components > 0:
                 source = ExtendedSource(
                     frame,
@@ -469,21 +496,7 @@ def init_source(
             # test if parameters are fine, otherwise throw ArithmeticError
             source.check_parameters()
 
-            # make sure to have enough SNR for every component
-            if max_components > 1:
-                components = source.children
-            else:
-                components = (source,)
-            if max_components > 0 and any(
-                [
-                    measure.snr(component, observations, prerender=prerender) < min_snr
-                    for component in components
-                ]
-            ):
-                raise ArithmeticError("Insufficient SNR")
-
         except ArithmeticError as e:
-
             if fallback:
                 msg = f"Could not initialize source at {center} with {max_components} components: {e}"
                 logger.info(msg)
