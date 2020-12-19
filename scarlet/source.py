@@ -1,17 +1,17 @@
 import autograd.numpy as np
 from functools import partial
 
+from . import initialization as init
+from . import operator
 from .bbox import Box, overlapped_slices
 from .component import Component, CombinedComponent, FactorizedComponent
 from .constraint import CenterOnConstraint, PositivityConstraint
-from . import initialization as init
 from .morphology import (
     ImageMorphology,
     PointSourceMorphology,
     StarletMorphology,
     ExtendedSourceMorphology,
 )
-from . import operator
 from .parameter import Parameter, relative_step
 from .spectrum import TabulatedSpectrum
 
