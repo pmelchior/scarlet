@@ -1,5 +1,4 @@
 import numpy as np
-
 import logging
 
 from .bbox import Box
@@ -9,6 +8,9 @@ from .observation import Observation, LowResObservation
 from .wavelet import Starlet, mad_wavelet
 from . import fft
 from . import measure
+from functools import partial
+from .constraint import PositivityConstraint
+from .parameter import Parameter, relative_step
 
 
 logger = logging.getLogger("scarlet.initialisation")
@@ -329,7 +331,7 @@ def init_all_sources(
     observations,
     thresh=1,
     max_components=1,
-    min_snr=30,
+    min_snr=50,
     edge_distance=None,
     shifting=False,
     fallback=True,
@@ -405,7 +407,7 @@ def init_source(
     observations,
     thresh=1,
     max_components=1,
-    min_snr=30,
+    min_snr=50,
     edge_distance=None,
     shifting=False,
     fallback=True,

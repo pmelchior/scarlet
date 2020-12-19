@@ -254,8 +254,6 @@ class StarletMorphology(Morphology):
         if bbox is None:
             assert frame.bbox[1:].shape == image.shape
             bbox = Box(image.shape)
-        else:
-            assert bbox.shape == image.shape
 
         # Starlet transform of morphologies (n1,n2) with 4 dimensions: (1,lvl,n1,n2), lvl = wavelet scales
         self.transform = Starlet(image)

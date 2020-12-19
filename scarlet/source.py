@@ -377,9 +377,11 @@ class StarletSource(FactorizedComponent):
         model_frame,
         sky_coord,
         observations,
+        spectrum=None,
         thresh=1.0,
-        starlet_thresh=5e-3,
         prerender=False,
+        full=False,
+        starlet_thresh=5e-3,
     ):
         """Extended source intialized to match a set of observations
 
@@ -394,12 +396,33 @@ class StarletSource(FactorizedComponent):
         thresh: `float`
             Multiple of the backround RMS used as a
             flux cutoff for morphology initialization.
+        spectrum: `numpy.ndarray` or `scarlet.Parameter`
+            Initial spectrum, otherwise given by `ExtendedSource` initialization
+        full: `bool`
+            If set to False, use the full image as a box for the starlet model.
+            Otherwise, use the same bbox as for `ExtendedSource` initialization
+        starlet_thresh: `float`
+            Multiple of the backround RMS used as a
+            flux cutoff for starlet threshold (usually between 5 and 3).
         """
-
         source = ExtendedSource(
             model_frame, sky_coord, observations, thresh=thresh, prerender=prerender
         )
         source = StarletSource.from_source(source)
+
+        if spectrum is not None:
+            if isinstance(spectrum, Parameter):
+                assert spectrum.name == "spectrum"
+            else:
+                constraint = PositivityConstraint(
+                    zero=1e-20
+                )  # slightly positive values
+                step = partial(relative_step, factor=1e-6)
+                spectrum = Parameter(
+                    spectrum, name="spectrum", step=step, constraint=constraint,
+                )
+            source.children[0] = spectrum
+
         # still need to init *this* source
         super().__init__(source.frame, *source.children)
 

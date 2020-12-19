@@ -1,4 +1,3 @@
-import autograd.numpy as np
 from functools import partial
 
 from .bbox import Box
