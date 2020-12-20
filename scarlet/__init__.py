@@ -36,6 +36,7 @@ from .source import (
     StarletSource,
 )
 from .spectrum import Spectrum, TabulatedSpectrum
+from .wavelet import Starlet
 from . import display
 from . import initialization
 from . import measure
