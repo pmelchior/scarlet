@@ -41,42 +41,36 @@ def _grad_convolve(convolved, image, psf, slices):
 defvjp(convolve, _grad_convolve)
 
 
-class Observation:
+class Observation(Frame):
     """Data and metadata for a single set of observations
 
     Attributes
     ----------
-    images: array or tensor
+    data: array
         3D data cube (channels, Ny, Nx) of the image in each band.
-    frame: a `scarlet.Frame` instance
-        The spectral and spatial characteristics of these data
     weights: array or tensor
-        Weight for each pixel in `images`.
+        Weight for each pixel in `data`.
         If a set of masks exists for the observations then
         then any masked pixels should have their `weight` set
         to zero.
-    padding: int
-        Number of pixels to pad each side with, in addition to
-        half the width of the PSF, for FFTs. This is needed to
-        prevent artifacts from the FFT.
     """
 
-    def __init__(self, images, channels, psfs=None, weights=None, wcs=None, padding=10):
+    def __init__(self, data, channels, psf=None, weights=None, wcs=None, padding=10):
         """Create an Observation
 
         Parameters
         ---------
-        images: array or tensor
+        data: array or tensor
             3D data cube (Channel, Height, Width) of the image in each band.
-        psfs: `scarlet.PSF` or its arguments
-            PSF in each channel. Can be 3D cube of images stacked in channel direction.
+        psf: `scarlet.PSF` or its arguments
+            PSF in each channel. Can be 3D cube of data stacked in channel direction.
         weights: array or tensor
-            Weight for each pixel in `images`.
+            Weight for each pixel in `data`.
             If a set of masks exists for the observations then
             then any masked pixels should have their `weight` set
             to zero.
         wcs: TBD
-            World Coordinate System associated with the images.
+            World Coordinate System associated with the data.
         channels: list of hashable elements
             Names/identifiers of spectral channels
         padding: int
@@ -84,22 +78,22 @@ class Observation:
             half the width of the PSF, for FFTs. This is needed to
             prevent artifacts from the FFT.
         """
-        self.frame = Frame(
-            images.shape, wcs=wcs, psfs=psfs, channels=channels, dtype=images.dtype
+        super().__init__(
+            data.shape, wcs=wcs, psf=psf, channels=channels, dtype=data.dtype
         )
 
-        self.images = images
+        self.data = data
         if weights is not None:
             self.weights = weights
         else:
-            self.weights = np.ones(images.shape, dtype=images.dtype)
+            self.weights = np.ones(data.shape, dtype=data.dtype)
         assert (
-            self.weights.shape == self.images.shape
-        ), "Weights needs to have same shape as images"
+            self.weights.shape == self.data.shape
+        ), "Weights needs to have same shape as data"
         self._padding = padding
         self._diff_kernels = None
         self._slices_for_model = slice(None)
-        self._slices_for_images = slice(None)
+        self._slices_for_data = slice(None)
         self._parameters = ()
 
     def match(self, model_frame, convolution_type="fft"):
@@ -129,9 +123,9 @@ class Observation:
         self.model_frame = model_frame
 
         # check dtype consistency
-        if self.frame.dtype != model_frame.dtype:
-            self.frame.dtype = model_frame.dtype
-            self.images = self.images.astype(model_frame.dtype)
+        if self.dtype != model_frame.dtype:
+            self.dtype = model_frame.dtype
+            self.data = self.data.astype(model_frame.dtype)
             if type(self.weights) is np.ndarray:
                 self.weights = self.weights.astype(model_frame.dtype)
 
@@ -140,7 +134,7 @@ class Observation:
         self._channel_map = self.get_channel_map_for(model_frame)
 
         # same of the 2D spatial region covered by data
-        pixel_in_model_frame = self.frame.convert_pixel_to(model_frame)
+        pixel_in_model_frame = self.convert_pixel_to(model_frame)
         # since there cannot be rotation or scaling, it's only translation
         ll = np.round(pixel_in_model_frame.min(axis=0)).astype("int")
         ur = np.round(pixel_in_model_frame.max(axis=0)).astype("int") + 1
@@ -148,17 +142,17 @@ class Observation:
         data_box = model_frame.bbox[0] @ Box.from_bounds(*bounds)
         # properly treats truncation in both boxes
         slices = overlapped_slices(data_box, model_frame.bbox)
-        self._slices_for_images = slices[0]
+        self._slices_for_data = slices[0]
         self._slices_for_model = slices[1]
 
         # construct diff kernels
-        if self.frame.psf is not model_frame.psf:
-            assert self.frame.psf is not None and model_frame.psf is not None
-            psf = fft.Fourier(self.frame.psf.get_model().astype(model_frame.dtype))
+        if self.psf is not model_frame.psf:
+            assert self.psf is not None and model_frame.psf is not None
+            psf = fft.Fourier(self.psf.get_model().astype(model_frame.dtype))
             model_psf = fft.Fourier(
                 model_frame.psf.get_model().astype(model_frame.dtype)
             )
-            self._diff_kernels = fft.match_psfs(psf, model_psf)
+            self._diff_kernels = fft.match_psf(psf, model_psf)
 
         assert convolution_type in [
             "real",
@@ -176,23 +170,23 @@ class Observation:
         return self._noise_rms
 
     @property
-    def prerender_images(self):
-        if hasattr(self, "_prerender_images"):
-            return self._prerender_images
+    def prerender_data(self):
+        if hasattr(self, "_prerender_data"):
+            return self._prerender_data
         if self._diff_kernels is None:
-            return self.images
+            return self.data
         else:
             # construct deconvolved image for detection:
-            # divide Fourier transform of images by Fourier transform of diff kernel
-            self._prerender_images = fft._kspace_operation(
-                fft.Fourier(self.images),
+            # divide Fourier transform of data by Fourier transform of diff kernel
+            self._prerender_data = fft._kspace_operation(
+                fft.Fourier(self.data),
                 self._diff_kernels,
                 3,
                 fft.operator.truediv,
-                self.images.shape,
+                self.data.shape,
                 axes=(-2, -1),
             ).image  # then get the image from Fourier
-            return self._prerender_images
+            return self._prerender_data
 
     @property
     def prerender_sigma(self):
@@ -259,12 +253,10 @@ class Observation:
             array for linear mapping of target channels onto observation channels
         """
 
-        if list(self.frame.channels) == list(target.channels):
+        if list(self.channels) == list(target.channels):
             return None
 
-        channel_map = [
-            list(target.channels).index(c) for c in list(self.frame.channels)
-        ]
+        channel_map = [list(target.channels).index(c) for c in list(self.channels)]
         min_channel = min(channel_map)
         max_channel = max(channel_map)
         if max_channel + 1 - min_channel == len(channel_map):
@@ -273,7 +265,7 @@ class Observation:
 
         # full-fledged linear mixing model to allow for spectrophotometry later
         channel_map = np.zeros((self.C, target.C))
-        for i, c in enumerate(list(self.frame.channels)):
+        for i, c in enumerate(list(self.channels)):
             j = list(target.channels).index(c)
             assert j != -1, f"Could not find channel {c} in target frame"
             channel_map[i, j] = 1
@@ -339,36 +331,36 @@ class Observation:
         logL: float
         """
         model_ = self.render(model, *parameters)
-        images_ = self.images[self._slices_for_images]
-        weights_ = self.weights[self._slices_for_images]
+        data_ = self.data[self._slices_for_data]
+        weights_ = self.weights[self._slices_for_data]
 
         # noise injection to soften the gradient
         if noise_factor > 0:
             std = 1 / np.sqrt(np.where(weights_ > 0, weights_, np.inf))
             noise = np.random.normal(loc=0, scale=std)
-            images_ = images_.copy() + noise
+            data_ = data_.copy() + noise
             weights_ = weights_.copy() / (noise_factor + 1)
 
-        return -self.log_norm - np.sum(weights_ * (model_ - images_) ** 2) / 2
+        return -self.log_norm - np.sum(weights_ * (model_ - data_) ** 2) / 2
 
     @property
     def log_norm(self):
         try:
             return self._log_norm
         except AttributeError:
-            images_ = self.images[self._slices_for_images]
-            weights_ = self.weights[self._slices_for_images]
+            data_ = self.data[self._slices_for_data]
+            weights_ = self.weights[self._slices_for_data]
 
             # normalization of the single-pixel likelihood:
             # 1 / [(2pi)^1/2 (sigma^2)^1/2]
             # with inverse variance weights: sigma^2 = 1/weight
-            # full likelihood is sum over all data samples: pixel in images
+            # full likelihood is sum over all data samples: pixel in data
             # NOTE: this assumes that all pixels are used in likelihood!
             log_sigma = np.zeros(weights_.shape, dtype=self.weights.dtype)
             cuts = weights_ > 0
             log_sigma[cuts] = np.log(1 / weights_[cuts])
             self._log_norm = (
-                np.prod(images_.shape) / 2 * np.log(2 * np.pi) + np.sum(log_sigma) / 2
+                np.prod(data_.shape) / 2 * np.log(2 * np.pi) + np.sum(log_sigma) / 2
             )
         return self._log_norm
 
@@ -377,14 +369,14 @@ class Observation:
 
         """
         return LowResObservation(
-            self.images,
-            psfs=self.frame._psfs,
+            self.data,
+            psf=self._psf,
             weights=self.weights,
-            wcs=self.frame.wcs,
-            channels=self.frame.channels,
+            wcs=self.wcs,
+            channels=self.channels,
         )
 
-    def _to_frame(self, frame, images=None):
+    def _to_frame(self, frame, data=None):
         """Project this observation into another frame
 
         Note: the frame must have the same sampling and rotation,
@@ -392,40 +384,33 @@ class Observation:
         This method is a convenience function for now but should
         not be considered supported and could be removed in a later version
         """
-        frame_slices, observation_slices = overlapped_slices(
-            frame.bbox, self.frame.bbox
-        )
+        frame_slices, observation_slices = overlapped_slices(frame.bbox, self.bbox)
 
-        if images is None:
-            images = self.images
+        if data is None:
+            data = self.data
 
         if hasattr(frame, "dtype"):
             dtype = frame.dtype
         else:
-            dtype = images.dtype
+            dtype = data.dtype
         result = np.zeros(frame.shape, dtype=dtype)
-        result[frame_slices] = images[observation_slices]
+        result[frame_slices] = data[observation_slices]
         return result
 
 
 class LowResObservation(Observation):
     def __init__(
-        self, images, channels, wcs=None, psfs=None, weights=None, padding=3,
+        self, data, channels, wcs=None, psf=None, weights=None, padding=3,
     ):
 
         assert wcs is not None, "WCS is necessary for LowResObservation"
-        assert psfs is not None, "PSF is necessary for LowResObservation"
+        assert psf is not None, "PSF is necessary for LowResObservation"
 
         super().__init__(
-            images,
-            wcs=wcs,
-            psfs=psfs,
-            weights=weights,
-            channels=channels,
-            padding=padding,
+            data, wcs=wcs, psf=psf, weights=weights, channels=channels, padding=padding,
         )
 
-    def match_psfs(self, psf_hr, wcs_hr):
+    def match_psf(self, psf_hr, wcs_hr):
         """psf matching between different dataset
         Matches PSFS at different resolutions by interpolating psf_lr on the same grid as psf_hr
         Parameters
@@ -447,16 +432,16 @@ class LowResObservation(Observation):
         psf_match_lr: array
             low resolution psf at matching size and resolution
         """
-        psf_lr = self.frame.psf.get_model().astype(psf_hr.dtype)
+        psf_lr = self.psf.get_model().astype(psf_hr.dtype)
         # Odd pad shape
         pad_shape = (
-            np.array((self.images.shape[-2:] + np.array(psf_lr.shape[-2:])) / 2).astype(
+            np.array((self.data.shape[-2:] + np.array(psf_lr.shape[-2:])) / 2).astype(
                 int
             )
             * 2
             + 1
         )
-        wcs_lr = self.frame.wcs
+        wcs_lr = self.wcs
 
         h_lr = interpolation.get_pixel_size(interpolation.get_affine(wcs_lr))
         h_hr = interpolation.get_pixel_size(interpolation.get_affine(wcs_hr))
@@ -474,7 +459,7 @@ class LowResObservation(Observation):
         return psf_hr, psf_match_lr
 
     def build_diffkernel(self, model_frame):
-        """Builds the differential convolution kernel between the observation and the frame psfs
+        """Builds the differential convolution kernel between the observation and the frame psf
 
         Parameters
         ----------
@@ -483,7 +468,7 @@ class LowResObservation(Observation):
         Returns
         -------
         diff_psf: array
-            the differential psf between observation and frame psfs.
+            the differential psf between observation and frame psf.
         """
         # Compute diff kernel at hr
         whr = model_frame.wcs
@@ -491,10 +476,10 @@ class LowResObservation(Observation):
         # Reference PSF
         _target = model_frame.psf.get_model()
 
-        # Computes spatially matching observation and target psfs. The observation psf is also resampled \\
+        # Computes spatially matching observation and target psf. The observation psf is also resampled \\
         # to the model frame resolution
-        new_target, observed_psfs = self.match_psfs(_target, whr)
-        diff_psf = fft.match_psfs(fft.Fourier(observed_psfs), fft.Fourier(new_target))
+        new_target, observed_psf = self.match_psf(_target, whr)
+        diff_psf = fft.match_psf(fft.Fourier(observed_psf), fft.Fourier(new_target))
 
         return diff_psf, new_target
 
@@ -504,10 +489,10 @@ class LowResObservation(Observation):
         Parameters
         ----------
         imgs: Fourier
-            a Fourier object of 2D images to sinc convolve and shift
+            a Fourier object of 2D data to sinc convolve and shift
             to the adequate shape.
         shifts: array
-            an array of the shift values for each line and columns of images in imgs
+            an array of the shift values for each line and columns of data in imgs
         axes: array
             Optional argument that specifies the axes along which to apply sinc convolution.
         Returns
@@ -557,7 +542,7 @@ class LowResObservation(Observation):
             fft_axes = [len(imgs_shiftfft.shape) - 2]
 
         # Inverse Fourier transform.
-        # The n-dimensional transform could pose problem for very large images
+        # The n-dimensional transform could pose problem for very large data
         op = fft.Fourier.from_fft(imgs_shiftfft, fft_shape, inv_shape, fft_axes).image
         return op
 
@@ -574,9 +559,9 @@ class LowResObservation(Observation):
         self.model_frame = model_frame
 
         # check dtype consistency
-        if self.frame.dtype != model_frame.dtype:
-            self.frame.dtype = model_frame.dtype
-            self.images = self.images.astype(model_frame.dtype)
+        if self.dtype != model_frame.dtype:
+            self.dtype = model_frame.dtype
+            self.data = self.data.astype(model_frame.dtype)
             if type(self.weights) is np.ndarray:
                 self.weights = self.weights.astype(model_frame.dtype)
 
@@ -585,16 +570,16 @@ class LowResObservation(Observation):
         self._channel_map = self.get_channel_map_for(model_frame)
 
         # check if data is rotated wrt to model_frame
-        self.angle, self.h = interpolation.get_angles(self.frame.wcs, model_frame.wcs)
+        self.angle, self.h = interpolation.get_angles(self.wcs, model_frame.wcs)
         self.isrot = (np.abs(self.angle[1]) ** 2) > np.finfo(float).eps
 
         # Get pixel coordinates alinged with x and y axes  of this observation
         # in model frame
-        lr_shape = self.frame.shape[1:]
+        lr_shape = self.shape[1:]
         pixels = np.stack((np.arange(lr_shape[0]), np.arange(lr_shape[1])), axis=1)
-        coord_hr = self.frame.convert_pixel_to(model_frame, pixel=pixels)
+        coord_hr = self.convert_pixel_to(model_frame, pixel=pixels)
 
-        # TODO: should coords define a _slices_for_model/images?
+        # TODO: should coords define a _slices_for_model/data?
         # lr_inside_hr = model_frame.bbox.contains(coord_hr)
 
         # compute diff kernel in model_frame pixels
@@ -603,7 +588,7 @@ class LowResObservation(Observation):
         # 1D convolutions convolutions of the model are done along the smaller axis, therefore,
         # psf is convolved along the frame's longer axis.
         # the smaller frame axis:
-        self.small_axis = self.frame.Nx <= self.frame.Ny
+        self.small_axis = self.Nx <= self.Ny
 
         self._fft_shape = fft._get_fft_shape(
             target, np.zeros(model_frame.shape), padding=3, axes=[-2, -1], max=False,
@@ -671,7 +656,7 @@ class LowResObservation(Observation):
         # Computes the resampling/convolution matrix
         resconv_op = self.sinc_shift(self._diff_kernels, self.shifts, axes)
 
-        self._resconv_op = np.array(resconv_op, dtype=self.frame.dtype) * self.h ** 2
+        self._resconv_op = np.array(resconv_op, dtype=self.dtype) * self.h ** 2
 
         if self.isrot:
             self._resconv_op = self._resconv_op.reshape(*self._resconv_op.shape[:2], -1)
@@ -685,7 +670,7 @@ class LowResObservation(Observation):
         return self
 
     @property
-    def prerender_images(self):
+    def prerender_data(self):
         return None
 
     @property
@@ -723,17 +708,17 @@ class LowResObservation(Observation):
                 return np.array(
                     [
                         np.dot(self._resconv_op[c], model_conv[c].T)
-                        for c in range(self.frame.C)
+                        for c in range(self.C)
                     ],
-                    dtype=self.frame.dtype,
+                    dtype=self.dtype,
                 )
             else:
                 return np.array(
                     [
                         np.dot(self._resconv_op[c], model_conv[c].T).T
-                        for c in range(self.frame.C)
+                        for c in range(self.C)
                     ],
-                    dtype=self.frame.dtype,
+                    dtype=self.dtype,
                 )
 
         if self.small_axis:
@@ -743,16 +728,16 @@ class LowResObservation(Observation):
             return np.array(
                 [
                     np.dot(model_conv[c].T, self._resconv_op[c].T).T
-                    for c in range(self.frame.C)
+                    for c in range(self.C)
                 ],
-                dtype=self.frame.dtype,
+                dtype=self.dtype,
             )
         else:
             model_conv = model_conv.reshape(*model_conv.shape[:2], -1)
             return np.array(
                 [
                     np.dot(self._resconv_op[c].T, model_conv[c].T).T
-                    for c in range(self.frame.C)
+                    for c in range(self.C)
                 ],
-                dtype=self.frame.dtype,
+                dtype=self.dtype,
             )

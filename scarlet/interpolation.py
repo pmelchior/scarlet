@@ -580,16 +580,16 @@ def interpolate_observation(observation, frame, wave_filter=False):
     """
     # Interpolate low resolution data to high resolution
     coord_lr0 = np.array(
-        (np.arange(observation.frame.shape[1]), np.arange(observation.frame.shape[2]),)
+        (np.arange(observation.shape[1]), np.arange(observation.shape[2]),)
     )
     coord_hr = (np.arange(frame.shape[1]), np.arange(frame.shape[2]))
-    coord_lr = observation.frame.convert_pixel_to(frame, pixel=coord_lr0.T).T
+    coord_lr = observation.convert_pixel_to(frame, pixel=coord_lr0.T).T
 
     interp = []
     if wave_filter is True:
-        images = Starlet(observation.images).filter()
+        images = Starlet(observation.data).filter()
     else:
-        images = observation.images
+        images = observation.data
     for image in images:
         interp.append(
             sinc_interp(image[None, :, :], coord_hr, coord_lr, angle=None)[0].T

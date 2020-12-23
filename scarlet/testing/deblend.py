@@ -25,17 +25,17 @@ def deblend(data: Dict[str, np.ndarray], max_iter: int, e_rel: float):
     mask = data["footprint"]
     weights = 1 / data["variance"] * ~mask
     centers = data["centers"]
-    psfs = scarlet.ImagePSF(data["psfs"])
+    psf = scarlet.ImagePSF(data["psfs"])
     filters = settings.filters
 
     # Initialize the model, frame, observation, and sources
     t0 = time.time()
     model_psf = scarlet.GaussianPSF(sigma=(0.8,) * len(filters))
 
-    model_frame = scarlet.Frame(images.shape, psfs=model_psf, channels=filters)
+    model_frame = scarlet.Frame(images.shape, psf=model_psf, channels=filters)
 
     observation = scarlet.Observation(
-        images, psfs=psfs, weights=weights, channels=filters
+        images, psf=psf, weights=weights, channels=filters
     )
     observation.match(model_frame)
 
@@ -63,7 +63,7 @@ def deblend(data: Dict[str, np.ndarray], max_iter: int, e_rel: float):
         log_norm = observation.log_norm
     else:
         _weights = observation.weights
-        _images = observation.images
+        _images = observation.data
         log_sigma = np.zeros(_weights.shape, dtype=_weights.dtype)
         cuts = _weights > 0
         log_sigma[cuts] = np.log(1 / weights[cuts])
@@ -84,7 +84,7 @@ def deblend(data: Dict[str, np.ndarray], max_iter: int, e_rel: float):
     for k in skipped:
         sources.insert(k, scarlet.NullSource(model_frame))
 
-    source_measurements = measure_blend(data, sources, observation.frame.channels)
+    source_measurements = measure_blend(data, sources, observation.channels)
     for measurement in source_measurements:
         measurement.update(measurements)
 
