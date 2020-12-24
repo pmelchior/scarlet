@@ -115,12 +115,15 @@ class Observation(Frame):
     def noise_rms(self):
         if not hasattr(self, "_noise_rms"):
             import numpy.ma as ma
+
             self._noise_rms = 1 / np.sqrt(ma.masked_equal(self.weights, 0))
             ma.set_fill_value(self._noise_rms, np.inf)
+
         return self._noise_rms
 
     @property
     def parameters(self):
+        # data is immutable, but renderer might be parameterized
         return self.renderer.parameters
 
     def render(self, model, *parameters):

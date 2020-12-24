@@ -233,7 +233,6 @@ class ConvolutionRenderer(Renderer):
 
 
 class ResolutionRenderer(Renderer):
-
     def __init__(self, data_frame, model_frame, padding=10):
 
         super().__init__(data_frame, model_frame)
@@ -338,6 +337,7 @@ class ResolutionRenderer(Renderer):
 
     def build_diffkernel(self, data_frame, model_frame):
         """Builds the differential convolution kernel between the observation and the model psf
+
         Parameters
         ----------
         model_frame: Frame object
@@ -386,6 +386,7 @@ class ResolutionRenderer(Renderer):
 
     def sinc_shift(self, imgs, shifts, axes):
         """Performs 2 1D sinc convolutions and shifting along one rotated axis in Fourier space.
+
         Parameters
         ----------
         imgs: Fourier
@@ -395,6 +396,7 @@ class ResolutionRenderer(Renderer):
             an array of the shift values for each line and columns of data in imgs
         axes: array
             Optional argument that specifies the axes along which to apply sinc convolution.
+
         Returns
         -------
         result: array

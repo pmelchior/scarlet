@@ -159,7 +159,7 @@ class Frame:
         """Generates a suitable model frame for a set of observations.
 
         This method generates a frame from a set of observations by identifying the highest resolution
-        and the smallest PSF and use them to construct a common frame for all observations in the set.
+        and the smallest PSF and use them to construct a common frame for all observations.
 
         Parameters
         ----------
