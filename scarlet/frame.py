@@ -158,7 +158,7 @@ class Frame:
     ):
         """Generates a suitable model frame for a set of observations.
 
-        This method generates a frame from a set of observations by indentifying the highest resolution
+        This method generates a frame from a set of observations by identifying the highest resolution
         and the smallest PSF and use them to construct a common frame for all observations in the set.
 
         Parameters
@@ -178,8 +178,6 @@ class Frame:
             Sets the frame to incorporate the pixels covered by any observation ('union')
             or by all observations ('intersection').
         """
-        from scarlet.observation import LowResObservation
-
         assert coverage in ["union", "intersection"]
 
         if not hasattr(observations, "__iter__"):
@@ -249,11 +247,6 @@ class Frame:
             if model_frame.wcs is obs.wcs:
                 this_box = obs_ref.bbox[-2:]
             else:
-                # Make observations with a different wcs LowResObservation
-                # TODO (see #220)
-                if type(obs) is not LowResObservation:
-                    observations[c] = obs.get_LowRes()
-
                 obs_coord = obs.convert_pixel_to(model_frame)
                 y_min = np.floor(np.min(obs_coord[:, 0])).astype("int")
                 x_min = np.floor(np.min(obs_coord[:, 1])).astype("int")

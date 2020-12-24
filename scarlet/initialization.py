@@ -4,7 +4,8 @@ import logging
 from .bbox import Box
 from .cache import Cache
 from .interpolation import interpolate_observation
-from .observation import Observation, LowResObservation
+from .observation import Observation
+from .renderer import NullRenderer, ConvolutionRenderer
 from .wavelet import Starlet, mad_wavelet
 from . import fft
 from . import measure
@@ -250,14 +251,13 @@ def trim_morphology(center_index, morph, bg_thresh=0):
     return morph, bbox
 
 
-def build_initialization_image(observations, spectra=None, prerender=False):
+def build_initialization_image(observations, spectra=None):
     """Build a spectrum-weighted image from all observations.
 
     Parameters
     ----------
     observations: list of `~scarlet.observation.Observation`
-        Every Observation with a `image_prerender` attribute will contribute to the
-        detection image, according to the noise level of that prerender image
+        Every observation with a suitable renderer will contribute to the initialization image, according to the noise level of its data
     spectra: list of array
         for every observation: spectrum at the center of the source
         If not set, returns the detection image in all channels, instead of averaging.
@@ -278,7 +278,7 @@ def build_initialization_image(observations, spectra=None, prerender=False):
     # only use cache for the unweighted images
     # otherwise we have one per source!
     name = "build_initialization_image"
-    key = tuple(observations), prerender
+    key = tuple(observations)
     if spectra is None:
         try:
             return Cache.check(name, key)
@@ -290,15 +290,11 @@ def build_initialization_image(observations, spectra=None, prerender=False):
     var = np.zeros(model_frame.shape, dtype=model_frame.dtype)
     for i, obs in enumerate(observations):
 
-        if prerender:
-            # only use observations that have a prerender image
-            if obs.prerender_images is None:
-                continue
-            images = obs.prerender_images
-            bg_rms = obs.prerender_sigma
-        else:
-            images = obs.data
-            bg_rms = np.mean(obs.noise_rms, axis=(1, 2))
+        if not isinstance(obs.renderer, (NullRenderer, ConvolutionRenderer)):
+            continue
+
+        data = obs.data
+        bg_rms = np.mean(obs.noise_rms, axis=(1, 2))
 
         if spectra is None:
             spectrum = weights = 1
@@ -306,14 +302,9 @@ def build_initialization_image(observations, spectra=None, prerender=False):
             spectrum = spectra[i][:, None, None]
             weights = spectrum / (bg_rms ** 2)[:, None, None]
 
-        try:
-            obs.map_channels(detect)[obs._slices_for_model] += (
-                weights * images[obs._slices_for_data]
-            )
-            obs.map_channels(var)[obs._slices_for_model] += spectrum * weights
-        # LowResObservation cannot be sliced into the model frame, continue without it
-        except ValueError:
-            continue
+        data_slice, model_slice = obs.renderer.slices
+        obs.renderer.map_channels(detect)[model_slice] += weights * data[data_slice]
+        obs.renderer.map_channels(var)[model_slice] += spectrum * weights
 
     if spectra is not None:
         detect = detect.sum(axis=0)
@@ -336,7 +327,6 @@ def init_all_sources(
     edge_distance=None,
     shifting=False,
     fallback=True,
-    prerender=False,
     silent=False,
     set_spectra=True,
 ):
@@ -386,7 +376,6 @@ def init_all_sources(
                 edge_distance=edge_distance,
                 shifting=shifting,
                 fallback=fallback,
-                prerender=prerender,
             )
             sources.append(source)
         except Exception as e:
@@ -413,7 +402,6 @@ def init_source(
     edge_distance=None,
     shifting=False,
     fallback=True,
-    prerender=False,
 ):
     """Initialize a Source
 
@@ -496,7 +484,6 @@ def init_source(
                     thresh=thresh,
                     shifting=source_shifting,
                     K=max_components,
-                    prerender=prerender,
                 )
             else:
                 source = ExtendedSource(
@@ -603,7 +590,7 @@ def set_spectra_to_match(sources, observations):
                 if isinstance(c, FactorizedComponent):
                     p = c.parameters[0]
                     if not p.fixed:
-                        obs.map_channels(p)[:] = 1
+                        obs.renderer.map_channels(p)[:] = 1
                         parameters.append(p)
                         model_ = obs.render(c.get_model(frame=model_frame))
                         morphs.append(model_)
@@ -628,7 +615,7 @@ def set_spectra_to_match(sources, observations):
             spectra[:, c] = covar @ m @ (im * w)
 
         for p, spectrum in zip(parameters, spectra):
-            obs.map_channels(p)[:] = spectrum
+            obs.renderer.map_channels(p)[:] = spectrum
 
     # enforce constraints
     for p in parameters:

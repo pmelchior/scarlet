@@ -21,7 +21,7 @@ from .morphology import (
     StarletMorphology,
     ExtendedSourceMorphology,
 )
-from .observation import Observation, LowResObservation
+from .observation import Observation
 from .parameter import Parameter
 from .prior import Prior
 from .psf import PSF, ImagePSF, FunctionPSF, GaussianPSF, MoffatPSF

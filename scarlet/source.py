@@ -227,13 +227,7 @@ class CompactExtendedSource(FactorizedComponent):
 
 class SingleExtendedSource(FactorizedComponent):
     def __init__(
-        self,
-        model_frame,
-        sky_coord,
-        observations,
-        thresh=1.0,
-        shifting=False,
-        prerender=False,
+        self, model_frame, sky_coord, observations, thresh=1.0, shifting=False,
     ):
         """Extended source model
 
@@ -268,9 +262,7 @@ class SingleExtendedSource(FactorizedComponent):
 
         # initialize morphology
         # compute optimal SNR coadd for detection
-        image, std = init.build_initialization_image(
-            observations, spectra=spectra, prerender=prerender
-        )
+        image, std = init.build_initialization_image(observations, spectra=spectra)
         # make monotonic morphology, trimmed to box with pixels above std
         morph, bbox = self.init_morph(
             sky_coord,
@@ -297,9 +289,7 @@ class SingleExtendedSource(FactorizedComponent):
 
         # find best-fit spectra for morph from init coadd
         # assumes img only has that source in region of the box
-        detect_all, std_all = init.build_initialization_image(
-            observations, prerender=prerender
-        )
+        detect_all, std_all = init.build_initialization_image(observations)
         box_3D = Box((model_frame.C,)) @ bbox
         boxed_detect = box_3D.extract_from(detect_all)
         spectrum = init.get_best_fit_spectrum((morph,), boxed_detect)
@@ -385,7 +375,6 @@ class StarletSource(FactorizedComponent):
         observations,
         spectrum=None,
         thresh=1.0,
-        prerender=False,
         full=False,
         starlet_thresh=5e-3,
     ):
@@ -411,9 +400,7 @@ class StarletSource(FactorizedComponent):
             Multiple of the backround RMS used as a
             flux cutoff for starlet threshold (usually between 5 and 3).
         """
-        source = ExtendedSource(
-            model_frame, sky_coord, observations, thresh=thresh, prerender=prerender
-        )
+        source = ExtendedSource(model_frame, sky_coord, observations, thresh=thresh)
         source = StarletSource.from_source(source)
 
         if spectrum is not None:
@@ -474,7 +461,6 @@ class MultiExtendedSource(CombinedComponent):
         flux_percentiles=None,
         thresh=1.0,
         shifting=False,
-        prerender=False,
     ):
         """Create multi-component extended source.
 
@@ -510,17 +496,13 @@ class MultiExtendedSource(CombinedComponent):
             observations = (observations,)
 
         # start off with regular ExtendedSource
-        source = ExtendedSource(
-            model_frame, sky_coord, observations, thresh=thresh, prerender=prerender
-        )
+        source = ExtendedSource(model_frame, sky_coord, observations, thresh=thresh)
         _, morphology = source.children
         morphs, boxes = self.init_morphs(morphology, flux_percentiles)
 
         # find best-fit spectra for each of morph from the observations
         # assumes observations only have that one source in region of the box
-        detect_all, std_all = init.build_initialization_image(
-            observations, prerender=prerender
-        )
+        detect_all, std_all = init.build_initialization_image(observations)
         box_3D = Box((model_frame.C,)) @ boxes[0]
         boxed_detect = box_3D.extract_from(detect_all)
         spectra = init.get_best_fit_spectrum(morphs, boxed_detect)
@@ -607,7 +589,6 @@ def ExtendedSource(
     thresh=1.0,
     compact=False,
     shifting=False,
-    prerender=False,
 ):
     """Create extended sources with either a single component or multiple components.
 
@@ -621,12 +602,7 @@ def ExtendedSource(
         )
     if K == 1:
         return SingleExtendedSource(
-            model_frame,
-            sky_coord,
-            observations,
-            thresh=thresh,
-            shifting=shifting,
-            prerender=prerender,
+            model_frame, sky_coord, observations, thresh=thresh, shifting=shifting,
         )
     else:
         return MultiExtendedSource(
@@ -637,5 +613,4 @@ def ExtendedSource(
             flux_percentiles=flux_percentiles,
             thresh=thresh,
             shifting=shifting,
-            prerender=prerender,
         )
