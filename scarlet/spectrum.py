@@ -1,4 +1,3 @@
-import autograd.numpy as np
 from functools import partial
 
 from .bbox import Box
@@ -50,7 +49,7 @@ class TabulatedSpectrum(Spectrum):
             assert spectrum.name == "spectrum"
         else:
             constraint = PositivityConstraint(zero=1e-20)  # slightly positive values
-            step = partial(relative_step, factor=1e-2)
+            step = partial(relative_step, factor=1.e-2)
             spectrum = Parameter(
                 spectrum, name="spectrum", step=step, constraint=constraint
             )
