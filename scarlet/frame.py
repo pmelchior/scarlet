@@ -140,9 +140,7 @@ class Frame:
             coordinates at the location of `coord` in the target frame
         """
         if pixel is None:
-            bounds = self._bbox.bounds
-            y, x = np.meshgrid(np.arange(*(bounds[1])), np.arange(*(bounds[2])))
-            # y, x = np.indices(self.shape[-2:], dtype=np.float)
+            y, x = np.indices(self.shape[-2:], dtype=np.float)
             pixel = np.stack((y.flatten(), x.flatten()), axis=1)
 
         ra_dec = self.get_sky_coord(pixel)

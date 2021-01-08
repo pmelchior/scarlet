@@ -182,12 +182,13 @@ def get_psf_spectrum(sky_coord, observations, compute_snr=False):
 
             # amplitude of img when projected onto psf
             # i.e. factor to multiply psf with to get img (if img looked like psf)
-            spectrum = (img_ @ psf_) / (psf_ @ psf_)
+            img_psf = img_ @ psf_
+            spectrum = img_psf / (psf_ @ psf_)
             spectra[i].append(spectrum)
 
             if compute_snr:
                 noise_ = noise[c, mask]
-                snr_num.append(img_ @ psf_)
+                snr_num.append(img_psf)
                 snr_denom.append((psf_ * noise_ ** 2) @ psf_)
 
         spectra[i] = np.array(spectra[i])
@@ -341,9 +342,10 @@ def init_all_sources(
 ):
     """Initialize all sources in a blend
 
-    Any sources which cannot be initialized are returned as a `skipped`
-    index, the index needed to reinsert them into a catalog to preserve
-    their index in the output catalog.
+    Seeks to initialize sources at the sky positions of `centers` with multiple
+    components of type `ExtendedSource`. If each component has sufficient SNR, the
+    model will be kept, otherwise one component is removed and the source reinitialized.
+    If a source cannot be initialized, its index is returned in `skipped`.
 
     See `~init_sources` for a description of the arguments
 
@@ -428,7 +430,7 @@ def init_source(
     single signal-to-noise weighted image for initialization)
     to initialize, and a true spurious detection will not have
     enough signal to initialize as a point source.
-    If all of the models fail, including a `PointSource` model,
+    If all of the models fail, including a `CompactExtendedSource` model,
     then this source is skipped.
 
     Parameters
@@ -450,6 +452,8 @@ def init_source(
         will continue to subtract one from the number of components
         until it reaches zero (which fits a `CompactExtendedSource`).
         If a point source cannot be fit then the source is skipped.
+    min_snr: float
+        Mininmum SNR per component to accept the source.
     edge_distance : int
         The distance from the edge of the image to consider
         a source an edge source. For example if `edge_distance=3`
@@ -466,6 +470,9 @@ def init_source(
         This is unlikely to be used in production
         but can be useful for troubleshooting when an error can cause
         a particular source class to fail every time.
+    prerender: bool
+        Whether to initialize the source with pre-rendered observations.
+        This is an experimental feature, which may be removed in the future.
     """
     from .source import ExtendedSource
 
@@ -563,6 +570,17 @@ def hasEdgeFlux(source, edge_distance=1):
 
 
 def set_spectra_to_match(sources, observations):
+    """Sets the spectra of any `FactorizedComponent` to match the Observations.
+
+    Computes the best-fit amplitude of the rendered model of the sources in every
+    channel of every observation as a linear inverse problem.
+
+    Parameters
+    ----------
+    sources: list of sources
+        Only `FactorizedComponent` or `CombinedComponent` will be considered
+    observations: `scarlet.Observation` or list thereof
+    """
 
     from .component import FactorizedComponent, CombinedComponent
 
@@ -597,6 +615,9 @@ def set_spectra_to_match(sources, observations):
         C = obs.frame.C
 
         # independent channels, no mixing
+        # solve the linear inverse problem of the amplitudes in every channel
+        # given all the rendered morphologies
+        # spectrum = (M^T Sigma^-1 M)^-1 M^T Sigma^-1 * im
         spectra = np.empty((K, C))
         for c in range(C):
             im = images[c].reshape(-1)

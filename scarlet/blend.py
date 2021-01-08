@@ -193,7 +193,6 @@ class Blend(CombinedComponent):
             # model update forces restart
             except UpdateException:
                 it = len(self.log_likelihood)
-                pass
 
     def get_model(self, *parameters, frame=None):
         """Get the model of the entire blend

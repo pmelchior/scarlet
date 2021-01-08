@@ -120,7 +120,10 @@ class PointSource(FactorizedComponent):
         # get spectrum from peak pixel, correct for PSF
         spectra = init.get_pixel_spectrum(sky_coord, observations, correct_psf=True)
         spectrum = np.concatenate(spectra, axis=0)
-        spectrum = TabulatedSpectrum(model_frame, spectrum)
+        noise_rms = np.concatenate(
+            [np.array(np.mean(obs.noise_rms, axis=(1, 2))) for obs in observations]
+        ).reshape(-1)
+        spectrum = TabulatedSpectrum(model_frame, spectrum, min_step=noise_rms)
 
         super().__init__(model_frame, spectrum, morphology)
 

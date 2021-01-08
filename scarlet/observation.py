@@ -169,9 +169,11 @@ class Observation:
 
     @property
     def noise_rms(self):
-        import numpy.ma as ma
+        if not hasattr(self, "_noise_rms"):
+            import numpy.ma as ma
 
-        return 1 / np.sqrt(ma.masked_equal(self.weights, 0))
+            self._noise_rms = 1 / np.sqrt(ma.masked_equal(self.weights, 0))
+        return self._noise_rms
 
     @property
     def prerender_images(self):

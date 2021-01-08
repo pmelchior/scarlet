@@ -42,6 +42,8 @@ class TabulatedSpectrum(Spectrum):
         Spectrum parameter
     bbox: `~scarlet.Box`
         1D bounding box for focation of the spectrum in `frame`
+    min_step: float
+        Minimum absolute step size for spectrum element updates.
     """
 
     def __init__(self, frame, spectrum, bbox=None, min_step=0):
