@@ -484,7 +484,7 @@ def init_source(
 
     while max_components >= 0:
         try:
-            if np.abs(psf_snr) < min_snr * max_components:
+            if np.max([psf_snr, 0]) < min_snr * max_components:
                 raise ArithmeticError("Insufficient SNR, try fewer components")
 
             if max_components > 0:

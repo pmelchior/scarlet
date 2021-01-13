@@ -86,7 +86,7 @@ class TestLowResObservation(object):
                     coverage="union",
                 )
                 interp_scar = obs_lr.render(data_hr[None, :, :])
-                # assert SDR(interp_scar, data_lr) > 10
+                assert SDR(interp_scar, data_lr) > 10
 
                 obs_lr, obs_hr = setup_scarlet(
                     data_hr,
