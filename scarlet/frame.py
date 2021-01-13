@@ -276,10 +276,7 @@ class Frame:
         # pad by the size of the widest psf to prevent leakage across the frame edge
         ny, nx = model_box.shape
         pad_size = fat_psf_size / h / 2
-        offset = (
-            np.round((ny + pad_size)).astype("int"),
-            np.round((nx + pad_size)).astype("int"),
-        )
+        offset = (np.round(pad_size).astype("int"), np.round(pad_size).astype("int"))
         model_box -= offset
         model_box.shape = tuple(s + 2 * o for s, o in zip(model_box.shape, offset))
 
