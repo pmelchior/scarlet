@@ -467,7 +467,7 @@ def init_source(
     fallback : bool
         Whether to reduce the number of components
         if the model cannot be initialized with `max_components`.
-        This is unlikely to be used in production
+        Fallback = False is unlikely to be used in production
         but can be useful for troubleshooting when an error can cause
         a particular source class to fail every time.
     prerender: bool
@@ -480,13 +480,14 @@ def init_source(
         observations = (observations,)
 
     source_shifting = shifting
-    _, psf_snr = get_psf_spectrum(center, observations, compute_snr=True)
+    if fallback:
+        _, psf_snr = get_psf_spectrum(center, observations, compute_snr=True)
+        max_components = np.min(
+            [max_components, np.max([0, np.floor(psf_snr / min_snr).astype("int")])]
+        )
 
     while max_components >= 0:
         try:
-            if np.max([psf_snr, 0]) < min_snr * max_components:
-                raise ArithmeticError("Insufficient SNR, try fewer components")
-
             if max_components > 0:
                 source = ExtendedSource(
                     frame,

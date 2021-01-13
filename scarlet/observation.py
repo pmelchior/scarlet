@@ -198,24 +198,15 @@ class Observation:
     def prerender_sigma(self):
         if hasattr(self, "_prerender_sigma"):
             return self._prerender_sigma
+
+        noise_rms = np.mean(self.noise_rms, axis=(1, 2)).data
         if self._diff_kernels is None:
-            return np.mean(self.noise_rms, axis=(1, 2))
+            self.prerender_sigma = noise_rms
         else:
-            # deconvolve noise field to estimate its noise level
-            # this is non-deterministic
-            noise_rms = 1 / np.where(self.weights > 0, np.sqrt(self.weights), np.inf)
-            noise = np.random.normal(scale=noise_rms)
-            noise_deconv = fft._kspace_operation(
-                fft.Fourier(noise),
-                self._diff_kernels,
-                3,
-                fft.operator.truediv,
-                self.images.shape,
-                axes=(-2, -1),
-            ).image
-            # spatially flat noise, ignores any variation in self.weights
-            self._prerender_sigma = noise_deconv.std(axis=(1, 2))
-            return self._prerender_sigma
+            # invert error propagation formula for convolution
+            psf = self.frame.psf.get_model()
+            self._prerender_sigma = noise_rms / np.sqrt(np.sum(psf ** 2, axis=(1, 2)))
+        return self._prerender_sigma
 
     @property
     def convolution_bounds(self):

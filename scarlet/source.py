@@ -1,5 +1,6 @@
 import autograd.numpy as np
 from functools import partial
+import logging
 
 from . import initialization as init
 from . import operator
@@ -14,6 +15,8 @@ from .morphology import (
 )
 from .parameter import Parameter, relative_step
 from .spectrum import TabulatedSpectrum
+
+logger = logging.getLogger("scarlet.source")
 
 
 class NullSource(Component):
