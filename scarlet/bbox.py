@@ -23,7 +23,7 @@ class Box:
     """
 
     def __init__(self, shape, origin=None):
-        self._shape = tuple(shape)
+        self.shape = tuple(shape)
         if origin is None:
             origin = (0,) * len(shape)
         assert len(origin) == len(shape)
@@ -100,7 +100,7 @@ class Box:
         imbox = Box(image.shape)
 
         if sub is None:
-            sub = np.zeros(self.shape)
+            sub = np.zeros(self.shape, dtype=image.dtype)
 
         im_slices, sub_slices = overlapped_slices(imbox, self)
         sub[sub_slices] = image[im_slices]
@@ -145,12 +145,6 @@ class Box:
         """Tuple of stop coordinates
         """
         return tuple(o + s for o, s in zip(self.origin, self.shape))
-
-    @property
-    def shape(self):
-        """Shape of the box
-        """
-        return self._shape
 
     @property
     def bounds(self):

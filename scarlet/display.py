@@ -225,7 +225,8 @@ def show_observation(
 
         for k, center in enumerate(sky_coords):
             center_ = observation.frame.get_pixel(center)
-            ax[panel].text(*center_[::-1], k, color="w", ha="center", va="center")
+            color = "w" if observation.frame.C > 1 else "r"
+            ax[panel].text(*center_[::-1], k, color=color, ha="center", va="center")
 
     panel += 1
     if show_psf:

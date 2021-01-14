@@ -18,7 +18,7 @@ def deblend(data: Dict[str, np.ndarray], max_iter: int, e_rel: float):
         * `sources`: The deblended models.
     """
     import scarlet
-    from ..initialization import initAllSources
+    from ..initialization import init_all_sources, set_spectra_to_match
 
     # Load the sample images
     images = data["images"]
@@ -39,8 +39,18 @@ def deblend(data: Dict[str, np.ndarray], max_iter: int, e_rel: float):
     )
     observation.match(model_frame)
 
-    sources, skipped = initAllSources(
-        model_frame, centers, observation, maxComponents=2, edgeDistance=None
+    sources, skipped = init_all_sources(
+        model_frame,
+        centers,
+        observation,
+        max_components=2,
+        edge_distance=None,
+        min_snr=30,
+        thresh=1,
+        prerender=False,
+        fallback=True,
+        silent=True,
+        set_spectra=True,
     )
 
     # Fit the blend
@@ -67,10 +77,12 @@ def deblend(data: Dict[str, np.ndarray], max_iter: int, e_rel: float):
         "iterations": len(blend.loss),
         "logL": blend.loss[-1] - log_norm,
         "init logL": blend.loss[0] - log_norm,
+        # TODO: adding the number of skipped sources would be helpful
+        # "skipped": len(skipped),
     }
 
     for k in skipped:
-        sources.insert(k, None)
+        sources.insert(k, scarlet.NullSource(model_frame))
 
     source_measurements = measure_blend(data, sources, observation.frame.channels)
     for measurement in source_measurements:

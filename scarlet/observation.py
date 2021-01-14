@@ -4,10 +4,7 @@ from autograd.extend import defvjp, primitive
 from .frame import Frame
 from . import interpolation
 from . import fft
-from . import resampling
-
 from .bbox import Box, overlapped_slices
-
 from scarlet.operators_pybind11 import apply_filter
 
 
@@ -105,7 +102,7 @@ class Observation:
         self._slices_for_images = slice(None)
         self._parameters = ()
 
-    def match(self, model_frame, diff_kernels=None, convolution="fft"):
+    def match(self, model_frame, convolution_type="fft"):
         """Match the frame of `Blend` to the frame of this observation.
 
         The method sets up the mappings in spectral and spatial coordinates,
@@ -120,7 +117,7 @@ class Observation:
             The difference kernel for each band.
             If `diff_kernels` is `None` then they are
             calculated automatically.
-        convolution: str
+        convolution_type: str
             The type of convolution to use.
             - `real`: Use a real space convolution and gradient
             - `fft`: Use a DFT to do the convolution and gradient
@@ -134,9 +131,9 @@ class Observation:
         # check dtype consistency
         if self.frame.dtype != model_frame.dtype:
             self.frame.dtype = model_frame.dtype
-            self.images = self.images.copy().astype(model_frame.dtype)
+            self.images = self.images.astype(model_frame.dtype)
             if type(self.weights) is np.ndarray:
-                self.weights = self.weights.copy().astype(model_frame.dtype)
+                self.weights = self.weights.astype(model_frame.dtype)
 
         # determine which channels are covered by data
         # this has to be done first because convolution is only determined for these
@@ -145,8 +142,8 @@ class Observation:
         # same of the 2D spatial region covered by data
         pixel_in_model_frame = self.frame.convert_pixel_to(model_frame)
         # since there cannot be rotation or scaling, it's only translation
-        ll = pixel_in_model_frame.min(axis=0).astype("int")
-        ur = pixel_in_model_frame.max(axis=0).astype("int") + 1
+        ll = np.round(pixel_in_model_frame.min(axis=0)).astype("int")
+        ur = np.round(pixel_in_model_frame.max(axis=0)).astype("int") + 1
         bounds = (ll[0], ur[0]), (ll[1], ur[1])
         data_box = model_frame.bbox[0] @ Box.from_bounds(*bounds)
         # properly treats truncation in both boxes
@@ -155,27 +152,61 @@ class Observation:
         self._slices_for_model = slices[1]
 
         # construct diff kernels
-        if diff_kernels is None:
-            self._diff_kernels = None
-            if self.frame.psf is not model_frame.psf:
-                assert self.frame.psf is not None and model_frame.psf is not None
-                psf = fft.Fourier(self.frame.psf.get_model().astype(model_frame.dtype))
-                model_psf = fft.Fourier(
-                    model_frame.psf.get_model().astype(model_frame.dtype)
-                )
-                self._diff_kernels = fft.match_psfs(psf, model_psf)
-        else:
-            if not isinstance(diff_kernels, fft.Fourier):
-                diff_kernels = fft.Fourier(diff_kernels)
-            self._diff_kernels = diff_kernels
+        if self.frame.psf is not model_frame.psf:
+            assert self.frame.psf is not None and model_frame.psf is not None
+            psf = fft.Fourier(self.frame.psf.get_model().astype(model_frame.dtype))
+            model_psf = fft.Fourier(
+                model_frame.psf.get_model().astype(model_frame.dtype)
+            )
+            self._diff_kernels = fft.match_psfs(psf, model_psf)
 
-        # initialize the filter window
-        assert convolution in [
+        assert convolution_type in [
             "real",
             "fft",
         ], "`convolution` must be either 'real' or 'fft'"
-        self.convolution = convolution
+        self._convolution_type = convolution_type
         return self
+
+    @property
+    def noise_rms(self):
+        if not hasattr(self, "_noise_rms"):
+            import numpy.ma as ma
+
+            self._noise_rms = 1 / np.sqrt(ma.masked_equal(self.weights, 0))
+        return self._noise_rms
+
+    @property
+    def prerender_images(self):
+        if hasattr(self, "_prerender_images"):
+            return self._prerender_images
+        if self._diff_kernels is None:
+            return self.images
+        else:
+            # construct deconvolved image for detection:
+            # divide Fourier transform of images by Fourier transform of diff kernel
+            self._prerender_images = fft._kspace_operation(
+                fft.Fourier(self.images),
+                self._diff_kernels,
+                3,
+                fft.operator.truediv,
+                self.images.shape,
+                axes=(-2, -1),
+            ).image  # then get the image from Fourier
+            return self._prerender_images
+
+    @property
+    def prerender_sigma(self):
+        if hasattr(self, "_prerender_sigma"):
+            return self._prerender_sigma
+
+        noise_rms = np.mean(self.noise_rms, axis=(1, 2)).data
+        if self._diff_kernels is None:
+            self.prerender_sigma = noise_rms
+        else:
+            # invert error propagation formula for convolution
+            psf = self.frame.psf.get_model()
+            self._prerender_sigma = noise_rms / np.sqrt(np.sum(psf ** 2, axis=(1, 2)))
+        return self._prerender_sigma
 
     @property
     def convolution_bounds(self):
@@ -194,9 +225,9 @@ class Observation:
         """Convolve the model in a single band
         """
         if convolution_type is None:
-            convolution_type = self.convolution
+            convolution_type = self._convolution_type
         if convolution_type == "real":
-            result = convolve(model, self._diff_kernels.image, self.convolution_bounds)
+            result = convolve(model, self._diff_kernels.image, self._convolution_bounds)
         elif convolution_type == "fft":
             result = fft.convolve(
                 fft.Fourier(model), self._diff_kernels, axes=(1, 2)
@@ -294,7 +325,7 @@ class Observation:
             model_ = model
         return model_[self._slices_for_model]
 
-    def get_log_likelihood(self, model, *parameters):
+    def get_log_likelihood(self, model, *parameters, noise_factor=0):
         """Computes the log-Likelihood of a given model wrt to the observation
 
         Parameters
@@ -310,6 +341,14 @@ class Observation:
         model_ = self.render(model, *parameters)
         images_ = self.images[self._slices_for_images]
         weights_ = self.weights[self._slices_for_images]
+
+        # noise injection to soften the gradient
+        if noise_factor > 0:
+            std = 1 / np.sqrt(np.where(weights_ > 0, weights_, np.inf))
+            noise = np.random.normal(loc=0, scale=std)
+            images_ = images_.copy() + noise
+            weights_ = weights_.copy() / (noise_factor + 1)
+
         return -self.log_norm - np.sum(weights_ * (model_ - images_) ** 2) / 2
 
     @property
@@ -537,9 +576,9 @@ class LowResObservation(Observation):
         # check dtype consistency
         if self.frame.dtype != model_frame.dtype:
             self.frame.dtype = model_frame.dtype
-            self.images = self.images.copy().astype(model_frame.dtype)
+            self.images = self.images.astype(model_frame.dtype)
             if type(self.weights) is np.ndarray:
-                self.weights = self.weights.copy().astype(model_frame.dtype)
+                self.weights = self.weights.astype(model_frame.dtype)
 
         # determine which channels are covered by data
         # this has to be done first because convolution is only determined for these
@@ -549,20 +588,16 @@ class LowResObservation(Observation):
         self.angle, self.h = interpolation.get_angles(self.frame.wcs, model_frame.wcs)
         self.isrot = (np.abs(self.angle[1]) ** 2) > np.finfo(float).eps
 
-        # Get pixel coordinates in each frame
-        # TODO: can this be done with frame.convert_pixel_to???
-        # If so, we can remove all code in resampling
-        coord_lr, coord_hr = resampling.match_patches(
-            self, model_frame, isrot=self.isrot
-        )
-        # shape of the low resolution image in the intersection or union
-        lr_shape = (
-            np.max(coord_lr[0]) - np.min(coord_lr[0]) + 1,
-            np.max(coord_lr[1]) - np.min(coord_lr[1]) + 1,
-        )
-        # TODO: should coords define a _slices_for_model/images?
+        # Get pixel coordinates alinged with x and y axes  of this observation
+        # in model frame
+        lr_shape = self.frame.shape[1:]
+        pixels = np.stack((np.arange(lr_shape[0]), np.arange(lr_shape[1])), axis=1)
+        coord_hr = self.frame.convert_pixel_to(model_frame, pixel=pixels)
 
-        # compute diff kenel in model_frame pixels
+        # TODO: should coords define a _slices_for_model/images?
+        # lr_inside_hr = model_frame.bbox.contains(coord_hr)
+
+        # compute diff kernel in model_frame pixels
         diff_psf, target = self.build_diffkernel(model_frame)
 
         # 1D convolutions convolutions of the model are done along the smaller axis, therefore,
@@ -585,30 +620,22 @@ class LowResObservation(Observation):
             fft._pad(diff_psf.image, self._fft_shape, axes=(-2, -1))
         )
 
-        center_y = (
-            np.int(
-                self._fft_shape[0] / 2.0 - (self._fft_shape[0] - model_frame.Ny) / 2.0
-            )
-            + ((self._fft_shape[0] % 2) != 0) * ((model_frame.Ny % 2) == 0)
-            + model_frame.origin[-2]
-        )
-        center_x = (
-            np.int(
-                self._fft_shape[1] / 2.0 - (self._fft_shape[1] - model_frame.Nx) / 2.0
-            )
-            - ((self._fft_shape[1] % 2) != 0) * ((model_frame.Nx % 2) == 0)
-            + model_frame.origin[-1]
-        )
+        center_y = np.int(
+            self._fft_shape[0] / 2.0 - (self._fft_shape[0] - model_frame.Ny) / 2.0
+        ) + ((self._fft_shape[0] % 2) != 0) * ((model_frame.Ny % 2) == 0)
+        center_x = np.int(
+            self._fft_shape[1] / 2.0 - (self._fft_shape[1] - model_frame.Nx) / 2.0
+        ) - ((self._fft_shape[1] % 2) != 0) * ((model_frame.Nx % 2) == 0)
 
         if self.isrot:
             # Unrotated coordinates:
             Y_unrot = (
-                (coord_hr[0] - center_y) * self.angle[0]
-                - (coord_hr[1] - center_x) * self.angle[1]
+                (coord_hr[:, 0] - center_y) * self.angle[0]
+                - (coord_hr[:, 1] - center_x) * self.angle[1]
             ).reshape(lr_shape)
             X_unrot = (
-                (coord_hr[1] - center_x) * self.angle[0]
-                + (coord_hr[0] - center_y) * self.angle[1]
+                (coord_hr[:, 1] - center_x) * self.angle[0]
+                + (coord_hr[:, 0] - center_y) * self.angle[1]
             ).reshape(lr_shape)
 
             # Removing redundancy
@@ -635,7 +662,7 @@ class LowResObservation(Observation):
         # aligned case.
         else:
             axes = [int(not self.small_axis) + 1]
-            self.shifts = np.array(coord_hr)
+            self.shifts = coord_hr.T
 
             self.shifts[0] -= center_y
             self.shifts[1] -= center_x
@@ -648,15 +675,22 @@ class LowResObservation(Observation):
 
         if self.isrot:
             self._resconv_op = self._resconv_op.reshape(*self._resconv_op.shape[:2], -1)
-            return self
-        if self.small_axis:
+        elif self.small_axis:
             self._resconv_op = self._resconv_op.reshape(*self._resconv_op.shape[:2], -1)
-            return self
         else:
             self._resconv_op = self._resconv_op.reshape(
                 self._resconv_op.shape[0], -1, self._resconv_op.shape[-1]
             )
-            return self
+
+        return self
+
+    @property
+    def prerender_images(self):
+        return None
+
+    @property
+    def prerender_sigma(self):
+        return None
 
     def render(self, model, *parameters):
         """Resample and convolve a model in the observation frame
