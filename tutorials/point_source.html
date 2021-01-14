@@ -12,14 +12,13 @@
     <script src="../_static/jquery.js"></script>
     <script src="../_static/underscore.js"></script>
     <script src="../_static/doctools.js"></script>
-    <script src="../_static/language_data.js"></script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "ignoreClass": "document", "processClass": "math|output_area"}})</script>
     <link rel="canonical" href="api/tutorials/point_source.html" />
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Wavelet toy-model" href="wavelet_model.html" />
+    <link rel="next" title="Starlet Tutorial" href="wavelet_model.html" />
     <link rel="prev" title="Displaying Scenes" href="display.html" />
    
   <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
@@ -43,11 +42,8 @@
 <li class="toctree-l1 current"><a class="reference internal" href="../tutorials.html">Tutorials</a><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="display.html">Displaying Scenes</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">Point Source Tutorial</a></li>
-<li class="toctree-l2"><a class="reference internal" href="wavelet_model.html">Wavelet toy-model</a></li>
-<li class="toctree-l2"><a class="reference internal" href="wavelet_model.html#Model-the-extended-source-and-tidal-features-with-starlets">Model the extended source and tidal features with starlets</a></li>
-<li class="toctree-l2"><a class="reference internal" href="wavelet_model.html#Subtracting-the-starlet-component">Subtracting the starlet component</a></li>
-<li class="toctree-l2"><a class="reference internal" href="wavelet_model.html#Comparison-with-vanilla-scarlet">Comparison with vanilla scarlet</a></li>
-<li class="toctree-l2"><a class="reference internal" href="multiresolution.html">Multi-Resolution Modeling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="wavelet_model.html">Starlet Tutorial</a></li>
+<li class="toctree-l2"><a class="reference internal" href="multiresolution.html">Multi-Resolution Tutorial</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../api/scarlet.html">API Documentation</a></li>
@@ -491,9 +487,9 @@ div.rendered_html tbody tr:hover {
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-CPU times: user 1.46 s, sys: 0 ns, total: 1.46 s
-Wall time: 1.46 s
-scarlet ran for 71 iterations to logL = -119297.17788646725
+CPU times: user 1.38 s, sys: 4.18 ms, total: 1.39 s
+Wall time: 1.39 s
+scarlet ran for 74 iterations to logL = -118813.35378817093
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">
@@ -563,7 +559,7 @@ scarlet ran for 71 iterations to logL = -119297.17788646725
       &copy;2018-2019, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.3.1</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.4.3</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

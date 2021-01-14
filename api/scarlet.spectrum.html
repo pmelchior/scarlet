@@ -12,7 +12,6 @@
     <script src="../_static/jquery.js"></script>
     <script src="../_static/underscore.js"></script>
     <script src="../_static/doctools.js"></script>
-    <script src="../_static/language_data.js"></script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "ignoreClass": "document", "processClass": "math|output_area"}})</script>
@@ -60,7 +59,6 @@
 <li class="toctree-l2"><a class="reference internal" href="scarlet.parameter.html">scarlet.parameter</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.prior.html">scarlet.prior</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.psf.html">scarlet.psf</a></li>
-<li class="toctree-l2"><a class="reference internal" href="scarlet.resampling.html">scarlet.resampling</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.source.html">scarlet.source</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">scarlet.spectrum</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.wavelet.html">scarlet.wavelet</a></li>
@@ -87,138 +85,8 @@
 
           <div class="body" role="main">
             
-  <div class="section" id="module-scarlet.spectrum">
-<span id="scarlet-spectrum"></span><h1>scarlet.spectrum<a class="headerlink" href="#module-scarlet.spectrum" title="Permalink to this headline">¶</a></h1>
-<dl class="py class">
-<dt id="scarlet.spectrum.Spectrum">
-<em class="property">class </em><code class="sig-prename descclassname">scarlet.spectrum.</code><code class="sig-name descname">Spectrum</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">frame</span></em>, <em class="sig-param"><span class="o">*</span><span class="n">parameters</span></em>, <em class="sig-param"><span class="n">bbox</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/spectrum.html#Spectrum"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.spectrum.Spectrum" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="scarlet.model.html#scarlet.model.Model" title="scarlet.model.Model"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.model.Model</span></code></a></p>
-<p>Spectrum base class</p>
-<p>The class describes the 1D spectral dependence of`~scarlet.FactorizedComponent`.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><dl class="simple">
-<dt><strong>frame: `~scarlet.Frame`</strong></dt><dd><p>Characterization of the model</p>
-</dd>
-<dt><strong>parameters: list of `~scarlet.Parameter`</strong></dt><dd></dd>
-<dt><strong>bbox: `~scarlet.Box`</strong></dt><dd><p>2D bounding box of this model</p>
-</dd>
-</dl>
-</dd>
-<dt class="field-even">Attributes</dt>
-<dd class="field-even"><dl class="simple">
-<dt><strong>children</strong></dt><dd></dd>
-<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">parameters</span></code></dt><dd><p>List of parameters, including from the children.</p>
-</dd>
-</dl>
-</dd>
-</dl>
-<p class="rubric">Methods</p>
-<table class="longtable docutils align-default">
-<colgroup>
-<col style="width: 10%" />
-<col style="width: 90%" />
-</colgroup>
-<tbody>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">check_parameters</span></code>()</p></td>
-<td><p>Check that all parameters have finite elements</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code>(*parameters, **kwargs)</p></td>
-<td><p>Get the model realization</p></td>
-</tr>
-</tbody>
-</table>
-<table class="docutils align-default">
-<colgroup>
-<col style="width: 72%" />
-<col style="width: 28%" />
-</colgroup>
-<tbody>
-<tr class="row-odd"><td><p><strong>get_models_of_children</strong></p></td>
-<td></td>
-</tr>
-<tr class="row-even"><td><p><strong>get_parameter</strong></p></td>
-<td></td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="py class">
-<dt id="scarlet.spectrum.TabulatedSpectrum">
-<em class="property">class </em><code class="sig-prename descclassname">scarlet.spectrum.</code><code class="sig-name descname">TabulatedSpectrum</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">frame</span></em>, <em class="sig-param"><span class="n">spectrum</span></em>, <em class="sig-param"><span class="n">bbox</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/spectrum.html#TabulatedSpectrum"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.spectrum.TabulatedSpectrum" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#scarlet.spectrum.Spectrum" title="scarlet.spectrum.Spectrum"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.spectrum.Spectrum</span></code></a></p>
-<p>Spectrum from a array/table</p>
-<p>The class uses an arbitrary array as non-parametric model.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><dl class="simple">
-<dt><strong>frame: `~scarlet.Frame`</strong></dt><dd><p>Characterization of the model</p>
-</dd>
-<dt><strong>spectrum: 1D array or `~scarlet.Parameter`</strong></dt><dd><p>Spectrum parameter</p>
-</dd>
-<dt><strong>bbox: `~scarlet.Box`</strong></dt><dd><p>1D bounding box for focation of the spectrum in <cite>frame</cite></p>
-</dd>
-</dl>
-</dd>
-<dt class="field-even">Attributes</dt>
-<dd class="field-even"><dl class="simple">
-<dt><strong>children</strong></dt><dd></dd>
-<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">parameters</span></code></dt><dd><p>List of parameters, including from the children.</p>
-</dd>
-</dl>
-</dd>
-</dl>
-<p class="rubric">Methods</p>
-<table class="longtable docutils align-default">
-<colgroup>
-<col style="width: 10%" />
-<col style="width: 90%" />
-</colgroup>
-<tbody>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">check_parameters</span></code>()</p></td>
-<td><p>Check that all parameters have finite elements</p></td>
-</tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.spectrum.TabulatedSpectrum.get_model" title="scarlet.spectrum.TabulatedSpectrum.get_model"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code></a>(*parameters)</p></td>
-<td><p>Get the model realization</p></td>
-</tr>
-</tbody>
-</table>
-<table class="docutils align-default">
-<colgroup>
-<col style="width: 72%" />
-<col style="width: 28%" />
-</colgroup>
-<tbody>
-<tr class="row-odd"><td><p><strong>get_models_of_children</strong></p></td>
-<td></td>
-</tr>
-<tr class="row-even"><td><p><strong>get_parameter</strong></p></td>
-<td></td>
-</tr>
-</tbody>
-</table>
-<dl class="py method">
-<dt id="scarlet.spectrum.TabulatedSpectrum.get_model">
-<code class="sig-name descname">get_model</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">*</span><span class="n">parameters</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/spectrum.html#TabulatedSpectrum.get_model"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.spectrum.TabulatedSpectrum.get_model" title="Permalink to this definition">¶</a></dt>
-<dd><p>Get the model realization</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><dl class="simple">
-<dt><strong>parameters: tuple of optimimzation parameters</strong></dt><dd></dd>
-</dl>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><dl class="simple">
-<dt>model: array</dt><dd><p>Realization of the model</p>
-</dd>
-</dl>
-</dd>
-</dl>
-</dd></dl>
-
-</dd></dl>
-
+  <div class="section" id="scarlet-spectrum">
+<h1>scarlet.spectrum<a class="headerlink" href="#scarlet-spectrum" title="Permalink to this headline">¶</a></h1>
 </div>
 
 
@@ -232,7 +100,7 @@
       &copy;2018-2019, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.3.1</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.4.3</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

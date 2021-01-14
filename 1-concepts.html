@@ -12,7 +12,6 @@
     <script src="_static/jquery.js"></script>
     <script src="_static/underscore.js"></script>
     <script src="_static/doctools.js"></script>
-    <script src="_static/language_data.js"></script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "ignoreClass": "document", "processClass": "math|output_area"}})</script>
@@ -426,13 +425,24 @@ class PointSource(FactorizedComponent):
         observations: instance or list of `~scarlet.Observation`
             Observation(s) to initialize this source
         &#34;&#34;&#34;
-        spectrum = get_pixel_spectrum(sky_coord, observations, correct_psf=True)
-        spectrum = TabulatedSpectrum(model_frame, spectrum)
+        if not hasattr(observations, &#34;__iter__&#34;):
+            observations = (observations,)
 
         center = model_frame.get_pixel(sky_coord)
         morphology = PointSourceMorphology(model_frame, center)
-        self.center = morphology.center
+
+        # get spectrum from peak pixel, correct for PSF
+        spectra = init.get_pixel_spectrum(sky_coord, observations, correct_psf=True)
+        spectrum = np.concatenate(spectra, axis=0)
+        noise_rms = np.concatenate(
+            [np.array(np.mean(obs.noise_rms, axis=(1, 2))) for obs in observations]
+        ).reshape(-1)
+        spectrum = TabulatedSpectrum(model_frame, spectrum, min_step=noise_rms)
+
         super().__init__(model_frame, spectrum, morphology)
+
+        # retain center as attribute
+        self.center = morphology.center
 
 </pre></div></div>
 </div>
@@ -485,24 +495,26 @@ Source 0: PointSource
   Parameter &#39;center&#39;, Shape (2,)
 Source 1: MultiExtendedSource
   Parameter &#39;spectrum&#39;, Shape (5,)
-  Parameter &#39;image&#39;, Shape (62, 62)
+  Parameter &#39;image&#39;, Shape (41, 41)
   Parameter &#39;spectrum&#39;, Shape (5,)
-  Parameter &#39;image&#39;, Shape (62, 62)
-Source 2: SingleExtendedSource
+  Parameter &#39;image&#39;, Shape (61, 61)
+Source 2: MultiExtendedSource
   Parameter &#39;spectrum&#39;, Shape (5,)
-  Parameter &#39;image&#39;, Shape (15, 15)
+  Parameter &#39;image&#39;, Shape (41, 41)
+  Parameter &#39;spectrum&#39;, Shape (5,)
+  Parameter &#39;image&#39;, Shape (41, 41)
 Source 3: SingleExtendedSource
   Parameter &#39;spectrum&#39;, Shape (5,)
-  Parameter &#39;image&#39;, Shape (15, 15)
-Source 4: SingleExtendedSource
+  Parameter &#39;image&#39;, Shape (31, 31)
+Source 4: CompactExtendedSource
   Parameter &#39;spectrum&#39;, Shape (5,)
-  Parameter &#39;image&#39;, Shape (15, 15)
+  Parameter &#39;image&#39;, Shape (21, 21)
 Source 5: SingleExtendedSource
   Parameter &#39;spectrum&#39;, Shape (5,)
-  Parameter &#39;image&#39;, Shape (15, 15)
-Source 6: SingleExtendedSource
+  Parameter &#39;image&#39;, Shape (31, 31)
+Source 6: CompactExtendedSource
   Parameter &#39;spectrum&#39;, Shape (5,)
-  Parameter &#39;image&#39;, Shape (15, 15)
+  Parameter &#39;image&#39;, Shape (31, 31)
 </pre></div></div>
 </div>
 <p>Source 0 is a <code class="docutils literal notranslate"><span class="pre">PointSource</span></code>, parameterized by a spectrum and a center, as we have seen above. Source 1 has multiple components (each with a spectrum and an image morphology), the rest have a single spectrum and image morphology.</p>
@@ -524,18 +536,18 @@ Source 6: SingleExtendedSource
 <div class="highlight"><pre>
 {&#39;name&#39;: &#39;spectrum&#39;,
  &#39;prior&#39;: None,
- &#39;constraint&#39;: &lt;scarlet.constraint.PositivityConstraint at 0x7f631d8227c0&gt;,
- &#39;step&#39;: functools.partial(&lt;function relative_step at 0x7f63300d7ca0&gt;, factor=0.01),
- &#39;std&#39;: masked_array(data=[0.04389490916756766, 0.06517846062284369,
-                    0.07375149048833486, 0.10927850145924377,
-                    0.2927479371108809],
+ &#39;constraint&#39;: &lt;scarlet.constraint.PositivityConstraint at 0x7ff25b2c11f0&gt;,
+ &#39;step&#39;: functools.partial(&lt;function relative_step at 0x7ff26c08e700&gt;, factor=0.01, minimum=array([0.01279404, 0.01422727, 0.02035177, 0.03339863, 0.06668474])),
+ &#39;std&#39;: masked_array(data=[0.027554372669801968, 0.014976117819407839,
+                    0.02701625270450926, 0.05929503196433315,
+                    0.221984807423738],
               mask=[False, False, False, False, False],
         fill_value=0.0),
- &#39;m&#39;: array([ 0.14318326,  0.43828976,  0.3513184 , -0.06075501, -0.23812295]),
- &#39;v&#39;: array([519.00517792, 235.39205574, 183.84778281,  83.73953371,
-         11.66842699]),
- &#39;vhat&#39;: array([532.76541958, 239.03731859, 184.32261318,  86.2186948 ,
-         11.78452515]),
+ &#39;m&#39;: array([ 2.1395742 , -3.36108188,  1.21146122, -0.15531099,  0.14720547]),
+ &#39;v&#39;: array([1317.10058974, 4458.63071868, 1370.09215656,  284.42213033,
+          20.29333829]),
+ &#39;vhat&#39;: array([1337.50382803, 4548.19437348, 1402.23991255,  292.28148767,
+          20.81233821]),
  &#39;fixed&#39;: False}
 </pre></div></div>
 </div>
@@ -562,7 +574,7 @@ Source 6: SingleExtendedSource
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-&lt;matplotlib.colorbar.Colorbar at 0x7f631d007310&gt;
+&lt;matplotlib.colorbar.Colorbar at 0x7ff25aa9fa30&gt;
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">
@@ -664,7 +676,7 @@ only once because the optimizer will require multiple iterations to finally conv
       &copy;2018-2019, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.3.1</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.4.3</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

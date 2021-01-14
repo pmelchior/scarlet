@@ -21,7 +21,6 @@ API Documentation
     scarlet.parameter
     scarlet.prior
     scarlet.psf
-    scarlet.resampling
     scarlet.source
     scarlet.spectrum
     scarlet.wavelet

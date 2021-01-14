@@ -12,7 +12,6 @@
     <script src="../_static/jquery.js"></script>
     <script src="../_static/underscore.js"></script>
     <script src="../_static/doctools.js"></script>
-    <script src="../_static/language_data.js"></script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "ignoreClass": "document", "processClass": "math|output_area"}})</script>
@@ -60,7 +59,6 @@
 <li class="toctree-l2 current"><a class="current reference internal" href="#">scarlet.parameter</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.prior.html">scarlet.prior</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.psf.html">scarlet.psf</a></li>
-<li class="toctree-l2"><a class="reference internal" href="scarlet.resampling.html">scarlet.resampling</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.source.html">scarlet.source</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.spectrum.html">scarlet.spectrum</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.wavelet.html">scarlet.wavelet</a></li>
@@ -351,7 +349,7 @@ See Kingma &amp; Ba (2015) and Reddi, Kale &amp; Kumar (2018) for details</p>
 
 <dl class="py function">
 <dt id="scarlet.parameter.relative_step">
-<code class="sig-prename descclassname">scarlet.parameter.</code><code class="sig-name descname">relative_step</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">X</span></em>, <em class="sig-param"><span class="n">it</span></em>, <em class="sig-param"><span class="n">factor</span><span class="o">=</span><span class="default_value">0.1</span></em>, <em class="sig-param"><span class="n">axis</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/parameter.html#relative_step"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.parameter.relative_step" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">scarlet.parameter.</code><code class="sig-name descname">relative_step</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">X</span></em>, <em class="sig-param"><span class="n">it</span></em>, <em class="sig-param"><span class="n">factor</span><span class="o">=</span><span class="default_value">0.1</span></em>, <em class="sig-param"><span class="n">minimum</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">axis</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/parameter.html#relative_step"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.parameter.relative_step" title="Permalink to this definition">¶</a></dt>
 <dd><p>Step size set at <cite>factor</cite> times the mean of <cite>X</cite> in direction <cite>axis</cite></p>
 </dd></dl>
 
@@ -368,7 +366,7 @@ See Kingma &amp; Ba (2015) and Reddi, Kale &amp; Kumar (2018) for details</p>
       &copy;2018-2019, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.3.1</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.4.3</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

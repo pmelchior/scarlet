@@ -5,21 +5,20 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Wavelet toy-model &#8212; scarlet  documentation</title>
+    <title>Starlet Tutorial &#8212; scarlet  documentation</title>
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
     <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
     <script src="../_static/jquery.js"></script>
     <script src="../_static/underscore.js"></script>
     <script src="../_static/doctools.js"></script>
-    <script src="../_static/language_data.js"></script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "ignoreClass": "document", "processClass": "math|output_area"}})</script>
     <link rel="canonical" href="api/tutorials/wavelet_model.html" />
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Multi-Resolution Modeling" href="multiresolution.html" />
+    <link rel="next" title="Multi-Resolution Tutorial" href="multiresolution.html" />
     <link rel="prev" title="Point Source Tutorial" href="point_source.html" />
    
   <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
@@ -43,11 +42,8 @@
 <li class="toctree-l1 current"><a class="reference internal" href="../tutorials.html">Tutorials</a><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="display.html">Displaying Scenes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="point_source.html">Point Source Tutorial</a></li>
-<li class="toctree-l2 current"><a class="current reference internal" href="#">Wavelet toy-model</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#Model-the-extended-source-and-tidal-features-with-starlets">Model the extended source and tidal features with starlets</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#Subtracting-the-starlet-component">Subtracting the starlet component</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#Comparison-with-vanilla-scarlet">Comparison with vanilla scarlet</a></li>
-<li class="toctree-l2"><a class="reference internal" href="multiresolution.html">Multi-Resolution Modeling</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Starlet Tutorial</a></li>
+<li class="toctree-l2"><a class="reference internal" href="multiresolution.html">Multi-Resolution Tutorial</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../api/scarlet.html">API Documentation</a></li>
@@ -320,9 +316,13 @@ div.rendered_html tbody tr:hover {
   background: rgba(66, 165, 245, 0.2);
 }
 </style>
-<div class="section" id="Wavelet-toy-model">
-<h1>Wavelet toy-model<a class="headerlink" href="#Wavelet-toy-model" title="Permalink to this headline">¶</a></h1>
-<p>This tutorial goes through the same example as the Quickstart Guide but shows how to use <code class="docutils literal notranslate"><span class="pre">WaveletSource</span></code> instead of pixelated sources.</p>
+<div class="section" id="Starlet-Tutorial">
+<h1>Starlet Tutorial<a class="headerlink" href="#Starlet-Tutorial" title="Permalink to this headline">¶</a></h1>
+<p>This tutorial goes through a case where the default <code class="docutils literal notranslate"><span class="pre">ExtendedSource</span></code> models will struggle: a complex low surface brightness galaxy.</p>
+<div class="section" id="A-word-on-starlets">
+<h2>A word on starlets<a class="headerlink" href="#A-word-on-starlets" title="Permalink to this headline">¶</a></h2>
+<p>Starlets are a familly of functions that are generative of the ensemble of real matrices of finite sahpes and overcomplete. In that regard, shapelets have the flexibility to represent any pixelated 2-D profile. We take advantage of this property and use starlets to model sources with features that are too complex to be modeled with only assumptions of symmetry or monotonicity, such as irregular galaxies and spiral galaxies.</p>
+<p>But first, the usual incantation:</p>
 <div class="nbinput nblast docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
 </pre></div>
@@ -344,8 +344,8 @@ div.rendered_html tbody tr:hover {
 </div>
 </div>
 <div class="section" id="Load-and-Display-Data">
-<h2>Load and Display Data<a class="headerlink" href="#Load-and-Display-Data" title="Permalink to this headline">¶</a></h2>
-<p>We load an example data set (here an image cube with 5 bands) <em>and</em> a detection catalog. If such a catalog is not available packages like <a class="reference external" href="http://sep.readthedocs.io/">SEP</a> and <a class="reference external" href="https://photutils.readthedocs.io/en/stable/">photutils</a> will happily generate one, but for this example we use part of the detection catalog generated by the <a class="reference external" href="https://github.com/lsst">LSST DM stack</a>.</p>
+<h3>Load and Display Data<a class="headerlink" href="#Load-and-Display-Data" title="Permalink to this headline">¶</a></h3>
+<p>We load the data set (an image cube with 5 bands).</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
 </pre></div>
@@ -356,10 +356,20 @@ div.rendered_html tbody tr:hover {
 <span class="n">images</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;images&quot;</span><span class="p">]</span>
 <span class="n">filters</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;channels&quot;</span><span class="p">]</span>
 <span class="n">psfs</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;psfs&quot;</span><span class="p">]</span>
+
+<span class="kn">from</span> <span class="nn">scarlet.display</span> <span class="kn">import</span> <span class="n">AsinhMapping</span>
+
+<span class="n">stretch</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">Q</span> <span class="o">=</span> <span class="mi">5</span>
+<span class="n">norm</span> <span class="o">=</span> <span class="n">AsinhMapping</span><span class="p">(</span><span class="n">minimum</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">stretch</span><span class="o">=</span><span class="n">stretch</span><span class="p">,</span> <span class="n">Q</span><span class="o">=</span><span class="n">Q</span><span class="p">)</span>
+<span class="n">img_rgb</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">display</span><span class="o">.</span><span class="n">img_to_rgb</span><span class="p">(</span><span class="n">images</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span> <span class="o">=</span> <span class="p">(</span><span class="mi">6</span><span class="p">,</span><span class="mi">6</span><span class="p">))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">img_rgb</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </pre></div>
 </div>
 </div>
-<div class="nboutput nblast docutils container">
+<div class="nboutput docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area stderr docutils container">
@@ -367,7 +377,18 @@ div.rendered_html tbody tr:hover {
 WARNING: FITSFixedWarning: The WCS transformation has more axes (2) than the image it is associated with (0) [astropy.wcs.wcs]
 </pre></div></div>
 </div>
-<p>Here we detect the sources in the image and build a catalog of sources to deblend</p>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/tutorials_wavelet_model_4_1.png" src="../_images/tutorials_wavelet_model_4_1.png" />
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="Detection-Catalog">
+<h2>Detection Catalog<a class="headerlink" href="#Detection-Catalog" title="Permalink to this headline">¶</a></h2>
+<p>Because we don’t have a detection catalog, we need to build one. We’ll use a combination of wavelet filtering and <a class="reference external" href="http://sep.readthedocs.io/">SEP</a>.</p>
 <div class="nbinput nblast docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
 </pre></div>
@@ -433,9 +454,9 @@ WARNING: FITSFixedWarning: The WCS transformation has more axes (2) than the ima
             <span class="n">bg_rms</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">scarlet</span><span class="o">.</span><span class="n">wavelet</span><span class="o">.</span><span class="n">mad_wavelet</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">images</span><span class="p">))</span>
 
     <span class="k">return</span> <span class="n">catalog</span><span class="p">,</span> <span class="n">bg_rms</span>
+
 <span class="c1">#Detection and background noise estimate</span>
 <span class="n">catalog</span><span class="p">,</span> <span class="n">bg_rms_hsc</span> <span class="o">=</span> <span class="n">makeCatalog</span><span class="p">(</span><span class="n">images</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-
 <span class="n">weights</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">images</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">bg_rms_hsc</span><span class="o">**</span><span class="mi">2</span><span class="p">)[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span>
 </pre></div>
 </div>
@@ -486,23 +507,17 @@ WARNING: FITSFixedWarning: The WCS transformation has more axes (2) than the ima
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/tutorials_wavelet_model_7_0.png" src="../_images/tutorials_wavelet_model_7_0.png" />
+<img alt="../_images/tutorials_wavelet_model_8_0.png" src="../_images/tutorials_wavelet_model_8_0.png" />
 </div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/tutorials_wavelet_model_7_1.png" src="../_images/tutorials_wavelet_model_7_1.png" />
+<img alt="../_images/tutorials_wavelet_model_8_1.png" src="../_images/tutorials_wavelet_model_8_1.png" />
 </div>
 </div>
-<div class="section" id="A-word-on-starlets">
-<h3>A word on starlets<a class="headerlink" href="#A-word-on-starlets" title="Permalink to this headline">¶</a></h3>
-<p>Starlets are a familly of functions that are generative of the ensemble of real matrices of finite sahpes and overcomplete. In that regard, shapelets have the flexibility to represent any pixelated 2-D profile. We take advantage of this property and use starlets to model sources with features that are too complex to be modeled with only assumptions of symmetry or monotonicity, such as irregular galaxies and spiral galaxies.</p>
-</div>
-<div class="section" id="Display-Image-Cube">
-<h3>Display Image Cube<a class="headerlink" href="#Display-Image-Cube" title="Permalink to this headline">¶</a></h3>
-<p>This is an example of how to display an RGB image from an image cube of multiband data. In this case the image uses a <span class="math notranslate nohighlight">\(sinh^{-1}\)</span> function to normalize the flux in each filter consistently to create an RGB image.</p>
+<p>To see if our detection catalog makes sense, let’s have a look what has been detected:</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
 </pre></div>
@@ -510,10 +525,6 @@ WARNING: FITSFixedWarning: The WCS transformation has more axes (2) than the ima
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
 <span></span><span class="kn">from</span> <span class="nn">scarlet.display</span> <span class="kn">import</span> <span class="n">AsinhMapping</span>
 
-<span class="n">stretch</span> <span class="o">=</span> <span class="mi">1</span>
-<span class="n">Q</span> <span class="o">=</span> <span class="mi">10</span>
-<span class="n">norm</span> <span class="o">=</span> <span class="n">AsinhMapping</span><span class="p">(</span><span class="n">minimum</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">stretch</span><span class="o">=</span><span class="n">stretch</span><span class="p">,</span> <span class="n">Q</span><span class="o">=</span><span class="n">Q</span><span class="p">)</span>
-<span class="n">img_rgb</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">display</span><span class="o">.</span><span class="n">img_to_rgb</span><span class="p">(</span><span class="n">images</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span> <span class="o">=</span> <span class="p">(</span><span class="mi">20</span><span class="p">,</span><span class="mi">20</span><span class="p">))</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">img_rgb</span><span class="p">)</span>
 
@@ -533,6 +544,8 @@ WARNING: FITSFixedWarning: The WCS transformation has more axes (2) than the ima
 </div>
 <p>Looking at the detected sources, it seems that sources 1 and 4 are individual components, while the central galaxy has a “red” component centered around 2 and a blue component particularly bright around 3 and 0. We will use this information to inform the choice of source types we use to model the scene.</p>
 <p>Here this procedure is done manually, but in the future, we expect that matching images with different colours and complex morphologies might help automating this process.</p>
+<div class="section" id="Model-with-Starlet-Components">
+<h3>Model with Starlet Components<a class="headerlink" href="#Model-with-Starlet-Components" title="Permalink to this headline">¶</a></h3>
 </div>
 </div>
 <div class="section" id="Define-Model-Frame-and-Observation">
@@ -544,15 +557,8 @@ WARNING: FITSFixedWarning: The WCS transformation has more axes (2) than the ima
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
 <span></span><span class="n">model_psf</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">GaussianPSF</span><span class="p">(</span><span class="n">sigma</span> <span class="o">=</span> <span class="mf">0.8</span><span class="p">)</span>
-</pre></div>
-</div>
-</div>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
-<span></span><span class="n">model_frame</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">Frame</span><span class="p">(</span>
+
+<span class="n">model_frame</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">Frame</span><span class="p">(</span>
     <span class="n">images</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span>
     <span class="n">psfs</span><span class="o">=</span><span class="n">model_psf</span><span class="p">,</span>
     <span class="n">channels</span><span class="o">=</span><span class="n">filters</span><span class="p">)</span>
@@ -566,19 +572,14 @@ WARNING: FITSFixedWarning: The WCS transformation has more axes (2) than the ima
 </div>
 </div>
 </div>
-</div>
-<div class="section" id="Model-the-extended-source-and-tidal-features-with-starlets">
-<h1>Model the extended source and tidal features with starlets<a class="headerlink" href="#Model-the-extended-source-and-tidal-features-with-starlets" title="Permalink to this headline">¶</a></h1>
-<p>We then use the seds from the vanilla run of scarlet to run with starlets</p>
 <div class="section" id="Initialize-sources">
 <h2>Initialize sources<a class="headerlink" href="#Initialize-sources" title="Permalink to this headline">¶</a></h2>
-<p>You now need to define sources that are going to be fit. The full model, which we will call <code class="docutils literal notranslate"><span class="pre">Blend</span></code>, is a collection of those sources. As mentioned previously, we chose to represent components all components as <code class="docutils literal notranslate"><span class="pre">ExtendedSources</span></code>. The tidal features in the image and the extended features are modeled by 3 <code class="docutils literal notranslate"><span class="pre">StarletSources</span></code>.</p>
+<p>We now need to define sources that are going to be fit. The full model, which we will call <code class="docutils literal notranslate"><span class="pre">Blend</span></code>, is a collection of those sources. As mentioned previously, we chose to represent most components as <code class="docutils literal notranslate"><span class="pre">ExtendedSources</span></code>. The tidal features in the image and the extended features are modeled by 3 <code class="docutils literal notranslate"><span class="pre">StarletSources</span></code>.</p>
 <div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
-
 <span></span><span class="n">starlet_sources</span> <span class="o">=</span> <span class="p">[]</span>
 <span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">src</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">catalog</span><span class="p">):</span>
     <span class="k">if</span> <span class="n">k</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">12</span><span class="p">,</span><span class="mi">13</span><span class="p">,</span><span class="mi">16</span><span class="p">]:</span>
@@ -601,7 +602,7 @@ WARNING: FITSFixedWarning: The WCS transformation has more axes (2) than the ima
 <h2>Create and Fit Model<a class="headerlink" href="#Create-and-Fit-Model" title="Permalink to this headline">¶</a></h2>
 <p>The <code class="docutils literal notranslate"><span class="pre">Blend</span></code> class represents the sources as a tree and has the machinery to fit all of the sources to the given images. In this example the code is set to run for a maximum of 200 iterations, but will end early if the likelihood and all of the constraints converge.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
@@ -618,23 +619,24 @@ WARNING: FITSFixedWarning: The WCS transformation has more axes (2) than the ima
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-CPU times: user 2min 24s, sys: 1.83 s, total: 2min 26s
-Wall time: 2min 26s
-scarlet ran for 200 iterations to logL = 180538.9770093481
+CPU times: user 1min 2s, sys: 23.2 ms, total: 1min 2s
+Wall time: 1min 2s
+scarlet ran for 200 iterations to logL = 180754.610077058
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/tutorials_wavelet_model_20_1.png" src="../_images/tutorials_wavelet_model_20_1.png" />
+<img alt="../_images/tutorials_wavelet_model_19_1.png" src="../_images/tutorials_wavelet_model_19_1.png" />
+</div>
 </div>
 </div>
 <div class="section" id="View-Full-Scene">
-<h3>View Full Scene<a class="headerlink" href="#View-Full-Scene" title="Permalink to this headline">¶</a></h3>
+<h2>View Full Scene<a class="headerlink" href="#View-Full-Scene" title="Permalink to this headline">¶</a></h2>
 <p>We will use <code class="docutils literal notranslate"><span class="pre">scarlet.display.show_scene</span></code> to render the entire scene. We then show model and data with the same <span class="math notranslate nohighlight">\(sinh^{-1}\)</span> stretch and the residuals with a linear stretch.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
@@ -653,15 +655,15 @@ scarlet ran for 200 iterations to logL = 180538.9770093481
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/tutorials_wavelet_model_22_0.png" src="../_images/tutorials_wavelet_model_22_0.png" />
+<img alt="../_images/tutorials_wavelet_model_21_0.png" src="../_images/tutorials_wavelet_model_21_0.png" />
 </div>
 </div>
 </div>
 <div class="section" id="View-Source-Models">
-<h3>View Source Models<a class="headerlink" href="#View-Source-Models" title="Permalink to this headline">¶</a></h3>
+<h2>View Source Models<a class="headerlink" href="#View-Source-Models" title="Permalink to this headline">¶</a></h2>
 <p>We will now inspect the model for each source, in its original frame and in its observed frame by leveraging the <code class="docutils literal notranslate"><span class="pre">show_sources</span></code> method:</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
@@ -680,17 +682,15 @@ scarlet ran for 200 iterations to logL = 180538.9770093481
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/tutorials_wavelet_model_24_0.png" src="../_images/tutorials_wavelet_model_24_0.png" />
-</div>
-</div>
+<img alt="../_images/tutorials_wavelet_model_23_0.png" src="../_images/tutorials_wavelet_model_23_0.png" />
 </div>
 </div>
 </div>
 <div class="section" id="Subtracting-the-starlet-component">
-<h1>Subtracting the starlet component<a class="headerlink" href="#Subtracting-the-starlet-component" title="Permalink to this headline">¶</a></h1>
+<h2>Subtracting the starlet component<a class="headerlink" href="#Subtracting-the-starlet-component" title="Permalink to this headline">¶</a></h2>
 <p>We then show the results without the starlet components:</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
@@ -713,92 +713,6 @@ scarlet ran for 200 iterations to logL = 180538.9770093481
 
 <span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="mi">132</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">res_rgb</span><span class="p">)</span>
-
-</pre></div>
-</div>
-</div>
-<div class="nboutput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
-</pre></div>
-</div>
-<div class="output_area docutils container">
-<div class="highlight"><pre>
-&lt;matplotlib.image.AxesImage at 0x7f8428f19520&gt;
-</pre></div></div>
-</div>
-<div class="nboutput nblast docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<img alt="../_images/tutorials_wavelet_model_26_1.png" src="../_images/tutorials_wavelet_model_26_1.png" />
-</div>
-</div>
-</div>
-<div class="section" id="Comparison-with-vanilla-scarlet">
-<h1>Comparison with vanilla scarlet<a class="headerlink" href="#Comparison-with-vanilla-scarlet" title="Permalink to this headline">¶</a></h1>
-<p>Models for galaxies are all extended sources.</p>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
-<span></span><span class="n">sources</span> <span class="o">=</span> <span class="p">[]</span>
-<span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">src</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">catalog</span><span class="p">):</span>
-
-    <span class="n">new_source</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">ExtendedSource</span><span class="p">(</span><span class="n">model_frame</span><span class="p">,</span> <span class="p">(</span><span class="n">src</span><span class="p">[</span><span class="s1">&#39;y&#39;</span><span class="p">],</span> <span class="n">src</span><span class="p">[</span><span class="s1">&#39;x&#39;</span><span class="p">]),</span> <span class="n">observation</span><span class="p">)</span>
-    <span class="n">sources</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">new_source</span><span class="p">)</span>
-</pre></div>
-</div>
-</div>
-<div class="section" id="id1">
-<h2>Create and Fit Model<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
-<p>The <code class="docutils literal notranslate"><span class="pre">Blend</span></code> class represents the sources as a tree and has the machinery to fit all of the sources to the given images. In this example the code is set to run for a maximum of 200 iterations, but will end early if the likelihood and all of the constraints converge.</p>
-<div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
-<span></span><span class="n">blend</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">Blend</span><span class="p">(</span><span class="n">sources</span><span class="p">,</span> <span class="n">observation</span><span class="p">)</span>
-<span class="o">%</span><span class="k">time</span> it, logL = blend.fit(200, e_rel=1e-4)
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;scarlet ran for </span><span class="si">{</span><span class="n">it</span><span class="si">}</span><span class="s2"> iterations to logL = </span><span class="si">{</span><span class="n">logL</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<span class="n">scarlet</span><span class="o">.</span><span class="n">display</span><span class="o">.</span><span class="n">show_likelihood</span><span class="p">(</span><span class="n">blend</span><span class="p">)</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
-</pre></div>
-</div>
-</div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<div class="highlight"><pre>
-CPU times: user 39.2 s, sys: 3.99 ms, total: 39.2 s
-Wall time: 39.2 s
-scarlet ran for 200 iterations to logL = 171556.12799700507
-</pre></div></div>
-</div>
-<div class="nboutput nblast docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<img alt="../_images/tutorials_wavelet_model_30_1.png" src="../_images/tutorials_wavelet_model_30_1.png" />
-</div>
-</div>
-<div class="section" id="id2">
-<h3>View Full Scene<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h3>
-<p>We will use <code class="docutils literal notranslate"><span class="pre">scarlet.display.show_scene</span></code> to render the entire scene. We then show model and data with the same <span class="math notranslate nohighlight">\(sinh^{-1}\)</span> stretch and the residuals with a linear stretch.</p>
-<p>While scarlet with Extended sources provides a very good fit to the data, we notice that this complex extended galaxy is modeled as a patchwork of sources that shreds the morphology of the galaxies in the image. Starlet, on the other hand provides a consistent model for the extended features and tidal arm.</p>
-<div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
-<span></span><span class="n">scarlet</span><span class="o">.</span><span class="n">display</span><span class="o">.</span><span class="n">show_scene</span><span class="p">(</span><span class="n">sources</span><span class="p">,</span>
-                           <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">,</span>
-                           <span class="n">observation</span><span class="o">=</span><span class="n">observation</span><span class="p">,</span>
-                           <span class="n">show_rendered</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-                           <span class="n">show_observed</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-                           <span class="n">show_residual</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-                          <span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </pre></div>
 </div>
@@ -807,44 +721,7 @@ scarlet ran for 200 iterations to logL = 171556.12799700507
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/tutorials_wavelet_model_32_0.png" src="../_images/tutorials_wavelet_model_32_0.png" />
-</div>
-</div>
-</div>
-<div class="section" id="id3">
-<h3>View Source Models<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h3>
-<p>We will now inspect the model for each source, in its original frame and in its observed frame by leveraging the <code class="docutils literal notranslate"><span class="pre">show_sources</span></code> method:</p>
-<div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
-<span></span><span class="n">scarlet</span><span class="o">.</span><span class="n">display</span><span class="o">.</span><span class="n">show_sources</span><span class="p">(</span><span class="n">sources</span><span class="p">,</span>
-                             <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">,</span>
-                             <span class="n">observation</span><span class="o">=</span><span class="n">observation</span><span class="p">,</span>
-                             <span class="n">show_rendered</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-                             <span class="n">show_observed</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-                             <span class="n">add_boxes</span><span class="o">=</span><span class="kc">True</span>
-                            <span class="p">)</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
-</pre></div>
-</div>
-</div>
-<div class="nboutput nblast docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<img alt="../_images/tutorials_wavelet_model_34_0.png" src="../_images/tutorials_wavelet_model_34_0.png" />
-</div>
-</div>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
-<span></span>
-</pre></div>
-</div>
+<img alt="../_images/tutorials_wavelet_model_25_0.png" src="../_images/tutorials_wavelet_model_25_0.png" />
 </div>
 </div>
 </div>
@@ -861,7 +738,7 @@ scarlet ran for 200 iterations to logL = 171556.12799700507
       &copy;2018-2019, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.3.1</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.4.3</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

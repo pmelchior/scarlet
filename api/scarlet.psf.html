@@ -12,14 +12,13 @@
     <script src="../_static/jquery.js"></script>
     <script src="../_static/underscore.js"></script>
     <script src="../_static/doctools.js"></script>
-    <script src="../_static/language_data.js"></script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "ignoreClass": "document", "processClass": "math|output_area"}})</script>
     <link rel="canonical" href="api/api/scarlet.psf.html" />
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="scarlet.resampling" href="scarlet.resampling.html" />
+    <link rel="next" title="scarlet.source" href="scarlet.source.html" />
     <link rel="prev" title="scarlet.prior" href="scarlet.prior.html" />
    
   <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
@@ -60,7 +59,6 @@
 <li class="toctree-l2"><a class="reference internal" href="scarlet.parameter.html">scarlet.parameter</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.prior.html">scarlet.prior</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">scarlet.psf</a></li>
-<li class="toctree-l2"><a class="reference internal" href="scarlet.resampling.html">scarlet.resampling</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.source.html">scarlet.source</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.spectrum.html">scarlet.spectrum</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.wavelet.html">scarlet.wavelet</a></li>
@@ -125,6 +123,9 @@
 </tr>
 <tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code>(*parameter[, offset])</p></td>
 <td><p>Get the PSF realization</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">update</span></code>()</p></td>
+<td><p>Update internal state or configuration of the model</p></td>
 </tr>
 </tbody>
 </table>
@@ -192,6 +193,9 @@ If the width is to be optimized, provide a full defined <cite>Parameter</cite>.<
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#scarlet.psf.GaussianPSF.get_model" title="scarlet.psf.GaussianPSF.get_model"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code></a>(*parameters[, offset])</p></td>
 <td><p>Get the PSF realization</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">update</span></code>()</p></td>
+<td><p>Update internal state or configuration of the model</p></td>
 </tr>
 </tbody>
 </table>
@@ -270,6 +274,9 @@ If the width is to be optimized, provide a full defined <cite>Parameter</cite>.<
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#scarlet.psf.ImagePSF.get_model" title="scarlet.psf.ImagePSF.get_model"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code></a>(*parameters[, offset])</p></td>
 <td><p>Get the PSF realization</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">update</span></code>()</p></td>
+<td><p>Update internal state or configuration of the model</p></td>
 </tr>
 </tbody>
 </table>
@@ -361,6 +368,9 @@ If the width is to be optimized, provide a full defined <cite>Parameter</cite>.<
 <tr class="row-even"><td><p><a class="reference internal" href="#scarlet.psf.MoffatPSF.get_model" title="scarlet.psf.MoffatPSF.get_model"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code></a>(*parameters[, offset])</p></td>
 <td><p>Get the PSF realization</p></td>
 </tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">update</span></code>()</p></td>
+<td><p>Update internal state or configuration of the model</p></td>
+</tr>
 </tbody>
 </table>
 <table class="docutils align-default">
@@ -432,6 +442,9 @@ If the width is to be optimized, provide a full defined <cite>Parameter</cite>.<
 <tr class="row-even"><td><p><a class="reference internal" href="#scarlet.psf.PSF.get_model" title="scarlet.psf.PSF.get_model"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code></a>(*parameter[, offset])</p></td>
 <td><p>Get the PSF realization</p></td>
 </tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">update</span></code>()</p></td>
+<td><p>Update internal state or configuration of the model</p></td>
+</tr>
 </tbody>
 </table>
 <table class="docutils align-default">
@@ -498,7 +511,7 @@ If the width is to be optimized, provide a full defined <cite>Parameter</cite>.<
       &copy;2018-2019, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.3.1</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.4.3</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |
