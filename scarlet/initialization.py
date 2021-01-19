@@ -98,7 +98,7 @@ def get_pixel_spectrum(sky_coord, observations, correct_psf=False, models=None):
     spectra = []
     for obs, model in zip(observations, models):
         pixel = obs.get_pixel(sky_coord)
-        index = np.round(pixel).astype(np.int)
+        index = np.round(pixel).astype("int")
         spectrum = obs.data[:, index[0], index[1]].copy()
 
         if obs.psf is not None:

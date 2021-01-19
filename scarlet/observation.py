@@ -67,6 +67,8 @@ class Observation(Frame):
         ---------
         model_frame: a `scarlet.Frame` instance
             The frame of `Blend` to match
+        renderer: a `scarlet.Renderer` instance
+            The transformation from model to observation
 
         Returns
         -------

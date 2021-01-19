@@ -41,7 +41,7 @@ class PSF(Model):
         else:
             if np.isscalar(X):
                 X = (X,)
-            X = Parameter(np.array(X, dtype=np.float), name=name, fixed=True)
+            X = Parameter(np.array(X, dtype="float"), name=name, fixed=True)
         return X
 
 
@@ -84,7 +84,6 @@ class FunctionPSF(PSF):
 
     def expand_dims(self, model):
         return np.expand_dims(model, axis=tuple(range(self._d)))
-
 
 
 class GaussianPSF(FunctionPSF):
