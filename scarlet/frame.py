@@ -18,7 +18,7 @@ class Frame:
         shape tuple (Channel, Height, Width)
     wcs: TBD
         World Coordinates
-    psfs: `scarlet.PSF` or its arguments
+    psf: `scarlet.PSF` or its arguments
         PSF in each channel
     channels: list of hashable elements
         Names/identifiers of spectral channels
@@ -26,7 +26,7 @@ class Frame:
         Dtype to represent the data.
     """
 
-    def __init__(self, shape, channels, wcs=None, psfs=None, dtype=np.float32):
+    def __init__(self, shape, channels, wcs=None, psf=None, dtype=np.float32):
         self._bbox = Box(shape)
         assert len(channels) == self.C
         self.channels = channels
@@ -37,15 +37,15 @@ class Frame:
         else:
             self.wcs = None
 
-        if psfs is None:
+        if psf is None:
             logger.warning("No PSF specified. Possible, but dangerous!")
-            self._psfs = None
+            self._psf = None
         else:
 
-            if isinstance(psfs, PSF):
-                self._psfs = psfs
+            if isinstance(psf, PSF):
+                self._psf = psf
             else:
-                self._psfs = PSF(psfs)
+                self._psf = PSF(psf)
 
         self.dtype = dtype
 
@@ -79,7 +79,7 @@ class Frame:
 
     @property
     def psf(self):
-        return self._psfs
+        return self._psf
 
     def get_pixel(self, sky_coord):
         """Get the pixel coordinate from a world coordinate
@@ -158,8 +158,8 @@ class Frame:
     ):
         """Generates a suitable model frame for a set of observations.
 
-        This method generates a frame from a set of observations by indentifying the highest resolution
-        and the smallest PSF and use them to construct a common frame for all observations in the set.
+        This method generates a frame from a set of observations by identifying the highest resolution
+        and the smallest PSF and use them to construct a common frame for all observations.
 
         Parameters
         ----------
@@ -178,8 +178,6 @@ class Frame:
             Sets the frame to incorporate the pixels covered by any observation ('union')
             or by all observations ('intersection').
         """
-        from scarlet.observation import LowResObservation
-
         assert coverage in ["union", "intersection"]
 
         if not hasattr(observations, "__iter__"):
@@ -194,17 +192,13 @@ class Frame:
         # Create frame channels and find smallest and largest psf
         for c, obs in enumerate(observations):
             # Concatenate all channels
-            channels = channels + obs.frame.channels
+            channels = channels + obs.channels
             # concatenate all pixel sizes
-            pix_tab.append(
-                interpolation.get_pixel_size(interpolation.get_affine(obs.frame.wcs))
-            )
-            h_temp = interpolation.get_pixel_size(
-                interpolation.get_affine(obs.frame.wcs)
-            )
-            # Looking for the sharpest and the widest psf
-            psfs = obs.frame.psf.get_model()._data
-            for psf in psfs:
+            h_temp = interpolation.get_pixel_size(interpolation.get_affine(obs.wcs))
+            pix_tab.append(h_temp)
+            # Looking for the sharpest and the fatest psf
+            psf = obs.psf.get_model()._data
+            for psf in psf:
                 psf_size = interpolation.get_psf_size(psf) * h_temp
                 if (fat_psf_size is None) or (psf_size > fat_psf_size):
                     fat_psf_size = psf_size
@@ -225,7 +219,7 @@ class Frame:
 
         # Reference wcs
         if model_wcs is None:
-            model_wcs = obs_ref.frame.wcs
+            model_wcs = obs_ref.wcs
 
         # Scale of the smallest pixel
         h = interpolation.get_pixel_size(interpolation.get_affine(model_wcs))
@@ -234,7 +228,7 @@ class Frame:
         if model_psf is None:
             # If the reference PSF is not at the highest pixel resolution, make it!
             if psf_h > h:
-                angle, h = interpolation.get_angles(model_wcs, obs.frame.wcs)
+                angle, h = interpolation.get_angles(model_wcs, obs.wcs)
                 model_psf = PSF(
                     interpolation.sinc_interp_inplace(model_psf_temp, psf_h, h, angle)
                 )
@@ -244,21 +238,16 @@ class Frame:
         # Dummy frame for WCS computations
         model_shape = (len(channels), 0, 0)
         model_frame = Frame(
-            model_shape, channels=channels, psfs=model_psf, wcs=model_wcs
+            model_shape, channels=channels, psf=model_psf, wcs=model_wcs
         )
 
         # Determine overlap of all observations in pixel coordinates of the model frame
         for c, obs in enumerate(observations):
 
-            if model_frame.wcs is obs.frame.wcs:
-                this_box = obs_ref.frame.bbox[-2:]
+            if model_frame.wcs is obs.wcs:
+                this_box = obs_ref.bbox[-2:]
             else:
-                # Make observations with a different wcs LowResObservation
-                # TODO (see #220)
-                if type(obs) is not LowResObservation:
-                    observations[c] = obs.get_LowRes()
-
-                obs_coord = obs.frame.convert_pixel_to(model_frame)
+                obs_coord = obs.convert_pixel_to(model_frame)
                 y_min = np.floor(np.min(obs_coord[:, 0])).astype("int")
                 x_min = np.floor(np.min(obs_coord[:, 1])).astype("int")
                 y_max = np.ceil(np.max(obs_coord[:, 0])).astype("int")
@@ -288,7 +277,7 @@ class Frame:
         # recreate the model frame with the correct shape
         frame_shape = (len(channels), *model_box.shape)
         model_frame = Frame(
-            frame_shape, channels=channels, psfs=model_psf, wcs=model_wcs
+            frame_shape, channels=channels, psf=model_psf, wcs=model_wcs
         )
 
         # Match observations to this frame

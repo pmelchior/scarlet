@@ -94,12 +94,12 @@ class TestFourier(object):
         psf2 = scarlet.fft.Fourier(self.get_psfs(2))
 
         # Test narrow to wide
-        kernel_1to2 = fft.match_psfs(psf2, psf1)
+        kernel_1to2 = fft.match_psf(psf2, psf1)
         img2 = fft.convolve(psf1, kernel_1to2)
         assert_almost_equal(img2.image, psf2.image)
 
         # Test wide to narrow
-        kernel_2to1 = fft.match_psfs(psf1, psf2)
+        kernel_2to1 = fft.match_psf(psf1, psf2)
         img1 = fft.convolve(psf2, kernel_2to1)
         assert_almost_equal(img1.image, psf1.image)
 
@@ -112,12 +112,12 @@ class TestFourier(object):
         psf2 = scarlet.fft.Fourier(self.get_psfs((1, 2, 3)))
 
         # Nawrrow to wide
-        kernel_1to2 = fft.match_psfs(psf2, psf1)
+        kernel_1to2 = fft.match_psf(psf2, psf1)
         image = fft.convolve(kernel_1to2, psf1)
         assert_almost_equal(psf2.image, image.image)
 
         # Wide to narrow
-        kernel_2to1 = fft.match_psfs(psf1, psf2)
+        kernel_2to1 = fft.match_psf(psf1, psf2)
         image = fft.convolve(kernel_2to1, psf2).image
 
         for img in image:
