@@ -59,6 +59,7 @@
 <li class="toctree-l2"><a class="reference internal" href="scarlet.parameter.html">scarlet.parameter</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.prior.html">scarlet.prior</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.psf.html">scarlet.psf</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.renderer.html">scarlet.renderer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.source.html">scarlet.source</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.spectrum.html">scarlet.spectrum</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.wavelet.html">scarlet.wavelet</a></li>
@@ -89,7 +90,7 @@
 <span id="scarlet-frame"></span><h1>scarlet.frame<a class="headerlink" href="#module-scarlet.frame" title="Permalink to this headline">¶</a></h1>
 <dl class="py class">
 <dt id="scarlet.frame.Frame">
-<em class="property">class </em><code class="sig-prename descclassname">scarlet.frame.</code><code class="sig-name descname">Frame</code><span class="sig-paren">(</span><em class="sig-param">shape</em>, <em class="sig-param">channels</em>, <em class="sig-param">wcs=None</em>, <em class="sig-param">psfs=None</em>, <em class="sig-param">dtype=&lt;class 'numpy.float32'&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/frame.html#Frame"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.frame.Frame" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">scarlet.frame.</code><code class="sig-name descname">Frame</code><span class="sig-paren">(</span><em class="sig-param">shape</em>, <em class="sig-param">channels</em>, <em class="sig-param">wcs=None</em>, <em class="sig-param">psf=None</em>, <em class="sig-param">dtype=&lt;class 'numpy.float32'&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/frame.html#Frame"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.frame.Frame" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.9)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>Spatial and spectral characteristics of the data</p>
 <dl class="field-list simple">
@@ -99,7 +100,7 @@
 </dd>
 <dt><strong>wcs: TBD</strong></dt><dd><p>World Coordinates</p>
 </dd>
-<dt><strong>psfs: `scarlet.PSF` or its arguments</strong></dt><dd><p>PSF in each channel</p>
+<dt><strong>psf: `scarlet.PSF` or its arguments</strong></dt><dd><p>PSF in each channel</p>
 </dd>
 <dt><strong>channels: list of hashable elements</strong></dt><dd><p>Names/identifiers of spectral channels</p>
 </dd>
@@ -180,8 +181,8 @@ If not set, convert all pixels in this frame</p>
 <dt id="scarlet.frame.Frame.from_observations">
 <em class="property">static </em><code class="sig-name descname">from_observations</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">observations</span></em>, <em class="sig-param"><span class="n">model_psf</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">model_wcs</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">obs_id</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">coverage</span><span class="o">=</span><span class="default_value">'union'</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/frame.html#Frame.from_observations"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.frame.Frame.from_observations" title="Permalink to this definition">¶</a></dt>
 <dd><p>Generates a suitable model frame for a set of observations.</p>
-<p>This method generates a frame from a set of observations by indentifying the highest resolution
-and the smallest PSF and use them to construct a common frame for all observations in the set.</p>
+<p>This method generates a frame from a set of observations by identifying the highest resolution
+and the smallest PSF and use them to construct a common frame for all observations.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><dl class="simple">

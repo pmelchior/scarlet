@@ -59,6 +59,7 @@
 <li class="toctree-l2"><a class="reference internal" href="scarlet.parameter.html">scarlet.parameter</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.prior.html">scarlet.prior</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.psf.html">scarlet.psf</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.renderer.html">scarlet.renderer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.source.html">scarlet.source</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.spectrum.html">scarlet.spectrum</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scarlet.wavelet.html">scarlet.wavelet</a></li>
@@ -204,8 +205,8 @@ to supress artifacts.</p>
 </dd></dl>
 
 <dl class="py function">
-<dt id="scarlet.fft.match_psfs">
-<code class="sig-prename descclassname">scarlet.fft.</code><code class="sig-name descname">match_psfs</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">psf1</span></em>, <em class="sig-param"><span class="n">psf2</span></em>, <em class="sig-param"><span class="n">padding</span><span class="o">=</span><span class="default_value">3</span></em>, <em class="sig-param"><span class="n">axes</span><span class="o">=</span><span class="default_value">(- 2, - 1)</span></em>, <em class="sig-param"><span class="n">return_Fourier</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/fft.html#match_psfs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.fft.match_psfs" title="Permalink to this definition">¶</a></dt>
+<dt id="scarlet.fft.match_psf">
+<code class="sig-prename descclassname">scarlet.fft.</code><code class="sig-name descname">match_psf</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">psf1</span></em>, <em class="sig-param"><span class="n">psf2</span></em>, <em class="sig-param"><span class="n">padding</span><span class="o">=</span><span class="default_value">3</span></em>, <em class="sig-param"><span class="n">axes</span><span class="o">=</span><span class="default_value">(- 2, - 1)</span></em>, <em class="sig-param"><span class="n">return_Fourier</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/fft.html#match_psf"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.fft.match_psf" title="Permalink to this definition">¶</a></dt>
 <dd><p>Calculate the difference kernel to match psf1 to psf2</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>

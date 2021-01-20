@@ -393,13 +393,13 @@ frame, and that’s done by <code class="docutils literal notranslate"><span cla
 <span></span><span class="c1"># define two observation packages and match to frame</span>
 <span class="n">obs_hst</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">Observation</span><span class="p">(</span><span class="n">data_hst</span><span class="p">,</span>
                               <span class="n">wcs</span><span class="o">=</span><span class="n">wcs_hst</span><span class="p">,</span>
-                              <span class="n">psfs</span><span class="o">=</span><span class="n">psf_hst</span><span class="p">,</span>
+                              <span class="n">psf</span><span class="o">=</span><span class="n">psf_hst</span><span class="p">,</span>
                               <span class="n">channels</span><span class="o">=</span><span class="n">channels_hst</span><span class="p">,</span>
                               <span class="n">weights</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 
 <span class="n">obs_hsc</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">Observation</span><span class="p">(</span><span class="n">data_hsc</span><span class="p">,</span>
                               <span class="n">wcs</span><span class="o">=</span><span class="n">wcs_hsc</span><span class="p">,</span>
-                              <span class="n">psfs</span><span class="o">=</span><span class="n">psf_hsc</span><span class="p">,</span>
+                              <span class="n">psf</span><span class="o">=</span><span class="n">psf_hsc</span><span class="p">,</span>
                               <span class="n">channels</span><span class="o">=</span><span class="n">channels_hsc</span><span class="p">,</span>
                               <span class="n">weights</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 
@@ -418,18 +418,18 @@ frame, and that’s done by <code class="docutils literal notranslate"><span cla
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
 <span></span><span class="kn">import</span> <span class="nn">sep</span>
 
-<span class="k">def</span> <span class="nf">makeCatalog</span><span class="p">(</span><span class="n">data_lr</span><span class="p">,</span> <span class="n">data_hr</span><span class="p">,</span> <span class="n">lvl</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span> <span class="n">wave</span> <span class="o">=</span> <span class="kc">True</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">makeCatalog</span><span class="p">(</span><span class="n">obs_lr</span><span class="p">,</span> <span class="n">obs_hr</span><span class="p">,</span> <span class="n">lvl</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span> <span class="n">wave</span> <span class="o">=</span> <span class="kc">True</span><span class="p">):</span>
     <span class="c1"># Create a catalog of detected source by running SEP on the wavelet transform</span>
     <span class="c1"># of the sum of the high resolution images and the low resolution images interpolated to the high resolution grid</span>
     <span class="c1">#Interpolate LR to HR</span>
-    <span class="n">interp</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">interpolation</span><span class="o">.</span><span class="n">interpolate_observation</span><span class="p">(</span><span class="n">data_lr</span><span class="p">,</span> <span class="n">data_hr</span><span class="o">.</span><span class="n">frame</span><span class="p">)</span>
+    <span class="n">interp</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">interpolation</span><span class="o">.</span><span class="n">interpolate_observation</span><span class="p">(</span><span class="n">obs_lr</span><span class="p">,</span> <span class="n">obs_hr</span><span class="p">)</span>
     <span class="c1"># Normalisation</span>
     <span class="n">interp</span> <span class="o">=</span> <span class="n">interp</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">interp</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">))[:,</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span>
-    <span class="n">hr_images</span> <span class="o">=</span> <span class="n">data_hr</span><span class="o">.</span><span class="n">images</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">data_hr</span><span class="o">.</span><span class="n">images</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">))[:,</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span>
+    <span class="n">hr_images</span> <span class="o">=</span> <span class="n">obs_hr</span><span class="o">.</span><span class="n">data</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">obs_hr</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">))[:,</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span>
     <span class="c1"># Summation to create a detection image</span>
     <span class="n">detect_image</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">interp</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">hr_images</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span>
     <span class="c1"># Rescaling to HR image flux</span>
-    <span class="n">detect_image</span> <span class="o">*=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">data_hr</span><span class="o">.</span><span class="n">images</span><span class="p">)</span>
+    <span class="n">detect_image</span> <span class="o">*=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">obs_hr</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
     <span class="c1"># Wavelet transform</span>
     <span class="n">wave_detect</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">Starlet</span><span class="p">(</span><span class="n">detect_image</span><span class="p">,</span> <span class="n">direct</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">coefficients</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
 
@@ -443,8 +443,7 @@ frame, and that’s done by <code class="docutils literal notranslate"><span cla
     <span class="n">bkg</span> <span class="o">=</span> <span class="n">sep</span><span class="o">.</span><span class="n">Background</span><span class="p">(</span><span class="n">detect</span><span class="p">)</span>
     <span class="n">catalog</span> <span class="o">=</span> <span class="n">sep</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span><span class="n">detect</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">err</span><span class="o">=</span><span class="n">bkg</span><span class="o">.</span><span class="n">globalrms</span><span class="p">)</span>
     <span class="n">bg_rms</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="k">for</span> <span class="n">data</span> <span class="ow">in</span> <span class="p">[</span><span class="n">data_lr</span><span class="p">,</span> <span class="n">data_hr</span><span class="p">]:</span>
-        <span class="n">img</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">images</span>
+    <span class="k">for</span> <span class="n">img</span> <span class="ow">in</span> <span class="p">[</span><span class="n">obs_lr</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="n">obs_hr</span><span class="o">.</span><span class="n">data</span><span class="p">]:</span>
         <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
             <span class="n">bg_rms</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">sep</span><span class="o">.</span><span class="n">Background</span><span class="p">(</span><span class="n">band</span><span class="p">)</span><span class="o">.</span><span class="n">globalrms</span> <span class="k">for</span> <span class="n">band</span> <span class="ow">in</span> <span class="n">img</span><span class="p">]))</span>
         <span class="k">else</span><span class="p">:</span>
@@ -459,8 +458,8 @@ frame, and that’s done by <code class="docutils literal notranslate"><span cla
 <span class="n">catalog_hst</span><span class="p">,</span> <span class="p">(</span><span class="n">bg_hsc</span><span class="p">,</span> <span class="n">bg_hst</span><span class="p">),</span> <span class="n">detect</span> <span class="o">=</span> <span class="n">makeCatalog</span><span class="p">(</span><span class="n">obs_hsc</span><span class="p">,</span> <span class="n">obs_hst</span><span class="p">,</span> <span class="n">lvl</span><span class="p">,</span> <span class="n">wave</span><span class="p">)</span>
 
 <span class="c1"># we can now set the empirical noise rms for both observations</span>
-<span class="n">obs_hsc</span><span class="o">.</span><span class="n">weights</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">obs_hsc</span><span class="o">.</span><span class="n">images</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">bg_hsc</span><span class="o">**</span><span class="mi">2</span><span class="p">)[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span>
-<span class="n">obs_hst</span><span class="o">.</span><span class="n">weights</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">obs_hst</span><span class="o">.</span><span class="n">images</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">bg_hst</span><span class="o">**</span><span class="mi">2</span><span class="p">)[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span>
+<span class="n">obs_hsc</span><span class="o">.</span><span class="n">weights</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">obs_hsc</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">bg_hsc</span><span class="o">**</span><span class="mi">2</span><span class="p">)[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span>
+<span class="n">obs_hst</span><span class="o">.</span><span class="n">weights</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">obs_hst</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">bg_hst</span><span class="o">**</span><span class="mi">2</span><span class="p">)[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span>
 </pre></div>
 </div>
 </div>
@@ -478,7 +477,7 @@ frame, and that’s done by <code class="docutils literal notranslate"><span cla
 <span class="c1"># Get the source coordinates from the HST catalog</span>
 <span class="n">pixel_hst</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">((</span><span class="n">catalog_hst</span><span class="p">[</span><span class="s1">&#39;y&#39;</span><span class="p">],</span> <span class="n">catalog_hst</span><span class="p">[</span><span class="s1">&#39;x&#39;</span><span class="p">]),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
 <span class="c1"># Convert the HST coordinates to the HSC WCS</span>
-<span class="n">ra_dec</span> <span class="o">=</span> <span class="n">obs_hst</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">get_sky_coord</span><span class="p">(</span><span class="n">pixel_hst</span><span class="p">)</span>
+<span class="n">ra_dec</span> <span class="o">=</span> <span class="n">obs_hst</span><span class="o">.</span><span class="n">get_sky_coord</span><span class="p">(</span><span class="n">pixel_hst</span><span class="p">)</span>
 
 <span class="k">for</span> <span class="n">obs</span><span class="p">,</span> <span class="n">norm</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">observations</span><span class="p">,</span> <span class="n">norms</span><span class="p">):</span>
     <span class="n">scarlet</span><span class="o">.</span><span class="n">display</span><span class="o">.</span><span class="n">show_observation</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">,</span> <span class="n">sky_coords</span><span class="o">=</span><span class="n">ra_dec</span><span class="p">,</span> <span class="n">show_psf</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -580,9 +579,9 @@ frame, and that’s done by <code class="docutils literal notranslate"><span cla
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-CPU times: user 3min 13s, sys: 46.2 s, total: 3min 59s
-Wall time: 3min 59s
-scarlet ran for 50 iterations to logL = 12025.488623864865
+CPU times: user 3min 18s, sys: 48.2 s, total: 4min 7s
+Wall time: 4min 7s
+scarlet ran for 50 iterations to logL = 12027.504661837433
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">

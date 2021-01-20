@@ -104,7 +104,7 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isscalar</span><span class="p">(</span><span class="n">X</span><span class="p">):</span>
                 <span class="n">X</span> <span class="o">=</span> <span class="p">(</span><span class="n">X</span><span class="p">,)</span>
-            <span class="n">X</span> <span class="o">=</span> <span class="n">Parameter</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">),</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">fixed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">X</span> <span class="o">=</span> <span class="n">Parameter</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;float&quot;</span><span class="p">),</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">fixed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">X</span></div></div>
 
 
@@ -147,7 +147,6 @@
 
 <div class="viewcode-block" id="FunctionPSF.expand_dims"><a class="viewcode-back" href="../../api/scarlet.psf.html#scarlet.psf.FunctionPSF.expand_dims">[docs]</a>    <span class="k">def</span> <span class="nf">expand_dims</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_d</span><span class="p">)))</span></div></div>
-
 
 
 <div class="viewcode-block" id="GaussianPSF"><a class="viewcode-back" href="../../api/scarlet.psf.html#scarlet.psf.GaussianPSF">[docs]</a><span class="k">class</span> <span class="nc">GaussianPSF</span><span class="p">(</span><span class="n">FunctionPSF</span><span class="p">):</span>

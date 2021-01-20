@@ -347,14 +347,14 @@ div.rendered_html tbody tr:hover {
 <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">&quot;../../data/psf_unmatched_sim.npz&quot;</span><span class="p">)</span>
 <span class="n">images</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;images&quot;</span><span class="p">]</span>
 <span class="n">filters</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;filters&quot;</span><span class="p">]</span>
-<span class="n">psfs</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;psfs&quot;</span><span class="p">]</span>
+<span class="n">psf</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;psfs&quot;</span><span class="p">]</span>
 <span class="n">catalog</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;catalog&quot;</span><span class="p">]</span>
 <span class="c1"># Estimate of the background noise level</span>
 <span class="n">weights</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">images</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="o">**</span><span class="mi">2</span>
 
 <span class="c1"># display psfs</span>
-<span class="n">pnorm</span> <span class="o">=</span> <span class="n">AsinhMapping</span><span class="p">(</span><span class="n">minimum</span><span class="o">=</span><span class="n">psfs</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span> <span class="n">stretch</span><span class="o">=</span><span class="n">psfs</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="o">/</span><span class="mi">20</span><span class="p">,</span> <span class="n">Q</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
-<span class="n">prgb</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">display</span><span class="o">.</span><span class="n">img_to_rgb</span><span class="p">(</span><span class="n">psfs</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">pnorm</span><span class="p">)</span>
+<span class="n">pnorm</span> <span class="o">=</span> <span class="n">AsinhMapping</span><span class="p">(</span><span class="n">minimum</span><span class="o">=</span><span class="n">psf</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span> <span class="n">stretch</span><span class="o">=</span><span class="n">psf</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="o">/</span><span class="mi">20</span><span class="p">,</span> <span class="n">Q</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+<span class="n">prgb</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">display</span><span class="o">.</span><span class="n">img_to_rgb</span><span class="p">(</span><span class="n">psf</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">pnorm</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">prgb</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 
@@ -395,10 +395,10 @@ div.rendered_html tbody tr:hover {
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
 <span></span><span class="n">model_psf</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">GaussianPSF</span><span class="p">(</span><span class="n">sigma</span><span class="o">=</span><span class="mf">0.9</span><span class="p">)</span>
-<span class="n">model_frame</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">Frame</span><span class="p">(</span><span class="n">images</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">psfs</span><span class="o">=</span><span class="n">model_psf</span><span class="p">,</span> <span class="n">channels</span><span class="o">=</span><span class="n">filters</span><span class="p">)</span>
+<span class="n">model_frame</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">Frame</span><span class="p">(</span><span class="n">images</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">psf</span><span class="o">=</span><span class="n">model_psf</span><span class="p">,</span> <span class="n">channels</span><span class="o">=</span><span class="n">filters</span><span class="p">)</span>
 
 <span class="n">observation</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">Observation</span><span class="p">(</span><span class="n">images</span><span class="p">,</span>
-                                  <span class="n">psfs</span><span class="o">=</span><span class="n">scarlet</span><span class="o">.</span><span class="n">ImagePSF</span><span class="p">(</span><span class="n">psfs</span><span class="p">),</span>
+                                  <span class="n">psf</span><span class="o">=</span><span class="n">scarlet</span><span class="o">.</span><span class="n">ImagePSF</span><span class="p">(</span><span class="n">psf</span><span class="p">),</span>
                                   <span class="n">weights</span><span class="o">=</span><span class="n">weights</span><span class="p">,</span>
                                   <span class="n">channels</span><span class="o">=</span><span class="n">filters</span><span class="p">)</span>
 <span class="n">observation</span> <span class="o">=</span> <span class="n">observation</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">model_frame</span><span class="p">)</span>
@@ -487,9 +487,9 @@ div.rendered_html tbody tr:hover {
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-CPU times: user 1.38 s, sys: 4.18 ms, total: 1.39 s
-Wall time: 1.39 s
-scarlet ran for 74 iterations to logL = -118813.35378817093
+CPU times: user 1.37 s, sys: 3.76 ms, total: 1.38 s
+Wall time: 1.38 s
+scarlet ran for 74 iterations to logL = -118813.35377628038
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">
