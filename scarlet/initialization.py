@@ -508,7 +508,8 @@ def init_source(
         # deblending of the edge source, which for bright sources
         # may ruin an entire blend. So we reinitialize edge sources
         # to allow for shifting and return the result.
-        if source_shifting is False and hasEdgeFlux(source, edge_distance):
+        source.is_edge = hasEdgeFlux(source, edge_distance)
+        if source_shifting is False and source.is_edge:
             source_shifting = True
             continue
 
