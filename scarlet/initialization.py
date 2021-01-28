@@ -324,7 +324,6 @@ def init_all_sources(
     thresh=1,
     max_components=1,
     min_snr=50,
-    edge_distance=None,
     shifting=False,
     fallback=True,
     silent=False,
@@ -373,7 +372,6 @@ def init_all_sources(
                 thresh=thresh,
                 max_components=max_components,
                 min_snr=min_snr,
-                edge_distance=edge_distance,
                 shifting=shifting,
                 fallback=fallback,
             )
@@ -399,7 +397,6 @@ def init_source(
     thresh=1,
     max_components=1,
     min_snr=50,
-    edge_distance=None,
     shifting=False,
     fallback=True,
 ):
@@ -442,12 +439,6 @@ def init_source(
         If a point source cannot be fit then the source is skipped.
     min_snr: float
         Mininmum SNR per component to accept the source.
-    edge_distance : int
-        The distance from the edge of the image to consider
-        a source an edge source. For example if `edge_distance=3`
-        then any source within 3 pixels of the edge will be
-        considered to have edge flux.
-        If `edge_distance` is `None` then the edge check is ignored.
     shifting : bool
         Whether or not to fit the position of a source.
         This is an expensive operation and is typically only used when
