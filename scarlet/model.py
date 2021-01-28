@@ -3,6 +3,10 @@ from abc import ABC, abstractmethod
 from .parameter import Parameter
 
 
+class UpdateException(Exception):
+    pass
+
+
 class Model(ABC):
     """Model base class.
 
@@ -116,3 +120,15 @@ class Model(ABC):
                     self.__class__.__name__, p.name, p
                 )
                 raise ArithmeticError(msg)
+
+    def update(self):
+        """Update internal state or configuration of the model
+
+        The method is only needed to adjust setting or parameters outside of the
+        optimization forward path.
+
+        Raises
+        ------
+        `scarlet.model.UpdateException` if the optimization needs to be interrupted
+        """
+        pass

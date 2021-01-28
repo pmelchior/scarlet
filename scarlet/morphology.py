@@ -1,4 +1,5 @@
 import autograd.numpy as np
+import numpy.ma as ma
 
 from .bbox import Box
 from .constraint import (
@@ -11,12 +12,12 @@ from .constraint import (
     NormalizationConstraint,
 )
 from .frame import Frame
-from .model import Model
+from .model import Model, UpdateException
 from .parameter import Parameter, relative_step
 from .psf import PSF
 from .wavelet import Starlet
 from . import fft
-from . import interpolation
+from . import initialization
 
 
 class Morphology(Model):
@@ -64,7 +65,7 @@ class ImageMorphology(Morphology):
         2D shift parameter (in units of image pixels)
     """
 
-    def __init__(self, frame, image, bbox=None, shift=None):
+    def __init__(self, frame, image, bbox=None, shift=None, resize=True):
         if isinstance(image, Parameter):
             assert image.name == "image"
         else:
@@ -89,6 +90,7 @@ class ImageMorphology(Morphology):
                 shift = Parameter(shift, name="shift", step=1e-2)
             parameters = (image, shift)
 
+        self._resize = resize
         super().__init__(frame, *parameters, bbox=bbox)
 
     def get_model(self, *parameters):
@@ -98,6 +100,97 @@ class ImageMorphology(Morphology):
             return image
         else:
             return fft.shift(image, shift, return_Fourier=False)
+
+    def update(self):
+        image = self._parameters[0]
+        size = max(image.shape)
+
+        if not self._resize or image.fixed:
+            return
+
+        # shrink the box? peel the onion
+        dist = 0
+        while (
+            np.all(image[dist, :] == 0)
+            and np.all(image[-dist, :] == 0)
+            and np.all(image[:, dist] == 0)
+            and np.all(image[:, -dist] == 0)
+        ):
+            dist += 1
+
+        newsize = initialization.get_minimal_boxsize(size - 2 * dist)
+        if newsize < size:
+            dist = (size - newsize) // 2
+            # Create new parameter for smaller image
+            image = Parameter(
+                image[dist:-dist, dist:-dist],
+                name=image.name,
+                prior=image.prior,
+                constraint=image.constraint,
+                step=image.step / 2,
+                fixed=image.fixed,
+                m=image.m[dist:-dist, dist:-dist] if image.m is not None else None,
+                v=image.v[dist:-dist, dist:-dist] if image.v is not None else None,
+                vhat=image.vhat[dist:-dist, dist:-dist]
+                if image.vhat is not None
+                else None,
+            )
+
+            # set new parameters
+            self._parameters = (image,) + self._parameters[1:]
+
+            # adjust bbox
+            self.bbox.origin = tuple(o + dist for o in self.bbox.origin)
+            self.bbox.shape = (newsize, newsize)
+            raise UpdateException
+
+        # grow the box?
+        # because the PSF moves power across the box, the gradients at the edge
+        # accummulate flux from beyond the box
+        if image.m is not None:
+            # next adam gradient update
+            gu = -image.m / np.sqrt(np.sqrt(ma.masked_equal(image.v, 0))) * image.step
+            gu_pull = gu * (image > 0)  # check if model has flux at the edge at all
+            edge_pull = np.array(
+                (
+                    gu_pull[:, 0].mean(),
+                    gu_pull[:, -1].mean(),
+                    gu_pull[0, :].mean(),
+                    gu_pull[-1, :].mean(),
+                )
+            )
+
+            # 0.1 compared to 1 at center
+            if np.any(edge_pull > 0.1):
+                # find next larger boxsize
+                newsize = initialization.get_minimal_boxsize(size + 1)
+                pad_width = (newsize - size) // 2
+
+                # Create new parameter for extended image
+                image = Parameter(
+                    np.pad(image, pad_width, mode="linear_ramp"),
+                    name=image.name,
+                    prior=image.prior,
+                    constraint=image.constraint,
+                    step=image.step / 2,
+                    fixed=image.fixed,
+                    m=np.pad(image.m, pad_width, mode="constant")
+                    if image.m is not None
+                    else None,
+                    v=np.pad(image.v, pad_width, mode="constant")
+                    if image.v is not None
+                    else None,
+                    vhat=np.pad(image.vhat, pad_width, mode="constant")
+                    if image.vhat is not None
+                    else None,
+                )
+                # set new parameters
+                self._parameters = (image,) + self._parameters[1:]
+
+                # adjust bbox
+                self.bbox.origin = tuple(o - pad_width for o in self.bbox.origin)
+                self.bbox.shape = (newsize, newsize)
+                raise UpdateException
 
 
 class PointSourceMorphology(Morphology):
@@ -128,7 +221,7 @@ class PointSourceMorphology(Morphology):
             assert center.name == "center"
             self.center = center
         else:
-            self.center = Parameter(center, name="center", step=1e-2)
+            self.center = Parameter(center, name="center", step=3e-2)
 
         super().__init__(frame, self.center, bbox=bbox)
 

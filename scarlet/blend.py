@@ -8,6 +8,7 @@ import proxmin
 import logging
 
 from .component import CombinedComponent
+from .model import UpdateException
 
 logger = logging.getLogger("scarlet.blend")
 
@@ -80,7 +81,7 @@ class Blend(CombinedComponent):
         # only for backward compatibility, use log_likelihood instead
         self.loss = []
 
-    def fit(self, max_iter=200, e_rel=1e-3, min_iter=1, random_skip=0, **alg_kwargs):
+    def fit(self, max_iter=200, e_rel=1e-3, min_iter=1, noise_factor=0, **alg_kwargs):
         """Fit the model for each source to the data
 
         Parameters
@@ -94,90 +95,104 @@ class Blend(CombinedComponent):
         alg_kwargs: dict
             Keywords for the `proxmin.adaprox` optimizer
         """
-        X = self.parameters + tuple(
-            p for obs in self.observations for p in obs.parameters
-        )
+        it = 0
+        self._noise_factor = noise_factor
+        while it < max_iter:
+            try:
+                X = self.parameters + tuple(
+                    p for obs in self.observations for p in obs.parameters
+                )
 
-        # compute the backward gradients
-        # but only for non-fixed parameters
-        require_grad = tuple(k for k, x in enumerate(X) if not x.fixed)
+                # compute the backward gradients
+                # but only for non-fixed parameters
+                require_grad = tuple(k for k, x in enumerate(X) if not x.fixed)
 
-        def expand_grads(*X, func=None):
-            G = func(*X)
-            expanded = [0.0] * len(X)
-            for k, j in enumerate(require_grad):
-                expanded[j] = G[k]
-            return expanded
+                def expand_grads(*X, func=None):
+                    G = func(*X)
+                    expanded = [0.0] * len(X)
+                    for k, j in enumerate(require_grad):
+                        expanded[j] = G[k]
+                    return expanded
 
-        grad_logL_func = grad(self._loss_func, require_grad)
-        grad_logL = lambda *X: expand_grads(*X, func=grad_logL_func)
+                grad_logL_func = grad(self._loss_func, require_grad)
+                grad_logL = lambda *X: expand_grads(*X, func=grad_logL_func)
 
-        # same for prior. easier her bc we call them independently
-        grad_logP = lambda *X: tuple(
-            x.prior(x.view(np.ndarray)) if x.prior is not None and not x.fixed else 0
-            for x in X
-        )
+                # same for prior. easier her bc we call them independently
+                grad_logP = lambda *X: tuple(
+                    x.prior(x.view(np.ndarray))
+                    if x.prior is not None and not x.fixed
+                    else 0
+                    for x in X
+                )
 
-        # combine for log posterior
-        _grad = lambda *X: tuple(l + p for l, p in zip(grad_logL(*X), grad_logP(*X)))
+                # combine for log posterior
+                _grad = lambda *X: tuple(
+                    l + p for l, p in zip(grad_logL(*X), grad_logP(*X))
+                )
 
-        # step sizes, allow for random skipping of parameters
-        _step = lambda *X, it: tuple(
-            1e-20
-            if np.random.rand() < random_skip
-            else x.step(x, it=it)
-            if hasattr(x.step, "__call__")
-            else x.step
-            for x in X
-        )
-        _prox = tuple(x.constraint for x in X)
+                # step sizes, allow for random skipping of parameters
+                _step = lambda *X, it: tuple(
+                    x.step(x, it=it) if hasattr(x.step, "__call__") else x.step
+                    for x in X
+                )
+                _prox = tuple(x.constraint for x in X)
 
-        # good defaults for adaprox
-        scheme = alg_kwargs.pop("scheme", "amsgrad")
-        prox_max_iter = alg_kwargs.pop("prox_max_iter", 10)
-        callback = partial(
-            self._callback,
-            e_rel=e_rel,
-            callback=alg_kwargs.pop("callback", None),
-            min_iter=min_iter,
-        )
+                # good defaults for adaprox
+                scheme = alg_kwargs.pop("scheme", "amsgrad")
+                prox_max_iter = alg_kwargs.pop("prox_max_iter", 10)
+                callback = partial(
+                    self._callback,
+                    e_rel=e_rel,
+                    callback=alg_kwargs.pop("callback", None),
+                    min_iter=min_iter,
+                )
 
-        # do we have a current state of the optimizer to warm start?
-        M = tuple(x.m if x.m is not None else np.zeros(x.shape) for x in X)
-        V = tuple(x.v if x.v is not None else np.zeros(x.shape) for x in X)
-        Vhat = tuple(x.vhat if x.vhat is not None else np.zeros(x.shape) for x in X)
+                # do we have a current state of the optimizer to warm start?
+                for x in X:
+                    if x.m is None:
+                        x.m = np.zeros(x.shape)
+                    if x.v is None:
+                        x.v = np.zeros(x.shape)
+                    if x.vhat is None:
+                        x.vhat = np.zeros(x.shape)
+                M = tuple(x.m for x in X)
+                V = tuple(x.v for x in X)
+                Vhat = tuple(x.vhat for x in X)
 
-        proxmin.adaprox(
-            X,
-            _grad,
-            _step,
-            prox=_prox,
-            max_iter=max_iter,
-            e_rel=e_rel,
-            check_convergence=False,
-            scheme=scheme,
-            prox_max_iter=prox_max_iter,
-            callback=callback,
-            M=M,
-            V=V,
-            Vhat=Vhat,
-            **alg_kwargs
-        )
+                proxmin.adaprox(
+                    X,
+                    _grad,
+                    _step,
+                    prox=_prox,
+                    max_iter=max_iter - it,
+                    e_rel=e_rel,
+                    check_convergence=False,
+                    scheme=scheme,
+                    prox_max_iter=prox_max_iter,
+                    callback=callback,
+                    M=M,
+                    V=V,
+                    Vhat=Vhat,
+                    **alg_kwargs
+                )
 
-        logger.info(
-            "scarlet ran for {0} iterations to logL = {1}".format(
-                len(self.log_likelihood), self.log_likelihood[-1]
-            )
-        )
+                logger.info(
+                    "scarlet ran for {0} iterations to logL = {1}".format(
+                        len(self.log_likelihood), self.log_likelihood[-1]
+                    )
+                )
 
-        # set convergence and standard deviation from optimizer
-        for p, m, v, vhat in zip(X, M, V, Vhat):
-            p.m = m
-            p.v = v
-            p.vhat = vhat
-            p.std = 1 / np.sqrt(ma.masked_equal(v, 0))  # this is rough estimate!
+                # set convergence and standard deviation from optimizer
+                for p, m, v, vhat in zip(X, M, V, Vhat):
+                    p.std = 1 / np.sqrt(
+                        ma.masked_equal(v, 0)
+                    )  # this is rough estimate!
 
-        return len(self.log_likelihood), self.log_likelihood[-1]
+                return len(self.log_likelihood), self.log_likelihood[-1]
+
+            # model update forces restart
+            except UpdateException:
+                it = len(self.log_likelihood)
 
     def get_model(self, *parameters, frame=None):
         """Get the model of the entire blend
@@ -247,7 +262,9 @@ class Blend(CombinedComponent):
         for observation in self.observations:
             n_obs_params = len(observation.parameters)
             obs_params = parameters[n_params : n_params + n_obs_params]
-            total_loss = total_loss - observation.get_log_likelihood(model, *obs_params)
+            total_loss = total_loss - observation.get_log_likelihood(
+                model, *obs_params, noise_factor=self._noise_factor
+            )
             n_params += n_obs_params
 
         self.loss.append(total_loss._value)
@@ -255,14 +272,28 @@ class Blend(CombinedComponent):
 
     def _callback(self, *parameters, it=None, e_rel=1e-3, callback=None, min_iter=1):
 
-        # raise ArithmeticError if some of the parameters have become inf/nan
+        # raises ArithmeticError if some of the parameters have become inf/nan
         for src in self.sources:
             src.check_parameters()
+
+        # raises UpdateException if model updates require optimimzation interruption
+        throw_exception = False
+        if it > 0 and it % 10 == 0:
+            for src in self.sources:
+                try:
+                    src.update()
+                except UpdateException:
+                    throw_exception = True
+                    pass
+            if throw_exception:
+                raise UpdateException
 
         if it > min_iter and abs(self.loss[-1] - self.loss[-2]) < e_rel * np.abs(
             self.loss[-1]
         ):
-            raise StopIteration("scarlet.Blend.fit() converged")
+            raise StopIteration(
+                "scarlet.Blend.fit() converged"
+            )  # clean return from proxmin
 
         if callback is not None:
             callback(*parameters, it=it)

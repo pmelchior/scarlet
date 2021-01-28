@@ -34,10 +34,10 @@ def setup_scarlet(
     im_lr = data_lr[None, :, :]
     # define two observation objects and match to frame
     obs_hr = scarlet.Observation(
-        im_hr, wcs=wcs_hr, psfs=scarlet.ImagePSF(psf_hr), channels=[channels[1]]
+        im_hr, wcs=wcs_hr, psf=scarlet.ImagePSF(psf_hr), channels=[channels[1]]
     )
     obs_lr = scarlet.Observation(
-        im_lr, wcs=wcs_lr, psfs=scarlet.ImagePSF(psf_lr), channels=[channels[0]]
+        im_lr, wcs=wcs_lr, psf=scarlet.ImagePSF(psf_lr), channels=[channels[0]]
     )
     # Keep the order of the observations consistent with the `channels` parameter
     # This implementation is a bit of a hack and will be refined in the future

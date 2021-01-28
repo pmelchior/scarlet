@@ -1,12 +1,13 @@
 import numpy as np
 import logging
 
-from . import operator
-from .bbox import Box, overlapped_slices
-from .constraint import CenterOnConstraint
+from .bbox import Box
+from .cache import Cache
 from .interpolation import interpolate_observation
-from .observation import Observation, LowResObservation
+from .observation import Observation
+from .renderer import NullRenderer, ConvolutionRenderer
 from .wavelet import Starlet, mad_wavelet
+from . import fft
 from . import measure
 from functools import partial
 from .constraint import PositivityConstraint
@@ -16,46 +17,54 @@ from .parameter import Parameter, relative_step
 logger = logging.getLogger("scarlet.initialisation")
 
 
-def get_best_fit_spectra(morphs, images):
-    """Calculate best fitting spectra for multiple components.
+def get_best_fit_spectrum(morph, images):
+    """Calculate best fitting spectra for one or multiple morphologies.
 
-    Solves min_A ||img - AS||^2 for the SED matrix A,
+    Solves min_A ||img - AS||^2 for the spectrum matrix A,
     assuming that the images only contain a single source.
 
     Parameters
     ----------
-    morphs: list
-        Morphology for each component in the source.
+    morph: array or list thereof
+        Morphology for each component in the source
     images: array
-        Observation to extract SEDs from.
+        images to get the spectrum amplitude from
 
     Returns
     -------
-    SED: `~numpy.array`
+    spectrum: `~numpy.array`
     """
-    K = len(morphs)
-    _morph = morphs.reshape(K, -1)
-    if isinstance(images, np.ndarray):
-        images_ = images
-    elif isinstance(images, Observation):
-        images_ = images.images
-    elif hasattr(images, "__iter__") and all(
-        tuple(obs.frame == images[0].frame for obs in images)
+
+    if isinstance(morph, (list, tuple)) or (
+        isinstance(morph, np.ndarray) and len(morph.shape) == 3
     ):
-        # all observations need to have the same frame for this mapping to work
-        images_ = np.stack(tuple(obs.images for obs in images), axis=0)
+        morphs = morph
+    else:
+        morphs = (morph,)
 
-    data = images_.reshape(images_.shape[0], -1)
-    seds = np.dot(np.linalg.inv(np.dot(_morph, _morph.T)), np.dot(_morph, data.T))
-    return seds
+    K = len(morphs)
+    C = images.shape[0]
+    im = images.reshape(C, -1)
+
+    if K == 1:
+        morph = morphs[0].reshape(-1)
+        return np.dot(im, morph) / np.dot(morph, morph)
+    else:
+        morph = np.array(morphs).reshape(K, -1)
+        return np.dot(np.linalg.inv(np.dot(morph, morph.T)), np.dot(morph, im.T))
 
 
-def get_pixel_spectrum(sky_coord, observations, correct_psf=False):
+def get_pixel_spectrum(sky_coord, observations, correct_psf=False, models=None):
     """Get the spectrum at `sky_coord` in `observation`.
 
     Yields the spectrum of a single-pixel source with flux 1 in every channel,
-    concatenated for all observations. If `correct_psf`, it homogenizes the PSFs of the
-    observations, which yields the correct spectrum for a point source.
+    concatenated for all observations.
+
+    If `correct_psf`, it homogenizes the PSFs of the observations, which yields the
+    correct spectrum for a flux=1 point source.
+
+    If `model` is set, it reads of the value of the model at `sky_coord` and yields the
+    spectrum for that model.
 
     Parameters
     ----------
@@ -65,48 +74,60 @@ def get_pixel_spectrum(sky_coord, observations, correct_psf=False):
         Observation to extract SED from.
     correct_psf: bool
         If PSF shape variations in the observations should be corrected.
+    models: instance or list of arrays
+        Rendered models for this source in every observation
 
     Returns
     -------
-    spectrum: `~numpy.array`
+    spectrum: `~numpy.array` or list thereof
     """
+    if models is not None:
+        assert correct_psf is False
 
     if not hasattr(observations, "__iter__"):
+        single = True
         observations = (observations,)
+        models = (models,)
+    else:
+        if models is not None:
+            assert len(models) == len(observations)
+        else:
+            models = (None,) * len(observations)
+        single = False
 
     spectra = []
-    for obs in observations:
-        pixel = obs.frame.get_pixel(sky_coord)
-        index = np.round(pixel).astype(np.int)
-        spectrum = obs.images[:, index[0], index[1]].copy()
+    for obs, model in zip(observations, models):
+        pixel = obs.get_pixel(sky_coord)
+        index = np.round(pixel).astype("int")
+        spectrum = obs.data[:, index[0], index[1]].copy()
 
-        if obs.frame.psf is not None and correct_psf:
-            # image of point source in observed = obs.frame.psf
-            psf_model = obs.frame.psf.get_model()
-            psf_center = psf_model.max(axis=(1, 2))
-            # best fit solution for the model amplitude of the center pixel
-            # to yield to PSF center: (spectrum * psf_center) / psf_center**2
-            # or shorter:
-            spectrum /= psf_center
+        if obs.psf is not None:
+            # correct spectrum for PSF-induced change in peak pixel intensity
+            psf_model = obs.psf.get_model()._data
+            psf_peak = psf_model.max(axis=(1, 2))
+            spectrum /= psf_peak
+        elif model is not None:
+            model_value = model[:, index[0], index[1]].copy()
+            spectrum /= model_value
 
         spectra.append(spectrum)
 
-    spectrum = np.concatenate(spectra).reshape(-1)
+        if np.any(spectrum <= 0):
+            # If the flux in all channels is  <=0,
+            # the new sed will be filled with NaN values,
+            # which will cause the code to crash later
+            msg = f"Zero or negative spectrum {spectrum} at {sky_coord}"
+            if np.all(spectrum <= 0):
+                logger.warning(msg)
+            else:
+                logger.info(msg)
 
-    if np.any(spectrum <= 0):
-        # If the flux in all channels is  <=0,
-        # the new sed will be filled with NaN values,
-        # which will cause the code to crash later
-        msg = "Zero or negative spectrum {} at y={}, x={}".format(spectrum, *sky_coord)
-        if np.all(spectrum <= 0):
-            logger.warning(msg)
-        else:
-            logger.info(msg)
-
-    return spectrum
+    if single:
+        return spectra[0]
+    return spectra
 
 
-def get_psf_spectrum(sky_coord, observations):
+def get_psf_spectrum(sky_coord, observations, compute_snr=False):
     """Get spectrum for a point source at `sky_coord` in `observation`
 
     Equivalent to point source photometry for isolated sources. For extended source,
@@ -121,53 +142,78 @@ def get_psf_spectrum(sky_coord, observations):
     sky_coord: tuple
         Position in the observation
     observations: instance or list of `~scarlet.Observation`
-        Observation to extract SED from.
+        Observation to extract the spectrum from.
+    compute_snr: bool
+        Whether the compute the SNR of a PSF at `sky_coord`
 
     Returns
     -------
-    spectrum: `~numpy.array`
+    spectrum: ~numpy.array` or list thereof
     """
 
     if not hasattr(observations, "__iter__"):
+        single = True
         observations = (observations,)
+    else:
+        single = False
 
     spectra = []
-    for obs in observations:
+    if compute_snr:
+        snr_num, snr_denom = [], []
 
-        pixel = obs.frame.get_pixel(sky_coord)
-        index = np.round(pixel).astype(np.int)
+    for i, obs in enumerate(observations):
+        pixel = obs.get_pixel(sky_coord)
+        index = np.round(pixel).astype("int")
 
-        psf = obs.frame.psf.get_model()
-        bbox = obs.frame.psf.bbox + (0, *index)
-        img = bbox.extract_from(obs.images)
+        psf = obs.psf.get_model()
+        bbox = obs.psf.bbox + (0, *index)
+        img = bbox.extract_from(obs.data)
+        noise_rms = obs.noise_rms
+        # masked array doesn't survive extract_from
+        noise = bbox.extract_from(noise_rms)
+        noise_mask = bbox.extract_from(noise_rms.mask)
 
-        # img now 0 outside of observation, psf is not:
-        # restrict both to observed pixels to avoid truncation effects
-        mask = img[0] > 0
-        psf = psf[:, mask]  # flattens array in last two axes
-        img = img[:, mask]
+        spectra.append([])
+        # apply mask: needs to be done separately in each channel
+        for c in range(obs.C):
+            # outside of observation or masked pixels have noise_mask = 0
+            mask = ~(noise_mask[c])
+            psf_ = psf[c, mask]
+            img_ = img[c, mask]
 
-        # amplitude of img when projected onto psf
-        # i.e. factor to multiply psf with to get img (if img looked like psf)
-        spectrum = (img * psf).sum(axis=1) / (psf * psf).sum(axis=1)
-        spectra.append(spectrum)
+            # amplitude of img when projected onto psf
+            # i.e. factor to multiply psf with to get img (if img looked like psf)
+            img_psf = img_ @ psf_
+            spectrum = img_psf / (psf_ @ psf_)
+            spectra[i].append(spectrum)
 
-    spectrum = np.concatenate(spectra).reshape(-1)
+            if compute_snr:
+                noise_ = noise[c, mask]
+                snr_num.append(img_psf)
+                snr_denom.append((psf_ * noise_ ** 2) @ psf_)
 
-    if np.any(spectrum <= 0):
-        # If the flux in all channels is  <=0,
-        # the new sed will be filled with NaN values,
-        # which will cause the code to crash later
-        msg = "Zero or negative spectrum {} at y={}, x={}".format(spectrum, *sky_coord)
-        if np.all(spectrum <= 0):
-            logger.warning(msg)
-        else:
-            logger.info(msg)
+        spectra[i] = np.array(spectra[i])
 
-    return spectrum
+        if np.any(spectra[i] <= 0):
+            # If the flux in all channels is  <=0,
+            # the new sed will be filled with NaN values,
+            # which will cause the code to crash later
+            msg = f"Zero or negative spectrum {spectra[i]} at {sky_coord}"
+            if np.all(spectra[i] <= 0):
+                logger.warning(msg)
+            else:
+                logger.info(msg)
+
+    if single:
+        spectra = spectra[0]
+
+    if compute_snr:
+        snr = np.sum(snr_num) / np.sqrt(np.sum(snr_denom))
+        return spectra, snr
+    return spectra
 
 
-def get_minimal_boxsize(size, min_size=15, increment=8):
+def get_minimal_boxsize(size, min_size=21, increment=10):
     boxsize = min_size
     while boxsize < size:
         boxsize += increment  # keep box sizes quite small
@@ -197,622 +243,162 @@ def trim_morphology(center_index, morph, bg_thresh=0):
     # define new box and cut morphology accordingly
     boxsize = get_minimal_boxsize(size)
     bottom = center_index[0] - boxsize // 2
-    top = center_index[0] + boxsize // 2
+    top = center_index[0] + boxsize // 2 + 1
     left = center_index[1] - boxsize // 2
-    right = center_index[1] + boxsize // 2
+    right = center_index[1] + boxsize // 2 + 1
     bbox = Box.from_bounds((bottom, top), (left, right))
     morph = bbox.extract_from(morph)
     return morph, bbox
 
-def init_compact_source(
-    sky_coord, frame, observations,
-):
-    """Initialize a source just like `init_extended_source`,
-    but with the morphology of a point source.
-    """
 
-    # get PSF-corrected center pixel spectrum
-    spectrum = get_pixel_spectrum(sky_coord, observations, correct_psf=True)
-
-    # position in frame coordinates
-    center = frame.get_pixel(sky_coord)
-    center_index = np.round(center).astype(np.int)
-
-    # morphology initialized as a point source
-    morph_ = frame.psf.get_model().mean(axis=0)
-    origin = (
-        center_index[0] - (morph_.shape[0] // 2),
-        center_index[1] - (morph_.shape[1] // 2),
-    )
-    bbox_ = Box(morph_.shape, origin=origin)
-
-    # adjust box size to conform with extended sources
-    size = max(morph_.shape)
-    boxsize = get_minimal_boxsize(size)
-    morph = np.zeros((boxsize, boxsize))
-    origin = (
-        center_index[0] - (morph.shape[0] // 2),
-        center_index[1] - (morph.shape[1] // 2),
-    )
-    bbox = Box(morph.shape, origin=origin)
-
-    slices = overlapped_slices(bbox, bbox_)
-    morph[slices[0]] = morph_[slices[1]]
-
-    # apply max normalization
-    morph_max = morph.max()
-    morph /= morph_max
-    spectrum *= morph_max
-
-    # expand to full bbox
-    bbox = frame.bbox[0] @ bbox
-
-    return spectrum, morph, bbox
-
-
-def init_extended_source(
-    sky_coord,
-    frame,
-    observations,
-    coadd=None,
-    coadd_rms=None,
-    compact=False,
-    thresh=1,
-    symmetric=True,
-    monotonic="flat",
-    min_grad=0.1,
-    spectrum = None,
-    full = False,
-):
-    if not hasattr(observations, "__iter__"):
-        observations = (observations,)
-
-    if spectrum is None:
-        # get PSF-corrected center pixel spectrum
-        spectrum = get_pixel_spectrum(sky_coord, observations, correct_psf=True)
-
-    # position in frame coordinates
-    center = frame.get_pixel(sky_coord)
-    center_index = np.round(center).astype(np.int)
-
-    if coadd is None:
-        # determine initial SED from peak position
-        # don't correct for PSF variation: emphasize sharper bands
-        spectra = [
-            get_pixel_spectrum(sky_coord, obs, correct_psf=False)
-            for obs in observations
-        ]
-
-        try:
-            bg_rmses = np.array(
-                [
-                    [1 / np.sqrt(w[w > 0].mean()) for w in obs.weights]
-                    for obs in observations
-                ]
-            )
-        except:
-            raise AttributeError(
-                "Observation.weights missing! Please set inverse variance weights"
-            )
-        coadd, bg_rms = build_sed_coadd(spectra, bg_rmses, observations)
-    else:
-        if coadd_rms is None:
-            raise AttributeError(
-                "background cutoff missing! Please set argument coadd_rms"
-            )
-        coadd = coadd.copy()  # will likely be reused by other sources
-        bg_rms = coadd_rms
-
-    # Apply the necessary constraints
-    if symmetric:
-        morph = operator.prox_uncentered_symmetry(
-            coadd,
-            0,
-            center=center_index,
-            algorithm="sdss",
-        )
-    else:
-        morph = coadd
-    if monotonic:
-        if monotonic is True:
-            monotonic = "angle"
-        # use finite thresh to remove flat bridges
-        prox_monotonic = operator.prox_weighted_monotonic(
-            morph.shape,
-            neighbor_weight=monotonic,
-            center=center_index,
-            min_gradient=min_grad,
-        )
-        morph = prox_monotonic(morph, 0).reshape(morph.shape)
-
-    if full == False:
-        # truncate morph at thresh * bg_rms
-        threshold = bg_rms * thresh
-        morph, bbox = trim_morphology(center_index, morph, bg_thresh=threshold)
-        bbox = frame.bbox[0] @ bbox
-    else:
-        bbox = None
-
-    # normalize to unity at peak pixel for the imposed normalization
-    if morph.sum() > 0:
-        morph /= morph.max()
-
-        # since the spectrum assumes a point source:
-        # determine the optimal amplitude for matching morph and the model psf
-        # TODO: morph is still convolved with the observed PSF, but we compute
-        # amplitude correction as if it were not..
-        if frame.psf is not None:
-            psf = frame.psf.get_model()
-
-            shape = (psf.shape[0], *morph.shape)
-            bbox_ = Box(
-                shape,
-                origin=(
-                    psf.shape[0] - shape[0],
-                    psf.shape[1] // 2 - shape[1] // 2,
-                    psf.shape[2] // 2 - shape[2] // 2,
-                ),
-            )
-            psf = bbox_.extract_from(psf)
-
-            # spectrum assumes the source to have point-source morphology,
-            # otherwise get_pixel_spectrum is not well-defined.
-            # factor corrects that by finding out how much (in terms of a scalar number)
-            # morph looks like the (model) psf.
-            # if model psf is constant across bands (as it should) then factor
-            # is constant as well
-            factor = (morph[None, :, :] * psf).sum(axis=(1, 2)) / (psf * psf).sum(
-                axis=(1, 2)
-            )
-
-            # correct amplitude from point source to this morph
-            spectrum /= factor
-
-    else:
-        morph = CenterOnConstraint()(morph, 0)
-        msg = "No flux in morphology model for source at y={0} x={1}".format(*sky_coord)
-        logger.warning(msg)
-
-    return spectrum, morph, bbox
-
-
-def init_starlet_source(
-    sky_coord,
-    model_frame,
-    observations,
-    thresh = 1,
-    spectrum = None,
-    full=False,
-    coadd=None,
-    coadd_rms=None,
-    symmetric=False,
-    monotonic="flat",
-    min_grad=0.,
-    starlet_thresh=5,
-):
-
-    # initialize as extended from observation
-    if not hasattr(observations, "__iter__"):
-        observations = (observations,)
-    if spectrum is not None:
-        constraint = PositivityConstraint(zero=1e-20)  # slightly positive values
-        step = partial(relative_step, factor=1e-6)
-        spectrum = Parameter(spectrum,
-                             name="spectrum",
-                             step=step,
-                             constraint=constraint,
-                             )
-
-    spectrum, morph, bbox = init_extended_source(sky_coord,
-                                                 model_frame,
-                                                 observations,
-                                                 spectrum = spectrum,
-                                                 coadd=coadd,
-                                                 thresh = thresh,
-                                                 coadd_rms=coadd_rms,
-                                                 symmetric=symmetric,
-                                                 monotonic=monotonic,
-                                                 min_grad=min_grad,
-                                                 full=full,
-                                                 )
-
-    noise = []
-    for obs in observations:
-        noise += [
-            mad_wavelet(obs.images)
-            * np.sqrt(np.sum(obs._diff_kernels.image ** 2, axis=(-2, -1)))
-        ]
-    noise = np.concatenate(noise)
-
-    # Threshold in units of noise on the coadd
-    starlet_thresh = starlet_thresh * np.sqrt(np.sum((spectrum._data * noise) ** 2))
-    return morph, starlet_thresh, bbox
-
-
-def init_multicomponent_source(
-    sky_coord,
-    frame,
-    observations,
-    coadd=None,
-    coadd_rms=None,
-    flux_percentiles=None,
-    thresh=1,
-    symmetric=True,
-    monotonic="flat",
-    min_grad=0.1,
-    obs_ref=None,
-):
-    """Initialize multiple components
-    See `MultiComponentSource` for a description of the parameters
-    """
-    try:
-        iter(observations)
-    except TypeError:
-        observations = [observations]
-
-    if obs_ref is None:
-        if len(observations) == 1:
-            obs_ref = observations[0]
-        else:
-            # The observation that lives in the same plane as the frame
-            loc = np.where([type(obs) is Observation for obs in observations])
-            # If more than one element is an `Observation`, then pick the first one as a reference (arbitrary)
-            obs_ref = observations[loc[0]]
-
-    if flux_percentiles is None:
-        flux_percentiles = [25]
-
-    # Initialize the first component as an extended source
-    sed, morph, bbox = init_extended_source(
-        sky_coord,
-        frame,
-        observations,
-        coadd=coadd,
-        coadd_rms=coadd_rms,
-        thresh=thresh,
-        symmetric=symmetric,
-        monotonic=monotonic,
-        min_grad=min_grad,
-    )
-    # create a list of components from base morph by layering them on top of
-    # each other so that they sum up to morph
-    K = len(flux_percentiles) + 1
-
-    Ny, Nx = morph.shape
-    morphs = np.zeros((K, Ny, Nx), dtype=morph.dtype)
-    morphs[0, :, :] = morph[:, :]
-    max_flux = morph.max()
-    percentiles_ = np.sort(flux_percentiles)
-    last_thresh = 0
-    for k in range(1, K):
-        perc = percentiles_[k - 1]
-        flux_thresh = perc * max_flux / 100
-        mask_ = morph > flux_thresh
-        morphs[k - 1][mask_] = flux_thresh - last_thresh
-        morphs[k][mask_] = morph[mask_] - flux_thresh
-        last_thresh = flux_thresh
-
-    # renormalize morphs: initially Smax
-    for k in range(K):
-        if np.all(morphs[k] <= 0):
-            msg = "Zero or negative morphology for component {} at y={}, x={}"
-            logger.warning(msg.format(k, *sky_coord))
-        morphs[k] /= morphs[k].max()
-
-    # optimal SEDs given the morphologies, assuming img only has that source
-    boxed_img = bbox.extract_from(obs_ref.images)
-    spectra = get_best_fit_spectra(morphs, boxed_img)
-
-    for k in range(K):
-        if np.all(spectra[k] <= 0):
-            # If the flux in all channels is  <=0,
-            # the new sed will be filled with NaN values,
-            # which will cause the code to crash later
-            msg = "Zero or negative spectrum {} for component {} at y={}, x={}".format(
-                spectra[k], k, *sky_coord
-            )
-            logger.warning(msg)
-
-    # avoid using the same box for multiple components
-    boxes = tuple(bbox.copy() for k in range(K))
-
-    # # define minimal boxes (NOTE: dangerous due to box truncation)
-    # morphs_ = []
-    # boxes = []
-    # threshold = 0
-    # for k in range(K):
-    #     morph, bbox = trim_morphology(sky_coord, frame, morphs[k], threshold)
-    #     morphs_.append(morph)
-    #     boxes.append(bbox)
-    # morphs = morphs_
-
-    return spectra, morphs, boxes
-
-
-def build_sed_coadd(seds, bg_rmses, observations, obs_ref=None):
-    """Build a channel weighted coadd to use for source detection
+def build_initialization_image(observations, spectra=None):
+    """Build a spectrum-weighted image from all observations.
 
     Parameters
     ----------
-    sed: array
-        SED at the center of the source.
-    bg_rms: array
-        Background RMS in each channel in observation.
     observations: list of `~scarlet.observation.Observation`
-        Observations to use for the coadd.
-    obs_ref: `scarlet.Observation`
-        observation to use as a reference frame.
-        If set to None, the first (or only if applicable) element with type `Observation` is used.
+        Every observation with a suitable renderer will contribute to the initialization image, according to the noise level of its data
+    spectra: list of array
+        for every observation: spectrum at the center of the source
+        If not set, returns the detection image in all channels, instead of averaging.
 
     Returns
     -------
-    detect: array
-        2D image created by weighting all of the channels by SED
-    bg_cutoff: float
-        The minimum value in `detect` to include in detection.
+    image: array
+        image created by weighting all of the channels by SED
+    std: float
+        the effective noise standard deviation of `image`
     """
+
     if not hasattr(observations, "__iter__"):
         observations = (observations,)
-        seds = (seds,)
-        bg_rmses = (bg_rmses,)
+        if spectra is not None:
+            spectra = (spectra,)
 
-    if len(observations) == 1:
-        obs_ref = observations[0]
+    # only use cache for the unweighted images
+    # otherwise we have one per source!
+    name = "build_initialization_image"
+    key = tuple(observations)
+    if spectra is None:
+        try:
+            return Cache.check(name, key)
+        except KeyError:
+            pass
 
-    # The observation that lives in the same plane as the frame
-    if obs_ref is None:
-        loc = np.where([type(obs) is Observation for obs in observations])
-        obs_ref = observations[np.int(loc[0])]
-    else:
-        # The observation that lives in the same plane as the frame
-        assert type(obs_ref) is not LowResObservation, (
-            f"Reference observation should not be a `LowResObservation`. The observation, {obs_ref} "
-            f"provided refers to an observation of type: {type(obs_ref)}"
-        )
-
-    positive_img = []
-    positive_bgrms = []
-    weights = []
-    jacobian_args = []
+    model_frame = observations[0].model_frame
+    detect = np.zeros(model_frame.shape, dtype=model_frame.dtype)
+    var = np.zeros(model_frame.shape, dtype=model_frame.dtype)
     for i, obs in enumerate(observations):
-        sed = seds[i]
-        try:
-            iter(sed)
-        except TypeError:
-            sed = [sed]
-        C = len(sed)
-        bg_rms = bg_rmses[i]
-        try:
-            iter(bg_rms)
-        except TypeError:
-            bg_rms = [bg_rms]
-        if np.any(np.array(bg_rms) <= 0):
-            raise ValueError("bg_rms must be greater than zero in all channels")
 
-        positive = [c for c in range(C) if sed[c] > 0]
-        if type(obs) is not LowResObservation:
-            positive_img += [obs.images[c] for c in positive]
+        if not isinstance(obs.renderer, (NullRenderer, ConvolutionRenderer)):
+            continue
+
+        data = obs.data
+        bg_rms = np.mean(obs.noise_rms, axis=(1, 2))
+
+        if spectra is None:
+            spectrum = weights = 1
         else:
-            positive_img += [
-                interpolate_observation(obs, obs_ref.frame)[c] for c in positive
-            ]
-        positive_bgrms += [bg_rms[c] for c in positive]
-        weights += [sed[c] / bg_rms[c] ** 2 for c in positive]
-        jacobian_args += [sed[c] ** 2 / bg_rms[c] ** 2 for c in positive]
+            spectrum = spectra[i][:, None, None]
+            weights = spectrum / (bg_rms ** 2)[:, None, None]
 
-    detect = np.einsum("i,i...", np.array(weights), positive_img) / np.sum(
-        jacobian_args
-    )
+        data_slice, model_slice = obs.renderer.slices
+        obs.renderer.map_channels(detect)[model_slice] += weights * data[data_slice]
+        obs.renderer.map_channels(var)[model_slice] += spectrum * weights
 
-    # thresh is multiple above the rms of detect (weighted variance across channels)
-    bg_cutoff = np.sqrt(
-        (np.array(weights) ** 2 * np.array(positive_bgrms) ** 2).sum()
-    ) / np.sum(jacobian_args)
-    return detect, bg_cutoff
+    if spectra is not None:
+        detect = detect.sum(axis=0)
+        var = var.sum(axis=0)
 
+    # only save the unweighted one
+    if spectra is None:
+        Cache.set(name, key, (detect, np.sqrt(var)))
 
-def build_initialization_coadd(observations, filtered_coadd=False, obs_idx=None):
-    """Build a channel weighted coadd to use for source detection
-
-    For `LowResObservation`, images are interpolated to a reference frame
-
-    Parameters
-    ----------
-    observations: `~scarlet.observation.Observation`
-        Observation to use for the coadd.
-    filtered_coadd: `bool`
-        if set to True, images are filtered using wavelet filtering before interpolation/coadding
-    obs_idx: `int`
-        index of the observation in observations to use as a reference frame.
-        If set to None, the first element with type `Observation` is used.
-
-    Returns
-    -------
-    detect: array
-        2D image created by weighting all of the channels by SED
-    bg_cutoff: float
-        The minimum value in `detect` to include in detection.
-    """
-    try:
-        iter(observations)
-    except TypeError:
-        observations = [observations]
-
-    if obs_idx is None:
-        loc = np.where([type(obs) is Observation for obs in observations])
-        obs_ref = observations[loc[0][0]]
-    else:
-        # The observation that lives in the same plane as the frame
-        assert type(observations[obs_idx]) is Observation, (
-            f"Reference observation should be an `Observation`. The observation index, {obs_idx} "
-            f"provided refers to an observation of type: {type(observations[obs_idx])}"
-        )
-        # If more than one element is an `Observation`, then pick the first one as a reference (arbitrary)
-        obs_ref = observations[obs_idx]
-
-    coadd = 0
-    jacobian = 0
-    weights = 0
-    for obs in observations:
-        try:
-            weights = np.array([w[w > 0].mean() for w in obs.weights])
-        except:
-            raise AttributeError(
-                "Observation.weights missing! Please set inverse variance weights"
-            )
-
-        if obs is obs_ref:
-            if filtered_coadd is True:
-                star = Starlet(obs.images)
-                # Sarlet filtering at 5 sigma
-                star.filter()
-                # Sets the last starlet scale to 0 to remove the wings of the profile introduced by psfs
-                star.coefficients[:, -1, :, :] = 0
-                # Positivity
-                star.coefficients[star.coefficients < 0] = 0
-                images = star.image
-            else:
-                images = obs.images
-        else:
-            # interpolate low-res to reference resolution
-            images = interpolate_observation(
-                obs, obs_ref.frame, wave_filter=filtered_coadd
-            )
-        if filtered_coadd is True:
-            coadd += np.sum(
-                images / np.sum(images, axis=(-2, -1))[:, None, None], axis=0
-            )
-        else:
-            # Weighted coadd
-            coadd += (images * weights[:, None, None]).sum(axis=(0))
-            jacobian += weights.sum()
-
-    if filtered_coadd is True:
-        coadd /= np.max(coadd)
-        bg_cutoff = 0.01
-        return coadd, bg_cutoff
-    coadd /= jacobian
-    # thresh is multiple above the rms of detect (weighted variance across channels)
-    bg_cutoff = np.sqrt((weights ** 2).sum()) / jacobian
-    return coadd, bg_cutoff
+    return detect, np.sqrt(var)
 
 
-def hasEdgeFlux(source, edgeDistance=1):
-    """hasEdgeFlux
-
-    Determine whether or not a source has flux within `edgeDistance`
-    of the edge.
-
-    Parameters
-    ----------
-    source : `scarlet.Component`
-        The source to check for edge flux
-    edgeDistance : int
-        The distance from the edge of the image to consider
-        a source an edge source. For example if `edgeDistance=3`
-        then any source within 3 pixels of the edge will be
-        considered to have edge flux.
-        If `edgeDistance` is `None` then the edge check is ignored.
-
-    Returns
-    -------
-    isEdge: `bool`
-        Whether or not the source has flux on the edge.
-    """
-    if edgeDistance is None:
-        return False
-
-    assert edgeDistance > 0
-
-    # Use the first band that has a non-zero SED
-    flux = measure.flux(source)
-    if hasattr(source, "sed"):
-        band = np.min(np.where(flux > 0)[0])
-    else:
-        band = np.min(np.where(flux > 0)[0])
-    model = source.get_model()[band]
-    for edge in range(edgeDistance):
-        if (
-            np.any(model[edge - 1] > 0)
-            or np.any(model[-edge] > 0)
-            or np.any(model[:, edge - 1] > 0)
-            or np.any(model[:, -edge] > 0)
-        ):
-            return True
-    return False
-
-
-def initAllSources(
+def init_all_sources(
     frame,
     centers,
-    observation,
-    symmetric=False,
-    monotonic=True,
+    observations,
     thresh=1,
-    maxComponents=1,
-    edgeDistance=1,
+    max_components=1,
+    min_snr=50,
     shifting=False,
-    downgrade=True,
     fallback=True,
-    minGradient=0,
+    silent=False,
+    set_spectra=True,
 ):
     """Initialize all sources in a blend
 
-    Any sources which cannot be initialized are returned as a `skipped`
-    index, the index needed to reinsert them into a catalog to preserve
-    their index in the output catalog.
+    Seeks to initialize sources at the sky positions of `centers` with multiple
+    components of type `ExtendedSource`. If each component has sufficient SNR, the
+    model will be kept, otherwise one component is removed and the source reinitialized.
+    If a source cannot be initialized, its index is returned in `skipped`.
 
-    See `~initSources` for a description of the parameters
+    See `~init_sources` for a description of the arguments
 
     Parameters
     ----------
     centers : list of tuples
-        `(y, x)` center location for each source
+        `(y, x)` center location for each source in sky coordinates
+    silent: bool
+        If set to True, will prevent exceptions from being thrown abd register the
+        source index in a list of skipped sources.
+    set_spectra: bool
+        If set to True, will solve for the best spectra of all sources given the
+        observations. See `set_spectra_to_match` for details.
 
     Returns
     -------
     sources: list
         List of intialized sources, where each source derives from the
         `~scarlet.Component` class.
+    skipped: list
+        This list contains sources that failed to initialize with `silent` = True
     """
+    if not hasattr(observations, "__iter__"):
+        observations = (observations,)
+
     # Only deblend sources that can be initialized
     sources = []
     skipped = []
     for k, center in enumerate(centers):
-        source = initSource(
-            frame,
-            center,
-            observation,
-            symmetric,
-            monotonic,
-            thresh,
-            maxComponents,
-            edgeDistance,
-            shifting,
-            downgrade,
-            fallback,
-            minGradient,
-        )
-        if source is not None:
+        try:
+            source = init_source(
+                frame,
+                center,
+                observations,
+                thresh=thresh,
+                max_components=max_components,
+                min_snr=min_snr,
+                shifting=shifting,
+                fallback=fallback,
+            )
             sources.append(source)
-        else:
-            skipped.append(k)
+        except Exception as e:
+            msg = f"Failed to initialize source {k}"
+            logger.warning(msg)
+            if silent:
+                skipped.append(k)
+            else:
+                raise e
+
+    if set_spectra:
+        set_spectra_to_match(sources, observations)
+
     return sources, skipped
 
 
-def initSource(
+def init_source(
     frame,
     center,
-    observation,
-    symmetric=False,
-    monotonic=True,
+    observations,
     thresh=1,
-    maxComponents=1,
-    edgeDistance=1,
+    max_components=1,
+    min_snr=50,
     shifting=False,
-    downgrade=True,
     fallback=True,
-    minGradient=0,
 ):
     """Initialize a Source
 
@@ -829,162 +415,147 @@ def initSource(
     single signal-to-noise weighted image for initialization)
     to initialize, and a true spurious detection will not have
     enough signal to initialize as a point source.
-    If all of the models fail, including a `PointSource` model,
+    If all of the models fail, including a `CompactExtendedSource` model,
     then this source is skipped.
 
     Parameters
     ----------
-    frame : `LsstFrame`
+    frame : `~scarlet.Frame`
         The model frame for the scene
     center : `tuple` of `float``
         `(y, x)` location for the center of the source.
-    observation : `~scarlet.Observation`
+    observations : instance or list of `~scarlet.Observation`
         The `Observation` that contains the images, weights, and PSF
         used to generate the model.
-    symmetric : `bool`
-        Whether or not the object is symmetric
-    monotonic : `bool`
-        Whether or not the object has flux monotonically
-        decreasing from its center
     thresh : `float`
         Fraction of the background to use as a threshold for
         each pixel in the initialization
-    maxComponents : int
+    max_components : int
         The maximum number of components in a source.
         If `fallback` is `True` then when
-        a source fails to initialize with `maxComponents` it
+        a source fails to initialize with `max_components` it
         will continue to subtract one from the number of components
-        until it reaches zero (which fits a point source).
+        until it reaches zero (which fits a `CompactExtendedSource`).
         If a point source cannot be fit then the source is skipped.
-    edgeDistance : int
-        The distance from the edge of the image to consider
-        a source an edge source. For example if `edgeDistance=3`
-        then any source within 3 pixels of the edge will be
-        considered to have edge flux.
-        If `edgeDistance` is `None` then the edge check is ignored.
+    min_snr: float
+        Mininmum SNR per component to accept the source.
     shifting : bool
         Whether or not to fit the position of a source.
         This is an expensive operation and is typically only used when
         a source is on the edge of the detector.
-    downgrade : bool
-        Whether or not to decrease the number of components for sources
-        with small bounding boxes. For example, a source with no flux
-        outside of its 16x16 box is unlikely to be resolved enough
-        for multiple components, so a single source can be used.
     fallback : bool
         Whether to reduce the number of components
-        if the model cannot be initialized with `maxComponents`.
-        This is unlikely to be used in production
+        if the model cannot be initialized with `max_components`.
+        Fallback = False is unlikely to be used in production
         but can be useful for troubleshooting when an error can cause
         a particular source class to fail every time.
+    prerender: bool
+        Whether to initialize the source with pre-rendered observations.
+        This is an experimental feature, which may be removed in the future.
     """
-    from .source import PointSource, ExtendedSource
+    from .source import ExtendedSource
 
-    while maxComponents > 1:
+    if not hasattr(observations, "__iter__"):
+        observations = (observations,)
+
+    source_shifting = shifting
+    if fallback:
+        _, psf_snr = get_psf_spectrum(center, observations, compute_snr=True)
+        max_components = np.min(
+            [max_components, np.max([0, np.floor(psf_snr / min_snr).astype("int")])]
+        )
+
+    while max_components >= 0:
         try:
-            source = ExtendedSource(
-                frame,
-                center,
-                observation,
-                thresh=thresh,
-                shifting=shifting,
-                K=maxComponents,
-            )
-            try:
-                source.check_parameters()
-                # Make sure that SED is >0 in at least 1 band
-                if np.any(
-                    [
-                        np.all(child.children[0].get_model() <= 0)
-                        for child in source.children
-                    ]
-                ):
-                    raise ArithmeticError
-            except ArithmeticError:
-                msg = "Could not initialize source at {} with {} components".format(
-                    center, maxComponents
+            if max_components > 0:
+                source = ExtendedSource(
+                    frame,
+                    center,
+                    observations,
+                    thresh=thresh,
+                    shifting=source_shifting,
+                    K=max_components,
                 )
-                logger.warning(msg)
-                raise ValueError(msg)
-
-            if downgrade and np.all(np.array(source.bbox.shape[1:]) <= 8):
-                # the source is in a small box so it must be a point source
-                maxComponents = 0
-            elif downgrade and np.all(np.array(source.bbox.shape[1:]) <= 16):
-                # if the source is in a slightly larger box
-                # it is not big enough to model with 2 components
-                maxComponents = 1
-            elif hasEdgeFlux(source, edgeDistance):
-                source.shifting = True
-
-            break
-        except Exception as e:
-            if not fallback:
-                raise e
-            # If the MultiComponentSource failed to initialize
-            # try an ExtendedSource
-            maxComponents -= 1
-
-    if maxComponents == 1:
-        try:
-            source = ExtendedSource(
-                frame, center, observation, thresh=thresh, shifting=shifting
-            )
-
-            try:
-                source.check_parameters()
-                if np.all(source.children[0].get_model() <= 0):
-                    raise ArithmeticError
-            except ArithmeticError:
-                msg = "Could not initlialize source at {} with 1 component".format(
-                    center
+            else:
+                source = ExtendedSource(
+                    frame, center, observations, shifting=source_shifting, compact=True
                 )
-                logger.warning(msg)
-                raise ValueError(msg)
 
-            if downgrade and np.all(np.array(source.bbox.shape[1:]) <= 16):
-                # the source is in a small box so it must be a point source
-                maxComponents = 0
-            elif hasEdgeFlux(source, edgeDistance):
-                source.shifting = True
-        except Exception as e:
-            if not fallback:
+            # test if parameters are fine, otherwise throw ArithmeticError
+            source.check_parameters()
+
+        except ArithmeticError as e:
+            if fallback:
+                msg = f"Could not initialize source at {center} with {max_components} components: {e}"
+                logger.info(msg)
+                max_components -= 1
+                continue
+            else:
                 raise e
-            # If the source is too faint for background detection,
-            # initialize it as a PointSource
-            maxComponents -= 1
 
-    if maxComponents == 0:
-        try:
-            source = PointSource(frame, center, observation)
-        except Exception:
-            # None of the models worked to initialize the source,
-            # so skip this source
-            return None
+        return source
 
-    if hasEdgeFlux(source, edgeDistance):
-        # The detection algorithm implemented in meas_algorithms
-        # does not place sources within the edge mask
-        # (roughly 5 pixels from the edge). This results in poor
-        # deblending of the edge source, which for bright sources
-        # may ruin an entire blend. So we reinitialize edge sources
-        # to allow for shifting and return the result.
-        if not isinstance(source, PointSource) and not shifting:
-            return initSource(
-                frame,
-                center,
-                observation,
-                symmetric,
-                monotonic,
-                thresh,
-                maxComponents,
-                edgeDistance,
-                shifting=True,
-                downgrade=downgrade,
-                fallback=fallback,
-            )
-        source.isEdge = True
-    else:
-        source.isEdge = False
 
-    return source
+def set_spectra_to_match(sources, observations):
+    """Sets the spectra of any `FactorizedComponent` to match the Observations.
+
+    Computes the best-fit amplitude of the rendered model of the sources in every
+    channel of every observation as a linear inverse problem.
+
+    Parameters
+    ----------
+    sources: list of sources
+        Only `FactorizedComponent` or `CombinedComponent` will be considered
+    observations: `scarlet.Observation` or list thereof
+    """
+
+    from .component import FactorizedComponent, CombinedComponent
+
+    if not hasattr(observations, "__iter__"):
+        observations = (observations,)
+    model_frame = observations[0].model_frame
+
+    for obs in observations:
+
+        # extract model for every component
+        morphs = []
+        parameters = []
+        for src in sources:
+            if isinstance(src, CombinedComponent):
+                components = src.children
+            else:
+                components = (src,)
+            for c in components:
+                if isinstance(c, FactorizedComponent):
+                    p = c.parameters[0]
+                    if not p.fixed:
+                        obs.renderer.map_channels(p)[:] = 1
+                        parameters.append(p)
+                        model_ = obs.render(c.get_model(frame=model_frame))
+                        morphs.append(model_)
+
+        morphs = np.array(morphs)
+        K = len(morphs)
+
+        images = obs.data
+        weights = obs.weights
+        C = obs.C
+
+        # independent channels, no mixing
+        # solve the linear inverse problem of the amplitudes in every channel
+        # given all the rendered morphologies
+        # spectrum = (M^T Sigma^-1 M)^-1 M^T Sigma^-1 * im
+        spectra = np.empty((K, C))
+        for c in range(C):
+            im = images[c].reshape(-1)
+            w = weights[c].reshape(-1)
+            m = morphs[:, c, :, :].reshape(K, -1)
+            covar = np.linalg.inv((m * w[None, :]) @ m.T)
+            spectra[:, c] = covar @ m @ (im * w)
+
+        for p, spectrum in zip(parameters, spectra):
+            obs.renderer.map_channels(p)[:] = spectrum
+
+    # enforce constraints
+    for p in parameters:
+        p[:] = p.constraint(p, 0)

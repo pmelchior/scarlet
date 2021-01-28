@@ -4,7 +4,8 @@ from .cache import Cache
 from scipy.stats import median_absolute_deviation as mad
 
 # Filter for the scarlet transform. Here bspline
-h = np.array([1. / 16, 1. / 4, 3. / 8, 1. / 4, 1. / 16])
+h = np.array([1.0 / 16, 1.0 / 4, 3.0 / 8, 1.0 / 4, 1.0 / 16])
+
 
 class Starlet(object):
     """ A class used to create the Wavelet transform of a cube of images from the 'a trou' algorithm.
@@ -14,6 +15,7 @@ class Starlet(object):
         shape. The fft of the seed starlet is cached so that it can be reused in the transform of other
         images that have the same shape.
     """
+
     def __init__(self, image=None, lvl=None, coefficients=None, direct=True):
         """ Initialise the Starlet object
 
@@ -33,7 +35,9 @@ class Starlet(object):
         self._direct = direct
         if coefficients is None:
             if image is None:
-                raise InputError('At least an image or a set of coefficients should be provided')
+                raise InputError(
+                    "At least an image or a set of coefficients should be provided"
+                )
             else:
                 # Original shape of the image
                 self._image_shape = image.shape
@@ -51,8 +55,10 @@ class Starlet(object):
             self._image_shape = [coefficients.shape[0], *coefficients.shape[-2:]]
             self._lvl = coefficients.shape[1]
             if image is not None:
-                raise InputError("Ambiguous initialisation: \
-                    Starlet objects should be instanciated either with an image of a set of coefficients, not both")
+                raise InputError(
+                    "Ambiguous initialisation: \
+                    Starlet objects should be instanciated either with an image of a set of coefficients, not both"
+                )
 
         self._image = image
         self._coeffs = coefficients
@@ -131,19 +137,23 @@ class Starlet(object):
             the starlet transform of the Starlet object's image
         """
         try:
-            #Check if the starlet seed exists
-            seed_fft = Cache.check('Starlet', tuple(self._starlet_shape))
+            # Check if the starlet seed exists
+            seed_fft = Cache.check("Starlet", tuple(self._starlet_shape))
         except KeyError:
             # make a starlet seed
             self.seed = mk_starlet(self._starlet_shape)
             # Take its fft
             seed_fft = fft.Fourier(self.seed)
-            seed_fft.fft(self._starlet_shape[-2:], (-2,-1))
+            seed_fft.fft(self._starlet_shape[-2:], (-2, -1))
             # Cache the fft
-            Cache.set('Starlet', tuple(self._starlet_shape), seed_fft)
+            Cache.set("Starlet", tuple(self._starlet_shape), seed_fft)
         coefficients = []
         for im in self._image:
-            coefficients.append(fft.convolve(seed_fft, fft.Fourier(im[np.newaxis, :, :]), axes = (-2,-1)).image)
+            coefficients.append(
+                fft.convolve(
+                    seed_fft, fft.Fourier(im[np.newaxis, :, :]), axes=(-2, -1)
+                ).image
+            )
         return np.array(coefficients)
 
     def direct_transform(self):
@@ -159,7 +169,7 @@ class Starlet(object):
     def __len__(self):
         return len(self._image)
 
-    def filter(self, niter = 20, k = 5):
+    def filter(self, niter=20, k=5):
         """ Applies wavelet iterative filtering to denoise the image
 
         Parameters
@@ -185,7 +195,10 @@ class Starlet(object):
         filtered = 0
         image = self._image
         wavelet = self._coeffs
-        support = np.where(np.abs(wavelet[:,:-1,:,:]) < sigma[:,:-1,None, None] * np.ones_like(wavelet[:,:-1,:,:]))
+        support = np.where(
+            np.abs(wavelet[:, :-1, :, :])
+            < sigma[:, :-1, None, None] * np.ones_like(wavelet[:, :-1, :, :])
+        )
         for i in range(niter):
             R = image - filtered
             R_coeff = Starlet(R)
@@ -195,16 +208,18 @@ class Starlet(object):
         self.image = filtered
         return filtered
 
-def get_starlet_shape(shape, lvl = None):
+
+def get_starlet_shape(shape, lvl=None):
     """ Get the pad shape for a starlet transform
     """
-    #Number of levels for the Starlet decomposition
+    # Number of levels for the Starlet decomposition
     lvl_max = np.int(np.log2(np.min(shape[-2:])))
     if (lvl is None) or lvl > lvl_max:
         lvl = lvl_max
     return int(lvl)
 
-def mk_starlet(shape, image = None):
+
+def mk_starlet(shape, image=None):
     """ Creates a starlet for a given 2d shape.
 
     Parameters
@@ -226,8 +241,8 @@ def mk_starlet(shape, image = None):
     # Filter size
     n = np.size(h)
     if image is None:
-        c = np.zeros((n1,n2))
-        c[int(n1/2), int(n2/2)] = 1
+        c = np.zeros((n1, n2))
+        c[int(n1 / 2), int(n2 / 2)] = 1
     else:
         if len(image.shape) > 2:
             wave = []
@@ -241,7 +256,7 @@ def mk_starlet(shape, image = None):
     wave = np.zeros([lvl, n1, n2])
     for i in np.arange(lvl - 1):
         newh = np.zeros((n + (n - 1) * (2 ** i - 1), 1))
-        newh[0::2 ** i, 0] = h
+        newh[0 :: 2 ** i, 0] = h
         newhT = fft.Fourier(newh.T)
         newh = fft.Fourier(newh)
 
@@ -267,7 +282,6 @@ def mk_starlet(shape, image = None):
     return wave
 
 
-
 def iuwt(starlet):
 
     """ Inverse starlet transform
@@ -288,7 +302,7 @@ def iuwt(starlet):
     cJ = fft.Fourier(starlet[-1, :, :])
     for i in np.arange(1, lvl):
         newh = np.zeros((n + (n - 1) * (2 ** (lvl - i - 1) - 1), 1))
-        newh[0::2 ** (lvl - i - 1), 0] = h
+        newh[0 :: 2 ** (lvl - i - 1), 0] = h
         newhT = fft.Fourier(newh.T)
         newh = fft.Fourier(newh)
 
@@ -313,6 +327,7 @@ class InputError(Exception):
     def __init__(self, message):
         self.message = message
 
+
 def mad_wavelet(image):
     """ image: Median absolute deviation of the first wavelet scale.
     (WARNING: sorry to disapoint, this is not a wavelet for mad scientists)
@@ -326,5 +341,5 @@ def mad_wavelet(image):
     mad: array
         median absolute deviation for each image in the cube
     """
-    sigma = mad(Starlet(image, lvl = 2).coefficients[:,0,...], axis = (-2,-1))
+    sigma = mad(Starlet(image, lvl=2).coefficients[:, 0, ...], axis=(-2, -1))
     return sigma
