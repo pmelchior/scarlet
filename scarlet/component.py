@@ -80,7 +80,7 @@ class Component(Model):
             self._frame.bbox, self._bbox
         )
 
-    def model_to_frame(self, frame=None, model=None):
+    def model_to_box(self, bbox=None, model=None):
         """Project a model into a frame
 
 
@@ -90,10 +90,10 @@ class Component(Model):
             Image of the model to project.
             This must be the same shape as `self.bbox`.
             If `model` is `None` then `self.get_model()` is used.
-        frame: `~scarlet.frame.Frame`
-            The frame to project the model into.
-            If `frame` is `None` then the model is projected
-            into `self.model_frame`.
+        bbox: `~scarlet.bbox.Box`
+            The to project the model into.
+            If `bbox` is `None` then the model is projected
+            into `self.model_frame.bbox`.
 
         Returns
         -------
@@ -104,18 +104,14 @@ class Component(Model):
         if model is None:
             model = self.get_model()
         # Use the full model frame by default
-        if frame is None or frame == self.frame:
-            frame = self.frame
+        if bbox is None or bbox == self.frame.bbox:
+            bbox = self.frame.bbox
             frame_slices = self._model_frame_slices
             model_slices = self._model_slices
         else:
-            frame_slices, model_slices = overlapped_slices(frame.bbox, self.bbox)
+            frame_slices, model_slices = overlapped_slices(bbox, self.bbox)
 
-        if hasattr(frame, "dtype"):
-            dtype = frame.dtype
-        else:
-            dtype = model.dtype
-        result = np.zeros(frame.shape, dtype=dtype)
+        result = np.zeros(bbox.shape, dtype=model.dtype)
         result[frame_slices] = model[model_slices]
         return result
 
@@ -171,7 +167,7 @@ class FactorizedComponent(Component):
 
         # project the model into frame (if necessary)
         if frame is not None:
-            model = self.model_to_frame(frame, model)
+            model = self.model_to_box(frame.bbox, model)
         return model
 
     def update(self):
@@ -214,7 +210,7 @@ class CubeComponent(Component):
         model = self.get_parameter(0, *parameters)
 
         if frame is not None:
-            model = self.model_to_frame(frame, model)
+            model = self.model_to_box(frame.bbox, model)
         return model
 
 
@@ -266,7 +262,7 @@ class CombinedComponent(Component):
                 model *= model_
 
         if frame is not None:
-            model = self.model_to_frame(frame, model)
+            model = self.model_to_box(frame.bbox, model)
         return model
 
     def update(self):

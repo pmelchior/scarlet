@@ -324,7 +324,6 @@ def init_all_sources(
     thresh=1,
     max_components=1,
     min_snr=50,
-    edge_distance=None,
     shifting=False,
     fallback=True,
     silent=False,
@@ -373,7 +372,6 @@ def init_all_sources(
                 thresh=thresh,
                 max_components=max_components,
                 min_snr=min_snr,
-                edge_distance=edge_distance,
                 shifting=shifting,
                 fallback=fallback,
             )
@@ -399,7 +397,6 @@ def init_source(
     thresh=1,
     max_components=1,
     min_snr=50,
-    edge_distance=None,
     shifting=False,
     fallback=True,
 ):
@@ -442,12 +439,6 @@ def init_source(
         If a point source cannot be fit then the source is skipped.
     min_snr: float
         Mininmum SNR per component to accept the source.
-    edge_distance : int
-        The distance from the edge of the image to consider
-        a source an edge source. For example if `edge_distance=3`
-        then any source within 3 pixels of the edge will be
-        considered to have edge flux.
-        If `edge_distance` is `None` then the edge check is ignored.
     shifting : bool
         Whether or not to fit the position of a source.
         This is an expensive operation and is typically only used when
@@ -502,59 +493,7 @@ def init_source(
             else:
                 raise e
 
-        # The LSST DM detection algorithm implemented in meas_algorithms
-        # does not place sources within the edge mask
-        # (roughly 5 pixels from the edge). This results in poor
-        # deblending of the edge source, which for bright sources
-        # may ruin an entire blend. So we reinitialize edge sources
-        # to allow for shifting and return the result.
-        if source_shifting is False and hasEdgeFlux(source, edge_distance):
-            source_shifting = True
-            continue
-
         return source
-
-
-def hasEdgeFlux(source, edge_distance=1):
-    """hasEdgeFlux
-
-    Determine whether or not a source has flux within `edge_distance`
-    of the edge.
-
-    Parameters
-    ----------
-    source : `scarlet.Component`
-        The source to check for edge flux
-    edge_distance : int
-        The distance from the edge of the image to consider
-        a source an edge source. For example if `edge_distance=3`
-        then any source within 3 pixels of the edge will be
-        considered to have edge flux.
-        If `edge_distance` is `None` then the edge check is ignored.
-
-    Returns
-    -------
-    isEdge: `bool`
-        Whether or not the source has flux on the edge.
-    """
-    if edge_distance is None:
-        return False
-
-    assert edge_distance > 0
-
-    # Use the first band that has a non-zero SED
-    flux = measure.flux(source)
-    band = np.min(np.where(flux > 0)[0])
-    model = source.get_model()[band]
-    for edge in range(edge_distance):
-        if (
-            np.any(model[edge - 1] > 0)
-            or np.any(model[-edge] > 0)
-            or np.any(model[:, edge - 1] > 0)
-            or np.any(model[:, -edge] > 0)
-        ):
-            return True
-    return False
 
 
 def set_spectra_to_match(sources, observations):
