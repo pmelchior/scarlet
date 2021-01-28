@@ -52,7 +52,7 @@ class NullSource(Component):
         model = np.zeros(self.frame.shape)
         # project the model into frame (if necessary)
         if frame is not None:
-            model = self.model_to_box(frame, model)
+            model = self.model_to_box(frame.bbox, model)
         return model
 
 

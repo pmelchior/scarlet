@@ -502,60 +502,7 @@ def init_source(
             else:
                 raise e
 
-        # The LSST DM detection algorithm implemented in meas_algorithms
-        # does not place sources within the edge mask
-        # (roughly 5 pixels from the edge). This results in poor
-        # deblending of the edge source, which for bright sources
-        # may ruin an entire blend. So we reinitialize edge sources
-        # to allow for shifting and return the result.
-        source.is_edge = hasEdgeFlux(source, edge_distance)
-        if source_shifting is False and source.is_edge:
-            source_shifting = True
-            continue
-
         return source
-
-
-def hasEdgeFlux(source, edge_distance=1):
-    """hasEdgeFlux
-
-    Determine whether or not a source has flux within `edge_distance`
-    of the edge.
-
-    Parameters
-    ----------
-    source : `scarlet.Component`
-        The source to check for edge flux
-    edge_distance : int
-        The distance from the edge of the image to consider
-        a source an edge source. For example if `edge_distance=3`
-        then any source within 3 pixels of the edge will be
-        considered to have edge flux.
-        If `edge_distance` is `None` then the edge check is ignored.
-
-    Returns
-    -------
-    isEdge: `bool`
-        Whether or not the source has flux on the edge.
-    """
-    if edge_distance is None:
-        return False
-
-    assert edge_distance > 0
-
-    # Use the first band that has a non-zero SED
-    flux = measure.flux(source)
-    band = np.min(np.where(flux > 0)[0])
-    model = source.get_model()[band]
-    for edge in range(edge_distance):
-        if (
-            np.any(model[edge - 1] > 0)
-            or np.any(model[-edge] > 0)
-            or np.any(model[:, edge - 1] > 0)
-            or np.any(model[:, -edge] > 0)
-        ):
-            return True
-    return False
 
 
 def set_spectra_to_match(sources, observations):
