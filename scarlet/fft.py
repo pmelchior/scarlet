@@ -331,7 +331,7 @@ def _kspace_operation(image1, image2, padding, op, shape, axes):
     return Fourier.from_fft(transformed_fft, fft_shape, shape, axes)
 
 
-def match_psfs(psf1, psf2, padding=3, axes=(-2, -1), return_Fourier=True):
+def match_psf(psf1, psf2, padding=3, axes=(-2, -1), return_Fourier=True):
     """Calculate the difference kernel to match psf1 to psf2
 
     Parameters

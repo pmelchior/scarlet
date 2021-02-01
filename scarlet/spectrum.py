@@ -42,14 +42,18 @@ class TabulatedSpectrum(Spectrum):
         Spectrum parameter
     bbox: `~scarlet.Box`
         1D bounding box for focation of the spectrum in `frame`
+    min_step: float
+        Minimum absolute step size for spectrum element updates.
     """
 
-    def __init__(self, frame, spectrum, bbox=None):
+    def __init__(self, frame, spectrum, bbox=None, min_step=0):
         if isinstance(spectrum, Parameter):
             assert spectrum.name == "spectrum"
         else:
-            constraint = PositivityConstraint(zero=1e-20)  # slightly positive values
-            step = partial(relative_step, factor=1.e-2)
+            # slightly positive values
+            constraint = PositivityConstraint(zero=1e-20)
+            # steps of 1% of mean amplitude, minimum set by noise_rms
+            step = partial(relative_step, factor=1e-2, minimum=min_step)
             spectrum = Parameter(
                 spectrum, name="spectrum", step=step, constraint=constraint
             )

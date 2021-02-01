@@ -113,7 +113,7 @@ ArrayBox.register(Parameter)
 VSpace.register(Parameter, vspace_maker=VSpace.mappings[np.ndarray])
 
 
-def relative_step(X, it, factor=0.1, axis=None):
+def relative_step(X, it, factor=0.1, minimum=0, axis=None):
     """Step size set at `factor` times the mean of `X` in direction `axis`
     """
-    return factor * X.mean(axis=axis)
+    return np.maximum(minimum, factor * X.mean(axis=axis))
