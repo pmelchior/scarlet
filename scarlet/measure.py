@@ -132,7 +132,7 @@ def moments(component, N=2, centroid=None, weight=None):
     if centroid is None:
         centroid = np.array(model.shape) // 2
 
-    grid_x, grid_y = np.indices(model.shape[-2:], dtype=np.float)
+    grid_x, grid_y = np.indices(model.shape[-2:], dtype=np.float64)
     if len(model.shape) == 3:
         grid_y = grid_y[None, :, :]
         grid_x = grid_x[None, :, :]
