@@ -89,7 +89,7 @@ class Frame:
         sky_coord: tuple, array
             Coordinates on the sky
         """
-        sky = np.array(sky_coord, dtype=np.float).reshape(-1, 2)
+        sky = np.array(sky_coord, dtype=np.float64).reshape(-1, 2)
 
         if self.wcs is not None:
             wcs_ = self.wcs.celestial  # only use celestial portion
@@ -111,7 +111,7 @@ class Frame:
         pixel: tuple, array
             Coordinates in the pixel space
         """
-        pix = np.array(pixel, dtype=np.float).reshape(-1, 2)
+        pix = np.array(pixel, dtype=np.float64).reshape(-1, 2)
 
         if self.wcs is not None:
             wcs_ = self.wcs.celestial  # only use celestial portion
@@ -142,7 +142,7 @@ class Frame:
             coordinates at the location of `coord` in the target frame
         """
         if pixel is None:
-            y, x = np.indices(self.shape[-2:], dtype=np.float)
+            y, x = np.indices(self.shape[-2:], dtype=np.float64)
             pixel = np.stack((y.flatten(), x.flatten()), axis=1)
 
         ra_dec = self.get_sky_coord(pixel)
