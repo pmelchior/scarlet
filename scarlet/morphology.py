@@ -63,6 +63,8 @@ class ImageMorphology(Morphology):
         2D bounding box for focation of the image in `frame`
     shift: None or `~scarlet.Parameter`
         2D shift parameter (in units of image pixels)
+    resize: bool
+        Whether to resize the box dynamically
     """
 
     def __init__(self, frame, image, bbox=None, shift=None, resize=True):
@@ -291,6 +293,7 @@ class ExtendedSourceMorphology(ImageMorphology):
         symmetric=False,
         min_grad=0,
         shifting=False,
+        resize=True,
     ):
         """Non-parametric image morphology designed for galaxies as extended sources.
 
@@ -312,6 +315,8 @@ class ExtendedSourceMorphology(ImageMorphology):
             Minimal radial decline for monotonicity (in units of reference pixel value)
         shifting: `bool`
             Whether or not a subpixel shift is added as optimization parameter
+        resize: bool
+            Whether to resize the box dynamically
         """
 
         constraints = []
@@ -349,7 +354,7 @@ class ExtendedSourceMorphology(ImageMorphology):
             shift = None
         self.shift = shift
 
-        super().__init__(frame, image, bbox=bbox, shift=shift)
+        super().__init__(frame, image, bbox=bbox, shift=shift, resize=resize)
 
     @property
     def center(self):
