@@ -108,7 +108,7 @@ class PointSource(FactorizedComponent):
         Parameters
         ----------
         model_frame: `~scarlet.Frame`
-            The frame of the full model
+            The frame of the model
         sky_coord: tuple
             Center of the source
         observations: instance or list of `~scarlet.Observation`
@@ -149,7 +149,7 @@ class CompactExtendedSource(FactorizedComponent):
         Parameters
         ----------
         model_frame: `~scarlet.Frame`
-            The frame of the full model
+            The frame of the model
         sky_coord: tuple
             Center of the source
         observations: instance or list of `~scarlet.observation.Observation`
@@ -161,7 +161,8 @@ class CompactExtendedSource(FactorizedComponent):
             observations = (observations,)
 
         # initialize morphology from model_frame psf
-        morph, bbox = self.init_morph(sky_coord, model_frame)
+        assert model_frame.psf is not None
+        morph, bbox = self.init_morph(model_frame, sky_coord)
         center = model_frame.get_pixel(sky_coord)
         morphology = ExtendedSourceMorphology(
             model_frame,
@@ -189,9 +190,23 @@ class CompactExtendedSource(FactorizedComponent):
         # retain center as attribute
         self.center = morphology.center
 
-    def init_morph(self, sky_coord, frame):
+    @staticmethod
+    def init_morph(frame, sky_coord, boxsize=None):
         """Initialize a source just like `init_extended_morphology`,
         but with the morphology of a point source.
+
+        Parameters
+        ----------
+        frame: `~scarlet.Frame`
+            The model frame
+        sky_coord: tuple
+            Center of the source
+        boxsize: int or None
+            Size of morph box
+
+        Returns
+        -------
+        morph, bbox
         """
 
         # position in frame coordinates
@@ -206,9 +221,11 @@ class CompactExtendedSource(FactorizedComponent):
         )
         bbox_ = Box(morph_.shape, origin=origin)
 
+        if boxsize is None:
+            size = max(morph_.shape)
+            boxsize = init.get_minimal_boxsize(size)
+
         # adjust box size to conform with extended sources
-        size = max(morph_.shape)
-        boxsize = init.get_minimal_boxsize(size)
         morph = np.zeros((boxsize, boxsize))
         origin = (
             center_index[0] - (morph.shape[0] // 2),
@@ -240,7 +257,7 @@ class SingleExtendedSource(FactorizedComponent):
         Parameters
         ----------
         model_frame: `~scarlet.Frame`
-            The frame of the full model
+            The frame of the model
         sky_coord: tuple
             Center of the source
         observations: instance or list of `~scarlet.observation.Observation`
@@ -265,8 +282,8 @@ class SingleExtendedSource(FactorizedComponent):
         image, std = init.build_initialization_image(observations, spectra=spectra)
         # make monotonic morphology, trimmed to box with pixels above std
         morph, bbox = self.init_morph(
-            sky_coord,
             model_frame,
+            sky_coord,
             image,
             std,
             thresh=thresh,
@@ -304,10 +321,10 @@ class SingleExtendedSource(FactorizedComponent):
         # retain center as attribute
         self.center = morphology.center
 
+    @staticmethod
     def init_morph(
-        self,
-        sky_coord,
         frame,
+        sky_coord,
         detect,
         detect_std,
         thresh=1,
@@ -317,6 +334,10 @@ class SingleExtendedSource(FactorizedComponent):
     ):
         """Initialize the source that is symmetric and monotonic
         See `ExtendedSource` for a description of the parameters
+
+        Returns
+        -------
+        morph, bbox
         """
 
         # position in frame coordinates
@@ -354,9 +375,17 @@ class SingleExtendedSource(FactorizedComponent):
         if morph.sum() > 0:
             morph /= morph.max()
         else:
-            morph = CenterOnConstraint(tiny=1)(morph, 0)
             msg = f"No flux in morphology model for source at {sky_coord}"
             logger.warning(msg)
+            morph = CenterOnConstraint(tiny=1)(morph, 0)
+
+        # for very noise inits, there is only 1 or few pixels in the center:
+        # pad morph with the shape of the PSF
+        if frame.psf is not None:
+            psf_morph, _ = CompactExtendedSource.init_morph(
+                frame, sky_coord, boxsize=max(bbox.shape)
+            )
+            morph = np.maximum(morph, psf_morph)
 
         return morph, bbox
 
@@ -467,7 +496,7 @@ class MultiExtendedSource(CombinedComponent):
         Parameters
         ----------
         model_frame: `~scarlet.Frame`
-            The frame of the full model
+            The frame of the model
         sky_coord: tuple
             Center of the source
         observations: instance or list of `~scarlet.observation.Observation`
@@ -535,7 +564,8 @@ class MultiExtendedSource(CombinedComponent):
 
         super().__init__(components)
 
-    def init_morphs(self, morphology, flux_percentiles):
+    @staticmethod
+    def init_morphs(morphology, flux_percentiles):
 
         morph = morphology.get_model()
         bbox = morphology.bbox
