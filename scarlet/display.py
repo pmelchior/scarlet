@@ -22,7 +22,7 @@ def channels_to_rgb(channels):
     array (3, channels) to map onto RGB
     """
     assert channels in range(
-        0, 7
+        0, 8
     ), "No mapping has been implemented for more than {} channels".format(channels)
 
     channel_map = np.zeros((3, channels))
@@ -67,6 +67,20 @@ def channels_to_rgb(channels):
         channel_map[2, 1] = 0.667
         channel_map[2, 0] = 1
         channel_map /= 2
+    elif channels == 7:
+        channel_map[:, 6] = 2/3.
+        channel_map[0, 5] = 1
+        channel_map[0, 4] = 0.667
+        channel_map[0, 3] = 0.333
+        channel_map[1, 4] = 0.333
+        channel_map[1, 3] = 0.667
+        channel_map[1, 2] = 0.667
+        channel_map[1, 1] = 0.333
+        channel_map[2, 2] = 0.333
+        channel_map[2, 1] = 0.667
+        channel_map[2, 0] = 1
+        channel_map /= 2
+
     return channel_map
 
 

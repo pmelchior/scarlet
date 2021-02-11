@@ -3,16 +3,9 @@ import logging
 
 from .bbox import Box
 from .cache import Cache
+from .renderer import NullRenderer, ConvolutionRenderer, ResolutionRenderer
 from .interpolation import interpolate_observation
 from .observation import Observation
-from .renderer import NullRenderer, ConvolutionRenderer
-from .wavelet import Starlet, mad_wavelet
-from . import fft
-from . import measure
-from functools import partial
-from .constraint import PositivityConstraint
-from .parameter import Parameter, relative_step
-
 
 logger = logging.getLogger("scarlet.initialisation")
 
@@ -285,16 +278,30 @@ def build_initialization_image(observations, spectra=None):
         except KeyError:
             pass
 
-    model_frame = observations[0].model_frame
+    #model_frame = observations[0].model_frame
+
+    for obs in observations:
+        if isinstance(obs.renderer, (ConvolutionRenderer)):
+            ref_obs = obs
+            break
+    model_frame = ref_obs.model_frame
     detect = np.zeros(model_frame.shape, dtype=model_frame.dtype)
     var = np.zeros(model_frame.shape, dtype=model_frame.dtype)
     for i, obs in enumerate(observations):
 
-        if not isinstance(obs.renderer, (NullRenderer, ConvolutionRenderer)):
+        if 0:#isinstance(obs.renderer, (ResolutionRenderer)):
+            data = interpolate_observation(obs, model_frame, wave_filter=False)
+            bg_rms = np.mean(obs.noise_rms, axis=(1, 2)) * obs.renderer.h
+            obs = Observation(data,
+                              channels=obs.channels,
+                              psf=obs.psf,
+                              wcs=ref_obs.wcs)
+            obs.match(model_frame)
+        elif isinstance(obs.renderer, (NullRenderer, ConvolutionRenderer)):
+            data = obs.data
+            bg_rms = np.mean(obs.noise_rms, axis=(1, 2))
+        else:
             continue
-
-        data = obs.data
-        bg_rms = np.mean(obs.noise_rms, axis=(1, 2))
 
         if spectra is None:
             spectrum = weights = 1
@@ -303,8 +310,8 @@ def build_initialization_image(observations, spectra=None):
             weights = spectrum / (bg_rms ** 2)[:, None, None]
 
         data_slice, model_slice = obs.renderer.slices
-        obs.renderer.map_channels(detect)[model_slice] += weights * data[data_slice]
-        obs.renderer.map_channels(var)[model_slice] += spectrum * weights
+        ref_obs.renderer.map_channels(detect)[model_slice] += weights * data[data_slice]
+        ref_obs.renderer.map_channels(var)[model_slice] += spectrum * weights
 
     if spectra is not None:
         detect = detect.sum(axis=0)
