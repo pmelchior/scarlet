@@ -136,7 +136,7 @@ class PointSource(FactorizedComponent):
 
 class CompactExtendedSource(FactorizedComponent):
     def __init__(
-        self, model_frame, sky_coord, observations, shifting=False,
+        self, model_frame, sky_coord, observations, shifting=False, boxsize=None
     ):
         """Compact extended source model
 
@@ -156,13 +156,15 @@ class CompactExtendedSource(FactorizedComponent):
             Observation(s) to initialize this source.
         shifting: `bool`
             Whether or not a subpixel shift is added as optimization parameter
+        boxsize: int or None
+            Spatial size of the source box
         """
         if not hasattr(observations, "__iter__"):
             observations = (observations,)
 
         # initialize morphology from model_frame psf
         assert model_frame.psf is not None
-        morph, bbox = self.init_morph(model_frame, sky_coord)
+        morph, bbox = self.init_morph(model_frame, sky_coord, boxsize=boxsize)
         center = model_frame.get_pixel(sky_coord)
         morphology = ExtendedSourceMorphology(
             model_frame,
@@ -244,7 +246,13 @@ class CompactExtendedSource(FactorizedComponent):
 
 class SingleExtendedSource(FactorizedComponent):
     def __init__(
-        self, model_frame, sky_coord, observations, thresh=1.0, shifting=False,
+        self,
+        model_frame,
+        sky_coord,
+        observations,
+        thresh=1.0,
+        shifting=False,
+        boxsize=None,
     ):
         """Extended source model
 
@@ -269,6 +277,8 @@ class SingleExtendedSource(FactorizedComponent):
             Initialize with the shape of a point source
         shifting: `bool`
             Whether or not a subpixel shift is added as optimization parameter
+        boxsize: int or None
+            Spatial size of the source box
         """
         if not hasattr(observations, "__iter__"):
             observations = (observations,)
@@ -290,6 +300,7 @@ class SingleExtendedSource(FactorizedComponent):
             symmetric=True,
             monotonic="flat",
             min_grad=0,
+            boxsize=boxsize,
         )
 
         center = model_frame.get_pixel(sky_coord)
@@ -331,6 +342,7 @@ class SingleExtendedSource(FactorizedComponent):
         symmetric=True,
         monotonic="flat",
         min_grad=0,
+        boxsize=None,
     ):
         """Initialize the source that is symmetric and monotonic
         See `ExtendedSource` for a description of the parameters
@@ -369,7 +381,9 @@ class SingleExtendedSource(FactorizedComponent):
 
         # truncate morph at thresh * bg_rms
         threshold = detect_std * thresh
-        morph, bbox = init.trim_morphology(center_index, im, bg_thresh=threshold)
+        morph, bbox = init.trim_morphology(
+            center_index, im, bg_thresh=threshold, boxsize=boxsize
+        )
 
         # normalize to unity at peak pixel for the imposed normalization
         if morph.sum() > 0:
@@ -406,6 +420,7 @@ class StarletSource(FactorizedComponent):
         thresh=1.0,
         full=False,
         starlet_thresh=5e-3,
+        boxsize=None,
     ):
         """Extended source intialized to match a set of observations
 
@@ -428,8 +443,12 @@ class StarletSource(FactorizedComponent):
         starlet_thresh: `float`
             Multiple of the backround RMS used as a
             flux cutoff for starlet threshold (usually between 5 and 3).
+        boxsize: int or None
+            Spatial size of the source box
         """
-        source = ExtendedSource(model_frame, sky_coord, observations, thresh=thresh)
+        source = ExtendedSource(
+            model_frame, sky_coord, observations, thresh=thresh, boxsize=boxsize
+        )
         source = StarletSource.from_source(source)
 
         if spectrum is not None:
@@ -490,6 +509,7 @@ class MultiExtendedSource(CombinedComponent):
         flux_percentiles=None,
         thresh=1.0,
         shifting=False,
+        boxsize=None,
     ):
         """Create multi-component extended source.
 
@@ -514,6 +534,8 @@ class MultiExtendedSource(CombinedComponent):
             flux cutoff for morphology initialization.
         shifting: `bool`
             Whether or not a subpixel shift is added as optimization parameter
+        boxsize: int or None
+            Spatial size of the source box
         """
 
         if flux_percentiles is None:
@@ -619,6 +641,7 @@ def ExtendedSource(
     thresh=1.0,
     compact=False,
     shifting=False,
+    boxsize=None,
 ):
     """Create extended sources with either a single component or multiple components.
 
@@ -628,11 +651,16 @@ def ExtendedSource(
 
     if compact:
         return CompactExtendedSource(
-            model_frame, sky_coord, observations, shifting=shifting,
+            model_frame, sky_coord, observations, shifting=shifting, boxsize=boxsize,
         )
     if K == 1:
         return SingleExtendedSource(
-            model_frame, sky_coord, observations, thresh=thresh, shifting=shifting,
+            model_frame,
+            sky_coord,
+            observations,
+            thresh=thresh,
+            shifting=shifting,
+            boxsize=boxsize,
         )
     else:
         return MultiExtendedSource(
@@ -643,4 +671,5 @@ def ExtendedSource(
             flux_percentiles=flux_percentiles,
             thresh=thresh,
             shifting=shifting,
+            boxsize=boxsize,
         )
