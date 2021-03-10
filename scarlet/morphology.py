@@ -82,32 +82,31 @@ class ImageMorphology(Morphology):
         else:
             assert bbox.shape == image.shape
 
+        self.resize = resize
+        self.shift = shift is not None
         if shift is None:
-            parameters = (image,)
+            shift = Parameter(np.zeros(2), name="shift", step=1e-2, fixed=self.shift)
+        assert shift.shape == (2,)
+        if isinstance(shift, Parameter):
+            assert shift.name == "shift"
         else:
-            assert shift.shape == (2,)
-            if isinstance(shift, Parameter):
-                assert shift.name == "shift"
-            else:
-                shift = Parameter(shift, name="shift", step=1e-2)
-            parameters = (image, shift)
+            shift = Parameter(shift, name="shift", step=1e-2)
 
-        self._resize = resize
+        parameters = (image, shift)
         super().__init__(frame, *parameters, bbox=bbox)
 
     def get_model(self, *parameters):
         image = self.get_parameter(0, *parameters)
         shift = self.get_parameter(1, *parameters)
-        if shift is None:
-            return image
-        else:
-            return fft.shift(image, shift, return_Fourier=False)
+        if self.shift:
+            image = fft.shift(image, shift, return_Fourier=False)
+        return image
 
     def update(self):
         image = self._parameters[0]
         size = max(image.shape)
 
-        if not self._resize or image.fixed:
+        if not self.resize or image.fixed:
             return
 
         # shrink the box? peel the onion
