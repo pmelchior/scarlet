@@ -96,6 +96,67 @@ def prox_weighted_monotonic(shape, neighbor_weight="flat", min_gradient=0.1, cen
     return result
 
 
+def get_center(image, center, radius=1):
+    """Search around a location for the maximum flux
+
+    For monotonicity it is important to start at the brightest pixel
+    in the center of the source. This may be off by a pixel or two,
+    so we search for the correct center before applying
+    monotonic_tree.
+
+    Parameters
+    ----------
+    image: array-like
+        The image of the source.
+    center: (int, int)
+        The suggested center of the source.
+    radius: int
+        The number of pixels around the `center` to search
+        for a higher flux value.
+
+    Returns
+    -------
+    new_center: (int, int)
+        The true center of the source.
+    """
+    cy, cx = int(center[0]), int(center[1])
+    ySlice = slice(cy - radius, cy + radius+1)
+    xSlice = slice(cx - radius, cx + radius+1)
+    subset = image[ySlice, xSlice]
+    center = np.unravel_index(np.argmax(subset), subset.shape)
+    return center[0]+cy-radius, center[1]+cx-radius
+
+
+def prox_monotonic_tree(X, step, center, center_radius=1, variance=0.0, max_iter=3, step_scale=0):
+    """Apply monotonicity from any path from the center
+
+    """
+    from .operators_pybind11 import get_valid_monotonic_pixels, linear_interpolate_invalid_pixels
+
+    i, j = get_center(X, center, center_radius)
+    unchecked = np.ones(X.shape, dtype=bool)
+    unchecked[i, j] = False
+    orphans = np.zeros(X.shape, dtype=bool)
+    # This is the bounding box of the result
+    bounds = np.array([i, i, j, j], dtype=np.int32)
+    # Get all of the monotonic pixels
+    get_valid_monotonic_pixels(i, j, X, unchecked, orphans, variance, bounds)
+    # Set the initial model to the exact input in the valid pixels
+    model = X.copy()
+
+    it = 0
+
+    #max_iter = max_iter + int(step*step_scale)
+    while np.sum(orphans & unchecked) > 0 and it < max_iter:
+        it += 1
+        all_i, all_j = np.where(orphans)
+        linear_interpolate_invalid_pixels(all_i, all_j, unchecked, model, orphans, variance, True, bounds)
+    valid = ~unchecked & ~orphans
+    # Clear all of the invalid pixels from the input image
+    model = model * valid
+    return valid, model, bounds
+
+
 def prox_cone(X, step, G=None):
     """Exact projection of components of X onto cone defined by Gx >= 0"""
     k, n = X.shape
