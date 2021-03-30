@@ -215,6 +215,29 @@ class MonotonicityConstraint(Constraint):
         return prox(morph, step)
 
 
+class MonotonicTreeConstraint(Constraint):
+    """Make morphology monotonic by branching from the center
+    """
+    def __init__(self, center, center_radius=1, variance=0.0, max_iter=3, step_scale=0):
+        self.center = center
+        self.center_radius = center_radius
+        self.variance = variance
+        self.max_iter = max_iter
+        self.step_scale = step_scale
+        self.prox = partial(
+            operator.prox_monotonic_tree,
+            center=center,
+            center_radius=center_radius,
+            variance=variance,
+            max_iter=max_iter,
+            step_scale=step_scale,
+        )
+
+    def __call__(self, morph, step):
+        valid, morph, bounds = self.prox(morph, step)
+        return morph
+
+
 class SymmetryConstraint(Constraint):
     """Make the source symmetric about its center
 
