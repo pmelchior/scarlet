@@ -67,7 +67,9 @@ class ImageMorphology(Morphology):
         Whether to resize the box dynamically
     """
 
-    def __init__(self, frame, image, bbox=None, shift=None, resizing=True):
+    def __init__(
+        self, frame, image, bbox=None, shifting=False, shift=None, resizing=True
+    ):
         if isinstance(image, Parameter):
             assert image.name == "image"
         else:
@@ -83,15 +85,17 @@ class ImageMorphology(Morphology):
             assert bbox.shape == image.shape
 
         self.resizing = resizing
-        self.shifting = shift is not None
+        self.shifting = shifting
+
         # create the shift parameter to allow for dynamic resizing
         if shift is None:
-            shift = Parameter(np.zeros(2), name="shift", step=1e-2, fixed=self.shift)
-        assert shift.shape == (2,)
-        if isinstance(shift, Parameter):
-            assert shift.name == "shift"
+            shift = Parameter(np.zeros(2), name="shift", step=1e-2, fixed=self.shifting)
         else:
-            shift = Parameter(shift, name="shift", step=1e-2)
+            assert shift.shape == (2,)
+            if isinstance(shift, Parameter):
+                assert shift.name == "shift"
+            else:
+                shift = Parameter(shift, name="shift", step=1e-2)
 
         parameters = (image, shift)
         super().__init__(frame, *parameters, bbox=bbox)
@@ -354,7 +358,9 @@ class ExtendedSourceMorphology(ImageMorphology):
             shift = None
         self.shift = shift
 
-        super().__init__(frame, image, bbox=bbox, shift=shift, resizing=resizing)
+        super().__init__(
+            frame, image, bbox=bbox, shifting=shifting, shift=shift, resizing=resizing
+        )
 
     @property
     def center(self):
