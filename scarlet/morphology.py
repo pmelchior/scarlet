@@ -63,11 +63,13 @@ class ImageMorphology(Morphology):
         2D bounding box for focation of the image in `frame`
     shift: None or `~scarlet.Parameter`
         2D shift parameter (in units of image pixels)
-    resize: bool
+    resizing: bool
         Whether to resize the box dynamically
     """
 
-    def __init__(self, frame, image, bbox=None, shift=None, resize=True):
+    def __init__(
+        self, frame, image, bbox=None, shifting=False, shift=None, resizing=True
+    ):
         if isinstance(image, Parameter):
             assert image.name == "image"
         else:
@@ -82,32 +84,34 @@ class ImageMorphology(Morphology):
         else:
             assert bbox.shape == image.shape
 
+        self.resizing = resizing
+        self.shifting = shifting
+
+        # create the shift parameter to allow for dynamic resizing
         if shift is None:
-            parameters = (image,)
+            shift = Parameter(np.zeros(2), name="shift", step=1e-2, fixed=self.shifting)
         else:
             assert shift.shape == (2,)
             if isinstance(shift, Parameter):
                 assert shift.name == "shift"
             else:
                 shift = Parameter(shift, name="shift", step=1e-2)
-            parameters = (image, shift)
 
-        self._resize = resize
+        parameters = (image, shift)
         super().__init__(frame, *parameters, bbox=bbox)
 
     def get_model(self, *parameters):
         image = self.get_parameter(0, *parameters)
         shift = self.get_parameter(1, *parameters)
-        if shift is None:
-            return image
-        else:
-            return fft.shift(image, shift, return_Fourier=False)
+        if self.shifting:
+            image = fft.shift(image, shift, return_Fourier=False)
+        return image
 
     def update(self):
         image = self._parameters[0]
         size = max(image.shape)
 
-        if not self._resize or image.fixed:
+        if not self.resizing or image.fixed:
             return
 
         # shrink the box? peel the onion
@@ -293,7 +297,7 @@ class ExtendedSourceMorphology(ImageMorphology):
         symmetric=False,
         min_grad=0,
         shifting=False,
-        resize=True,
+        resizing=True,
     ):
         """Non-parametric image morphology designed for galaxies as extended sources.
 
@@ -354,7 +358,9 @@ class ExtendedSourceMorphology(ImageMorphology):
             shift = None
         self.shift = shift
 
-        super().__init__(frame, image, bbox=bbox, shift=shift, resize=resize)
+        super().__init__(
+            frame, image, bbox=bbox, shifting=shifting, shift=shift, resizing=resizing
+        )
 
     @property
     def center(self):

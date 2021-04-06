@@ -59,7 +59,9 @@ class TestFactorizedComponent:
         # now with shift
         shift_loc = (0, 1, 0)
         shift = scarlet.Parameter(np.array(shift_loc[1:]), step=0.1, name="shift")
-        morphology = scarlet.ImageMorphology(frame, morph, bbox=box[1:], shift=shift)
+        morphology = scarlet.ImageMorphology(
+            frame, morph, bbox=box[1:], shifting=True, shift=shift
+        )
 
         component = scarlet.FactorizedComponent(frame, spectrum, morphology)
         model = component.get_model(frame=frame)
