@@ -220,7 +220,7 @@ def get_minimal_boxsize(size, min_size=21, increment=10):
     return boxsize
 
 
-def trim_morphology(center_index, morph, bg_thresh=0):
+def trim_morphology(center_index, morph, bg_thresh=0, boxsize=None):
     # trim morph to pixels above threshold
     mask = morph > bg_thresh
     morph[~mask] = 0
@@ -241,7 +241,9 @@ def trim_morphology(center_index, morph, bg_thresh=0):
         size = 0
 
     # define new box and cut morphology accordingly
-    boxsize = get_minimal_boxsize(size)
+    if boxsize is None:
+        boxsize = get_minimal_boxsize(size)
+
     bottom = center_index[0] - boxsize // 2
     top = center_index[0] + boxsize // 2 + 1
     left = center_index[1] - boxsize // 2
@@ -323,8 +325,11 @@ def init_all_sources(
     observations,
     thresh=1,
     max_components=1,
+    min_components=1,
     min_snr=50,
     shifting=False,
+    resizing=True,
+    boxsize=None,
     fallback=True,
     silent=False,
     set_spectra=True,
@@ -371,8 +376,11 @@ def init_all_sources(
                 observations,
                 thresh=thresh,
                 max_components=max_components,
+                min_components=min_components,
                 min_snr=min_snr,
                 shifting=shifting,
+                resizing=resizing,
+                boxsize=boxsize,
                 fallback=fallback,
             )
             sources.append(source)
@@ -396,8 +404,11 @@ def init_source(
     observations,
     thresh=1,
     max_components=1,
+    min_components=1,
     min_snr=50,
     shifting=False,
+    resizing=True,
+    boxsize=None,
     fallback=True,
 ):
     """Initialize a Source
@@ -437,12 +448,19 @@ def init_source(
         will continue to subtract one from the number of components
         until it reaches zero (which fits a `CompactExtendedSource`).
         If a point source cannot be fit then the source is skipped.
+    min_components : int
+        The minimum number of components in a source.
+        Only relevent for `fallback=True`.
     min_snr: float
         Mininmum SNR per component to accept the source.
     shifting : bool
         Whether or not to fit the position of a source.
         This is an expensive operation and is typically only used when
         a source is on the edge of the detector.
+    resizing : bool
+        Whether or not to change the size of the source box.
+    boxsize: int or None
+        Spatial size of the source box
     fallback : bool
         Whether to reduce the number of components
         if the model cannot be initialized with `max_components`.
@@ -458,11 +476,13 @@ def init_source(
     if not hasattr(observations, "__iter__"):
         observations = (observations,)
 
-    source_shifting = shifting
     if fallback:
         _, psf_snr = get_psf_spectrum(center, observations, compute_snr=True)
         max_components = np.min(
-            [max_components, np.max([0, np.floor(psf_snr / min_snr).astype("int")])]
+            [
+                max_components,
+                np.max([min_components, np.floor(psf_snr / min_snr).astype("int")]),
+            ]
         )
 
     while max_components >= 0:
@@ -473,12 +493,20 @@ def init_source(
                     center,
                     observations,
                     thresh=thresh,
-                    shifting=source_shifting,
+                    shifting=shifting,
+                    resizing=resizing,
+                    boxsize=boxsize,
                     K=max_components,
                 )
             else:
                 source = ExtendedSource(
-                    frame, center, observations, shifting=source_shifting, compact=True
+                    frame,
+                    center,
+                    observations,
+                    shifting=shifting,
+                    resizing=resizing,
+                    boxsize=boxsize,
+                    compact=True,
                 )
 
             # test if parameters are fine, otherwise throw ArithmeticError
