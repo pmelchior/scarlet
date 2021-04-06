@@ -540,8 +540,8 @@ def sinc_interp_inplace(image, h_image, h_target, angle, pad_shape=None):
         ]
     )
     ny_hr, nx_hr = (
-        (image.shape[-2] * h_image / h_target).astype(int),
-        (image.shape[-1] * h_image / h_target).astype(int),
+        np.int(image.shape[-2] * h_image / h_target),
+        np.int(image.shape[-1] * h_image / h_target),
     )
     if (ny_hr % 2) == 0:
         ny_hr += 1
@@ -550,8 +550,8 @@ def sinc_interp_inplace(image, h_image, h_target, angle, pad_shape=None):
     coord_hr = (
         np.array(
             [
-                np.array(range(ny_hr.astype(int))) - (ny_hr - 1) / 2,
-                np.array(range(nx_hr.astype(int))) - (nx_hr - 1) / 2,
+                np.array(range(ny_hr)) - (ny_hr - 1) / 2,
+                np.array(range(nx_hr)) - (nx_hr - 1) / 2,
             ]
         )
         / h_image

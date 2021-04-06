@@ -76,7 +76,7 @@ class RandomSource(FactorizedComponent):
         """
         C, Ny, Nx = model_frame.bbox.shape
         image = np.random.rand(Ny, Nx)
-        morphology = ImageMorphology(image)
+        morphology = ImageMorphology(model_frame, image)
 
         if observations is None:
             spectrum = np.random.rand(C)
@@ -90,7 +90,7 @@ class RandomSource(FactorizedComponent):
             step=partial(relative_step, factor=1e-1),
             constraint=PositivityConstraint(),
         )
-        spectrum = TabulatedSpectrum(spectrum)
+        spectrum = TabulatedSpectrum(model_frame, spectrum)
 
         super().__init__(model_frame, spectrum, morphology)
 
@@ -430,7 +430,7 @@ class StarletSource(FactorizedComponent):
             flux cutoff for starlet threshold (usually between 5 and 3).
         """
         source = ExtendedSource(model_frame, sky_coord, observations, thresh=thresh)
-        source = StarletSource.from_source(source)
+        source = StarletSource.from_source(source, starlet_thresh=starlet_thresh)
 
         if spectrum is not None:
             if isinstance(spectrum, Parameter):

@@ -96,7 +96,7 @@ def get_pixel_spectrum(sky_coord, observations, correct_psf=False, models=None):
 
         if obs.psf is not None:
             # correct spectrum for PSF-induced change in peak pixel intensity
-            psf_model = obs.psf.get_model()._data
+            psf_model = obs.psf.get_model()
             psf_peak = psf_model.max(axis=(1, 2))
             spectrum /= psf_peak
         elif model is not None:
@@ -278,30 +278,16 @@ def build_initialization_image(observations, spectra=None):
         except KeyError:
             pass
 
-    #model_frame = observations[0].model_frame
-
-    for obs in observations:
-        if isinstance(obs.renderer, (ConvolutionRenderer)):
-            ref_obs = obs
-            break
-    model_frame = ref_obs.model_frame
+    model_frame = observations[0].model_frame
     detect = np.zeros(model_frame.shape, dtype=model_frame.dtype)
     var = np.zeros(model_frame.shape, dtype=model_frame.dtype)
     for i, obs in enumerate(observations):
 
-        if 0:#isinstance(obs.renderer, (ResolutionRenderer)):
-            data = interpolate_observation(obs, model_frame, wave_filter=False)
-            bg_rms = np.mean(obs.noise_rms, axis=(1, 2)) * obs.renderer.h
-            obs = Observation(data,
-                              channels=obs.channels,
-                              psf=obs.psf,
-                              wcs=ref_obs.wcs)
-            obs.match(model_frame)
-        elif isinstance(obs.renderer, (NullRenderer, ConvolutionRenderer)):
-            data = obs.data
-            bg_rms = np.mean(obs.noise_rms, axis=(1, 2))
-        else:
+        if not isinstance(obs.renderer, (NullRenderer, ConvolutionRenderer)):
             continue
+
+        data = obs.data
+        bg_rms = np.mean(obs.noise_rms, axis=(1, 2))
 
         if spectra is None:
             spectrum = weights = 1
@@ -310,8 +296,8 @@ def build_initialization_image(observations, spectra=None):
             weights = spectrum / (bg_rms ** 2)[:, None, None]
 
         data_slice, model_slice = obs.renderer.slices
-        ref_obs.renderer.map_channels(detect)[model_slice] += weights * data[data_slice]
-        ref_obs.renderer.map_channels(var)[model_slice] += spectrum * weights
+        obs.renderer.map_channels(detect)[model_slice] += weights * data[data_slice]
+        obs.renderer.map_channels(var)[model_slice] += spectrum * weights
 
     if spectra is not None:
         detect = detect.sum(axis=0)
