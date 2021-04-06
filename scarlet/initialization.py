@@ -328,6 +328,8 @@ def init_all_sources(
     min_components=1,
     min_snr=50,
     shifting=False,
+    resizing=True,
+    boxsize=None,
     fallback=True,
     silent=False,
     set_spectra=True,
@@ -377,6 +379,8 @@ def init_all_sources(
                 min_components=min_components,
                 min_snr=min_snr,
                 shifting=shifting,
+                resizing=resizing,
+                boxsize=boxsize,
                 fallback=fallback,
             )
             sources.append(source)
@@ -403,6 +407,8 @@ def init_source(
     min_components=1,
     min_snr=50,
     shifting=False,
+    resizing=True,
+    boxsize=None,
     fallback=True,
 ):
     """Initialize a Source
@@ -451,6 +457,10 @@ def init_source(
         Whether or not to fit the position of a source.
         This is an expensive operation and is typically only used when
         a source is on the edge of the detector.
+    resizing : bool
+        Whether or not to change the size of the source box.
+    boxsize: int or None
+        Spatial size of the source box
     fallback : bool
         Whether to reduce the number of components
         if the model cannot be initialized with `max_components`.
@@ -466,7 +476,6 @@ def init_source(
     if not hasattr(observations, "__iter__"):
         observations = (observations,)
 
-    source_shifting = shifting
     if fallback:
         _, psf_snr = get_psf_spectrum(center, observations, compute_snr=True)
         max_components = np.min(
@@ -484,12 +493,20 @@ def init_source(
                     center,
                     observations,
                     thresh=thresh,
-                    shifting=source_shifting,
+                    shifting=shifting,
+                    resizing=resizing,
+                    boxsize=boxsize,
                     K=max_components,
                 )
             else:
                 source = ExtendedSource(
-                    frame, center, observations, shifting=source_shifting, compact=True
+                    frame,
+                    center,
+                    observations,
+                    shifting=shifting,
+                    resizing=resizing,
+                    boxsize=boxsize,
+                    compact=True,
                 )
 
             # test if parameters are fine, otherwise throw ArithmeticError

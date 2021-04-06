@@ -136,7 +136,13 @@ class PointSource(FactorizedComponent):
 
 class CompactExtendedSource(FactorizedComponent):
     def __init__(
-        self, model_frame, sky_coord, observations, shifting=False, boxsize=None
+        self,
+        model_frame,
+        sky_coord,
+        observations,
+        shifting=False,
+        resizing=True,
+        boxsize=None,
     ):
         """Compact extended source model
 
@@ -156,6 +162,8 @@ class CompactExtendedSource(FactorizedComponent):
             Observation(s) to initialize this source.
         shifting: `bool`
             Whether or not a subpixel shift is added as optimization parameter
+        resizing : bool
+            Whether or not to change the size of the source box.
         boxsize: int or None
             Spatial size of the source box
         """
@@ -175,6 +183,7 @@ class CompactExtendedSource(FactorizedComponent):
             symmetric=False,
             min_grad=0,
             shifting=shifting,
+            resizing=resizing,
         )
 
         # get spectrum from peak pixel, correct for PSF
@@ -252,6 +261,7 @@ class SingleExtendedSource(FactorizedComponent):
         observations,
         thresh=1.0,
         shifting=False,
+        resizing=True,
         boxsize=None,
     ):
         """Extended source model
@@ -277,6 +287,8 @@ class SingleExtendedSource(FactorizedComponent):
             Initialize with the shape of a point source
         shifting: `bool`
             Whether or not a subpixel shift is added as optimization parameter
+        resizing : bool
+            Whether or not to change the size of the source box.
         boxsize: int or None
             Spatial size of the source box
         """
@@ -313,6 +325,7 @@ class SingleExtendedSource(FactorizedComponent):
             symmetric=False,
             min_grad=0,
             shifting=shifting,
+            resizing=resizing,
         )
 
         # find best-fit spectra for morph from init coadd
@@ -509,6 +522,7 @@ class MultiExtendedSource(CombinedComponent):
         flux_percentiles=None,
         thresh=1.0,
         shifting=False,
+        resizing=True,
         boxsize=None,
     ):
         """Create multi-component extended source.
@@ -534,6 +548,8 @@ class MultiExtendedSource(CombinedComponent):
             flux cutoff for morphology initialization.
         shifting: `bool`
             Whether or not a subpixel shift is added as optimization parameter
+        resizing : bool
+            Whether or not to change the size of the source box.
         boxsize: int or None
             Spatial size of the source box
         """
@@ -547,7 +563,9 @@ class MultiExtendedSource(CombinedComponent):
             observations = (observations,)
 
         # start off with regular ExtendedSource
-        source = ExtendedSource(model_frame, sky_coord, observations, thresh=thresh)
+        source = ExtendedSource(
+            model_frame, sky_coord, observations, thresh=thresh, boxsize=boxsize
+        )
         _, morphology = source.children
         morphs, boxes = self.init_morphs(morphology, flux_percentiles)
 
@@ -579,6 +597,7 @@ class MultiExtendedSource(CombinedComponent):
                 symmetric=False,
                 min_grad=0,
                 shifting=shifting,
+                resizing=resizing,
             )
             self.center = morphology.center
             component = FactorizedComponent(model_frame, spectrum, morphology)
@@ -641,6 +660,7 @@ def ExtendedSource(
     thresh=1.0,
     compact=False,
     shifting=False,
+    resizing=True,
     boxsize=None,
 ):
     """Create extended sources with either a single component or multiple components.
@@ -651,7 +671,12 @@ def ExtendedSource(
 
     if compact:
         return CompactExtendedSource(
-            model_frame, sky_coord, observations, shifting=shifting, boxsize=boxsize,
+            model_frame,
+            sky_coord,
+            observations,
+            shifting=shifting,
+            resizing=resizing,
+            boxsize=boxsize,
         )
     if K == 1:
         return SingleExtendedSource(
@@ -660,6 +685,7 @@ def ExtendedSource(
             observations,
             thresh=thresh,
             shifting=shifting,
+            resizing=resizing,
             boxsize=boxsize,
         )
     else:
@@ -671,5 +697,6 @@ def ExtendedSource(
             flux_percentiles=flux_percentiles,
             thresh=thresh,
             shifting=shifting,
+            resizing=resizing,
             boxsize=boxsize,
         )
