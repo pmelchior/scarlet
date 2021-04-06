@@ -4,7 +4,8 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17: http://docutils.sourceforge.net/" />
+
     <title>Multi-Resolution Tutorial &#8212; scarlet  documentation</title>
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
@@ -13,8 +14,6 @@
     <script src="../_static/underscore.js"></script>
     <script src="../_static/doctools.js"></script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
-    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
-    <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "ignoreClass": "document", "processClass": "math|output_area"}})</script>
     <link rel="canonical" href="api/tutorials/multiresolution.html" />
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
@@ -316,7 +315,7 @@ div.rendered_html tbody tr:hover {
   background: rgba(66, 165, 245, 0.2);
 }
 </style>
-<div class="section" id="Multi-Resolution-Tutorial">
+<section id="Multi-Resolution-Tutorial">
 <h1>Multi-Resolution Tutorial<a class="headerlink" href="#Multi-Resolution-Tutorial" title="Permalink to this headline">¶</a></h1>
 <p>This tutorial shows how to model sources frome images observed with different telescopes. We will use a multiband observation with the Hyper-Sprime Cam (HSC) and a single high-resolution image from the Hubble Space Telescope (HST).</p>
 <div class="nbinput nblast docutils container">
@@ -340,7 +339,7 @@ div.rendered_html tbody tr:hover {
 </pre></div>
 </div>
 </div>
-<div class="section" id="Load-Data">
+<section id="Load-Data">
 <h2>Load Data<a class="headerlink" href="#Load-Data" title="Permalink to this headline">¶</a></h2>
 <p>We first load the HSC and HST images, channel names, and PSFs. For the images, we need to swap the byte order if necessary because a bug in astropy does not respect the local endianness… We also don’t have precomputed weight/variance maps, so we will need to compute them afterwards.</p>
 <div class="nbinput nblast docutils container">
@@ -379,8 +378,8 @@ div.rendered_html tbody tr:hover {
 </pre></div>
 </div>
 </div>
-</div>
-<div class="section" id="Create-Frame-and-Observations">
+</section>
+<section id="Create-Frame-and-Observations">
 <h2>Create Frame and Observations<a class="headerlink" href="#Create-Frame-and-Observations" title="Permalink to this headline">¶</a></h2>
 <p>Unlike the single resolution examples, we now have two different instruments with different pixel resolutions, so we need two different observations. Since the HST image is at a much higher resolution, we define our model <code class="docutils literal notranslate"><span class="pre">Frame</span></code> to use the HST PSF and the HST resolution. Because there is no resampling between the model frame and the HST observation, we can use the default <code class="docutils literal notranslate"><span class="pre">Observation</span></code> class for the HST data. The HSC images have lower resolution, so we need to resample the models to this
 frame, and that’s done by <code class="docutils literal notranslate"><span class="pre">LowResObservation</span></code>.</p>
@@ -499,8 +498,8 @@ frame, and that’s done by <code class="docutils literal notranslate"><span cla
 <img alt="../_images/tutorials_multiresolution_9_1.png" src="../_images/tutorials_multiresolution_9_1.png" />
 </div>
 </div>
-</div>
-<div class="section" id="Initialize-Sources-and-Blend">
+</section>
+<section id="Initialize-Sources-and-Blend">
 <h2>Initialize Sources and Blend<a class="headerlink" href="#Initialize-Sources-and-Blend" title="Permalink to this headline">¶</a></h2>
 <p>We expect all sources to be galaxies, so we initialized them as <code class="docutils literal notranslate"><span class="pre">ExtendedSources</span></code>. Afterwards, we match their amplitudes to the data, and create an instance of <code class="docutils literal notranslate"><span class="pre">Blend</span></code> to hold all sources and <em>all</em> observations for the fit below.</p>
 <div class="nbinput nblast docutils container">
@@ -522,8 +521,8 @@ frame, and that’s done by <code class="docutils literal notranslate"><span cla
 </pre></div>
 </div>
 </div>
-</div>
-<div class="section" id="Display-Initial-guess">
+</section>
+<section id="Display-Initial-guess">
 <h2>Display Initial guess<a class="headerlink" href="#Display-Initial-guess" title="Permalink to this headline">¶</a></h2>
 <p>Let’s compare the initial guess in both observation frames. Note that the full model comprises more spectral channels and/or pixels than any individual observation. That’s a result of defining</p>
 <div class="nbinput docutils container">
@@ -559,8 +558,8 @@ frame, and that’s done by <code class="docutils literal notranslate"><span cla
 <img alt="../_images/tutorials_multiresolution_13_1.png" src="../_images/tutorials_multiresolution_13_1.png" />
 </div>
 </div>
-</div>
-<div class="section" id="Fit-Model">
+</section>
+<section id="Fit-Model">
 <h2>Fit Model<a class="headerlink" href="#Fit-Model" title="Permalink to this headline">¶</a></h2>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
@@ -579,9 +578,9 @@ frame, and that’s done by <code class="docutils literal notranslate"><span cla
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-CPU times: user 3min 18s, sys: 47.5 s, total: 4min 6s
-Wall time: 4min 6s
-scarlet ran for 50 iterations to logL = 12027.504661837433
+CPU times: user 3min 13s, sys: 45.8 s, total: 3min 59s
+Wall time: 3min 59s
+scarlet ran for 50 iterations to logL = 12028.36850120729
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">
@@ -591,7 +590,7 @@ scarlet ran for 50 iterations to logL = 12027.504661837433
 <img alt="../_images/tutorials_multiresolution_15_1.png" src="../_images/tutorials_multiresolution_15_1.png" />
 </div>
 </div>
-<div class="section" id="View-Updated-Model">
+<section id="View-Updated-Model">
 <h3>View Updated Model<a class="headerlink" href="#View-Updated-Model" title="Permalink to this headline">¶</a></h3>
 <p>We use the same principle to look at the updated model:</p>
 <div class="nbinput docutils container">
@@ -627,8 +626,8 @@ scarlet ran for 50 iterations to logL = 12027.504661837433
 <img alt="../_images/tutorials_multiresolution_17_1.png" src="../_images/tutorials_multiresolution_17_1.png" />
 </div>
 </div>
-</div>
-<div class="section" id="View-Source-Models">
+</section>
+<section id="View-Source-Models">
 <h3>View Source Models<a class="headerlink" href="#View-Source-Models" title="Permalink to this headline">¶</a></h3>
 <p>It can also be useful to view the model for each source. For each source we extract the portion of the image contained in the sources bounding box, the true simulated source flux, and the model of the source, scaled so that all of the images have roughly the same pixel scale.</p>
 <div class="nbinput docutils container">
@@ -917,9 +916,9 @@ source number  11
 <img alt="../_images/tutorials_multiresolution_19_35.png" src="../_images/tutorials_multiresolution_19_35.png" />
 </div>
 </div>
-</div>
-</div>
-</div>
+</section>
+</section>
+</section>
 
 
           </div>
@@ -932,7 +931,7 @@ source number  11
       &copy;2018-2019, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.4.3</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.5.3</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

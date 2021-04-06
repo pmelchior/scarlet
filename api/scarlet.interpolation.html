@@ -4,7 +4,8 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17: http://docutils.sourceforge.net/" />
+
     <title>scarlet.interpolation &#8212; scarlet  documentation</title>
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
@@ -13,8 +14,6 @@
     <script src="../_static/underscore.js"></script>
     <script src="../_static/doctools.js"></script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
-    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
-    <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "ignoreClass": "document", "processClass": "math|output_area"}})</script>
     <link rel="canonical" href="api/api/scarlet.interpolation.html" />
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
@@ -86,11 +85,11 @@
 
           <div class="body" role="main">
             
-  <div class="section" id="module-scarlet.interpolation">
+  <section id="module-scarlet.interpolation">
 <span id="scarlet-interpolation"></span><h1>scarlet.interpolation<a class="headerlink" href="#module-scarlet.interpolation" title="Permalink to this headline">¶</a></h1>
 <dl class="py function">
 <dt id="scarlet.interpolation.apply_2D_trapezoid_rule">
-<code class="sig-prename descclassname">scarlet.interpolation.</code><code class="sig-name descname">apply_2D_trapezoid_rule</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">y</span></em>, <em class="sig-param"><span class="n">x</span></em>, <em class="sig-param"><span class="n">f</span></em>, <em class="sig-param"><span class="n">dNy</span></em>, <em class="sig-param"><span class="n">dNx</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">dy</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">dx</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#apply_2D_trapezoid_rule"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.interpolation.apply_2D_trapezoid_rule" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname"><span class="pre">scarlet.interpolation.</span></code><code class="sig-name descname"><span class="pre">apply_2D_trapezoid_rule</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">f</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dNy</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dNx</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dy</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dx</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#apply_2D_trapezoid_rule"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.interpolation.apply_2D_trapezoid_rule" title="Permalink to this definition">¶</a></dt>
 <dd><p>Use the trapezoid rule to integrate over a subsampled function
 2D implementation of the trapezoid rule.
 See <cite>apply_trapezoid_rule</cite> for a description, with the difference
@@ -99,7 +98,7 @@ that <cite>f</cite> is a function <cite>f(y,x)</cite>, where we note the c ++`(y
 
 <dl class="py function">
 <dt id="scarlet.interpolation.bilinear">
-<code class="sig-prename descclassname">scarlet.interpolation.</code><code class="sig-name descname">bilinear</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dx</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#bilinear"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.interpolation.bilinear" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname"><span class="pre">scarlet.interpolation.</span></code><code class="sig-name descname"><span class="pre">bilinear</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dx</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#bilinear"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.interpolation.bilinear" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bilinear interpolation kernel</p>
 <p>Interpolate between neighboring pixels to shift
 by a fractional amount.</p>
@@ -123,14 +122,14 @@ by a fractional amount.</p>
 
 <dl class="py function">
 <dt id="scarlet.interpolation.catmull_rom">
-<code class="sig-prename descclassname">scarlet.interpolation.</code><code class="sig-name descname">catmull_rom</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dx</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#catmull_rom"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.interpolation.catmull_rom" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname"><span class="pre">scarlet.interpolation.</span></code><code class="sig-name descname"><span class="pre">catmull_rom</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dx</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#catmull_rom"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.interpolation.catmull_rom" title="Permalink to this definition">¶</a></dt>
 <dd><p>Cubic spline with a=0.5, b=0</p>
 <p>See <cite>cubic_spline</cite> for details.</p>
 </dd></dl>
 
 <dl class="py function">
 <dt id="scarlet.interpolation.common_projections">
-<code class="sig-prename descclassname">scarlet.interpolation.</code><code class="sig-name descname">common_projections</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">img1</span></em>, <em class="sig-param"><span class="n">img2</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#common_projections"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.interpolation.common_projections" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname"><span class="pre">scarlet.interpolation.</span></code><code class="sig-name descname"><span class="pre">common_projections</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">img2</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#common_projections"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.interpolation.common_projections" title="Permalink to this definition">¶</a></dt>
 <dd><p>Project two images to a common frame</p>
 <p>It is assumed that the two images have the same center.
 This is mainly used for FFT convolutions of source components,
@@ -157,7 +156,7 @@ where the convolution kernel is a different size than the morphology.</p>
 
 <dl class="py function">
 <dt id="scarlet.interpolation.cubic_spline">
-<code class="sig-prename descclassname">scarlet.interpolation.</code><code class="sig-name descname">cubic_spline</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dx</span></em>, <em class="sig-param"><span class="n">a</span><span class="o">=</span><span class="default_value">1</span></em>, <em class="sig-param"><span class="n">b</span><span class="o">=</span><span class="default_value">0</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#cubic_spline"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.interpolation.cubic_spline" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname"><span class="pre">scarlet.interpolation.</span></code><code class="sig-name descname"><span class="pre">cubic_spline</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dx</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">a</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#cubic_spline"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.interpolation.cubic_spline" title="Permalink to this definition">¶</a></dt>
 <dd><p>Generate a cubix spline centered on <cite>dx</cite>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -183,12 +182,12 @@ where the convolution kernel is a different size than the morphology.</p>
 
 <dl class="py function">
 <dt id="scarlet.interpolation.get_affine">
-<code class="sig-prename descclassname">scarlet.interpolation.</code><code class="sig-name descname">get_affine</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">wcs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#get_affine"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.interpolation.get_affine" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname"><span class="pre">scarlet.interpolation.</span></code><code class="sig-name descname"><span class="pre">get_affine</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">wcs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#get_affine"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.interpolation.get_affine" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py function">
 <dt id="scarlet.interpolation.get_angles">
-<code class="sig-prename descclassname">scarlet.interpolation.</code><code class="sig-name descname">get_angles</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">frame_wcs</span></em>, <em class="sig-param"><span class="n">model_wcs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#get_angles"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.interpolation.get_angles" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname"><span class="pre">scarlet.interpolation.</span></code><code class="sig-name descname"><span class="pre">get_angles</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frame_wcs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_wcs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#get_angles"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.interpolation.get_angles" title="Permalink to this definition">¶</a></dt>
 <dd><p>Computes the angles between two WCS
 Parameters
 ———-</p>
@@ -204,7 +203,7 @@ Parameters
 
 <dl class="py function">
 <dt id="scarlet.interpolation.get_common_padding">
-<code class="sig-prename descclassname">scarlet.interpolation.</code><code class="sig-name descname">get_common_padding</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">img1</span></em>, <em class="sig-param"><span class="n">img2</span></em>, <em class="sig-param"><span class="n">padding</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#get_common_padding"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.interpolation.get_common_padding" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname"><span class="pre">scarlet.interpolation.</span></code><code class="sig-name descname"><span class="pre">get_common_padding</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">img2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">padding</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#get_common_padding"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.interpolation.get_common_padding" title="Permalink to this definition">¶</a></dt>
 <dd><p>Project two images to a common frame</p>
 <p>It is assumed that the two images have the same center.
 This is mainly used for FFT convolutions of source components,
@@ -231,7 +230,7 @@ where the convolution kernel is a different size than the morphology.</p>
 
 <dl class="py function">
 <dt id="scarlet.interpolation.get_filter_bounds">
-<code class="sig-prename descclassname">scarlet.interpolation.</code><code class="sig-name descname">get_filter_bounds</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">coords</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#get_filter_bounds"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.interpolation.get_filter_bounds" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname"><span class="pre">scarlet.interpolation.</span></code><code class="sig-name descname"><span class="pre">get_filter_bounds</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">coords</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#get_filter_bounds"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.interpolation.get_filter_bounds" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get the slices in x and y to apply a filter</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -252,7 +251,7 @@ defined by <cite>get_filter_coords</cite>.</p>
 
 <dl class="py function">
 <dt id="scarlet.interpolation.get_filter_coords">
-<code class="sig-prename descclassname">scarlet.interpolation.</code><code class="sig-name descname">get_filter_coords</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">filter_values</span></em>, <em class="sig-param"><span class="n">center</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#get_filter_coords"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.interpolation.get_filter_coords" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname"><span class="pre">scarlet.interpolation.</span></code><code class="sig-name descname"><span class="pre">get_filter_coords</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filter_values</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">center</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#get_filter_coords"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.interpolation.get_filter_coords" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create filter coordinate grid needed for the apply filter function</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -277,13 +276,13 @@ where the coordinates of the <cite>center</cite> pixel are <cite>(0,0)</cite>.</
 
 <dl class="py function">
 <dt id="scarlet.interpolation.get_pixel_size">
-<code class="sig-prename descclassname">scarlet.interpolation.</code><code class="sig-name descname">get_pixel_size</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">model_affine</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#get_pixel_size"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.interpolation.get_pixel_size" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname"><span class="pre">scarlet.interpolation.</span></code><code class="sig-name descname"><span class="pre">get_pixel_size</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model_affine</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#get_pixel_size"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.interpolation.get_pixel_size" title="Permalink to this definition">¶</a></dt>
 <dd><p>Extracts the pixel size from a wcs</p>
 </dd></dl>
 
 <dl class="py function">
 <dt id="scarlet.interpolation.get_projection_slices">
-<code class="sig-prename descclassname">scarlet.interpolation.</code><code class="sig-name descname">get_projection_slices</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">image</span></em>, <em class="sig-param"><span class="n">shape</span></em>, <em class="sig-param"><span class="n">yx0</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#get_projection_slices"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.interpolation.get_projection_slices" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname"><span class="pre">scarlet.interpolation.</span></code><code class="sig-name descname"><span class="pre">get_projection_slices</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shape</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">yx0</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#get_projection_slices"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.interpolation.get_projection_slices" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get slices needed to project an image</p>
 <p>This method returns the bounding boxes needed to
 project <cite>image</cite> into a larger image with <cite>shape</cite>.
@@ -320,7 +319,7 @@ useful for calculating information about the image before projection.</p>
 
 <dl class="py function">
 <dt id="scarlet.interpolation.get_psf_size">
-<code class="sig-prename descclassname">scarlet.interpolation.</code><code class="sig-name descname">get_psf_size</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">psf</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#get_psf_size"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.interpolation.get_psf_size" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname"><span class="pre">scarlet.interpolation.</span></code><code class="sig-name descname"><span class="pre">get_psf_size</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">psf</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#get_psf_size"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.interpolation.get_psf_size" title="Permalink to this definition">¶</a></dt>
 <dd><p>Measures the size of a psf by computing the size of the area in 3 sigma around the center.</p>
 <p>This is an approximate method to estimate the size of the psf for setting the size of the frame,
 which does not require a precise measurement.</p>
@@ -342,7 +341,7 @@ which does not require a precise measurement.</p>
 
 <dl class="py function">
 <dt id="scarlet.interpolation.get_separable_kernel">
-<code class="sig-prename descclassname">scarlet.interpolation.</code><code class="sig-name descname">get_separable_kernel</code><span class="sig-paren">(</span><em class="sig-param">dy</em>, <em class="sig-param">dx</em>, <em class="sig-param">kernel=&lt;function lanczos&gt;</em>, <em class="sig-param">**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#get_separable_kernel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.interpolation.get_separable_kernel" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname"><span class="pre">scarlet.interpolation.</span></code><code class="sig-name descname"><span class="pre">get_separable_kernel</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="pre">dy</span></em>, <em class="sig-param"><span class="pre">dx</span></em>, <em class="sig-param"><span class="pre">kernel=&lt;function</span> <span class="pre">lanczos&gt;</span></em>, <em class="sig-param"><span class="pre">**kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#get_separable_kernel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.interpolation.get_separable_kernel" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create a 2D kernel from a 1D kernel separable in x and y</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -372,7 +371,7 @@ which does not require a precise measurement.</p>
 
 <dl class="py function">
 <dt id="scarlet.interpolation.interpolate_observation">
-<code class="sig-prename descclassname">scarlet.interpolation.</code><code class="sig-name descname">interpolate_observation</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">observation</span></em>, <em class="sig-param"><span class="n">frame</span></em>, <em class="sig-param"><span class="n">wave_filter</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#interpolate_observation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.interpolation.interpolate_observation" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname"><span class="pre">scarlet.interpolation.</span></code><code class="sig-name descname"><span class="pre">interpolate_observation</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">observation</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wave_filter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#interpolate_observation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.interpolation.interpolate_observation" title="Permalink to this definition">¶</a></dt>
 <dd><p>Interpolates the images in an observation on the grid described by a frame
 and returns the interpolated images.</p>
 <dl class="field-list simple">
@@ -387,7 +386,7 @@ and returns the interpolated images.</p>
 
 <dl class="py function">
 <dt id="scarlet.interpolation.lanczos">
-<code class="sig-prename descclassname">scarlet.interpolation.</code><code class="sig-name descname">lanczos</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dx</span></em>, <em class="sig-param"><span class="n">a</span><span class="o">=</span><span class="default_value">3</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#lanczos"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.interpolation.lanczos" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname"><span class="pre">scarlet.interpolation.</span></code><code class="sig-name descname"><span class="pre">lanczos</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dx</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">a</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#lanczos"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.interpolation.lanczos" title="Permalink to this definition">¶</a></dt>
 <dd><p>Lanczos kernel</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -409,20 +408,20 @@ and returns the interpolated images.</p>
 
 <dl class="py function">
 <dt id="scarlet.interpolation.mitchel_netravali">
-<code class="sig-prename descclassname">scarlet.interpolation.</code><code class="sig-name descname">mitchel_netravali</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dx</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#mitchel_netravali"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.interpolation.mitchel_netravali" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname"><span class="pre">scarlet.interpolation.</span></code><code class="sig-name descname"><span class="pre">mitchel_netravali</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dx</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#mitchel_netravali"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.interpolation.mitchel_netravali" title="Permalink to this definition">¶</a></dt>
 <dd><p>Cubic spline with a=1/3, b=1/3</p>
 <p>See <cite>cubic_spline</cite> for details.</p>
 </dd></dl>
 
 <dl class="py function">
 <dt id="scarlet.interpolation.mk_shifter">
-<code class="sig-prename descclassname">scarlet.interpolation.</code><code class="sig-name descname">mk_shifter</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">shape</span></em>, <em class="sig-param"><span class="n">real</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#mk_shifter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.interpolation.mk_shifter" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname"><span class="pre">scarlet.interpolation.</span></code><code class="sig-name descname"><span class="pre">mk_shifter</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">shape</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">real</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#mk_shifter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.interpolation.mk_shifter" title="Permalink to this definition">¶</a></dt>
 <dd><p>Performs shifts in the Fourier domain on Fourier objects</p>
 </dd></dl>
 
 <dl class="py function">
 <dt id="scarlet.interpolation.project_image">
-<code class="sig-prename descclassname">scarlet.interpolation.</code><code class="sig-name descname">project_image</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">image</span></em>, <em class="sig-param"><span class="n">shape</span></em>, <em class="sig-param"><span class="n">yx0</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#project_image"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.interpolation.project_image" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname"><span class="pre">scarlet.interpolation.</span></code><code class="sig-name descname"><span class="pre">project_image</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shape</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">yx0</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#project_image"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.interpolation.project_image" title="Permalink to this definition">¶</a></dt>
 <dd><p>Project an image centered in a larger image</p>
 <p>The projection pads the image with zeros if
 necessary or trims the edges if img is larger
@@ -452,12 +451,12 @@ the projection.</p>
 
 <dl class="py function">
 <dt id="scarlet.interpolation.quintic_spline">
-<code class="sig-prename descclassname">scarlet.interpolation.</code><code class="sig-name descname">quintic_spline</code><span class="sig-paren">(</span><em class="sig-param">dx</em>, <em class="sig-param">dtype=&lt;class 'numpy.float64'&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#quintic_spline"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.interpolation.quintic_spline" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname"><span class="pre">scarlet.interpolation.</span></code><code class="sig-name descname"><span class="pre">quintic_spline</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="pre">dx</span></em>, <em class="sig-param"><span class="pre">dtype=&lt;class</span> <span class="pre">'numpy.float64'&gt;</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#quintic_spline"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.interpolation.quintic_spline" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py function">
 <dt id="scarlet.interpolation.sinc2D">
-<code class="sig-prename descclassname">scarlet.interpolation.</code><code class="sig-name descname">sinc2D</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">y</span></em>, <em class="sig-param"><span class="n">x</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#sinc2D"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.interpolation.sinc2D" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname"><span class="pre">scarlet.interpolation.</span></code><code class="sig-name descname"><span class="pre">sinc2D</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#sinc2D"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.interpolation.sinc2D" title="Permalink to this definition">¶</a></dt>
 <dd><p>2-D sinc function based on the product of 2 1-D sincs</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -475,7 +474,7 @@ the projection.</p>
 
 <dl class="py function">
 <dt id="scarlet.interpolation.sinc_interp">
-<code class="sig-prename descclassname">scarlet.interpolation.</code><code class="sig-name descname">sinc_interp</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">images</span></em>, <em class="sig-param"><span class="n">coord_hr</span></em>, <em class="sig-param"><span class="n">coord_lr</span></em>, <em class="sig-param"><span class="n">angle</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">padding</span><span class="o">=</span><span class="default_value">3</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#sinc_interp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.interpolation.sinc_interp" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname"><span class="pre">scarlet.interpolation.</span></code><code class="sig-name descname"><span class="pre">sinc_interp</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">images</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coord_hr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coord_lr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">angle</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">padding</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#sinc_interp"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.interpolation.sinc_interp" title="Permalink to this definition">¶</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><dl class="simple">
@@ -499,7 +498,7 @@ the projection.</p>
 
 <dl class="py function">
 <dt id="scarlet.interpolation.sinc_interp_inplace">
-<code class="sig-prename descclassname">scarlet.interpolation.</code><code class="sig-name descname">sinc_interp_inplace</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">image</span></em>, <em class="sig-param"><span class="n">h_image</span></em>, <em class="sig-param"><span class="n">h_target</span></em>, <em class="sig-param"><span class="n">angle</span></em>, <em class="sig-param"><span class="n">pad_shape</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#sinc_interp_inplace"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.interpolation.sinc_interp_inplace" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname"><span class="pre">scarlet.interpolation.</span></code><code class="sig-name descname"><span class="pre">sinc_interp_inplace</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">h_image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">h_target</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">angle</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pad_shape</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#sinc_interp_inplace"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.interpolation.sinc_interp_inplace" title="Permalink to this definition">¶</a></dt>
 <dd><p>In place interpolation of a cube of images</p>
 <p>Performs interpolation from a grid defined by the grid of <cite>image</cite> to a grid spanning the same physical area scaled
 by a factor <cite>h</cite> and rotated by <cite>angle</cite> radians. The center for the rotation is the central pixel of the image.
@@ -526,13 +525,13 @@ This procedure is advised for odd-sized images only.</p>
 
 <dl class="py function">
 <dt id="scarlet.interpolation.subsample_function">
-<code class="sig-prename descclassname">scarlet.interpolation.</code><code class="sig-name descname">subsample_function</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">y</span></em>, <em class="sig-param"><span class="n">x</span></em>, <em class="sig-param"><span class="n">f</span></em>, <em class="sig-param"><span class="n">dNy</span></em>, <em class="sig-param"><span class="n">dNx</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">dy</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">dx</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#subsample_function"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.interpolation.subsample_function" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname"><span class="pre">scarlet.interpolation.</span></code><code class="sig-name descname"><span class="pre">subsample_function</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">f</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dNy</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dNx</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dy</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dx</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/interpolation.html#subsample_function"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.interpolation.subsample_function" title="Permalink to this definition">¶</a></dt>
 <dd><p>Subsample a function
 Given the expected pixel grid of a function, subsample that function
 at a grid subdivided in x by <cite>dNx</cite> and y by <cite>dNy</cite>.</p>
 </dd></dl>
 
-</div>
+</section>
 
 
           </div>
@@ -545,7 +544,7 @@ at a grid subdivided in x by <cite>dNx</cite> and y by <cite>dNy</cite>.</p>
       &copy;2018-2019, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.4.3</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.5.3</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

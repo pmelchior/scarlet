@@ -4,7 +4,8 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17: http://docutils.sourceforge.net/" />
+
     <title>scarlet Documentation &#8212; scarlet  documentation</title>
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
@@ -13,8 +14,6 @@
     <script src="_static/underscore.js"></script>
     <script src="_static/doctools.js"></script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
-    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
-    <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "ignoreClass": "document", "processClass": "math|output_area"}})</script>
     <link rel="canonical" href="api/index.html" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -61,12 +60,12 @@
 
           <div class="body" role="main">
             
-  <div class="section" id="scarlet-documentation">
+  <section id="scarlet-documentation">
 <h1><em>scarlet</em> Documentation<a class="headerlink" href="#scarlet-documentation" title="Permalink to this headline">¶</a></h1>
 <p><em>scarlet</em> is an open source python library for modeling astronomical sources from
 multi-band, multi-epoch, and multi-instrument data.</p>
-</div>
-<div class="section" id="getting-started">
+</section>
+<section id="getting-started">
 <span id="id1"></span><h1>Getting Started<a class="headerlink" href="#getting-started" title="Permalink to this headline">¶</a></h1>
 <div class="toctree-wrapper compound">
 <ul>
@@ -127,12 +126,12 @@ multi-band, multi-epoch, and multi-instrument data.</p>
 <li class="toctree-l1"><a class="reference internal" href="regression.html">Regression Testing</a></li>
 </ul>
 </div>
-</div>
-<div class="section" id="change-log">
+</section>
+<section id="change-log">
 <h1>Change Log<a class="headerlink" href="#change-log" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="id2">
+<section id="id2">
 <h2>1.1 (2020-07-14)<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
-<div class="section" id="general">
+<section id="general">
 <h3>General<a class="headerlink" href="#general" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
 <li><p>Introduction of <cite>Spectrum</cite> and <cite>Morphology</cite> classes (both inherited from <cite>Factor</cite>) to modularize <cite>FactorizedComponent</cite>. They implement <cite>get_model</cite> member functions which create the representation of the spectrum and morphology model from whatever it uses as parameters.</p></li>
@@ -141,19 +140,19 @@ multi-band, multi-epoch, and multi-instrument data.</p>
 <li><p><cite>FunctionComponent</cite> has been deprecated.</p></li>
 <li><p>Initialization and plotting functions are now consistent for multi-observation data sets.</p></li>
 </ul>
-</div>
-<div class="section" id="new-features">
+</section>
+<section id="new-features">
 <h3>New Features<a class="headerlink" href="#new-features" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
 <li><p>One can now e.g. combine a custom spectrum model with an existing <cite>PointSourceMorphology</cite>.</p></li>
 <li><p><cite>Box</cite> can now be sliced for lower dimensional subset; two Boxes can be combined with <cite>&#64;</cite> to create a higher-dimensional box.</p></li>
 <li><p><cite>display</cite> functions can now show the source boxes.</p></li>
 </ul>
-</div>
-</div>
-<div class="section" id="id3">
+</section>
+</section>
+<section id="id3">
 <h2>1.0 (2019-12-22)<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h2>
-<div class="section" id="id4">
+<section id="id4">
 <h3>General<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
 <li><p>Complete overhaul of the modeling code. It now allows for arbitrary <cite>Parameter</cite>
@@ -163,8 +162,8 @@ instances to generate a source model (e.g. point-source or Sersic fitting).</p><
 method that doesn’t require Lipschitz constants and uses different steps sizes for
 each element of an optimization parameter.</p></li>
 </ul>
-</div>
-<div class="section" id="id5">
+</section>
+<section id="id5">
 <h3>New Features<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
 <li><p><cite>Prior</cite> can now be attached to a <cite>Parameter</cite> and its gradient will be added to likelihood gradients.</p></li>
@@ -175,8 +174,8 @@ each element of an optimization parameter.</p></li>
 <li><p><cite>scarlet.display</cite> has methods to <cite>show_scene</cite> and <cite>show_sources</cite> which allow fast inspection.</p></li>
 <li><p><cite>scarlet.measure</cite> has methods to perform measurements on the component models.</p></li>
 </ul>
-</div>
-<div class="section" id="api-changes">
+</section>
+<section id="api-changes">
 <h3>API Changes<a class="headerlink" href="#api-changes" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
 <li><p><cite>Frame</cite> and <cite>Observation</cite> strongly prefer all arguments (<cite>weights</cite>, <cite>psfs</cite>, <cite>channels</cite>, <cite>wcs</cite>) to be set.</p></li>
@@ -185,11 +184,11 @@ to access the PSF image cube.</p></li>
 <li><p><cite>ExtendedSource</cite> does not accept <cite>bg_rms</cite> keyword. This information is derived from
 <cite>observation.weights</cite>.</p></li>
 </ul>
-</div>
-</div>
-<div class="section" id="id6">
+</section>
+</section>
+<section id="id6">
 <h2>0.5 (2019-06-26)<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h2>
-<div class="section" id="id7">
+<section id="id7">
 <h3>General<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
 <li><p>Completely restructured code, including using <cite>autograd</cite> package to calculate gradients.</p></li>
@@ -199,8 +198,8 @@ individually for each source.</p></li>
 centering algorithm, such as centroiding or the <cite>scarlet.update.fix_pixel_center</cite>.</p></li>
 <li><p>Updates to all of the docs and tutorials to match the new API.</p></li>
 </ul>
-</div>
-<div class="section" id="id8">
+</section>
+<section id="id8">
 <h3>New Features<a class="headerlink" href="#id8" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
 <li><p>Multi-resolution deblending.</p></li>
@@ -224,8 +223,8 @@ resolutions.</p></li>
 <li><p><cite>Frame.channels</cite> is used to identify channels in multiple observations.</p></li>
 <li><p>PSF convolutions and ffts of image cubes are performed using ndimensional fft along selected axes for better performance.</p></li>
 </ul>
-</div>
-<div class="section" id="id9">
+</section>
+<section id="id9">
 <h3>API Changes<a class="headerlink" href="#id9" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
 <li><p><cite>Scene</cite> is a is a confusing name and has been renamed to <cite>Frame</cite>.</p></li>
@@ -250,18 +249,18 @@ into the model frame. Instead components can exist anywhere on an image and cons
 require a center, such as symmetry and monotonicity, can use the new <cite>uncentered_operator</cite> method.</p></li>
 <li><p><cite>make_operator</cite> is now a method of the <cite>LowResObservation</cite> class as should be.</p></li>
 </ul>
-</div>
-</div>
-<div class="section" id="id10">
+</section>
+</section>
+<section id="id10">
 <h2>0.45 (2019-3-27)<a class="headerlink" href="#id10" title="Permalink to this headline">¶</a></h2>
-<div class="section" id="id11">
+<section id="id11">
 <h3>General<a class="headerlink" href="#id11" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
 <li><p>Tests have been added for the <cite>operator</cite>, <cite>constraint</cite>, <cite>resample</cite>, and <cite>transformation</cite>
 modules. Tests are run on Travis CI with each new build.</p></li>
 </ul>
-</div>
-<div class="section" id="id12">
+</section>
+<section id="id12">
 <h3>New Features<a class="headerlink" href="#id12" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
 <li><p>Convolutions can now be done in Fourier space and/or real
@@ -271,17 +270,17 @@ smaller images by slicing and/or padding.</p></li>
 <li><p>Interpolation kernels have been implemented for fractional pixel shifts using
 bilinear, cubic spline, and Lanczos algorithms.</p></li>
 </ul>
-</div>
-</div>
-<div class="section" id="id13">
+</section>
+</section>
+<section id="id13">
 <h2>0.4 (2019-2-15)<a class="headerlink" href="#id13" title="Permalink to this headline">¶</a></h2>
-<div class="section" id="id14">
+<section id="id14">
 <h3>General<a class="headerlink" href="#id14" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
 <li><p>Dropped python 2 support</p></li>
 </ul>
-</div>
-<div class="section" id="id15">
+</section>
+<section id="id15">
 <h3>New Features<a class="headerlink" href="#id15" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
 <li><p>Initialization of <cite>PointSource</cite>, <cite>ExtendedSource</cite>, and
@@ -296,8 +295,8 @@ This allows the user to recalculate the <cite>Lipschitz</cite> constant
 (used for calculating step sizing) in each iteration as opposed
 to an approximation (the default) used for speed.</p></li>
 </ul>
-</div>
-<div class="section" id="id16">
+</section>
+<section id="id16">
 <h3>API Changes<a class="headerlink" href="#id16" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
 <li><p>The default value of the <cite>Config</cite> parameter <cite>accelerated</cite>
@@ -309,8 +308,8 @@ than the old accelerated version for most blends.</p></li>
 method has been added to properly get the flux of an object
 in each band.</p></li>
 </ul>
-</div>
-<div class="section" id="bug-fixes">
+</section>
+<section id="bug-fixes">
 <h3>Bug Fixes<a class="headerlink" href="#bug-fixes" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
 <li><p>Monotonicity would break if the bounding box for a <cite>Source</cite> was not odd.
@@ -321,8 +320,8 @@ though correctly, but this behavior has been corrected.</p></li>
 will now truncate the release number to the subversion. This was needed for
 binary installs (like the LSST-DM stack).</p></li>
 </ul>
-</div>
-<div class="section" id="other-changes-and-additions">
+</section>
+<section id="other-changes-and-additions">
 <h3>Other Changes and Additions<a class="headerlink" href="#other-changes-and-additions" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
 <li><p>The names of the sub modules <cite>operators</cite>, <cite>constraints</cite>, <cite>transformations</cite>,
@@ -334,9 +333,9 @@ list of components that replaces the old <cite>ComponentList</cite> class, makin
 to have more complicated objects and improving the internal interface to them.</p></li>
 <li><p>The internal resizing and re-centering algorithms have been updated.</p></li>
 </ul>
-</div>
-</div>
-</div>
+</section>
+</section>
+</section>
 
 
           </div>
@@ -349,7 +348,7 @@ to have more complicated objects and improving the internal interface to them.</
       &copy;2018-2019, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.4.3</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.5.3</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

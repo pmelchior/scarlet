@@ -4,7 +4,8 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17: http://docutils.sourceforge.net/" />
+
     <title>Displaying Scenes &#8212; scarlet  documentation</title>
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
@@ -316,7 +317,7 @@ div.rendered_html tbody tr:hover {
   background: rgba(66, 165, 245, 0.2);
 }
 </style>
-<div class="section" id="Displaying-Scenes">
+<section id="Displaying-Scenes">
 <h1>Displaying Scenes<a class="headerlink" href="#Displaying-Scenes" title="Permalink to this headline">¶</a></h1>
 <p>A key feature of <em>scarlet</em> is operating with hyperspectral descriptions of celestial scenes. Color perception is thus critical to assessing the quality of the models. <a class="reference external" href="https://iopscience.iop.org/article/10.1086/382245">Lupton et al. 2004</a> showed a consistent way of mapping three broad-band images onto RGB channels for visualization. The key is to normalize the image intensity, not each band, to preserve the color from the bright to the faint regions. Otherwise, the centers of bright objects
 all appear as white.</p>
@@ -384,7 +385,7 @@ all appear as white.</p>
 </div>
 </div>
 <p>Note that we set the minimum value to 0, which renders all negative values as black. This is reasonable for background-subtracted images, but may not be the right choice in all situations.</p>
-<div class="section" id="Adjusting-Filter-Weights">
+<section id="Adjusting-Filter-Weights">
 <h2>Adjusting Filter Weights<a class="headerlink" href="#Adjusting-Filter-Weights" title="Permalink to this headline">¶</a></h2>
 <p><em>scarlet</em> adds the functionality of mapping images with <em>more</em> than three bands into RGB channels. The method <code class="docutils literal notranslate"><span class="pre">channels_to_rgb</span></code> we’ve implicitly used above takes a hyperspectral data cube or multiband image (with <span class="math notranslate nohighlight">\(C\)</span> channels) as an input and converts it to RGB colors using the <span class="math notranslate nohighlight">\(3\times C\)</span> linear mapping <code class="docutils literal notranslate"><span class="pre">channel_map</span></code>, and then normalizes the intensity in RGB space with the chosen norm.</p>
 <p>Above, it used its default mapping (for 5 bands), which assumes the that bands are ordered from the shortest wavelength to the longest. We can have a look at the defaults:</p>
@@ -472,8 +473,8 @@ New channel map:
 <img alt="../_images/tutorials_display_8_2.png" src="../_images/tutorials_display_8_2.png" />
 </div>
 </div>
-</div>
-<div class="section" id="Display-Model">
+</section>
+<section id="Display-Model">
 <h2>Display Model<a class="headerlink" href="#Display-Model" title="Permalink to this headline">¶</a></h2>
 <p>Often we want to visually inspect the <em>scarlet</em> models and compare them to the observations. We provide two convenience functions in the <code class="docutils literal notranslate"><span class="pre">scarlet.display</span></code> module.</p>
 <ul class="simple">
@@ -575,8 +576,8 @@ New channel map:
 <img alt="../_images/tutorials_display_17_0.png" src="../_images/tutorials_display_17_0.png" />
 </div>
 </div>
-</div>
-</div>
+</section>
+</section>
 
 
           </div>
@@ -589,7 +590,7 @@ New channel map:
       &copy;2018-2019, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.4.3</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.5.3</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

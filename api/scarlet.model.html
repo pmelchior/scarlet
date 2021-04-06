@@ -4,7 +4,8 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17: http://docutils.sourceforge.net/" />
+
     <title>scarlet.model &#8212; scarlet  documentation</title>
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
@@ -13,8 +14,6 @@
     <script src="../_static/underscore.js"></script>
     <script src="../_static/doctools.js"></script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
-    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
-    <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "ignoreClass": "document", "processClass": "math|output_area"}})</script>
     <link rel="canonical" href="api/api/scarlet.model.html" />
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
@@ -86,11 +85,11 @@
 
           <div class="body" role="main">
             
-  <div class="section" id="module-scarlet.model">
+  <section id="module-scarlet.model">
 <span id="scarlet-model"></span><h1>scarlet.model<a class="headerlink" href="#module-scarlet.model" title="Permalink to this headline">¶</a></h1>
 <dl class="py class">
 <dt id="scarlet.model.Model">
-<em class="property">class </em><code class="sig-prename descclassname">scarlet.model.</code><code class="sig-name descname">Model</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">*</span><span class="n">parameters</span></em>, <em class="sig-param"><span class="n">children</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/model.html#Model"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.model.Model" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">scarlet.model.</span></code><code class="sig-name descname"><span class="pre">Model</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">parameters</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">children</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/model.html#Model"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.model.Model" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/abc.html#abc.ABC" title="(in Python v3.9)"><code class="xref py py-class docutils literal notranslate"><span class="pre">abc.ABC</span></code></a></p>
 <p>Model base class.</p>
 <p>This class stores and provides access to parameters and sub-ordinate models.</p>
@@ -144,7 +143,7 @@
 </table>
 <dl class="py method">
 <dt id="scarlet.model.Model.check_parameters">
-<code class="sig-name descname">check_parameters</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/model.html#Model.check_parameters"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.model.Model.check_parameters" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname"><span class="pre">check_parameters</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/model.html#Model.check_parameters"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.model.Model.check_parameters" title="Permalink to this definition">¶</a></dt>
 <dd><p>Check that all parameters have finite elements</p>
 <dl class="field-list simple">
 <dt class="field-odd">Raises</dt>
@@ -157,12 +156,12 @@
 
 <dl class="py method">
 <dt id="scarlet.model.Model.children">
-<em class="property">property </em><code class="sig-name descname">children</code><a class="headerlink" href="#scarlet.model.Model.children" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">children</span></code><a class="headerlink" href="#scarlet.model.Model.children" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt id="scarlet.model.Model.get_model">
-<em class="property">abstract </em><code class="sig-name descname">get_model</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">*</span><span class="n">parameters</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/model.html#Model.get_model"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.model.Model.get_model" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">abstract</span> </em><code class="sig-name descname"><span class="pre">get_model</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">parameters</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/model.html#Model.get_model"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.model.Model.get_model" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get the model realization</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -181,23 +180,23 @@
 
 <dl class="py method">
 <dt id="scarlet.model.Model.get_models_of_children">
-<code class="sig-name descname">get_models_of_children</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">*</span><span class="n">parameters</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/model.html#Model.get_models_of_children"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.model.Model.get_models_of_children" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname"><span class="pre">get_models_of_children</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">parameters</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/model.html#Model.get_models_of_children"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.model.Model.get_models_of_children" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt id="scarlet.model.Model.get_parameter">
-<code class="sig-name descname">get_parameter</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">i</span></em>, <em class="sig-param"><span class="o">*</span><span class="n">parameters</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/model.html#Model.get_parameter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.model.Model.get_parameter" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname"><span class="pre">get_parameter</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">parameters</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/model.html#Model.get_parameter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.model.Model.get_parameter" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt id="scarlet.model.Model.parameters">
-<em class="property">property </em><code class="sig-name descname">parameters</code><a class="headerlink" href="#scarlet.model.Model.parameters" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">parameters</span></code><a class="headerlink" href="#scarlet.model.Model.parameters" title="Permalink to this definition">¶</a></dt>
 <dd><p>List of parameters, including from the children.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt id="scarlet.model.Model.update">
-<code class="sig-name descname">update</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/model.html#Model.update"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.model.Model.update" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname"><span class="pre">update</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/model.html#Model.update"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.model.Model.update" title="Permalink to this definition">¶</a></dt>
 <dd><p>Update internal state or configuration of the model</p>
 <p>The method is only needed to adjust setting or parameters outside of the
 optimization forward path.</p>
@@ -214,11 +213,11 @@ optimization forward path.</p>
 
 <dl class="py exception">
 <dt id="scarlet.model.UpdateException">
-<em class="property">exception </em><code class="sig-prename descclassname">scarlet.model.</code><code class="sig-name descname">UpdateException</code><a class="reference internal" href="../_modules/scarlet/model.html#UpdateException"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.model.UpdateException" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">exception</span> </em><code class="sig-prename descclassname"><span class="pre">scarlet.model.</span></code><code class="sig-name descname"><span class="pre">UpdateException</span></code><a class="reference internal" href="../_modules/scarlet/model.html#UpdateException"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.model.UpdateException" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#Exception" title="(in Python v3.9)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Exception</span></code></a></p>
 </dd></dl>
 
-</div>
+</section>
 
 
           </div>
@@ -231,7 +230,7 @@ optimization forward path.</p>
       &copy;2018-2019, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.4.3</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.5.3</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

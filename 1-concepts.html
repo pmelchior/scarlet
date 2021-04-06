@@ -4,7 +4,8 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17: http://docutils.sourceforge.net/" />
+
     <title>Core Concepts &#8212; scarlet  documentation</title>
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
@@ -322,7 +323,7 @@ div.rendered_html tbody tr:hover {
   background: rgba(66, 165, 245, 0.2);
 }
 </style>
-<div class="section" id="Core-Concepts">
+<section id="Core-Concepts">
 <h1>Core Concepts<a class="headerlink" href="#Core-Concepts" title="Permalink to this headline">¶</a></h1>
 <p>The purpose of this guide is to explain the core concepts of <em>scarlet</em>, how they are used and how they can be extended and customized for more specialized science cases.</p>
 <p>Other resources are:</p>
@@ -331,7 +332,7 @@ div.rendered_html tbody tr:hover {
 <li><p>The <a class="reference internal" href="api/scarlet.html"><span class="doc">API Documentation</span></a> describes modules and classes of the python library.</p></li>
 <li><p>A more in-depth explaination of the mathematics and algorithms used by <em>scarlet</em> is in <a class="reference external" href="https://arxiv.org/abs/1802.10157">Melchior et al. 2018</a>.</p></li>
 </ol>
-<div class="section" id="Overview">
+<section id="Overview">
 <h2>Overview<a class="headerlink" href="#Overview" title="Permalink to this headline">¶</a></h2>
 <p>The goal of <em>scarlet</em> is to create a model of individual astrophysical sources from a collection of observations of a rectangular region of the sky. These observations can be in multiple filter bands (which we will call “channels” internally) with different PSFs, from telescopes with different resolutions, and eventually even spectroscopic instruments. A main emphasis of <em>scarlet</em> lies in deblending overlapping sources. Robert Lupton points out that perfect reconstruction of a blended scene is
 <a class="reference external" href="https://docushare.lsst.org/docushare/dsweb/Services/Document-29071">impossible</a>, however by making a few minor assumptions <em>scarlet</em> improves on other blending algorithms by leveraging as much data as possible.</p>
@@ -361,8 +362,8 @@ spectrum of a component does not change over the region covered by its morpholog
 <p>While we optimize the log-likelihood and the log-prior by gradient descent, hard constraints are enforced through proximal operators; the curious reader will find more details in <a class="reference external" href="http://www.web.stanford.edu/~boyd/papers/pdf/prox_algs.pdf">Parikh &amp; Boyd 2014</a> and <a class="reference external" href="https://link.springer.com/chapter/10.1007/978-1-4419-9569-8_10">Combettes &amp; Pesquet 2011</a>. In short, proximal operators map an input vector to the nearest vector that satisfied the respective constraint. Many constraints/penalty
 functions have analytic proximal operators. The entire optimization uses the adaptive proximal gradient method (a non-smooth generalization of the popular Adam method) from the <a class="reference external" href="https://github.com/pmelchior/proxmin">proxmin</a> package, described in <a class="reference external" href="https://arxiv.org/abs/1910.10094">Melchior et al. 2019</a>.</p>
 <p>The remainder of this document explains how to proceed from some observation to the model parameters of interest.</p>
-</div>
-<div class="section" id="Observation">
+</section>
+<section id="Observation">
 <h2>Observation<a class="headerlink" href="#Observation" title="Permalink to this headline">¶</a></h2>
 <p><code class="docutils literal notranslate"><span class="pre">Observation</span></code>s are specified by some data, e.g. images in a number of bands, and their meta-data. Observational data is assumed to be standardized, i.e. multi-band image cubes are astrometrically corrected so that pixels line up across bands, and probably sky-background subtracted (unless you want to fit the sky as another component). We recommend not to perform PSF homogenization across bands as it reduces the information content of the observations.</p>
 <p>We also recommend specifying <em>all</em> necessary meta-data to avoid ambiguities or improper behavior.</p>
@@ -373,8 +374,8 @@ functions have analytic proximal operators. The entire optimization uses the ada
 <li><p><code class="docutils literal notranslate"><span class="pre">wcs</span></code>: <code class="docutils literal notranslate"><span class="pre">astropy</span></code> compatible WCS information to make pixel positions to world coordinates.</p></li>
 </ul>
 <p><code class="docutils literal notranslate"><span class="pre">Observation</span></code> can be sub-classed for special instrumental models (lower resolution, grism, etc). The key methods are <code class="docutils literal notranslate"><span class="pre">match</span></code> and <code class="docutils literal notranslate"><span class="pre">render</span></code>, which enable to map between the two different frames.</p>
-</div>
-<div class="section" id="Frame">
+</section>
+<section id="Frame">
 <h2>Frame<a class="headerlink" href="#Frame" title="Permalink to this headline">¶</a></h2>
 <p>A <code class="docutils literal notranslate"><span class="pre">Frame</span></code> describes the meta-data portion of <code class="docutils literal notranslate"><span class="pre">Observation</span></code> (minus <code class="docutils literal notranslate"><span class="pre">weights</span></code>). It encodes where the observations are located with respect to a more complete hyperspectral description of the sky, e.g. a multi-band postage stamp is a set of broad-band observations <code class="docutils literal notranslate"><span class="pre">['g','r','i']</span></code> in a small rectangular region of the sky.</p>
 <p><strong>scarlet uses multiple frames: one for each observation and one for the description of the model space.</strong> The latter encodes the “more complete hyperspectral description of the sky” mentioned above, and it is this model space that we seek to populate with source models. The model space must be able to reach the space of observations by surjective mappings. As an example, fitting two sets of observations with different filters, PSFs, and resolutions requires that the model space covers the full
@@ -385,8 +386,8 @@ set of filters and has a PSF and a pixel scale that are at least as small as the
 <li><p>The model PSF needs to be narrower than any observed PSF. We recommend using a Gaussian with about 1 pixel width (in units of the model pixels). It’s fast to compute and prevents spatial undersampling of the model.</p></li>
 <li><p>The model pixel scale should be small enough that no observation is undersampled.</p></li>
 </ul>
-</div>
-<div class="section" id="Source">
+</section>
+<section id="Source">
 <h2>Source<a class="headerlink" href="#Source" title="Permalink to this headline">¶</a></h2>
 <p>A source is a convenient interface to specify what should be added to a model scene. Think of it as a physical unit, such as a star (<code class="docutils literal notranslate"><span class="pre">PointSource</span></code>) or a galaxy (<code class="docutils literal notranslate"><span class="pre">ExtendedSource</span></code>). It is a subclass of <code class="docutils literal notranslate"><span class="pre">Component</span></code> with a recipe to initialize and constrain its <code class="docutils literal notranslate"><span class="pre">Parameters</span></code>:</p>
 <div class="nbinput docutils container">
@@ -419,7 +420,7 @@ class PointSource(FactorizedComponent):
         Parameters
         ----------
         model_frame: `~scarlet.Frame`
-            The frame of the full model
+            The frame of the model
         sky_coord: tuple
             Center of the source
         observations: instance or list of `~scarlet.Observation`
@@ -449,12 +450,12 @@ class PointSource(FactorizedComponent):
 <p>This is a simple but prototypical implementation. The base class is <code class="docutils literal notranslate"><span class="pre">FactorizedComponent</span></code>, which uses the Spectrum-Morphology factorization introduced earlier. Therefore, it needs to define these two so that the fitter will know to optimize them.</p>
 <p>The initialization can make use of an observation to find suitable initial values of the <code class="docutils literal notranslate"><span class="pre">spectrum</span></code> parameter. As good initialization usually leads to much better results, this is where you should use your own insight to come up with guesses and step sizes that are suitable for the problem. This is the reason why <strong>scarlet implements ``source`` classes as the primary interface to create custom solutions</strong> for special analysis problems. It is layered on top of <code class="docutils literal notranslate"><span class="pre">Component</span></code>, which is derived
 from the generic <code class="docutils literal notranslate"><span class="pre">Model</span></code> classes, to make customization easier.</p>
-</div>
-<div class="section" id="Blend">
+</section>
+<section id="Blend">
 <h2>Blend<a class="headerlink" href="#Blend" title="Permalink to this headline">¶</a></h2>
 <p>The central piece of <em>scarlet</em> is the <code class="docutils literal notranslate"><span class="pre">Blend</span></code> class. It connects the list of sources to the list of observations and provides the <code class="docutils literal notranslate"><span class="pre">fit</span></code> method, which adjusts the parameters of the sources to match the observations. The result is a MAP solution that maximizes the log-likelihood under specified priors and constraints, as well as an error estimate for every parameter.</p>
-</div>
-<div class="section" id="Component">
+</section>
+<section id="Component">
 <h2>Component<a class="headerlink" href="#Component" title="Permalink to this headline">¶</a></h2>
 <p><code class="docutils literal notranslate"><span class="pre">Component</span></code> is the base class for all objects that populate the model space. It generates a hyperspectral model for a list of parameters.</p>
 <p>These model parameterizations are available:</p>
@@ -463,8 +464,8 @@ from the generic <code class="docutils literal notranslate"><span class="pre">Mo
 <li><p><code class="docutils literal notranslate"><span class="pre">FactorizedModel</span></code> uses the Spectrum-Morphology factorization. Both of these can be free-form or described by some functional form. They are specified by a <code class="docutils literal notranslate"><span class="pre">Spectrum</span></code> and a <code class="docutils literal notranslate"><span class="pre">Morphology</span></code> factor, which generate a model of the spectrum or morphology from its parameters.</p></li>
 </ul>
 <p>Most of these models can be restricted to subvolumes by specifying a bounding <code class="docutils literal notranslate"><span class="pre">Box</span></code>. Alternative parameterizations are entirely doable. Open an <a class="reference external" href="https://github.com/pmelchior/scarlet/issues">issue</a> if you need help with that.</p>
-</div>
-<div class="section" id="Parameter">
+</section>
+<section id="Parameter">
 <h2>Parameter<a class="headerlink" href="#Parameter" title="Permalink to this headline">¶</a></h2>
 <p>Every component can declare its own parameters, which we can access by with the <code class="docutils literal notranslate"><span class="pre">parameters</span></code> property. To demonstrate, we load the sources from the <a class="reference internal" href="0-quickstart.html"><span class="doc">Quick Start Guide</span></a>:</p>
 <div class="nbinput docutils container">
@@ -495,26 +496,34 @@ Source 0: PointSource
   Parameter &#39;center&#39;, Shape (2,)
 Source 1: MultiExtendedSource
   Parameter &#39;spectrum&#39;, Shape (5,)
-  Parameter &#39;image&#39;, Shape (41, 41)
+  Parameter &#39;image&#39;, Shape (31, 31)
+  Parameter &#39;shift&#39;, Shape (2,)
   Parameter &#39;spectrum&#39;, Shape (5,)
   Parameter &#39;image&#39;, Shape (61, 61)
+  Parameter &#39;shift&#39;, Shape (2,)
 Source 2: MultiExtendedSource
   Parameter &#39;spectrum&#39;, Shape (5,)
   Parameter &#39;image&#39;, Shape (41, 41)
+  Parameter &#39;shift&#39;, Shape (2,)
   Parameter &#39;spectrum&#39;, Shape (5,)
   Parameter &#39;image&#39;, Shape (41, 41)
+  Parameter &#39;shift&#39;, Shape (2,)
 Source 3: SingleExtendedSource
   Parameter &#39;spectrum&#39;, Shape (5,)
   Parameter &#39;image&#39;, Shape (31, 31)
+  Parameter &#39;shift&#39;, Shape (2,)
 Source 4: CompactExtendedSource
   Parameter &#39;spectrum&#39;, Shape (5,)
   Parameter &#39;image&#39;, Shape (21, 21)
+  Parameter &#39;shift&#39;, Shape (2,)
 Source 5: SingleExtendedSource
   Parameter &#39;spectrum&#39;, Shape (5,)
   Parameter &#39;image&#39;, Shape (31, 31)
+  Parameter &#39;shift&#39;, Shape (2,)
 Source 6: CompactExtendedSource
   Parameter &#39;spectrum&#39;, Shape (5,)
   Parameter &#39;image&#39;, Shape (31, 31)
+  Parameter &#39;shift&#39;, Shape (2,)
 </pre></div></div>
 </div>
 <p>Source 0 is a <code class="docutils literal notranslate"><span class="pre">PointSource</span></code>, parameterized by a spectrum and a center, as we have seen above. Source 1 has multiple components (each with a spectrum and an image morphology), others have a single spectrum and image morphology.</p>
@@ -536,18 +545,18 @@ Source 6: CompactExtendedSource
 <div class="highlight"><pre>
 {&#39;name&#39;: &#39;spectrum&#39;,
  &#39;prior&#39;: None,
- &#39;constraint&#39;: &lt;scarlet.constraint.PositivityConstraint at 0x7f931cd9a5e0&gt;,
- &#39;step&#39;: functools.partial(&lt;function relative_step at 0x7f9321ee4820&gt;, factor=0.01, minimum=array([0.01279404, 0.01422727, 0.02035177, 0.03339863, 0.06668474])),
- &#39;std&#39;: masked_array(data=[0.02750851625375776, 0.015021220788992583,
-                    0.0271018708147793, 0.059515763456853894,
-                    0.22264047577742985],
+ &#39;constraint&#39;: &lt;scarlet.constraint.PositivityConstraint at 0x7f269f4db8b0&gt;,
+ &#39;step&#39;: functools.partial(&lt;function relative_step at 0x7f26a45fe280&gt;, factor=0.01, minimum=array([0.01279404, 0.01422727, 0.02035177, 0.03339863, 0.06668474])),
+ &#39;std&#39;: masked_array(data=[0.02782697011630998, 0.015044047532164796,
+                    0.027118815493023137, 0.05929413054496282,
+                    0.2224104597472498],
               mask=[False, False, False, False, False],
         fill_value=0.0),
- &#39;m&#39;: array([-1.66725229,  2.75059377, -0.59911305,  0.01442251,  0.03642163]),
- &#39;v&#39;: array([1321.49543627, 4431.89579757, 1361.44925421,  282.31631845,
-          20.17398795]),
- &#39;vhat&#39;: array([1348.7925241 , 4548.73280412, 1402.29859828,  291.99565688,
-          20.80697011]),
+ &#39;m&#39;: array([-1.85283971, -1.21397917, -1.95521605,  0.89712297, -0.46790913]),
+ &#39;v&#39;: array([1291.42192922, 4418.45672858, 1359.74843418,  284.43077825,
+          20.21573725]),
+ &#39;vhat&#39;: array([1306.86802229, 4494.58960342, 1386.84907222,  290.76902234,
+          20.67936066]),
  &#39;fixed&#39;: False}
 </pre></div></div>
 </div>
@@ -574,7 +583,7 @@ Source 6: CompactExtendedSource
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-&lt;matplotlib.colorbar.Colorbar at 0x7f931c588040&gt;
+&lt;matplotlib.colorbar.Colorbar at 0x7f269ecc7a90&gt;
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">
@@ -585,15 +594,15 @@ Source 6: CompactExtendedSource
 </div>
 </div>
 <p>The SNR map shows that the center region is well determined by the data. Note that this error estimate is purely statistical and does not include correlations between different parameters or different components.</p>
-</div>
-<div class="section" id="Step-Size">
+</section>
+<section id="Step-Size">
 <h2>Step Size<a class="headerlink" href="#Step-Size" title="Permalink to this headline">¶</a></h2>
 <p><strong>For every parameter, you have to specify to typical size of steps the optimizer should take.</strong> Picking small steps leads to slow convergence, while large step sizes may lead to no convergence at all!</p>
 <p><em>scarlet</em> uses the <code class="docutils literal notranslate"><span class="pre">adaprox</span></code> method from <code class="docutils literal notranslate"><span class="pre">proxmin</span></code>, which expects step sizes to be set in units of the parameter. That makes them relatively transparent. For instance, if you want to optimize the center position and you expect it to be initialized within 1 pixel of its optimal position, a step size of 0.1 is reasonable. Often, relative steps sizes are effective if one does not know the absolute magnitude of the parameter beforehand. We offer the method <code class="docutils literal notranslate"><span class="pre">scarlet.relative_step</span></code> specifically
 for this purpose. Inspecting the parameter above, you can see that it in fact used this method, with a relative factor of 0.01, i.e. the fitting method makes steps that are 1% of the mean magnitude of the parameter.</p>
 <p>The step size can either be an ordinary number, or a function with the signature <code class="docutils literal notranslate"><span class="pre">step(X,</span> <span class="pre">it)</span> <span class="pre">-&gt;</span> <span class="pre">float</span></code>, where <code class="docutils literal notranslate"><span class="pre">X</span></code> is the parameter itself, and the second argument is the iteration counter of the optimizer. It is possible to specify a step size <em>per element</em> of a parameter. Proceed at your own peril.</p>
-</div>
-<div class="section" id="Prior">
+</section>
+<section id="Prior">
 <h2>Prior<a class="headerlink" href="#Prior" title="Permalink to this headline">¶</a></h2>
 <p><code class="docutils literal notranslate"><span class="pre">Prior</span></code> and <code class="docutils literal notranslate"><span class="pre">Constraint</span></code> bring in additional information, which helps with robust parameter inference, which is especially important for cases with strong parameter degeneracies. Blending inevitably yields such degeneracies.</p>
 <p><code class="docutils literal notranslate"><span class="pre">Prior</span></code>s encode which values for a parameter are more likely. The optimimization adds the log-likelihood and the log-prior to find a MAP estimate.</p>
@@ -602,29 +611,29 @@ for this purpose. Inspecting the parameter above, you can see that it in fact us
 <li><p><code class="docutils literal notranslate"><span class="pre">__call__(self,</span> <span class="pre">x)</span></code> returns the logarithm of the prior at the value <code class="docutils literal notranslate"><span class="pre">x</span></code> of the parameter</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">grad(self,</span> <span class="pre">x)</span></code> returns the gradient of the logarithm of the prior at <code class="docutils literal notranslate"><span class="pre">x</span></code>.</p></li>
 </ul>
-</div>
-<div class="section" id="Constraint">
+</section>
+<section id="Constraint">
 <h2>Constraint<a class="headerlink" href="#Constraint" title="Permalink to this headline">¶</a></h2>
 <p><code class="docutils literal notranslate"><span class="pre">Constraint</span></code>s appear similar to <code class="docutils literal notranslate"><span class="pre">Prior</span></code>s, in that they describe prior information about valid parameter values. However, they differ in profound ways. A wide class of constraints are projections onto submanifolds of the parameter space, typically guided by theoretical knowledge or assumptions. Examples are the subspace of positive elements or the surface of a sphere. This means that solutions outside of the manifold are forbidden, while all solution on the manifold are equally
 acceptable. The transition between these two cases is generally non-differentiable. This requires a generalization of gradient-based optimizers to so-called sub-gradients, and the employment of proximal operators.</p>
 <p><code class="docutils literal notranslate"><span class="pre">Constraint</span></code>s need to implement only one method: <code class="docutils literal notranslate"><span class="pre">__call__(self,</span> <span class="pre">x,</span> <span class="pre">step)</span></code> which returns the result of the proximal mapping for a parameter with value <code class="docutils literal notranslate"><span class="pre">x</span></code>. For projection operators, that amounts to the point on the desired manifold that is closest to <code class="docutils literal notranslate"><span class="pre">x</span></code> in the Euclidean metric. The argument <code class="docutils literal notranslate"><span class="pre">step</span></code> is the step size for the current gradient step, which is only used for some classes for proximal operators. Conveniently, projection operators <em>don’t</em> use it.</p>
 <p><em>scarlet</em> implements several proximal constraints, some of which we discuss below. In addition, L1 and L0 sparsity penalties are implemented. More can be added by exploiting analytical results e.g. in <a class="reference external" href="http://www.web.stanford.edu/~boyd/papers/pdf/prox_algs.pdf">Parikh &amp; Boyd 2014</a> and <a class="reference external" href="https://link.springer.com/chapter/10.1007/978-1-4419-9569-8_10">Combettes &amp; Pesquet 2011</a>. Open an <a class="reference external" href="https://github.com/pmelchior/scarlet/issues">issue</a> for help.</p>
-<div class="section" id="Positivity">
+<section id="Positivity">
 <h3>Positivity<a class="headerlink" href="#Positivity" title="Permalink to this headline">¶</a></h3>
 <p><code class="docutils literal notranslate"><span class="pre">PositivityConstraint</span></code> avoids the negative subspace. It performs the mapping <span class="math notranslate nohighlight">\(x\rightarrow \max(0, x)\)</span> on every element of a parameter.</p>
-</div>
-<div class="section" id="Normalization">
+</section>
+<section id="Normalization">
 <h3>Normalization<a class="headerlink" href="#Normalization" title="Permalink to this headline">¶</a></h3>
 <p>For <code class="docutils literal notranslate"><span class="pre">FactorizedComponent</span></code>, a fundamental degeneracy arises from the question which of the factors should capture the amplitude of the model. The overall flux could be stored in the spectrum or in the morphology, or some combination of both. The last option is degenerate.</p>
 <p><code class="docutils literal notranslate"><span class="pre">NormalizationConstraint</span></code> allows to normalize the parameter, either to the sum of all elements or to the maximum element. In <em>scarlet</em>, we usually normalized the component morphology with <code class="docutils literal notranslate"><span class="pre">type='max'</span></code>, which can be very easily initialized without regarding the extent of the source. It results in the spectrum encoding color and intensity information. The advantage of this normalization is that two sources with similar colors can still be distinguished if they have different intensities.</p>
-</div>
-<div class="section" id="Symmetry">
+</section>
+<section id="Symmetry">
 <h3>Symmetry<a class="headerlink" href="#Symmetry" title="Permalink to this headline">¶</a></h3>
 <p>Many traditional models for fitting galaxies (Sersic, mixture-of-Gaussian, …) implicitly employ this constraint, because most galaxies are in fact <em>largely</em> symmetric. For free-form models, demanding that astrophysical sources are symmetric reduces the number of effective degrees of freedom of the model by half. Using symmetry as a constraint has been used successfully in the SDSS deblender and also in our tests on substantially deeper HSC images. The proximal mapping for every symmetric pair of
 pixels <span class="math notranslate nohighlight">\(i,j\)</span> is <span class="math notranslate nohighlight">\(x_i,x_j\rightarrow\tfrac{1}{2}(x_i + x_j)\)</span>.</p>
 <p>To make a source symmetric requires a position to make the model symmetric about. Source models are highly sensitive to this fractional pixel location so it is necessary to include an update function that estimates the position of a symmetric source in the blend. This operation is expensive, so the stability of this constraint needs to be weighed against the cost of enforcing it.</p>
-</div>
-<div class="section" id="Monotonicity">
+</section>
+<section id="Monotonicity">
 <h3>Monotonicity<a class="headerlink" href="#Monotonicity" title="Permalink to this headline">¶</a></h3>
 <p>Another useful constraint from the SDSS-HSC deblender is the assumption that most astrophysical objects are monotonically decreasing from the peak. In detail, this assumption is incorrect e.g. for spiral galaxies, especially tightly wound ones. But we can build good representations of even complex galaxies as multiple stellar populations, each with a single spectrum and monotonically decreasing from its peak.</p>
 <p>We implemented three possible monotonic solutions in <code class="docutils literal notranslate"><span class="pre">MonotonicityConstraint</span></code>. Each of them restrict the intensity of the active pixel <span class="math notranslate nohighlight">\(i\)</span> (blue) to at most the average of the pixel intensity of its direct neighbors in the direction of the source center (ochre):</p>
@@ -652,18 +661,18 @@ pixels <span class="math notranslate nohighlight">\(i,j\)</span> is <span class=
 <li><p><code class="docutils literal notranslate"><span class="pre">neighbor_weight='flat'</span></code>: All three neighbor pixels that are closer to the peak are combined with flat weights to compute the reference intensity. This option is the most restrictive and allows for the greatest degree of azimuthal smoothing.</p></li>
 </ul>
 <p>The monotonicity mapping hinges on a properly centered source, but in contrast to symmetry the center has to be localized only within one pixel.</p>
-<div class="section" id="Implementation-Note">
+<section id="Implementation-Note">
 <h4>Implementation Note<a class="headerlink" href="#Implementation-Note" title="Permalink to this headline">¶</a></h4>
 <p><code class="docutils literal notranslate"><span class="pre">MonotonicityConstraint</span></code> is implemented as a projection that is <em>not</em> a true proximal operator. It is possible to write monotonicity as a true proximal operator, but the implementation is far too slow for practical purposes. Instead, the morphology is projected into a space that has <em>a</em> monotonic solution, just not necessarily the closest one in the L2 sense.</p>
-</div>
-</div>
-<div class="section" id="Constraint-Chains">
+</section>
+</section>
+<section id="Constraint-Chains">
 <h3>Constraint Chains<a class="headerlink" href="#Constraint-Chains" title="Permalink to this headline">¶</a></h3>
 <p>If multiple constraints should be simultaneously enforced, they can be organized in a <code class="docutils literal notranslate"><span class="pre">ConstraintChain</span></code>. We make use of the method of <a class="reference external" href="https://en.wikipedia.org/wiki/Projections_onto_convex_sets">Alternating Projections</a>, which finds a solution in the intersection of multiple submanifolds by sequentially projecting on every manifold. Normally, this process needs to be repeated multiple times to ensure that all constraints are being met. In practice, it is sufficient to repeat this process
 only once because the optimizer will require multiple iterations to finally converge, so in the vicinity of the final solution, multiple projections are in fact performed.</p>
-</div>
-</div>
-</div>
+</section>
+</section>
+</section>
 
 
           </div>
@@ -676,7 +685,7 @@ only once because the optimizer will require multiple iterations to finally conv
       &copy;2018-2019, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.4.3</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.5.3</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

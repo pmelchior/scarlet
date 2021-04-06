@@ -4,7 +4,8 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17: http://docutils.sourceforge.net/" />
+
     <title>scarlet.psf &#8212; scarlet  documentation</title>
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
@@ -86,11 +87,11 @@
 
           <div class="body" role="main">
             
-  <div class="section" id="module-scarlet.psf">
+  <section id="module-scarlet.psf">
 <span id="scarlet-psf"></span><h1>scarlet.psf<a class="headerlink" href="#module-scarlet.psf" title="Permalink to this headline">¶</a></h1>
 <dl class="py class">
 <dt id="scarlet.psf.FunctionPSF">
-<em class="property">class </em><code class="sig-prename descclassname">scarlet.psf.</code><code class="sig-name descname">FunctionPSF</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">*</span><span class="n">parameters</span></em>, <em class="sig-param"><span class="n">integrate</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">boxsize</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#FunctionPSF"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.psf.FunctionPSF" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">scarlet.psf.</span></code><code class="sig-name descname"><span class="pre">FunctionPSF</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">parameters</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">integrate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boxsize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#FunctionPSF"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.psf.FunctionPSF" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#scarlet.psf.PSF" title="scarlet.psf.PSF"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.psf.PSF</span></code></a></p>
 <p>Base class for PSFs with functional forms.</p>
 <dl class="field-list simple">
@@ -152,14 +153,14 @@
 </table>
 <dl class="py method">
 <dt id="scarlet.psf.FunctionPSF.expand_dims">
-<code class="sig-name descname">expand_dims</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">model</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#FunctionPSF.expand_dims"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.psf.FunctionPSF.expand_dims" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname"><span class="pre">expand_dims</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#FunctionPSF.expand_dims"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.psf.FunctionPSF.expand_dims" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </dd></dl>
 
 <dl class="py class">
 <dt id="scarlet.psf.GaussianPSF">
-<em class="property">class </em><code class="sig-prename descclassname">scarlet.psf.</code><code class="sig-name descname">GaussianPSF</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">sigma</span></em>, <em class="sig-param"><span class="n">integrate</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">boxsize</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#GaussianPSF"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.psf.GaussianPSF" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">scarlet.psf.</span></code><code class="sig-name descname"><span class="pre">GaussianPSF</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sigma</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">integrate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boxsize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#GaussianPSF"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.psf.GaussianPSF" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#scarlet.psf.FunctionPSF" title="scarlet.psf.FunctionPSF"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.psf.FunctionPSF</span></code></a></p>
 <p>Circular Gaussian Function</p>
 <dl class="field-list simple">
@@ -222,7 +223,7 @@ If the width is to be optimized, provide a full defined <cite>Parameter</cite>.<
 </table>
 <dl class="py method">
 <dt id="scarlet.psf.GaussianPSF.get_model">
-<code class="sig-name descname">get_model</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">*</span><span class="n">parameters</span></em>, <em class="sig-param"><span class="n">offset</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#GaussianPSF.get_model"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.psf.GaussianPSF.get_model" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname"><span class="pre">get_model</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">parameters</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">offset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#GaussianPSF.get_model"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.psf.GaussianPSF.get_model" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get the PSF realization</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -245,7 +246,7 @@ If the width is to be optimized, provide a full defined <cite>Parameter</cite>.<
 
 <dl class="py class">
 <dt id="scarlet.psf.ImagePSF">
-<em class="property">class </em><code class="sig-prename descclassname">scarlet.psf.</code><code class="sig-name descname">ImagePSF</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">image</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#ImagePSF"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.psf.ImagePSF" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">scarlet.psf.</span></code><code class="sig-name descname"><span class="pre">ImagePSF</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#ImagePSF"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.psf.ImagePSF" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#scarlet.psf.PSF" title="scarlet.psf.PSF"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.psf.PSF</span></code></a></p>
 <p>Image PSF</p>
 <p>Creates a PSF model from a image of the centered PSF.</p>
@@ -300,7 +301,7 @@ If the width is to be optimized, provide a full defined <cite>Parameter</cite>.<
 </table>
 <dl class="py method">
 <dt id="scarlet.psf.ImagePSF.get_model">
-<code class="sig-name descname">get_model</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">*</span><span class="n">parameters</span></em>, <em class="sig-param"><span class="n">offset</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#ImagePSF.get_model"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.psf.ImagePSF.get_model" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname"><span class="pre">get_model</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">parameters</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">offset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#ImagePSF.get_model"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.psf.ImagePSF.get_model" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get the PSF realization</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -323,7 +324,7 @@ If the width is to be optimized, provide a full defined <cite>Parameter</cite>.<
 
 <dl class="py class">
 <dt id="scarlet.psf.MoffatPSF">
-<em class="property">class </em><code class="sig-prename descclassname">scarlet.psf.</code><code class="sig-name descname">MoffatPSF</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">alpha</span><span class="o">=</span><span class="default_value">4.7</span></em>, <em class="sig-param"><span class="n">beta</span><span class="o">=</span><span class="default_value">1.5</span></em>, <em class="sig-param"><span class="n">integrate</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">boxsize</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#MoffatPSF"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.psf.MoffatPSF" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">scarlet.psf.</span></code><code class="sig-name descname"><span class="pre">MoffatPSF</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">4.7</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">beta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">integrate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boxsize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#MoffatPSF"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.psf.MoffatPSF" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#scarlet.psf.FunctionPSF" title="scarlet.psf.FunctionPSF"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.psf.FunctionPSF</span></code></a></p>
 <p>Symmetric 2D Moffat function</p>
 <blockquote>
@@ -396,7 +397,7 @@ If the width is to be optimized, provide a full defined <cite>Parameter</cite>.<
 </table>
 <dl class="py method">
 <dt id="scarlet.psf.MoffatPSF.get_model">
-<code class="sig-name descname">get_model</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">*</span><span class="n">parameters</span></em>, <em class="sig-param"><span class="n">offset</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#MoffatPSF.get_model"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.psf.MoffatPSF.get_model" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname"><span class="pre">get_model</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">parameters</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">offset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#MoffatPSF.get_model"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.psf.MoffatPSF.get_model" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get the PSF realization</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -419,7 +420,7 @@ If the width is to be optimized, provide a full defined <cite>Parameter</cite>.<
 
 <dl class="py class">
 <dt id="scarlet.psf.PSF">
-<em class="property">class </em><code class="sig-prename descclassname">scarlet.psf.</code><code class="sig-name descname">PSF</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">*</span><span class="n">parameters</span></em>, <em class="sig-param"><span class="n">children</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#PSF"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.psf.PSF" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">scarlet.psf.</span></code><code class="sig-name descname"><span class="pre">PSF</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">parameters</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">children</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#PSF"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.psf.PSF" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="scarlet.model.html#scarlet.model.Model" title="scarlet.model.Model"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.model.Model</span></code></a></p>
 <dl class="field-list simple">
 <dt class="field-odd">Attributes</dt>
@@ -467,7 +468,7 @@ If the width is to be optimized, provide a full defined <cite>Parameter</cite>.<
 </table>
 <dl class="py method">
 <dt id="scarlet.psf.PSF.get_model">
-<em class="property">abstract </em><code class="sig-name descname">get_model</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">*</span><span class="n">parameter</span></em>, <em class="sig-param"><span class="n">offset</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#PSF.get_model"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.psf.PSF.get_model" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">abstract</span> </em><code class="sig-name descname"><span class="pre">get_model</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">parameter</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">offset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#PSF.get_model"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.psf.PSF.get_model" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get the PSF realization</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -488,18 +489,18 @@ If the width is to be optimized, provide a full defined <cite>Parameter</cite>.<
 
 <dl class="py method">
 <dt id="scarlet.psf.PSF.prepare_param">
-<code class="sig-name descname">prepare_param</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">X</span></em>, <em class="sig-param"><span class="n">name</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#PSF.prepare_param"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.psf.PSF.prepare_param" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname"><span class="pre">prepare_param</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#PSF.prepare_param"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.psf.PSF.prepare_param" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </dd></dl>
 
 <dl class="py function">
 <dt id="scarlet.psf.normalize">
-<code class="sig-prename descclassname">scarlet.psf.</code><code class="sig-name descname">normalize</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">image</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#normalize"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.psf.normalize" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname"><span class="pre">scarlet.psf.</span></code><code class="sig-name descname"><span class="pre">normalize</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/psf.html#normalize"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.psf.normalize" title="Permalink to this definition">¶</a></dt>
 <dd><p>Normalize to PSF image in every band to unity</p>
 </dd></dl>
 
-</div>
+</section>
 
 
           </div>
@@ -512,7 +513,7 @@ If the width is to be optimized, provide a full defined <cite>Parameter</cite>.<
       &copy;2018-2019, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.4.3</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.5.3</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

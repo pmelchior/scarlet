@@ -4,7 +4,8 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17: http://docutils.sourceforge.net/" />
+
     <title>scarlet.wavelet &#8212; scarlet  documentation</title>
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
@@ -13,8 +14,6 @@
     <script src="../_static/underscore.js"></script>
     <script src="../_static/doctools.js"></script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
-    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
-    <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "ignoreClass": "document", "processClass": "math|output_area"}})</script>
     <link rel="canonical" href="api/api/scarlet.wavelet.html" />
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
@@ -86,11 +85,11 @@
 
           <div class="body" role="main">
             
-  <div class="section" id="module-scarlet.wavelet">
+  <section id="module-scarlet.wavelet">
 <span id="scarlet-wavelet"></span><h1>scarlet.wavelet<a class="headerlink" href="#module-scarlet.wavelet" title="Permalink to this headline">¶</a></h1>
 <dl class="py exception">
 <dt id="scarlet.wavelet.InputError">
-<em class="property">exception </em><code class="sig-prename descclassname">scarlet.wavelet.</code><code class="sig-name descname">InputError</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">message</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/wavelet.html#InputError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.wavelet.InputError" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">exception</span> </em><code class="sig-prename descclassname"><span class="pre">scarlet.wavelet.</span></code><code class="sig-name descname"><span class="pre">InputError</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">message</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/wavelet.html#InputError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.wavelet.InputError" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#Exception" title="(in Python v3.9)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Exception</span></code></a></p>
 <p>Exception raised for errors in the input.</p>
 <dl class="simple">
@@ -102,7 +101,7 @@ message – explanation of the error</p>
 
 <dl class="py class">
 <dt id="scarlet.wavelet.Starlet">
-<em class="property">class </em><code class="sig-prename descclassname">scarlet.wavelet.</code><code class="sig-name descname">Starlet</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">image</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">lvl</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">coefficients</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">direct</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/wavelet.html#Starlet"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.wavelet.Starlet" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">scarlet.wavelet.</span></code><code class="sig-name descname"><span class="pre">Starlet</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lvl</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coefficients</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">direct</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/wavelet.html#Starlet"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.wavelet.Starlet" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.9)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>A class used to create the Wavelet transform of a cube of images from the ‘a trou’ algorithm.</p>
 <p>The transform is performed by convolving the image by a seed starlet: the transform of an all-zero
@@ -145,13 +144,13 @@ images that have the same shape.</p>
 </table>
 <dl class="py method">
 <dt id="scarlet.wavelet.Starlet.coefficients">
-<em class="property">property </em><code class="sig-name descname">coefficients</code><a class="headerlink" href="#scarlet.wavelet.Starlet.coefficients" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">coefficients</span></code><a class="headerlink" href="#scarlet.wavelet.Starlet.coefficients" title="Permalink to this definition">¶</a></dt>
 <dd><p>Starlet coefficients</p>
 </dd></dl>
 
 <dl class="py method">
 <dt id="scarlet.wavelet.Starlet.direct_transform">
-<code class="sig-name descname">direct_transform</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/wavelet.html#Starlet.direct_transform"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.wavelet.Starlet.direct_transform" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname"><span class="pre">direct_transform</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/wavelet.html#Starlet.direct_transform"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.wavelet.Starlet.direct_transform" title="Permalink to this definition">¶</a></dt>
 <dd><p>Computes the direct starlet transform of the starlet’s image</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns</dt>
@@ -165,7 +164,7 @@ images that have the same shape.</p>
 
 <dl class="py method">
 <dt id="scarlet.wavelet.Starlet.filter">
-<code class="sig-name descname">filter</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">niter</span><span class="o">=</span><span class="default_value">20</span></em>, <em class="sig-param"><span class="n">k</span><span class="o">=</span><span class="default_value">5</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/wavelet.html#Starlet.filter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.wavelet.Starlet.filter" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname"><span class="pre">filter</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">niter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">20</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/wavelet.html#Starlet.filter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.wavelet.Starlet.filter" title="Permalink to this definition">¶</a></dt>
 <dd><p>Applies wavelet iterative filtering to denoise the image</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -183,31 +182,31 @@ images that have the same shape.</p>
 
 <dl class="py method">
 <dt id="scarlet.wavelet.Starlet.image">
-<em class="property">property </em><code class="sig-name descname">image</code><a class="headerlink" href="#scarlet.wavelet.Starlet.image" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">image</span></code><a class="headerlink" href="#scarlet.wavelet.Starlet.image" title="Permalink to this definition">¶</a></dt>
 <dd><p>The real space image</p>
 </dd></dl>
 
 <dl class="py method">
 <dt id="scarlet.wavelet.Starlet.norm">
-<em class="property">property </em><code class="sig-name descname">norm</code><a class="headerlink" href="#scarlet.wavelet.Starlet.norm" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">norm</span></code><a class="headerlink" href="#scarlet.wavelet.Starlet.norm" title="Permalink to this definition">¶</a></dt>
 <dd><p>The norm of the seed wavelet in each wavelet level (not in coarse wavelet)</p>
 </dd></dl>
 
 <dl class="py method">
 <dt id="scarlet.wavelet.Starlet.scales">
-<em class="property">property </em><code class="sig-name descname">scales</code><a class="headerlink" href="#scarlet.wavelet.Starlet.scales" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">scales</span></code><a class="headerlink" href="#scarlet.wavelet.Starlet.scales" title="Permalink to this definition">¶</a></dt>
 <dd><p>Number of starlet scales</p>
 </dd></dl>
 
 <dl class="py method">
 <dt id="scarlet.wavelet.Starlet.shape">
-<em class="property">property </em><code class="sig-name descname">shape</code><a class="headerlink" href="#scarlet.wavelet.Starlet.shape" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">shape</span></code><a class="headerlink" href="#scarlet.wavelet.Starlet.shape" title="Permalink to this definition">¶</a></dt>
 <dd><p>The shape of the real space image</p>
 </dd></dl>
 
 <dl class="py method">
 <dt id="scarlet.wavelet.Starlet.transform">
-<code class="sig-name descname">transform</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/wavelet.html#Starlet.transform"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.wavelet.Starlet.transform" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname"><span class="pre">transform</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/wavelet.html#Starlet.transform"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.wavelet.Starlet.transform" title="Permalink to this definition">¶</a></dt>
 <dd><p>Performs the wavelet transform of an image by convolution with the seed wavelet</p>
 <blockquote>
 <div><p>Seed wavelets are the transform of a dirac in starlets when computed for a given shape,
@@ -228,13 +227,13 @@ The transform is applied to <cite>self._image</cite></p>
 
 <dl class="py function">
 <dt id="scarlet.wavelet.get_starlet_shape">
-<code class="sig-prename descclassname">scarlet.wavelet.</code><code class="sig-name descname">get_starlet_shape</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">shape</span></em>, <em class="sig-param"><span class="n">lvl</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/wavelet.html#get_starlet_shape"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.wavelet.get_starlet_shape" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname"><span class="pre">scarlet.wavelet.</span></code><code class="sig-name descname"><span class="pre">get_starlet_shape</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">shape</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lvl</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/wavelet.html#get_starlet_shape"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.wavelet.get_starlet_shape" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get the pad shape for a starlet transform</p>
 </dd></dl>
 
 <dl class="py function">
 <dt id="scarlet.wavelet.iuwt">
-<code class="sig-prename descclassname">scarlet.wavelet.</code><code class="sig-name descname">iuwt</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">starlet</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/wavelet.html#iuwt"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.wavelet.iuwt" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname"><span class="pre">scarlet.wavelet.</span></code><code class="sig-name descname"><span class="pre">iuwt</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">starlet</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/wavelet.html#iuwt"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.wavelet.iuwt" title="Permalink to this definition">¶</a></dt>
 <dd><p>Inverse starlet transform</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -254,7 +253,7 @@ The transform is applied to <cite>self._image</cite></p>
 
 <dl class="py function">
 <dt id="scarlet.wavelet.mad_wavelet">
-<code class="sig-prename descclassname">scarlet.wavelet.</code><code class="sig-name descname">mad_wavelet</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">image</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/wavelet.html#mad_wavelet"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.wavelet.mad_wavelet" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname"><span class="pre">scarlet.wavelet.</span></code><code class="sig-name descname"><span class="pre">mad_wavelet</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/wavelet.html#mad_wavelet"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.wavelet.mad_wavelet" title="Permalink to this definition">¶</a></dt>
 <dd><p>image: Median absolute deviation of the first wavelet scale.
 (WARNING: sorry to disapoint, this is not a wavelet for mad scientists)</p>
 <dl class="field-list simple">
@@ -273,7 +272,7 @@ The transform is applied to <cite>self._image</cite></p>
 
 <dl class="py function">
 <dt id="scarlet.wavelet.mk_starlet">
-<code class="sig-prename descclassname">scarlet.wavelet.</code><code class="sig-name descname">mk_starlet</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">shape</span></em>, <em class="sig-param"><span class="n">image</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/wavelet.html#mk_starlet"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#scarlet.wavelet.mk_starlet" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname"><span class="pre">scarlet.wavelet.</span></code><code class="sig-name descname"><span class="pre">mk_starlet</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">shape</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/wavelet.html#mk_starlet"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.wavelet.mk_starlet" title="Permalink to this definition">¶</a></dt>
 <dd><p>Creates a starlet for a given 2d shape.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -294,7 +293,7 @@ if lvl is higher than this number lvl will be set to it.</p>
 </dl>
 </dd></dl>
 
-</div>
+</section>
 
 
           </div>
@@ -307,7 +306,7 @@ if lvl is higher than this number lvl will be set to it.</p>
       &copy;2018-2019, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.4.3</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.5.3</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |
