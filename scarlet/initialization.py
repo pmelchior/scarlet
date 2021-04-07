@@ -3,15 +3,8 @@ import logging
 
 from .bbox import Box
 from .cache import Cache
-from .interpolation import interpolate_observation
-from .observation import Observation
 from .renderer import NullRenderer, ConvolutionRenderer
-from .wavelet import Starlet, mad_wavelet
-from . import fft
-from . import measure
-from functools import partial
-from .constraint import PositivityConstraint
-from .parameter import Parameter, relative_step
+
 
 
 logger = logging.getLogger("scarlet.initialisation")
@@ -103,7 +96,7 @@ def get_pixel_spectrum(sky_coord, observations, correct_psf=False, models=None):
 
         if obs.psf is not None:
             # correct spectrum for PSF-induced change in peak pixel intensity
-            psf_model = obs.psf.get_model()._data
+            psf_model = obs.psf.get_model()
             psf_peak = psf_model.max(axis=(1, 2))
             spectrum /= psf_peak
         elif model is not None:
