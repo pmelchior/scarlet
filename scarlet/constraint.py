@@ -169,7 +169,7 @@ class ThresholdConstraint(Constraint):
         _bins = 50
         # Decrease the bin size for sources with a small number of pixels
         if _morph.size < 500:
-            _bins = max(np.int(_morph.size / 10), 1)
+            _bins = max(int(_morph.size / 10), 1)
             if _bins == 1:
                 return 0, _bins
         hist, bins = np.histogram(np.log10(_morph).reshape(-1), _bins)

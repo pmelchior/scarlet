@@ -43,7 +43,7 @@ class Starlet(object):
                 self._image_shape = image.shape
                 # Padding shape for the starlet transform
                 if lvl is None:
-                    self._lvl = get_starlet_shape(image.shape)
+                    self._lvl = get_scales(image.shape)
                 else:
                     self._lvl = lvl
                 if len(image.shape) == 2:
@@ -72,7 +72,7 @@ class Starlet(object):
         """The real space image"""
         rec = []
         for star in self._coeffs:
-            rec.append(iuwt(star))
+            rec.append(starlet_reconstruction(star))
         self._image = np.array(rec)
 
         return self._image
@@ -111,7 +111,7 @@ class Starlet(object):
         self._coeffs = coeffs
         rec = []
         for star in self._coeffs:
-            rec.append(iuwt(star))
+            rec.append(starlet_reconstruction(star))
         self._image = np.array(rec)
 
     @property
@@ -263,7 +263,7 @@ def get_scales(image_shape, scales=None):
         the image at all scales higher than `scales`.
     """
     # Number of levels for the Starlet decomposition
-    max_scale = np.int(np.log2(np.min(image_shape[-2:]))) - 1
+    max_scale = int(np.log2(np.min(image_shape[-2:]))) - 1
     if (scales is None) or scales > max_scale:
         scales = max_scale
     return int(scales)
