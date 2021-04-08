@@ -209,111 +209,216 @@ class Starlet(object):
         return filtered
 
 
-def get_starlet_shape(shape, lvl=None):
-    """ Get the pad shape for a starlet transform
+def bspline_convolve(image, scale):
+    """Convolve an image with a bpsline at a given scale.
+
+    This uses the spline
+    `h1D = np.array([1.0 / 16, 1.0 / 4, 3.0 / 8, 1.0 / 4, 1.0 / 16])`
+    from Starck et al. 2011.
+
+    Parameters
+    ----------
+    image: 2D array
+        The image or wavelet coefficients to convolve.
+    scale: int
+        The wavelet scale for the convolution. This sets the
+        spacing between adjacent pixels with the spline.
+
+    """
+    # Filter for the scarlet transform. Here bspline
+    h1D = np.array([1.0 / 16, 1.0 / 4, 3.0 / 8, 1.0 / 4, 1.0 / 16])
+    j = scale
+
+    slice0 = slice(None, -2**(j+1))
+    slice1 = slice(None, -2**j)
+    slice3 = slice(2**j, None)
+    slice4 = slice(2**(j+1), None)
+    # row
+    col = image * h1D[2]
+    col[slice4] += image[slice0] * h1D[0]
+    col[slice3] += image[slice1] * h1D[1]
+    col[slice1] += image[slice3] * h1D[3]
+    col[slice0] += image[slice4] * h1D[4]
+
+    # column
+    result = col * h1D[2]
+    result[:, slice4] += col[:, slice0] * h1D[0]
+    result[:, slice3] += col[:, slice1] * h1D[1]
+    result[:, slice1] += col[:, slice3] * h1D[3]
+    result[:, slice0] += col[:, slice4] * h1D[4]
+    return result
+
+
+def get_scales(image_shape, scales=None):
+    """Get the number of scales to use in the starlet transform.
+
+    Parameters
+    ----------
+    image_shape: tuple
+        The 2D shape of the image that is being transformed
+    scales: int
+        The number of scale to transform with starlets.
+        The total dimension of the starlet will have
+        `scales+1` dimensions, since it will also hold
+        the image at all scales higher than `scales`.
     """
     # Number of levels for the Starlet decomposition
-    lvl_max = np.int(np.log2(np.min(shape[-2:])))
-    if (lvl is None) or lvl > lvl_max:
-        lvl = lvl_max
-    return int(lvl)
+    max_scale = np.int(np.log2(np.min(image_shape[-2:]))) - 1
+    if (scales is None) or scales > max_scale:
+        scales = max_scale
+    return int(scales)
 
 
-def mk_starlet(shape, image=None):
-    """ Creates a starlet for a given 2d shape.
+def starlet_transform(image, scales=None, generation=2, convolve2D=None):
+    """Perform a scarlet transform, or 2nd gen starlet transform.
 
     Parameters
     ----------
-    shape: tuple
-        2D shape of the desired shapelet
-    lvl: int
-        number of shapelet levels to compute. If None, lvl is set to the log2 of the number of pixels on a side.
-        if lvl is higher than this number lvl will be set to it.
+    image: 2D array
+        The image to transform into starlet coefficients.
+    generation: int
+        The generation of the transform.
+        This must be `1` or `2`.
+    convolve2D: function
+        The filter function to use to convolve the image
+        with starlets in 2D.
 
     Returns
     -------
-    starlet: Fourier object
-        the starlet transform of a Dirac fonction as the `image` of a Fourier object
-
+    starlet: array with dimension (scales+1, Ny, Nx)
+        The starlet dictionary for the input `image`.
     """
-    lvl, n1, n2 = shape[-3:]
+    assert len(image.shape) == 2, "Image should be 2D"
+    assert generation in (1, 2)
 
-    # Filter size
-    n = np.size(h)
-    if image is None:
-        c = np.zeros((n1, n2))
-        c[int(n1 / 2), int(n2 / 2)] = 1
-    else:
-        if len(image.shape) > 2:
-            wave = []
-            for im in image:
-                wave.append(mk_starlet(shape, im))
-            return np.array(wave)
-        else:
-            c = image
-    c = fft.Fourier(c)
+    scales = get_scales(image.shape, scales)
+    c = image
+    if convolve2D is None:
+        convolve2D = bspline_convolve
+
     ## wavelet set of coefficients.
-    wave = np.zeros([lvl, n1, n2])
-    for i in np.arange(lvl - 1):
-        newh = np.zeros((n + (n - 1) * (2 ** i - 1), 1))
-        newh[0 :: 2 ** i, 0] = h
-        newhT = fft.Fourier(newh.T)
-        newh = fft.Fourier(newh)
+    starlet = np.zeros((scales + 1,) + image.shape)
+    for j in range(scales):
+        gen1 = convolve2D(c, j)
 
-        # Calculates c(j+1)
-        # Line convolution
-        cnew = fft.convolve(c, newh, axes=[0])
+        if generation == 2:
+            gen2 = convolve2D(gen1, j)
+            starlet[j] = c - gen2
+        else:
+            starlet[j] = c - gen1
 
-        # Column convolution
-        cnew = fft.convolve(cnew, newhT, axes=[1])
+        c = gen1
 
-        ###### hoh for g; Column convolution
-        hc = fft.convolve(cnew, newh, axes=[0])
-
-        # hoh for g; Line convolution
-        hc = fft.convolve(hc, newhT, axes=[1])
-
-        # wj+1 = cj-hcj+1
-        wave[i, :, :] = c.image - hc.image
-
-        c = cnew
-
-    wave[-1, :, :] = c.image
-    return wave
+    starlet[-1] = c
+    return starlet
 
 
-def iuwt(starlet):
-
-    """ Inverse starlet transform
+def starlet_reconstruction(starlets, convolve2D=None):
+    """Reconstruct an image from a dictionary of starlets
 
     Parameters
     ----------
-    starlet: Shapelet object
-        Starlet to be inverted
+    starlets: array with dimension (scales+1, Ny, Nx)
+        The starlet dictionary used to reconstruct the image.
+    convolve2D: function
+        The filter function to use to convolve the image
+        with starlets in 2D.
 
     Returns
     -------
-    cJ: array
-        a 2D image that corresponds to the inverse transform of stralet.
+    image: 2D array
+        The image reconstructed from the input `starlet`.
     """
-    lvl, n1, n2 = np.shape(starlet)
-    n = np.size(h)
-    # Coarse scale
-    cJ = fft.Fourier(starlet[-1, :, :])
-    for i in np.arange(1, lvl):
-        newh = np.zeros((n + (n - 1) * (2 ** (lvl - i - 1) - 1), 1))
-        newh[0 :: 2 ** (lvl - i - 1), 0] = h
-        newhT = fft.Fourier(newh.T)
-        newh = fft.Fourier(newh)
+    if convolve2D is None:
+        convolve2D = bspline_convolve
+    scales = len(starlets) - 1
 
-        # Line convolution
-        cnew = fft.convolve(cJ, newh, axes=[0])
-        # Column convolution
-        cnew = fft.convolve(cnew, newhT, axes=[1])
+    c = starlets[-1]
+    for i in range(1, scales + 1):
+        j = scales - i
+        cj = convolve2D(c, j)
+        c = cj + starlets[j]
+    return c
 
-        cJ = fft.Fourier(cnew.image + starlet[lvl - 1 - i, :, :])
 
-    return np.reshape(cJ.image, (n1, n2))
+def get_multiresolution_support(image, starlets, sigma, K=3, epsilon=1e-1, max_iter=20, image_type="ground"):
+    """Calculate the multi-resolution support for a dictionary of starlet coefficients
+
+    This is different for ground and space based telescopes.
+    For space-based telescopes the procedure in Starck and Murtagh 1998
+    iteratively calculates the multi-resolution support.
+    For ground based images, where the PSF is much wider and there are no
+    pixels with no signal at all scales, we use a modified method that
+    estimates support at each scale independently.
+
+    Parameters
+    ----------
+    image: 2D array
+        The image to transform into starlet coefficients.
+    starlets: array with dimension (scales+1, Ny, Nx)
+        The starlet dictionary used to reconstruct `image`.
+    sigma: float
+        The standard deviation of the `image`.
+    K: float
+        The multiple of `sigma` to use to calculate significance.
+        Coefficients `w` where `|w| > K*sigma_j`, where `sigma_j` is
+        standard deviation at the jth scale, are considered significant.
+    epsilon: float
+        The convergence criteria of the algorithm.
+        Once `|new_sigma_j - sigma_j|/new_sigma_j < epsilon` the
+        algorithm has completed.
+    max_iter: int
+        Maximum number of iterations to fit `sigma_j` at each scale.
+    image_type: str
+        The type of image that is being used.
+        This should be "ground" for ground based images with wide PSFs or
+        "space" for images from space-based telescopes with a narrow PSF.
+
+    Returns
+    -------
+    M: array of `int`
+        Mask with significant coefficients in `starlets` set to `True`.
+    """
+    assert image_type in ("ground", "space")
+
+    if image_type == "space":
+        # Calculate sigma_je, the standard deviation at
+        # each scale due to gaussian noise
+        shape = (get_scales(image.shape),) + image.shape
+        noise_img = np.random.normal(size=image.shape)
+        noise_starlet = starlet_transform(shape, noise_img, generation=1)
+        sigma_je = np.zeros((len(noise_starlet),))
+        for j, star in enumerate(noise_starlet):
+            sigma_je[j] = np.std(star)
+        noise = image - starlets[-1]
+
+        last_sigma_i = sigma
+        for it in range(max_iter):
+            M = (np.abs(starlets) > K * sigma * sigma_je[:, None, None])
+            S = np.sum(M, axis=0) == 0
+            sigma_i = np.std(noise * S)
+            if np.abs(sigma_i-last_sigma_i)/sigma_i < epsilon:
+                break
+            last_sigma_i = sigma_i
+    else:
+        # Sigma to use for significance at each scale
+        # Initially we use the input `sigma`
+        sigma_j = np.ones((len(starlets),), dtype=image.dtype) * sigma
+        last_sigma_j = sigma_j
+        for it in range(max_iter):
+            M = (np.abs(starlets) > K * sigma_j[:, None, None])
+            # Take the standard deviation of the current insignificant coeffs at each scale
+            S = ~M
+            sigma_j = np.std(starlets * S.astype(int), axis=(1, 2))
+            # At lower scales all of the pixels may be significant,
+            # so sigma is effectively zero. To avoid infinities we
+            # only check the scales with non-zero sigma
+            cut = sigma_j > 0
+            if np.all(np.abs(sigma_j[cut] - last_sigma_j[cut]) / sigma_j[cut] < epsilon):
+                break
+
+            last_sigma_j = sigma_j
+    return M.astype(int)
 
 
 class InputError(Exception):
