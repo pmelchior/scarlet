@@ -120,18 +120,20 @@ def get_center(image, center, radius=1):
         The true center of the source.
     """
     cy, cx = int(center[0]), int(center[1])
-    ySlice = slice(cy - radius, cy + radius+1)
-    xSlice = slice(cx - radius, cx + radius+1)
+    y0 = np.max([cy - radius, 0])
+    x0 = np.max([cx - radius, 0])
+    ySlice = slice(y0, cy + radius+1)
+    xSlice = slice(x0, cx + radius+1)
     subset = image[ySlice, xSlice]
     center = np.unravel_index(np.argmax(subset), subset.shape)
-    return center[0]+cy-radius, center[1]+cx-radius
+    return center[0]+y0, center[1]+x0
 
 
-def prox_monotonic_tree(X, step, center, center_radius=1, variance=0.0, max_iter=3, step_scale=0):
+def prox_monotonic_tree(X, step, center, center_radius=1, variance=0.0, max_iter=3):
     """Apply monotonicity from any path from the center
 
     """
-    from .operators_pybind11 import get_valid_monotonic_pixels, linear_interpolate_invalid_pixels
+    from scarlet.operators_pybind11 import get_valid_monotonic_pixels, linear_interpolate_invalid_pixels
 
     i, j = get_center(X, center, center_radius)
     unchecked = np.ones(X.shape, dtype=bool)
@@ -140,13 +142,12 @@ def prox_monotonic_tree(X, step, center, center_radius=1, variance=0.0, max_iter
     # This is the bounding box of the result
     bounds = np.array([i, i, j, j], dtype=np.int32)
     # Get all of the monotonic pixels
-    get_valid_monotonic_pixels(i, j, X, unchecked, orphans, variance, bounds)
+    get_valid_monotonic_pixels(i, j, X, unchecked, orphans, variance, bounds, 0)
     # Set the initial model to the exact input in the valid pixels
     model = X.copy()
 
     it = 0
 
-    #max_iter = max_iter + int(step*step_scale)
     while np.sum(orphans & unchecked) > 0 and it < max_iter:
         it += 1
         all_i, all_j = np.where(orphans)

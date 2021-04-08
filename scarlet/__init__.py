@@ -37,9 +37,11 @@ from .source import (
 )
 from .spectrum import Spectrum, TabulatedSpectrum
 from .wavelet import Starlet
+from . import detect
 from . import display
 from . import initialization
 from . import measure
+from . import operator
 from . import testing
 
 try:

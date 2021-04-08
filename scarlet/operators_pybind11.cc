@@ -2,6 +2,7 @@
 #include <pybind11/numpy.h>
 #include <pybind11/stl.h>
 #include <pybind11/eigen.h>
+#include <math.h>
 #include <algorithm>
 
 namespace py = pybind11;
@@ -34,7 +35,7 @@ void prox_weighted_monotonic(
     }
 }
 
-// Apply a filter to an image
+// Apply a 2D filter to an image
 template <typename M, typename V>
 void apply_filter(
     Eigen::Ref<const M> image,
@@ -53,6 +54,7 @@ void apply_filter(
             values(n) * image.block(y_end(n), x_end(n), rows, cols);
     }
 }
+
 
 // Create a boolean mask for all pixels that are monotonic from  at least one neighbor,
 // and create a boolean map of "orphans" that are non-monotonic in all directions.
@@ -205,6 +207,19 @@ void linear_interpolate_invalid_pixels(
             }
             if(recursive){
                 get_valid_monotonic_pixels(i, j, model, unchecked, orphans, variance, bounds);
+            } else {
+                if(unchecked(i-1,j)){
+                    orphans(i-1,j) = true;
+                }
+                if(unchecked(i+1,j)){
+                    orphans(i+1,j) = true;
+                }
+                if(unchecked(i,j-1)){
+                    orphans(i,j-1) = true;
+                }
+                if(unchecked(i,j+1)){
+                    orphans(i,j+1) = true;
+                }
             }
         } else if(uncheckedNeighbors){
             unchecked(i,j) = false;
@@ -216,9 +231,9 @@ void linear_interpolate_invalid_pixels(
     }
 }
 
-PYBIND11_PLUGIN(operators_pybind11)
+PYBIND11_MODULE(operators_pybind11, mod)
 {
-  py::module mod("operators_pybind11", "Fast proximal operators");
+  mod.doc() = "operators_pybind11", "Fast proximal operators";
 
   typedef Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> MatrixF;
   typedef Eigen::Matrix<float, Eigen::Dynamic, 1> VectorF;
@@ -242,6 +257,4 @@ PYBIND11_PLUGIN(operators_pybind11)
           "Fill in non-monotonic pixels by interpolating based on the gradients of its neighbors");
   mod.def("linear_interpolate_invalid_pixels", &linear_interpolate_invalid_pixels<MatrixD, double>,
           "Fill in non-monotonic pixels by interpolating based on the gradients of its neighbors");
-
-  return mod.ptr();
 }
