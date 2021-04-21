@@ -1,7 +1,6 @@
 import autograd.numpy as np
 from autograd.extend import defvjp, primitive
 
-from .frame import Frame
 from .model import Model
 from . import interpolation
 from . import fft
