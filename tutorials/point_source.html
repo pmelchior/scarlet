@@ -4,8 +4,7 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17: http://docutils.sourceforge.net/" />
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Point Source Tutorial &#8212; scarlet  documentation</title>
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
@@ -315,7 +314,7 @@ div.rendered_html tbody tr:hover {
   background: rgba(66, 165, 245, 0.2);
 }
 </style>
-<section id="Point-Source-Tutorial">
+<div class="section" id="Point-Source-Tutorial">
 <h1>Point Source Tutorial<a class="headerlink" href="#Point-Source-Tutorial" title="Permalink to this headline">¶</a></h1>
 <p>This is a quick demonstration of how to model both extended objects and point sources in the same scence. This may or may not be robust enough for crowded field photometry. We’re curious about reports.</p>
 <p>First we load a simulated image cube, for which we know which sources are galaxies and which ones are stars, so we can use the appropriate source type. In practice, this would have to be guessed and potentially revised after the first attempt.</p>
@@ -386,7 +385,7 @@ div.rendered_html tbody tr:hover {
 <img alt="../_images/tutorials_point_source_2_1.png" src="../_images/tutorials_point_source_2_1.png" />
 </div>
 </div>
-<section id="Create-Frame-and-Observation">
+<div class="section" id="Create-Frame-and-Observation">
 <h2>Create Frame and Observation<a class="headerlink" href="#Create-Frame-and-Observation" title="Permalink to this headline">¶</a></h2>
 <div class="nbinput nblast docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
@@ -404,8 +403,8 @@ div.rendered_html tbody tr:hover {
 </pre></div>
 </div>
 </div>
-</section>
-<section id="Define-Sources">
+</div>
+<div class="section" id="Define-Sources">
 <h2>Define Sources<a class="headerlink" href="#Define-Sources" title="Permalink to this headline">¶</a></h2>
 <p><strong>You have to define what sources you want to fit.</strong> Since we know which sources are stars (it’s stored in the catalog), we can pick the proper source type. This is the situations e.g. <em>Gaia</em>-confirmed stars. In deeper observations or more crowded fields, additional logic will be needed (such as color priors on stars vs galaxies) to perform the star-galaxy separation.</p>
 <div class="nbinput nblast docutils container">
@@ -433,8 +432,8 @@ div.rendered_html tbody tr:hover {
 </pre></div>
 </div>
 </div>
-</section>
-<section id="Create-Blend">
+</div>
+<div class="section" id="Create-Blend">
 <h2>Create Blend<a class="headerlink" href="#Create-Blend" title="Permalink to this headline">¶</a></h2>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
@@ -466,8 +465,8 @@ div.rendered_html tbody tr:hover {
 </div>
 </div>
 <p>Our three stars (the red x’s) are initialized to match their peak value with the peak of the image while the extended sources are initialized in the usual way. Note that the star centers may be a bit off, but this will be corrected by recentering them during the fit.</p>
-</section>
-<section id="Fit-Model-and-Display-Results">
+</div>
+<div class="section" id="Fit-Model-and-Display-Results">
 <h2>Fit Model and Display Results<a class="headerlink" href="#Fit-Model-and-Display-Results" title="Permalink to this headline">¶</a></h2>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
@@ -486,8 +485,8 @@ div.rendered_html tbody tr:hover {
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-CPU times: user 1.35 s, sys: 0 ns, total: 1.35 s
-Wall time: 1.35 s
+CPU times: user 1.37 s, sys: 4.02 ms, total: 1.38 s
+Wall time: 1.38 s
 scarlet ran for 74 iterations to logL = -118813.35205007775
 </pre></div></div>
 </div>
@@ -544,8 +543,8 @@ scarlet ran for 74 iterations to logL = -118813.35205007775
 </div>
 </div>
 <p>We can see that the model overall performs well, especially in fitting the amplitude and locations of the point sources. It is worth noting that the stellar residuals have red rings and blue cores, which suggest that the PSF model of the observation is not quite correct across all bands. The extended sources are less convincing. The colors of the two galaxies are not very different, so these two sources remain poorly separated.</p>
-</section>
-</section>
+</div>
+</div>
 
 
           </div>
@@ -558,7 +557,7 @@ scarlet ran for 74 iterations to logL = -118813.35205007775
       &copy;2018-2019, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.5.3</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.5.4</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |
