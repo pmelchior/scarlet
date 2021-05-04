@@ -6,7 +6,6 @@ from .cache import Cache
 from .renderer import NullRenderer, ConvolutionRenderer
 
 
-
 logger = logging.getLogger("scarlet.initialisation")
 
 

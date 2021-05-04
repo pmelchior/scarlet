@@ -1,6 +1,6 @@
 import numpy as np
 from .cache import Cache
-from .wavelet import Starlet
+from .wavelet import apply_wavelet_denoising
 from . import fft
 
 
@@ -589,7 +589,7 @@ def interpolate_observation(observation, frame, wave_filter=False):
 
     interp = []
     if wave_filter is True:
-        images = Starlet(observation.data).filter()
+        images = np.array([apply_wavelet_denoising(image) for image in observation.data])
     else:
         images = observation.data
     for image in images:
