@@ -59,13 +59,50 @@ void get_connected_pixels(
 }
 
 
+/// A Peak in a Footprint
+/// This class is meant to keep track of both the position and
+/// flux at the location of a maximum in a Footprint
+class Peak {
+public:
+    Peak(int y, int x, double flux){
+        _y = y;
+        _x = x;
+        _flux = flux;
+    }
+
+    int getY(){
+        return _y;
+    }
+
+    int getX(){
+        return _x;
+    }
+
+    double getFlux(){
+        return _flux;
+    }
+
+
+private:
+    int _y;
+    int _x;
+    double _flux;
+};
+
+
+/// Sort two peaks, placing the brightest peak first
+bool sortBrightness(Peak a, Peak b){
+    return a.getFlux() > b.getFlux();
+}
+
+
 // Get a list of peaks found in an image.
 // To make ut easier to cull peaks that are too close together
 // and ensure that every footprint has at least one peak,
 // this algorithm is meant to be run on a single footprint
 // created by `get_connected_pixels`.
 template <typename M>
-std::vector<std::vector<int>> get_peaks(
+std::vector<Peak> get_peaks(
     //Eigen::Ref<const M> image,
     M& image,
     const double min_separation,
@@ -75,7 +112,7 @@ std::vector<std::vector<int>> get_peaks(
     const int height = image.rows();
     const int width = image.cols();
 
-    std::vector<std::vector<int>> peaks;
+    std::vector<Peak> peaks;
 
     for(int i=0; i<height; i++){
         for(int j=0; j<width; j++){
@@ -91,34 +128,65 @@ std::vector<std::vector<int>> get_peaks(
             if(j < width-1 && image(i,j) <= image(i, j+1)){
                 continue;
             }
-            std::vector<int> peak{i+y0, j+x0};
-            peaks.push_back(peak);
+
+            if(i > 0 && j > 0 && image(i, j) <= image(i-1, j-1)){
+                continue;
+            }
+            if(i < height-1 && j < width-1 && image(i,j) <= image(i+1, j+1)){
+                continue;
+            }
+            if(i < height-1 && j > 0 && image(i, j) <= image(i+1, j-1)){
+                continue;
+            }
+            if(i > 0 && j < width-1 && image(i,j) <= image(i-1, j+1)){
+                continue;
+            }
+
+            peaks.push_back(Peak(i+y0, j+x0, static_cast<double>(image(i, j))));
         }
     }
 
     assert(peaks.size() > 0);
 
+    /// Sort the peaks in the footprint so that the brightest are first
+    std::sort (peaks.begin(), peaks.end(), sortBrightness);
+
     // Remove peaks within min_separation
     double min_separation2 = min_separation * min_separation;
-    auto p1 = peaks.begin();
-    while (p1->size() > 1 && p1 != std::prev(peaks.end())){
-        auto p2 = std::next(p1);
-        while (p2 != peaks.end()){
-            double dy = p1->at(0)-p2->at(0);
-            double dx = p1->at(1)-p2->at(1);
+    int i = 0;
+    while (i < peaks.size()-1){
+        int j = i+1;
+        Peak *p1 = &peaks[i];
+        while (j < peaks.size()){
+            Peak *p2 = &peaks[j];
+            double dy = p1->getY()-p2->getY();
+            double dx = p1->getX()-p2->getX();
             double separation2 = dy*dy + dx*dx;
             if(separation2 < min_separation2){
-                if(image(p2->at(0)-y0, p2->at(1)-x0) > image(p1->at(0)-y0, p1->at(1)-x0)){
-                    p1 = peaks.erase(p1);
-                    break;
-                } else {
-                    p2 = peaks.erase(p2);
-                }
+                peaks.erase(peaks.begin()+j);
+                i--;
+            }
+            j++;
+        }
+        i++;
+    }
+
+
+
+    auto p1 = peaks.begin();
+    while (peaks.size() > 1 && p1 != std::prev(peaks.end())){
+        auto p2 = std::next(p1);
+        while (p2 != peaks.end()){
+            double dy = p1->getY()-p2->getY();
+            double dx = p1->getX()-p2->getX();
+            double separation2 = dy*dy + dx*dx;
+            if(separation2 < min_separation2){
+                p2 = peaks.erase(p2);
             } else {
                 ++p2;
             }
         }
-        ++p1;
+        p1++;
     }
 
     assert(peaks.size() > 0);
@@ -130,9 +198,9 @@ std::vector<std::vector<int>> get_peaks(
 // A detected footprint
 class Footprint {
 public:
-    Footprint(MatrixB footprint, std::vector<std::vector<int>> peaks, Bounds bounds){
+    Footprint(MatrixB footprint, std::vector<Peak> peaks, Bounds bounds){
         _footprint = footprint;
-        _peaks = peaks;
+        this->peaks = peaks;
         _bounds = bounds;
     }
 
@@ -140,9 +208,7 @@ public:
         return _footprint;
     }
 
-    std::vector<std::vector<int>> getPeaks(){
-        return _peaks;
-    }
+    std::vector<Peak> peaks;
 
     Bounds getBounds(){
         return _bounds;
@@ -150,7 +216,6 @@ public:
 
 private:
     MatrixB _footprint;
-    std::vector<std::vector<int>> _peaks;
     Bounds _bounds;
 };
 
@@ -199,7 +264,7 @@ std::vector<Footprint> get_footprints(
                 if(area >= min_area){
                     M patch = image.block(bounds[0], bounds[2], subHeight, subWidth);
                     maskImage<M>(patch, subFootprint);
-                    std::vector<std::vector<int>> _peaks = get_peaks(
+                    std::vector<Peak> _peaks = get_peaks(
                         patch,
                         min_separation,
                         bounds[0],
@@ -240,9 +305,16 @@ PYBIND11_MODULE(detect_pybind11, mod) {
           "image"_a, "min_separation"_a, "min_area"_a, "thresh"_a);
 
   py::class_<Footprint>(mod, "Footprint")
-        .def(py::init<MatrixB, std::vector<std::vector<int>>, Bounds>(),
+        .def(py::init<MatrixB, std::vector<Peak>, Bounds>(),
              "footprint"_a, "peaks"_a, "bounds"_a)
         .def_property_readonly("footprint", &Footprint::getFootprint)
-        .def_property_readonly("peaks", &Footprint::getPeaks)
+        .def_readwrite("peaks", &Footprint::peaks)
         .def_property_readonly("bounds", &Footprint::getBounds);
+
+  py::class_<Peak>(mod, "Peak")
+        .def(py::init<int, int, double>(),
+            "y"_a, "x"_a, "flux"_a)
+        .def_property_readonly("y", &Peak::getY)
+        .def_property_readonly("x", &Peak::getX)
+        .def_property_readonly("flux", &Peak::getFlux);
 }

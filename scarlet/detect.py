@@ -15,14 +15,16 @@ def bounds_to_bbox(bounds):
 
 def merge_peaks(all_peaks, min_separation=3):
     peaks = all_peaks[0]
-    tree = cKDTree(peaks)
+    _peaks = [(peak.y, peak.x) for peak in peaks]
+    tree = cKDTree(_peaks)
     for _peaks in all_peaks[1:]:
         for peak in _peaks:
-            dist, _ = tree.query(peak)
+            dist, _ = tree.query((peak.y, peak.x))
             if dist > min_separation:
                 peaks.append(peak)
         # Rebuild the tree for each scale
-        tree = cKDTree(peaks)
+        _peaks = [(peak.y, peak.x) for peak in peaks]
+        tree = cKDTree(_peaks)
     return peaks
 
 
