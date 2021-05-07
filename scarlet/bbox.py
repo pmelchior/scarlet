@@ -253,6 +253,9 @@ class Box:
     def __eq__(self, other):
         return self.shape == other.shape and self.origin == other.origin
 
+    def __hash__(self):
+        return hash((self.shape, self.origin))
+
 
 def overlapped_slices(bbox1, bbox2):
     """Slices of bbox1 and bbox2 that overlap
