@@ -142,7 +142,7 @@ class Observation(Frame):
         model_: array
             `model` mapped into the observation frame
         """
-        return self.renderer(model, *parameters)
+        return self.renderer(model, self.parameters)
 
     def get_log_likelihood(self, model, *parameters, noise_factor=0):
         """Computes the log-Likelihood of a given model wrt to the observation
