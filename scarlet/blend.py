@@ -262,8 +262,9 @@ class Blend(CombinedComponent):
         for observation in self.observations:
             n_obs_params = len(observation.parameters)
             obs_params = parameters[n_params : n_params + n_obs_params]
+            shift = parameters[-1]
             total_loss = total_loss - observation.get_log_likelihood(
-                model, *obs_params, noise_factor=self._noise_factor
+                model, *obs_params, shift, noise_factor=self._noise_factor
             )
             n_params += n_obs_params
 

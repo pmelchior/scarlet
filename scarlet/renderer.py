@@ -287,8 +287,7 @@ class ShiftConvolutionRenderer(ConvolutionRenderer):
             # restrict to observed channels
             model_ = self.map_channels(model)
             # convolve observed channels
-            shift = self.get_parameter(0, *parameters[0])
-            print(shift, shift.v, shift.m)
+            shift = self.get_parameter(0, *parameters)
             model_ = self.convolve(model_, shift=shift)
             # adjust spatial shapes
             model_ = match_shape(model_, self.data_frame, self.slices)
