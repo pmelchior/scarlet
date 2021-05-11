@@ -236,7 +236,7 @@ class ConvolutionRenderer(Renderer):
 
 class ShiftConvolutionRenderer(ConvolutionRenderer):
 
-    def __init__(self, data_frame, model_frame, convolution_type="fft", padding=10, shift = None):
+    def __init__(self, data_frame, model_frame, convolution_type="fft", padding=10, shift = np.zeros(2)):
 
         if shift is not None:
             shift = Parameter(

@@ -103,7 +103,7 @@ class ImageMorphology(Morphology):
     def get_model(self, *parameters):
         image = self.get_parameter(0, *parameters)
         shift = self.get_parameter(1, *parameters)
-        print(shift, 'z')
+
         if self.shifting:
             image = fft.shift(image, shift, return_Fourier=False)
         return image
