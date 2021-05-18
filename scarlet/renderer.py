@@ -240,7 +240,7 @@ class ShiftConvolutionRenderer(ConvolutionRenderer):
 
         if shift is not None:
             shift = Parameter(
-                shift, name="shift", step=1.e-2)
+                shift, name="psf_shift", step=1.e-2)
         super().__init__(data_frame,
                          model_frame,
                          shift,
@@ -264,7 +264,7 @@ class ShiftConvolutionRenderer(ConvolutionRenderer):
             result = convolve(model, kernel, self.convolution_bounds)
         elif convolution_type == "fft":
             result = fft.convolve(
-                fft.Fourier(model), self.diff_kernel, axes=(1, 2)
+                fft.Fourier(model), kernel, axes=(1, 2)
             ).image
         else:
             raise ValueError(
@@ -272,7 +272,6 @@ class ShiftConvolutionRenderer(ConvolutionRenderer):
                     convolution_type
                 )
             )
-
 
         return result
 
@@ -288,6 +287,7 @@ class ShiftConvolutionRenderer(ConvolutionRenderer):
             model_ = self.map_channels(model)
             # convolve observed channels
             shift = self.get_parameter(0, *parameters)
+            print('zizizi',shift)
             model_ = self.convolve(model_, shift=shift)
             # adjust spatial shapes
             model_ = match_shape(model_, self.data_frame, self.slices)
