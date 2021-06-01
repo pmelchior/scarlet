@@ -129,13 +129,35 @@ def get_center(image, center, radius=1):
     return center[0]+y0, center[1]+x0
 
 
-def prox_monotonic_tree(X, step, center, center_radius=1, variance=0.0, max_iter=3):
+def prox_monotonic_mask(X, step, center, center_radius=1, variance=0.0, max_iter=3):
     """Apply monotonicity from any path from the center
 
+    Parameters
+    ----------
+    X: array-like
+        The input image that the mask is created for.
+    step: `int`
+        This parameter is ignored for this prox, but is required by `prox_min`.
+    center: `tuple` of `int`
+        The location of the center of the mask.
+    center_radius: `float`
+        Radius from the center pixel to search for a better center
+        (ie. a pixel in `X` with higher flux than the pixel given by
+         `center`).
+        If `center_radius == 0` then the `center` pixel is assumed to be correct.
+    variance: `float`
+        The average variance in the image.
+        This is used to allow pixels to be non-monotonic up to `variance`,
+        so setting `variance=0` will force strict monotonicity in the mask.
+    max_iter: int
+        Maximum number of iterations to interpolate non-monotonic pixels.
     """
     from scarlet.operators_pybind11 import get_valid_monotonic_pixels, linear_interpolate_invalid_pixels
 
-    i, j = get_center(X, center, center_radius)
+    if center_radius > 0:
+        i, j = get_center(X, center, center_radius)
+    else:
+        i,j = int(np.round(center[0])), int(np.round(center[1]))
     unchecked = np.ones(X.shape, dtype=bool)
     unchecked[i, j] = False
     orphans = np.zeros(X.shape, dtype=bool)
