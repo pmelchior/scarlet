@@ -1,4 +1,5 @@
 import autograd.numpy as np
+from autograd.extend import defvjp, primitive
 
 
 class Starlet(object):
@@ -149,6 +150,7 @@ class Starlet(object):
         return self._norm
 
 
+@primitive
 def bspline_convolve(image, scale):
     """Convolve an image with a bpsline at a given scale.
 
@@ -187,6 +189,12 @@ def bspline_convolve(image, scale):
     result[:, slice1] += col[:, slice3] * h1D[3]
     result[:, slice0] += col[:, slice4] * h1D[4]
     return result
+
+
+def _grad_bspline_convolve(input_grad, image, scale):
+    return lambda input_grad: bspline_convolve(input_grad, scale)
+
+defvjp(bspline_convolve, _grad_bspline_convolve)
 
 
 def get_scales(image_shape, scales=None):
