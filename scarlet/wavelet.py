@@ -145,7 +145,7 @@ class Starlet(object):
             cy, cx = np.array(self.image.shape[-2:])//2
             dirac = np.zeros(self.image.shape[-2:])
             dirac[cy, cx] = 1
-            seed = starlet_transform(dirac, self.generation, self.convolve2D)
+            seed = starlet_transform(dirac, generation=self.generation, convolve2D=self.convolve2D)
             self._norm = np.sqrt(np.sum(seed**2, axis=(-2, -1)))
         return self._norm
 
@@ -241,8 +241,8 @@ def starlet_transform(image, scales=None, generation=2, convolve2D=None):
     starlet: array with dimension (scales+1, Ny, Nx)
         The starlet dictionary for the input `image`.
     """
-    assert len(image.shape) == 2, "Image should be 2D"
-    assert generation in (1, 2)
+    assert len(image.shape) == 2, f"Image should be 2D, got {len(image.shape)}"
+    assert generation in (1, 2), f"generation should be 1 or 2, got {generation}"
 
     scales = get_scales(image.shape, scales)
     c = image

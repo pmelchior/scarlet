@@ -15,7 +15,7 @@ from .frame import Frame
 from .model import Model, UpdateException
 from .parameter import Parameter, relative_step
 from .psf import PSF
-from .wavelet import Starlet
+from .wavelet import Starlet, starlet_reconstruction
 from . import fft
 from . import initialization
 
@@ -273,7 +273,7 @@ class StarletMorphology(Morphology):
         # We don't threshold the last scale
         thresh_array[-1] = 0
 
-        constraint = L0Constraint(thresh_array)
+        constraint = None#L0Constraint(thresh_array)
 
         coeffs = Parameter(coeffs, name="coeffs", step=1e-2, constraint=constraint)
         super().__init__(frame, coeffs, bbox=bbox)
@@ -281,7 +281,7 @@ class StarletMorphology(Morphology):
     def get_model(self, *parameters):
         # Takes the inverse transform of parameters as starlet coefficients
         coeffs = self.get_parameter(0, *parameters)
-        return Starlet.fromCoefficients(coeffs).image
+        return starlet_reconstruction(coeffs)
 
 
 class ExtendedSourceMorphology(ImageMorphology):

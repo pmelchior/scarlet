@@ -5,6 +5,7 @@ from matplotlib.patches import Rectangle, Polygon
 from matplotlib.ticker import MaxNLocator
 from .bbox import Box
 from .component import Component
+from .source import NullSource
 
 
 def channels_to_rgb(channels):
@@ -481,14 +482,21 @@ def show_sources(
         ), "Provide matched observation to show observed frame"
 
     panels = sum((show_model, show_observed, show_rendered, show_spectrum))
+    n_sources = len([src for src in sources if not isinstance(src, NullSource)])
     if figsize is None:
-        figsize = (panel_size * panels, panel_size * len(list(sources)))
-    fig, ax = plt.subplots(len(list(sources)), panels, figsize=figsize, squeeze=False)
+        figsize = (panel_size * panels, panel_size * n_sources)
+
+    fig, ax = plt.subplots(n_sources, panels, figsize=figsize, squeeze=False)
 
     marker_kwargs = {"mew": 1, "ms": 10}
     box_kwargs = {"facecolor": "none", "edgecolor": "w", "lw": 0.5}
 
+    skipped = 0
     for k, src in enumerate(sources):
+        # skip NullSources
+        if isinstance(src, NullSource):
+            skipped += 1
+            continue
 
         model_frame = src.frame
 
@@ -511,14 +519,14 @@ def show_sources(
         if show_model:
             # Show the unrendered model in it's bbox
             extent = get_extent(src.bbox)
-            ax[k][panel].imshow(
+            ax[k-skipped][panel].imshow(
                 img_to_rgb(model, norm=norm, channel_map=channel_map, mask=model_mask),
                 extent=extent,
                 origin="lower",
             )
-            ax[k][panel].set_title("Model Source {}".format(k))
+            ax[k-skipped][panel].set_title("Model Source {}".format(k))
             if center is not None and add_markers:
-                ax[k][panel].plot(*center, "wx", **marker_kwargs)
+                ax[k-skipped][panel].plot(*center, "wx", **marker_kwargs)
             panel += 1
 
         # model in observation frame
@@ -527,36 +535,36 @@ def show_sources(
             model_ = src.get_model(frame=model_frame)
             model_ = observation.render(model_)
             extent = get_extent(observation.bbox)
-            ax[k][panel].imshow(
+            ax[k-skipped][panel].imshow(
                 img_to_rgb(model_, norm=norm, channel_map=channel_map),
                 extent=extent,
                 origin="lower",
             )
-            ax[k][panel].set_title("Model Source {} Rendered".format(k))
+            ax[k-skipped][panel].set_title("Model Source {} Rendered".format(k))
 
             if center is not None and add_markers:
                 center_ = observation.get_pixel(model_frame.get_sky_coord(center))
-                ax[k][panel].plot(*center_, "wx", **marker_kwargs)
+                ax[k-skipped][panel].plot(*center_, "wx", **marker_kwargs)
             if add_boxes:
                 poly = Polygon(box_coords, closed=True, **box_kwargs)
-                ax[k][panel].add_artist(poly)
+                ax[k-skipped][panel].add_artist(poly)
             panel += 1
 
         if show_observed:
             # Center the observation on the source and display it
             _images = observation.data
-            ax[k][panel].imshow(
+            ax[k-skipped][panel].imshow(
                 img_to_rgb(_images, norm=norm, channel_map=channel_map),
                 extent=extent,
                 origin="lower",
             )
-            ax[k][panel].set_title("Observation".format(k))
+            ax[k-skipped][panel].set_title("Observation".format(k))
             if center is not None and add_markers:
                 center_ = observation.get_pixel(model_frame.get_sky_coord(center))
-                ax[k][panel].plot(*center_, "wx", **marker_kwargs)
+                ax[k-skipped][panel].plot(*center_, "wx", **marker_kwargs)
             if add_boxes:
                 poly = Polygon(box_coords, closed=True, **box_kwargs)
-                ax[k][panel].add_artist(poly)
+                ax[k-skipped][panel].add_artist(poly)
             panel += 1
 
         if show_spectrum:
@@ -570,13 +578,13 @@ def show_sources(
                 spectra = [model.sum(axis=(1, 2))]
 
             for spectrum in spectra:
-                ax[k][panel].plot(spectrum)
-            ax[k][panel].set_xticks(range(len(spectrum)))
+                ax[k-skipped][panel].plot(spectrum)
+            ax[k-skipped][panel].set_xticks(range(len(spectrum)))
             if hasattr(src.frame, "channels") and src.frame.channels is not None:
-                ax[k][panel].set_xticklabels(src.frame.channels)
-            ax[k][panel].set_title("Spectrum")
-            ax[k][panel].set_xlabel("Channel")
-            ax[k][panel].set_ylabel("Intensity")
+                ax[k-skipped][panel].set_xticklabels(src.frame.channels)
+            ax[k-skipped][panel].set_title("Spectrum")
+            ax[k-skipped][panel].set_xlabel("Channel")
+            ax[k-skipped][panel].set_ylabel("Intensity")
 
     fig.tight_layout()
     return fig
