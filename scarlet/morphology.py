@@ -15,7 +15,7 @@ from .frame import Frame
 from .model import Model, UpdateException
 from .parameter import Parameter, relative_step
 from .psf import PSF
-from .wavelet import Starlet
+from .wavelet import Starlet, starlet_reconstruction, get_multiresolution_support
 from . import fft
 from . import initialization
 
@@ -261,29 +261,26 @@ class StarletMorphology(Morphology):
             assert frame.bbox[1:].shape == image.shape
             bbox = Box(image.shape)
 
-        # Starlet transform of morphologies (n1,n2) with 4 dimensions: (1,lvl,n1,n2), lvl = wavelet scales
-        self.transform = Starlet(image)
+        # Starlet transform of morphologies (n1,n2) with 3 dimensions: (scales+1,n1,n2)
+        self.transform = Starlet.from_image(image)
         # The starlet transform is the model
         coeffs = self.transform.coefficients
         # wavelet-scale norm
         starlet_norm = self.transform.norm
         # One threshold per wavelet scale: thresh*norm
         thresh_array = np.zeros(coeffs.shape) + threshold
-        thresh_array = (
-            thresh_array * np.array([starlet_norm])[..., np.newaxis, np.newaxis]
-        )
+        thresh_array *= starlet_norm[:, None, None]
         # We don't threshold the last scale
-        thresh_array[:, -1, :, :] = 0
+        thresh_array[-1] = 0
 
-        constraint = ConstraintChain(L0Constraint(thresh_array), PositivityConstraint())
-
+        constraint = PositivityConstraint(thresh_array)
         coeffs = Parameter(coeffs, name="coeffs", step=1e-2, constraint=constraint)
         super().__init__(frame, coeffs, bbox=bbox)
 
     def get_model(self, *parameters):
         # Takes the inverse transform of parameters as starlet coefficients
         coeffs = self.get_parameter(0, *parameters)
-        return Starlet(coefficients=coeffs).image[0]
+        return starlet_reconstruction(coeffs)
 
 
 class ExtendedSourceMorphology(ImageMorphology):

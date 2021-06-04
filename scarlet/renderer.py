@@ -273,10 +273,10 @@ class ResolutionRenderer(Renderer):
         )
 
         # Center of the FFT shape for matched diff kernel
-        center_y = np.int(
+        center_y = int(
             self._fft_shape[0] / 2.0 - (self._fft_shape[0] - model_frame.Ny) / 2.0
         ) + ((self._fft_shape[0] % 2) != 0) * ((model_frame.Ny % 2) == 0)
-        center_x = np.int(
+        center_x = int(
             self._fft_shape[1] / 2.0 - (self._fft_shape[1] - model_frame.Nx) / 2.0
         ) - ((self._fft_shape[1] % 2) != 0) * ((model_frame.Nx % 2) == 0)
 
