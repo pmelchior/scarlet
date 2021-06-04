@@ -15,7 +15,7 @@ from .frame import Frame
 from .model import Model, UpdateException
 from .parameter import Parameter, relative_step
 from .psf import PSF
-from .wavelet import Starlet, starlet_reconstruction
+from .wavelet import Starlet, starlet_reconstruction, get_multiresolution_support
 from . import fft
 from . import initialization
 
@@ -273,8 +273,7 @@ class StarletMorphology(Morphology):
         # We don't threshold the last scale
         thresh_array[-1] = 0
 
-        constraint = None#L0Constraint(thresh_array)
-
+        constraint = PositivityConstraint(thresh_array)
         coeffs = Parameter(coeffs, name="coeffs", step=1e-2, constraint=constraint)
         super().__init__(frame, coeffs, bbox=bbox)
 
