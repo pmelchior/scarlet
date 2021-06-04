@@ -33,7 +33,7 @@ class Starlet(object):
         self._norm = None
 
     @staticmethod
-    def fromImage(image, scales=None, generation=2, convolve2D=None):
+    def from_image(image, scales=None, generation=2, convolve2D=None):
         """Generate a set of starlet coefficients for an image
 
         Parameters
@@ -63,7 +63,7 @@ class Starlet(object):
         return Starlet(image, coefficients, generation, convolve2D)
 
     @staticmethod
-    def fromCoefficients(coefficients, generation=2, convolve2D=None):
+    def from_coefficients(coefficients, generation=2, convolve2D=None):
         """Generate an image from a set of starlet coefficients
 
         Parameters

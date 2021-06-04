@@ -262,7 +262,7 @@ class StarletMorphology(Morphology):
             bbox = Box(image.shape)
 
         # Starlet transform of morphologies (n1,n2) with 3 dimensions: (scales+1,n1,n2)
-        self.transform = Starlet.fromImage(image)
+        self.transform = Starlet.from_image(image)
         # The starlet transform is the model
         coeffs = self.transform.coefficients
         # wavelet-scale norm

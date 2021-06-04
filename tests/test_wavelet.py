@@ -14,7 +14,7 @@ class TestWavelet(object):
 
     def test_transform_inverse(self):
         psf = self.get_psfs(1, 128)[0]
-        starlet_transform = scarlet.Starlet.fromImage(psf, scales=3)
+        starlet_transform = scarlet.Starlet.from_image(psf, scales=3)
 
         # Test number of levels
         assert_equal(starlet_transform.coefficients.shape[0], 4)
@@ -25,11 +25,11 @@ class TestWavelet(object):
 
     def test_setter(self):
         psf = self.get_psfs(1, 128)[0]
-        starlet = scarlet.Starlet.fromImage(psf, scales=3)
+        starlet = scarlet.Starlet.from_image(psf, scales=3)
         star_coeff = starlet.coefficients
         star_coeff[:, 10:20, :] = 0
 
-        new_starlet = scarlet.Starlet.fromCoefficients(star_coeff)
+        new_starlet = scarlet.Starlet.from_coefficients(star_coeff)
         assert_almost_equal(new_starlet.image, starlet.image)
         # Test inverse
         star_coeff[:, :, :] = 0
