@@ -4,11 +4,12 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
     <title>Installation &#8212; scarlet  documentation</title>
-    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
-    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css" />
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
     <script src="_static/jquery.js"></script>
     <script src="_static/underscore.js"></script>
     <script src="_static/doctools.js"></script>
@@ -60,7 +61,7 @@
 
           <div class="body" role="main">
             
-  <div class="section" id="installation">
+  <section id="installation">
 <h1>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h1>
 <p><em>scarlet</em> has several dependencies that must be installed prior to installation:</p>
 <ol class="arabic simple">
@@ -101,7 +102,7 @@ If you already have a local version of <a class="reference external" href="http:
 <p><cite>build_ext</cite> does not accept relative paths, so <cite>&lt;full path to your Eigen header files&gt;</cite>
 must be a full path.</p>
 </div>
-<div class="section" id="for-os-x-users">
+<section id="for-os-x-users">
 <h2>For OS X Users<a class="headerlink" href="#for-os-x-users" title="Permalink to this headline">¶</a></h2>
 <p>For some reason the default XCode build system attempts to use the deprecated stdlc++ library instead of the
 newer libc++. So you may receive the error
@@ -109,11 +110,11 @@ newer libc++. So you may receive the error
 ld: library not found for -lstdc++</cite>.
 If this is the case then before you run the setup script you will need to run:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">xcode</span><span class="o">-</span><span class="n">select</span> <span class="o">--</span><span class="n">install</span>
-<span class="n">sudo</span> <span class="n">installer</span> <span class="o">-</span><span class="n">pkg</span> <span class="o">/</span><span class="n">Library</span><span class="o">/</span><span class="n">Developer</span><span class="o">/</span><span class="n">CommandLineTools</span><span class="o">/</span><span class="n">Packages</span><span class="o">/</span><span class="n">macOS_SDK_headers_for_macOS_10</span><span class="o">.</span><span class="mf">14.</span><span class="n">pkg</span> <span class="o">-</span><span class="n">target</span> <span class="o">/</span>
+<span class="n">sudo</span> <span class="n">installer</span> <span class="o">-</span><span class="n">pkg</span> <span class="o">/</span><span class="n">Library</span><span class="o">/</span><span class="n">Developer</span><span class="o">/</span><span class="n">CommandLineTools</span><span class="o">/</span><span class="n">Packages</span><span class="o">/</span><span class="n">macOS_SDK_headers_for_macOS_10</span><span class="mf">.14</span><span class="o">.</span><span class="n">pkg</span> <span class="o">-</span><span class="n">target</span> <span class="o">/</span>
 </pre></div>
 </div>
-</div>
-<div class="section" id="building-the-docs-scarlet-developers-only">
+</section>
+<section id="building-the-docs-scarlet-developers-only">
 <h2>Building the Docs (<em>scarlet</em> developers only)<a class="headerlink" href="#building-the-docs-scarlet-developers-only" title="Permalink to this headline">¶</a></h2>
 <p>You need to install several extra packages:</p>
 <ol class="arabic simple">
@@ -127,8 +128,8 @@ If this is the case then before you run the setup script you will need to run:</
 </div>
 <p>and a local copy of the current docs will be available in the <cite>docs/_build/html</cite> folder.
 The home page is available at <cite>docs/_build/html/index.html</cite>.</p>
-</div>
-</div>
+</section>
+</section>
 
 
           </div>
@@ -141,7 +142,7 @@ The home page is available at <cite>docs/_build/html/index.html</cite>.</p>
       &copy;2018-2019, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.5.4</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.0.2</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

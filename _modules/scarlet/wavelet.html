@@ -6,9 +6,9 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>scarlet.wavelet &#8212; scarlet  documentation</title>
-    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
-    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
-    <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css" />
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
     <script src="../../_static/jquery.js"></script>
     <script src="../../_static/underscore.js"></script>
     <script src="../../_static/doctools.js"></script>
@@ -60,12 +60,7 @@
             
   <h1>Source code for scarlet.wavelet</h1><div class="highlight"><pre>
 <span></span><span class="kn">import</span> <span class="nn">autograd.numpy</span> <span class="k">as</span> <span class="nn">np</span>
-<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">fft</span>
-<span class="kn">from</span> <span class="nn">.cache</span> <span class="kn">import</span> <span class="n">Cache</span>
-<span class="kn">from</span> <span class="nn">scipy.stats</span> <span class="kn">import</span> <span class="n">median_absolute_deviation</span> <span class="k">as</span> <span class="n">mad</span>
-
-<span class="c1"># Filter for the scarlet transform. Here bspline</span>
-<span class="n">h</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.0</span> <span class="o">/</span> <span class="mi">16</span><span class="p">,</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="mi">4</span><span class="p">,</span> <span class="mf">3.0</span> <span class="o">/</span> <span class="mi">8</span><span class="p">,</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="mi">4</span><span class="p">,</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="mi">16</span><span class="p">])</span>
+<span class="kn">from</span> <span class="nn">autograd.extend</span> <span class="kn">import</span> <span class="n">defvjp</span><span class="p">,</span> <span class="n">primitive</span>
 
 
 <div class="viewcode-block" id="Starlet"><a class="viewcode-back" href="../../api/scarlet.wavelet.html#scarlet.wavelet.Starlet">[docs]</a><span class="k">class</span> <span class="nc">Starlet</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
@@ -77,304 +72,369 @@
 <span class="sd">        images that have the same shape.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">lvl</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">coefficients</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">direct</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">coefficients</span><span class="p">,</span> <span class="n">generation</span><span class="p">,</span> <span class="n">convolve2D</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Initialise the Starlet object</span>
 
-<span class="sd">        Paramters</span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
 <span class="sd">        image: numpy ndarray</span>
-<span class="sd">            image to transform</span>
-<span class="sd">        lvl: int</span>
-<span class="sd">            number of starlet levels to use in the decomposition</span>
-<span class="sd">        starlet: array</span>
-<span class="sd">            Starlet transform of an array</span>
-<span class="sd">        direct: bool</span>
-<span class="sd">            if set to True, uses direct wavelet transform with the a trou algorithm.</span>
-<span class="sd">            if set to False, the transform is performed by convolving the image by the wavelet transform of a dirac.</span>
+<span class="sd">            Image in real space.</span>
+<span class="sd">        coefficients: array</span>
+<span class="sd">            Starlet transform of the image.</span>
+<span class="sd">        generation: int</span>
+<span class="sd">            The generation of the starlet transform (either `1` or `2`).</span>
+<span class="sd">        convolve2D: array-like</span>
+<span class="sd">            The filter used to convolve the image and create the wavelets.</span>
+<span class="sd">            When `convolve2D` is `None` this uses a cubic bspline.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">seed</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="c1"># Transform method</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_direct</span> <span class="o">=</span> <span class="n">direct</span>
-        <span class="k">if</span> <span class="n">coefficients</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">image</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="n">InputError</span><span class="p">(</span>
-                    <span class="s2">&quot;At least an image or a set of coefficients should be provided&quot;</span>
-                <span class="p">)</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="c1"># Original shape of the image</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_image_shape</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">shape</span>
-                <span class="c1"># Padding shape for the starlet transform</span>
-                <span class="k">if</span> <span class="n">lvl</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">_lvl</span> <span class="o">=</span> <span class="n">get_starlet_shape</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">_lvl</span> <span class="o">=</span> <span class="n">lvl</span>
-                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
-                    <span class="n">image</span> <span class="o">=</span> <span class="n">image</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span>
-
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">coefficients</span><span class="p">))</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
-                <span class="n">coefficients</span> <span class="o">=</span> <span class="n">coefficients</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:,</span> <span class="p">:]</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_image_shape</span> <span class="o">=</span> <span class="p">[</span><span class="n">coefficients</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="o">*</span><span class="n">coefficients</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">:]]</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_lvl</span> <span class="o">=</span> <span class="n">coefficients</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
-            <span class="k">if</span> <span class="n">image</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="n">InputError</span><span class="p">(</span>
-                    <span class="s2">&quot;Ambiguous initialisation: </span><span class="se">\</span>
-<span class="s2">                    Starlet objects should be instanciated either with an image of a set of coefficients, not both&quot;</span>
-                <span class="p">)</span>
-
         <span class="bp">self</span><span class="o">.</span><span class="n">_image</span> <span class="o">=</span> <span class="n">image</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_coeffs</span> <span class="o">=</span> <span class="n">coefficients</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_starlet_shape</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_lvl</span><span class="p">,</span> <span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">_image_shape</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">:]]</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">seed</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">seed</span> <span class="o">=</span> <span class="n">mk_starlet</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_starlet_shape</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_norm</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">seed</span> <span class="o">**</span> <span class="mi">2</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_generation</span> <span class="o">=</span> <span class="n">generation</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_convolve2D</span> <span class="o">=</span> <span class="n">convolve2D</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_norm</span> <span class="o">=</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="Starlet.from_image"><a class="viewcode-back" href="../../api/scarlet.wavelet.html#scarlet.wavelet.Starlet.from_image">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">from_image</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">scales</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">generation</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">convolve2D</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Generate a set of starlet coefficients for an image</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        image: array-like</span>
+<span class="sd">            The image that is converted into starlet coefficients</span>
+<span class="sd">        scales: int</span>
+<span class="sd">            The number of starlet scales to use.</span>
+<span class="sd">            If `scales` is `None` then the maximum number of scales is used.</span>
+<span class="sd">            Note: this is the length of the coefficients-1, as in the notation</span>
+<span class="sd">            of `Starck et al. 2011`.</span>
+<span class="sd">        generation: int</span>
+<span class="sd">            The generation of the starlet transform (either `1` or `2`).</span>
+<span class="sd">        convolve2D: array-like</span>
+<span class="sd">            The filter used to convolve the image and create the wavelets.</span>
+<span class="sd">            When `convolve2D` is `None` this uses a cubic bspline.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        result: Starlet</span>
+<span class="sd">            The resulting `Starlet` that contains the image, starlet coefficients,</span>
+<span class="sd">            as well as the parameters used to generate the coefficients.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">scales</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">scales</span> <span class="o">=</span> <span class="n">get_scales</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="n">coefficients</span> <span class="o">=</span> <span class="n">starlet_transform</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">scales</span><span class="p">,</span> <span class="n">generation</span><span class="p">,</span> <span class="n">convolve2D</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">Starlet</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">coefficients</span><span class="p">,</span> <span class="n">generation</span><span class="p">,</span> <span class="n">convolve2D</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Starlet.from_coefficients"><a class="viewcode-back" href="../../api/scarlet.wavelet.html#scarlet.wavelet.Starlet.from_coefficients">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">from_coefficients</span><span class="p">(</span><span class="n">coefficients</span><span class="p">,</span> <span class="n">generation</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">convolve2D</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Generate an image from a set of starlet coefficients</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        coefficients: array-like</span>
+<span class="sd">            The starlet coefficients used to generate the image</span>
+<span class="sd">        generation: int</span>
+<span class="sd">            The generation of the starlet transform (either `1` or `2`).</span>
+<span class="sd">        convolve2D: array-like</span>
+<span class="sd">            The filter used to convolve the image and create the wavelets.</span>
+<span class="sd">            When `convolve2D` is `None` this uses a cubic bspline.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        result: Starlet</span>
+<span class="sd">            The resulting `Starlet` that contains the image, starlet coefficients,</span>
+<span class="sd">            as well as the parameters used to generate the image.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">image</span> <span class="o">=</span> <span class="n">starlet_reconstruction</span><span class="p">(</span><span class="n">coefficients</span><span class="p">,</span> <span class="n">generation</span><span class="p">,</span> <span class="n">convolve2D</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">Starlet</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">coefficients</span><span class="p">,</span> <span class="n">generation</span><span class="p">,</span> <span class="n">convolve2D</span><span class="p">)</span></div>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">image</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;The real space image&quot;&quot;&quot;</span>
-        <span class="n">rec</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="k">for</span> <span class="n">star</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_coeffs</span><span class="p">:</span>
-            <span class="n">rec</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">iuwt</span><span class="p">(</span><span class="n">star</span><span class="p">))</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_image</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">rec</span><span class="p">)</span>
-
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_image</span>
 
     <span class="nd">@image</span><span class="o">.</span><span class="n">setter</span>
     <span class="k">def</span> <span class="nf">image</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Updates the coefficients if the image is changed&quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_image</span> <span class="o">=</span> <span class="n">image</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_image</span> <span class="o">=</span> <span class="n">image</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_direct</span> <span class="o">==</span> <span class="kc">True</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_coeffs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">direct_transform</span><span class="p">()</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_coeffs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">transform</span><span class="p">()</span>
-
-    <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">norm</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;The norm of the seed wavelet in each wavelet level (not in coarse wavelet)&quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_norm</span>
+        <span class="sd">&quot;&quot;&quot;Update the coefficients if the image has changed&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_image</span> <span class="o">=</span> <span class="n">image</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_coeffs</span> <span class="o">=</span> <span class="n">starlet_transform</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">image</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">generation</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">convolve2D</span><span class="p">)</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">coefficients</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Starlet coefficients&quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_direct</span> <span class="o">==</span> <span class="kc">True</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_coeffs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">direct_transform</span><span class="p">()</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_coeffs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">transform</span><span class="p">()</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_coeffs</span>
 
     <span class="nd">@coefficients</span><span class="o">.</span><span class="n">setter</span>
     <span class="k">def</span> <span class="nf">coefficients</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">coeffs</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Updates the image if the coefficients are changed&quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">coeffs</span><span class="p">))</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
-            <span class="n">coeffs</span> <span class="o">=</span> <span class="n">coeffs</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:,</span> <span class="p">:]</span>
+        <span class="sd">&quot;&quot;&quot;Update the image if the coefficients have changed&quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_coeffs</span> <span class="o">=</span> <span class="n">coeffs</span>
-        <span class="n">rec</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="k">for</span> <span class="n">star</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_coeffs</span><span class="p">:</span>
-            <span class="n">rec</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">iuwt</span><span class="p">(</span><span class="n">star</span><span class="p">))</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_image</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">rec</span><span class="p">)</span>
-
-    <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">shape</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;The shape of the real space image&quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_image</span><span class="o">.</span><span class="n">shape</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_image</span> <span class="o">=</span> <span class="n">starlet_reconstruction</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">coefficients</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">generation</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">convolve2D</span><span class="p">)</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">scales</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Number of starlet scales&quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lvl</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">coefficients</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span>
 
-<div class="viewcode-block" id="Starlet.transform"><a class="viewcode-back" href="../../api/scarlet.wavelet.html#scarlet.wavelet.Starlet.transform">[docs]</a>    <span class="k">def</span> <span class="nf">transform</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot; Performs the wavelet transform of an image by convolution with the seed wavelet</span>
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">generation</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;The generation of the starlet transform&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generation</span>
 
-<span class="sd">         Seed wavelets are the transform of a dirac in starlets when computed for a given shape,</span>
-<span class="sd">         the seed is cached to be reused for images with the same shape.</span>
-<span class="sd">         The transform is applied to `self._image`</span>
+    <span class="nd">@generation</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span> <span class="nf">generation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Update the generation of a starlet transform, which involve recalculating the coefficients&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">value</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">generation</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_generation</span> <span class="o">=</span> <span class="n">value</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_coeffs</span> <span class="o">=</span> <span class="n">starlet_transform</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">image</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">generation</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">convolve2D</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_norm</span> <span class="o">=</span> <span class="kc">None</span>
 
-<span class="sd">        Returns</span>
-<span class="sd">        -------</span>
-<span class="sd">        starlet: numpy ndarray</span>
-<span class="sd">            the starlet transform of the Starlet object&#39;s image</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="c1"># Check if the starlet seed exists</span>
-            <span class="n">seed_fft</span> <span class="o">=</span> <span class="n">Cache</span><span class="o">.</span><span class="n">check</span><span class="p">(</span><span class="s2">&quot;Starlet&quot;</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_starlet_shape</span><span class="p">))</span>
-        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
-            <span class="c1"># make a starlet seed</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">seed</span> <span class="o">=</span> <span class="n">mk_starlet</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_starlet_shape</span><span class="p">)</span>
-            <span class="c1"># Take its fft</span>
-            <span class="n">seed_fft</span> <span class="o">=</span> <span class="n">fft</span><span class="o">.</span><span class="n">Fourier</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">seed</span><span class="p">)</span>
-            <span class="n">seed_fft</span><span class="o">.</span><span class="n">fft</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_starlet_shape</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">:],</span> <span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
-            <span class="c1"># Cache the fft</span>
-            <span class="n">Cache</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s2">&quot;Starlet&quot;</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_starlet_shape</span><span class="p">),</span> <span class="n">seed_fft</span><span class="p">)</span>
-        <span class="n">coefficients</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="k">for</span> <span class="n">im</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_image</span><span class="p">:</span>
-            <span class="n">coefficients</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-                <span class="n">fft</span><span class="o">.</span><span class="n">convolve</span><span class="p">(</span>
-                    <span class="n">seed_fft</span><span class="p">,</span> <span class="n">fft</span><span class="o">.</span><span class="n">Fourier</span><span class="p">(</span><span class="n">im</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]),</span> <span class="n">axes</span><span class="o">=</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
-                <span class="p">)</span><span class="o">.</span><span class="n">image</span>
-            <span class="p">)</span>
-        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">coefficients</span><span class="p">)</span></div>
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">convolve2D</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Filter used to create starlet coefficients&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_convolve2D</span>
 
-<div class="viewcode-block" id="Starlet.direct_transform"><a class="viewcode-back" href="../../api/scarlet.wavelet.html#scarlet.wavelet.Starlet.direct_transform">[docs]</a>    <span class="k">def</span> <span class="nf">direct_transform</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot; Computes the direct starlet transform of the starlet&#39;s image</span>
+    <span class="nd">@convolve2D</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span> <span class="nf">convolve2D</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Update the filter used to calculate starlet coefficients, which also involves recreating the coefficients&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">value</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">convolve2D</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_convolve2D</span> <span class="o">=</span> <span class="n">value</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_coeffs</span> <span class="o">=</span> <span class="n">starlet_transform</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">image</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">generation</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">convolve2D</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_norm</span> <span class="o">=</span> <span class="kc">None</span>
 
-<span class="sd">        Returns</span>
-<span class="sd">        -------</span>
-<span class="sd">        starlet: numpy ndarray</span>
-<span class="sd">            the starlet transform of the Starlet object&#39;s image</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="n">mk_starlet</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_starlet_shape</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_image</span><span class="p">)</span></div>
-
-    <span class="k">def</span> <span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_image</span><span class="p">)</span>
-
-<div class="viewcode-block" id="Starlet.filter"><a class="viewcode-back" href="../../api/scarlet.wavelet.html#scarlet.wavelet.Starlet.filter">[docs]</a>    <span class="k">def</span> <span class="nf">filter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">niter</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="mi">5</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot; Applies wavelet iterative filtering to denoise the image</span>
-
-<span class="sd">        Parameters</span>
-<span class="sd">        ----------</span>
-<span class="sd">        niter: int</span>
-<span class="sd">            number of iterations</span>
-<span class="sd">        k: float</span>
-<span class="sd">            threshold in units of noise levels below which coefficients are thresholded</span>
-<span class="sd">        lvl: int</span>
-<span class="sd">            Number of wavelet scale to use in the decomposition</span>
-
-<span class="sd">        Results</span>
-<span class="sd">        -------</span>
-<span class="sd">        filtered: array</span>
-<span class="sd">            the image of filtered images</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_coeffs</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">coefficients</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_image</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">image</span><span class="p">()</span>
-        <span class="n">sigma</span> <span class="o">=</span> <span class="n">k</span> <span class="o">*</span> <span class="n">mad_wavelet</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_image</span><span class="p">)[:,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">norm</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:]</span>
-
-        <span class="n">filtered</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="n">image</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_image</span>
-        <span class="n">wavelet</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_coeffs</span>
-        <span class="n">support</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
-            <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">wavelet</span><span class="p">[:,</span> <span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:])</span>
-            <span class="o">&lt;</span> <span class="n">sigma</span><span class="p">[:,</span> <span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">wavelet</span><span class="p">[:,</span> <span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:])</span>
-        <span class="p">)</span>
-        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">niter</span><span class="p">):</span>
-            <span class="n">R</span> <span class="o">=</span> <span class="n">image</span> <span class="o">-</span> <span class="n">filtered</span>
-            <span class="n">R_coeff</span> <span class="o">=</span> <span class="n">Starlet</span><span class="p">(</span><span class="n">R</span><span class="p">)</span>
-            <span class="n">R_coeff</span><span class="o">.</span><span class="n">coefficients</span><span class="p">[</span><span class="n">support</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
-            <span class="n">filtered</span> <span class="o">+=</span> <span class="n">R_coeff</span><span class="o">.</span><span class="n">image</span>
-            <span class="n">filtered</span><span class="p">[</span><span class="n">filtered</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">image</span> <span class="o">=</span> <span class="n">filtered</span>
-        <span class="k">return</span> <span class="n">filtered</span></div></div>
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">norm</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;The norm of a convolved dirac&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_norm</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">cy</span><span class="p">,</span> <span class="n">cx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">:])</span><span class="o">//</span><span class="mi">2</span>
+            <span class="n">dirac</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">:])</span>
+            <span class="n">dirac</span><span class="p">[</span><span class="n">cy</span><span class="p">,</span> <span class="n">cx</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="n">seed</span> <span class="o">=</span> <span class="n">starlet_transform</span><span class="p">(</span><span class="n">dirac</span><span class="p">,</span> <span class="n">generation</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">generation</span><span class="p">,</span> <span class="n">convolve2D</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">convolve2D</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_norm</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">seed</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)))</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_norm</span></div>
 
 
-<div class="viewcode-block" id="get_starlet_shape"><a class="viewcode-back" href="../../api/scarlet.wavelet.html#scarlet.wavelet.get_starlet_shape">[docs]</a><span class="k">def</span> <span class="nf">get_starlet_shape</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="n">lvl</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot; Get the pad shape for a starlet transform</span>
+<span class="nd">@primitive</span>
+<span class="k">def</span> <span class="nf">bspline_convolve</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">scale</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Convolve an image with a bpsline at a given scale.</span>
+
+<span class="sd">    This uses the spline</span>
+<span class="sd">    `h1D = np.array([1.0 / 16, 1.0 / 4, 3.0 / 8, 1.0 / 4, 1.0 / 16])`</span>
+<span class="sd">    from Starck et al. 2011.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    image: 2D array</span>
+<span class="sd">        The image or wavelet coefficients to convolve.</span>
+<span class="sd">    scale: int</span>
+<span class="sd">        The wavelet scale for the convolution. This sets the</span>
+<span class="sd">        spacing between adjacent pixels with the spline.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Filter for the scarlet transform. Here bspline</span>
+    <span class="n">h1D</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.0</span> <span class="o">/</span> <span class="mi">16</span><span class="p">,</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="mi">4</span><span class="p">,</span> <span class="mf">3.0</span> <span class="o">/</span> <span class="mi">8</span><span class="p">,</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="mi">4</span><span class="p">,</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="mi">16</span><span class="p">])</span>
+    <span class="n">j</span> <span class="o">=</span> <span class="n">scale</span>
+
+    <span class="n">slice0</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="o">**</span><span class="p">(</span><span class="n">j</span><span class="o">+</span><span class="mi">1</span><span class="p">))</span>
+    <span class="n">slice1</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="o">**</span><span class="n">j</span><span class="p">)</span>
+    <span class="n">slice3</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">2</span><span class="o">**</span><span class="n">j</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="n">slice4</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">2</span><span class="o">**</span><span class="p">(</span><span class="n">j</span><span class="o">+</span><span class="mi">1</span><span class="p">),</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="c1"># row</span>
+    <span class="n">col</span> <span class="o">=</span> <span class="n">image</span> <span class="o">*</span> <span class="n">h1D</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+    <span class="n">col</span><span class="p">[</span><span class="n">slice4</span><span class="p">]</span> <span class="o">+=</span> <span class="n">image</span><span class="p">[</span><span class="n">slice0</span><span class="p">]</span> <span class="o">*</span> <span class="n">h1D</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">col</span><span class="p">[</span><span class="n">slice3</span><span class="p">]</span> <span class="o">+=</span> <span class="n">image</span><span class="p">[</span><span class="n">slice1</span><span class="p">]</span> <span class="o">*</span> <span class="n">h1D</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">col</span><span class="p">[</span><span class="n">slice1</span><span class="p">]</span> <span class="o">+=</span> <span class="n">image</span><span class="p">[</span><span class="n">slice3</span><span class="p">]</span> <span class="o">*</span> <span class="n">h1D</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+    <span class="n">col</span><span class="p">[</span><span class="n">slice0</span><span class="p">]</span> <span class="o">+=</span> <span class="n">image</span><span class="p">[</span><span class="n">slice4</span><span class="p">]</span> <span class="o">*</span> <span class="n">h1D</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span>
+
+    <span class="c1"># column</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">col</span> <span class="o">*</span> <span class="n">h1D</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+    <span class="n">result</span><span class="p">[:,</span> <span class="n">slice4</span><span class="p">]</span> <span class="o">+=</span> <span class="n">col</span><span class="p">[:,</span> <span class="n">slice0</span><span class="p">]</span> <span class="o">*</span> <span class="n">h1D</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">result</span><span class="p">[:,</span> <span class="n">slice3</span><span class="p">]</span> <span class="o">+=</span> <span class="n">col</span><span class="p">[:,</span> <span class="n">slice1</span><span class="p">]</span> <span class="o">*</span> <span class="n">h1D</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">result</span><span class="p">[:,</span> <span class="n">slice1</span><span class="p">]</span> <span class="o">+=</span> <span class="n">col</span><span class="p">[:,</span> <span class="n">slice3</span><span class="p">]</span> <span class="o">*</span> <span class="n">h1D</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+    <span class="n">result</span><span class="p">[:,</span> <span class="n">slice0</span><span class="p">]</span> <span class="o">+=</span> <span class="n">col</span><span class="p">[:,</span> <span class="n">slice4</span><span class="p">]</span> <span class="o">*</span> <span class="n">h1D</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">result</span>
+
+
+<span class="k">def</span> <span class="nf">_grad_bspline_convolve</span><span class="p">(</span><span class="n">input_grad</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">scale</span><span class="p">):</span>
+    <span class="k">return</span> <span class="k">lambda</span> <span class="n">input_grad</span><span class="p">:</span> <span class="n">bspline_convolve</span><span class="p">(</span><span class="n">input_grad</span><span class="p">,</span> <span class="n">scale</span><span class="p">)</span>
+
+<span class="n">defvjp</span><span class="p">(</span><span class="n">bspline_convolve</span><span class="p">,</span> <span class="n">_grad_bspline_convolve</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="get_scales"><a class="viewcode-back" href="../../api/scarlet.wavelet.html#scarlet.wavelet.get_scales">[docs]</a><span class="k">def</span> <span class="nf">get_scales</span><span class="p">(</span><span class="n">image_shape</span><span class="p">,</span> <span class="n">scales</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Get the number of scales to use in the starlet transform.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    image_shape: tuple</span>
+<span class="sd">        The 2D shape of the image that is being transformed</span>
+<span class="sd">    scales: int</span>
+<span class="sd">        The number of scale to transform with starlets.</span>
+<span class="sd">        The total dimension of the starlet will have</span>
+<span class="sd">        `scales+1` dimensions, since it will also hold</span>
+<span class="sd">        the image at all scales higher than `scales`.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="c1"># Number of levels for the Starlet decomposition</span>
-    <span class="n">lvl_max</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log2</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">:])))</span>
-    <span class="k">if</span> <span class="p">(</span><span class="n">lvl</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="n">lvl</span> <span class="o">&gt;</span> <span class="n">lvl_max</span><span class="p">:</span>
-        <span class="n">lvl</span> <span class="o">=</span> <span class="n">lvl_max</span>
-    <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">lvl</span><span class="p">)</span></div>
+    <span class="n">max_scale</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log2</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">image_shape</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">:])))</span> <span class="o">-</span> <span class="mi">1</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">scales</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="n">scales</span> <span class="o">&gt;</span> <span class="n">max_scale</span><span class="p">:</span>
+        <span class="n">scales</span> <span class="o">=</span> <span class="n">max_scale</span>
+    <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">scales</span><span class="p">)</span></div>
 
 
-<div class="viewcode-block" id="mk_starlet"><a class="viewcode-back" href="../../api/scarlet.wavelet.html#scarlet.wavelet.mk_starlet">[docs]</a><span class="k">def</span> <span class="nf">mk_starlet</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="n">image</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot; Creates a starlet for a given 2d shape.</span>
+<div class="viewcode-block" id="starlet_transform"><a class="viewcode-back" href="../../api/scarlet.wavelet.html#scarlet.wavelet.starlet_transform">[docs]</a><span class="k">def</span> <span class="nf">starlet_transform</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">scales</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">generation</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">convolve2D</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Perform a scarlet transform, or 2nd gen starlet transform.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    shape: tuple</span>
-<span class="sd">        2D shape of the desired shapelet</span>
-<span class="sd">    lvl: int</span>
-<span class="sd">        number of shapelet levels to compute. If None, lvl is set to the log2 of the number of pixels on a side.</span>
-<span class="sd">        if lvl is higher than this number lvl will be set to it.</span>
+<span class="sd">    image: 2D array</span>
+<span class="sd">        The image to transform into starlet coefficients.</span>
+<span class="sd">    scales: int</span>
+<span class="sd">        The number of scale to transform with starlets.</span>
+<span class="sd">        The total dimension of the starlet will have</span>
+<span class="sd">        `scales+1` dimensions, since it will also hold</span>
+<span class="sd">        the image at all scales higher than `scales`.</span>
+<span class="sd">    generation: int</span>
+<span class="sd">        The generation of the transform.</span>
+<span class="sd">        This must be `1` or `2`.</span>
+<span class="sd">    convolve2D: function</span>
+<span class="sd">        The filter function to use to convolve the image</span>
+<span class="sd">        with starlets in 2D.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
-<span class="sd">    starlet: Fourier object</span>
-<span class="sd">        the starlet transform of a Dirac fonction as the `image` of a Fourier object</span>
-
+<span class="sd">    starlet: array with dimension (scales+1, Ny, Nx)</span>
+<span class="sd">        The starlet dictionary for the input `image`.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">lvl</span><span class="p">,</span> <span class="n">n1</span><span class="p">,</span> <span class="n">n2</span> <span class="o">=</span> <span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">3</span><span class="p">:]</span>
+    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Image should be 2D, got </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="k">assert</span> <span class="n">generation</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="sa">f</span><span class="s2">&quot;generation should be 1 or 2, got </span><span class="si">{</span><span class="n">generation</span><span class="si">}</span><span class="s2">&quot;</span>
 
-    <span class="c1"># Filter size</span>
-    <span class="n">n</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">h</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">image</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">c</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n1</span><span class="p">,</span> <span class="n">n2</span><span class="p">))</span>
-        <span class="n">c</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">n1</span> <span class="o">/</span> <span class="mi">2</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">n2</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">1</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">:</span>
-            <span class="n">wave</span> <span class="o">=</span> <span class="p">[]</span>
-            <span class="k">for</span> <span class="n">im</span> <span class="ow">in</span> <span class="n">image</span><span class="p">:</span>
-                <span class="n">wave</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">mk_starlet</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="n">im</span><span class="p">))</span>
-            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">wave</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">c</span> <span class="o">=</span> <span class="n">image</span>
-    <span class="n">c</span> <span class="o">=</span> <span class="n">fft</span><span class="o">.</span><span class="n">Fourier</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+    <span class="n">scales</span> <span class="o">=</span> <span class="n">get_scales</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">scales</span><span class="p">)</span>
+    <span class="n">c</span> <span class="o">=</span> <span class="n">image</span>
+    <span class="k">if</span> <span class="n">convolve2D</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">convolve2D</span> <span class="o">=</span> <span class="n">bspline_convolve</span>
+
     <span class="c1">## wavelet set of coefficients.</span>
-    <span class="n">wave</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="n">lvl</span><span class="p">,</span> <span class="n">n1</span><span class="p">,</span> <span class="n">n2</span><span class="p">])</span>
-    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">lvl</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
-        <span class="n">newh</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n</span> <span class="o">+</span> <span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mi">2</span> <span class="o">**</span> <span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">),</span> <span class="mi">1</span><span class="p">))</span>
-        <span class="n">newh</span><span class="p">[</span><span class="mi">0</span> <span class="p">::</span> <span class="mi">2</span> <span class="o">**</span> <span class="n">i</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">h</span>
-        <span class="n">newhT</span> <span class="o">=</span> <span class="n">fft</span><span class="o">.</span><span class="n">Fourier</span><span class="p">(</span><span class="n">newh</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
-        <span class="n">newh</span> <span class="o">=</span> <span class="n">fft</span><span class="o">.</span><span class="n">Fourier</span><span class="p">(</span><span class="n">newh</span><span class="p">)</span>
+    <span class="n">starlet</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">scales</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,)</span> <span class="o">+</span> <span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">scales</span><span class="p">):</span>
+        <span class="n">gen1</span> <span class="o">=</span> <span class="n">convolve2D</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">j</span><span class="p">)</span>
 
-        <span class="c1"># Calculates c(j+1)</span>
-        <span class="c1"># Line convolution</span>
-        <span class="n">cnew</span> <span class="o">=</span> <span class="n">fft</span><span class="o">.</span><span class="n">convolve</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">newh</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">generation</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="n">gen2</span> <span class="o">=</span> <span class="n">convolve2D</span><span class="p">(</span><span class="n">gen1</span><span class="p">,</span> <span class="n">j</span><span class="p">)</span>
+            <span class="n">starlet</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">c</span> <span class="o">-</span> <span class="n">gen2</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">starlet</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">c</span> <span class="o">-</span> <span class="n">gen1</span>
 
-        <span class="c1"># Column convolution</span>
-        <span class="n">cnew</span> <span class="o">=</span> <span class="n">fft</span><span class="o">.</span><span class="n">convolve</span><span class="p">(</span><span class="n">cnew</span><span class="p">,</span> <span class="n">newhT</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">c</span> <span class="o">=</span> <span class="n">gen1</span>
 
-        <span class="c1">###### hoh for g; Column convolution</span>
-        <span class="n">hc</span> <span class="o">=</span> <span class="n">fft</span><span class="o">.</span><span class="n">convolve</span><span class="p">(</span><span class="n">cnew</span><span class="p">,</span> <span class="n">newh</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-
-        <span class="c1"># hoh for g; Line convolution</span>
-        <span class="n">hc</span> <span class="o">=</span> <span class="n">fft</span><span class="o">.</span><span class="n">convolve</span><span class="p">(</span><span class="n">hc</span><span class="p">,</span> <span class="n">newhT</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
-
-        <span class="c1"># wj+1 = cj-hcj+1</span>
-        <span class="n">wave</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="n">image</span> <span class="o">-</span> <span class="n">hc</span><span class="o">.</span><span class="n">image</span>
-
-        <span class="n">c</span> <span class="o">=</span> <span class="n">cnew</span>
-
-    <span class="n">wave</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="n">image</span>
-    <span class="k">return</span> <span class="n">wave</span></div>
+    <span class="n">starlet</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">c</span>
+    <span class="k">return</span> <span class="n">starlet</span></div>
 
 
-<div class="viewcode-block" id="iuwt"><a class="viewcode-back" href="../../api/scarlet.wavelet.html#scarlet.wavelet.iuwt">[docs]</a><span class="k">def</span> <span class="nf">iuwt</span><span class="p">(</span><span class="n">starlet</span><span class="p">):</span>
-
-    <span class="sd">&quot;&quot;&quot; Inverse starlet transform</span>
+<div class="viewcode-block" id="starlet_reconstruction"><a class="viewcode-back" href="../../api/scarlet.wavelet.html#scarlet.wavelet.starlet_reconstruction">[docs]</a><span class="k">def</span> <span class="nf">starlet_reconstruction</span><span class="p">(</span><span class="n">starlets</span><span class="p">,</span> <span class="n">generation</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">convolve2D</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Reconstruct an image from a dictionary of starlets</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    starlet: Shapelet object</span>
-<span class="sd">        Starlet to be inverted</span>
+<span class="sd">    starlets: array with dimension (scales+1, Ny, Nx)</span>
+<span class="sd">        The starlet dictionary used to reconstruct the image.</span>
+<span class="sd">    convolve2D: function</span>
+<span class="sd">        The filter function to use to convolve the image</span>
+<span class="sd">        with starlets in 2D.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
-<span class="sd">    cJ: array</span>
-<span class="sd">        a 2D image that corresponds to the inverse transform of stralet.</span>
+<span class="sd">    image: 2D array</span>
+<span class="sd">        The image reconstructed from the input `starlet`.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">lvl</span><span class="p">,</span> <span class="n">n1</span><span class="p">,</span> <span class="n">n2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">starlet</span><span class="p">)</span>
-    <span class="n">n</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">h</span><span class="p">)</span>
-    <span class="c1"># Coarse scale</span>
-    <span class="n">cJ</span> <span class="o">=</span> <span class="n">fft</span><span class="o">.</span><span class="n">Fourier</span><span class="p">(</span><span class="n">starlet</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:])</span>
-    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">lvl</span><span class="p">):</span>
-        <span class="n">newh</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n</span> <span class="o">+</span> <span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mi">2</span> <span class="o">**</span> <span class="p">(</span><span class="n">lvl</span> <span class="o">-</span> <span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">),</span> <span class="mi">1</span><span class="p">))</span>
-        <span class="n">newh</span><span class="p">[</span><span class="mi">0</span> <span class="p">::</span> <span class="mi">2</span> <span class="o">**</span> <span class="p">(</span><span class="n">lvl</span> <span class="o">-</span> <span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">),</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">h</span>
-        <span class="n">newhT</span> <span class="o">=</span> <span class="n">fft</span><span class="o">.</span><span class="n">Fourier</span><span class="p">(</span><span class="n">newh</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
-        <span class="n">newh</span> <span class="o">=</span> <span class="n">fft</span><span class="o">.</span><span class="n">Fourier</span><span class="p">(</span><span class="n">newh</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">generation</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">starlets</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">convolve2D</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">convolve2D</span> <span class="o">=</span> <span class="n">bspline_convolve</span>
+    <span class="n">scales</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">starlets</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
 
-        <span class="c1"># Line convolution</span>
-        <span class="n">cnew</span> <span class="o">=</span> <span class="n">fft</span><span class="o">.</span><span class="n">convolve</span><span class="p">(</span><span class="n">cJ</span><span class="p">,</span> <span class="n">newh</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-        <span class="c1"># Column convolution</span>
-        <span class="n">cnew</span> <span class="o">=</span> <span class="n">fft</span><span class="o">.</span><span class="n">convolve</span><span class="p">(</span><span class="n">cnew</span><span class="p">,</span> <span class="n">newhT</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">c</span> <span class="o">=</span> <span class="n">starlets</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">scales</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="n">j</span> <span class="o">=</span> <span class="n">scales</span> <span class="o">-</span> <span class="n">i</span>
+        <span class="n">cj</span> <span class="o">=</span> <span class="n">convolve2D</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">j</span><span class="p">)</span>
+        <span class="n">c</span> <span class="o">=</span> <span class="n">cj</span> <span class="o">+</span> <span class="n">starlets</span><span class="p">[</span><span class="n">j</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">c</span></div>
 
-        <span class="n">cJ</span> <span class="o">=</span> <span class="n">fft</span><span class="o">.</span><span class="n">Fourier</span><span class="p">(</span><span class="n">cnew</span><span class="o">.</span><span class="n">image</span> <span class="o">+</span> <span class="n">starlet</span><span class="p">[</span><span class="n">lvl</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">i</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:])</span>
 
-    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">cJ</span><span class="o">.</span><span class="n">image</span><span class="p">,</span> <span class="p">(</span><span class="n">n1</span><span class="p">,</span> <span class="n">n2</span><span class="p">))</span></div>
+<div class="viewcode-block" id="get_multiresolution_support"><a class="viewcode-back" href="../../api/scarlet.wavelet.html#scarlet.wavelet.get_multiresolution_support">[docs]</a><span class="k">def</span> <span class="nf">get_multiresolution_support</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">starlets</span><span class="p">,</span> <span class="n">sigma</span><span class="p">,</span> <span class="n">K</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">epsilon</span><span class="o">=</span><span class="mf">1e-1</span><span class="p">,</span> <span class="n">max_iter</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">image_type</span><span class="o">=</span><span class="s2">&quot;ground&quot;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Calculate the multi-resolution support for a dictionary of starlet coefficients</span>
+
+<span class="sd">    This is different for ground and space based telescopes.</span>
+<span class="sd">    For space-based telescopes the procedure in Starck and Murtagh 1998</span>
+<span class="sd">    iteratively calculates the multi-resolution support.</span>
+<span class="sd">    For ground based images, where the PSF is much wider and there are no</span>
+<span class="sd">    pixels with no signal at all scales, we use a modified method that</span>
+<span class="sd">    estimates support at each scale independently.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    image: 2D array</span>
+<span class="sd">        The image to transform into starlet coefficients.</span>
+<span class="sd">    starlets: array with dimension (scales+1, Ny, Nx)</span>
+<span class="sd">        The starlet dictionary used to reconstruct `image`.</span>
+<span class="sd">    sigma: float</span>
+<span class="sd">        The standard deviation of the `image`.</span>
+<span class="sd">    K: float</span>
+<span class="sd">        The multiple of `sigma` to use to calculate significance.</span>
+<span class="sd">        Coefficients `w` where `|w| &gt; K*sigma_j`, where `sigma_j` is</span>
+<span class="sd">        standard deviation at the jth scale, are considered significant.</span>
+<span class="sd">    epsilon: float</span>
+<span class="sd">        The convergence criteria of the algorithm.</span>
+<span class="sd">        Once `|new_sigma_j - sigma_j|/new_sigma_j &lt; epsilon` the</span>
+<span class="sd">        algorithm has completed.</span>
+<span class="sd">    max_iter: int</span>
+<span class="sd">        Maximum number of iterations to fit `sigma_j` at each scale.</span>
+<span class="sd">    image_type: str</span>
+<span class="sd">        The type of image that is being used.</span>
+<span class="sd">        This should be &quot;ground&quot; for ground based images with wide PSFs or</span>
+<span class="sd">        &quot;space&quot; for images from space-based telescopes with a narrow PSF.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    M: array of `int`</span>
+<span class="sd">        Mask with significant coefficients in `starlets` set to `True`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">assert</span> <span class="n">image_type</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;ground&quot;</span><span class="p">,</span> <span class="s2">&quot;space&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">image_type</span> <span class="o">==</span> <span class="s2">&quot;space&quot;</span><span class="p">:</span>
+        <span class="c1"># Calculate sigma_je, the standard deviation at</span>
+        <span class="c1"># each scale due to gaussian noise</span>
+        <span class="n">shape</span> <span class="o">=</span> <span class="p">(</span><span class="n">get_scales</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">),)</span> <span class="o">+</span> <span class="n">image</span><span class="o">.</span><span class="n">shape</span>
+        <span class="n">noise_img</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="n">noise_starlet</span> <span class="o">=</span> <span class="n">starlet_transform</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="n">noise_img</span><span class="p">,</span> <span class="n">generation</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">sigma_je</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">noise_starlet</span><span class="p">),))</span>
+        <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="n">star</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">noise_starlet</span><span class="p">):</span>
+            <span class="n">sigma_je</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">star</span><span class="p">)</span>
+        <span class="n">noise</span> <span class="o">=</span> <span class="n">image</span> <span class="o">-</span> <span class="n">starlets</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="n">last_sigma_i</span> <span class="o">=</span> <span class="n">sigma</span>
+        <span class="k">for</span> <span class="n">it</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">max_iter</span><span class="p">):</span>
+            <span class="n">M</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">starlets</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">K</span> <span class="o">*</span> <span class="n">sigma</span> <span class="o">*</span> <span class="n">sigma_je</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">])</span>
+            <span class="n">S</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">M</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span>
+            <span class="n">sigma_i</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">noise</span> <span class="o">*</span> <span class="n">S</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">sigma_i</span><span class="o">-</span><span class="n">last_sigma_i</span><span class="p">)</span><span class="o">/</span><span class="n">sigma_i</span> <span class="o">&lt;</span> <span class="n">epsilon</span><span class="p">:</span>
+                <span class="k">break</span>
+            <span class="n">last_sigma_i</span> <span class="o">=</span> <span class="n">sigma_i</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># Sigma to use for significance at each scale</span>
+        <span class="c1"># Initially we use the input `sigma`</span>
+        <span class="n">sigma_j</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">starlets</span><span class="p">),),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span> <span class="o">*</span> <span class="n">sigma</span>
+        <span class="n">last_sigma_j</span> <span class="o">=</span> <span class="n">sigma_j</span>
+        <span class="k">for</span> <span class="n">it</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">max_iter</span><span class="p">):</span>
+            <span class="n">M</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">starlets</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">K</span> <span class="o">*</span> <span class="n">sigma_j</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">])</span>
+            <span class="c1"># Take the standard deviation of the current insignificant coeffs at each scale</span>
+            <span class="n">S</span> <span class="o">=</span> <span class="o">~</span><span class="n">M</span>
+            <span class="n">sigma_j</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">starlets</span> <span class="o">*</span> <span class="n">S</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+            <span class="c1"># At lower scales all of the pixels may be significant,</span>
+            <span class="c1"># so sigma is effectively zero. To avoid infinities we</span>
+            <span class="c1"># only check the scales with non-zero sigma</span>
+            <span class="n">cut</span> <span class="o">=</span> <span class="n">sigma_j</span> <span class="o">&gt;</span> <span class="mi">0</span>
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">sigma_j</span><span class="p">[</span><span class="n">cut</span><span class="p">]</span> <span class="o">-</span> <span class="n">last_sigma_j</span><span class="p">[</span><span class="n">cut</span><span class="p">])</span> <span class="o">/</span> <span class="n">sigma_j</span><span class="p">[</span><span class="n">cut</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">epsilon</span><span class="p">):</span>
+                <span class="k">break</span>
+
+            <span class="n">last_sigma_j</span> <span class="o">=</span> <span class="n">sigma_j</span>
+    <span class="k">return</span> <span class="n">M</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="InputError"><a class="viewcode-back" href="../../api/scarlet.wavelet.html#scarlet.wavelet.InputError">[docs]</a><span class="k">class</span> <span class="nc">InputError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
@@ -389,21 +449,49 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">message</span> <span class="o">=</span> <span class="n">message</span></div>
 
 
-<div class="viewcode-block" id="mad_wavelet"><a class="viewcode-back" href="../../api/scarlet.wavelet.html#scarlet.wavelet.mad_wavelet">[docs]</a><span class="k">def</span> <span class="nf">mad_wavelet</span><span class="p">(</span><span class="n">image</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot; image: Median absolute deviation of the first wavelet scale.</span>
-<span class="sd">    (WARNING: sorry to disapoint, this is not a wavelet for mad scientists)</span>
+<div class="viewcode-block" id="apply_wavelet_denoising"><a class="viewcode-back" href="../../api/scarlet.wavelet.html#scarlet.wavelet.apply_wavelet_denoising">[docs]</a><span class="k">def</span> <span class="nf">apply_wavelet_denoising</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">epsilon</span><span class="o">=</span><span class="mf">1e-1</span><span class="p">,</span> <span class="n">max_iter</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">image_type</span><span class="o">=</span><span class="s2">&quot;ground&quot;</span><span class="p">,</span> <span class="n">positive</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Apply wavelet denoising</span>
+
+<span class="sd">    Uses the algorithm and notation from Starck et al. 2011, section 4.1</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    image: array</span>
-<span class="sd">        An image or cube of images</span>
+<span class="sd">    image: array-like</span>
+<span class="sd">        The image to denoise</span>
+<span class="sd">    sigma: float</span>
+<span class="sd">        The standard deviation of the image</span>
+<span class="sd">    k: float</span>
+<span class="sd">        The threshold in units of sigma to declare a coefficient significant</span>
+<span class="sd">    epsilon: float</span>
+<span class="sd">        Convergence criteria for determining the support</span>
+<span class="sd">    max_iter: int</span>
+<span class="sd">        The maximum number of iterations. This applies to both finding the support</span>
+<span class="sd">        and the denoising loop.</span>
+<span class="sd">    image_type: str</span>
+<span class="sd">        The type of image that is being used.</span>
+<span class="sd">        This should be &quot;ground&quot; for ground based images with wide PSFs or</span>
+<span class="sd">        &quot;space&quot; for images from space-based telescopes with a narrow PSF.</span>
+<span class="sd">    positive: bool</span>
+<span class="sd">        Whether or not the expected result should be positive</span>
+
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
-<span class="sd">    mad: array</span>
-<span class="sd">        median absolute deviation for each image in the cube</span>
+<span class="sd">    result: np.ndarray</span>
+<span class="sd">        The resulting denoised image after `max_iter` iterations.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">sigma</span> <span class="o">=</span> <span class="n">mad</span><span class="p">(</span><span class="n">Starlet</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">lvl</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">coefficients</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
-    <span class="k">return</span> <span class="n">sigma</span></div>
+    <span class="n">image_coeffs</span> <span class="o">=</span> <span class="n">starlet_transform</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">sigma</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">sigma</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">absolute</span><span class="p">(</span><span class="n">image</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">image</span><span class="p">)))</span>
+    <span class="n">coeffs</span> <span class="o">=</span> <span class="n">image_coeffs</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">support</span> <span class="o">=</span> <span class="n">get_multiresolution_support</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">coeffs</span><span class="p">,</span> <span class="n">sigma</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">epsilon</span><span class="p">,</span> <span class="n">max_iter</span><span class="p">,</span> <span class="n">image_type</span><span class="p">)</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">starlet_reconstruction</span><span class="p">(</span><span class="n">coeffs</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">max_iter</span><span class="p">):</span>
+        <span class="n">coeffs</span> <span class="o">=</span> <span class="n">starlet_transform</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">x</span> <span class="o">+</span> <span class="n">starlet_reconstruction</span><span class="p">(</span><span class="n">support</span> <span class="o">*</span> <span class="p">(</span><span class="n">image_coeffs</span> <span class="o">-</span> <span class="n">coeffs</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">positive</span><span class="p">:</span>
+            <span class="n">x</span><span class="p">[</span><span class="n">x</span><span class="o">&lt;</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">return</span> <span class="n">x</span></div>
 </pre></div>
 
           </div>
@@ -416,7 +504,7 @@
       &copy;2018-2019, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.5.4</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.0.2</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
     </div>

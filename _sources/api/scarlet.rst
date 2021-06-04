@@ -8,6 +8,7 @@ API Documentation
     scarlet.cache
     scarlet.component
     scarlet.constraint
+    scarlet.detect
     scarlet.display
     scarlet.fft
     scarlet.frame

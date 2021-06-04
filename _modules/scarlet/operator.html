@@ -6,9 +6,9 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>scarlet.operator &#8212; scarlet  documentation</title>
-    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
-    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
-    <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css" />
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
     <script src="../../_static/jquery.js"></script>
     <script src="../../_static/underscore.js"></script>
     <script src="../../_static/doctools.js"></script>
@@ -155,6 +155,90 @@
         <span class="n">min_gradient</span><span class="o">=</span><span class="n">min_gradient</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="k">return</span> <span class="n">result</span></div>
+
+
+<div class="viewcode-block" id="get_center"><a class="viewcode-back" href="../../api/scarlet.operator.html#scarlet.operator.get_center">[docs]</a><span class="k">def</span> <span class="nf">get_center</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">center</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Search around a location for the maximum flux</span>
+
+<span class="sd">    For monotonicity it is important to start at the brightest pixel</span>
+<span class="sd">    in the center of the source. This may be off by a pixel or two,</span>
+<span class="sd">    so we search for the correct center before applying</span>
+<span class="sd">    monotonic_tree.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    image: array-like</span>
+<span class="sd">        The image of the source.</span>
+<span class="sd">    center: (int, int)</span>
+<span class="sd">        The suggested center of the source.</span>
+<span class="sd">    radius: int</span>
+<span class="sd">        The number of pixels around the `center` to search</span>
+<span class="sd">        for a higher flux value.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    new_center: (int, int)</span>
+<span class="sd">        The true center of the source.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">cy</span><span class="p">,</span> <span class="n">cx</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">center</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="nb">int</span><span class="p">(</span><span class="n">center</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">y0</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">([</span><span class="n">cy</span> <span class="o">-</span> <span class="n">radius</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
+    <span class="n">x0</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">([</span><span class="n">cx</span> <span class="o">-</span> <span class="n">radius</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
+    <span class="n">ySlice</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="n">y0</span><span class="p">,</span> <span class="n">cy</span> <span class="o">+</span> <span class="n">radius</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">xSlice</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="n">x0</span><span class="p">,</span> <span class="n">cx</span> <span class="o">+</span> <span class="n">radius</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">subset</span> <span class="o">=</span> <span class="n">image</span><span class="p">[</span><span class="n">ySlice</span><span class="p">,</span> <span class="n">xSlice</span><span class="p">]</span>
+    <span class="n">center</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unravel_index</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">subset</span><span class="p">),</span> <span class="n">subset</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">center</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="n">y0</span><span class="p">,</span> <span class="n">center</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="n">x0</span></div>
+
+
+<div class="viewcode-block" id="prox_monotonic_mask"><a class="viewcode-back" href="../../api/scarlet.operator.html#scarlet.operator.prox_monotonic_mask">[docs]</a><span class="k">def</span> <span class="nf">prox_monotonic_mask</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">step</span><span class="p">,</span> <span class="n">center</span><span class="p">,</span> <span class="n">center_radius</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">variance</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">max_iter</span><span class="o">=</span><span class="mi">3</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Apply monotonicity from any path from the center</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    X: array-like</span>
+<span class="sd">        The input image that the mask is created for.</span>
+<span class="sd">    step: `int`</span>
+<span class="sd">        This parameter is ignored for this prox, but is required by `prox_min`.</span>
+<span class="sd">    center: `tuple` of `int`</span>
+<span class="sd">        The location of the center of the mask.</span>
+<span class="sd">    center_radius: `float`</span>
+<span class="sd">        Radius from the center pixel to search for a better center</span>
+<span class="sd">        (ie. a pixel in `X` with higher flux than the pixel given by</span>
+<span class="sd">         `center`).</span>
+<span class="sd">        If `center_radius == 0` then the `center` pixel is assumed to be correct.</span>
+<span class="sd">    variance: `float`</span>
+<span class="sd">        The average variance in the image.</span>
+<span class="sd">        This is used to allow pixels to be non-monotonic up to `variance`,</span>
+<span class="sd">        so setting `variance=0` will force strict monotonicity in the mask.</span>
+<span class="sd">    max_iter: int</span>
+<span class="sd">        Maximum number of iterations to interpolate non-monotonic pixels.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span> <span class="nn">scarlet.operators_pybind11</span> <span class="kn">import</span> <span class="n">get_valid_monotonic_pixels</span><span class="p">,</span> <span class="n">linear_interpolate_invalid_pixels</span>
+
+    <span class="k">if</span> <span class="n">center_radius</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="o">=</span> <span class="n">get_center</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">center</span><span class="p">,</span> <span class="n">center_radius</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">i</span><span class="p">,</span><span class="n">j</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">center</span><span class="p">[</span><span class="mi">0</span><span class="p">])),</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">center</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+    <span class="n">unchecked</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">X</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+    <span class="n">unchecked</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">orphans</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">X</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+    <span class="c1"># This is the bounding box of the result</span>
+    <span class="n">bounds</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">i</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">j</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+    <span class="c1"># Get all of the monotonic pixels</span>
+    <span class="n">get_valid_monotonic_pixels</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">unchecked</span><span class="p">,</span> <span class="n">orphans</span><span class="p">,</span> <span class="n">variance</span><span class="p">,</span> <span class="n">bounds</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="c1"># Set the initial model to the exact input in the valid pixels</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">X</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+    <span class="n">it</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">while</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">orphans</span> <span class="o">&amp;</span> <span class="n">unchecked</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">it</span> <span class="o">&lt;</span> <span class="n">max_iter</span><span class="p">:</span>
+        <span class="n">it</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="n">all_i</span><span class="p">,</span> <span class="n">all_j</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">orphans</span><span class="p">)</span>
+        <span class="n">linear_interpolate_invalid_pixels</span><span class="p">(</span><span class="n">all_i</span><span class="p">,</span> <span class="n">all_j</span><span class="p">,</span> <span class="n">unchecked</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">orphans</span><span class="p">,</span> <span class="n">variance</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="n">bounds</span><span class="p">)</span>
+    <span class="n">valid</span> <span class="o">=</span> <span class="o">~</span><span class="n">unchecked</span> <span class="o">&amp;</span> <span class="o">~</span><span class="n">orphans</span>
+    <span class="c1"># Clear all of the invalid pixels from the input image</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">model</span> <span class="o">*</span> <span class="n">valid</span>
+    <span class="k">return</span> <span class="n">valid</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">bounds</span></div>
 
 
 <div class="viewcode-block" id="prox_cone"><a class="viewcode-back" href="../../api/scarlet.operator.html#scarlet.operator.prox_cone">[docs]</a><span class="k">def</span> <span class="nf">prox_cone</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">step</span><span class="p">,</span> <span class="n">G</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
@@ -654,7 +738,7 @@
       &copy;2018-2019, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.5.4</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.0.2</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
     </div>
