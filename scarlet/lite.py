@@ -318,7 +318,7 @@ class LiteSource:
 
 class LiteBlend:
     def __init__(self, sources, images, weights, psfs, model_psf=None,
-                 bbox=None, padding=3, convolution_mode="real"):
+                 bbox=None, padding=3, convolution_mode="fft"):
         self.sources = sources
         self.components = []
         for source in sources:
