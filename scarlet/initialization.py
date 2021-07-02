@@ -590,4 +590,5 @@ def set_spectra_to_match(sources, observations):
 
     # enforce constraints
     for p in parameters:
-        p[:] = p.constraint(p, 0)
+        if p.constraint is not None:
+            p[:] = p.constraint(p, 0)
