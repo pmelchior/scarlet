@@ -12,7 +12,12 @@ class Renderer(Model):
     def __init__(self, data_frame, model_frame, *parameters):
         self.data_frame = data_frame
         self.model_frame = model_frame
+        # mapping of model to data frame channels
         self.channel_map = self.get_channel_map(data_frame, model_frame)
+        # properly treats truncation in both boxes
+        # needs to overwritten if frames have different resolutions
+        self.slices = overlapped_slices(data_frame.bbox, model_frame.bbox)
+
         super().__init__(*parameters)
 
     # renderer is a parameterized transformation function
@@ -81,11 +86,14 @@ class Renderer(Model):
 
 
 class NullRenderer(Renderer):
-    def __init__(self):
-        super().__init__(None, None)
+    def __init__(self, data_frame, model_frame):
+        super().__init__(data_frame, model_frame)
 
-    def __call__(self, model, *parameters):
-        return model
+    def get_model(*parameters):
+        def nothing(model):
+            return model
+
+        return nothing
 
 
 @primitive
@@ -178,8 +186,6 @@ class ConvolutionRenderer(Renderer):
         ur = np.round(pixel_in_model_frame.max(axis=0)).astype("int") + 1
         bounds = (ll[0], ur[0]), (ll[1], ur[1])
         data_box = model_frame.bbox[0] @ Box.from_bounds(*bounds)
-        # properly treats truncation in both boxes
-        self.slices = overlapped_slices(data_box, model_frame.bbox)
 
         # construct diff kernel
         psf_fft = fft.Fourier(data_frame.psf.get_model().astype(model_frame.dtype))
