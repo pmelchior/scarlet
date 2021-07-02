@@ -504,7 +504,7 @@ frame, and that’s done by <code class="docutils literal notranslate"><span cla
 <section id="Initialize-Sources-and-Blend">
 <h2>Initialize Sources and Blend<a class="headerlink" href="#Initialize-Sources-and-Blend" title="Permalink to this headline">¶</a></h2>
 <p>We expect all sources to be galaxies, so we initialized them as <code class="docutils literal notranslate"><span class="pre">ExtendedSources</span></code>. Afterwards, we match their amplitudes to the data, and create an instance of <code class="docutils literal notranslate"><span class="pre">Blend</span></code> to hold all sources and <em>all</em> observations for the fit below.</p>
-<div class="nbinput nblast docutils container">
+<div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
 </pre></div>
 </div>
@@ -522,6 +522,15 @@ frame, and that’s done by <code class="docutils literal notranslate"><span cla
 <span class="n">blend</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">Blend</span><span class="p">(</span><span class="n">sources</span><span class="p">,</span> <span class="n">observations</span><span class="p">)</span>
 </pre></div>
 </div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+No flux in morphology model for source at [150.33104781   2.07003218]
+No flux in morphology model for source at [150.33096789   2.07025819]
+</pre></div></div>
 </div>
 </section>
 <section id="Display-Initial-guess">
@@ -580,9 +589,9 @@ frame, and that’s done by <code class="docutils literal notranslate"><span cla
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-CPU times: user 3min 17s, sys: 45.4 s, total: 4min 2s
-Wall time: 4min 2s
-scarlet ran for 50 iterations to logL = 12276.076806732042
+CPU times: user 1min 15s, sys: 17.7 s, total: 1min 32s
+Wall time: 1min 32s
+scarlet ran for 19 iterations to logL = -242446.8681167818
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">
