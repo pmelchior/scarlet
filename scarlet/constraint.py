@@ -169,7 +169,7 @@ class ThresholdConstraint(Constraint):
         _bins = 50
         # Decrease the bin size for sources with a small number of pixels
         if _morph.size < 500:
-            _bins = max(np.int(_morph.size / 10), 1)
+            _bins = max(int(_morph.size / 10), 1)
             if _bins == 1:
                 return 0, _bins
         hist, bins = np.histogram(np.log10(_morph).reshape(-1), _bins)
@@ -187,9 +187,10 @@ class MonotonicityConstraint(Constraint):
     for a description of the other parameters.
     """
 
-    def __init__(self, neighbor_weight="flat", min_gradient=0.1):
+    def __init__(self, neighbor_weight="flat", min_gradient=0.1, use_mask=False):
         self.neighbor_weight = neighbor_weight
         self.min_gradient = min_gradient
+        self.use_mask = use_mask
 
     def __call__(self, morph, step):
         shape = morph.shape
@@ -212,7 +213,41 @@ class MonotonicityConstraint(Constraint):
             Cache.set(prox_name, key, prox)
 
         # apply the prox
-        return prox(morph, step)
+        _morph = morph.copy()
+        result = prox(morph, step)
+        if self.use_mask:
+            valid, _morph, _bounds = operator.prox_monotonic_mask(
+                _morph,
+                step,
+                center=center,
+                center_radius=0,
+                variance=0,
+                max_iter=0,
+            )
+            result[valid] = _morph[valid]
+
+        return result
+
+
+class MonotonicMaskConstraint(Constraint):
+    """Make morphology monotonic by branching from the center
+    """
+    def __init__(self, center, center_radius=1, variance=0.0, max_iter=3):
+        self.center = center
+        self.center_radius = center_radius
+        self.variance = variance
+        self.max_iter = max_iter
+        self.prox = partial(
+            operator.prox_monotonic_mask,
+            center=center,
+            center_radius=center_radius,
+            variance=variance,
+            max_iter=max_iter,
+        )
+
+    def __call__(self, morph, step):
+        valid, morph, bounds = self.prox(morph, step)
+        return morph
 
 
 class SymmetryConstraint(Constraint):

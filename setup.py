@@ -66,7 +66,17 @@ ext_modules = [
             get_eigen_include(),
         ],
         language="c++",
-    )
+    ),
+    Extension(
+        "scarlet.detect_pybind11",
+        ["scarlet/detect_pybind11.cc"],
+        include_dirs=[
+            get_pybind_include(),
+            get_pybind_include(user=True),
+            get_eigen_include(),
+        ],
+        language="c++",
+    ),
 ]
 
 

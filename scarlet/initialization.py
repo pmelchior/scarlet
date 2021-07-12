@@ -3,15 +3,7 @@ import logging
 
 from .bbox import Box
 from .cache import Cache
-from .interpolation import interpolate_observation
-from .observation import Observation
 from .renderer import NullRenderer, ConvolutionRenderer
-from .wavelet import Starlet, mad_wavelet
-from . import fft
-from . import measure
-from functools import partial
-from .constraint import PositivityConstraint
-from .parameter import Parameter, relative_step
 
 
 logger = logging.getLogger("scarlet.initialisation")
@@ -103,7 +95,7 @@ def get_pixel_spectrum(sky_coord, observations, correct_psf=False, models=None):
 
         if obs.psf is not None:
             # correct spectrum for PSF-induced change in peak pixel intensity
-            psf_model = obs.psf.get_model()._data
+            psf_model = obs.psf.get_model()
             psf_peak = psf_model.max(axis=(1, 2))
             spectrum /= psf_peak
         elif model is not None:
@@ -573,17 +565,30 @@ def set_spectra_to_match(sources, observations):
         # solve the linear inverse problem of the amplitudes in every channel
         # given all the rendered morphologies
         # spectrum = (M^T Sigma^-1 M)^-1 M^T Sigma^-1 * im
-        spectra = np.empty((K, C))
+        spectra = np.zeros((K, C))
         for c in range(C):
             im = images[c].reshape(-1)
             w = weights[c].reshape(-1)
             m = morphs[:, c, :, :].reshape(K, -1)
-            covar = np.linalg.inv((m * w[None, :]) @ m.T)
-            spectra[:, c] = covar @ m @ (im * w)
+            mw = m * w[None, :]
+            # check if all components have nonzero flux in c.
+            # because of convolutions, flux can be outside of the box,
+            # so we need to compare weighted flu with unweighted flux,
+            # which is the same (up to a constant) for constant weights
+            # so we check if *most* of the flux is from pixels with non-zero weight
+            nonzero = np.sum(mw, axis=1) / np.sum(m, axis=1) / np.mean(w) > 0.1
+            nonzero = np.flatnonzero(nonzero)
+            if len(nonzero) == K:
+                covar = np.linalg.inv(mw @ m.T)
+                spectra[:, c] = covar @ m @ (im * w)
+            else:
+                covar = np.linalg.inv(mw[nonzero] @ m[nonzero].T)
+                spectra[nonzero, c] = covar @ m[nonzero] @ (im * w)
 
         for p, spectrum in zip(parameters, spectra):
             obs.renderer.map_channels(p)[:] = spectrum
 
     # enforce constraints
     for p in parameters:
-        p[:] = p.constraint(p, 0)
+        if p.constraint is not None:
+            p[:] = p.constraint(p, 0)

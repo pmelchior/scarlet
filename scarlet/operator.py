@@ -96,6 +96,90 @@ def prox_weighted_monotonic(shape, neighbor_weight="flat", min_gradient=0.1, cen
     return result
 
 
+def get_center(image, center, radius=1):
+    """Search around a location for the maximum flux
+
+    For monotonicity it is important to start at the brightest pixel
+    in the center of the source. This may be off by a pixel or two,
+    so we search for the correct center before applying
+    monotonic_tree.
+
+    Parameters
+    ----------
+    image: array-like
+        The image of the source.
+    center: (int, int)
+        The suggested center of the source.
+    radius: int
+        The number of pixels around the `center` to search
+        for a higher flux value.
+
+    Returns
+    -------
+    new_center: (int, int)
+        The true center of the source.
+    """
+    cy, cx = int(center[0]), int(center[1])
+    y0 = np.max([cy - radius, 0])
+    x0 = np.max([cx - radius, 0])
+    ySlice = slice(y0, cy + radius+1)
+    xSlice = slice(x0, cx + radius+1)
+    subset = image[ySlice, xSlice]
+    center = np.unravel_index(np.argmax(subset), subset.shape)
+    return center[0]+y0, center[1]+x0
+
+
+def prox_monotonic_mask(X, step, center, center_radius=1, variance=0.0, max_iter=3):
+    """Apply monotonicity from any path from the center
+
+    Parameters
+    ----------
+    X: array-like
+        The input image that the mask is created for.
+    step: `int`
+        This parameter is ignored for this prox, but is required by `prox_min`.
+    center: `tuple` of `int`
+        The location of the center of the mask.
+    center_radius: `float`
+        Radius from the center pixel to search for a better center
+        (ie. a pixel in `X` with higher flux than the pixel given by
+         `center`).
+        If `center_radius == 0` then the `center` pixel is assumed to be correct.
+    variance: `float`
+        The average variance in the image.
+        This is used to allow pixels to be non-monotonic up to `variance`,
+        so setting `variance=0` will force strict monotonicity in the mask.
+    max_iter: int
+        Maximum number of iterations to interpolate non-monotonic pixels.
+    """
+    from scarlet.operators_pybind11 import get_valid_monotonic_pixels, linear_interpolate_invalid_pixels
+
+    if center_radius > 0:
+        i, j = get_center(X, center, center_radius)
+    else:
+        i,j = int(np.round(center[0])), int(np.round(center[1]))
+    unchecked = np.ones(X.shape, dtype=bool)
+    unchecked[i, j] = False
+    orphans = np.zeros(X.shape, dtype=bool)
+    # This is the bounding box of the result
+    bounds = np.array([i, i, j, j], dtype=np.int32)
+    # Get all of the monotonic pixels
+    get_valid_monotonic_pixels(i, j, X, unchecked, orphans, variance, bounds, 0)
+    # Set the initial model to the exact input in the valid pixels
+    model = X.copy()
+
+    it = 0
+
+    while np.sum(orphans & unchecked) > 0 and it < max_iter:
+        it += 1
+        all_i, all_j = np.where(orphans)
+        linear_interpolate_invalid_pixels(all_i, all_j, unchecked, model, orphans, variance, True, bounds)
+    valid = ~unchecked & ~orphans
+    # Clear all of the invalid pixels from the input image
+    model = model * valid
+    return valid, model, bounds
+
+
 def prox_cone(X, step, G=None):
     """Exact projection of components of X onto cone defined by Gx >= 0"""
     k, n = X.shape

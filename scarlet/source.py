@@ -76,7 +76,7 @@ class RandomSource(FactorizedComponent):
         """
         C, Ny, Nx = model_frame.bbox.shape
         image = np.random.rand(Ny, Nx)
-        morphology = ImageMorphology(image)
+        morphology = ImageMorphology(model_frame, image)
 
         if observations is None:
             spectrum = np.random.rand(C)
@@ -90,7 +90,7 @@ class RandomSource(FactorizedComponent):
             step=partial(relative_step, factor=1e-1),
             constraint=PositivityConstraint(),
         )
-        spectrum = TabulatedSpectrum(spectrum)
+        spectrum = TabulatedSpectrum(model_frame, spectrum)
 
         super().__init__(model_frame, spectrum, morphology)
 
@@ -427,11 +427,10 @@ class StarletSource(FactorizedComponent):
     def __init__(
         self,
         model_frame,
-        sky_coord,
-        observations,
+        sky_coord=None,
+        observations=None,
         spectrum=None,
         thresh=1.0,
-        full=False,
         starlet_thresh=5e-3,
         boxsize=None,
     ):
@@ -450,19 +449,22 @@ class StarletSource(FactorizedComponent):
             flux cutoff for morphology initialization.
         spectrum: `numpy.ndarray` or `scarlet.Parameter`
             Initial spectrum, otherwise given by `ExtendedSource` initialization
-        full: `bool`
-            If set to False, use the full image as a box for the starlet model.
-            Otherwise, use the same bbox as for `ExtendedSource` initialization
         starlet_thresh: `float`
             Multiple of the backround RMS used as a
             flux cutoff for starlet threshold (usually between 5 and 3).
         boxsize: int or None
             Spatial size of the source box
         """
-        source = ExtendedSource(
-            model_frame, sky_coord, observations, thresh=thresh, boxsize=boxsize
-        )
-        source = StarletSource.from_source(source)
+        if sky_coord is None:
+            source = RandomSource(
+                model_frame,
+            )
+        else:
+            source = ExtendedSource(
+                model_frame, sky_coord, observations, thresh=thresh, boxsize=boxsize
+            )
+
+        source = StarletSource.from_source(source, starlet_thresh=starlet_thresh)
 
         if spectrum is not None:
             if isinstance(spectrum, Parameter):

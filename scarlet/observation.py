@@ -86,7 +86,7 @@ class Observation(Frame):
         # choose the renderer
         if renderer is None:
             if self.psf is model_frame.psf:
-                self.renderer = NullRenderer()
+                self.renderer = NullRenderer(self, model_frame)
             else:
                 assert self.psf is not None and model_frame.psf is not None
                 if self.wcs is model_frame.wcs:
