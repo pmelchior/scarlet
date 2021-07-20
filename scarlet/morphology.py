@@ -7,6 +7,7 @@ from .constraint import (
     L0Constraint,
     PositivityConstraint,
     MonotonicityConstraint,
+    MonotonicMaskConstraint,
     SymmetryConstraint,
     CenterOnConstraint,
     NormalizationConstraint,
@@ -273,7 +274,9 @@ class StarletMorphology(Morphology):
         # We don't threshold the last scale
         thresh_array[-1] = 0
 
-        constraint = PositivityConstraint(thresh_array)
+        # constraint = PositivityConstraint(thresh_array)
+        center = tuple(s // 2 for s in bbox.shape)
+        constraint = MonotonicMaskConstraint(center, center_radius=1)
         coeffs = Parameter(coeffs, name="coeffs", step=1e-2, constraint=constraint)
         super().__init__(frame, coeffs, bbox=bbox)
 

@@ -217,12 +217,7 @@ class MonotonicityConstraint(Constraint):
         result = prox(morph, step)
         if self.use_mask:
             valid, _morph, _bounds = operator.prox_monotonic_mask(
-                _morph,
-                step,
-                center=center,
-                center_radius=0,
-                variance=0,
-                max_iter=0,
+                _morph, step, center=center, center_radius=0, variance=0, max_iter=0,
             )
             result[valid] = _morph[valid]
 
@@ -232,6 +227,7 @@ class MonotonicityConstraint(Constraint):
 class MonotonicMaskConstraint(Constraint):
     """Make morphology monotonic by branching from the center
     """
+
     def __init__(self, center, center_radius=1, variance=0.0, max_iter=3):
         self.center = center
         self.center_radius = center_radius
@@ -246,7 +242,10 @@ class MonotonicMaskConstraint(Constraint):
         )
 
     def __call__(self, morph, step):
-        valid, morph, bounds = self.prox(morph, step)
+        if len(morph.shape) == 2:
+            valid, morph, bounds = self.prox(morph, step)
+        else:
+            morph = np.array([self.prox(morph_, step)[1] for morph_ in morph])
         return morph
 
 
