@@ -470,13 +470,11 @@ class StarletSource(FactorizedComponent):
             if isinstance(spectrum, Parameter):
                 assert spectrum.name == "spectrum"
             else:
-                constraint = PositivityConstraint(
-                    zero=1e-20
-                )  # slightly positive values
-                step = partial(relative_step, factor=1e-6)
-                spectrum = Parameter(
-                    spectrum, name="spectrum", step=step, constraint=constraint,
-                )
+                noise_rms = np.concatenate(
+                    [np.array(np.mean(obs.noise_rms, axis=(1, 2))) for obs in observations]
+                ).reshape(-1)
+                spectrum = TabulatedSpectrum(model_frame, spectrum, min_step=noise_rms)
+
             source.children[0] = spectrum
 
         # still need to init *this* source
