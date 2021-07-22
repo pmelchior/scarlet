@@ -1,0 +1,677 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>scarlet.initialization &#8212; scarlet  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css" />
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <link rel="canonical" href="api/_modules/scarlet/initialization.html" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../index.html">
+              <img class="logo" src="../../_static/logo.svg" alt="Logo"/>
+            </a></p>
+<h3><a href="../../index.html">Table of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../0-quickstart.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../1-concepts.html">Core Concepts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorials.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/scarlet.html">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../regression.html">Regression Testing</a></li>
+</ul>
+
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for scarlet.initialization</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+
+<span class="kn">from</span> <span class="nn">.bbox</span> <span class="kn">import</span> <span class="n">Box</span>
+<span class="kn">from</span> <span class="nn">.cache</span> <span class="kn">import</span> <span class="n">Cache</span>
+<span class="kn">from</span> <span class="nn">.renderer</span> <span class="kn">import</span> <span class="n">NullRenderer</span><span class="p">,</span> <span class="n">ConvolutionRenderer</span>
+
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;scarlet.initialisation&quot;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="get_best_fit_spectrum"><a class="viewcode-back" href="../../api/scarlet.initialization.html#scarlet.initialization.get_best_fit_spectrum">[docs]</a><span class="k">def</span> <span class="nf">get_best_fit_spectrum</span><span class="p">(</span><span class="n">morph</span><span class="p">,</span> <span class="n">images</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Calculate best fitting spectra for one or multiple morphologies.</span>
+
+<span class="sd">    Solves min_A ||img - AS||^2 for the spectrum matrix A,</span>
+<span class="sd">    assuming that the images only contain a single source.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    morph: array or list thereof</span>
+<span class="sd">        Morphology for each component in the source</span>
+<span class="sd">    images: array</span>
+<span class="sd">        images to get the spectrum amplitude from</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    spectrum: `~numpy.array`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">morph</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">))</span> <span class="ow">or</span> <span class="p">(</span>
+        <span class="nb">isinstance</span><span class="p">(</span><span class="n">morph</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">morph</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span>
+    <span class="p">):</span>
+        <span class="n">morphs</span> <span class="o">=</span> <span class="n">morph</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">morphs</span> <span class="o">=</span> <span class="p">(</span><span class="n">morph</span><span class="p">,)</span>
+
+    <span class="n">K</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">morphs</span><span class="p">)</span>
+    <span class="n">C</span> <span class="o">=</span> <span class="n">images</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">im</span> <span class="o">=</span> <span class="n">images</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">C</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">K</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">morph</span> <span class="o">=</span> <span class="n">morphs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">im</span><span class="p">,</span> <span class="n">morph</span><span class="p">)</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">morph</span><span class="p">,</span> <span class="n">morph</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">morph</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">morphs</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">K</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">morph</span><span class="p">,</span> <span class="n">morph</span><span class="o">.</span><span class="n">T</span><span class="p">)),</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">morph</span><span class="p">,</span> <span class="n">im</span><span class="o">.</span><span class="n">T</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="get_pixel_spectrum"><a class="viewcode-back" href="../../api/scarlet.initialization.html#scarlet.initialization.get_pixel_spectrum">[docs]</a><span class="k">def</span> <span class="nf">get_pixel_spectrum</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">,</span> <span class="n">observations</span><span class="p">,</span> <span class="n">correct_psf</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">models</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Get the spectrum at `sky_coord` in `observation`.</span>
+
+<span class="sd">    Yields the spectrum of a single-pixel source with flux 1 in every channel,</span>
+<span class="sd">    concatenated for all observations.</span>
+
+<span class="sd">    If `correct_psf`, it homogenizes the PSFs of the observations, which yields the</span>
+<span class="sd">    correct spectrum for a flux=1 point source.</span>
+
+<span class="sd">    If `model` is set, it reads of the value of the model at `sky_coord` and yields the</span>
+<span class="sd">    spectrum for that model.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    sky_coord: tuple</span>
+<span class="sd">        Position in the observation</span>
+<span class="sd">    observations: instance or list of `~scarlet.Observation`</span>
+<span class="sd">        Observation to extract SED from.</span>
+<span class="sd">    correct_psf: bool</span>
+<span class="sd">        If PSF shape variations in the observations should be corrected.</span>
+<span class="sd">    models: instance or list of arrays</span>
+<span class="sd">        Rendered models for this source in every observation</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    spectrum: `~numpy.array` or list thereof</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">models</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">assert</span> <span class="n">correct_psf</span> <span class="ow">is</span> <span class="kc">False</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">observations</span><span class="p">,</span> <span class="s2">&quot;__iter__&quot;</span><span class="p">):</span>
+        <span class="n">single</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">observations</span> <span class="o">=</span> <span class="p">(</span><span class="n">observations</span><span class="p">,)</span>
+        <span class="n">models</span> <span class="o">=</span> <span class="p">(</span><span class="n">models</span><span class="p">,)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">models</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">models</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">observations</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">models</span> <span class="o">=</span> <span class="p">(</span><span class="kc">None</span><span class="p">,)</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">observations</span><span class="p">)</span>
+        <span class="n">single</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="n">spectra</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">obs</span><span class="p">,</span> <span class="n">model</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">observations</span><span class="p">,</span> <span class="n">models</span><span class="p">):</span>
+        <span class="n">pixel</span> <span class="o">=</span> <span class="n">obs</span><span class="o">.</span><span class="n">get_pixel</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">)</span>
+        <span class="n">index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">pixel</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;int&quot;</span><span class="p">)</span>
+        <span class="n">spectrum</span> <span class="o">=</span> <span class="n">obs</span><span class="o">.</span><span class="n">data</span><span class="p">[:,</span> <span class="n">index</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">index</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">obs</span><span class="o">.</span><span class="n">psf</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># correct spectrum for PSF-induced change in peak pixel intensity</span>
+            <span class="n">psf_model</span> <span class="o">=</span> <span class="n">obs</span><span class="o">.</span><span class="n">psf</span><span class="o">.</span><span class="n">get_model</span><span class="p">()</span>
+            <span class="n">psf_peak</span> <span class="o">=</span> <span class="n">psf_model</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+            <span class="n">spectrum</span> <span class="o">/=</span> <span class="n">psf_peak</span>
+        <span class="k">elif</span> <span class="n">model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">model_value</span> <span class="o">=</span> <span class="n">model</span><span class="p">[:,</span> <span class="n">index</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">index</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <span class="n">spectrum</span> <span class="o">/=</span> <span class="n">model_value</span>
+
+        <span class="n">spectra</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">spectrum</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">spectrum</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">):</span>
+            <span class="c1"># If the flux in all channels is  &lt;=0,</span>
+            <span class="c1"># the new sed will be filled with NaN values,</span>
+            <span class="c1"># which will cause the code to crash later</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Zero or negative spectrum </span><span class="si">{</span><span class="n">spectrum</span><span class="si">}</span><span class="s2"> at </span><span class="si">{</span><span class="n">sky_coord</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">spectrum</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">):</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">single</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">spectra</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">spectra</span></div>
+
+
+<div class="viewcode-block" id="get_psf_spectrum"><a class="viewcode-back" href="../../api/scarlet.initialization.html#scarlet.initialization.get_psf_spectrum">[docs]</a><span class="k">def</span> <span class="nf">get_psf_spectrum</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">,</span> <span class="n">observations</span><span class="p">,</span> <span class="n">compute_snr</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Get spectrum for a point source at `sky_coord` in `observation`</span>
+
+<span class="sd">    Equivalent to point source photometry for isolated sources. For extended source,</span>
+<span class="sd">    this will underestimate the actual source flux in every channel. In case of crowding,</span>
+<span class="sd">    the resulting photometry is likely contaminated by neighbors.</span>
+
+<span class="sd">    Yields the spectrum of a PSF-homogenized source of flux 1 in every channel,</span>
+<span class="sd">    concatenated for all observations.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    sky_coord: tuple</span>
+<span class="sd">        Position in the observation</span>
+<span class="sd">    observations: instance or list of `~scarlet.Observation`</span>
+<span class="sd">        Observation to extract the spectrum from.</span>
+<span class="sd">    compute_snr: bool</span>
+<span class="sd">        Whether the compute the SNR of a PSF at `sky_coord`</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    spectrum: ~numpy.array` or list thereof</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">observations</span><span class="p">,</span> <span class="s2">&quot;__iter__&quot;</span><span class="p">):</span>
+        <span class="n">single</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">observations</span> <span class="o">=</span> <span class="p">(</span><span class="n">observations</span><span class="p">,)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">single</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="n">spectra</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">if</span> <span class="n">compute_snr</span><span class="p">:</span>
+        <span class="n">snr_num</span><span class="p">,</span> <span class="n">snr_denom</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[]</span>
+
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">obs</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">observations</span><span class="p">):</span>
+        <span class="n">pixel</span> <span class="o">=</span> <span class="n">obs</span><span class="o">.</span><span class="n">get_pixel</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">)</span>
+        <span class="n">index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">pixel</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;int&quot;</span><span class="p">)</span>
+
+        <span class="n">psf</span> <span class="o">=</span> <span class="n">obs</span><span class="o">.</span><span class="n">psf</span><span class="o">.</span><span class="n">get_model</span><span class="p">()</span>
+        <span class="n">bbox</span> <span class="o">=</span> <span class="n">obs</span><span class="o">.</span><span class="n">psf</span><span class="o">.</span><span class="n">bbox</span> <span class="o">+</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="o">*</span><span class="n">index</span><span class="p">)</span>
+        <span class="n">img</span> <span class="o">=</span> <span class="n">bbox</span><span class="o">.</span><span class="n">extract_from</span><span class="p">(</span><span class="n">obs</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+        <span class="n">noise_rms</span> <span class="o">=</span> <span class="n">obs</span><span class="o">.</span><span class="n">noise_rms</span>
+        <span class="c1"># masked array doesn&#39;t survive extract_from</span>
+        <span class="n">noise</span> <span class="o">=</span> <span class="n">bbox</span><span class="o">.</span><span class="n">extract_from</span><span class="p">(</span><span class="n">noise_rms</span><span class="p">)</span>
+        <span class="n">noise_mask</span> <span class="o">=</span> <span class="n">bbox</span><span class="o">.</span><span class="n">extract_from</span><span class="p">(</span><span class="n">noise_rms</span><span class="o">.</span><span class="n">mask</span><span class="p">)</span>
+
+        <span class="n">spectra</span><span class="o">.</span><span class="n">append</span><span class="p">([])</span>
+        <span class="c1"># apply mask: needs to be done separately in each channel</span>
+        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">obs</span><span class="o">.</span><span class="n">C</span><span class="p">):</span>
+            <span class="c1"># outside of observation or masked pixels have noise_mask = 0</span>
+            <span class="n">mask</span> <span class="o">=</span> <span class="o">~</span><span class="p">(</span><span class="n">noise_mask</span><span class="p">[</span><span class="n">c</span><span class="p">])</span>
+            <span class="n">psf_</span> <span class="o">=</span> <span class="n">psf</span><span class="p">[</span><span class="n">c</span><span class="p">,</span> <span class="n">mask</span><span class="p">]</span>
+            <span class="n">img_</span> <span class="o">=</span> <span class="n">img</span><span class="p">[</span><span class="n">c</span><span class="p">,</span> <span class="n">mask</span><span class="p">]</span>
+
+            <span class="c1"># amplitude of img when projected onto psf</span>
+            <span class="c1"># i.e. factor to multiply psf with to get img (if img looked like psf)</span>
+            <span class="n">img_psf</span> <span class="o">=</span> <span class="n">img_</span> <span class="o">@</span> <span class="n">psf_</span>
+            <span class="n">spectrum</span> <span class="o">=</span> <span class="n">img_psf</span> <span class="o">/</span> <span class="p">(</span><span class="n">psf_</span> <span class="o">@</span> <span class="n">psf_</span><span class="p">)</span>
+            <span class="n">spectra</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">spectrum</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">compute_snr</span><span class="p">:</span>
+                <span class="n">noise_</span> <span class="o">=</span> <span class="n">noise</span><span class="p">[</span><span class="n">c</span><span class="p">,</span> <span class="n">mask</span><span class="p">]</span>
+                <span class="n">snr_num</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">img_psf</span><span class="p">)</span>
+                <span class="n">snr_denom</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">psf_</span> <span class="o">*</span> <span class="n">noise_</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span> <span class="o">@</span> <span class="n">psf_</span><span class="p">)</span>
+
+        <span class="n">spectra</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">spectra</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">spectra</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">):</span>
+            <span class="c1"># If the flux in all channels is  &lt;=0,</span>
+            <span class="c1"># the new sed will be filled with NaN values,</span>
+            <span class="c1"># which will cause the code to crash later</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Zero or negative spectrum </span><span class="si">{</span><span class="n">spectra</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="si">}</span><span class="s2"> at </span><span class="si">{</span><span class="n">sky_coord</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">spectra</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">):</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">single</span><span class="p">:</span>
+        <span class="n">spectra</span> <span class="o">=</span> <span class="n">spectra</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">compute_snr</span><span class="p">:</span>
+        <span class="n">snr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">snr_num</span><span class="p">)</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">snr_denom</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">spectra</span><span class="p">,</span> <span class="n">snr</span>
+    <span class="k">return</span> <span class="n">spectra</span></div>
+
+
+<div class="viewcode-block" id="get_minimal_boxsize"><a class="viewcode-back" href="../../api/scarlet.initialization.html#scarlet.initialization.get_minimal_boxsize">[docs]</a><span class="k">def</span> <span class="nf">get_minimal_boxsize</span><span class="p">(</span><span class="n">size</span><span class="p">,</span> <span class="n">min_size</span><span class="o">=</span><span class="mi">21</span><span class="p">,</span> <span class="n">increment</span><span class="o">=</span><span class="mi">10</span><span class="p">):</span>
+    <span class="n">boxsize</span> <span class="o">=</span> <span class="n">min_size</span>
+    <span class="k">while</span> <span class="n">boxsize</span> <span class="o">&lt;</span> <span class="n">size</span><span class="p">:</span>
+        <span class="n">boxsize</span> <span class="o">+=</span> <span class="n">increment</span>  <span class="c1"># keep box sizes quite small</span>
+    <span class="k">return</span> <span class="n">boxsize</span></div>
+
+
+<div class="viewcode-block" id="trim_morphology"><a class="viewcode-back" href="../../api/scarlet.initialization.html#scarlet.initialization.trim_morphology">[docs]</a><span class="k">def</span> <span class="nf">trim_morphology</span><span class="p">(</span><span class="n">center_index</span><span class="p">,</span> <span class="n">morph</span><span class="p">,</span> <span class="n">bg_thresh</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">boxsize</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="c1"># trim morph to pixels above threshold</span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">morph</span> <span class="o">&gt;</span> <span class="n">bg_thresh</span>
+    <span class="n">morph</span><span class="p">[</span><span class="o">~</span><span class="n">mask</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="n">bbox</span> <span class="o">=</span> <span class="n">Box</span><span class="o">.</span><span class="n">from_data</span><span class="p">(</span><span class="n">morph</span><span class="p">,</span> <span class="n">min_value</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="c1"># find fitting bbox</span>
+    <span class="k">if</span> <span class="n">bbox</span><span class="o">.</span><span class="n">contains</span><span class="p">(</span><span class="n">center_index</span><span class="p">):</span>
+        <span class="n">size</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="nb">max</span><span class="p">(</span>
+            <span class="p">(</span>
+                <span class="n">center_index</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">bbox</span><span class="o">.</span><span class="n">start</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">],</span>
+                <span class="n">bbox</span><span class="o">.</span><span class="n">stop</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">center_index</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">],</span>
+                <span class="n">center_index</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">bbox</span><span class="o">.</span><span class="n">start</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
+                <span class="n">bbox</span><span class="o">.</span><span class="n">stop</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">center_index</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">size</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="c1"># define new box and cut morphology accordingly</span>
+    <span class="k">if</span> <span class="n">boxsize</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">boxsize</span> <span class="o">=</span> <span class="n">get_minimal_boxsize</span><span class="p">(</span><span class="n">size</span><span class="p">)</span>
+
+    <span class="n">bottom</span> <span class="o">=</span> <span class="n">center_index</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">boxsize</span> <span class="o">//</span> <span class="mi">2</span>
+    <span class="n">top</span> <span class="o">=</span> <span class="n">center_index</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">boxsize</span> <span class="o">//</span> <span class="mi">2</span> <span class="o">+</span> <span class="mi">1</span>
+    <span class="n">left</span> <span class="o">=</span> <span class="n">center_index</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">boxsize</span> <span class="o">//</span> <span class="mi">2</span>
+    <span class="n">right</span> <span class="o">=</span> <span class="n">center_index</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">boxsize</span> <span class="o">//</span> <span class="mi">2</span> <span class="o">+</span> <span class="mi">1</span>
+    <span class="n">bbox</span> <span class="o">=</span> <span class="n">Box</span><span class="o">.</span><span class="n">from_bounds</span><span class="p">((</span><span class="n">bottom</span><span class="p">,</span> <span class="n">top</span><span class="p">),</span> <span class="p">(</span><span class="n">left</span><span class="p">,</span> <span class="n">right</span><span class="p">))</span>
+    <span class="n">morph</span> <span class="o">=</span> <span class="n">bbox</span><span class="o">.</span><span class="n">extract_from</span><span class="p">(</span><span class="n">morph</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">morph</span><span class="p">,</span> <span class="n">bbox</span></div>
+
+
+<div class="viewcode-block" id="build_initialization_image"><a class="viewcode-back" href="../../api/scarlet.initialization.html#scarlet.initialization.build_initialization_image">[docs]</a><span class="k">def</span> <span class="nf">build_initialization_image</span><span class="p">(</span><span class="n">observations</span><span class="p">,</span> <span class="n">spectra</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Build a spectrum-weighted image from all observations.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    observations: list of `~scarlet.observation.Observation`</span>
+<span class="sd">        Every observation with a suitable renderer will contribute to the initialization image, according to the noise level of its data</span>
+<span class="sd">    spectra: list of array</span>
+<span class="sd">        for every observation: spectrum at the center of the source</span>
+<span class="sd">        If not set, returns the detection image in all channels, instead of averaging.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    image: array</span>
+<span class="sd">        image created by weighting all of the channels by SED</span>
+<span class="sd">    std: float</span>
+<span class="sd">        the effective noise standard deviation of `image`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">observations</span><span class="p">,</span> <span class="s2">&quot;__iter__&quot;</span><span class="p">):</span>
+        <span class="n">observations</span> <span class="o">=</span> <span class="p">(</span><span class="n">observations</span><span class="p">,)</span>
+        <span class="k">if</span> <span class="n">spectra</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">spectra</span> <span class="o">=</span> <span class="p">(</span><span class="n">spectra</span><span class="p">,)</span>
+
+    <span class="c1"># only use cache for the unweighted images</span>
+    <span class="c1"># otherwise we have one per source!</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;build_initialization_image&quot;</span>
+    <span class="n">key</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">observations</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">spectra</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">Cache</span><span class="o">.</span><span class="n">check</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="k">pass</span>
+
+    <span class="n">model_frame</span> <span class="o">=</span> <span class="n">observations</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">model_frame</span>
+    <span class="n">detect</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">model_frame</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">model_frame</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+    <span class="n">var</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">model_frame</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">model_frame</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">obs</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">observations</span><span class="p">):</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obs</span><span class="o">.</span><span class="n">renderer</span><span class="p">,</span> <span class="p">(</span><span class="n">NullRenderer</span><span class="p">,</span> <span class="n">ConvolutionRenderer</span><span class="p">)):</span>
+            <span class="k">continue</span>
+
+        <span class="n">data</span> <span class="o">=</span> <span class="n">obs</span><span class="o">.</span><span class="n">data</span>
+        <span class="n">bg_rms</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">obs</span><span class="o">.</span><span class="n">noise_rms</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">spectra</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">spectrum</span> <span class="o">=</span> <span class="n">weights</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">spectrum</span> <span class="o">=</span> <span class="n">spectra</span><span class="p">[</span><span class="n">i</span><span class="p">][:,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span>
+            <span class="n">weights</span> <span class="o">=</span> <span class="n">spectrum</span> <span class="o">/</span> <span class="p">(</span><span class="n">bg_rms</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span>
+
+        <span class="n">data_slice</span><span class="p">,</span> <span class="n">model_slice</span> <span class="o">=</span> <span class="n">obs</span><span class="o">.</span><span class="n">renderer</span><span class="o">.</span><span class="n">slices</span>
+        <span class="n">obs</span><span class="o">.</span><span class="n">renderer</span><span class="o">.</span><span class="n">map_channels</span><span class="p">(</span><span class="n">detect</span><span class="p">)[</span><span class="n">model_slice</span><span class="p">]</span> <span class="o">+=</span> <span class="n">weights</span> <span class="o">*</span> <span class="n">data</span><span class="p">[</span><span class="n">data_slice</span><span class="p">]</span>
+        <span class="n">obs</span><span class="o">.</span><span class="n">renderer</span><span class="o">.</span><span class="n">map_channels</span><span class="p">(</span><span class="n">var</span><span class="p">)[</span><span class="n">model_slice</span><span class="p">]</span> <span class="o">+=</span> <span class="n">spectrum</span> <span class="o">*</span> <span class="n">weights</span>
+
+    <span class="k">if</span> <span class="n">spectra</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">detect</span> <span class="o">=</span> <span class="n">detect</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">var</span> <span class="o">=</span> <span class="n">var</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="c1"># only save the unweighted one</span>
+    <span class="k">if</span> <span class="n">spectra</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">Cache</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="p">(</span><span class="n">detect</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">var</span><span class="p">)))</span>
+
+    <span class="k">return</span> <span class="n">detect</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">var</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="init_all_sources"><a class="viewcode-back" href="../../api/scarlet.initialization.html#scarlet.initialization.init_all_sources">[docs]</a><span class="k">def</span> <span class="nf">init_all_sources</span><span class="p">(</span>
+    <span class="n">frame</span><span class="p">,</span>
+    <span class="n">centers</span><span class="p">,</span>
+    <span class="n">observations</span><span class="p">,</span>
+    <span class="n">thresh</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">max_components</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">min_components</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">min_snr</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span>
+    <span class="n">shifting</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">resizing</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">boxsize</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">fallback</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">silent</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">set_spectra</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Initialize all sources in a blend</span>
+
+<span class="sd">    Seeks to initialize sources at the sky positions of `centers` with multiple</span>
+<span class="sd">    components of type `ExtendedSource`. If each component has sufficient SNR, the</span>
+<span class="sd">    model will be kept, otherwise one component is removed and the source reinitialized.</span>
+<span class="sd">    If a source cannot be initialized, its index is returned in `skipped`.</span>
+
+<span class="sd">    See `~init_sources` for a description of the arguments</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    centers : list of tuples</span>
+<span class="sd">        `(y, x)` center location for each source in sky coordinates</span>
+<span class="sd">    silent: bool</span>
+<span class="sd">        If set to True, will prevent exceptions from being thrown abd register the</span>
+<span class="sd">        source index in a list of skipped sources.</span>
+<span class="sd">    set_spectra: bool</span>
+<span class="sd">        If set to True, will solve for the best spectra of all sources given the</span>
+<span class="sd">        observations. See `set_spectra_to_match` for details.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    sources: list</span>
+<span class="sd">        List of intialized sources, where each source derives from the</span>
+<span class="sd">        `~scarlet.Component` class.</span>
+<span class="sd">    skipped: list</span>
+<span class="sd">        This list contains sources that failed to initialize with `silent` = True</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">observations</span><span class="p">,</span> <span class="s2">&quot;__iter__&quot;</span><span class="p">):</span>
+        <span class="n">observations</span> <span class="o">=</span> <span class="p">(</span><span class="n">observations</span><span class="p">,)</span>
+
+    <span class="c1"># Only deblend sources that can be initialized</span>
+    <span class="n">sources</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">skipped</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">center</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">centers</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">source</span> <span class="o">=</span> <span class="n">init_source</span><span class="p">(</span>
+                <span class="n">frame</span><span class="p">,</span>
+                <span class="n">center</span><span class="p">,</span>
+                <span class="n">observations</span><span class="p">,</span>
+                <span class="n">thresh</span><span class="o">=</span><span class="n">thresh</span><span class="p">,</span>
+                <span class="n">max_components</span><span class="o">=</span><span class="n">max_components</span><span class="p">,</span>
+                <span class="n">min_components</span><span class="o">=</span><span class="n">min_components</span><span class="p">,</span>
+                <span class="n">min_snr</span><span class="o">=</span><span class="n">min_snr</span><span class="p">,</span>
+                <span class="n">shifting</span><span class="o">=</span><span class="n">shifting</span><span class="p">,</span>
+                <span class="n">resizing</span><span class="o">=</span><span class="n">resizing</span><span class="p">,</span>
+                <span class="n">boxsize</span><span class="o">=</span><span class="n">boxsize</span><span class="p">,</span>
+                <span class="n">fallback</span><span class="o">=</span><span class="n">fallback</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">sources</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">source</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Failed to initialize source </span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">silent</span><span class="p">:</span>
+                <span class="n">skipped</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">e</span>
+
+    <span class="k">if</span> <span class="n">set_spectra</span><span class="p">:</span>
+        <span class="n">set_spectra_to_match</span><span class="p">(</span><span class="n">sources</span><span class="p">,</span> <span class="n">observations</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">sources</span><span class="p">,</span> <span class="n">skipped</span></div>
+
+
+<div class="viewcode-block" id="init_source"><a class="viewcode-back" href="../../api/scarlet.initialization.html#scarlet.initialization.init_source">[docs]</a><span class="k">def</span> <span class="nf">init_source</span><span class="p">(</span>
+    <span class="n">frame</span><span class="p">,</span>
+    <span class="n">center</span><span class="p">,</span>
+    <span class="n">observations</span><span class="p">,</span>
+    <span class="n">thresh</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">max_components</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">min_components</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">min_snr</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span>
+    <span class="n">shifting</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">resizing</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">boxsize</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">fallback</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Initialize a Source</span>
+
+<span class="sd">    The user can specify the number of desired components</span>
+<span class="sd">    for the modeled source. If scarlet cannot initialize a</span>
+<span class="sd">    model with the desired number of components it continues</span>
+<span class="sd">    to attempt initialization of one fewer component until</span>
+<span class="sd">    it finds a model that can be initialized.</span>
+<span class="sd">    It is possible that scarlet will be unable to initialize a</span>
+<span class="sd">    source with the desired number of components, for example</span>
+<span class="sd">    a two component source might have degenerate components,</span>
+<span class="sd">    a single component source might not have enough signal in</span>
+<span class="sd">    the joint coadd (all bands combined together into</span>
+<span class="sd">    single signal-to-noise weighted image for initialization)</span>
+<span class="sd">    to initialize, and a true spurious detection will not have</span>
+<span class="sd">    enough signal to initialize as a point source.</span>
+<span class="sd">    If all of the models fail, including a `CompactExtendedSource` model,</span>
+<span class="sd">    then this source is skipped.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    frame : `~scarlet.Frame`</span>
+<span class="sd">        The model frame for the scene</span>
+<span class="sd">    center : `tuple` of `float``</span>
+<span class="sd">        `(y, x)` location for the center of the source.</span>
+<span class="sd">    observations : instance or list of `~scarlet.Observation`</span>
+<span class="sd">        The `Observation` that contains the images, weights, and PSF</span>
+<span class="sd">        used to generate the model.</span>
+<span class="sd">    thresh : `float`</span>
+<span class="sd">        Fraction of the background to use as a threshold for</span>
+<span class="sd">        each pixel in the initialization</span>
+<span class="sd">    max_components : int</span>
+<span class="sd">        The maximum number of components in a source.</span>
+<span class="sd">        If `fallback` is `True` then when</span>
+<span class="sd">        a source fails to initialize with `max_components` it</span>
+<span class="sd">        will continue to subtract one from the number of components</span>
+<span class="sd">        until it reaches zero (which fits a `CompactExtendedSource`).</span>
+<span class="sd">        If a point source cannot be fit then the source is skipped.</span>
+<span class="sd">    min_components : int</span>
+<span class="sd">        The minimum number of components in a source.</span>
+<span class="sd">        Only relevent for `fallback=True`.</span>
+<span class="sd">    min_snr: float</span>
+<span class="sd">        Mininmum SNR per component to accept the source.</span>
+<span class="sd">    shifting : bool</span>
+<span class="sd">        Whether or not to fit the position of a source.</span>
+<span class="sd">        This is an expensive operation and is typically only used when</span>
+<span class="sd">        a source is on the edge of the detector.</span>
+<span class="sd">    resizing : bool</span>
+<span class="sd">        Whether or not to change the size of the source box.</span>
+<span class="sd">    boxsize: int or None</span>
+<span class="sd">        Spatial size of the source box</span>
+<span class="sd">    fallback : bool</span>
+<span class="sd">        Whether to reduce the number of components</span>
+<span class="sd">        if the model cannot be initialized with `max_components`.</span>
+<span class="sd">        Fallback = False is unlikely to be used in production</span>
+<span class="sd">        but can be useful for troubleshooting when an error can cause</span>
+<span class="sd">        a particular source class to fail every time.</span>
+<span class="sd">    prerender: bool</span>
+<span class="sd">        Whether to initialize the source with pre-rendered observations.</span>
+<span class="sd">        This is an experimental feature, which may be removed in the future.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span> <span class="nn">.source</span> <span class="kn">import</span> <span class="n">ExtendedSource</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">observations</span><span class="p">,</span> <span class="s2">&quot;__iter__&quot;</span><span class="p">):</span>
+        <span class="n">observations</span> <span class="o">=</span> <span class="p">(</span><span class="n">observations</span><span class="p">,)</span>
+
+    <span class="k">if</span> <span class="n">fallback</span><span class="p">:</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">psf_snr</span> <span class="o">=</span> <span class="n">get_psf_spectrum</span><span class="p">(</span><span class="n">center</span><span class="p">,</span> <span class="n">observations</span><span class="p">,</span> <span class="n">compute_snr</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">max_components</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span>
+            <span class="p">[</span>
+                <span class="n">max_components</span><span class="p">,</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">([</span><span class="n">min_components</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">psf_snr</span> <span class="o">/</span> <span class="n">min_snr</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;int&quot;</span><span class="p">)]),</span>
+            <span class="p">]</span>
+        <span class="p">)</span>
+
+    <span class="k">while</span> <span class="n">max_components</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">max_components</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">source</span> <span class="o">=</span> <span class="n">ExtendedSource</span><span class="p">(</span>
+                    <span class="n">frame</span><span class="p">,</span>
+                    <span class="n">center</span><span class="p">,</span>
+                    <span class="n">observations</span><span class="p">,</span>
+                    <span class="n">thresh</span><span class="o">=</span><span class="n">thresh</span><span class="p">,</span>
+                    <span class="n">shifting</span><span class="o">=</span><span class="n">shifting</span><span class="p">,</span>
+                    <span class="n">resizing</span><span class="o">=</span><span class="n">resizing</span><span class="p">,</span>
+                    <span class="n">boxsize</span><span class="o">=</span><span class="n">boxsize</span><span class="p">,</span>
+                    <span class="n">K</span><span class="o">=</span><span class="n">max_components</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">source</span> <span class="o">=</span> <span class="n">ExtendedSource</span><span class="p">(</span>
+                    <span class="n">frame</span><span class="p">,</span>
+                    <span class="n">center</span><span class="p">,</span>
+                    <span class="n">observations</span><span class="p">,</span>
+                    <span class="n">shifting</span><span class="o">=</span><span class="n">shifting</span><span class="p">,</span>
+                    <span class="n">resizing</span><span class="o">=</span><span class="n">resizing</span><span class="p">,</span>
+                    <span class="n">boxsize</span><span class="o">=</span><span class="n">boxsize</span><span class="p">,</span>
+                    <span class="n">compact</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="p">)</span>
+
+            <span class="c1"># test if parameters are fine, otherwise throw ArithmeticError</span>
+            <span class="n">source</span><span class="o">.</span><span class="n">check_parameters</span><span class="p">()</span>
+
+        <span class="k">except</span> <span class="ne">ArithmeticError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">fallback</span><span class="p">:</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Could not initialize source at </span><span class="si">{</span><span class="n">center</span><span class="si">}</span><span class="s2"> with </span><span class="si">{</span><span class="n">max_components</span><span class="si">}</span><span class="s2"> components: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+                <span class="n">max_components</span> <span class="o">-=</span> <span class="mi">1</span>
+                <span class="k">continue</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">e</span>
+
+        <span class="k">return</span> <span class="n">source</span></div>
+
+
+<div class="viewcode-block" id="set_spectra_to_match"><a class="viewcode-back" href="../../api/scarlet.initialization.html#scarlet.initialization.set_spectra_to_match">[docs]</a><span class="k">def</span> <span class="nf">set_spectra_to_match</span><span class="p">(</span><span class="n">sources</span><span class="p">,</span> <span class="n">observations</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Sets the spectra of any `FactorizedComponent` to match the Observations.</span>
+
+<span class="sd">    Computes the best-fit amplitude of the rendered model of the sources in every</span>
+<span class="sd">    channel of every observation as a linear inverse problem.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    sources: list of sources</span>
+<span class="sd">        Only `FactorizedComponent` or `CombinedComponent` will be considered</span>
+<span class="sd">    observations: `scarlet.Observation` or list thereof</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="kn">from</span> <span class="nn">.component</span> <span class="kn">import</span> <span class="n">FactorizedComponent</span><span class="p">,</span> <span class="n">CombinedComponent</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">observations</span><span class="p">,</span> <span class="s2">&quot;__iter__&quot;</span><span class="p">):</span>
+        <span class="n">observations</span> <span class="o">=</span> <span class="p">(</span><span class="n">observations</span><span class="p">,)</span>
+    <span class="n">model_frame</span> <span class="o">=</span> <span class="n">observations</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">model_frame</span>
+
+    <span class="k">for</span> <span class="n">obs</span> <span class="ow">in</span> <span class="n">observations</span><span class="p">:</span>
+
+        <span class="c1"># extract model for every component</span>
+        <span class="n">morphs</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">parameters</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">src</span> <span class="ow">in</span> <span class="n">sources</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="n">CombinedComponent</span><span class="p">):</span>
+                <span class="n">components</span> <span class="o">=</span> <span class="n">src</span><span class="o">.</span><span class="n">children</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">components</span> <span class="o">=</span> <span class="p">(</span><span class="n">src</span><span class="p">,)</span>
+            <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">components</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">FactorizedComponent</span><span class="p">):</span>
+                    <span class="n">p</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">p</span><span class="o">.</span><span class="n">fixed</span><span class="p">:</span>
+                        <span class="n">obs</span><span class="o">.</span><span class="n">renderer</span><span class="o">.</span><span class="n">map_channels</span><span class="p">(</span><span class="n">p</span><span class="p">)[:]</span> <span class="o">=</span> <span class="mi">1</span>
+                        <span class="n">parameters</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+                        <span class="n">model_</span> <span class="o">=</span> <span class="n">obs</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">get_model</span><span class="p">(</span><span class="n">frame</span><span class="o">=</span><span class="n">model_frame</span><span class="p">))</span>
+                        <span class="n">morphs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">model_</span><span class="p">)</span>
+
+        <span class="n">morphs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">morphs</span><span class="p">)</span>
+        <span class="n">K</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">morphs</span><span class="p">)</span>
+
+        <span class="n">images</span> <span class="o">=</span> <span class="n">obs</span><span class="o">.</span><span class="n">data</span>
+        <span class="n">weights</span> <span class="o">=</span> <span class="n">obs</span><span class="o">.</span><span class="n">weights</span>
+        <span class="n">C</span> <span class="o">=</span> <span class="n">obs</span><span class="o">.</span><span class="n">C</span>
+
+        <span class="c1"># independent channels, no mixing</span>
+        <span class="c1"># solve the linear inverse problem of the amplitudes in every channel</span>
+        <span class="c1"># given all the rendered morphologies</span>
+        <span class="c1"># spectrum = (M^T Sigma^-1 M)^-1 M^T Sigma^-1 * im</span>
+        <span class="n">spectra</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">K</span><span class="p">,</span> <span class="n">C</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">C</span><span class="p">):</span>
+            <span class="n">im</span> <span class="o">=</span> <span class="n">images</span><span class="p">[</span><span class="n">c</span><span class="p">]</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">w</span> <span class="o">=</span> <span class="n">weights</span><span class="p">[</span><span class="n">c</span><span class="p">]</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">m</span> <span class="o">=</span> <span class="n">morphs</span><span class="p">[:,</span> <span class="n">c</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">K</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">mw</span> <span class="o">=</span> <span class="n">m</span> <span class="o">*</span> <span class="n">w</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:]</span>
+            <span class="c1"># check if all components have nonzero flux in c.</span>
+            <span class="c1"># because of convolutions, flux can be outside of the box,</span>
+            <span class="c1"># so we need to compare weighted flu with unweighted flux,</span>
+            <span class="c1"># which is the same (up to a constant) for constant weights</span>
+            <span class="c1"># so we check if *most* of the flux is from pixels with non-zero weight</span>
+            <span class="n">nonzero</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">mw</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">w</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mf">0.1</span>
+            <span class="n">nonzero</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">flatnonzero</span><span class="p">(</span><span class="n">nonzero</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">nonzero</span><span class="p">)</span> <span class="o">==</span> <span class="n">K</span><span class="p">:</span>
+                <span class="n">covar</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">mw</span> <span class="o">@</span> <span class="n">m</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
+                <span class="n">spectra</span><span class="p">[:,</span> <span class="n">c</span><span class="p">]</span> <span class="o">=</span> <span class="n">covar</span> <span class="o">@</span> <span class="n">m</span> <span class="o">@</span> <span class="p">(</span><span class="n">im</span> <span class="o">*</span> <span class="n">w</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">covar</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">mw</span><span class="p">[</span><span class="n">nonzero</span><span class="p">]</span> <span class="o">@</span> <span class="n">m</span><span class="p">[</span><span class="n">nonzero</span><span class="p">]</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
+                <span class="n">spectra</span><span class="p">[</span><span class="n">nonzero</span><span class="p">,</span> <span class="n">c</span><span class="p">]</span> <span class="o">=</span> <span class="n">covar</span> <span class="o">@</span> <span class="n">m</span><span class="p">[</span><span class="n">nonzero</span><span class="p">]</span> <span class="o">@</span> <span class="p">(</span><span class="n">im</span> <span class="o">*</span> <span class="n">w</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">p</span><span class="p">,</span> <span class="n">spectrum</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">parameters</span><span class="p">,</span> <span class="n">spectra</span><span class="p">):</span>
+            <span class="n">obs</span><span class="o">.</span><span class="n">renderer</span><span class="o">.</span><span class="n">map_channels</span><span class="p">(</span><span class="n">p</span><span class="p">)[:]</span> <span class="o">=</span> <span class="n">spectrum</span>
+
+    <span class="c1"># enforce constraints</span>
+    <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">parameters</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">constraint</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">p</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">constraint</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span></div>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &copy;2018-2021, Fred Moolekamp and Peter Melchior.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.1.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -72,7 +72,7 @@
   <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="../search.html" method="get">
-      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
       <input type="submit" value="Go" />
     </form>
     </div>
@@ -116,6 +116,8 @@ We generally use this convention:</p>
 <dt><a class="reference internal" href="#scarlet.bbox.Box.D" title="scarlet.bbox.Box.D"><code class="xref py py-obj docutils literal notranslate"><span class="pre">D</span></code></a></dt><dd><p>Dimensionality of this BBox</p>
 </dd>
 <dt><a class="reference internal" href="#scarlet.bbox.Box.bounds" title="scarlet.bbox.Box.bounds"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bounds</span></code></a></dt><dd><p>Bounds of the box</p>
+</dd>
+<dt><a class="reference internal" href="#scarlet.bbox.Box.center" title="scarlet.bbox.Box.center"><code class="xref py py-obj docutils literal notranslate"><span class="pre">center</span></code></a></dt><dd><p>Tuple of center coordinates</p>
 </dd>
 <dt><a class="reference internal" href="#scarlet.bbox.Box.slices" title="scarlet.bbox.Box.slices"><code class="xref py py-obj docutils literal notranslate"><span class="pre">slices</span></code></a></dt><dd><p>Bounds of the box as slices</p>
 </dd>
@@ -163,6 +165,12 @@ We generally use this convention:</p>
 <dt class="sig sig-object py" id="scarlet.bbox.Box.bounds">
 <em class="property"><span class="pre">property</span> </em><span class="sig-name descname"><span class="pre">bounds</span></span><a class="headerlink" href="#scarlet.bbox.Box.bounds" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bounds of the box</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="scarlet.bbox.Box.center">
+<em class="property"><span class="pre">property</span> </em><span class="sig-name descname"><span class="pre">center</span></span><a class="headerlink" href="#scarlet.bbox.Box.center" title="Permalink to this definition">¶</a></dt>
+<dd><p>Tuple of center coordinates</p>
 </dd></dl>
 
 <dl class="py method">
@@ -314,10 +322,10 @@ overlapping region.</p>
     <div class="clearer"></div>
   </div>
     <div class="footer">
-      &copy;2018-2019, Fred Moolekamp and Peter Melchior.
+      &copy;2018-2021, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.0.2</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.1.1</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

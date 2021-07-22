@@ -72,7 +72,7 @@
   <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="../search.html" method="get">
-      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
       <input type="submit" value="Go" />
     </form>
     </div>
@@ -86,8 +86,125 @@
 
           <div class="body" role="main">
             
-  <section id="scarlet-blend">
-<h1>scarlet.blend<a class="headerlink" href="#scarlet-blend" title="Permalink to this headline">¶</a></h1>
+  <section id="module-scarlet.blend">
+<span id="scarlet-blend"></span><h1>scarlet.blend<a class="headerlink" href="#module-scarlet.blend" title="Permalink to this headline">¶</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="scarlet.blend.Blend">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">scarlet.blend.</span></span><span class="sig-name descname"><span class="pre">Blend</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sources</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">observations</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/blend.html#Blend"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.blend.Blend" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="scarlet.component.html#scarlet.component.CombinedComponent" title="scarlet.component.CombinedComponent"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.component.CombinedComponent</span></code></a></p>
+<p>The blended scene</p>
+<p>The class represents a scene as collection of and provides the functions to
+fit it to data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Attributes</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><a class="reference internal" href="#scarlet.blend.Blend.bbox" title="scarlet.blend.Blend.bbox"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bbox</span></code></a></dt><dd><p>Bounding box of the blend</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">children</span></code></dt><dd><p>List of child models</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">frame</span></code></dt><dd><p>Hyper-spectral characteristics is this model</p>
+</dd>
+<dt><a class="reference internal" href="#scarlet.blend.Blend.log_likelihood" title="scarlet.blend.Blend.log_likelihood"><code class="xref py py-obj docutils literal notranslate"><span class="pre">log_likelihood</span></code></a></dt><dd><p>Log likelihood at each iteration</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">parameters</span></code></dt><dd><p>List of parameters, including from the children</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">check_parameters</span></code>()</p></td>
+<td><p>Check that all parameters have finite elements</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.blend.Blend.fit" title="scarlet.blend.Blend.fit"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fit</span></code></a>([max_iter, e_rel, min_iter, noise_factor])</p></td>
+<td><p>Fit the model for each source to the data</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.blend.Blend.get_model" title="scarlet.blend.Blend.get_model"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code></a>(*parameters[, frame])</p></td>
+<td><p>Get the model of the entire blend</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_models_of_children</span></code>(*parameters, **kwargs)</p></td>
+<td><p>Get realization of all child models</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_parameter</span></code>(i, *parameters)</p></td>
+<td><p>Access parameters by list index or by name</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_to_box</span></code>([bbox, model])</p></td>
+<td><p>Project a model into a frame</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">update</span></code>()</p></td>
+<td><p>Update internal state or configuration of the model</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py property">
+<dt class="sig sig-object py" id="scarlet.blend.Blend.bbox">
+<em class="property"><span class="pre">property</span> </em><span class="sig-name descname"><span class="pre">bbox</span></span><a class="headerlink" href="#scarlet.blend.Blend.bbox" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bounding box of the blend</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="scarlet.blend.Blend.fit">
+<span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">max_iter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">200</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">e_rel</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.001</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_iter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">noise_factor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">alg_kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/blend.html#Blend.fit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.blend.Blend.fit" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fit the model for each source to the data</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>max_iter: int</strong></dt><dd><p>Maximum number of iterations if the algorithm doesn’t converge</p>
+</dd>
+<dt><strong>e_rel: float</strong></dt><dd><p>Relative error for convergence of the loss function</p>
+</dd>
+<dt><strong>min_iter: int</strong></dt><dd><p>Maximum number of iterations if the algorithm doesn’t converge</p>
+</dd>
+<dt><strong>alg_kwargs: dict</strong></dt><dd><p>Keywords for the <cite>proxmin.adaprox</cite> optimizer</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="scarlet.blend.Blend.get_model">
+<span class="sig-name descname"><span class="pre">get_model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">parameters</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frame</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/blend.html#Blend.get_model"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.blend.Blend.get_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the model of the entire blend</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>parameters: tuple of optimization parameters</strong></dt><dd></dd>
+<dt><strong>frame:  `scarlet.Frame`</strong></dt><dd><p>Alternative Frame to project the model into</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>model: array</dt><dd><p>(Bands, Height, Width) data cube</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="scarlet.blend.Blend.log_likelihood">
+<em class="property"><span class="pre">property</span> </em><span class="sig-name descname"><span class="pre">log_likelihood</span></span><a class="headerlink" href="#scarlet.blend.Blend.log_likelihood" title="Permalink to this definition">¶</a></dt>
+<dd><p>Log likelihood at each iteration</p>
+<p>The fitting method computes and sums the negative log-likelihood for the each
+observation given the current model as loss function for the optimization.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><dl class="simple">
+<dt>log_likelihood: array of (positive) log-likelihood</dt><dd></dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
 </section>
 
 
@@ -98,10 +215,10 @@
     <div class="clearer"></div>
   </div>
     <div class="footer">
-      &copy;2018-2019, Fred Moolekamp and Peter Melchior.
+      &copy;2018-2021, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.0.2</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.1.1</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

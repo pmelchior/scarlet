@@ -72,7 +72,7 @@
   <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="../search.html" method="get">
-      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
       <input type="submit" value="Go" />
     </form>
     </div>
@@ -86,8 +86,345 @@
 
           <div class="body" role="main">
             
-  <section id="scarlet-detect">
-<h1>scarlet.detect<a class="headerlink" href="#scarlet-detect" title="Permalink to this headline">¶</a></h1>
+  <section id="module-scarlet.detect">
+<span id="scarlet-detect"></span><h1>scarlet.detect<a class="headerlink" href="#module-scarlet.detect" title="Permalink to this headline">¶</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="scarlet.detect.QuadTreeRegion">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">scarlet.detect.</span></span><span class="sig-name descname"><span class="pre">QuadTreeRegion</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bbox</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">capacity</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sub_regions</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boxes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">depth</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">detect</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/detect.html#QuadTreeRegion"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.detect.QuadTreeRegion" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.9)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>An implementation of a QuadTree that inserts boxes as opposed to points</p>
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.detect.QuadTreeRegion.add" title="scarlet.detect.QuadTreeRegion.add"><code class="xref py py-obj docutils literal notranslate"><span class="pre">add</span></code></a>(other_box)</p></td>
+<td><p>Add a box to the region.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.detect.QuadTreeRegion.add_footprints" title="scarlet.detect.QuadTreeRegion.add_footprints"><code class="xref py py-obj docutils literal notranslate"><span class="pre">add_footprints</span></code></a>(footprints)</p></td>
+<td><p>Add bounding boxes for a list of scarlet footprints.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.detect.QuadTreeRegion.query" title="scarlet.detect.QuadTreeRegion.query"><code class="xref py py-obj docutils literal notranslate"><span class="pre">query</span></code></a>(other_box)</p></td>
+<td><p>Return all of the boxes that overlap with a given box</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.detect.QuadTreeRegion.split" title="scarlet.detect.QuadTreeRegion.split"><code class="xref py py-obj docutils literal notranslate"><span class="pre">split</span></code></a>()</p></td>
+<td><p>Sub-divide this region into 4 sub-regions.</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py method">
+<dt class="sig sig-object py" id="scarlet.detect.QuadTreeRegion.add">
+<span class="sig-name descname"><span class="pre">add</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">other_box</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/detect.html#QuadTreeRegion.add"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.detect.QuadTreeRegion.add" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add a box to the region.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>other_box: `scarlet.bbox.Box`</strong></dt><dd><p>The box to add to the region.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="scarlet.detect.QuadTreeRegion.add_footprints">
+<span class="sig-name descname"><span class="pre">add_footprints</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">footprints</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/detect.html#QuadTreeRegion.add_footprints"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.detect.QuadTreeRegion.add_footprints" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add bounding boxes for a list of scarlet footprints.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>footprints: `list` of `scarlet.detect_pybind11.Footprint`</strong></dt><dd><p>A list of footprints detected by scarlet.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="scarlet.detect.QuadTreeRegion.query">
+<span class="sig-name descname"><span class="pre">query</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">other_box</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/detect.html#QuadTreeRegion.query"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.detect.QuadTreeRegion.query" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return all of the boxes that overlap with a given box</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>other_box: `scarlet.bbox.Box`</strong></dt><dd><p>The box to use for the search. All boxes in this region or one
+of its sub-regions that overlap with <cite>other_box</cite> will be returned.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>result: <cite>set</cite> of <cite>scarlet.bbox.BoundingBox</cite></dt><dd><p>The set of all boxes that overlap with <cite>other_box</cite>.
+We use a set instead of a list because some boxes may be in
+multiple sub-regions and we only want to have one copy of each.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="scarlet.detect.QuadTreeRegion.split">
+<span class="sig-name descname"><span class="pre">split</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/detect.html#QuadTreeRegion.split"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.detect.QuadTreeRegion.split" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sub-divide this region into 4 sub-regions.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="scarlet.detect.SingleScaleStructure">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">scarlet.detect.</span></span><span class="sig-name descname"><span class="pre">SingleScaleStructure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scale</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">footprint</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/detect.html#SingleScaleStructure"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.detect.SingleScaleStructure" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.9)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>A structure at a single scale with quadtrees to lookup child boxes
+at different scales.</p>
+<p>Using the terminology from Starck et al. 2011 we refere to a connected
+set of pixels with a common set of peaks at a single scale as a structure.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Attributes</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>scale: `int`</strong></dt><dd><p>The wavelet scale of this structure.</p>
+</dd>
+<dt><strong>footprint: `scarlet.detect_pybind11.Footprint`</strong></dt><dd><p>The footprint of this structure at its given scale.</p>
+</dd>
+<dt><strong>bbox: `scarlet.bbox.Box`</strong></dt><dd><p>The bounding box of this region.</p>
+</dd>
+<dt><strong>peaks: `dict`: {`int`, `list` of `scarlet.detect_pybind11.Peak`}</strong></dt><dd><p>The dictionary with each wavelet scale as a <cite>key</cite> with lists
+of <a href="#id1"><span class="problematic" id="id2">`</span></a>Peak`s as values.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.detect.SingleScaleStructure.add_footprint" title="scarlet.detect.SingleScaleStructure.add_footprint"><code class="xref py py-obj docutils literal notranslate"><span class="pre">add_footprint</span></code></a>(scale, footprint)</p></td>
+<td><p>Add a footprint to the strcuture</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.detect.SingleScaleStructure.add_scale_tree" title="scarlet.detect.SingleScaleStructure.add_scale_tree"><code class="xref py py-obj docutils literal notranslate"><span class="pre">add_scale_tree</span></code></a>(scale, tree)</p></td>
+<td><p>Add all of the footprints from a region at a different scale that overlap with this structure.</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py method">
+<dt class="sig sig-object py" id="scarlet.detect.SingleScaleStructure.add_footprint">
+<span class="sig-name descname"><span class="pre">add_footprint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scale</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">footprint</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/detect.html#SingleScaleStructure.add_footprint"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.detect.SingleScaleStructure.add_footprint" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add a footprint to the strcuture</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>scale: `int`</strong></dt><dd><p>The scale of the footprint that is added.</p>
+</dd>
+<dt><strong>`footprint`: `scarlet.detect_pybind11.Footprint`</strong></dt><dd><p>The footprint to be added to the structure.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="scarlet.detect.SingleScaleStructure.add_scale_tree">
+<span class="sig-name descname"><span class="pre">add_scale_tree</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scale</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tree</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/detect.html#SingleScaleStructure.add_scale_tree"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.detect.SingleScaleStructure.add_scale_tree" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add all of the footprints from a region at a different scale
+that overlap with this structure.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>scale: `int`</strong></dt><dd><p>The scale of the tree that is added.</p>
+</dd>
+<dt><strong>tree: `QuadTreeRegion`</strong></dt><dd><p>The quad tree that is added at scale <cite>scale</cite>.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="scarlet.detect.SingleScaleStructure.all_peaks">
+<em class="property"><span class="pre">property</span> </em><span class="sig-name descname"><span class="pre">all_peaks</span></span><a class="headerlink" href="#scarlet.detect.SingleScaleStructure.all_peaks" title="Permalink to this definition">¶</a></dt>
+<dd><p>All of the peaks contained in this Structure</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><dl class="simple">
+<dt>all_peaks: <cite>set</cite></dt><dd><p>The set of all peaks in the structure, including those
+at different scales.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="scarlet.detect.bounds_to_bbox">
+<span class="sig-prename descclassname"><span class="pre">scarlet.detect.</span></span><span class="sig-name descname"><span class="pre">bounds_to_bbox</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bounds</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/detect.html#bounds_to_bbox"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.detect.bounds_to_bbox" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert the bounds of a Footprint into a Box</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>bounds: `tuple` of `(bottom, top, left, right)`</strong></dt><dd><p>The bounds of the <cite>Footprint</cite></p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="scarlet.detect.box_intersect">
+<span class="sig-prename descclassname"><span class="pre">scarlet.detect.</span></span><span class="sig-name descname"><span class="pre">box_intersect</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">box1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">box2</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/detect.html#box_intersect"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.detect.box_intersect" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check if two boxes overlap</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>box1, box2: `scarlet.bbox.Box`</strong></dt><dd><p>The boxes to check for overlap</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>overlap: <cite>bool</cite></dt><dd><p>True when the two boxes overlap</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="scarlet.detect.draw_box">
+<span class="sig-prename descclassname"><span class="pre">scarlet.detect.</span></span><span class="sig-name descname"><span class="pre">draw_box</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">box</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ax</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">color</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/detect.html#draw_box"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.detect.draw_box" title="Permalink to this definition">¶</a></dt>
+<dd><p>Draw a box on an axis</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>box: `scarlet.bbox.Box`</strong></dt><dd><p>The box to draw</p>
+</dd>
+<dt><strong>ax: `matplotlib.Axis`</strong></dt><dd><p>The axis on which to draw the box</p>
+</dd>
+<dt><strong>color: `str`</strong></dt><dd><p>The name of the color to use for the box</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="scarlet.detect.draw_footprint_box">
+<span class="sig-prename descclassname"><span class="pre">scarlet.detect.</span></span><span class="sig-name descname"><span class="pre">draw_footprint_box</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">footprint</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ax</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/detect.html#draw_footprint_box"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.detect.draw_footprint_box" title="Permalink to this definition">¶</a></dt>
+<dd><p>Draw a scarlet Footprint in a plot</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>footprint: `scarlet.detect_pybind11.Footprint`</strong></dt><dd><p>The footprint to draw</p>
+</dd>
+<dt><strong>ax: `matplotlib.Axis`</strong></dt><dd><p>The axis on which to draw the box</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="scarlet.detect.draw_region">
+<span class="sig-prename descclassname"><span class="pre">scarlet.detect.</span></span><span class="sig-name descname"><span class="pre">draw_region</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">region</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ax</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/detect.html#draw_region"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.detect.draw_region" title="Permalink to this definition">¶</a></dt>
+<dd><p>Draw a QuadTreeRegion in a plot</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>region: `QuadTreeRegion`</strong></dt><dd><p>The region to draw</p>
+</dd>
+<dt><strong>ax: `matplotlib.Axis`</strong></dt><dd><p>The axis on which to draw the box</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="scarlet.detect.footprint_intersect">
+<span class="sig-prename descclassname"><span class="pre">scarlet.detect.</span></span><span class="sig-name descname"><span class="pre">footprint_intersect</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">footprint1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">box1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">footprint2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">box2</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/detect.html#footprint_intersect"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.detect.footprint_intersect" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check if two footprints overlap</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>box1, box2: `scarlet.bbox.Box`</strong></dt><dd><p>The boxes of the footprints to check for overlap.</p>
+</dd>
+<dt><strong>footprint1, footprint2: `scarlet.detect_pybind11.Footprint`</strong></dt><dd><p>The boolean mask for the two footprints.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>overlap: <cite>bool</cite></dt><dd><p>True when the two footprints overlap.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="scarlet.detect.get_blend_structures">
+<span class="sig-prename descclassname"><span class="pre">scarlet.detect.</span></span><span class="sig-name descname"><span class="pre">get_blend_structures</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">detect</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/detect.html#get_blend_structures"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.detect.get_blend_structures" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate a set of structures for the 3rd wavelet scale</p>
+<p>This is a convenience function to generate a hierarchy connecting
+all of the footprints at lower scales to the higher scale structures
+that overlap with them.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="scarlet.detect.get_detect_wavelets">
+<span class="sig-prename descclassname"><span class="pre">scarlet.detect.</span></span><span class="sig-name descname"><span class="pre">get_detect_wavelets</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">images</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">variance</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scales</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/detect.html#get_detect_wavelets"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.detect.get_detect_wavelets" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get an array of wavelet coefficents to use for detection</p>
+<p>Parameters
+images: array-like</p>
+<blockquote>
+<div><p>The array of images with shape <cite>(bands, Ny, Nx)</cite> for which to
+calculate wavelet coefficients.</p>
+</div></blockquote>
+<dl class="simple">
+<dt>variance: array-like</dt><dd><p>An array of variances with the same shape as <cite>images</cite>.</p>
+</dd>
+<dt>scales: <cite>int</cite></dt><dd><p>The maximum number of wavelet scales to use.
+Note that the result will have <cite>scales+1</cite> total arrays,
+where the last set of coefficients is the image of all
+flux with frequency greater than the last wavelet scale.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="scarlet.detect.get_wavelets">
+<span class="sig-prename descclassname"><span class="pre">scarlet.detect.</span></span><span class="sig-name descname"><span class="pre">get_wavelets</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">images</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">variance</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scales</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/detect.html#get_wavelets"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.detect.get_wavelets" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate wavelet coefficents given a set of images and their variances</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>images: array-like</strong></dt><dd><p>The array of images with shape <cite>(bands, Ny, Nx)</cite> for which to
+calculate wavelet coefficients.</p>
+</dd>
+<dt><strong>variance: array-like</strong></dt><dd><p>An array of variances with the same shape as <cite>images</cite>.</p>
+</dd>
+<dt><strong>scales: `int`</strong></dt><dd><p>The maximum number of wavelet scales to use.
+Note that the result will have <cite>scales+1</cite> total arrays,
+where the last set of coefficients is the image of all
+flux with frequency greater than the last wavelet scale.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>coeffs: <cite>numpy.ndarray</cite></dt><dd><p>The array of coefficents with shape <cite>(scales+1, bands, Ny, Nx)</cite>.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
 </section>
 
 
@@ -98,10 +435,10 @@
     <div class="clearer"></div>
   </div>
     <div class="footer">
-      &copy;2018-2019, Fred Moolekamp and Peter Melchior.
+      &copy;2018-2021, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.0.2</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.1.1</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

@@ -74,7 +74,7 @@
   <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="../search.html" method="get">
-      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
       <input type="submit" value="Go" />
     </form>
     </div>
@@ -108,8 +108,9 @@
 </dd>
 <dt class="field-even">Attributes</dt>
 <dd class="field-even"><dl class="simple">
-<dt><strong>children</strong></dt><dd></dd>
-<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">parameters</span></code></dt><dd><p>List of parameters, including from the children.</p>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">children</span></code></dt><dd><p>List of child models</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">parameters</span></code></dt><dd><p>List of parameters, including from the children</p>
 </dd>
 </dl>
 </dd>
@@ -127,6 +128,12 @@
 <tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code>(*parameter[, offset])</p></td>
 <td><p>Get the PSF realization</p></td>
 </tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_models_of_children</span></code>(*parameters, **kwargs)</p></td>
+<td><p>Get realization of all child models</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_parameter</span></code>(i, *parameters)</p></td>
+<td><p>Access parameters by list index or by name</p></td>
+</tr>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">update</span></code>()</p></td>
 <td><p>Update internal state or configuration of the model</p></td>
 </tr>
@@ -134,17 +141,11 @@
 </table>
 <table class="docutils align-default">
 <colgroup>
-<col style="width: 72%" />
-<col style="width: 28%" />
+<col style="width: 63%" />
+<col style="width: 37%" />
 </colgroup>
 <tbody>
 <tr class="row-odd"><td><p><strong>expand_dims</strong></p></td>
-<td></td>
-</tr>
-<tr class="row-even"><td><p><strong>get_models_of_children</strong></p></td>
-<td></td>
-</tr>
-<tr class="row-odd"><td><p><strong>get_parameter</strong></p></td>
 <td></td>
 </tr>
 <tr class="row-even"><td><p><strong>prepare_param</strong></p></td>
@@ -178,8 +179,9 @@ If the width is to be optimized, provide a full defined <cite>Parameter</cite>.<
 </dd>
 <dt class="field-even">Attributes</dt>
 <dd class="field-even"><dl class="simple">
-<dt><strong>children</strong></dt><dd></dd>
-<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">parameters</span></code></dt><dd><p>List of parameters, including from the children.</p>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">children</span></code></dt><dd><p>List of child models</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">parameters</span></code></dt><dd><p>List of parameters, including from the children</p>
 </dd>
 </dl>
 </dd>
@@ -197,6 +199,12 @@ If the width is to be optimized, provide a full defined <cite>Parameter</cite>.<
 <tr class="row-even"><td><p><a class="reference internal" href="#scarlet.psf.GaussianPSF.get_model" title="scarlet.psf.GaussianPSF.get_model"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code></a>(*parameters[, offset])</p></td>
 <td><p>Get the PSF realization</p></td>
 </tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_models_of_children</span></code>(*parameters, **kwargs)</p></td>
+<td><p>Get realization of all child models</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_parameter</span></code>(i, *parameters)</p></td>
+<td><p>Access parameters by list index or by name</p></td>
+</tr>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">update</span></code>()</p></td>
 <td><p>Update internal state or configuration of the model</p></td>
 </tr>
@@ -204,17 +212,11 @@ If the width is to be optimized, provide a full defined <cite>Parameter</cite>.<
 </table>
 <table class="docutils align-default">
 <colgroup>
-<col style="width: 72%" />
-<col style="width: 28%" />
+<col style="width: 63%" />
+<col style="width: 37%" />
 </colgroup>
 <tbody>
 <tr class="row-odd"><td><p><strong>expand_dims</strong></p></td>
-<td></td>
-</tr>
-<tr class="row-even"><td><p><strong>get_models_of_children</strong></p></td>
-<td></td>
-</tr>
-<tr class="row-odd"><td><p><strong>get_parameter</strong></p></td>
 <td></td>
 </tr>
 <tr class="row-even"><td><p><strong>prepare_param</strong></p></td>
@@ -259,8 +261,9 @@ If the width is to be optimized, provide a full defined <cite>Parameter</cite>.<
 </dd>
 <dt class="field-even">Attributes</dt>
 <dd class="field-even"><dl class="simple">
-<dt><strong>children</strong></dt><dd></dd>
-<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">parameters</span></code></dt><dd><p>List of parameters, including from the children.</p>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">children</span></code></dt><dd><p>List of child models</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">parameters</span></code></dt><dd><p>List of parameters, including from the children</p>
 </dd>
 </dl>
 </dd>
@@ -278,6 +281,12 @@ If the width is to be optimized, provide a full defined <cite>Parameter</cite>.<
 <tr class="row-even"><td><p><a class="reference internal" href="#scarlet.psf.ImagePSF.get_model" title="scarlet.psf.ImagePSF.get_model"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code></a>(*parameters[, offset])</p></td>
 <td><p>Get the PSF realization</p></td>
 </tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_models_of_children</span></code>(*parameters, **kwargs)</p></td>
+<td><p>Get realization of all child models</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_parameter</span></code>(i, *parameters)</p></td>
+<td><p>Access parameters by list index or by name</p></td>
+</tr>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">update</span></code>()</p></td>
 <td><p>Update internal state or configuration of the model</p></td>
 </tr>
@@ -285,16 +294,10 @@ If the width is to be optimized, provide a full defined <cite>Parameter</cite>.<
 </table>
 <table class="docutils align-default">
 <colgroup>
-<col style="width: 72%" />
-<col style="width: 28%" />
+<col style="width: 63%" />
+<col style="width: 37%" />
 </colgroup>
 <tbody>
-<tr class="row-odd"><td><p><strong>get_models_of_children</strong></p></td>
-<td></td>
-</tr>
-<tr class="row-even"><td><p><strong>get_parameter</strong></p></td>
-<td></td>
-</tr>
 <tr class="row-odd"><td><p><strong>prepare_param</strong></p></td>
 <td></td>
 </tr>
@@ -352,8 +355,9 @@ If the width is to be optimized, provide a full defined <cite>Parameter</cite>.<
 </dd>
 <dt class="field-even">Attributes</dt>
 <dd class="field-even"><dl class="simple">
-<dt><strong>children</strong></dt><dd></dd>
-<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">parameters</span></code></dt><dd><p>List of parameters, including from the children.</p>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">children</span></code></dt><dd><p>List of child models</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">parameters</span></code></dt><dd><p>List of parameters, including from the children</p>
 </dd>
 </dl>
 </dd>
@@ -371,6 +375,12 @@ If the width is to be optimized, provide a full defined <cite>Parameter</cite>.<
 <tr class="row-even"><td><p><a class="reference internal" href="#scarlet.psf.MoffatPSF.get_model" title="scarlet.psf.MoffatPSF.get_model"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code></a>(*parameters[, offset])</p></td>
 <td><p>Get the PSF realization</p></td>
 </tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_models_of_children</span></code>(*parameters, **kwargs)</p></td>
+<td><p>Get realization of all child models</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_parameter</span></code>(i, *parameters)</p></td>
+<td><p>Access parameters by list index or by name</p></td>
+</tr>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">update</span></code>()</p></td>
 <td><p>Update internal state or configuration of the model</p></td>
 </tr>
@@ -378,17 +388,11 @@ If the width is to be optimized, provide a full defined <cite>Parameter</cite>.<
 </table>
 <table class="docutils align-default">
 <colgroup>
-<col style="width: 72%" />
-<col style="width: 28%" />
+<col style="width: 63%" />
+<col style="width: 37%" />
 </colgroup>
 <tbody>
 <tr class="row-odd"><td><p><strong>expand_dims</strong></p></td>
-<td></td>
-</tr>
-<tr class="row-even"><td><p><strong>get_models_of_children</strong></p></td>
-<td></td>
-</tr>
-<tr class="row-odd"><td><p><strong>get_parameter</strong></p></td>
 <td></td>
 </tr>
 <tr class="row-even"><td><p><strong>prepare_param</strong></p></td>
@@ -426,8 +430,9 @@ If the width is to be optimized, provide a full defined <cite>Parameter</cite>.<
 <dl class="field-list simple">
 <dt class="field-odd">Attributes</dt>
 <dd class="field-odd"><dl class="simple">
-<dt><strong>children</strong></dt><dd></dd>
-<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">parameters</span></code></dt><dd><p>List of parameters, including from the children.</p>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">children</span></code></dt><dd><p>List of child models</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">parameters</span></code></dt><dd><p>List of parameters, including from the children</p>
 </dd>
 </dl>
 </dd>
@@ -445,6 +450,12 @@ If the width is to be optimized, provide a full defined <cite>Parameter</cite>.<
 <tr class="row-even"><td><p><a class="reference internal" href="#scarlet.psf.PSF.get_model" title="scarlet.psf.PSF.get_model"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code></a>(*parameter[, offset])</p></td>
 <td><p>Get the PSF realization</p></td>
 </tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_models_of_children</span></code>(*parameters, **kwargs)</p></td>
+<td><p>Get realization of all child models</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_parameter</span></code>(i, *parameters)</p></td>
+<td><p>Access parameters by list index or by name</p></td>
+</tr>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">update</span></code>()</p></td>
 <td><p>Update internal state or configuration of the model</p></td>
 </tr>
@@ -452,16 +463,10 @@ If the width is to be optimized, provide a full defined <cite>Parameter</cite>.<
 </table>
 <table class="docutils align-default">
 <colgroup>
-<col style="width: 72%" />
-<col style="width: 28%" />
+<col style="width: 63%" />
+<col style="width: 37%" />
 </colgroup>
 <tbody>
-<tr class="row-odd"><td><p><strong>get_models_of_children</strong></p></td>
-<td></td>
-</tr>
-<tr class="row-even"><td><p><strong>get_parameter</strong></p></td>
-<td></td>
-</tr>
 <tr class="row-odd"><td><p><strong>prepare_param</strong></p></td>
 <td></td>
 </tr>
@@ -511,10 +516,10 @@ If the width is to be optimized, provide a full defined <cite>Parameter</cite>.<
     <div class="clearer"></div>
   </div>
     <div class="footer">
-      &copy;2018-2019, Fred Moolekamp and Peter Melchior.
+      &copy;2018-2021, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.0.2</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.1.1</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

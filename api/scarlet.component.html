@@ -72,7 +72,7 @@
   <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="../search.html" method="get">
-      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
       <input type="submit" value="Go" />
     </form>
     </div>
@@ -86,8 +86,387 @@
 
           <div class="body" role="main">
             
-  <section id="scarlet-component">
-<h1>scarlet.component<a class="headerlink" href="#scarlet-component" title="Permalink to this headline">¶</a></h1>
+  <section id="module-scarlet.component">
+<span id="scarlet-component"></span><h1>scarlet.component<a class="headerlink" href="#module-scarlet.component" title="Permalink to this headline">¶</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="scarlet.component.CombinedComponent">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">scarlet.component.</span></span><span class="sig-name descname"><span class="pre">CombinedComponent</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">components</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">operation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'add'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/component.html#CombinedComponent"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.component.CombinedComponent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#scarlet.component.Component" title="scarlet.component.Component"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.component.Component</span></code></a></p>
+<p>Combination of multiple <cite>~scarlet.Component</cite> instances</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>components: list of `~scarlet.Component`</strong></dt><dd></dd>
+<dt><strong>operation: ‘add’ or ‘multiply’</strong></dt><dd><p>The combination operation of the children’s models</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Attributes</dt>
+<dd class="field-even"><dl class="simple">
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">bbox</span></code></dt><dd><p>Hyper-spectral bounding box of this model</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">children</span></code></dt><dd><p>List of child models</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">frame</span></code></dt><dd><p>Hyper-spectral characteristics is this model</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">parameters</span></code></dt><dd><p>List of parameters, including from the children</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">check_parameters</span></code>()</p></td>
+<td><p>Check that all parameters have finite elements</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.component.CombinedComponent.get_model" title="scarlet.component.CombinedComponent.get_model"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code></a>(*parameters[, frame])</p></td>
+<td><p>Get the model realization</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_models_of_children</span></code>(*parameters, **kwargs)</p></td>
+<td><p>Get realization of all child models</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_parameter</span></code>(i, *parameters)</p></td>
+<td><p>Access parameters by list index or by name</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_to_box</span></code>([bbox, model])</p></td>
+<td><p>Project a model into a frame</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.component.CombinedComponent.update" title="scarlet.component.CombinedComponent.update"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update</span></code></a>()</p></td>
+<td><p>Update internal state or configuration of the model</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py method">
+<dt class="sig sig-object py" id="scarlet.component.CombinedComponent.get_model">
+<span class="sig-name descname"><span class="pre">get_model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">parameters</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frame</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/component.html#CombinedComponent.get_model"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.component.CombinedComponent.get_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the model realization</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>parameters: tuple of optimimzation parameters</strong></dt><dd></dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>model: array</dt><dd><p>Realization of the model</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="scarlet.component.CombinedComponent.update">
+<span class="sig-name descname"><span class="pre">update</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/component.html#CombinedComponent.update"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.component.CombinedComponent.update" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update internal state or configuration of the model</p>
+<p>The method is only needed to adjust setting or parameters outside of the
+optimization forward path.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><cite>scarlet.model.UpdateException</cite> if the optimization needs to be interrupted</dt><dd></dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="scarlet.component.Component">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">scarlet.component.</span></span><span class="sig-name descname"><span class="pre">Component</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frame</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">parameters</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">children</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bbox</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/component.html#Component"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.component.Component" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="scarlet.model.html#scarlet.model.Model" title="scarlet.model.Model"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.model.Model</span></code></a></p>
+<p>Base class for hyperspectral models given parameters.</p>
+<p>The class allows for hierarchical ordering through <cite>children</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>frame: `~scarlet.Frame`</strong></dt><dd><p>Characterization of the model</p>
+</dd>
+<dt><strong>parameters: list of `~scarlet.Parameter`</strong></dt><dd></dd>
+<dt><strong>children: list of `~scarlet.Model`</strong></dt><dd><p>Subordinate models.</p>
+</dd>
+<dt><strong>bbox: `~scarlet.Box`</strong></dt><dd><p>Bounding box of this model</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Attributes</dt>
+<dd class="field-even"><dl class="simple">
+<dt><a class="reference internal" href="#scarlet.component.Component.bbox" title="scarlet.component.Component.bbox"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bbox</span></code></a></dt><dd><p>Hyper-spectral bounding box of this model</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">children</span></code></dt><dd><p>List of child models</p>
+</dd>
+<dt><a class="reference internal" href="#scarlet.component.Component.frame" title="scarlet.component.Component.frame"><code class="xref py py-obj docutils literal notranslate"><span class="pre">frame</span></code></a></dt><dd><p>Hyper-spectral characteristics is this model</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">parameters</span></code></dt><dd><p>List of parameters, including from the children</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">check_parameters</span></code>()</p></td>
+<td><p>Check that all parameters have finite elements</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code>(*parameters, **kwargs)</p></td>
+<td><p>Get the model realization</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_models_of_children</span></code>(*parameters, **kwargs)</p></td>
+<td><p>Get realization of all child models</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_parameter</span></code>(i, *parameters)</p></td>
+<td><p>Access parameters by list index or by name</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.component.Component.model_to_box" title="scarlet.component.Component.model_to_box"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_to_box</span></code></a>([bbox, model])</p></td>
+<td><p>Project a model into a frame</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">update</span></code>()</p></td>
+<td><p>Update internal state or configuration of the model</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py property">
+<dt class="sig sig-object py" id="scarlet.component.Component.bbox">
+<em class="property"><span class="pre">property</span> </em><span class="sig-name descname"><span class="pre">bbox</span></span><a class="headerlink" href="#scarlet.component.Component.bbox" title="Permalink to this definition">¶</a></dt>
+<dd><p>Hyper-spectral bounding box of this model</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="scarlet.component.Component.frame">
+<em class="property"><span class="pre">property</span> </em><span class="sig-name descname"><span class="pre">frame</span></span><a class="headerlink" href="#scarlet.component.Component.frame" title="Permalink to this definition">¶</a></dt>
+<dd><p>Hyper-spectral characteristics is this model</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="scarlet.component.Component.model_to_box">
+<span class="sig-name descname"><span class="pre">model_to_box</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bbox</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/component.html#Component.model_to_box"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.component.Component.model_to_box" title="Permalink to this definition">¶</a></dt>
+<dd><p>Project a model into a frame</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>model: array</strong></dt><dd><p>Image of the model to project.
+This must be the same shape as <cite>self.bbox</cite>.
+If <cite>model</cite> is <cite>None</cite> then <cite>self.get_model()</cite> is used.</p>
+</dd>
+<dt><strong>bbox: `~scarlet.bbox.Box`</strong></dt><dd><p>The to project the model into.
+If <cite>bbox</cite> is <cite>None</cite> then the model is projected
+into <cite>self.model_frame.bbox</cite>.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>projected_model: array</dt><dd><p>(Channels, Height, Width) image of the model</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="scarlet.component.CubeComponent">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">scarlet.component.</span></span><span class="sig-name descname"><span class="pre">CubeComponent</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cube</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bbox</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/component.html#CubeComponent"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.component.CubeComponent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#scarlet.component.Component" title="scarlet.component.Component"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.component.Component</span></code></a></p>
+<p>A single component in a blend</p>
+<p>Uses full hyperspectral cube parameterization.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>frame: `~scarlet.Frame`</strong></dt><dd><p>The spectral and spatial characteristics of this component.</p>
+</dd>
+<dt><strong>cube: `~scarlet.Parameter`</strong></dt><dd><p>3D array (C, Height, Width) of the hyperspectral cube.</p>
+</dd>
+<dt><strong>bbox: `~scarlet.Box`</strong></dt><dd><p>Hyper-spectral bounding box of this component.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Attributes</dt>
+<dd class="field-even"><dl class="simple">
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">bbox</span></code></dt><dd><p>Hyper-spectral bounding box of this model</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">children</span></code></dt><dd><p>List of child models</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">frame</span></code></dt><dd><p>Hyper-spectral characteristics is this model</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">parameters</span></code></dt><dd><p>List of parameters, including from the children</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">check_parameters</span></code>()</p></td>
+<td><p>Check that all parameters have finite elements</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.component.CubeComponent.get_model" title="scarlet.component.CubeComponent.get_model"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code></a>(*parameters[, frame])</p></td>
+<td><p>Get the model realization</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_models_of_children</span></code>(*parameters, **kwargs)</p></td>
+<td><p>Get realization of all child models</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_parameter</span></code>(i, *parameters)</p></td>
+<td><p>Access parameters by list index or by name</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_to_box</span></code>([bbox, model])</p></td>
+<td><p>Project a model into a frame</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">update</span></code>()</p></td>
+<td><p>Update internal state or configuration of the model</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py method">
+<dt class="sig sig-object py" id="scarlet.component.CubeComponent.get_model">
+<span class="sig-name descname"><span class="pre">get_model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">parameters</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frame</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/component.html#CubeComponent.get_model"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.component.CubeComponent.get_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the model realization</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>parameters: tuple of optimimzation parameters</strong></dt><dd></dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>model: array</dt><dd><p>Realization of the model</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="scarlet.component.FactorizedComponent">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">scarlet.component.</span></span><span class="sig-name descname"><span class="pre">FactorizedComponent</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">spectrum</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">morphology</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/component.html#FactorizedComponent"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.component.FactorizedComponent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#scarlet.component.Component" title="scarlet.component.Component"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.component.Component</span></code></a></p>
+<p>A single component in a blend</p>
+<p>Uses the non-parametric factorization Spectrum x Morphology.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>frame: `~scarlet.Frame`</strong></dt><dd><p>The spectral and spatial characteristics of the full model.</p>
+</dd>
+<dt><strong>bbox: `~scarlet.Box`</strong></dt><dd><p>Hyper-spectral bounding box of this component.</p>
+</dd>
+<dt><strong>spectrum: `~scarlet.Spectrum`</strong></dt><dd><p>Parameterization of the spectrum</p>
+</dd>
+<dt><strong>morphology: `~scarlet.Morphology`</strong></dt><dd><p>Parameterization of the morphology.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Attributes</dt>
+<dd class="field-even"><dl class="simple">
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">bbox</span></code></dt><dd><p>Hyper-spectral bounding box of this model</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">children</span></code></dt><dd><p>List of child models</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">frame</span></code></dt><dd><p>Hyper-spectral characteristics is this model</p>
+</dd>
+<dt><a class="reference internal" href="#scarlet.component.FactorizedComponent.morphology" title="scarlet.component.FactorizedComponent.morphology"><code class="xref py py-obj docutils literal notranslate"><span class="pre">morphology</span></code></a></dt><dd><p>Extract the morphology parameter</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">parameters</span></code></dt><dd><p>List of parameters, including from the children</p>
+</dd>
+<dt><a class="reference internal" href="#scarlet.component.FactorizedComponent.spectrum" title="scarlet.component.FactorizedComponent.spectrum"><code class="xref py py-obj docutils literal notranslate"><span class="pre">spectrum</span></code></a></dt><dd><p>Extract the spectrum parameter.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">check_parameters</span></code>()</p></td>
+<td><p>Check that all parameters have finite elements</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.component.FactorizedComponent.get_model" title="scarlet.component.FactorizedComponent.get_model"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code></a>(*parameters[, frame])</p></td>
+<td><p>Get the model for this component.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_models_of_children</span></code>(*parameters, **kwargs)</p></td>
+<td><p>Get realization of all child models</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_parameter</span></code>(i, *parameters)</p></td>
+<td><p>Access parameters by list index or by name</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_to_box</span></code>([bbox, model])</p></td>
+<td><p>Project a model into a frame</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.component.FactorizedComponent.update" title="scarlet.component.FactorizedComponent.update"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update</span></code></a>()</p></td>
+<td><p>Update internal state or configuration of the model</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py method">
+<dt class="sig sig-object py" id="scarlet.component.FactorizedComponent.get_model">
+<span class="sig-name descname"><span class="pre">get_model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">parameters</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frame</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/component.html#FactorizedComponent.get_model"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.component.FactorizedComponent.get_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the model for this component.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>parameters: tuple of optimimzation parameters</strong></dt><dd></dd>
+<dt><strong>frame: `~scarlet.frame.Frame`</strong></dt><dd><p>Frame to project the model into. If <cite>frame</cite> is <cite>None</cite>
+then the model contained in <cite>bbox</cite> is returned.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>model: array</dt><dd><p>(Channels, Height, Width) image of the model</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="scarlet.component.FactorizedComponent.morphology">
+<em class="property"><span class="pre">property</span> </em><span class="sig-name descname"><span class="pre">morphology</span></span><a class="headerlink" href="#scarlet.component.FactorizedComponent.morphology" title="Permalink to this definition">¶</a></dt>
+<dd><p>Extract the morphology parameter</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="scarlet.component.FactorizedComponent.spectrum">
+<em class="property"><span class="pre">property</span> </em><span class="sig-name descname"><span class="pre">spectrum</span></span><a class="headerlink" href="#scarlet.component.FactorizedComponent.spectrum" title="Permalink to this definition">¶</a></dt>
+<dd><p>Extract the spectrum parameter.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="scarlet.component.FactorizedComponent.update">
+<span class="sig-name descname"><span class="pre">update</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/component.html#FactorizedComponent.update"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.component.FactorizedComponent.update" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update internal state or configuration of the model</p>
+<p>The method is only needed to adjust setting or parameters outside of the
+optimization forward path.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><cite>scarlet.model.UpdateException</cite> if the optimization needs to be interrupted</dt><dd></dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
 </section>
 
 
@@ -98,10 +477,10 @@
     <div class="clearer"></div>
   </div>
     <div class="footer">
-      &copy;2018-2019, Fred Moolekamp and Peter Melchior.
+      &copy;2018-2021, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.0.2</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.1.1</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

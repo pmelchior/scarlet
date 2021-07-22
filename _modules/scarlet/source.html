@@ -1,0 +1,787 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>scarlet.source &#8212; scarlet  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css" />
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <link rel="canonical" href="api/_modules/scarlet/source.html" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../index.html">
+              <img class="logo" src="../../_static/logo.svg" alt="Logo"/>
+            </a></p>
+<h3><a href="../../index.html">Table of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../0-quickstart.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../1-concepts.html">Core Concepts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorials.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/scarlet.html">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../regression.html">Regression Testing</a></li>
+</ul>
+
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for scarlet.source</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">autograd.numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">partial</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">initialization</span> <span class="k">as</span> <span class="n">init</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">operator</span>
+<span class="kn">from</span> <span class="nn">.bbox</span> <span class="kn">import</span> <span class="n">Box</span><span class="p">,</span> <span class="n">overlapped_slices</span>
+<span class="kn">from</span> <span class="nn">.component</span> <span class="kn">import</span> <span class="n">Component</span><span class="p">,</span> <span class="n">CombinedComponent</span><span class="p">,</span> <span class="n">FactorizedComponent</span>
+<span class="kn">from</span> <span class="nn">.constraint</span> <span class="kn">import</span> <span class="n">CenterOnConstraint</span><span class="p">,</span> <span class="n">PositivityConstraint</span>
+<span class="kn">from</span> <span class="nn">.morphology</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">ImageMorphology</span><span class="p">,</span>
+    <span class="n">PointSourceMorphology</span><span class="p">,</span>
+    <span class="n">StarletMorphology</span><span class="p">,</span>
+    <span class="n">ExtendedSourceMorphology</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">.parameter</span> <span class="kn">import</span> <span class="n">Parameter</span><span class="p">,</span> <span class="n">relative_step</span>
+<span class="kn">from</span> <span class="nn">.spectrum</span> <span class="kn">import</span> <span class="n">TabulatedSpectrum</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;scarlet.source&quot;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="NullSource"><a class="viewcode-back" href="../../api/scarlet.source.html#scarlet.source.NullSource">[docs]</a><span class="k">class</span> <span class="nc">NullSource</span><span class="p">(</span><span class="n">Component</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Source that does nothing&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model_frame</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize a NullSource</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        model_frame: `~scarlet.Frame`</span>
+<span class="sd">            The frame of the model</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">model_frame</span><span class="p">)</span>
+
+<div class="viewcode-block" id="NullSource.get_model"><a class="viewcode-back" href="../../api/scarlet.source.html#scarlet.source.NullSource.get_model">[docs]</a>    <span class="k">def</span> <span class="nf">get_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">parameters</span><span class="p">,</span> <span class="n">frame</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Get the model for this component.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        parameters: tuple of optimimzation parameters</span>
+
+<span class="sd">        frame: `~scarlet.frame.Frame`</span>
+<span class="sd">            Frame to project the model into. If `frame` is `None`</span>
+<span class="sd">            then the model contained in `bbox` is returned.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        model: array</span>
+<span class="sd">            (Channels, Height, Width) image of the model</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">model</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="c1"># project the model into frame (if necessary)</span>
+        <span class="k">if</span> <span class="n">frame</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_to_box</span><span class="p">(</span><span class="n">frame</span><span class="o">.</span><span class="n">bbox</span><span class="p">,</span> <span class="n">model</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">model</span></div></div>
+
+
+<div class="viewcode-block" id="RandomSource"><a class="viewcode-back" href="../../api/scarlet.source.html#scarlet.source.RandomSource">[docs]</a><span class="k">class</span> <span class="nc">RandomSource</span><span class="p">(</span><span class="n">FactorizedComponent</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Sources with uniform random morphology and sed.</span>
+
+<span class="sd">    For cases with no well-defined spatial shape, this source initializes</span>
+<span class="sd">    a uniform random field and (optionally) matches the SED to match a given</span>
+<span class="sd">    observation.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model_frame</span><span class="p">,</span> <span class="n">observations</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Source intialized as random field.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        model_frame: `~scarlet.Frame`</span>
+<span class="sd">            The frame of the model</span>
+<span class="sd">        observations: instance or list of `~scarlet.Observation`</span>
+<span class="sd">            Observation to initialize the SED of the source</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">C</span><span class="p">,</span> <span class="n">Ny</span><span class="p">,</span> <span class="n">Nx</span> <span class="o">=</span> <span class="n">model_frame</span><span class="o">.</span><span class="n">bbox</span><span class="o">.</span><span class="n">shape</span>
+        <span class="n">image</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="n">Ny</span><span class="p">,</span> <span class="n">Nx</span><span class="p">)</span>
+        <span class="n">morphology</span> <span class="o">=</span> <span class="n">ImageMorphology</span><span class="p">(</span><span class="n">model_frame</span><span class="p">,</span> <span class="n">image</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">observations</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">spectrum</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="n">C</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">spectrum</span> <span class="o">=</span> <span class="n">init</span><span class="o">.</span><span class="n">get_best_fit_spectrum</span><span class="p">(</span><span class="n">image</span><span class="p">[</span><span class="kc">None</span><span class="p">],</span> <span class="n">observations</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="c1"># default is step=1e-2, using larger steps here becaus SED is probably uncertain</span>
+        <span class="n">spectrum</span> <span class="o">=</span> <span class="n">Parameter</span><span class="p">(</span>
+            <span class="n">spectrum</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;spectrum&quot;</span><span class="p">,</span>
+            <span class="n">step</span><span class="o">=</span><span class="n">partial</span><span class="p">(</span><span class="n">relative_step</span><span class="p">,</span> <span class="n">factor</span><span class="o">=</span><span class="mf">1e-1</span><span class="p">),</span>
+            <span class="n">constraint</span><span class="o">=</span><span class="n">PositivityConstraint</span><span class="p">(),</span>
+        <span class="p">)</span>
+        <span class="n">spectrum</span> <span class="o">=</span> <span class="n">TabulatedSpectrum</span><span class="p">(</span><span class="n">model_frame</span><span class="p">,</span> <span class="n">spectrum</span><span class="p">)</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">model_frame</span><span class="p">,</span> <span class="n">spectrum</span><span class="p">,</span> <span class="n">morphology</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="PointSource"><a class="viewcode-back" href="../../api/scarlet.source.html#scarlet.source.PointSource">[docs]</a><span class="k">class</span> <span class="nc">PointSource</span><span class="p">(</span><span class="n">FactorizedComponent</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Point-Source model</span>
+
+<span class="sd">    Point sources modeled as `model_frame.psfs`, centered at `sky_coord`.</span>
+<span class="sd">    Their SEDs are taken from `observations` at the center pixel.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model_frame</span><span class="p">,</span> <span class="n">sky_coord</span><span class="p">,</span> <span class="n">observations</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Source intialized with a single pixel</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        model_frame: `~scarlet.Frame`</span>
+<span class="sd">            The frame of the model</span>
+<span class="sd">        sky_coord: tuple</span>
+<span class="sd">            Center of the source</span>
+<span class="sd">        observations: instance or list of `~scarlet.Observation`</span>
+<span class="sd">            Observation(s) to initialize this source</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">observations</span><span class="p">,</span> <span class="s2">&quot;__iter__&quot;</span><span class="p">):</span>
+            <span class="n">observations</span> <span class="o">=</span> <span class="p">(</span><span class="n">observations</span><span class="p">,)</span>
+
+        <span class="n">center</span> <span class="o">=</span> <span class="n">model_frame</span><span class="o">.</span><span class="n">get_pixel</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">)</span>
+        <span class="n">morphology</span> <span class="o">=</span> <span class="n">PointSourceMorphology</span><span class="p">(</span><span class="n">model_frame</span><span class="p">,</span> <span class="n">center</span><span class="p">)</span>
+
+        <span class="c1"># get spectrum from peak pixel, correct for PSF</span>
+        <span class="n">spectra</span> <span class="o">=</span> <span class="n">init</span><span class="o">.</span><span class="n">get_pixel_spectrum</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">,</span> <span class="n">observations</span><span class="p">,</span> <span class="n">correct_psf</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">spectrum</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">spectra</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">noise_rms</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">obs</span><span class="o">.</span><span class="n">noise_rms</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)))</span> <span class="k">for</span> <span class="n">obs</span> <span class="ow">in</span> <span class="n">observations</span><span class="p">]</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">spectrum</span> <span class="o">=</span> <span class="n">TabulatedSpectrum</span><span class="p">(</span><span class="n">model_frame</span><span class="p">,</span> <span class="n">spectrum</span><span class="p">,</span> <span class="n">min_step</span><span class="o">=</span><span class="n">noise_rms</span><span class="p">)</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">model_frame</span><span class="p">,</span> <span class="n">spectrum</span><span class="p">,</span> <span class="n">morphology</span><span class="p">)</span>
+
+        <span class="c1"># retain center as attribute</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">center</span> <span class="o">=</span> <span class="n">morphology</span><span class="o">.</span><span class="n">center</span></div>
+
+
+<div class="viewcode-block" id="CompactExtendedSource"><a class="viewcode-back" href="../../api/scarlet.source.html#scarlet.source.CompactExtendedSource">[docs]</a><span class="k">class</span> <span class="nc">CompactExtendedSource</span><span class="p">(</span><span class="n">FactorizedComponent</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">model_frame</span><span class="p">,</span>
+        <span class="n">sky_coord</span><span class="p">,</span>
+        <span class="n">observations</span><span class="p">,</span>
+        <span class="n">shifting</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">resizing</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">boxsize</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Compact extended source model</span>
+
+<span class="sd">        The model is initialized from `observations` with a point-source morphology</span>
+<span class="sd">        and a spectrum from its peak pixel.</span>
+
+<span class="sd">        During optimization it enforces positivitiy for spectrum and morphology,</span>
+<span class="sd">        as well as monotonicity of the morphology.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        model_frame: `~scarlet.Frame`</span>
+<span class="sd">            The frame of the model</span>
+<span class="sd">        sky_coord: tuple</span>
+<span class="sd">            Center of the source</span>
+<span class="sd">        observations: instance or list of `~scarlet.observation.Observation`</span>
+<span class="sd">            Observation(s) to initialize this source.</span>
+<span class="sd">        shifting: `bool`</span>
+<span class="sd">            Whether or not a subpixel shift is added as optimization parameter</span>
+<span class="sd">        resizing : bool</span>
+<span class="sd">            Whether or not to change the size of the source box.</span>
+<span class="sd">        boxsize: int or None</span>
+<span class="sd">            Spatial size of the source box</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">observations</span><span class="p">,</span> <span class="s2">&quot;__iter__&quot;</span><span class="p">):</span>
+            <span class="n">observations</span> <span class="o">=</span> <span class="p">(</span><span class="n">observations</span><span class="p">,)</span>
+
+        <span class="c1"># initialize morphology from model_frame psf</span>
+        <span class="k">assert</span> <span class="n">model_frame</span><span class="o">.</span><span class="n">psf</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="n">morph</span><span class="p">,</span> <span class="n">bbox</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">init_morph</span><span class="p">(</span><span class="n">model_frame</span><span class="p">,</span> <span class="n">sky_coord</span><span class="p">,</span> <span class="n">boxsize</span><span class="o">=</span><span class="n">boxsize</span><span class="p">)</span>
+        <span class="n">center</span> <span class="o">=</span> <span class="n">model_frame</span><span class="o">.</span><span class="n">get_pixel</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">)</span>
+        <span class="n">morphology</span> <span class="o">=</span> <span class="n">ExtendedSourceMorphology</span><span class="p">(</span>
+            <span class="n">model_frame</span><span class="p">,</span>
+            <span class="n">center</span><span class="p">,</span>
+            <span class="n">morph</span><span class="p">,</span>
+            <span class="n">bbox</span><span class="o">=</span><span class="n">bbox</span><span class="p">,</span>
+            <span class="n">monotonic</span><span class="o">=</span><span class="s2">&quot;angle&quot;</span><span class="p">,</span>
+            <span class="n">symmetric</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="n">min_grad</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+            <span class="n">shifting</span><span class="o">=</span><span class="n">shifting</span><span class="p">,</span>
+            <span class="n">resizing</span><span class="o">=</span><span class="n">resizing</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="c1"># get spectrum from peak pixel, correct for PSF</span>
+        <span class="n">spectra</span> <span class="o">=</span> <span class="n">init</span><span class="o">.</span><span class="n">get_pixel_spectrum</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">,</span> <span class="n">observations</span><span class="p">,</span> <span class="n">correct_psf</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">spectrum</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">spectra</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">spectrum</span> <span class="o">/=</span> <span class="n">morph</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+        <span class="n">noise_rms</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">obs</span><span class="o">.</span><span class="n">noise_rms</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)))</span> <span class="k">for</span> <span class="n">obs</span> <span class="ow">in</span> <span class="n">observations</span><span class="p">]</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">spectrum</span> <span class="o">=</span> <span class="n">TabulatedSpectrum</span><span class="p">(</span><span class="n">model_frame</span><span class="p">,</span> <span class="n">spectrum</span><span class="p">,</span> <span class="n">min_step</span><span class="o">=</span><span class="n">noise_rms</span><span class="p">)</span>
+
+        <span class="c1"># set up model with its parameters</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">model_frame</span><span class="p">,</span> <span class="n">spectrum</span><span class="p">,</span> <span class="n">morphology</span><span class="p">)</span>
+
+        <span class="c1"># retain center as attribute</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">center</span> <span class="o">=</span> <span class="n">morphology</span><span class="o">.</span><span class="n">center</span>
+
+<div class="viewcode-block" id="CompactExtendedSource.init_morph"><a class="viewcode-back" href="../../api/scarlet.source.html#scarlet.source.CompactExtendedSource.init_morph">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">init_morph</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">sky_coord</span><span class="p">,</span> <span class="n">boxsize</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Initialize a source just like `init_extended_morphology`,</span>
+<span class="sd">        but with the morphology of a point source.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        frame: `~scarlet.Frame`</span>
+<span class="sd">            The model frame</span>
+<span class="sd">        sky_coord: tuple</span>
+<span class="sd">            Center of the source</span>
+<span class="sd">        boxsize: int or None</span>
+<span class="sd">            Size of morph box</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        morph, bbox</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># position in frame coordinates</span>
+        <span class="n">center</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">get_pixel</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">)</span>
+        <span class="n">center_index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">center</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;int&quot;</span><span class="p">)</span>
+
+        <span class="c1"># morphology initialized as a point source</span>
+        <span class="n">morph_</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">psf</span><span class="o">.</span><span class="n">get_model</span><span class="p">()</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">origin</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">center_index</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="p">(</span><span class="n">morph_</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">//</span> <span class="mi">2</span><span class="p">),</span>
+            <span class="n">center_index</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="p">(</span><span class="n">morph_</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">//</span> <span class="mi">2</span><span class="p">),</span>
+        <span class="p">)</span>
+        <span class="n">bbox_</span> <span class="o">=</span> <span class="n">Box</span><span class="p">(</span><span class="n">morph_</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="n">origin</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">boxsize</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">size</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">morph_</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+            <span class="n">boxsize</span> <span class="o">=</span> <span class="n">init</span><span class="o">.</span><span class="n">get_minimal_boxsize</span><span class="p">(</span><span class="n">size</span><span class="p">)</span>
+
+        <span class="c1"># adjust box size to conform with extended sources</span>
+        <span class="n">morph</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">boxsize</span><span class="p">,</span> <span class="n">boxsize</span><span class="p">))</span>
+        <span class="n">origin</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">center_index</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="p">(</span><span class="n">morph</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">//</span> <span class="mi">2</span><span class="p">),</span>
+            <span class="n">center_index</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="p">(</span><span class="n">morph</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">//</span> <span class="mi">2</span><span class="p">),</span>
+        <span class="p">)</span>
+        <span class="n">bbox</span> <span class="o">=</span> <span class="n">Box</span><span class="p">(</span><span class="n">morph</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="n">origin</span><span class="p">)</span>
+
+        <span class="n">slices</span> <span class="o">=</span> <span class="n">overlapped_slices</span><span class="p">(</span><span class="n">bbox</span><span class="p">,</span> <span class="n">bbox_</span><span class="p">)</span>
+        <span class="n">morph</span><span class="p">[</span><span class="n">slices</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">=</span> <span class="n">morph_</span><span class="p">[</span><span class="n">slices</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span>
+
+        <span class="c1"># apply max normalization</span>
+        <span class="n">morph</span> <span class="o">/=</span> <span class="n">morph</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">morph</span><span class="p">,</span> <span class="n">bbox</span></div></div>
+
+
+<div class="viewcode-block" id="SingleExtendedSource"><a class="viewcode-back" href="../../api/scarlet.source.html#scarlet.source.SingleExtendedSource">[docs]</a><span class="k">class</span> <span class="nc">SingleExtendedSource</span><span class="p">(</span><span class="n">FactorizedComponent</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">model_frame</span><span class="p">,</span>
+        <span class="n">sky_coord</span><span class="p">,</span>
+        <span class="n">observations</span><span class="p">,</span>
+        <span class="n">thresh</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+        <span class="n">shifting</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">resizing</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">boxsize</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Extended source model</span>
+
+<span class="sd">        The model is initialized from `observations` with a symmetric and</span>
+<span class="sd">        monotonic profile and a spectrum from its peak pixel.</span>
+
+<span class="sd">        During optimization it enforces positivitiy for spectrum and morphology,</span>
+<span class="sd">        as well as monotonicity of the morphology.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        model_frame: `~scarlet.Frame`</span>
+<span class="sd">            The frame of the model</span>
+<span class="sd">        sky_coord: tuple</span>
+<span class="sd">            Center of the source</span>
+<span class="sd">        observations: instance or list of `~scarlet.observation.Observation`</span>
+<span class="sd">            Observation(s) to initialize this source.</span>
+<span class="sd">        thresh: `float`</span>
+<span class="sd">            Multiple of the backround RMS used as a</span>
+<span class="sd">            flux cutoff for morphology initialization.</span>
+<span class="sd">        compact: `bool`</span>
+<span class="sd">            Initialize with the shape of a point source</span>
+<span class="sd">        shifting: `bool`</span>
+<span class="sd">            Whether or not a subpixel shift is added as optimization parameter</span>
+<span class="sd">        resizing : bool</span>
+<span class="sd">            Whether or not to change the size of the source box.</span>
+<span class="sd">        boxsize: int or None</span>
+<span class="sd">            Spatial size of the source box</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">observations</span><span class="p">,</span> <span class="s2">&quot;__iter__&quot;</span><span class="p">):</span>
+            <span class="n">observations</span> <span class="o">=</span> <span class="p">(</span><span class="n">observations</span><span class="p">,)</span>
+
+        <span class="c1"># get center pixel spectrum</span>
+        <span class="c1"># this is from convolved image: weighs higher emission *and* narrow PSF</span>
+        <span class="n">spectra</span> <span class="o">=</span> <span class="n">init</span><span class="o">.</span><span class="n">get_pixel_spectrum</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">,</span> <span class="n">observations</span><span class="p">)</span>
+
+        <span class="c1"># initialize morphology</span>
+        <span class="c1"># compute optimal SNR coadd for detection</span>
+        <span class="n">image</span><span class="p">,</span> <span class="n">std</span> <span class="o">=</span> <span class="n">init</span><span class="o">.</span><span class="n">build_initialization_image</span><span class="p">(</span><span class="n">observations</span><span class="p">,</span> <span class="n">spectra</span><span class="o">=</span><span class="n">spectra</span><span class="p">)</span>
+        <span class="c1"># make monotonic morphology, trimmed to box with pixels above std</span>
+        <span class="n">morph</span><span class="p">,</span> <span class="n">bbox</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">init_morph</span><span class="p">(</span>
+            <span class="n">model_frame</span><span class="p">,</span>
+            <span class="n">sky_coord</span><span class="p">,</span>
+            <span class="n">image</span><span class="p">,</span>
+            <span class="n">std</span><span class="p">,</span>
+            <span class="n">thresh</span><span class="o">=</span><span class="n">thresh</span><span class="p">,</span>
+            <span class="n">symmetric</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">monotonic</span><span class="o">=</span><span class="s2">&quot;flat&quot;</span><span class="p">,</span>
+            <span class="n">min_grad</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+            <span class="n">boxsize</span><span class="o">=</span><span class="n">boxsize</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="n">center</span> <span class="o">=</span> <span class="n">model_frame</span><span class="o">.</span><span class="n">get_pixel</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">)</span>
+        <span class="n">morphology</span> <span class="o">=</span> <span class="n">ExtendedSourceMorphology</span><span class="p">(</span>
+            <span class="n">model_frame</span><span class="p">,</span>
+            <span class="n">center</span><span class="p">,</span>
+            <span class="n">morph</span><span class="p">,</span>
+            <span class="n">bbox</span><span class="o">=</span><span class="n">bbox</span><span class="p">,</span>
+            <span class="n">monotonic</span><span class="o">=</span><span class="s2">&quot;angle&quot;</span><span class="p">,</span>
+            <span class="n">symmetric</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="n">min_grad</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+            <span class="n">shifting</span><span class="o">=</span><span class="n">shifting</span><span class="p">,</span>
+            <span class="n">resizing</span><span class="o">=</span><span class="n">resizing</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="c1"># find best-fit spectra for morph from init coadd</span>
+        <span class="c1"># assumes img only has that source in region of the box</span>
+        <span class="n">detect_all</span><span class="p">,</span> <span class="n">std_all</span> <span class="o">=</span> <span class="n">init</span><span class="o">.</span><span class="n">build_initialization_image</span><span class="p">(</span><span class="n">observations</span><span class="p">)</span>
+        <span class="n">box_3D</span> <span class="o">=</span> <span class="n">Box</span><span class="p">((</span><span class="n">model_frame</span><span class="o">.</span><span class="n">C</span><span class="p">,))</span> <span class="o">@</span> <span class="n">bbox</span>
+        <span class="n">boxed_detect</span> <span class="o">=</span> <span class="n">box_3D</span><span class="o">.</span><span class="n">extract_from</span><span class="p">(</span><span class="n">detect_all</span><span class="p">)</span>
+        <span class="n">spectrum</span> <span class="o">=</span> <span class="n">init</span><span class="o">.</span><span class="n">get_best_fit_spectrum</span><span class="p">((</span><span class="n">morph</span><span class="p">,),</span> <span class="n">boxed_detect</span><span class="p">)</span>
+        <span class="n">noise_rms</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">obs</span><span class="o">.</span><span class="n">noise_rms</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)))</span> <span class="k">for</span> <span class="n">obs</span> <span class="ow">in</span> <span class="n">observations</span><span class="p">]</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">spectrum</span> <span class="o">=</span> <span class="n">TabulatedSpectrum</span><span class="p">(</span><span class="n">model_frame</span><span class="p">,</span> <span class="n">spectrum</span><span class="p">,</span> <span class="n">min_step</span><span class="o">=</span><span class="n">noise_rms</span><span class="p">)</span>
+
+        <span class="c1"># set up model with its parameters</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">model_frame</span><span class="p">,</span> <span class="n">spectrum</span><span class="p">,</span> <span class="n">morphology</span><span class="p">)</span>
+
+        <span class="c1"># retain center as attribute</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">center</span> <span class="o">=</span> <span class="n">morphology</span><span class="o">.</span><span class="n">center</span>
+
+<div class="viewcode-block" id="SingleExtendedSource.init_morph"><a class="viewcode-back" href="../../api/scarlet.source.html#scarlet.source.SingleExtendedSource.init_morph">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">init_morph</span><span class="p">(</span>
+        <span class="n">frame</span><span class="p">,</span>
+        <span class="n">sky_coord</span><span class="p">,</span>
+        <span class="n">detect</span><span class="p">,</span>
+        <span class="n">detect_std</span><span class="p">,</span>
+        <span class="n">thresh</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="n">symmetric</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">monotonic</span><span class="o">=</span><span class="s2">&quot;flat&quot;</span><span class="p">,</span>
+        <span class="n">min_grad</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+        <span class="n">boxsize</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Initialize the source that is symmetric and monotonic</span>
+<span class="sd">        See `ExtendedSource` for a description of the parameters</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        morph, bbox</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># position in frame coordinates</span>
+        <span class="n">center</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">get_pixel</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">)</span>
+        <span class="n">center_index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">center</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;int&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Copy detect if reused for other sources</span>
+        <span class="n">im</span> <span class="o">=</span> <span class="n">detect</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+        <span class="c1"># Apply the necessary constraints</span>
+        <span class="k">if</span> <span class="n">symmetric</span><span class="p">:</span>
+            <span class="n">im</span> <span class="o">=</span> <span class="n">operator</span><span class="o">.</span><span class="n">prox_uncentered_symmetry</span><span class="p">(</span>
+                <span class="n">im</span><span class="p">,</span>
+                <span class="mi">0</span><span class="p">,</span>
+                <span class="n">center</span><span class="o">=</span><span class="n">center_index</span><span class="p">,</span>
+                <span class="n">algorithm</span><span class="o">=</span><span class="s2">&quot;sdss&quot;</span><span class="p">,</span>  <span class="c1"># *1 is to artificially pass a variable that is not coadd</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="n">monotonic</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">monotonic</span> <span class="ow">is</span> <span class="kc">True</span><span class="p">:</span>
+                <span class="n">monotonic</span> <span class="o">=</span> <span class="s2">&quot;angle&quot;</span>
+            <span class="c1"># use finite thresh to remove flat bridges</span>
+            <span class="n">prox_monotonic</span> <span class="o">=</span> <span class="n">operator</span><span class="o">.</span><span class="n">prox_weighted_monotonic</span><span class="p">(</span>
+                <span class="n">im</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span>
+                <span class="n">neighbor_weight</span><span class="o">=</span><span class="n">monotonic</span><span class="p">,</span>
+                <span class="n">center</span><span class="o">=</span><span class="n">center_index</span><span class="p">,</span>
+                <span class="n">min_gradient</span><span class="o">=</span><span class="n">min_grad</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">im</span> <span class="o">=</span> <span class="n">prox_monotonic</span><span class="p">(</span><span class="n">im</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">im</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+
+        <span class="c1"># truncate morph at thresh * bg_rms</span>
+        <span class="n">threshold</span> <span class="o">=</span> <span class="n">detect_std</span> <span class="o">*</span> <span class="n">thresh</span>
+        <span class="n">morph</span><span class="p">,</span> <span class="n">bbox</span> <span class="o">=</span> <span class="n">init</span><span class="o">.</span><span class="n">trim_morphology</span><span class="p">(</span>
+            <span class="n">center_index</span><span class="p">,</span> <span class="n">im</span><span class="p">,</span> <span class="n">bg_thresh</span><span class="o">=</span><span class="n">threshold</span><span class="p">,</span> <span class="n">boxsize</span><span class="o">=</span><span class="n">boxsize</span>
+        <span class="p">)</span>
+
+        <span class="c1"># normalize to unity at peak pixel for the imposed normalization</span>
+        <span class="k">if</span> <span class="n">morph</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">morph</span> <span class="o">/=</span> <span class="n">morph</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;No flux in morphology model for source at </span><span class="si">{</span><span class="n">sky_coord</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+            <span class="n">morph</span> <span class="o">=</span> <span class="n">CenterOnConstraint</span><span class="p">(</span><span class="n">tiny</span><span class="o">=</span><span class="mi">1</span><span class="p">)(</span><span class="n">morph</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+        <span class="c1"># for very noise inits, there is only 1 or few pixels in the center:</span>
+        <span class="c1"># pad morph with the shape of the PSF</span>
+        <span class="k">if</span> <span class="n">frame</span><span class="o">.</span><span class="n">psf</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">psf_morph</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">CompactExtendedSource</span><span class="o">.</span><span class="n">init_morph</span><span class="p">(</span>
+                <span class="n">frame</span><span class="p">,</span> <span class="n">sky_coord</span><span class="p">,</span> <span class="n">boxsize</span><span class="o">=</span><span class="nb">max</span><span class="p">(</span><span class="n">bbox</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="n">morph</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">morph</span><span class="p">,</span> <span class="n">psf_morph</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">morph</span><span class="p">,</span> <span class="n">bbox</span></div></div>
+
+
+<div class="viewcode-block" id="StarletSource"><a class="viewcode-back" href="../../api/scarlet.source.html#scarlet.source.StarletSource">[docs]</a><span class="k">class</span> <span class="nc">StarletSource</span><span class="p">(</span><span class="n">FactorizedComponent</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Source with a starlet morphology model</span>
+
+<span class="sd">    Sources are initialized as `~scarlet.ExtendedSource`, and the morphology is then</span>
+<span class="sd">    transformed into starlet coefficients.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">model_frame</span><span class="p">,</span>
+        <span class="n">sky_coord</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">observations</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">spectrum</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">thresh</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+        <span class="n">starlet_thresh</span><span class="o">=</span><span class="mf">5e-3</span><span class="p">,</span>
+        <span class="n">boxsize</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Extended source intialized to match a set of observations</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        model_frame: `~scarlet.Frame`</span>
+<span class="sd">            The frame of the model</span>
+<span class="sd">        sky_coord: tuple</span>
+<span class="sd">            Center of the source</span>
+<span class="sd">        observations: instance or list of `~scarlet.observation.Observation`</span>
+<span class="sd">            Observation(s) to initialize this source.</span>
+<span class="sd">        thresh: `float`</span>
+<span class="sd">            Multiple of the backround RMS used as a</span>
+<span class="sd">            flux cutoff for morphology initialization.</span>
+<span class="sd">        spectrum: `numpy.ndarray` or `scarlet.Parameter`</span>
+<span class="sd">            Initial spectrum, otherwise given by `ExtendedSource` initialization</span>
+<span class="sd">        starlet_thresh: `float`</span>
+<span class="sd">            Multiple of the backround RMS used as a</span>
+<span class="sd">            flux cutoff for starlet threshold (usually between 5 and 3).</span>
+<span class="sd">        boxsize: int or None</span>
+<span class="sd">            Spatial size of the source box</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">sky_coord</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">source</span> <span class="o">=</span> <span class="n">RandomSource</span><span class="p">(</span>
+                <span class="n">model_frame</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">source</span> <span class="o">=</span> <span class="n">ExtendedSource</span><span class="p">(</span>
+                <span class="n">model_frame</span><span class="p">,</span> <span class="n">sky_coord</span><span class="p">,</span> <span class="n">observations</span><span class="p">,</span> <span class="n">thresh</span><span class="o">=</span><span class="n">thresh</span><span class="p">,</span> <span class="n">boxsize</span><span class="o">=</span><span class="n">boxsize</span>
+            <span class="p">)</span>
+
+        <span class="n">source</span> <span class="o">=</span> <span class="n">StarletSource</span><span class="o">.</span><span class="n">from_source</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="n">starlet_thresh</span><span class="o">=</span><span class="n">starlet_thresh</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">spectrum</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">spectrum</span><span class="p">,</span> <span class="n">Parameter</span><span class="p">):</span>
+                <span class="k">assert</span> <span class="n">spectrum</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;spectrum&quot;</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">constraint</span> <span class="o">=</span> <span class="n">PositivityConstraint</span><span class="p">(</span>
+                    <span class="n">zero</span><span class="o">=</span><span class="mf">1e-20</span>
+                <span class="p">)</span>  <span class="c1"># slightly positive values</span>
+                <span class="n">step</span> <span class="o">=</span> <span class="n">partial</span><span class="p">(</span><span class="n">relative_step</span><span class="p">,</span> <span class="n">factor</span><span class="o">=</span><span class="mf">1e-6</span><span class="p">)</span>
+                <span class="n">spectrum</span> <span class="o">=</span> <span class="n">Parameter</span><span class="p">(</span>
+                    <span class="n">spectrum</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;spectrum&quot;</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="n">step</span><span class="p">,</span> <span class="n">constraint</span><span class="o">=</span><span class="n">constraint</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="n">source</span><span class="o">.</span><span class="n">children</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">spectrum</span>
+
+        <span class="c1"># still need to init *this* source</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">source</span><span class="o">.</span><span class="n">frame</span><span class="p">,</span> <span class="o">*</span><span class="n">source</span><span class="o">.</span><span class="n">children</span><span class="p">)</span>
+
+<div class="viewcode-block" id="StarletSource.from_source"><a class="viewcode-back" href="../../api/scarlet.source.html#scarlet.source.StarletSource.from_source">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">from_source</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">source</span><span class="p">,</span> <span class="n">starlet_thresh</span><span class="o">=</span><span class="mf">5e-3</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="n">FactorizedComponent</span><span class="p">)</span>
+
+        <span class="n">frame</span> <span class="o">=</span> <span class="n">source</span><span class="o">.</span><span class="n">frame</span>
+        <span class="n">spectrum</span><span class="p">,</span> <span class="n">morphology</span> <span class="o">=</span> <span class="n">source</span><span class="o">.</span><span class="n">children</span>
+        <span class="n">morph</span> <span class="o">=</span> <span class="n">morphology</span><span class="o">.</span><span class="n">get_model</span><span class="p">()</span>
+        <span class="n">bbox</span> <span class="o">=</span> <span class="n">morphology</span><span class="o">.</span><span class="n">bbox</span>
+
+        <span class="c1"># transform to starlets</span>
+        <span class="n">morphology</span> <span class="o">=</span> <span class="n">StarletMorphology</span><span class="p">(</span>
+            <span class="n">frame</span><span class="p">,</span> <span class="n">morph</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="n">bbox</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="n">starlet_thresh</span>
+        <span class="p">)</span>
+
+        <span class="c1"># this trick gets us the proper class while call init on the base class</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="fm">__new__</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">StarletSource</span><span class="p">,</span> <span class="n">obj</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">spectrum</span><span class="p">,</span> <span class="n">morphology</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">obj</span></div></div>
+
+
+<div class="viewcode-block" id="MultiExtendedSource"><a class="viewcode-back" href="../../api/scarlet.source.html#scarlet.source.MultiExtendedSource">[docs]</a><span class="k">class</span> <span class="nc">MultiExtendedSource</span><span class="p">(</span><span class="n">CombinedComponent</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Extended source with multiple components layered vertically</span>
+
+<span class="sd">    Uses `~scarlet.ExtendedSource` to define the overall morphology,</span>
+<span class="sd">    then erodes the outer footprint until it reaches the specified size percentile.</span>
+<span class="sd">    For the narrower footprint, it evaluates the mean value at the perimeter and</span>
+<span class="sd">    sets the inside to the perimeter value, creating a flat distribution inside.</span>
+<span class="sd">    The subsequent component(s) is/are set to the difference between the flattened</span>
+<span class="sd">    and the overall morphology.</span>
+<span class="sd">    The SED for all components is calculated as the best fit of the multi-component</span>
+<span class="sd">    morphology to the multi-channel image in the region of the source.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">model_frame</span><span class="p">,</span>
+        <span class="n">sky_coord</span><span class="p">,</span>
+        <span class="n">observations</span><span class="p">,</span>
+        <span class="n">K</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+        <span class="n">flux_percentiles</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">thresh</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+        <span class="n">shifting</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">resizing</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">boxsize</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Create multi-component extended source.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        model_frame: `~scarlet.Frame`</span>
+<span class="sd">            The frame of the model</span>
+<span class="sd">        sky_coord: tuple</span>
+<span class="sd">            Center of the source</span>
+<span class="sd">        observations: instance or list of `~scarlet.observation.Observation`</span>
+<span class="sd">            Observation(s) to initialize this source.</span>
+<span class="sd">        K: int</span>
+<span class="sd">            Number of stacked components</span>
+<span class="sd">        flux_percentiles: list</span>
+<span class="sd">            Flux percentile of each component as the transition point between components.</span>
+<span class="sd">            If pixel value is below the first precentile, it becomes part of the</span>
+<span class="sd">            outermost component. If it is above, the percentile value will be subtracted</span>
+<span class="sd">            and the remainder attributed to the next component.</span>
+<span class="sd">            If `flux_percentiles` is `None` then `flux_percentiles=[25,]`.</span>
+<span class="sd">        thresh: `float`</span>
+<span class="sd">            Multiple of the backround RMS used as a</span>
+<span class="sd">            flux cutoff for morphology initialization.</span>
+<span class="sd">        shifting: `bool`</span>
+<span class="sd">            Whether or not a subpixel shift is added as optimization parameter</span>
+<span class="sd">        resizing : bool</span>
+<span class="sd">            Whether or not to change the size of the source box.</span>
+<span class="sd">        boxsize: int or None</span>
+<span class="sd">            Spatial size of the source box</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">flux_percentiles</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">flux_percentiles</span> <span class="o">=</span> <span class="p">(</span><span class="mi">25</span><span class="p">,)</span>
+        <span class="k">assert</span> <span class="n">K</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">flux_percentiles</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+
+        <span class="c1"># initialize from observation</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">observations</span><span class="p">,</span> <span class="s2">&quot;__iter__&quot;</span><span class="p">):</span>
+            <span class="n">observations</span> <span class="o">=</span> <span class="p">(</span><span class="n">observations</span><span class="p">,)</span>
+
+        <span class="c1"># start off with regular ExtendedSource</span>
+        <span class="n">source</span> <span class="o">=</span> <span class="n">ExtendedSource</span><span class="p">(</span>
+            <span class="n">model_frame</span><span class="p">,</span> <span class="n">sky_coord</span><span class="p">,</span> <span class="n">observations</span><span class="p">,</span> <span class="n">thresh</span><span class="o">=</span><span class="n">thresh</span><span class="p">,</span> <span class="n">boxsize</span><span class="o">=</span><span class="n">boxsize</span>
+        <span class="p">)</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">morphology</span> <span class="o">=</span> <span class="n">source</span><span class="o">.</span><span class="n">children</span>
+        <span class="n">morphs</span><span class="p">,</span> <span class="n">boxes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">init_morphs</span><span class="p">(</span><span class="n">morphology</span><span class="p">,</span> <span class="n">flux_percentiles</span><span class="p">)</span>
+
+        <span class="c1"># find best-fit spectra for each of morph from the observations</span>
+        <span class="c1"># assumes observations only have that one source in region of the box</span>
+        <span class="n">detect_all</span><span class="p">,</span> <span class="n">std_all</span> <span class="o">=</span> <span class="n">init</span><span class="o">.</span><span class="n">build_initialization_image</span><span class="p">(</span><span class="n">observations</span><span class="p">)</span>
+        <span class="n">box_3D</span> <span class="o">=</span> <span class="n">Box</span><span class="p">((</span><span class="n">model_frame</span><span class="o">.</span><span class="n">C</span><span class="p">,))</span> <span class="o">@</span> <span class="n">boxes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">boxed_detect</span> <span class="o">=</span> <span class="n">box_3D</span><span class="o">.</span><span class="n">extract_from</span><span class="p">(</span><span class="n">detect_all</span><span class="p">)</span>
+        <span class="n">spectra</span> <span class="o">=</span> <span class="n">init</span><span class="o">.</span><span class="n">get_best_fit_spectrum</span><span class="p">(</span><span class="n">morphs</span><span class="p">,</span> <span class="n">boxed_detect</span><span class="p">)</span>
+        <span class="n">noise_rms</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">obs</span><span class="o">.</span><span class="n">noise_rms</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)))</span> <span class="k">for</span> <span class="n">obs</span> <span class="ow">in</span> <span class="n">observations</span><span class="p">]</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># create one component for each spectrum and morphology</span>
+        <span class="n">components</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">center</span> <span class="o">=</span> <span class="n">model_frame</span><span class="o">.</span><span class="n">get_pixel</span><span class="p">(</span><span class="n">sky_coord</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">K</span><span class="p">):</span>
+
+            <span class="n">spectrum</span> <span class="o">=</span> <span class="n">TabulatedSpectrum</span><span class="p">(</span>
+                <span class="n">model_frame</span><span class="p">,</span> <span class="n">spectra</span><span class="p">[</span><span class="n">k</span><span class="p">],</span> <span class="n">min_step</span><span class="o">=</span><span class="n">noise_rms</span> <span class="o">/</span> <span class="mi">10</span>
+            <span class="p">)</span>
+
+            <span class="n">morphology</span> <span class="o">=</span> <span class="n">ExtendedSourceMorphology</span><span class="p">(</span>
+                <span class="n">model_frame</span><span class="p">,</span>
+                <span class="n">center</span><span class="p">,</span>
+                <span class="n">morphs</span><span class="p">[</span><span class="n">k</span><span class="p">],</span>
+                <span class="n">bbox</span><span class="o">=</span><span class="n">boxes</span><span class="p">[</span><span class="n">k</span><span class="p">],</span>
+                <span class="n">monotonic</span><span class="o">=</span><span class="s2">&quot;angle&quot;</span><span class="p">,</span>
+                <span class="n">symmetric</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                <span class="n">min_grad</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                <span class="n">shifting</span><span class="o">=</span><span class="n">shifting</span><span class="p">,</span>
+                <span class="n">resizing</span><span class="o">=</span><span class="n">resizing</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">center</span> <span class="o">=</span> <span class="n">morphology</span><span class="o">.</span><span class="n">center</span>
+            <span class="n">component</span> <span class="o">=</span> <span class="n">FactorizedComponent</span><span class="p">(</span><span class="n">model_frame</span><span class="p">,</span> <span class="n">spectrum</span><span class="p">,</span> <span class="n">morphology</span><span class="p">)</span>
+            <span class="n">components</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">component</span><span class="p">)</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">components</span><span class="p">)</span>
+
+<div class="viewcode-block" id="MultiExtendedSource.init_morphs"><a class="viewcode-back" href="../../api/scarlet.source.html#scarlet.source.MultiExtendedSource.init_morphs">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">init_morphs</span><span class="p">(</span><span class="n">morphology</span><span class="p">,</span> <span class="n">flux_percentiles</span><span class="p">):</span>
+
+        <span class="n">morph</span> <span class="o">=</span> <span class="n">morphology</span><span class="o">.</span><span class="n">get_model</span><span class="p">()</span>
+        <span class="n">bbox</span> <span class="o">=</span> <span class="n">morphology</span><span class="o">.</span><span class="n">bbox</span>
+
+        <span class="c1"># create a list of components from base morph by layering them on top of</span>
+        <span class="c1"># each other so that they sum up to morph</span>
+        <span class="n">K</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">flux_percentiles</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+
+        <span class="n">Ny</span><span class="p">,</span> <span class="n">Nx</span> <span class="o">=</span> <span class="n">morph</span><span class="o">.</span><span class="n">shape</span>
+        <span class="n">morphs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">K</span><span class="p">,</span> <span class="n">Ny</span><span class="p">,</span> <span class="n">Nx</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">morph</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+        <span class="n">morphs</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">morph</span><span class="p">[:,</span> <span class="p">:]</span>
+        <span class="n">max_flux</span> <span class="o">=</span> <span class="n">morph</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+        <span class="n">percentiles_</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">flux_percentiles</span><span class="p">)</span>
+        <span class="n">last_thresh</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">K</span><span class="p">):</span>
+            <span class="n">perc</span> <span class="o">=</span> <span class="n">percentiles_</span><span class="p">[</span><span class="n">k</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span>
+            <span class="n">flux_thresh</span> <span class="o">=</span> <span class="n">perc</span> <span class="o">*</span> <span class="n">max_flux</span> <span class="o">/</span> <span class="mi">100</span>
+            <span class="n">mask_</span> <span class="o">=</span> <span class="n">morph</span> <span class="o">&gt;</span> <span class="n">flux_thresh</span>
+            <span class="n">morphs</span><span class="p">[</span><span class="n">k</span> <span class="o">-</span> <span class="mi">1</span><span class="p">][</span><span class="n">mask_</span><span class="p">]</span> <span class="o">=</span> <span class="n">flux_thresh</span> <span class="o">-</span> <span class="n">last_thresh</span>
+            <span class="n">morphs</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="n">mask_</span><span class="p">]</span> <span class="o">=</span> <span class="n">morph</span><span class="p">[</span><span class="n">mask_</span><span class="p">]</span> <span class="o">-</span> <span class="n">flux_thresh</span>
+            <span class="n">last_thresh</span> <span class="o">=</span> <span class="n">flux_thresh</span>
+
+        <span class="c1"># renormalize morphs: initially Smax</span>
+        <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">K</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">morphs</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">):</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Zero or negative morphology for component </span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2"> at </span><span class="si">{</span><span class="n">sky_coord</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+            <span class="n">morphs</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">/=</span> <span class="n">morphs</span><span class="p">[</span><span class="n">k</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+
+        <span class="c1"># avoid using the same box for multiple components</span>
+        <span class="n">boxes</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">bbox</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">K</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">morphs</span><span class="p">,</span> <span class="n">boxes</span></div></div>
+
+
+<div class="viewcode-block" id="append_docs_from"><a class="viewcode-back" href="../../api/scarlet.source.html#scarlet.source.append_docs_from">[docs]</a><span class="k">def</span> <span class="nf">append_docs_from</span><span class="p">(</span><span class="n">other_func</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">doc</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
+        <span class="n">func</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="n">func</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="n">other_func</span><span class="o">.</span><span class="vm">__doc__</span>
+        <span class="k">return</span> <span class="n">func</span>
+
+    <span class="k">return</span> <span class="n">doc</span></div>
+
+
+<span class="c1"># factory two switch between single and multi-ExtendedSource</span>
+<div class="viewcode-block" id="ExtendedSource"><a class="viewcode-back" href="../../api/scarlet.source.html#scarlet.source.ExtendedSource">[docs]</a><span class="nd">@append_docs_from</span><span class="p">(</span><span class="n">MultiExtendedSource</span><span class="o">.</span><span class="fm">__init__</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">ExtendedSource</span><span class="p">(</span>
+    <span class="n">model_frame</span><span class="p">,</span>
+    <span class="n">sky_coord</span><span class="p">,</span>
+    <span class="n">observations</span><span class="p">,</span>
+    <span class="n">K</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">flux_percentiles</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">thresh</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+    <span class="n">compact</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">shifting</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">resizing</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">boxsize</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Create extended sources with either a single component or multiple components.</span>
+
+<span class="sd">    If `K== 1`, a single instance of `SingleExtendedSource` is returned, otherwise</span>
+<span class="sd">    and instance of `MultiExtendedSource` is returned.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="n">compact</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">CompactExtendedSource</span><span class="p">(</span>
+            <span class="n">model_frame</span><span class="p">,</span>
+            <span class="n">sky_coord</span><span class="p">,</span>
+            <span class="n">observations</span><span class="p">,</span>
+            <span class="n">shifting</span><span class="o">=</span><span class="n">shifting</span><span class="p">,</span>
+            <span class="n">resizing</span><span class="o">=</span><span class="n">resizing</span><span class="p">,</span>
+            <span class="n">boxsize</span><span class="o">=</span><span class="n">boxsize</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="n">K</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">SingleExtendedSource</span><span class="p">(</span>
+            <span class="n">model_frame</span><span class="p">,</span>
+            <span class="n">sky_coord</span><span class="p">,</span>
+            <span class="n">observations</span><span class="p">,</span>
+            <span class="n">thresh</span><span class="o">=</span><span class="n">thresh</span><span class="p">,</span>
+            <span class="n">shifting</span><span class="o">=</span><span class="n">shifting</span><span class="p">,</span>
+            <span class="n">resizing</span><span class="o">=</span><span class="n">resizing</span><span class="p">,</span>
+            <span class="n">boxsize</span><span class="o">=</span><span class="n">boxsize</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">MultiExtendedSource</span><span class="p">(</span>
+            <span class="n">model_frame</span><span class="p">,</span>
+            <span class="n">sky_coord</span><span class="p">,</span>
+            <span class="n">observations</span><span class="p">,</span>
+            <span class="n">K</span><span class="o">=</span><span class="n">K</span><span class="p">,</span>
+            <span class="n">flux_percentiles</span><span class="o">=</span><span class="n">flux_percentiles</span><span class="p">,</span>
+            <span class="n">thresh</span><span class="o">=</span><span class="n">thresh</span><span class="p">,</span>
+            <span class="n">shifting</span><span class="o">=</span><span class="n">shifting</span><span class="p">,</span>
+            <span class="n">resizing</span><span class="o">=</span><span class="n">resizing</span><span class="p">,</span>
+            <span class="n">boxsize</span><span class="o">=</span><span class="n">boxsize</span><span class="p">,</span>
+        <span class="p">)</span></div>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &copy;2018-2021, Fred Moolekamp and Peter Melchior.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.1.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

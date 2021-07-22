@@ -72,7 +72,7 @@
   <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="../search.html" method="get">
-      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
       <input type="submit" value="Go" />
     </form>
     </div>
@@ -86,8 +86,368 @@
 
           <div class="body" role="main">
             
-  <section id="scarlet-renderer">
-<h1>scarlet.renderer<a class="headerlink" href="#scarlet-renderer" title="Permalink to this headline">¶</a></h1>
+  <section id="module-scarlet.renderer">
+<span id="scarlet-renderer"></span><h1>scarlet.renderer<a class="headerlink" href="#module-scarlet.renderer" title="Permalink to this headline">¶</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="scarlet.renderer.ConvolutionRenderer">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">scarlet.renderer.</span></span><span class="sig-name descname"><span class="pre">ConvolutionRenderer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data_frame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_frame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">convolution_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'fft'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">padding</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/renderer.html#ConvolutionRenderer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.renderer.ConvolutionRenderer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#scarlet.renderer.Renderer" title="scarlet.renderer.Renderer"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.renderer.Renderer</span></code></a></p>
+<dl class="field-list simple">
+<dt class="field-odd">Attributes</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">children</span></code></dt><dd><p>List of child models</p>
+</dd>
+<dt><a class="reference internal" href="#scarlet.renderer.ConvolutionRenderer.convolution_bounds" title="scarlet.renderer.ConvolutionRenderer.convolution_bounds"><code class="xref py py-obj docutils literal notranslate"><span class="pre">convolution_bounds</span></code></a></dt><dd><p>Build the slices needed for convolution in real space</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">parameters</span></code></dt><dd><p>List of parameters, including from the children</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">__call__</span></code>(model, *parameters)</p></td>
+<td><p>Call self as a function.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">check_parameters</span></code>()</p></td>
+<td><p>Check that all parameters have finite elements</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.renderer.ConvolutionRenderer.convolve" title="scarlet.renderer.ConvolutionRenderer.convolve"><code class="xref py py-obj docutils literal notranslate"><span class="pre">convolve</span></code></a>(model[, convolution_type])</p></td>
+<td><p>Convolve the model in a single band</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_channel_map</span></code>(data_frame, model_frame)</p></td>
+<td><p>Compute the mapping between channels in the model frame and this observation</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.renderer.ConvolutionRenderer.get_model" title="scarlet.renderer.ConvolutionRenderer.get_model"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code></a>(*parameters)</p></td>
+<td><p>Get the model realization</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_models_of_children</span></code>(*parameters, **kwargs)</p></td>
+<td><p>Get realization of all child models</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_parameter</span></code>(i, *parameters)</p></td>
+<td><p>Access parameters by list index or by name</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">map_channels</span></code>(model)</p></td>
+<td><p>Map to model channels onto the observation channels</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">update</span></code>()</p></td>
+<td><p>Update internal state or configuration of the model</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py property">
+<dt class="sig sig-object py" id="scarlet.renderer.ConvolutionRenderer.convolution_bounds">
+<em class="property"><span class="pre">property</span> </em><span class="sig-name descname"><span class="pre">convolution_bounds</span></span><a class="headerlink" href="#scarlet.renderer.ConvolutionRenderer.convolution_bounds" title="Permalink to this definition">¶</a></dt>
+<dd><p>Build the slices needed for convolution in real space</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="scarlet.renderer.ConvolutionRenderer.convolve">
+<span class="sig-name descname"><span class="pre">convolve</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">convolution_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/renderer.html#ConvolutionRenderer.convolve"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.renderer.ConvolutionRenderer.convolve" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convolve the model in a single band</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="scarlet.renderer.ConvolutionRenderer.get_model">
+<span class="sig-name descname"><span class="pre">get_model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">parameters</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/renderer.html#ConvolutionRenderer.get_model"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.renderer.ConvolutionRenderer.get_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the model realization</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>parameters: tuple of optimimzation parameters</strong></dt><dd></dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>model: array</dt><dd><p>Realization of the model</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="scarlet.renderer.NullRenderer">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">scarlet.renderer.</span></span><span class="sig-name descname"><span class="pre">NullRenderer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data_frame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_frame</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/renderer.html#NullRenderer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.renderer.NullRenderer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#scarlet.renderer.Renderer" title="scarlet.renderer.Renderer"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.renderer.Renderer</span></code></a></p>
+<dl class="field-list simple">
+<dt class="field-odd">Attributes</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">children</span></code></dt><dd><p>List of child models</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">parameters</span></code></dt><dd><p>List of parameters, including from the children</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">__call__</span></code>(model, *parameters)</p></td>
+<td><p>Call self as a function.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">check_parameters</span></code>()</p></td>
+<td><p>Check that all parameters have finite elements</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_channel_map</span></code>(data_frame, model_frame)</p></td>
+<td><p>Compute the mapping between channels in the model frame and this observation</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.renderer.NullRenderer.get_model" title="scarlet.renderer.NullRenderer.get_model"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code></a>()</p></td>
+<td><p>Get the model realization</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_models_of_children</span></code>(*parameters, **kwargs)</p></td>
+<td><p>Get realization of all child models</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_parameter</span></code>(i, *parameters)</p></td>
+<td><p>Access parameters by list index or by name</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">map_channels</span></code>(model)</p></td>
+<td><p>Map to model channels onto the observation channels</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">update</span></code>()</p></td>
+<td><p>Update internal state or configuration of the model</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py method">
+<dt class="sig sig-object py" id="scarlet.renderer.NullRenderer.get_model">
+<span class="sig-name descname"><span class="pre">get_model</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/renderer.html#NullRenderer.get_model"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.renderer.NullRenderer.get_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the model realization</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>parameters: tuple of optimimzation parameters</strong></dt><dd></dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>model: array</dt><dd><p>Realization of the model</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="scarlet.renderer.Renderer">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">scarlet.renderer.</span></span><span class="sig-name descname"><span class="pre">Renderer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data_frame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_frame</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">parameters</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/renderer.html#Renderer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.renderer.Renderer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="scarlet.model.html#scarlet.model.Model" title="scarlet.model.Model"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.model.Model</span></code></a></p>
+<dl class="field-list simple">
+<dt class="field-odd">Attributes</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">children</span></code></dt><dd><p>List of child models</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">parameters</span></code></dt><dd><p>List of parameters, including from the children</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">__call__</span></code>(model, *parameters)</p></td>
+<td><p>Call self as a function.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">check_parameters</span></code>()</p></td>
+<td><p>Check that all parameters have finite elements</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.renderer.Renderer.get_channel_map" title="scarlet.renderer.Renderer.get_channel_map"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_channel_map</span></code></a>(data_frame, model_frame)</p></td>
+<td><p>Compute the mapping between channels in the model frame and this observation</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code>(*parameters, **kwargs)</p></td>
+<td><p>Get the model realization</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_models_of_children</span></code>(*parameters, **kwargs)</p></td>
+<td><p>Get realization of all child models</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_parameter</span></code>(i, *parameters)</p></td>
+<td><p>Access parameters by list index or by name</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.renderer.Renderer.map_channels" title="scarlet.renderer.Renderer.map_channels"><code class="xref py py-obj docutils literal notranslate"><span class="pre">map_channels</span></code></a>(model)</p></td>
+<td><p>Map to model channels onto the observation channels</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">update</span></code>()</p></td>
+<td><p>Update internal state or configuration of the model</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py method">
+<dt class="sig sig-object py" id="scarlet.renderer.Renderer.get_channel_map">
+<span class="sig-name descname"><span class="pre">get_channel_map</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data_frame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_frame</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/renderer.html#Renderer.get_channel_map"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.renderer.Renderer.get_channel_map" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the mapping between channels in the model frame and this observation</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>model_frame: a `scarlet.Frame` instance</strong></dt><dd><p>The frame to match</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>channel_map: None, slice, or array</dt><dd><p>None for identical channels in both frames; slice for concatenated channels;
+array for linear mapping of model channels onto observation channels</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="scarlet.renderer.Renderer.map_channels">
+<span class="sig-name descname"><span class="pre">map_channels</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/renderer.html#Renderer.map_channels"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.renderer.Renderer.map_channels" title="Permalink to this definition">¶</a></dt>
+<dd><p>Map to model channels onto the observation channels</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>model: array</strong></dt><dd><p>The hyperspectral model</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>obs_model: array</dt><dd><p><cite>model</cite> mapped onto the observation channels</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="scarlet.renderer.ResolutionRenderer">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">scarlet.renderer.</span></span><span class="sig-name descname"><span class="pre">ResolutionRenderer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data_frame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_frame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">padding</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/renderer.html#ResolutionRenderer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.renderer.ResolutionRenderer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#scarlet.renderer.Renderer" title="scarlet.renderer.Renderer"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.renderer.Renderer</span></code></a></p>
+<dl class="field-list simple">
+<dt class="field-odd">Attributes</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">children</span></code></dt><dd><p>List of child models</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">parameters</span></code></dt><dd><p>List of parameters, including from the children</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">__call__</span></code>(model, *parameters)</p></td>
+<td><p>Call self as a function.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#scarlet.renderer.ResolutionRenderer.build_diffkernel" title="scarlet.renderer.ResolutionRenderer.build_diffkernel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_diffkernel</span></code></a>(data_frame, model_frame)</p></td>
+<td><p>Builds the differential convolution kernel between the observation and the model psf</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">check_parameters</span></code>()</p></td>
+<td><p>Check that all parameters have finite elements</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_channel_map</span></code>(data_frame, model_frame)</p></td>
+<td><p>Compute the mapping between channels in the model frame and this observation</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.renderer.ResolutionRenderer.get_model" title="scarlet.renderer.ResolutionRenderer.get_model"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code></a>(*parameters)</p></td>
+<td><p>Get the model realization</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_models_of_children</span></code>(*parameters, **kwargs)</p></td>
+<td><p>Get realization of all child models</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_parameter</span></code>(i, *parameters)</p></td>
+<td><p>Access parameters by list index or by name</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">map_channels</span></code>(model)</p></td>
+<td><p>Map to model channels onto the observation channels</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#scarlet.renderer.ResolutionRenderer.sinc_shift" title="scarlet.renderer.ResolutionRenderer.sinc_shift"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sinc_shift</span></code></a>(imgs, shifts, axes)</p></td>
+<td><p>Performs 2 1D sinc convolutions and shifting along one rotated axis in Fourier space.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">update</span></code>()</p></td>
+<td><p>Update internal state or configuration of the model</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py method">
+<dt class="sig sig-object py" id="scarlet.renderer.ResolutionRenderer.build_diffkernel">
+<span class="sig-name descname"><span class="pre">build_diffkernel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data_frame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_frame</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/renderer.html#ResolutionRenderer.build_diffkernel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.renderer.ResolutionRenderer.build_diffkernel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Builds the differential convolution kernel between the observation and the model psf</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>model_frame: Frame object</strong></dt><dd><p>the frame of the model</p>
+</dd>
+<dt><strong>Returns</strong></dt><dd></dd>
+<dt><strong>——-</strong></dt><dd></dd>
+<dt><strong>diff_psf: array</strong></dt><dd><p>the differential psf between observation and frame psf.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="scarlet.renderer.ResolutionRenderer.get_model">
+<span class="sig-name descname"><span class="pre">get_model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">parameters</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/renderer.html#ResolutionRenderer.get_model"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.renderer.ResolutionRenderer.get_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the model realization</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>parameters: tuple of optimimzation parameters</strong></dt><dd></dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>model: array</dt><dd><p>Realization of the model</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="scarlet.renderer.ResolutionRenderer.sinc_shift">
+<span class="sig-name descname"><span class="pre">sinc_shift</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">imgs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shifts</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axes</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/renderer.html#ResolutionRenderer.sinc_shift"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.renderer.ResolutionRenderer.sinc_shift" title="Permalink to this definition">¶</a></dt>
+<dd><p>Performs 2 1D sinc convolutions and shifting along one rotated axis in Fourier space.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>imgs: Fourier</strong></dt><dd><p>a Fourier object of 2D data to sinc convolve and shift
+to the adequate shape.</p>
+</dd>
+<dt><strong>shifts: array</strong></dt><dd><p>an array of the shift values for each line and columns of data in imgs</p>
+</dd>
+<dt><strong>axes: array</strong></dt><dd><p>Optional argument that specifies the axes along which to apply sinc convolution.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>result: array</dt><dd><p>the shifted and sinc convolved array in configuration space</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
 </section>
 
 
@@ -98,10 +458,10 @@
     <div class="clearer"></div>
   </div>
     <div class="footer">
-      &copy;2018-2019, Fred Moolekamp and Peter Melchior.
+      &copy;2018-2021, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.0.2</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.1.1</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

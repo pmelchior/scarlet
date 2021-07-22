@@ -1,0 +1,608 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>scarlet.renderer &#8212; scarlet  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css" />
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <link rel="canonical" href="api/_modules/scarlet/renderer.html" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../index.html">
+              <img class="logo" src="../../_static/logo.svg" alt="Logo"/>
+            </a></p>
+<h3><a href="../../index.html">Table of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../0-quickstart.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../1-concepts.html">Core Concepts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorials.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/scarlet.html">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../regression.html">Regression Testing</a></li>
+</ul>
+
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for scarlet.renderer</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">autograd.numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">autograd.extend</span> <span class="kn">import</span> <span class="n">defvjp</span><span class="p">,</span> <span class="n">primitive</span>
+
+<span class="kn">from</span> <span class="nn">.model</span> <span class="kn">import</span> <span class="n">Model</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">interpolation</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">fft</span>
+<span class="kn">from</span> <span class="nn">.bbox</span> <span class="kn">import</span> <span class="n">Box</span><span class="p">,</span> <span class="n">overlapped_slices</span>
+<span class="kn">from</span> <span class="nn">scarlet.operators_pybind11</span> <span class="kn">import</span> <span class="n">apply_filter</span>
+
+
+<div class="viewcode-block" id="Renderer"><a class="viewcode-back" href="../../api/scarlet.renderer.html#scarlet.renderer.Renderer">[docs]</a><span class="k">class</span> <span class="nc">Renderer</span><span class="p">(</span><span class="n">Model</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data_frame</span><span class="p">,</span> <span class="n">model_frame</span><span class="p">,</span> <span class="o">*</span><span class="n">parameters</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_frame</span> <span class="o">=</span> <span class="n">data_frame</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model_frame</span> <span class="o">=</span> <span class="n">model_frame</span>
+        <span class="c1"># mapping of model to data frame channels</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">channel_map</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_channel_map</span><span class="p">(</span><span class="n">data_frame</span><span class="p">,</span> <span class="n">model_frame</span><span class="p">)</span>
+        <span class="c1"># properly treats truncation in both boxes</span>
+        <span class="c1"># needs to overwritten if frames have different resolutions</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">slices</span> <span class="o">=</span> <span class="n">overlapped_slices</span><span class="p">(</span><span class="n">data_frame</span><span class="o">.</span><span class="n">bbox</span><span class="p">,</span> <span class="n">model_frame</span><span class="o">.</span><span class="n">bbox</span><span class="p">)</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">parameters</span><span class="p">)</span>
+
+    <span class="c1"># renderer is a parameterized transformation function</span>
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="o">*</span><span class="n">parameters</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">transform</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_model</span><span class="p">(</span><span class="o">*</span><span class="n">parameters</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Renderer.get_channel_map"><a class="viewcode-back" href="../../api/scarlet.renderer.html#scarlet.renderer.Renderer.get_channel_map">[docs]</a>    <span class="k">def</span> <span class="nf">get_channel_map</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data_frame</span><span class="p">,</span> <span class="n">model_frame</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Compute the mapping between channels in the model frame and this observation</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        model_frame: a `scarlet.Frame` instance</span>
+<span class="sd">            The frame to match</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        channel_map: None, slice, or array</span>
+<span class="sd">            None for identical channels in both frames; slice for concatenated channels;</span>
+<span class="sd">            array for linear mapping of model channels onto observation channels</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="nb">list</span><span class="p">(</span><span class="n">data_frame</span><span class="o">.</span><span class="n">channels</span><span class="p">)</span> <span class="o">==</span> <span class="nb">list</span><span class="p">(</span><span class="n">model_frame</span><span class="o">.</span><span class="n">channels</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="n">channel_map</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="nb">list</span><span class="p">(</span><span class="n">model_frame</span><span class="o">.</span><span class="n">channels</span><span class="p">)</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">c</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">data_frame</span><span class="o">.</span><span class="n">channels</span><span class="p">)</span>
+        <span class="p">]</span>
+        <span class="n">min_channel</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">channel_map</span><span class="p">)</span>
+        <span class="n">max_channel</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">channel_map</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">max_channel</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">min_channel</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">channel_map</span><span class="p">):</span>
+            <span class="n">channel_map</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="n">min_channel</span><span class="p">,</span> <span class="n">max_channel</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">channel_map</span>
+
+        <span class="c1"># full-fledged linear mixing model to allow for spectrophotometry later</span>
+        <span class="n">channel_map</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">data_frame</span><span class="o">.</span><span class="n">C</span><span class="p">,</span> <span class="n">model_frame</span><span class="o">.</span><span class="n">C</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">data_frame</span><span class="o">.</span><span class="n">channels</span><span class="p">)):</span>
+            <span class="n">j</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">model_frame</span><span class="o">.</span><span class="n">channels</span><span class="p">)</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+            <span class="k">assert</span> <span class="n">j</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Could not find channel </span><span class="si">{</span><span class="n">c</span><span class="si">}</span><span class="s2"> in model frame&quot;</span>
+            <span class="n">channel_map</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="c1"># TODO: for overlap computation:</span>
+            <span class="c1"># * turn channels into dict channel[&#39;g&#39;] = (lambdas, R_lambdas)</span>
+            <span class="c1"># * extrapolate obs R_lambda onto model lambdas</span>
+            <span class="c1"># * compute np.dot(model_R_lambda, obs_R_lambda) for every</span>
+            <span class="c1">#   combination of obs and model channels</span>
+        <span class="k">return</span> <span class="n">channel_map</span></div>
+
+<div class="viewcode-block" id="Renderer.map_channels"><a class="viewcode-back" href="../../api/scarlet.renderer.html#scarlet.renderer.Renderer.map_channels">[docs]</a>    <span class="k">def</span> <span class="nf">map_channels</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Map to model channels onto the observation channels</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        model: array</span>
+<span class="sd">            The hyperspectral model</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        obs_model: array</span>
+<span class="sd">            `model` mapped onto the observation channels</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">channel_map</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">model</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">channel_map</span><span class="p">,</span> <span class="nb">slice</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">model</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">channel_map</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">channel_map</span><span class="p">,</span> <span class="n">model</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="NullRenderer"><a class="viewcode-back" href="../../api/scarlet.renderer.html#scarlet.renderer.NullRenderer">[docs]</a><span class="k">class</span> <span class="nc">NullRenderer</span><span class="p">(</span><span class="n">Renderer</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data_frame</span><span class="p">,</span> <span class="n">model_frame</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">data_frame</span><span class="p">,</span> <span class="n">model_frame</span><span class="p">)</span>
+
+<div class="viewcode-block" id="NullRenderer.get_model"><a class="viewcode-back" href="../../api/scarlet.renderer.html#scarlet.renderer.NullRenderer.get_model">[docs]</a>    <span class="k">def</span> <span class="nf">get_model</span><span class="p">(</span><span class="o">*</span><span class="n">parameters</span><span class="p">):</span>
+        <span class="k">def</span> <span class="nf">nothing</span><span class="p">(</span><span class="n">model</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">model</span>
+
+        <span class="k">return</span> <span class="n">nothing</span></div></div>
+
+
+<span class="nd">@primitive</span>
+<span class="k">def</span> <span class="nf">convolve</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">psf</span><span class="p">,</span> <span class="n">bounds</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Convolve an image with a PSF in real space</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">band</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">image</span><span class="p">)):</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">image</span><span class="p">[</span><span class="n">band</span><span class="p">],</span> <span class="s2">&quot;_value&quot;</span><span class="p">):</span>
+            <span class="c1"># This is an ArrayBox</span>
+            <span class="n">img</span> <span class="o">=</span> <span class="n">image</span><span class="p">[</span><span class="n">band</span><span class="p">]</span><span class="o">.</span><span class="n">_value</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">img</span> <span class="o">=</span> <span class="n">image</span><span class="p">[</span><span class="n">band</span><span class="p">]</span>
+        <span class="n">apply_filter</span><span class="p">(</span>
+            <span class="n">img</span><span class="p">,</span>
+            <span class="n">psf</span><span class="p">[</span><span class="n">band</span><span class="p">]</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">),</span>
+            <span class="n">bounds</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+            <span class="n">bounds</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+            <span class="n">bounds</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span>
+            <span class="n">bounds</span><span class="p">[</span><span class="mi">3</span><span class="p">],</span>
+            <span class="n">result</span><span class="p">[</span><span class="n">band</span><span class="p">],</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">result</span>
+
+
+<span class="k">def</span> <span class="nf">_grad_convolve</span><span class="p">(</span><span class="n">convolved</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">psf</span><span class="p">,</span> <span class="n">slices</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Gradient of a real space convolution</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="k">lambda</span> <span class="n">input_grad</span><span class="p">:</span> <span class="n">convolve</span><span class="p">(</span><span class="n">input_grad</span><span class="p">,</span> <span class="n">psf</span><span class="p">[:,</span> <span class="p">::</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">::</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">slices</span><span class="p">)</span>
+
+
+<span class="c1"># Register this function in autograd</span>
+<span class="n">defvjp</span><span class="p">(</span><span class="n">convolve</span><span class="p">,</span> <span class="n">_grad_convolve</span><span class="p">)</span>
+
+<span class="c1"># match the spatial shapes of model and data</span>
+<span class="nd">@primitive</span>
+<span class="k">def</span> <span class="nf">match_shape</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">data_frame</span><span class="p">,</span> <span class="n">slices</span><span class="p">):</span>
+    <span class="n">data_slices</span><span class="p">,</span> <span class="n">model_slices</span> <span class="o">=</span> <span class="n">slices</span>
+    <span class="n">data_shape</span> <span class="o">=</span> <span class="n">data_frame</span><span class="o">.</span><span class="n">shape</span>
+
+    <span class="c1"># check if data get sliced</span>
+    <span class="k">if</span> <span class="nb">any</span><span class="p">(</span>
+        <span class="p">[</span>
+            <span class="n">data_slices</span><span class="p">[</span><span class="n">d</span><span class="p">]</span><span class="o">.</span><span class="n">stop</span> <span class="o">-</span> <span class="n">data_slices</span><span class="p">[</span><span class="n">d</span><span class="p">]</span><span class="o">.</span><span class="n">start</span> <span class="o">!=</span> <span class="n">data_shape</span><span class="p">[</span><span class="n">d</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="p">]</span>
+    <span class="p">):</span>
+        <span class="n">matched</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">data_frame</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">data_frame</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+        <span class="n">matched</span><span class="p">[</span><span class="n">data_slices</span><span class="p">]</span> <span class="o">=</span> <span class="n">model</span><span class="p">[</span><span class="n">model_slices</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">matched</span>
+
+    <span class="k">return</span> <span class="n">model</span><span class="p">[</span><span class="n">model_slices</span><span class="p">]</span>
+
+
+<span class="k">def</span> <span class="nf">_grad_match_shape</span><span class="p">(</span><span class="n">upstream_grad</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">data_frame</span><span class="p">,</span> <span class="n">slices</span><span class="p">):</span>
+    <span class="c1"># just slices gradients like the model</span>
+    <span class="n">data_slices</span><span class="p">,</span> <span class="n">model_slices</span> <span class="o">=</span> <span class="n">slices</span>
+
+    <span class="k">def</span> <span class="nf">result</span><span class="p">(</span><span class="n">upstream_grad</span><span class="p">):</span>
+        <span class="n">_result</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+        <span class="n">_result</span><span class="p">[</span><span class="n">model_slices</span><span class="p">]</span> <span class="o">=</span> <span class="n">upstream_grad</span><span class="p">[</span><span class="n">data_slices</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">_result</span>
+
+    <span class="k">return</span> <span class="n">result</span>
+
+
+<span class="n">defvjp</span><span class="p">(</span><span class="n">match_shape</span><span class="p">,</span> <span class="n">_grad_match_shape</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="ConvolutionRenderer"><a class="viewcode-back" href="../../api/scarlet.renderer.html#scarlet.renderer.ConvolutionRenderer">[docs]</a><span class="k">class</span> <span class="nc">ConvolutionRenderer</span><span class="p">(</span><span class="n">Renderer</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data_frame</span><span class="p">,</span> <span class="n">model_frame</span><span class="p">,</span> <span class="n">convolution_type</span><span class="o">=</span><span class="s2">&quot;fft&quot;</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">10</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        convolution_type: str</span>
+<span class="sd">            The type of convolution to use.</span>
+<span class="sd">            - `real`: Use a real space convolution and gradient</span>
+<span class="sd">            - `fft`: Use a DFT to do the convolution and gradient</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">data_frame</span><span class="p">,</span> <span class="n">model_frame</span><span class="p">)</span>
+
+        <span class="k">assert</span> <span class="n">convolution_type</span> <span class="ow">in</span> <span class="p">[</span>
+            <span class="s2">&quot;real&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;fft&quot;</span><span class="p">,</span>
+        <span class="p">],</span> <span class="s2">&quot;`convolution` must be either &#39;real&#39; or &#39;fft&#39;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_convolution_type</span> <span class="o">=</span> <span class="n">convolution_type</span>
+
+        <span class="c1"># 2D spatial region covered by data</span>
+        <span class="n">pixel_in_model_frame</span> <span class="o">=</span> <span class="n">data_frame</span><span class="o">.</span><span class="n">convert_pixel_to</span><span class="p">(</span><span class="n">model_frame</span><span class="p">)</span>
+        <span class="c1"># since there cannot be rotation or scaling, it&#39;s only translation</span>
+        <span class="n">ll</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">pixel_in_model_frame</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;int&quot;</span><span class="p">)</span>
+        <span class="n">ur</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">pixel_in_model_frame</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;int&quot;</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="n">bounds</span> <span class="o">=</span> <span class="p">(</span><span class="n">ll</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">ur</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="p">(</span><span class="n">ll</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">ur</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">data_box</span> <span class="o">=</span> <span class="n">model_frame</span><span class="o">.</span><span class="n">bbox</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">@</span> <span class="n">Box</span><span class="o">.</span><span class="n">from_bounds</span><span class="p">(</span><span class="o">*</span><span class="n">bounds</span><span class="p">)</span>
+
+        <span class="c1"># construct diff kernel</span>
+        <span class="n">psf_fft</span> <span class="o">=</span> <span class="n">fft</span><span class="o">.</span><span class="n">Fourier</span><span class="p">(</span><span class="n">data_frame</span><span class="o">.</span><span class="n">psf</span><span class="o">.</span><span class="n">get_model</span><span class="p">()</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">model_frame</span><span class="o">.</span><span class="n">dtype</span><span class="p">))</span>
+        <span class="n">model_psf_fft</span> <span class="o">=</span> <span class="n">fft</span><span class="o">.</span><span class="n">Fourier</span><span class="p">(</span>
+            <span class="n">model_frame</span><span class="o">.</span><span class="n">psf</span><span class="o">.</span><span class="n">get_model</span><span class="p">()</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">model_frame</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">diff_kernel</span> <span class="o">=</span> <span class="n">fft</span><span class="o">.</span><span class="n">match_psf</span><span class="p">(</span><span class="n">psf_fft</span><span class="p">,</span> <span class="n">model_psf_fft</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="n">padding</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ConvolutionRenderer.get_model"><a class="viewcode-back" href="../../api/scarlet.renderer.html#scarlet.renderer.ConvolutionRenderer.get_model">[docs]</a>    <span class="k">def</span> <span class="nf">get_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">parameters</span><span class="p">):</span>
+        <span class="k">def</span> <span class="nf">transform</span><span class="p">(</span><span class="n">model</span><span class="p">):</span>
+            <span class="c1"># restrict to observed channels</span>
+            <span class="n">model_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">map_channels</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+            <span class="c1"># convolve observed channels</span>
+            <span class="n">model_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">convolve</span><span class="p">(</span><span class="n">model_</span><span class="p">)</span>
+            <span class="c1"># adjust spatial shapes</span>
+            <span class="n">model_</span> <span class="o">=</span> <span class="n">match_shape</span><span class="p">(</span><span class="n">model_</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_frame</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">slices</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">model_</span>
+
+        <span class="k">return</span> <span class="n">transform</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">convolution_bounds</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Build the slices needed for convolution in real space</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_convolution_bounds&quot;</span><span class="p">):</span>
+            <span class="n">coords</span> <span class="o">=</span> <span class="n">interpolation</span><span class="o">.</span><span class="n">get_filter_coords</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">diff_kernel</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_convolution_bounds</span> <span class="o">=</span> <span class="n">interpolation</span><span class="o">.</span><span class="n">get_filter_bounds</span><span class="p">(</span>
+                <span class="n">coords</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_convolution_bounds</span>
+
+<div class="viewcode-block" id="ConvolutionRenderer.convolve"><a class="viewcode-back" href="../../api/scarlet.renderer.html#scarlet.renderer.ConvolutionRenderer.convolve">[docs]</a>    <span class="k">def</span> <span class="nf">convolve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">convolution_type</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Convolve the model in a single band</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">convolution_type</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">convolution_type</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_convolution_type</span>
+        <span class="k">if</span> <span class="n">convolution_type</span> <span class="o">==</span> <span class="s2">&quot;real&quot;</span><span class="p">:</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">convolve</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">diff_kernel</span><span class="o">.</span><span class="n">image</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">convolution_bounds</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">convolution_type</span> <span class="o">==</span> <span class="s2">&quot;fft&quot;</span><span class="p">:</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">fft</span><span class="o">.</span><span class="n">convolve</span><span class="p">(</span>
+                <span class="n">fft</span><span class="o">.</span><span class="n">Fourier</span><span class="p">(</span><span class="n">model</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">diff_kernel</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">image</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;`convolution` must be either &#39;real&#39; or &#39;fft&#39;, got </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                    <span class="n">convolution_type</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">result</span></div></div>
+
+
+<div class="viewcode-block" id="ResolutionRenderer"><a class="viewcode-back" href="../../api/scarlet.renderer.html#scarlet.renderer.ResolutionRenderer">[docs]</a><span class="k">class</span> <span class="nc">ResolutionRenderer</span><span class="p">(</span><span class="n">Renderer</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data_frame</span><span class="p">,</span> <span class="n">model_frame</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">10</span><span class="p">):</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">data_frame</span><span class="p">,</span> <span class="n">model_frame</span><span class="p">)</span>
+
+        <span class="c1"># check if data is rotated wrt to model_frame</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">angle</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">h</span> <span class="o">=</span> <span class="n">interpolation</span><span class="o">.</span><span class="n">get_angles</span><span class="p">(</span><span class="n">data_frame</span><span class="o">.</span><span class="n">wcs</span><span class="p">,</span> <span class="n">model_frame</span><span class="o">.</span><span class="n">wcs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">isrot</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">angle</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">finfo</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">eps</span>
+
+        <span class="c1"># Get pixel coordinates alinged with x and y axes  of this observation</span>
+        <span class="c1"># in model frame</span>
+        <span class="n">lr_shape</span> <span class="o">=</span> <span class="n">data_frame</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+        <span class="n">pixels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">((</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">lr_shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">lr_shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">coord_hr</span> <span class="o">=</span> <span class="n">data_frame</span><span class="o">.</span><span class="n">convert_pixel_to</span><span class="p">(</span><span class="n">model_frame</span><span class="p">,</span> <span class="n">pixel</span><span class="o">=</span><span class="n">pixels</span><span class="p">)</span>
+
+        <span class="c1"># TODO: should coords define a _slices_for_model/data?</span>
+        <span class="c1"># lr_inside_hr = model_frame.bbox.contains(coord_hr)</span>
+
+        <span class="c1"># compute diff kernel in model_frame pixels</span>
+        <span class="n">diff_psf</span><span class="p">,</span> <span class="n">psf_lr_hr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">build_diffkernel</span><span class="p">(</span><span class="n">data_frame</span><span class="p">,</span> <span class="n">model_frame</span><span class="p">)</span>
+
+        <span class="c1"># 1D convolutions convolutions of the model are done along the smaller axis, therefore,</span>
+        <span class="c1"># psf is convolved along the frame&#39;s longer axis.</span>
+        <span class="c1"># the smaller frame axis:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">small_axis</span> <span class="o">=</span> <span class="n">data_frame</span><span class="o">.</span><span class="n">Nx</span> <span class="o">&lt;=</span> <span class="n">data_frame</span><span class="o">.</span><span class="n">Ny</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_fft_shape</span> <span class="o">=</span> <span class="n">fft</span><span class="o">.</span><span class="n">_get_fft_shape</span><span class="p">(</span>
+            <span class="n">psf_lr_hr</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">model_frame</span><span class="o">.</span><span class="n">shape</span><span class="p">),</span> <span class="n">padding</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="nb">max</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="c1"># Cutting diff_psf if needded and keeping the parity</span>
+        <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_fft_shape</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">diff_psf</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">])</span> <span class="ow">or</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_fft_shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">diff_psf</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="p">):</span>
+            <span class="n">diff_psf</span> <span class="o">=</span> <span class="n">fft</span><span class="o">.</span><span class="n">_centered</span><span class="p">(</span>
+                <span class="n">diff_psf</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">diff_psf</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">_fft_shape</span><span class="p">])</span> <span class="o">-</span> <span class="mi">1</span>
+            <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">diff_kernel</span> <span class="o">=</span> <span class="n">fft</span><span class="o">.</span><span class="n">Fourier</span><span class="p">(</span>
+            <span class="n">fft</span><span class="o">.</span><span class="n">_pad</span><span class="p">(</span><span class="n">diff_psf</span><span class="o">.</span><span class="n">image</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fft_shape</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Center of the FFT shape for matched diff kernel</span>
+        <span class="n">center_y</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_fft_shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="mf">2.0</span> <span class="o">-</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_fft_shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">model_frame</span><span class="o">.</span><span class="n">Ny</span><span class="p">)</span> <span class="o">/</span> <span class="mf">2.0</span>
+        <span class="p">)</span> <span class="o">+</span> <span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">_fft_shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">%</span> <span class="mi">2</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">*</span> <span class="p">((</span><span class="n">model_frame</span><span class="o">.</span><span class="n">Ny</span> <span class="o">%</span> <span class="mi">2</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">center_x</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_fft_shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">/</span> <span class="mf">2.0</span> <span class="o">-</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_fft_shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">model_frame</span><span class="o">.</span><span class="n">Nx</span><span class="p">)</span> <span class="o">/</span> <span class="mf">2.0</span>
+        <span class="p">)</span> <span class="o">-</span> <span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">_fft_shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">%</span> <span class="mi">2</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">*</span> <span class="p">((</span><span class="n">model_frame</span><span class="o">.</span><span class="n">Nx</span> <span class="o">%</span> <span class="mi">2</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
+
+        <span class="c1"># Compute the shifts of all LR pixels into centered HR coord</span>
+        <span class="c1"># 1 ) aligned case</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">isrot</span><span class="p">:</span>
+            <span class="n">axes</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">small_axis</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">shifts</span> <span class="o">=</span> <span class="n">coord_hr</span><span class="o">.</span><span class="n">T</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">shifts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-=</span> <span class="n">center_y</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">shifts</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-=</span> <span class="n">center_x</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">other_shifts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">shifts</span><span class="p">)</span>
+        <span class="c1"># 2) rotated case</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Unrotated coordinates:</span>
+            <span class="n">Y_unrot</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="p">(</span><span class="n">coord_hr</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">center_y</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">angle</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="o">-</span> <span class="p">(</span><span class="n">coord_hr</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">center_x</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">angle</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">lr_shape</span><span class="p">)</span>
+            <span class="n">X_unrot</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="p">(</span><span class="n">coord_hr</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">center_x</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">angle</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="o">+</span> <span class="p">(</span><span class="n">coord_hr</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">center_y</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">angle</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">lr_shape</span><span class="p">)</span>
+
+            <span class="c1"># Removing redundancy</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">Y_unrot</span> <span class="o">=</span> <span class="n">Y_unrot</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">X_unrot</span> <span class="o">=</span> <span class="n">X_unrot</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:]</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">small_axis</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">shifts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+                    <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">Y_unrot</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">angle</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">Y_unrot</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">angle</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span>
+                <span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">other_shifts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+                    <span class="p">[</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">angle</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">X_unrot</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">angle</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">X_unrot</span><span class="p">,]</span>
+                <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">shifts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+                    <span class="p">[</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">angle</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">X_unrot</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">angle</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">X_unrot</span><span class="p">,]</span>
+                <span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">other_shifts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+                    <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">Y_unrot</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">angle</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">Y_unrot</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">angle</span><span class="p">[</span><span class="mi">1</span><span class="p">],]</span>
+                <span class="p">)</span>
+
+            <span class="n">axes</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+
+        <span class="c1"># Computes the resampling/convolution matrix</span>
+        <span class="n">resconv_op</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sinc_shift</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">diff_kernel</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">shifts</span><span class="p">,</span> <span class="n">axes</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_resconv_op</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">resconv_op</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">model_frame</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">h</span> <span class="o">**</span> <span class="mi">2</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">isrot</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_resconv_op</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resconv_op</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">_resconv_op</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">],</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">small_axis</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_resconv_op</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resconv_op</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">_resconv_op</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">],</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_resconv_op</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resconv_op</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_resconv_op</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resconv_op</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="p">)</span>
+
+<div class="viewcode-block" id="ResolutionRenderer.build_diffkernel"><a class="viewcode-back" href="../../api/scarlet.renderer.html#scarlet.renderer.ResolutionRenderer.build_diffkernel">[docs]</a>    <span class="k">def</span> <span class="nf">build_diffkernel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data_frame</span><span class="p">,</span> <span class="n">model_frame</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Builds the differential convolution kernel between the observation and the model psf</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        model_frame: Frame object</span>
+<span class="sd">            the frame of the model</span>
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        diff_psf: array</span>
+<span class="sd">            the differential psf between observation and frame psf.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Compute diff kernel at hr</span>
+        <span class="n">wcs_hr</span> <span class="o">=</span> <span class="n">model_frame</span><span class="o">.</span><span class="n">wcs</span>
+        <span class="n">wcs_lr</span> <span class="o">=</span> <span class="n">data_frame</span><span class="o">.</span><span class="n">wcs</span>
+
+        <span class="c1"># PSF models</span>
+        <span class="n">psf_hr</span> <span class="o">=</span> <span class="n">model_frame</span><span class="o">.</span><span class="n">psf</span><span class="o">.</span><span class="n">get_model</span><span class="p">()</span>
+        <span class="n">psf_lr</span> <span class="o">=</span> <span class="n">data_frame</span><span class="o">.</span><span class="n">psf</span><span class="o">.</span><span class="n">get_model</span><span class="p">()</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">model_frame</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+
+        <span class="c1"># Computes spatially matching observation and model psf. The observation psf is also resampled \\</span>
+        <span class="c1"># to the model frame resolution</span>
+        <span class="c1"># Odd pad shape</span>
+        <span class="n">pad_shape</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+                <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_frame</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">:]</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">psf_lr</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">:]))</span> <span class="o">/</span> <span class="mi">2</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+            <span class="o">*</span> <span class="mi">2</span>
+            <span class="o">+</span> <span class="mi">1</span>
+        <span class="p">)</span>
+        <span class="n">h_lr</span> <span class="o">=</span> <span class="n">interpolation</span><span class="o">.</span><span class="n">get_pixel_size</span><span class="p">(</span><span class="n">interpolation</span><span class="o">.</span><span class="n">get_affine</span><span class="p">(</span><span class="n">wcs_lr</span><span class="p">))</span>
+        <span class="n">h_hr</span> <span class="o">=</span> <span class="n">interpolation</span><span class="o">.</span><span class="n">get_pixel_size</span><span class="p">(</span><span class="n">interpolation</span><span class="o">.</span><span class="n">get_affine</span><span class="p">(</span><span class="n">wcs_hr</span><span class="p">))</span>
+
+        <span class="c1"># Interpolation of the low res psf</span>
+        <span class="c1"># TODO: isn&#39;t that just inverse of self.angle, self.h?</span>
+        <span class="n">angle</span><span class="p">,</span> <span class="n">h_ratio</span> <span class="o">=</span> <span class="n">interpolation</span><span class="o">.</span><span class="n">get_angles</span><span class="p">(</span><span class="n">wcs_hr</span><span class="p">,</span> <span class="n">wcs_lr</span><span class="p">)</span>
+        <span class="n">psf_lr_hr</span> <span class="o">=</span> <span class="n">interpolation</span><span class="o">.</span><span class="n">sinc_interp_inplace</span><span class="p">(</span>
+            <span class="n">psf_lr</span><span class="p">,</span> <span class="n">h_lr</span><span class="p">,</span> <span class="n">h_hr</span><span class="p">,</span> <span class="n">angle</span><span class="p">,</span> <span class="n">pad_shape</span><span class="o">=</span><span class="n">pad_shape</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Normalisation</span>
+        <span class="n">psf_hr</span> <span class="o">/=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">psf_hr</span><span class="p">)</span>
+        <span class="n">psf_lr_hr</span> <span class="o">/=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">psf_lr_hr</span><span class="p">)</span>
+
+        <span class="c1"># build diff kernel in Fourier space</span>
+        <span class="n">diff_psf</span> <span class="o">=</span> <span class="n">fft</span><span class="o">.</span><span class="n">match_psf</span><span class="p">(</span><span class="n">fft</span><span class="o">.</span><span class="n">Fourier</span><span class="p">(</span><span class="n">psf_lr_hr</span><span class="p">),</span> <span class="n">fft</span><span class="o">.</span><span class="n">Fourier</span><span class="p">(</span><span class="n">psf_hr</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">diff_psf</span><span class="p">,</span> <span class="n">psf_hr</span></div>
+
+<div class="viewcode-block" id="ResolutionRenderer.sinc_shift"><a class="viewcode-back" href="../../api/scarlet.renderer.html#scarlet.renderer.ResolutionRenderer.sinc_shift">[docs]</a>    <span class="k">def</span> <span class="nf">sinc_shift</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">imgs</span><span class="p">,</span> <span class="n">shifts</span><span class="p">,</span> <span class="n">axes</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Performs 2 1D sinc convolutions and shifting along one rotated axis in Fourier space.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        imgs: Fourier</span>
+<span class="sd">            a Fourier object of 2D data to sinc convolve and shift</span>
+<span class="sd">            to the adequate shape.</span>
+<span class="sd">        shifts: array</span>
+<span class="sd">            an array of the shift values for each line and columns of data in imgs</span>
+<span class="sd">        axes: array</span>
+<span class="sd">            Optional argument that specifies the axes along which to apply sinc convolution.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        result: array</span>
+<span class="sd">            the shifted and sinc convolved array in configuration space</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># fft</span>
+        <span class="n">axes</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">axes</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">fft_shape</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_fft_shape</span><span class="p">)[</span><span class="nb">tuple</span><span class="p">([</span><span class="n">axes</span><span class="p">])]</span>
+        <span class="n">imgs_fft</span> <span class="o">=</span> <span class="n">imgs</span><span class="o">.</span><span class="n">fft</span><span class="p">(</span><span class="n">fft_shape</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">axes</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">transformed_shape</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">imgs_fft</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span>
+        <span class="n">transformed_shape</span><span class="p">[</span><span class="nb">tuple</span><span class="p">([</span><span class="n">axes</span><span class="p">])]</span> <span class="o">=</span> <span class="n">fft_shape</span>
+
+        <span class="c1"># frequency sampling</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">axes</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">shifter</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">interpolation</span><span class="o">.</span><span class="n">mk_shifter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_fft_shape</span><span class="p">,</span> <span class="n">real</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">shifter</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">interpolation</span><span class="o">.</span><span class="n">mk_shifter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_fft_shape</span><span class="p">))</span>
+        <span class="c1"># Shift</span>
+        <span class="k">if</span> <span class="mi">0</span> <span class="ow">in</span> <span class="n">axes</span><span class="p">:</span>
+            <span class="c1"># Fourier shift</span>
+            <span class="n">shishift</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">shifter</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:]</span> <span class="o">*</span> <span class="n">shifts</span><span class="p">[</span><span class="mi">0</span><span class="p">][:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">])</span>
+            <span class="n">imgs_shiftfft</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">imgs_fft</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">*</span> <span class="n">shishift</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span>
+            <span class="p">)</span>
+            <span class="n">fft_axes</span> <span class="o">=</span> <span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">imgs_shiftfft</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">-</span> <span class="mi">2</span><span class="p">]</span>
+            <span class="c1"># Shift along the x-axis</span>
+            <span class="k">if</span> <span class="mi">1</span> <span class="ow">in</span> <span class="n">axes</span><span class="p">:</span>
+                <span class="c1"># Fourier shift</span>
+                <span class="n">shishift</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">shifter</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:]</span> <span class="o">*</span> <span class="n">shifts</span><span class="p">[</span><span class="mi">1</span><span class="p">][:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">])</span>
+                <span class="n">imgs_shiftfft</span> <span class="o">=</span> <span class="n">imgs_shiftfft</span> <span class="o">*</span> <span class="n">shishift</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:]</span>
+                <span class="n">fft_axes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">axes</span><span class="p">)</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">imgs_shiftfft</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">-</span> <span class="mi">2</span>
+            <span class="n">inv_shape</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">imgs_shiftfft</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">])</span> <span class="o">+</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">transformed_shape</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="mi">1</span> <span class="ow">in</span> <span class="n">axes</span><span class="p">:</span>
+            <span class="c1"># Fourier shift</span>
+            <span class="n">shishift</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">shifter</span><span class="p">[</span><span class="mi">1</span><span class="p">][:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span> <span class="o">*</span> <span class="n">shifts</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:])</span>
+            <span class="n">imgs_shiftfft</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">imgs_fft</span><span class="p">[:,</span> <span class="p">:,</span> <span class="p">:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span> <span class="o">*</span> <span class="n">shishift</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span>
+            <span class="p">)</span>
+            <span class="n">inv_shape</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="nb">tuple</span><span class="p">([</span><span class="n">imgs_shiftfft</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]])</span>
+                <span class="o">+</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">transformed_shape</span><span class="p">)</span>
+                <span class="o">+</span> <span class="nb">tuple</span><span class="p">([</span><span class="n">imgs_shiftfft</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]])</span>
+            <span class="p">)</span>
+            <span class="n">fft_axes</span> <span class="o">=</span> <span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">imgs_shiftfft</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">-</span> <span class="mi">2</span><span class="p">]</span>
+
+        <span class="c1"># Inverse Fourier transform.</span>
+        <span class="c1"># The n-dimensional transform could pose problem for very large data</span>
+        <span class="n">op</span> <span class="o">=</span> <span class="n">fft</span><span class="o">.</span><span class="n">Fourier</span><span class="o">.</span><span class="n">from_fft</span><span class="p">(</span><span class="n">imgs_shiftfft</span><span class="p">,</span> <span class="n">fft_shape</span><span class="p">,</span> <span class="n">inv_shape</span><span class="p">,</span> <span class="n">fft_axes</span><span class="p">)</span><span class="o">.</span><span class="n">image</span>
+        <span class="k">return</span> <span class="n">op</span></div>
+
+<div class="viewcode-block" id="ResolutionRenderer.get_model"><a class="viewcode-back" href="../../api/scarlet.renderer.html#scarlet.renderer.ResolutionRenderer.get_model">[docs]</a>    <span class="k">def</span> <span class="nf">get_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">parameters</span><span class="p">):</span>
+        <span class="k">def</span> <span class="nf">transform</span><span class="p">(</span><span class="n">model</span><span class="p">):</span>
+            <span class="sd">&quot;&quot;&quot;Resample and convolve a model in the observation frame</span>
+<span class="sd">            Parameters</span>
+<span class="sd">            ----------</span>
+<span class="sd">            model: array</span>
+<span class="sd">                The model in some other data frame.</span>
+<span class="sd">            Returns</span>
+<span class="sd">            -------</span>
+<span class="sd">            image_model: array</span>
+<span class="sd">                `model` mapped into the observation frame</span>
+<span class="sd">            &quot;&quot;&quot;</span>
+            <span class="c1"># restrict to observed portion</span>
+            <span class="n">model_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">map_channels</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+            <span class="n">C</span> <span class="o">=</span> <span class="n">model_</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">dtype</span> <span class="o">=</span> <span class="n">model_</span><span class="o">.</span><span class="n">dtype</span>
+
+            <span class="c1"># FFT of model, padding the psf to the fast_shape size</span>
+            <span class="n">model_</span> <span class="o">=</span> <span class="n">fft</span><span class="o">.</span><span class="n">Fourier</span><span class="p">(</span><span class="n">fft</span><span class="o">.</span><span class="n">_pad</span><span class="p">(</span><span class="n">model_</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fft_shape</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)))</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">isrot</span><span class="p">:</span>
+                <span class="n">axes</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">axes</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">small_axis</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+            <span class="n">model_conv</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sinc_shift</span><span class="p">(</span><span class="n">model_</span><span class="p">,</span> <span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">other_shifts</span><span class="p">,</span> <span class="n">axes</span><span class="p">)</span>
+
+            <span class="c1"># Transposes are all over the place to make arrays F-contiguous</span>
+            <span class="c1"># -&gt; faster than np.einsum</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">isrot</span><span class="p">:</span>
+                <span class="n">model_conv</span> <span class="o">=</span> <span class="n">model_conv</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">*</span><span class="n">model_conv</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">],</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">small_axis</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+                        <span class="p">[</span>
+                            <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_resconv_op</span><span class="p">[</span><span class="n">c</span><span class="p">],</span> <span class="n">model_conv</span><span class="p">[</span><span class="n">c</span><span class="p">]</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
+                            <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">C</span><span class="p">)</span>
+                        <span class="p">],</span>
+                        <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span>
+                    <span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+                        <span class="p">[</span>
+                            <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_resconv_op</span><span class="p">[</span><span class="n">c</span><span class="p">],</span> <span class="n">model_conv</span><span class="p">[</span><span class="n">c</span><span class="p">]</span><span class="o">.</span><span class="n">T</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
+                            <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">C</span><span class="p">)</span>
+                        <span class="p">],</span>
+                        <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span>
+                    <span class="p">)</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">small_axis</span><span class="p">:</span>
+                <span class="n">model_conv</span> <span class="o">=</span> <span class="n">model_conv</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span>
+                    <span class="n">model_conv</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">model_conv</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                <span class="p">)</span>
+                <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+                    <span class="p">[</span>
+                        <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">model_conv</span><span class="p">[</span><span class="n">c</span><span class="p">]</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resconv_op</span><span class="p">[</span><span class="n">c</span><span class="p">]</span><span class="o">.</span><span class="n">T</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
+                        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">C</span><span class="p">)</span>
+                    <span class="p">],</span>
+                    <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">model_conv</span> <span class="o">=</span> <span class="n">model_conv</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">*</span><span class="n">model_conv</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">],</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+                <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+                    <span class="p">[</span>
+                        <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_resconv_op</span><span class="p">[</span><span class="n">c</span><span class="p">]</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">model_conv</span><span class="p">[</span><span class="n">c</span><span class="p">]</span><span class="o">.</span><span class="n">T</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
+                        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">C</span><span class="p">)</span>
+                    <span class="p">],</span>
+                    <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span>
+                <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">transform</span></div></div>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &copy;2018-2021, Fred Moolekamp and Peter Melchior.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.1.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

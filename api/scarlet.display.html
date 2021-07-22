@@ -72,7 +72,7 @@
   <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="../search.html" method="get">
-      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
       <input type="submit" value="Go" />
     </form>
     </div>
@@ -86,8 +86,213 @@
 
           <div class="body" role="main">
             
-  <section id="scarlet-display">
-<h1>scarlet.display<a class="headerlink" href="#scarlet-display" title="Permalink to this headline">¶</a></h1>
+  <section id="module-scarlet.display">
+<span id="scarlet-display"></span><h1>scarlet.display<a class="headerlink" href="#module-scarlet.display" title="Permalink to this headline">¶</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="scarlet.display.AsinhPercentileNorm">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">scarlet.display.</span></span><span class="sig-name descname"><span class="pre">AsinhPercentileNorm</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">percentiles</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[1,</span> <span class="pre">99]</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/display.html#AsinhPercentileNorm"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.display.AsinhPercentileNorm" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">astropy.visualization.lupton_rgb.AsinhMapping</span></code></p>
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">intensity</span></code>(image_r, image_g, image_b)</p></td>
+<td><p>Return the total intensity from the red, blue, and green intensities.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_rgb_image</span></code>(image_r, image_g, image_b)</p></td>
+<td><p>Convert 3 arrays, image_r, image_g, and image_b into an 8-bit RGB image.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">map_intensity_to_uint8</span></code>(I)</p></td>
+<td><p>Return an array which, when multiplied by an image, returns that image mapped to the range of a uint8, [0, 255] (but not converted to uint8).</p></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="scarlet.display.LinearPercentileNorm">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">scarlet.display.</span></span><span class="sig-name descname"><span class="pre">LinearPercentileNorm</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">percentiles</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[1,</span> <span class="pre">99]</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/display.html#LinearPercentileNorm"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.display.LinearPercentileNorm" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">astropy.visualization.lupton_rgb.LinearMapping</span></code></p>
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">intensity</span></code>(image_r, image_g, image_b)</p></td>
+<td><p>Return the total intensity from the red, blue, and green intensities.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_rgb_image</span></code>(image_r, image_g, image_b)</p></td>
+<td><p>Convert 3 arrays, image_r, image_g, and image_b into an 8-bit RGB image.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">map_intensity_to_uint8</span></code>(I)</p></td>
+<td><p>Return an array which, when multiplied by an image, returns that image mapped to the range of a uint8, [0, 255] (but not converted to uint8).</p></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="scarlet.display.channels_to_rgb">
+<span class="sig-prename descclassname"><span class="pre">scarlet.display.</span></span><span class="sig-name descname"><span class="pre">channels_to_rgb</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">channels</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/display.html#channels_to_rgb"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.display.channels_to_rgb" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the linear mapping of multiple channels to RGB channels
+The mapping created here assumes the the channels are ordered in wavelength
+direction, starting with the shortest wavelength. The mapping seeks to produce
+a relatively even weights for across all channels. It does not consider e.g.
+signal-to-noise variations across channels or human perception.
+Parameters
+———-
+channels: int in range(0,7)</p>
+<blockquote>
+<div><p>Number of channels</p>
+</div></blockquote>
+<p>array (3, channels) to map onto RGB</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="scarlet.display.get_extent">
+<span class="sig-prename descclassname"><span class="pre">scarlet.display.</span></span><span class="sig-name descname"><span class="pre">get_extent</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bbox</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/display.html#get_extent"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.display.get_extent" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="scarlet.display.img_to_3channel">
+<span class="sig-prename descclassname"><span class="pre">scarlet.display.</span></span><span class="sig-name descname"><span class="pre">img_to_3channel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">channel_map</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fill_value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/display.html#img_to_3channel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.display.img_to_3channel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert multi-band image cube into 3 RGB channels
+Parameters
+———-
+img: array_like</p>
+<blockquote>
+<div><p>This should be an array with dimensions (channels, height, width).</p>
+</div></blockquote>
+<dl class="simple">
+<dt>channel_map: array_like</dt><dd><p>Linear mapping with dimensions (3, channels)</p>
+</dd>
+<dt>fill_value: float, default=`0`</dt><dd><p>Value to use for any masked pixels.</p>
+</dd>
+</dl>
+<p>RGB: numpy array with dtype float</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="scarlet.display.img_to_rgb">
+<span class="sig-prename descclassname"><span class="pre">scarlet.display.</span></span><span class="sig-name descname"><span class="pre">img_to_rgb</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">channel_map</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fill_value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">norm</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/display.html#img_to_rgb"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.display.img_to_rgb" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert images to normalized RGB.
+If normalized values are outside of the range [0..255], they will be
+truncated such as to preserve the corresponding color.
+Parameters
+———-
+img: array_like</p>
+<blockquote>
+<div><p>This should be an array with dimensions (channels, height, width).</p>
+</div></blockquote>
+<dl class="simple">
+<dt>channel_map: array_like</dt><dd><p>Linear mapping with dimensions (3, channels)</p>
+</dd>
+<dt>fill_value: float, default=`0`</dt><dd><p>Value to use for any masked pixels.</p>
+</dd>
+<dt>norm: <cite>scarlet.display.Norm</cite>, default <cite>None</cite></dt><dd><p>Norm to use for mapping in the allowed range [0..255]. If <cite>norm=None</cite>,
+<cite>scarlet.display.LinearPercentileNorm</cite> will be used.</p>
+</dd>
+<dt>mask: array_like</dt><dd><p>A [0,1] binary mask to apply over the top of the image,
+where pixels with mask==1 are masked out.</p>
+</dd>
+</dl>
+<p>rgb: numpy array with dimensions (3, height, width) and dtype uint8</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="scarlet.display.show_likelihood">
+<span class="sig-prename descclassname"><span class="pre">scarlet.display.</span></span><span class="sig-name descname"><span class="pre">show_likelihood</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">blend</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">figsize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/display.html#show_likelihood"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.display.show_likelihood" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="scarlet.display.show_observation">
+<span class="sig-prename descclassname"><span class="pre">scarlet.display.</span></span><span class="sig-name descname"><span class="pre">show_observation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">observation</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">norm</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">channel_map</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sky_coords</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show_psf</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">add_labels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">figsize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/display.html#show_observation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.display.show_observation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot observation in standardized form.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="scarlet.display.show_scene">
+<span class="sig-prename descclassname"><span class="pre">scarlet.display.</span></span><span class="sig-name descname"><span class="pre">show_scene</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sources</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">observation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">norm</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">channel_map</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show_model</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show_observed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show_rendered</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show_residual</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">add_labels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">add_boxes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">figsize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">linear</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/display.html#show_scene"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.display.show_scene" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot all sources to recreate the scence.
+The functions provides a fast way of evaluating the quality of the entire model,
+i.e. the combination of all scences that seek to fit the observation.
+Parameters
+———-
+sources: list of source models
+observation: <cite>~scarlet.Observation</cite>
+norm: norm to compress image intensity to the range [0,255]
+channel_map: array_like</p>
+<blockquote>
+<div><p>Linear mapping with dimensions (3, channels)</p>
+</div></blockquote>
+<dl class="simple">
+<dt>show_model: bool</dt><dd><p>Whether the model is shown in the model frame</p>
+</dd>
+<dt>show_observed: bool</dt><dd><p>Whether the observation is shown</p>
+</dd>
+<dt>show_rendered: bool</dt><dd><p>Whether the model, rendered to match the observation, is shown</p>
+</dd>
+<dt>show_residual: bool</dt><dd><p>Whether the residuals between rendered model and observation is shown</p>
+</dd>
+<dt>add_label: bool</dt><dd><p>Whether each source is labeled with its numerical index in the source list</p>
+</dd>
+<dt>add_boxes: bool</dt><dd><p>Whether each source box is shown</p>
+</dd>
+</dl>
+<p>figsize: matplotlib figsize argument
+linear: bool</p>
+<blockquote>
+<div><p>Whether or not to display the scene in a single line (<cite>True</cite>) or
+on multiple lines (<cite>False</cite>).</p>
+</div></blockquote>
+<p>matplotlib figure</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="scarlet.display.show_sources">
+<span class="sig-prename descclassname"><span class="pre">scarlet.display.</span></span><span class="sig-name descname"><span class="pre">show_sources</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sources</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">observation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">norm</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">channel_map</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show_model</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show_observed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show_rendered</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show_spectrum</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">figsize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_mask</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">add_markers</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">add_boxes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/display.html#show_sources"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.display.show_sources" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot each source individually.
+The functions provides an more detailed inspection of every source in the list.
+Parameters
+———-
+sources: list of source models
+observation: <cite>~scarlet.Observation</cite>
+norm: norm to compress image intensity to the range [0,255]
+channel_map: array_like</p>
+<blockquote>
+<div><p>Linear mapping with dimensions (3, channels)</p>
+</div></blockquote>
+<dl class="simple">
+<dt>show_model: bool</dt><dd><p>Whether the model is shown in the model frame</p>
+</dd>
+<dt>show_observed: bool</dt><dd><p>Whether the observation is shown</p>
+</dd>
+<dt>show_rendered: bool</dt><dd><p>Whether the model, rendered to match the observation, is shown</p>
+</dd>
+<dt>show_spectrum: bool</dt><dd><p>Whether source specturm is shown.
+For multi-component sources, spectra are shown separately.</p>
+</dd>
+</dl>
+<p>figsize: matplotlib figsize argument
+model_mask: array</p>
+<blockquote>
+<div><p>Mask used to hide pixels in the model only.</p>
+</div></blockquote>
+<dl class="simple">
+<dt>add_markers: bool</dt><dd><p>Whether or not to mark the centers of the sources
+with their source number.</p>
+</dd>
+<dt>add_boxes: bool</dt><dd><p>Whether source boxes are shown</p>
+</dd>
+</dl>
+<p>matplotlib figure</p>
+</dd></dl>
+
 </section>
 
 
@@ -98,10 +303,10 @@
     <div class="clearer"></div>
   </div>
     <div class="footer">
-      &copy;2018-2019, Fred Moolekamp and Peter Melchior.
+      &copy;2018-2021, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.0.2</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.1.1</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

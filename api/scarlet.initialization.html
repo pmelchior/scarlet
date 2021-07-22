@@ -72,7 +72,7 @@
   <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="../search.html" method="get">
-      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
       <input type="submit" value="Go" />
     </form>
     </div>
@@ -86,8 +86,242 @@
 
           <div class="body" role="main">
             
-  <section id="scarlet-initialization">
-<h1>scarlet.initialization<a class="headerlink" href="#scarlet-initialization" title="Permalink to this headline">¶</a></h1>
+  <section id="module-scarlet.initialization">
+<span id="scarlet-initialization"></span><h1>scarlet.initialization<a class="headerlink" href="#module-scarlet.initialization" title="Permalink to this headline">¶</a></h1>
+<dl class="py function">
+<dt class="sig sig-object py" id="scarlet.initialization.build_initialization_image">
+<span class="sig-prename descclassname"><span class="pre">scarlet.initialization.</span></span><span class="sig-name descname"><span class="pre">build_initialization_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">observations</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">spectra</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/initialization.html#build_initialization_image"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.initialization.build_initialization_image" title="Permalink to this definition">¶</a></dt>
+<dd><p>Build a spectrum-weighted image from all observations.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>observations: list of `~scarlet.observation.Observation`</strong></dt><dd><p>Every observation with a suitable renderer will contribute to the initialization image, according to the noise level of its data</p>
+</dd>
+<dt><strong>spectra: list of array</strong></dt><dd><p>for every observation: spectrum at the center of the source
+If not set, returns the detection image in all channels, instead of averaging.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>image: array</dt><dd><p>image created by weighting all of the channels by SED</p>
+</dd>
+<dt>std: float</dt><dd><p>the effective noise standard deviation of <cite>image</cite></p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="scarlet.initialization.get_best_fit_spectrum">
+<span class="sig-prename descclassname"><span class="pre">scarlet.initialization.</span></span><span class="sig-name descname"><span class="pre">get_best_fit_spectrum</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">morph</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">images</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/initialization.html#get_best_fit_spectrum"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.initialization.get_best_fit_spectrum" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate best fitting spectra for one or multiple morphologies.</p>
+<p>Solves min_A ||img - AS||^2 for the spectrum matrix A,
+assuming that the images only contain a single source.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>morph: array or list thereof</strong></dt><dd><p>Morphology for each component in the source</p>
+</dd>
+<dt><strong>images: array</strong></dt><dd><p>images to get the spectrum amplitude from</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>spectrum: <cite>~numpy.array</cite></dt><dd></dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="scarlet.initialization.get_minimal_boxsize">
+<span class="sig-prename descclassname"><span class="pre">scarlet.initialization.</span></span><span class="sig-name descname"><span class="pre">get_minimal_boxsize</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">21</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">increment</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/initialization.html#get_minimal_boxsize"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.initialization.get_minimal_boxsize" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="scarlet.initialization.get_pixel_spectrum">
+<span class="sig-prename descclassname"><span class="pre">scarlet.initialization.</span></span><span class="sig-name descname"><span class="pre">get_pixel_spectrum</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sky_coord</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">observations</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">correct_psf</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">models</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/initialization.html#get_pixel_spectrum"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.initialization.get_pixel_spectrum" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the spectrum at <cite>sky_coord</cite> in <cite>observation</cite>.</p>
+<p>Yields the spectrum of a single-pixel source with flux 1 in every channel,
+concatenated for all observations.</p>
+<p>If <cite>correct_psf</cite>, it homogenizes the PSFs of the observations, which yields the
+correct spectrum for a flux=1 point source.</p>
+<p>If <cite>model</cite> is set, it reads of the value of the model at <cite>sky_coord</cite> and yields the
+spectrum for that model.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>sky_coord: tuple</strong></dt><dd><p>Position in the observation</p>
+</dd>
+<dt><strong>observations: instance or list of `~scarlet.Observation`</strong></dt><dd><p>Observation to extract SED from.</p>
+</dd>
+<dt><strong>correct_psf: bool</strong></dt><dd><p>If PSF shape variations in the observations should be corrected.</p>
+</dd>
+<dt><strong>models: instance or list of arrays</strong></dt><dd><p>Rendered models for this source in every observation</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>spectrum: <cite>~numpy.array</cite> or list thereof</dt><dd></dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="scarlet.initialization.get_psf_spectrum">
+<span class="sig-prename descclassname"><span class="pre">scarlet.initialization.</span></span><span class="sig-name descname"><span class="pre">get_psf_spectrum</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sky_coord</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">observations</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">compute_snr</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/initialization.html#get_psf_spectrum"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.initialization.get_psf_spectrum" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get spectrum for a point source at <cite>sky_coord</cite> in <cite>observation</cite></p>
+<p>Equivalent to point source photometry for isolated sources. For extended source,
+this will underestimate the actual source flux in every channel. In case of crowding,
+the resulting photometry is likely contaminated by neighbors.</p>
+<p>Yields the spectrum of a PSF-homogenized source of flux 1 in every channel,
+concatenated for all observations.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>sky_coord: tuple</strong></dt><dd><p>Position in the observation</p>
+</dd>
+<dt><strong>observations: instance or list of `~scarlet.Observation`</strong></dt><dd><p>Observation to extract the spectrum from.</p>
+</dd>
+<dt><strong>compute_snr: bool</strong></dt><dd><p>Whether the compute the SNR of a PSF at <cite>sky_coord</cite></p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>spectrum: ~numpy.array` or list thereof</dt><dd></dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="scarlet.initialization.init_all_sources">
+<span class="sig-prename descclassname"><span class="pre">scarlet.initialization.</span></span><span class="sig-name descname"><span class="pre">init_all_sources</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">centers</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">observations</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">thresh</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_components</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_components</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_snr</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">50</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shifting</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resizing</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boxsize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fallback</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">silent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">set_spectra</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/initialization.html#init_all_sources"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.initialization.init_all_sources" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize all sources in a blend</p>
+<p>Seeks to initialize sources at the sky positions of <cite>centers</cite> with multiple
+components of type <cite>ExtendedSource</cite>. If each component has sufficient SNR, the
+model will be kept, otherwise one component is removed and the source reinitialized.
+If a source cannot be initialized, its index is returned in <cite>skipped</cite>.</p>
+<p>See <cite>~init_sources</cite> for a description of the arguments</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>centers</strong><span class="classifier">list of tuples</span></dt><dd><p><cite>(y, x)</cite> center location for each source in sky coordinates</p>
+</dd>
+<dt><strong>silent: bool</strong></dt><dd><p>If set to True, will prevent exceptions from being thrown abd register the
+source index in a list of skipped sources.</p>
+</dd>
+<dt><strong>set_spectra: bool</strong></dt><dd><p>If set to True, will solve for the best spectra of all sources given the
+observations. See <cite>set_spectra_to_match</cite> for details.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>sources: list</dt><dd><p>List of intialized sources, where each source derives from the
+<cite>~scarlet.Component</cite> class.</p>
+</dd>
+<dt>skipped: list</dt><dd><p>This list contains sources that failed to initialize with <cite>silent</cite> = True</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="scarlet.initialization.init_source">
+<span class="sig-prename descclassname"><span class="pre">scarlet.initialization.</span></span><span class="sig-name descname"><span class="pre">init_source</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">center</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">observations</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">thresh</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_components</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_components</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_snr</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">50</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shifting</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resizing</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boxsize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fallback</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/initialization.html#init_source"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.initialization.init_source" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize a Source</p>
+<p>The user can specify the number of desired components
+for the modeled source. If scarlet cannot initialize a
+model with the desired number of components it continues
+to attempt initialization of one fewer component until
+it finds a model that can be initialized.
+It is possible that scarlet will be unable to initialize a
+source with the desired number of components, for example
+a two component source might have degenerate components,
+a single component source might not have enough signal in
+the joint coadd (all bands combined together into
+single signal-to-noise weighted image for initialization)
+to initialize, and a true spurious detection will not have
+enough signal to initialize as a point source.
+If all of the models fail, including a <cite>CompactExtendedSource</cite> model,
+then this source is skipped.</p>
+<dl class="field-list">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl>
+<dt><strong>frame</strong><span class="classifier"><cite>~scarlet.Frame</cite></span></dt><dd><p>The model frame for the scene</p>
+</dd>
+<dt><strong>center</strong><span class="classifier"><cite>tuple</cite> of <cite>float`</cite></span></dt><dd><p><cite>(y, x)</cite> location for the center of the source.</p>
+</dd>
+<dt><strong>observations</strong><span class="classifier">instance or list of <cite>~scarlet.Observation</cite></span></dt><dd><p>The <cite>Observation</cite> that contains the images, weights, and PSF
+used to generate the model.</p>
+</dd>
+<dt><strong>thresh</strong><span class="classifier"><cite>float</cite></span></dt><dd><p>Fraction of the background to use as a threshold for
+each pixel in the initialization</p>
+</dd>
+<dt><strong>max_components</strong><span class="classifier">int</span></dt><dd><p>The maximum number of components in a source.
+If <cite>fallback</cite> is <cite>True</cite> then when
+a source fails to initialize with <cite>max_components</cite> it
+will continue to subtract one from the number of components
+until it reaches zero (which fits a <cite>CompactExtendedSource</cite>).
+If a point source cannot be fit then the source is skipped.</p>
+</dd>
+<dt><strong>min_components</strong><span class="classifier">int</span></dt><dd><p>The minimum number of components in a source.
+Only relevent for <cite>fallback=True</cite>.</p>
+</dd>
+<dt><strong>min_snr: float</strong></dt><dd><p>Mininmum SNR per component to accept the source.</p>
+</dd>
+<dt><strong>shifting</strong><span class="classifier">bool</span></dt><dd><p>Whether or not to fit the position of a source.
+This is an expensive operation and is typically only used when
+a source is on the edge of the detector.</p>
+</dd>
+<dt><strong>resizing</strong><span class="classifier">bool</span></dt><dd><p>Whether or not to change the size of the source box.</p>
+</dd>
+<dt><strong>boxsize: int or None</strong></dt><dd><p>Spatial size of the source box</p>
+</dd>
+<dt><strong>fallback</strong><span class="classifier">bool</span></dt><dd><p>Whether to reduce the number of components
+if the model cannot be initialized with <cite>max_components</cite>.
+Fallback = False is unlikely to be used in production
+but can be useful for troubleshooting when an error can cause
+a particular source class to fail every time.</p>
+</dd>
+<dt><strong>prerender: bool</strong></dt><dd><p>Whether to initialize the source with pre-rendered observations.
+This is an experimental feature, which may be removed in the future.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="scarlet.initialization.set_spectra_to_match">
+<span class="sig-prename descclassname"><span class="pre">scarlet.initialization.</span></span><span class="sig-name descname"><span class="pre">set_spectra_to_match</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sources</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">observations</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/initialization.html#set_spectra_to_match"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.initialization.set_spectra_to_match" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets the spectra of any <cite>FactorizedComponent</cite> to match the Observations.</p>
+<p>Computes the best-fit amplitude of the rendered model of the sources in every
+channel of every observation as a linear inverse problem.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>sources: list of sources</strong></dt><dd><p>Only <cite>FactorizedComponent</cite> or <cite>CombinedComponent</cite> will be considered</p>
+</dd>
+<dt><strong>observations: `scarlet.Observation` or list thereof</strong></dt><dd></dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="scarlet.initialization.trim_morphology">
+<span class="sig-prename descclassname"><span class="pre">scarlet.initialization.</span></span><span class="sig-name descname"><span class="pre">trim_morphology</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">center_index</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">morph</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bg_thresh</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boxsize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/initialization.html#trim_morphology"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.initialization.trim_morphology" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
 </section>
 
 
@@ -98,10 +332,10 @@
     <div class="clearer"></div>
   </div>
     <div class="footer">
-      &copy;2018-2019, Fred Moolekamp and Peter Melchior.
+      &copy;2018-2021, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.0.2</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.1.1</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

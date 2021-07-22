@@ -44,7 +44,7 @@
   <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="search.html" method="get">
-      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
       <input type="submit" value="Go" />
     </form>
     </div>
@@ -85,11 +85,25 @@
 <h2 id="A">A</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/scarlet.interpolation.html#scarlet.interpolation.apply_2D_trapezoid_rule">apply_2D_trapezoid_rule() (in module scarlet.interpolation)</a>
+      <li><a href="api/scarlet.detect.html#scarlet.detect.QuadTreeRegion.add">add() (scarlet.detect.QuadTreeRegion method)</a>
+</li>
+      <li><a href="api/scarlet.detect.html#scarlet.detect.SingleScaleStructure.add_footprint">add_footprint() (scarlet.detect.SingleScaleStructure method)</a>
+</li>
+      <li><a href="api/scarlet.detect.html#scarlet.detect.QuadTreeRegion.add_footprints">add_footprints() (scarlet.detect.QuadTreeRegion method)</a>
+</li>
+      <li><a href="api/scarlet.detect.html#scarlet.detect.SingleScaleStructure.add_scale_tree">add_scale_tree() (scarlet.detect.SingleScaleStructure method)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/scarlet.detect.html#scarlet.detect.SingleScaleStructure.all_peaks">all_peaks (scarlet.detect.SingleScaleStructure property)</a>
+</li>
+      <li><a href="api/scarlet.source.html#scarlet.source.append_docs_from">append_docs_from() (in module scarlet.source)</a>
+</li>
+      <li><a href="api/scarlet.interpolation.html#scarlet.interpolation.apply_2D_trapezoid_rule">apply_2D_trapezoid_rule() (in module scarlet.interpolation)</a>
+</li>
       <li><a href="api/scarlet.wavelet.html#scarlet.wavelet.apply_wavelet_denoising">apply_wavelet_denoising() (in module scarlet.wavelet)</a>
+</li>
+      <li><a href="api/scarlet.display.html#scarlet.display.AsinhPercentileNorm">AsinhPercentileNorm (class in scarlet.display)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -97,15 +111,31 @@
 <h2 id="B">B</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/scarlet.frame.html#scarlet.frame.Frame.bbox">bbox (scarlet.frame.Frame property)</a>
+      <li><a href="api/scarlet.blend.html#scarlet.blend.Blend.bbox">bbox (scarlet.blend.Blend property)</a>
+
+      <ul>
+        <li><a href="api/scarlet.component.html#scarlet.component.Component.bbox">(scarlet.component.Component property)</a>
 </li>
+        <li><a href="api/scarlet.frame.html#scarlet.frame.Frame.bbox">(scarlet.frame.Frame property)</a>
+</li>
+      </ul></li>
       <li><a href="api/scarlet.interpolation.html#scarlet.interpolation.bilinear">bilinear() (in module scarlet.interpolation)</a>
+</li>
+      <li><a href="api/scarlet.blend.html#scarlet.blend.Blend">Blend (class in scarlet.blend)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/scarlet.bbox.html#scarlet.bbox.Box.bounds">bounds (scarlet.bbox.Box property)</a>
 </li>
+      <li><a href="api/scarlet.detect.html#scarlet.detect.bounds_to_bbox">bounds_to_bbox() (in module scarlet.detect)</a>
+</li>
       <li><a href="api/scarlet.bbox.html#scarlet.bbox.Box">Box (class in scarlet.bbox)</a>
+</li>
+      <li><a href="api/scarlet.detect.html#scarlet.detect.box_intersect">box_intersect() (in module scarlet.detect)</a>
+</li>
+      <li><a href="api/scarlet.renderer.html#scarlet.renderer.ResolutionRenderer.build_diffkernel">build_diffkernel() (scarlet.renderer.ResolutionRenderer method)</a>
+</li>
+      <li><a href="api/scarlet.initialization.html#scarlet.initialization.build_initialization_image">build_initialization_image() (in module scarlet.initialization)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -119,7 +149,17 @@
 </li>
       <li><a href="api/scarlet.interpolation.html#scarlet.interpolation.catmull_rom">catmull_rom() (in module scarlet.interpolation)</a>
 </li>
+      <li><a href="api/scarlet.bbox.html#scarlet.bbox.Box.center">center (scarlet.bbox.Box property)</a>
+
+      <ul>
+        <li><a href="api/scarlet.morphology.html#scarlet.morphology.ExtendedSourceMorphology.center">(scarlet.morphology.ExtendedSourceMorphology property)</a>
+</li>
+      </ul></li>
       <li><a href="api/scarlet.constraint.html#scarlet.constraint.CenterOnConstraint">CenterOnConstraint (class in scarlet.constraint)</a>
+</li>
+      <li><a href="api/scarlet.measure.html#scarlet.measure.centroid">centroid() (in module scarlet.measure)</a>
+</li>
+      <li><a href="api/scarlet.display.html#scarlet.display.channels_to_rgb">channels_to_rgb() (in module scarlet.display)</a>
 </li>
       <li><a href="api/scarlet.cache.html#scarlet.cache.Cache.check">check() (scarlet.cache.Cache static method)</a>
 </li>
@@ -129,9 +169,15 @@
 </li>
       <li><a href="api/scarlet.wavelet.html#scarlet.wavelet.Starlet.coefficients">coefficients (scarlet.wavelet.Starlet property)</a>
 </li>
+      <li><a href="api/scarlet.component.html#scarlet.component.CombinedComponent">CombinedComponent (class in scarlet.component)</a>
+</li>
+      <li><a href="api/scarlet.interpolation.html#scarlet.interpolation.common_projections">common_projections() (in module scarlet.interpolation)</a>
+</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/scarlet.interpolation.html#scarlet.interpolation.common_projections">common_projections() (in module scarlet.interpolation)</a>
+      <li><a href="api/scarlet.source.html#scarlet.source.CompactExtendedSource">CompactExtendedSource (class in scarlet.source)</a>
+</li>
+      <li><a href="api/scarlet.component.html#scarlet.component.Component">Component (class in scarlet.component)</a>
 </li>
       <li><a href="api/scarlet.constraint.html#scarlet.constraint.Constraint">Constraint (class in scarlet.constraint)</a>
 </li>
@@ -141,11 +187,21 @@
 </li>
       <li><a href="api/scarlet.frame.html#scarlet.frame.Frame.convert_pixel_to">convert_pixel_to() (scarlet.frame.Frame method)</a>
 </li>
-      <li><a href="api/scarlet.fft.html#scarlet.fft.convolve">convolve() (in module scarlet.fft)</a>
+      <li><a href="api/scarlet.renderer.html#scarlet.renderer.ConvolutionRenderer.convolution_bounds">convolution_bounds (scarlet.renderer.ConvolutionRenderer property)</a>
 </li>
+      <li><a href="api/scarlet.renderer.html#scarlet.renderer.ConvolutionRenderer">ConvolutionRenderer (class in scarlet.renderer)</a>
+</li>
+      <li><a href="api/scarlet.fft.html#scarlet.fft.convolve">convolve() (in module scarlet.fft)</a>
+
+      <ul>
+        <li><a href="api/scarlet.renderer.html#scarlet.renderer.ConvolutionRenderer.convolve">(scarlet.renderer.ConvolutionRenderer method)</a>
+</li>
+      </ul></li>
       <li><a href="api/scarlet.wavelet.html#scarlet.wavelet.Starlet.convolve2D">convolve2D (scarlet.wavelet.Starlet property)</a>
 </li>
       <li><a href="api/scarlet.bbox.html#scarlet.bbox.Box.copy">copy() (scarlet.bbox.Box method)</a>
+</li>
+      <li><a href="api/scarlet.component.html#scarlet.component.CubeComponent">CubeComponent (class in scarlet.component)</a>
 </li>
       <li><a href="api/scarlet.interpolation.html#scarlet.interpolation.cubic_spline">cubic_spline() (in module scarlet.interpolation)</a>
 </li>
@@ -157,11 +213,17 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/scarlet.bbox.html#scarlet.bbox.Box.D">D (scarlet.bbox.Box property)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/scarlet.operator.html#scarlet.operator.diagonalizeArray">diagonalizeArray() (in module scarlet.operator)</a>
 </li>
       <li><a href="api/scarlet.operator.html#scarlet.operator.diagonalsToSparse">diagonalsToSparse() (in module scarlet.operator)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/scarlet.detect.html#scarlet.detect.draw_box">draw_box() (in module scarlet.detect)</a>
+</li>
+      <li><a href="api/scarlet.detect.html#scarlet.detect.draw_footprint_box">draw_footprint_box() (in module scarlet.detect)</a>
+</li>
+      <li><a href="api/scarlet.detect.html#scarlet.detect.draw_region">draw_region() (in module scarlet.detect)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -171,8 +233,12 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/scarlet.psf.html#scarlet.psf.FunctionPSF.expand_dims">expand_dims() (scarlet.psf.FunctionPSF method)</a>
 </li>
+      <li><a href="api/scarlet.source.html#scarlet.source.ExtendedSource">ExtendedSource() (in module scarlet.source)</a>
+</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/scarlet.morphology.html#scarlet.morphology.ExtendedSourceMorphology">ExtendedSourceMorphology (class in scarlet.morphology)</a>
+</li>
       <li><a href="api/scarlet.bbox.html#scarlet.bbox.Box.extract_from">extract_from() (scarlet.bbox.Box method)</a>
 </li>
   </ul></td>
@@ -181,20 +247,30 @@
 <h2 id="F">F</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/scarlet.component.html#scarlet.component.FactorizedComponent">FactorizedComponent (class in scarlet.component)</a>
+</li>
       <li><a href="api/scarlet.fft.html#scarlet.fft.Fourier.fft">fft() (scarlet.fft.Fourier method)</a>
 </li>
       <li><a href="api/scarlet.operator.html#scarlet.operator.find_Q">find_Q() (in module scarlet.operator)</a>
 </li>
       <li><a href="api/scarlet.operator.html#scarlet.operator.find_relevant_dim">find_relevant_dim() (in module scarlet.operator)</a>
 </li>
+      <li><a href="api/scarlet.blend.html#scarlet.blend.Blend.fit">fit() (scarlet.blend.Blend method)</a>
+</li>
+      <li><a href="api/scarlet.measure.html#scarlet.measure.flux">flux() (in module scarlet.measure)</a>
+</li>
+      <li><a href="api/scarlet.detect.html#scarlet.detect.footprint_intersect">footprint_intersect() (in module scarlet.detect)</a>
+</li>
       <li><a href="api/scarlet.fft.html#scarlet.fft.Fourier">Fourier (class in scarlet.fft)</a>
 </li>
       <li><a href="api/scarlet.frame.html#scarlet.frame.Frame">Frame (class in scarlet.frame)</a>
 </li>
-      <li><a href="api/scarlet.bbox.html#scarlet.bbox.Box.from_bounds">from_bounds() (scarlet.bbox.Box static method)</a>
-</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/scarlet.component.html#scarlet.component.Component.frame">frame (scarlet.component.Component property)</a>
+</li>
+      <li><a href="api/scarlet.bbox.html#scarlet.bbox.Box.from_bounds">from_bounds() (scarlet.bbox.Box static method)</a>
+</li>
       <li><a href="api/scarlet.wavelet.html#scarlet.wavelet.Starlet.from_coefficients">from_coefficients() (scarlet.wavelet.Starlet static method)</a>
 </li>
       <li><a href="api/scarlet.bbox.html#scarlet.bbox.Box.from_data">from_data() (scarlet.bbox.Box static method)</a>
@@ -204,6 +280,8 @@
       <li><a href="api/scarlet.wavelet.html#scarlet.wavelet.Starlet.from_image">from_image() (scarlet.wavelet.Starlet static method)</a>
 </li>
       <li><a href="api/scarlet.frame.html#scarlet.frame.Frame.from_observations">from_observations() (scarlet.frame.Frame static method)</a>
+</li>
+      <li><a href="api/scarlet.source.html#scarlet.source.StarletSource.from_source">from_source() (scarlet.source.StarletSource class method)</a>
 </li>
       <li><a href="api/scarlet.psf.html#scarlet.psf.FunctionPSF">FunctionPSF (class in scarlet.psf)</a>
 </li>
@@ -221,17 +299,45 @@
 </li>
       <li><a href="api/scarlet.interpolation.html#scarlet.interpolation.get_angles">get_angles() (in module scarlet.interpolation)</a>
 </li>
+      <li><a href="api/scarlet.initialization.html#scarlet.initialization.get_best_fit_spectrum">get_best_fit_spectrum() (in module scarlet.initialization)</a>
+</li>
+      <li><a href="api/scarlet.detect.html#scarlet.detect.get_blend_structures">get_blend_structures() (in module scarlet.detect)</a>
+</li>
       <li><a href="api/scarlet.operator.html#scarlet.operator.get_center">get_center() (in module scarlet.operator)</a>
 </li>
+      <li><a href="api/scarlet.renderer.html#scarlet.renderer.Renderer.get_channel_map">get_channel_map() (scarlet.renderer.Renderer method)</a>
+</li>
       <li><a href="api/scarlet.interpolation.html#scarlet.interpolation.get_common_padding">get_common_padding() (in module scarlet.interpolation)</a>
+</li>
+      <li><a href="api/scarlet.detect.html#scarlet.detect.get_detect_wavelets">get_detect_wavelets() (in module scarlet.detect)</a>
+</li>
+      <li><a href="api/scarlet.display.html#scarlet.display.get_extent">get_extent() (in module scarlet.display)</a>
 </li>
       <li><a href="api/scarlet.interpolation.html#scarlet.interpolation.get_filter_bounds">get_filter_bounds() (in module scarlet.interpolation)</a>
 </li>
       <li><a href="api/scarlet.interpolation.html#scarlet.interpolation.get_filter_coords">get_filter_coords() (in module scarlet.interpolation)</a>
 </li>
-      <li><a href="api/scarlet.model.html#scarlet.model.Model.get_model">get_model() (scarlet.model.Model method)</a>
+      <li><a href="api/scarlet.observation.html#scarlet.observation.Observation.get_log_likelihood">get_log_likelihood() (scarlet.observation.Observation method)</a>
+</li>
+      <li><a href="api/scarlet.initialization.html#scarlet.initialization.get_minimal_boxsize">get_minimal_boxsize() (in module scarlet.initialization)</a>
+</li>
+      <li><a href="api/scarlet.blend.html#scarlet.blend.Blend.get_model">get_model() (scarlet.blend.Blend method)</a>
 
       <ul>
+        <li><a href="api/scarlet.component.html#scarlet.component.CombinedComponent.get_model">(scarlet.component.CombinedComponent method)</a>
+</li>
+        <li><a href="api/scarlet.component.html#scarlet.component.CubeComponent.get_model">(scarlet.component.CubeComponent method)</a>
+</li>
+        <li><a href="api/scarlet.component.html#scarlet.component.FactorizedComponent.get_model">(scarlet.component.FactorizedComponent method)</a>
+</li>
+        <li><a href="api/scarlet.model.html#scarlet.model.Model.get_model">(scarlet.model.Model method)</a>
+</li>
+        <li><a href="api/scarlet.morphology.html#scarlet.morphology.ImageMorphology.get_model">(scarlet.morphology.ImageMorphology method)</a>
+</li>
+        <li><a href="api/scarlet.morphology.html#scarlet.morphology.PointSourceMorphology.get_model">(scarlet.morphology.PointSourceMorphology method)</a>
+</li>
+        <li><a href="api/scarlet.morphology.html#scarlet.morphology.StarletMorphology.get_model">(scarlet.morphology.StarletMorphology method)</a>
+</li>
         <li><a href="api/scarlet.psf.html#scarlet.psf.GaussianPSF.get_model">(scarlet.psf.GaussianPSF method)</a>
 </li>
         <li><a href="api/scarlet.psf.html#scarlet.psf.ImagePSF.get_model">(scarlet.psf.ImagePSF method)</a>
@@ -239,6 +345,16 @@
         <li><a href="api/scarlet.psf.html#scarlet.psf.MoffatPSF.get_model">(scarlet.psf.MoffatPSF method)</a>
 </li>
         <li><a href="api/scarlet.psf.html#scarlet.psf.PSF.get_model">(scarlet.psf.PSF method)</a>
+</li>
+        <li><a href="api/scarlet.renderer.html#scarlet.renderer.ConvolutionRenderer.get_model">(scarlet.renderer.ConvolutionRenderer method)</a>
+</li>
+        <li><a href="api/scarlet.renderer.html#scarlet.renderer.NullRenderer.get_model">(scarlet.renderer.NullRenderer method)</a>
+</li>
+        <li><a href="api/scarlet.renderer.html#scarlet.renderer.ResolutionRenderer.get_model">(scarlet.renderer.ResolutionRenderer method)</a>
+</li>
+        <li><a href="api/scarlet.source.html#scarlet.source.NullSource.get_model">(scarlet.source.NullSource method)</a>
+</li>
+        <li><a href="api/scarlet.spectrum.html#scarlet.spectrum.TabulatedSpectrum.get_model">(scarlet.spectrum.TabulatedSpectrum method)</a>
 </li>
       </ul></li>
   </ul></td>
@@ -253,15 +369,21 @@
 </li>
       <li><a href="api/scarlet.interpolation.html#scarlet.interpolation.get_pixel_size">get_pixel_size() (in module scarlet.interpolation)</a>
 </li>
+      <li><a href="api/scarlet.initialization.html#scarlet.initialization.get_pixel_spectrum">get_pixel_spectrum() (in module scarlet.initialization)</a>
+</li>
       <li><a href="api/scarlet.interpolation.html#scarlet.interpolation.get_projection_slices">get_projection_slices() (in module scarlet.interpolation)</a>
 </li>
       <li><a href="api/scarlet.interpolation.html#scarlet.interpolation.get_psf_size">get_psf_size() (in module scarlet.interpolation)</a>
+</li>
+      <li><a href="api/scarlet.initialization.html#scarlet.initialization.get_psf_spectrum">get_psf_spectrum() (in module scarlet.initialization)</a>
 </li>
       <li><a href="api/scarlet.wavelet.html#scarlet.wavelet.get_scales">get_scales() (in module scarlet.wavelet)</a>
 </li>
       <li><a href="api/scarlet.interpolation.html#scarlet.interpolation.get_separable_kernel">get_separable_kernel() (in module scarlet.interpolation)</a>
 </li>
       <li><a href="api/scarlet.frame.html#scarlet.frame.Frame.get_sky_coord">get_sky_coord() (scarlet.frame.Frame method)</a>
+</li>
+      <li><a href="api/scarlet.detect.html#scarlet.detect.get_wavelets">get_wavelets() (in module scarlet.detect)</a>
 </li>
       <li><a href="api/scarlet.operator.html#scarlet.operator.getOffsets">getOffsets() (in module scarlet.operator)</a>
 </li>
@@ -281,10 +403,28 @@
         <li><a href="api/scarlet.wavelet.html#scarlet.wavelet.Starlet.image">(scarlet.wavelet.Starlet property)</a>
 </li>
       </ul></li>
+      <li><a href="api/scarlet.morphology.html#scarlet.morphology.ImageMorphology">ImageMorphology (class in scarlet.morphology)</a>
+</li>
       <li><a href="api/scarlet.psf.html#scarlet.psf.ImagePSF">ImagePSF (class in scarlet.psf)</a>
+</li>
+      <li><a href="api/scarlet.display.html#scarlet.display.img_to_3channel">img_to_3channel() (in module scarlet.display)</a>
+</li>
+      <li><a href="api/scarlet.display.html#scarlet.display.img_to_rgb">img_to_rgb() (in module scarlet.display)</a>
+</li>
+      <li><a href="api/scarlet.initialization.html#scarlet.initialization.init_all_sources">init_all_sources() (in module scarlet.initialization)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/scarlet.source.html#scarlet.source.CompactExtendedSource.init_morph">init_morph() (scarlet.source.CompactExtendedSource static method)</a>
+
+      <ul>
+        <li><a href="api/scarlet.source.html#scarlet.source.SingleExtendedSource.init_morph">(scarlet.source.SingleExtendedSource static method)</a>
+</li>
+      </ul></li>
+      <li><a href="api/scarlet.source.html#scarlet.source.MultiExtendedSource.init_morphs">init_morphs() (scarlet.source.MultiExtendedSource static method)</a>
+</li>
+      <li><a href="api/scarlet.initialization.html#scarlet.initialization.init_source">init_source() (in module scarlet.initialization)</a>
+</li>
       <li><a href="api/scarlet.wavelet.html#scarlet.wavelet.InputError">InputError</a>
 </li>
       <li><a href="api/scarlet.bbox.html#scarlet.bbox.Box.insert_into">insert_into() (scarlet.bbox.Box method)</a>
@@ -301,11 +441,17 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/scarlet.constraint.html#scarlet.constraint.L0Constraint">L0Constraint (class in scarlet.constraint)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/scarlet.constraint.html#scarlet.constraint.L1Constraint">L1Constraint (class in scarlet.constraint)</a>
 </li>
       <li><a href="api/scarlet.interpolation.html#scarlet.interpolation.lanczos">lanczos() (in module scarlet.interpolation)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/scarlet.display.html#scarlet.display.LinearPercentileNorm">LinearPercentileNorm (class in scarlet.display)</a>
+</li>
+      <li><a href="api/scarlet.blend.html#scarlet.blend.Blend.log_likelihood">log_likelihood (scarlet.blend.Blend property)</a>
+</li>
+      <li><a href="api/scarlet.observation.html#scarlet.observation.Observation.log_norm">log_norm (scarlet.observation.Observation property)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -313,7 +459,13 @@
 <h2 id="M">M</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/scarlet.renderer.html#scarlet.renderer.Renderer.map_channels">map_channels() (scarlet.renderer.Renderer method)</a>
+</li>
+      <li><a href="api/scarlet.observation.html#scarlet.observation.Observation.match">match() (scarlet.observation.Observation method)</a>
+</li>
       <li><a href="api/scarlet.fft.html#scarlet.fft.match_psf">match_psf() (in module scarlet.fft)</a>
+</li>
+      <li><a href="api/scarlet.measure.html#scarlet.measure.max_pixel">max_pixel() (in module scarlet.measure)</a>
 </li>
       <li><a href="api/scarlet.interpolation.html#scarlet.interpolation.mitchel_netravali">mitchel_netravali() (in module scarlet.interpolation)</a>
 </li>
@@ -321,23 +473,41 @@
 </li>
       <li><a href="api/scarlet.model.html#scarlet.model.Model">Model (class in scarlet.model)</a>
 </li>
+      <li><a href="api/scarlet.component.html#scarlet.component.Component.model_to_box">model_to_box() (scarlet.component.Component method)</a>
+</li>
       <li>
     module
 
       <ul>
         <li><a href="api/scarlet.bbox.html#module-scarlet.bbox">scarlet.bbox</a>
 </li>
+        <li><a href="api/scarlet.blend.html#module-scarlet.blend">scarlet.blend</a>
+</li>
         <li><a href="api/scarlet.cache.html#module-scarlet.cache">scarlet.cache</a>
 </li>
+        <li><a href="api/scarlet.component.html#module-scarlet.component">scarlet.component</a>
+</li>
         <li><a href="api/scarlet.constraint.html#module-scarlet.constraint">scarlet.constraint</a>
+</li>
+        <li><a href="api/scarlet.detect.html#module-scarlet.detect">scarlet.detect</a>
+</li>
+        <li><a href="api/scarlet.display.html#module-scarlet.display">scarlet.display</a>
 </li>
         <li><a href="api/scarlet.fft.html#module-scarlet.fft">scarlet.fft</a>
 </li>
         <li><a href="api/scarlet.frame.html#module-scarlet.frame">scarlet.frame</a>
 </li>
+        <li><a href="api/scarlet.initialization.html#module-scarlet.initialization">scarlet.initialization</a>
+</li>
         <li><a href="api/scarlet.interpolation.html#module-scarlet.interpolation">scarlet.interpolation</a>
 </li>
+        <li><a href="api/scarlet.measure.html#module-scarlet.measure">scarlet.measure</a>
+</li>
         <li><a href="api/scarlet.model.html#module-scarlet.model">scarlet.model</a>
+</li>
+        <li><a href="api/scarlet.morphology.html#module-scarlet.morphology">scarlet.morphology</a>
+</li>
+        <li><a href="api/scarlet.observation.html#module-scarlet.observation">scarlet.observation</a>
 </li>
         <li><a href="api/scarlet.operator.html#module-scarlet.operator">scarlet.operator</a>
 </li>
@@ -347,6 +517,12 @@
 </li>
         <li><a href="api/scarlet.psf.html#module-scarlet.psf">scarlet.psf</a>
 </li>
+        <li><a href="api/scarlet.renderer.html#module-scarlet.renderer">scarlet.renderer</a>
+</li>
+        <li><a href="api/scarlet.source.html#module-scarlet.source">scarlet.source</a>
+</li>
+        <li><a href="api/scarlet.spectrum.html#module-scarlet.spectrum">scarlet.spectrum</a>
+</li>
         <li><a href="api/scarlet.wavelet.html#module-scarlet.wavelet">scarlet.wavelet</a>
 </li>
       </ul></li>
@@ -354,9 +530,17 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/scarlet.psf.html#scarlet.psf.MoffatPSF">MoffatPSF (class in scarlet.psf)</a>
 </li>
+      <li><a href="api/scarlet.measure.html#scarlet.measure.moments">moments() (in module scarlet.measure)</a>
+</li>
       <li><a href="api/scarlet.constraint.html#scarlet.constraint.MonotonicityConstraint">MonotonicityConstraint (class in scarlet.constraint)</a>
 </li>
       <li><a href="api/scarlet.constraint.html#scarlet.constraint.MonotonicMaskConstraint">MonotonicMaskConstraint (class in scarlet.constraint)</a>
+</li>
+      <li><a href="api/scarlet.morphology.html#scarlet.morphology.Morphology">Morphology (class in scarlet.morphology)</a>
+</li>
+      <li><a href="api/scarlet.component.html#scarlet.component.FactorizedComponent.morphology">morphology (scarlet.component.FactorizedComponent property)</a>
+</li>
+      <li><a href="api/scarlet.source.html#scarlet.source.MultiExtendedSource">MultiExtendedSource (class in scarlet.source)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -364,13 +548,19 @@
 <h2 id="N">N</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/scarlet.observation.html#scarlet.observation.Observation.noise_rms">noise_rms (scarlet.observation.Observation property)</a>
+</li>
       <li><a href="api/scarlet.wavelet.html#scarlet.wavelet.Starlet.norm">norm (scarlet.wavelet.Starlet property)</a>
 </li>
       <li><a href="api/scarlet.constraint.html#scarlet.constraint.NormalizationConstraint">NormalizationConstraint (class in scarlet.constraint)</a>
 </li>
+      <li><a href="api/scarlet.psf.html#scarlet.psf.normalize">normalize() (in module scarlet.psf)</a>
+</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/scarlet.psf.html#scarlet.psf.normalize">normalize() (in module scarlet.psf)</a>
+      <li><a href="api/scarlet.renderer.html#scarlet.renderer.NullRenderer">NullRenderer (class in scarlet.renderer)</a>
+</li>
+      <li><a href="api/scarlet.source.html#scarlet.source.NullSource">NullSource (class in scarlet.source)</a>
 </li>
       <li><a href="api/scarlet.frame.html#scarlet.frame.Frame.Nx">Nx (scarlet.frame.Frame property)</a>
 </li>
@@ -381,6 +571,10 @@
 
 <h2 id="O">O</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/scarlet.observation.html#scarlet.observation.Observation">Observation (class in scarlet.observation)</a>
+</li>
+  </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/scarlet.bbox.html#scarlet.bbox.overlapped_slices">overlapped_slices() (in module scarlet.bbox)</a>
 </li>
@@ -393,6 +587,14 @@
       <li><a href="api/scarlet.parameter.html#scarlet.parameter.Parameter">Parameter (class in scarlet.parameter)</a>
 </li>
       <li><a href="api/scarlet.model.html#scarlet.model.Model.parameters">parameters (scarlet.model.Model property)</a>
+
+      <ul>
+        <li><a href="api/scarlet.observation.html#scarlet.observation.Observation.parameters">(scarlet.observation.Observation property)</a>
+</li>
+      </ul></li>
+      <li><a href="api/scarlet.source.html#scarlet.source.PointSource">PointSource (class in scarlet.source)</a>
+</li>
+      <li><a href="api/scarlet.morphology.html#scarlet.morphology.PointSourceMorphology">PointSourceMorphology (class in scarlet.morphology)</a>
 </li>
       <li><a href="api/scarlet.constraint.html#scarlet.constraint.PositivityConstraint">PositivityConstraint (class in scarlet.constraint)</a>
 </li>
@@ -406,12 +608,12 @@
 </li>
       <li><a href="api/scarlet.operator.html#scarlet.operator.project_disk_sed">project_disk_sed() (in module scarlet.operator)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/scarlet.operator.html#scarlet.operator.project_disk_sed_mean">project_disk_sed_mean() (in module scarlet.operator)</a>
 </li>
       <li><a href="api/scarlet.interpolation.html#scarlet.interpolation.project_image">project_image() (in module scarlet.interpolation)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/scarlet.operator.html#scarlet.operator.prox_cone">prox_cone() (in module scarlet.operator)</a>
 </li>
       <li><a href="api/scarlet.operator.html#scarlet.operator.prox_kspace_symmetry">prox_kspace_symmetry() (in module scarlet.operator)</a>
@@ -438,6 +640,12 @@
 <h2 id="Q">Q</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/scarlet.detect.html#scarlet.detect.QuadTreeRegion">QuadTreeRegion (class in scarlet.detect)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/scarlet.detect.html#scarlet.detect.QuadTreeRegion.query">query() (scarlet.detect.QuadTreeRegion method)</a>
+</li>
       <li><a href="api/scarlet.interpolation.html#scarlet.interpolation.quintic_spline">quintic_spline() (in module scarlet.interpolation)</a>
 </li>
   </ul></td>
@@ -446,7 +654,17 @@
 <h2 id="R">R</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/scarlet.source.html#scarlet.source.RandomSource">RandomSource (class in scarlet.source)</a>
+</li>
       <li><a href="api/scarlet.parameter.html#scarlet.parameter.relative_step">relative_step() (in module scarlet.parameter)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/scarlet.observation.html#scarlet.observation.Observation.render">render() (scarlet.observation.Observation method)</a>
+</li>
+      <li><a href="api/scarlet.renderer.html#scarlet.renderer.Renderer">Renderer (class in scarlet.renderer)</a>
+</li>
+      <li><a href="api/scarlet.renderer.html#scarlet.renderer.ResolutionRenderer">ResolutionRenderer (class in scarlet.renderer)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -464,6 +682,13 @@
 </li>
       </ul></li>
       <li>
+    scarlet.blend
+
+      <ul>
+        <li><a href="api/scarlet.blend.html#module-scarlet.blend">module</a>
+</li>
+      </ul></li>
+      <li>
     scarlet.cache
 
       <ul>
@@ -471,10 +696,31 @@
 </li>
       </ul></li>
       <li>
+    scarlet.component
+
+      <ul>
+        <li><a href="api/scarlet.component.html#module-scarlet.component">module</a>
+</li>
+      </ul></li>
+      <li>
     scarlet.constraint
 
       <ul>
         <li><a href="api/scarlet.constraint.html#module-scarlet.constraint">module</a>
+</li>
+      </ul></li>
+      <li>
+    scarlet.detect
+
+      <ul>
+        <li><a href="api/scarlet.detect.html#module-scarlet.detect">module</a>
+</li>
+      </ul></li>
+      <li>
+    scarlet.display
+
+      <ul>
+        <li><a href="api/scarlet.display.html#module-scarlet.display">module</a>
 </li>
       </ul></li>
       <li>
@@ -492,6 +738,13 @@
 </li>
       </ul></li>
       <li>
+    scarlet.initialization
+
+      <ul>
+        <li><a href="api/scarlet.initialization.html#module-scarlet.initialization">module</a>
+</li>
+      </ul></li>
+      <li>
     scarlet.interpolation
 
       <ul>
@@ -499,10 +752,31 @@
 </li>
       </ul></li>
       <li>
+    scarlet.measure
+
+      <ul>
+        <li><a href="api/scarlet.measure.html#module-scarlet.measure">module</a>
+</li>
+      </ul></li>
+      <li>
     scarlet.model
 
       <ul>
         <li><a href="api/scarlet.model.html#module-scarlet.model">module</a>
+</li>
+      </ul></li>
+      <li>
+    scarlet.morphology
+
+      <ul>
+        <li><a href="api/scarlet.morphology.html#module-scarlet.morphology">module</a>
+</li>
+      </ul></li>
+      <li>
+    scarlet.observation
+
+      <ul>
+        <li><a href="api/scarlet.observation.html#module-scarlet.observation">module</a>
 </li>
       </ul></li>
       <li>
@@ -526,13 +800,34 @@
         <li><a href="api/scarlet.prior.html#module-scarlet.prior">module</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li>
     scarlet.psf
 
       <ul>
         <li><a href="api/scarlet.psf.html#module-scarlet.psf">module</a>
+</li>
+      </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li>
+    scarlet.renderer
+
+      <ul>
+        <li><a href="api/scarlet.renderer.html#module-scarlet.renderer">module</a>
+</li>
+      </ul></li>
+      <li>
+    scarlet.source
+
+      <ul>
+        <li><a href="api/scarlet.source.html#module-scarlet.source">module</a>
+</li>
+      </ul></li>
+      <li>
+    scarlet.spectrum
+
+      <ul>
+        <li><a href="api/scarlet.spectrum.html#module-scarlet.spectrum">module</a>
 </li>
       </ul></li>
       <li>
@@ -544,6 +839,8 @@
       </ul></li>
       <li><a href="api/scarlet.cache.html#scarlet.cache.Cache.set">set() (scarlet.cache.Cache static method)</a>
 </li>
+      <li><a href="api/scarlet.initialization.html#scarlet.initialization.set_spectra_to_match">set_spectra_to_match() (in module scarlet.initialization)</a>
+</li>
       <li><a href="api/scarlet.fft.html#scarlet.fft.Fourier.shape">shape (scarlet.fft.Fourier property)</a>
 
       <ul>
@@ -552,21 +849,47 @@
       </ul></li>
       <li><a href="api/scarlet.fft.html#scarlet.fft.shift">shift() (in module scarlet.fft)</a>
 </li>
+      <li><a href="api/scarlet.display.html#scarlet.display.show_likelihood">show_likelihood() (in module scarlet.display)</a>
+</li>
+      <li><a href="api/scarlet.display.html#scarlet.display.show_observation">show_observation() (in module scarlet.display)</a>
+</li>
+      <li><a href="api/scarlet.display.html#scarlet.display.show_scene">show_scene() (in module scarlet.display)</a>
+</li>
+      <li><a href="api/scarlet.display.html#scarlet.display.show_sources">show_sources() (in module scarlet.display)</a>
+</li>
       <li><a href="api/scarlet.interpolation.html#scarlet.interpolation.sinc2D">sinc2D() (in module scarlet.interpolation)</a>
 </li>
       <li><a href="api/scarlet.interpolation.html#scarlet.interpolation.sinc_interp">sinc_interp() (in module scarlet.interpolation)</a>
 </li>
       <li><a href="api/scarlet.interpolation.html#scarlet.interpolation.sinc_interp_inplace">sinc_interp_inplace() (in module scarlet.interpolation)</a>
 </li>
+      <li><a href="api/scarlet.renderer.html#scarlet.renderer.ResolutionRenderer.sinc_shift">sinc_shift() (scarlet.renderer.ResolutionRenderer method)</a>
+</li>
+      <li><a href="api/scarlet.source.html#scarlet.source.SingleExtendedSource">SingleExtendedSource (class in scarlet.source)</a>
+</li>
+      <li><a href="api/scarlet.detect.html#scarlet.detect.SingleScaleStructure">SingleScaleStructure (class in scarlet.detect)</a>
+</li>
       <li><a href="api/scarlet.bbox.html#scarlet.bbox.Box.slices">slices (scarlet.bbox.Box property)</a>
 </li>
+      <li><a href="api/scarlet.measure.html#scarlet.measure.snr">snr() (in module scarlet.measure)</a>
+</li>
       <li><a href="api/scarlet.operator.html#scarlet.operator.sort_by_radius">sort_by_radius() (in module scarlet.operator)</a>
+</li>
+      <li><a href="api/scarlet.spectrum.html#scarlet.spectrum.Spectrum">Spectrum (class in scarlet.spectrum)</a>
+</li>
+      <li><a href="api/scarlet.component.html#scarlet.component.FactorizedComponent.spectrum">spectrum (scarlet.component.FactorizedComponent property)</a>
+</li>
+      <li><a href="api/scarlet.detect.html#scarlet.detect.QuadTreeRegion.split">split() (scarlet.detect.QuadTreeRegion method)</a>
 </li>
       <li><a href="api/scarlet.wavelet.html#scarlet.wavelet.Starlet">Starlet (class in scarlet.wavelet)</a>
 </li>
       <li><a href="api/scarlet.wavelet.html#scarlet.wavelet.starlet_reconstruction">starlet_reconstruction() (in module scarlet.wavelet)</a>
 </li>
       <li><a href="api/scarlet.wavelet.html#scarlet.wavelet.starlet_transform">starlet_transform() (in module scarlet.wavelet)</a>
+</li>
+      <li><a href="api/scarlet.morphology.html#scarlet.morphology.StarletMorphology">StarletMorphology (class in scarlet.morphology)</a>
+</li>
+      <li><a href="api/scarlet.source.html#scarlet.source.StarletSource">StarletSource (class in scarlet.source)</a>
 </li>
       <li><a href="api/scarlet.bbox.html#scarlet.bbox.Box.start">start (scarlet.bbox.Box property)</a>
 </li>
@@ -582,11 +905,15 @@
 <h2 id="T">T</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/scarlet.spectrum.html#scarlet.spectrum.TabulatedSpectrum">TabulatedSpectrum (class in scarlet.spectrum)</a>
+</li>
       <li><a href="api/scarlet.constraint.html#scarlet.constraint.ThresholdConstraint.threshold">threshold() (scarlet.constraint.ThresholdConstraint method)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/scarlet.constraint.html#scarlet.constraint.ThresholdConstraint">ThresholdConstraint (class in scarlet.constraint)</a>
+</li>
+      <li><a href="api/scarlet.initialization.html#scarlet.initialization.trim_morphology">trim_morphology() (in module scarlet.initialization)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -596,8 +923,16 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/scarlet.operator.html#scarlet.operator.uncentered_operator">uncentered_operator() (in module scarlet.operator)</a>
 </li>
-      <li><a href="api/scarlet.model.html#scarlet.model.Model.update">update() (scarlet.model.Model method)</a>
+      <li><a href="api/scarlet.component.html#scarlet.component.CombinedComponent.update">update() (scarlet.component.CombinedComponent method)</a>
+
+      <ul>
+        <li><a href="api/scarlet.component.html#scarlet.component.FactorizedComponent.update">(scarlet.component.FactorizedComponent method)</a>
 </li>
+        <li><a href="api/scarlet.model.html#scarlet.model.Model.update">(scarlet.model.Model method)</a>
+</li>
+        <li><a href="api/scarlet.morphology.html#scarlet.morphology.ImageMorphology.update">(scarlet.morphology.ImageMorphology method)</a>
+</li>
+      </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/scarlet.model.html#scarlet.model.UpdateException">UpdateException</a>
@@ -616,10 +951,10 @@
     <div class="clearer"></div>
   </div>
     <div class="footer">
-      &copy;2018-2019, Fred Moolekamp and Peter Melchior.
+      &copy;2018-2021, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.0.2</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.1.1</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
     </div>

@@ -61,7 +61,7 @@
   <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="search.html" method="get">
-      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
       <input type="submit" value="Go" />
     </form>
     </div>
@@ -545,8 +545,8 @@ Source 6: CompactExtendedSource
 <div class="highlight"><pre>
 {&#39;name&#39;: &#39;spectrum&#39;,
  &#39;prior&#39;: None,
- &#39;constraint&#39;: &lt;scarlet.constraint.PositivityConstraint at 0x7fbc087d8ca0&gt;,
- &#39;step&#39;: functools.partial(&lt;function relative_step at 0x7fbc0d95fa60&gt;, factor=0.01, minimum=array([0.01279404, 0.01422727, 0.02035177, 0.03339863, 0.06668474])),
+ &#39;constraint&#39;: &lt;scarlet.constraint.PositivityConstraint at 0x7fd4911cabb0&gt;,
+ &#39;step&#39;: functools.partial(&lt;function relative_step at 0x7fd49641b9d0&gt;, factor=0.01, minimum=array([0.01279404, 0.01422727, 0.02035177, 0.03339863, 0.06668474])),
  &#39;std&#39;: masked_array(data=[0.02782697011630998, 0.015044047532164796,
                     0.027118815493023137, 0.05929413054496282,
                     0.2224104597472498],
@@ -583,7 +583,7 @@ Source 6: CompactExtendedSource
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-&lt;matplotlib.colorbar.Colorbar at 0x7fbc07fd5eb0&gt;
+&lt;matplotlib.colorbar.Colorbar at 0x7fd4909c3f40&gt;
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">
@@ -682,10 +682,10 @@ only once because the optimizer will require multiple iterations to finally conv
     <div class="clearer"></div>
   </div>
     <div class="footer">
-      &copy;2018-2019, Fred Moolekamp and Peter Melchior.
+      &copy;2018-2021, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.0.2</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.1.1</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

@@ -44,7 +44,7 @@
   <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="../../search.html" method="get">
-      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
       <input type="submit" value="Go" />
     </form>
     </div>
@@ -109,12 +109,14 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;List of parameters, including from the children.</span>
+        <span class="sd">&quot;&quot;&quot;List of parameters, including from the children</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parameters</span> <span class="o">+</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">p</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">children</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">c</span><span class="o">.</span><span class="n">parameters</span><span class="p">)</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">children</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;List of child models</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_children</span>
 
     <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span>
@@ -127,14 +129,37 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_children</span><span class="o">.</span><span class="fm">__next__</span><span class="p">()</span>
 
 <div class="viewcode-block" id="Model.get_parameter"><a class="viewcode-back" href="../../api/scarlet.model.html#scarlet.model.Model.get_parameter">[docs]</a>    <span class="k">def</span> <span class="nf">get_parameter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="o">*</span><span class="n">parameters</span><span class="p">):</span>
-        <span class="c1"># NOTE: index lookup only works if order is not changed by parameter fixing!</span>
-        <span class="c1"># check parameters first during optimization</span>
-        <span class="k">if</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">parameters</span><span class="p">):</span>
-            <span class="k">return</span> <span class="n">parameters</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+        <span class="sd">&quot;&quot;&quot;Access parameters by list index or by name</span>
 
-        <span class="c1"># otherwise use self</span>
-        <span class="k">if</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">):</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        i: int, slice, str</span>
+<span class="sd">            Index, slice or name attribute of the requested parameter</span>
+<span class="sd">        parameters: tuple</span>
+<span class="sd">            Parameters used during optimization. If not set, uses `self`</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Matching item or tuple of matching items</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># NOTE: index lookup only works if order is not changed by parameter fixing!</span>
+        <span class="c1"># during optimization: parameters are passed by autograd</span>
+        <span class="k">if</span> <span class="n">parameters</span><span class="p">:</span>
+            <span class="n">parameters_</span> <span class="o">=</span> <span class="n">parameters</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">parameters_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">slice</span><span class="p">)):</span>
+            <span class="k">return</span> <span class="n">parameters_</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">parameters</span><span class="p">:</span>
+                <span class="n">match</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">p</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">parameters_</span> <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">_value</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="n">i</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">match</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">p</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">parameters_</span> <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="n">i</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">match</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">match</span> <span class="o">=</span> <span class="n">match</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">return</span> <span class="n">match</span>
 
         <span class="k">return</span> <span class="kc">None</span></div>
 
@@ -154,6 +179,17 @@
         <span class="k">pass</span></div>
 
 <div class="viewcode-block" id="Model.get_models_of_children"><a class="viewcode-back" href="../../api/scarlet.model.html#scarlet.model.Model.get_models_of_children">[docs]</a>    <span class="k">def</span> <span class="nf">get_models_of_children</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">parameters</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Get realization of all child models</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        parameters: tuple of optimimzation parameters</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        model: list</span>
+<span class="sd">            Realization of the child models, ordered by child index</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">models</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="c1"># parameters during optimization</span>
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">parameters</span><span class="p">):</span>
@@ -202,10 +238,10 @@
     <div class="clearer"></div>
   </div>
     <div class="footer">
-      &copy;2018-2019, Fred Moolekamp and Peter Melchior.
+      &copy;2018-2021, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.0.2</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.1.1</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
     </div>
