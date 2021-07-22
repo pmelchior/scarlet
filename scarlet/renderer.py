@@ -160,20 +160,20 @@ def _grad_match_shape(upstream_grad, model, data_frame, slices):
 
     return result
 
-
 defvjp(match_shape, _grad_match_shape)
 
-
-
-
 class ConvolutionRenderer(Renderer):
-    def __init__(self, data_frame, model_frame, *parameters, convolution_type="fft", padding=10):
-        """
-        convolution_type: str
-            The type of convolution to use.
-            - `real`: Use a real space convolution and gradient
-            - `fft`: Use a DFT to do the convolution and gradient
-        """
+
+    def __init__(self, data_frame, model_frame, *parameters, convolution_type="fft", padding=10, psf_shift=None):
+
+        if psf_shift is not None:
+            shift = Parameter(
+                psf_shift, name="psf_shift", step=1.e-2)
+        else:
+            shift = Parameter(
+                None, name="psf_shift", step=1.e-2)
+
+        parameters = (*parameters, shift)
         super().__init__(data_frame, model_frame, *parameters)
 
         assert convolution_type in [
@@ -197,70 +197,14 @@ class ConvolutionRenderer(Renderer):
         )
         self.diff_kernel = fft.match_psf(psf_fft, model_psf_fft, padding=padding)
 
-    def get_model(self, *parameters):
-        def transform(model):
-            # restrict to observed channels
-            model_ = self.map_channels(model)
-            # convolve observed channels
-            model_ = self.convolve(model_)
-            # adjust spatial shapes
-            model_ = match_shape(model_, self.data_frame, self.slices)
-            return model_
-
-        return transform
-
-    @property
-    def convolution_bounds(self):
-        """Build the slices needed for convolution in real space
-        """
-        if not hasattr(self, "_convolution_bounds"):
-            coords = interpolation.get_filter_coords(self.diff_kernel[0])
-            self._convolution_bounds = interpolation.get_filter_bounds(
-                coords.reshape(-1, 2)
-            )
-        return self._convolution_bounds
-
-    def convolve(self, model, convolution_type=None):
+    def convolve(self, model, convolution_type=None, psf_shift=None):
         """Convolve the model in a single band
         """
         if convolution_type is None:
             convolution_type = self._convolution_type
-        if convolution_type == "real":
-            result = convolve(model, self.diff_kernel.image, self.convolution_bounds)
-        elif convolution_type == "fft":
-            result = fft.convolve(
-                fft.Fourier(model), self.diff_kernel, axes=(1, 2)
-            ).image
-        else:
-            raise ValueError(
-                "`convolution` must be either 'real' or 'fft', got {}".format(
-                    convolution_type
-                )
-            )
-        return result
-
-
-class ShiftConvolutionRenderer(ConvolutionRenderer):
-
-    def __init__(self, data_frame, model_frame, convolution_type="fft", padding=10, shift = np.zeros(2)):
-
-        if shift is not None:
-            shift = Parameter(
-                shift, name="psf_shift", step=1.e-2)
-        super().__init__(data_frame,
-                         model_frame,
-                         shift,
-                         convolution_type=convolution_type,
-                         padding=padding)
-
-    def convolve(self, model, convolution_type=None, shift = None):
-        """Convolve the model in a single band
-        """
-        if convolution_type is None:
-            convolution_type = self._convolution_type
-        if shift is not None:
+        if psf_shift is not None:
             kernel = fft.shift(self.diff_kernel.image,
-                           shift,
+                           psf_shift,
                            fft_shape=None,
                            axes=(-2, -1),
                            return_Fourier=True)
@@ -291,10 +235,10 @@ class ShiftConvolutionRenderer(ConvolutionRenderer):
         def transform(model, *parameters):
             # restrict to observed channels
             model_ = self.map_channels(model)
+            #get the shift
+            shift = self.get_parameter("psf_shift", *parameters)
             # convolve observed channels
-            shift = self.get_parameter(0, *parameters)
-            print('zizizi',shift)
-            model_ = self.convolve(model_, shift=shift)
+            model_ = self.convolve(model_, psf_shift=shift)
             # adjust spatial shapes
             model_ = match_shape(model_, self.data_frame, self.slices)
             return model_
