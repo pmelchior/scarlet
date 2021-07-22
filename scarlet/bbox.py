@@ -147,6 +147,12 @@ class Box:
         return tuple(o + s for o, s in zip(self.origin, self.shape))
 
     @property
+    def center(self):
+        """Tuple of center coordinates
+        """
+        return tuple(o + s / 2 for o, s in zip(self.origin, self.shape))
+
+    @property
     def bounds(self):
         """Bounds of the box
         """
