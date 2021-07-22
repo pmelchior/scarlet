@@ -196,6 +196,17 @@ class ConvolutionRenderer(Renderer):
         )
         self.diff_kernel = fft.match_psf(psf_fft, model_psf_fft, padding=padding)
 
+    @property
+    def convolution_bounds(self):
+        """Build the slices needed for convolution in real space
+        """
+        if not hasattr(self, "_convolution_bounds"):
+            coords = interpolation.get_filter_coords(self.diff_kernel[0])
+            self._convolution_bounds = interpolation.get_filter_bounds(
+                coords.reshape(-1, 2)
+            )
+        return self._convolution_bounds
+
     def convolve(self, model, convolution_type=None, psf_shift=None):
         """Convolve the model in a single band
         """
