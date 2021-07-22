@@ -167,13 +167,12 @@ class ConvolutionRenderer(Renderer):
     def __init__(self, data_frame, model_frame, *parameters, convolution_type="fft", padding=10, psf_shift=None):
 
         if psf_shift is not None:
-            shift = Parameter(
+            self.psf_shift = Parameter(
                 psf_shift, name="psf_shift", step=1.e-2)
+            parameters = (*parameters, self.psf_shift)
         else:
-            shift = Parameter(
-                None, name="psf_shift", step=1.e-2)
+            self.psf_shift = None
 
-        parameters = (*parameters, shift)
         super().__init__(data_frame, model_frame, *parameters)
 
         assert convolution_type in [
@@ -236,7 +235,10 @@ class ConvolutionRenderer(Renderer):
             # restrict to observed channels
             model_ = self.map_channels(model)
             #get the shift
-            shift = self.get_parameter("psf_shift", *parameters)
+            if self.psf_shift is not None:
+                shift = self.get_parameter("psf_shift", *parameters)
+            else:
+                shift = None
             # convolve observed channels
             model_ = self.convolve(model_, psf_shift=shift)
             # adjust spatial shapes
