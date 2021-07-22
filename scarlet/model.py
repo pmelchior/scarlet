@@ -92,7 +92,10 @@ class Model(ABC):
         if isinstance(i, (int, slice)):
             return parameters_[i]
         elif isinstance(i, str):
-            match = tuple(p for p in parameters_ if p.name == i)
+            if parameters:
+                match = tuple(p for p in parameters_ if p._value.name == i)
+            else:
+                match = tuple(p for p in parameters_ if p.name == i)
             if len(match) == 1:
                 match = match[0]
             return match
