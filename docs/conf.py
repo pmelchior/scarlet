@@ -113,7 +113,7 @@ html_theme_options = {
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ["_static"]
 html_logo = "_static/logo.svg"
-html_short_title = "Source Separation by Constrained Matrix Factorization"
+html_short_title = "Flexible Source Modeling and Deblending for Astronomy"
 htmls_show_sourcelink = False
 html_sourcelink_suffix = ""
 nbsphinx_allow_errors = True
