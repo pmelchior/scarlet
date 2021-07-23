@@ -167,11 +167,9 @@ class ConvolutionRenderer(Renderer):
     def __init__(self, data_frame, model_frame, *parameters, convolution_type="fft", padding=10, psf_shift=None):
 
         if psf_shift is not None:
-            self.psf_shift = Parameter(
+            psf_shift = Parameter(
                 psf_shift, name="psf_shift", step=1.e-2)
-            parameters = (*parameters, self.psf_shift)
-        else:
-            self.psf_shift = None
+            parameters = (*parameters, psf_shift)
 
         super().__init__(data_frame, model_frame, *parameters)
 
@@ -187,7 +185,6 @@ class ConvolutionRenderer(Renderer):
         ll = np.round(pixel_in_model_frame.min(axis=0)).astype("int")
         ur = np.round(pixel_in_model_frame.max(axis=0)).astype("int") + 1
         bounds = (ll[0], ur[0]), (ll[1], ur[1])
-        data_box = model_frame.bbox[0] @ Box.from_bounds(*bounds)
 
         # construct diff kernel
         psf_fft = fft.Fourier(data_frame.psf.get_model().astype(model_frame.dtype))
@@ -246,9 +243,8 @@ class ConvolutionRenderer(Renderer):
             # restrict to observed channels
             model_ = self.map_channels(model)
             #get the shift
-            if self.psf_shift is not None:
-                shift = self.get_parameter("psf_shift", *parameters)
-            else:
+            shift = self.get_parameter("psf_shift", *parameters)
+            if len(shift)==0:
                 shift = None
             # convolve observed channels
             model_ = self.convolve(model_, psf_shift=shift)
