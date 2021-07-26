@@ -185,6 +185,9 @@ class ConvolutionRenderer(Renderer):
         ll = np.round(pixel_in_model_frame.min(axis=0)).astype("int")
         ur = np.round(pixel_in_model_frame.max(axis=0)).astype("int") + 1
         bounds = (ll[0], ur[0]), (ll[1], ur[1])
+        # properly treats truncation in both boxes
+        data_box = model_frame.bbox[0] @ Box.from_bounds(*bounds)
+        self.slices = overlapped_slices(data_box, model_frame.bbox)
 
         # construct diff kernel
         psf_fft = fft.Fourier(data_frame.psf.get_model().astype(model_frame.dtype))
