@@ -15,9 +15,6 @@ class Renderer(Model):
         self.model_frame = model_frame
         # mapping of model to data frame channels
         self.channel_map = self.get_channel_map(data_frame, model_frame)
-        # properly treats truncation in both boxes
-        # needs to overwritten if frames have different resolutions
-        self.slices = overlapped_slices(data_frame.bbox, model_frame.bbox)
 
         super().__init__(*parameters)
 
