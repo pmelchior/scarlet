@@ -15,9 +15,6 @@ class Renderer(Model):
         self.model_frame = model_frame
         # mapping of model to data frame channels
         self.channel_map = self.get_channel_map(data_frame, model_frame)
-        # properly treats truncation in both boxes
-        # needs to overwritten if frames have different resolutions
-        self.slices = overlapped_slices(data_frame.bbox, model_frame.bbox)
 
         super().__init__(*parameters)
 
@@ -185,6 +182,9 @@ class ConvolutionRenderer(Renderer):
         ll = np.round(pixel_in_model_frame.min(axis=0)).astype("int")
         ur = np.round(pixel_in_model_frame.max(axis=0)).astype("int") + 1
         bounds = (ll[0], ur[0]), (ll[1], ur[1])
+        # properly treats truncation in both boxes
+        data_box = model_frame.bbox[0] @ Box.from_bounds(*bounds)
+        self.slices = overlapped_slices(data_box, model_frame.bbox)
 
         # construct diff kernel
         psf_fft = fft.Fourier(data_frame.psf.get_model().astype(model_frame.dtype))
