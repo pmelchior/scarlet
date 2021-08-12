@@ -1,7 +1,8 @@
 import autograd.numpy as np
 import numpy.ma as ma
+import proxmin.operators
 
-from .bbox import Box
+from .bbox import Box, overlapped_slices
 from .constraint import (
     ConstraintChain,
     L0Constraint,
@@ -46,6 +47,25 @@ class Morphology(Model):
         self.bbox = bbox
 
         super().__init__(*parameters)
+
+    def shrink_box(self, image, thresh=0):
+        # peel the onion
+        size = max(image.shape)
+        dist = 0
+        while (
+            np.all(image[dist, :] <= thresh)
+            and np.all(image[-dist - 1, :] <= thresh)
+            and np.all(image[:, dist] <= thresh)
+            and np.all(image[:, -dist - 1] <= thresh)
+        ):
+            dist += 1
+        newsize = initialization.get_minimal_boxsize(size - 2 * dist)
+        if newsize < size:
+            print("shrink_box", image.shape, newsize)
+            dist = (size - newsize) // 2
+            # adjust bbox
+            self.bbox.origin = tuple(o + dist for o in self.bbox.origin)
+            self.bbox.shape = (newsize, newsize)
 
 
 class ImageMorphology(Morphology):
@@ -110,45 +130,30 @@ class ImageMorphology(Morphology):
 
     def update(self):
         image = self._parameters[0]
-        size = max(image.shape)
 
         if not self.resizing or image.fixed:
             return
 
-        # shrink the box? peel the onion
-        dist = 0
-        while (
-            np.all(image[dist, :] == 0)
-            and np.all(image[-dist, :] == 0)
-            and np.all(image[:, dist] == 0)
-            and np.all(image[:, -dist] == 0)
-        ):
-            dist += 1
-
-        newsize = initialization.get_minimal_boxsize(size - 2 * dist)
-        if newsize < size:
-            dist = (size - newsize) // 2
-            # Create new parameter for smaller image
+        # shrink the box?
+        bbox = self.bbox.copy()
+        self.shrink_box(image)
+        if bbox != self.bbox:
+            slice, _ = overlapped_slices(bbox, self.bbox)
             image = Parameter(
-                image[dist:-dist, dist:-dist],
+                image[slice],
                 name=image.name,
                 prior=image.prior,
                 constraint=image.constraint,
                 step=image.step / 2,
                 fixed=image.fixed,
-                m=image.m[dist:-dist, dist:-dist] if image.m is not None else None,
-                v=image.v[dist:-dist, dist:-dist] if image.v is not None else None,
-                vhat=image.vhat[dist:-dist, dist:-dist]
-                if image.vhat is not None
-                else None,
+                m=image.m[slice] if image.m is not None else None,
+                v=image.v[slice] if image.v is not None else None,
+                vhat=image.vhat[slice] if image.vhat is not None else None,
             )
 
             # set new parameters
             self._parameters = (image,) + self._parameters[1:]
 
-            # adjust bbox
-            self.bbox.origin = tuple(o + dist for o in self.bbox.origin)
-            self.bbox.shape = (newsize, newsize)
             raise UpdateException
 
         # grow the box?
@@ -284,6 +289,39 @@ class StarletMorphology(Morphology):
         # Takes the inverse transform of parameters as starlet coefficients
         coeffs = self.get_parameter(0, *parameters)
         return starlet_reconstruction(coeffs)
+
+    def update(self):
+        coeffs = self.get_parameter(0)
+        if coeffs.fixed:
+            return
+
+        # shrink the box?
+        image = self.get_model()
+        # image = proxmin.operators.prox_soft(image, 0, thresh=1e-6, type="absolute")
+        bbox = self.bbox.copy()
+        self.shrink_box(image, thresh=1e-8)
+        if bbox != self.bbox:
+            slice, _ = overlapped_slices(bbox, self.bbox)
+            center = tuple(s // 2 for s in self.bbox.shape)
+            constraint = MonotonicMaskConstraint(center, center_radius=1)
+            coeffs = Parameter(
+                coeffs[:, slice[0], slice[1]],
+                name=coeffs.name,
+                prior=coeffs.prior,
+                constraint=constraint,
+                step=coeffs.step,
+                fixed=coeffs.fixed,
+                m=coeffs.m[:, slice[0], slice[1]] if coeffs.m is not None else None,
+                v=coeffs.v[:, slice[0], slice[1]] if coeffs.v is not None else None,
+                vhat=coeffs.vhat[:, slice[0], slice[1]]
+                if coeffs.vhat is not None
+                else None,
+            )
+
+            # set new parameters
+            self._parameters = (coeffs,) + self._parameters[1:]
+
+            raise UpdateException
 
 
 class ExtendedSourceMorphology(ImageMorphology):
