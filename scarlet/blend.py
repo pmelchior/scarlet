@@ -97,6 +97,8 @@ class Blend(CombinedComponent):
         """
         it = 0
         self._noise_factor = noise_factor
+        logger.info(f"Blend.fit() started with max_iter={max_iter}")
+
         while it < max_iter:
             try:
                 X = self.parameters + tuple(
@@ -173,11 +175,11 @@ class Blend(CombinedComponent):
                     M=M,
                     V=V,
                     Vhat=Vhat,
-                    **alg_kwargs
+                    **alg_kwargs,
                 )
 
                 logger.info(
-                    "scarlet ran for {0} iterations to logL = {1}".format(
+                    "Blend.fit() ran for {0} iterations to logL = {1}".format(
                         len(self.log_likelihood), self.log_likelihood[-1]
                     )
                 )
@@ -232,7 +234,7 @@ class Blend(CombinedComponent):
         # which must be linked to the autograd primitive function.
         defvjp(
             _add_models,
-            *([partial(_grad_add_models, index=k) for k in range(len(self.sources))])
+            *([partial(_grad_add_models, index=k) for k in range(len(self.sources))]),
         )
 
         full_model = np.zeros(frame.shape, dtype=frame.dtype)
@@ -271,6 +273,11 @@ class Blend(CombinedComponent):
         return total_loss
 
     def _callback(self, *parameters, it=None, e_rel=1e-3, callback=None, min_iter=1):
+        # logger entry as heartbeat
+        if it > 0:
+            logger.info(
+                "Iter = {:d}, LogL = {:f}".format(len(self.loss), -self.loss[-1])
+            )
 
         # raises ArithmeticError if some of the parameters have become inf/nan
         for src in self.sources:
