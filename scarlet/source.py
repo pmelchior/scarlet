@@ -319,7 +319,7 @@ class SingleExtendedSource(FactorizedComponent):
         morphology = ExtendedSourceMorphology(
             model_frame,
             center,
-            morph,
+            morph*0,
             bbox=bbox,
             monotonic="angle",
             symmetric=False,
@@ -430,7 +430,7 @@ class StarletSource(FactorizedComponent):
         sky_coord=None,
         observations=None,
         spectrum=None,
-        thresh=1.0,
+        thresh=0.1,
         starlet_thresh=5e-3,
         boxsize=None,
     ):
@@ -632,7 +632,7 @@ class MultiExtendedSource(CombinedComponent):
         # renormalize morphs: initially Smax
         for k in range(K):
             if np.all(morphs[k] <= 0):
-                msg = f"Zero or negative morphology for component {k} at {sky_coord}"
+                msg = f"Zero or negative morphology for component {k} at"
                 logger.warning(msg)
             morphs[k] /= morphs[k].max()
 

@@ -274,7 +274,7 @@ class StarletMorphology(Morphology):
         # We don't threshold the last scale
         thresh_array[-1] = 0
 
-        constraint = PositivityConstraint(thresh_array)
+        constraint = ConstraintChain(PositivityConstraint(), L0Constraint(thresh_array))
         coeffs = Parameter(coeffs, name="coeffs", step=1e-2, constraint=constraint)
         super().__init__(frame, coeffs, bbox=bbox)
 

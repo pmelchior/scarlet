@@ -116,11 +116,11 @@ class GaussianPSF(FunctionPSF):
         if offset is None:
             offset = (0, 0)
 
-        if self.is_same:
+        if 1:
             s = sigma[0]
             psfs = self.expand_dims(
-                self._f(self._Y - offset[0], s)[:, None]
-                * self._f(self._X - offset[1], s)[None, :]
+                self._f(self._Y - offset[0], s[0])[:, None]
+                * self._f(self._X - offset[1], s[1])[None, :]
             )
         else:
             psfs = np.stack(

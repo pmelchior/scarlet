@@ -91,6 +91,19 @@ class PositivityConstraint(Constraint):
         X = np.maximum(X, self.zero)
         return X
 
+class CorellationConstraint(Constraint):
+    """Allow only values not smaller than `zero`.
+    """
+
+    def __init__(self, zero=0):
+        self.zero = zero
+
+    def __call__(self, X, step):
+        thresh = np.zeros(len(X))
+        thresh[-1] = self.zero
+        X = np.maximum(X, thresh)
+        return X
+
 
 class NormalizationConstraint(Constraint):
     def __init__(self, type="sum"):

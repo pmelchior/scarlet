@@ -1,7 +1,7 @@
 from functools import partial
 
 from .bbox import Box
-from .constraint import PositivityConstraint
+from .constraint import PositivityConstraint, CorellationConstraint, ConstraintChain
 from .frame import Frame
 from .model import Model
 from .parameter import Parameter, relative_step
@@ -28,7 +28,7 @@ class Spectrum(Model):
         self.bbox = bbox
         super().__init__(*parameters)
 
-
+import numpy as np
 class TabulatedSpectrum(Spectrum):
     """Spectrum from a array/table
 
@@ -51,7 +51,7 @@ class TabulatedSpectrum(Spectrum):
             assert spectrum.name == "spectrum"
         else:
             # slightly positive values
-            constraint = PositivityConstraint(zero=1e-20)
+            constraint = PositivityConstraint(0.1*  np.max(spectrum))
             # steps of 1% of mean amplitude, minimum set by noise_rms
             step = partial(relative_step, factor=1e-2, minimum=min_step)
             spectrum = Parameter(

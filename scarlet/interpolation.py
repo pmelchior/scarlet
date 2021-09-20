@@ -379,7 +379,7 @@ def get_affine(wcs):
     try:
         model_affine = wcs.wcs.pc
     except AttributeError:
-        model_affine = wcs.cd
+        model_affine = wcs.wcs.cd
 
     return model_affine
 
