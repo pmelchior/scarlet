@@ -319,7 +319,7 @@ class SingleExtendedSource(FactorizedComponent):
         morphology = ExtendedSourceMorphology(
             model_frame,
             center,
-            morph*0,
+            morph,
             bbox=bbox,
             monotonic="angle",
             symmetric=False,
