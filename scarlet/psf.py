@@ -54,7 +54,7 @@ class FunctionPSF(PSF):
         Optimization parameters. Can be fixed.
     integrate: bool
         Whether pixel integration is performed
-    boxsize: Box
+    boxsize: int
         Size of bounding box over which to evaluate the function, in frame pixels
     """
 
@@ -96,7 +96,7 @@ class GaussianPSF(FunctionPSF):
         If the width is to be optimized, provide a full defined `Parameter`.
     integrate: bool
         Whether pixel integration is performed
-    boxsize: Box
+    boxsize: int
         Size of bounding box over which to evaluate the function, in frame pixels
     """
 
