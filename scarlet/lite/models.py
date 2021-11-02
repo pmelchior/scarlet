@@ -5,322 +5,109 @@
 # Because some of the assumptions and constraints are different, this module is designed
 # to run faster and use less memory than the standard scarlet modules while obtaining
 # a similar log likelihood.
-from abc import ABC, abstractmethod
-
 import numpy as np
-import proxmin
 
-from .bbox import overlapped_slices, Box
-from .renderer import convolve
-from . import fft, interpolation, initialization
-from .constraint import  MonotonicityConstraint
+from ..bbox import overlapped_slices, Box
+from ..renderer import convolve
+from .. import fft, interpolation, initialization
+from ..constraint import  MonotonicityConstraint
 
 
-def grow_array(x, newshape, dist):
-    """grow an array and pad it with zeros
+class LiteComponent:
+    """A base component in scarlet lite
 
-    This is faster than `numpy.pad` by a factor of ~20.
-
-    Parameters
-    ----------
-     x: `~numpy.array`
-        The array to grow
-    newshape: `tuple` of `int`
-        This is the new shape of the array.
-        It would be trivial to calculate in this function,
-        however in most cases this is already calculated for
-        other purposes, so it might as well be reused.
-    dist: int
-        The amount to pad each side of the input array
-        (so the new shape is extended by 2*dist on each axis).
-
-    Returns
-    -------
-    result: `~numpy.array`
-        The larger array that contains `x`.
+    If `sed` and `morph` are arrays and not `LiteParameter`s then the
+    component is not `initialized` and must still be initialized by
+    another function.
     """
-    result = np.zeros(newshape, dtype=x.dtype)
-    result[dist:-dist, dist:-dist] = x
-    return result
+    def __init__(self, center, bbox, sed=None, morph=None, initialized=False):
+        self._center = center
+        self._bbox = bbox
+        self._sed = sed
+        self._morph = morph
+        self.initialized = initialized
 
+    @property
+    def center(self):
+        """The central locaation of the peak"""
+        return self._center
 
-class LiteParameter(ABC):
-    """A parameter in a `LiteComponent`
+    @property
+    def bbox(self):
+        """The bounding box that contains the component in the full image"""
+        return self._bbox
 
-    Unlike the main scarlet `Parameter` class,
-    a `LiteParameter` also contains methods to update the parameter,
-    using any given optimizer, provided the abstract methods
-    are all implemented. The main parameter should always be
-    stored as `LiteParameter.x`, but the names of the meta parameters
-    can be different.
-    """
-    @abstractmethod
-    def update(self, it, input_grad, *args):
-        """Update the parameter in one iteration.
+    @property
+    def sed(self):
+        """The array of SED values"""
+        return self._sed
 
-        This includes the gradient update, proximal update,
-        and any meta parameters that are stored as class
-        attributes to update the parameter.
+    @property
+    def morph(self):
+        """The array of morphology values"""
+        return self._morph
 
-        Parameters
-        ----------
-        it: int
-            The current iteration
-        input_grad: `~numpy.array`
-            The gradient from the full model, passed to the parameter.
+    def resize(self):
+        """Test whether or not the component needs to be resized
         """
-        pass
+        # No need to resize if there is no size threshold.
+        # To allow box sizing but no thresholding use `bg_thresh=0`.
+        if self.bg_thresh is None:
+            return False
 
-    @abstractmethod
-    def grow(self, newshape, dist):
-        """Grow the parameter and all of the meta parameters
+        morph = self.morph
+        size = max(morph.shape)
 
-        Parameters
-        ----------
-        newshape: `tuple` of `int`
-            The new shape of the parameter.
-        dist: `int`
-            The amount to extend the array in each direction
-        """
-        pass
+        # shrink the box? peel the onion
+        dist = 0
+        while (
+            np.all(morph[dist, :] == 0)
+            and np.all(morph[-dist, :] == 0)
+            and np.all(morph[:, dist] == 0)
+            and np.all(morph[:, -dist] == 0)
+        ):
+            dist += 1
 
-    @abstractmethod
-    def shrink(self, dist):
-        """Shrink the parameter and all of the meta parameters
+        new_size = initialization.get_minimal_boxsize(size - 2 * dist)
+        if new_size < size:
+            dist = (size - new_size) // 2
+            self.bbox.origin = (self.bbox.origin[0], self.bbox.origin[1]+dist, self.bbox.origin[2]+dist)
+            self.bbox.shape = (self.bbox.shape[0], new_size, new_size)
+            self._morph.shrink(dist)
+            self.slices = overlapped_slices(self.model_bbox, self.bbox)
+            return True
 
-        Parameters
-        ----------
-        dist: `int`
-            The amount to shrink the array in each direction
-        """
-        pass
+        # grow the box?
+        model = self.get_model()
+        edge_flux = np.array([
+            np.sum(model[:, 0]),
+            np.sum(model[:, -1]),
+            np.sum(model[0, :]),
+            np.sum(model[-1, :]),
+        ])
 
+        edge_mask = np.array([
+            np.sum(model[:, 0] > 0),
+            np.sum(model[:, -1] > 0),
+            np.sum(model[0, :] > 0),
+            np.sum(model[-1, :] > 0),
+        ])
 
-class BeckTeboulleParameter(LiteParameter):
-    """A `LiteParameter` that updates itself using the Beck-Teboulle
-    proximal gradient method.
-    """
-    def __init__(self, x, step, grad=None, prox=None, t0=1, z0=None):
-        """Initialize the parameter
-
-        Parameters
-        ----------
-        x: `~numpy.array`
-            The initial guess for the parameter.
-        step: `float`
-            The step size for the parameter.
-        grad: `func`
-            The function to use to calculate the gradient.
-            `grad` should accept the `input_grad` and a list
-            of arguments.
-        prox: `func`
-            The function that acts as a proximal operator.
-            This function should take `x` as an input, however
-            the input `x` might not be the same as the input
-            parameter, but a meta parameter instead.
-        t0: `float`
-            The initial value of the acceleration parameter.
-        z0: `~numpy.array`
-            The initial value of the meta parameter `z`.
-            If this is `None` then `z` is initialized to the
-            initial `x`.
-        """
-        if z0 is None:
-            z0 = x
-        self.x = x
-        self.step = step
-        self.grad = grad
-        self.prox = prox
-        self.z = z0
-        self.t = t0
-
-    def update(self, it, input_grad, *args):
-        """Update the parameter and meta-parameters using the PGM
-
-        See `~LiteParameter` for more.
-        """
-        y = self.z - self.step*self.grad(input_grad)
-        x = self.prox(y, self.step)
-        t = 0.5*(1 + np.sqrt(1 + self.t**2))
-        omega = 1 + (self.t -1)/t
-        self.z = self.x + omega*(x-self.x)
-        self.x = x
-        self.t = t
-
-    def grow(self, newshape, dist):
-        self.x = grow_array(self.x, newshape, dist)
-        self.z = grow_array(self.z, newshape, dist)
-
-    def shrink(self, dist):
-        self.x = self.x[dist:-dist, dist:-dist]
-        self.z = self.z[dist:-dist, dist:-dist]
+        if np.any(edge_flux/edge_mask > self.bg_thresh*self.bg_rms[:, None, None]):
+            new_size = initialization.get_minimal_boxsize(size + 1)
+            dist = (new_size - size) // 2
+            self.bbox.origin = (self.bbox.origin[0], self.bbox.origin[1]-dist, self.bbox.origin[2]-dist)
+            self.bbox.shape = (self.bbox.shape[0], new_size, new_size)
+            self._morph.grow(self.bbox.shape[1:], dist)
+            self.slices = overlapped_slices(self.model_bbox, self.bbox)
+            return True
+        return False
 
 
-def _amsgrad_phi_psi(it, G, M, V, Vhat, b1, b2, eps, p):
-    # moving averages
-    M[:] = (1 - b1) * G + b1 * M
-    V[:] = (1 - b2) * (G ** 2) + b2 * V
-
-    Phi = M
-    Vhat[:] = np.maximum(Vhat, V)
-    # sanitize zero-gradient elements
-    if eps > 0:
-        Vhat = np.maximum(Vhat, eps)
-    Psi = np.sqrt(Vhat)
-    return Phi, Psi
-
-
-phi_psi = {
-    "adam": proxmin.algorithms._adam_phi_psi,
-    "nadam": proxmin.algorithms._nadam_phi_psi,
-    "amsgrad": _amsgrad_phi_psi,
-    "padam": proxmin.algorithms._padam_phi_psi,
-    "adamx": proxmin.algorithms._adamx_phi_psi,
-    "radam": proxmin.algorithms._radam_phi_psi,
-}
-
-
-class AdaproxParameter(LiteParameter):
-    """Operator updated using te Proximal ADAM algorithm
-
-    Uses multiple variants of adaptive quasi-Newton gradient descent
-        * Adam (Kingma & Ba 2015)
-        * NAdam (Dozat 2016)
-        * AMSGrad (Reddi, Kale & Kumar 2018)
-        * PAdam (Chen & Gu 2018)
-        * AdamX (Phuong & Phong 2019)
-        * RAdam (Liu et al. 2019)
-    and PGM sub-iterations to satisfy feasibility and optimality. See details of the
-    algorithms in the respective papers.
-
-    TODO: implement other schemes by making `b1` use a list instead of a single value.
-    """
-    def __init__(self, x, step, grad=None, prox=None, b1=0.9, b2=0.999, eps=1e-8, p=0.25,
-                 m0=None, v0=None, vhat0=None, scheme="amsgrad", max_prox_iter=10, prox_e_rel=1e-6):
-        """Initialize the parameter
-
-         NOTE:
-        Setting `m`, `v`, `vhat` allows to continue a previous run, e.g. for a warm start
-        of a slightly changed problem. If not set, they will be initialized with 0.
-
-        Parameter
-        ---------
-        x: `~numpy.array`
-            The initial guess for the parameter.
-        step: `func`
-            The step size for the parameter that takes the
-            parameter `x` and the iteration `it` as arguments.
-        grad: `func`
-            The function to use to calculate the gradient.
-            `grad` should accept the `input_grad` and a list
-            of arguments.
-        prox: `func`
-            The function that acts as a proximal operator.
-            This function should take `x` as an input, however
-            the input `x` might not be the same as the input
-            parameter, but a meta parameter instead.
-        b1: `float`
-            The strength parameter for the weighted gradient
-            (`m`) update.
-        b2: `float`
-            The strength for the weighted gradient squared
-            (`v`) update.
-        eps: `float`
-            Minimum value of the cumulative gradient squared
-            (`vhat`) meta paremeter.
-        p: `float`
-            Meta parameter used by some of the ADAM schemes
-        m0: `~numpy.array`
-            Initial value of the weighted gradient (`m`) parameter
-            for a warm start.
-        v0: `~numpy.array`
-            Initial value of the weighted gradient squared(`v`) parameter
-            for a warm start.
-        vhat0: `~numpy.array`
-            Initial value of the
-            cumulative weighted gradient squared (`vhat`) parameter
-            for a warm start.
-        scheme: str
-            Name of the ADAM scheme to use.
-            One of ["adam", "nadam", "adamx", "amsgrad", "padam", "radam"]
-        """
-        self.x = x
-        self.b1 = b1
-        self.b2 = b2
-        self.eps = eps
-        self.p = p
-
-        if not hasattr(step, "__call__"):
-            def _step(x, it):
-                return step
-            self.step = _step
-        else:
-            self.step = step
-        self.grad = grad
-        self.prox = prox
-        if m0 is None:
-            m0 = np.zeros(x.shape, dtype=x.dtype)
-        self.m = m0
-        if v0 is None:
-            v0 = np.zeros(x.shape, dtype=x.dtype)
-        self.v = v0
-        if vhat0 is None:
-            vhat0 = np.ones(x.shape, dtype=x.dtype) * -np.inf
-        self.vhat = vhat0
-        self.phi_psi = phi_psi[scheme]
-        self.max_prox_iter = max_prox_iter
-        self.e_rel = prox_e_rel
-
-    def update(self, it, input_grad, *args):
-        """Update the parameter and meta-parameters using the PGM
-
-        See `~LiteParameter` for more.
-        """
-        # Calculate the gradient
-        grad = self.grad(input_grad, self.x, *args)
-        # Get the update for the parameter
-        phi, psi = self.phi_psi(
-            it, grad, self.m, self.v, self.vhat,
-            self.b1, self.b2, self.eps, self.p
-        )
-        # Calculate the step size
-        step = self.step(self.x, it)
-        if it > 0:
-            self.x -= step * phi/psi
-        else:
-            self.x -= step * phi / psi/10
-
-        # Iterate over the proximal operators until convergence
-        if self.prox is not None:
-            z = self.x.copy()
-            gamma = step/np.max(psi)
-            for tau in range(1, self.max_prox_iter + 1):
-                _z = self.prox(z - gamma/step * psi * (z-self.x), gamma)
-                converged = proxmin.utils.l2sq(_z-z) <= self.e_rel**2 * proxmin.utils.l2sq(z)
-                z = _z
-
-                if converged:
-                    break
-
-            self.x = z
-
-    def grow(self, newshape, dist):
-        self.x = grow_array(self.x, newshape, dist)
-        self.m = grow_array(self.m, newshape, dist)
-        self.v = grow_array(self.v, newshape, dist)
-        self.vhat = grow_array(self.vhat, newshape, dist)
-
-    def shrink(self, dist):
-        self.x = self.x[dist:-dist, dist:-dist]
-        self.m = self.m[dist:-dist, dist:-dist]
-        self.v = self.v[dist:-dist, dist:-dist]
-        self.vhat = self.vhat[dist:-dist, dist:-dist]
-
-
-class LiteFactorizedComponent:
+class LiteFactorizedComponent(LiteComponent):
     """Implementation of a `FactorizedComponent` for simplified observations.
     """
-    def __init__(self, sed, morph, center, bbox, model_bbox, bg_rms, bg_thresh=0.5, floor=1e-20):
+    def __init__(self, sed, morph, center, bbox, model_bbox, bg_rms, bg_thresh=0.25, floor=1e-20):
         """Initialize the component.
 
         Parameters
@@ -347,14 +134,8 @@ class LiteFactorizedComponent:
         floor: `float`
             Minimum value of the SED or center morpjology pixel.
         """
-        self._sed = sed
-        self._morph = morph
-        self.center = center
-        self.center_index = tuple([
-            int(np.round(center[0]-bbox.origin[-2])),
-            int(np.round(center[1]-bbox.origin[-1]))
-        ])
-        self.bbox = bbox
+        # Initialize all of the base attributes
+        super().__init__(center, bbox, sed, morph, initialized=True)
         # Initialize the monotonicity constraint
         self.monotonicity = MonotonicityConstraint(neighbor_weight="angle", min_gradient=0)
         self.floor = floor
@@ -430,51 +211,6 @@ class LiteFactorizedComponent:
         morph[:] = morph / morph.max()
         return morph
 
-    def resize(self):
-        """Test whether or not the component needs to be resized
-        TODO: this code is similar enough to `ImageMorphology.resize` that it should be abstracted as a function
-        """
-        morph = self.morph
-        size = max(morph.shape)
-
-        # shrink the box? peel the onion
-        dist = 0
-        while (
-            np.all(morph[dist, :] == 0)
-            and np.all(morph[-dist, :] == 0)
-            and np.all(morph[:, dist] == 0)
-            and np.all(morph[:, -dist] == 0)
-        ):
-            dist += 1
-
-        newsize = initialization.get_minimal_boxsize(size - 2 * dist)
-        if newsize < size:
-            dist = (size - newsize) // 2
-            self.bbox.origin = (self.bbox.origin[0], self.bbox.origin[1]+dist, self.bbox.origin[2]+dist)
-            self.bbox.shape = (self.bbox.shape[0], newsize, newsize)
-            self._morph.shrink(dist)
-            self.slices = overlapped_slices(self.model_bbox, self.bbox)
-            return True
-
-        # grow the box?
-        model = self.get_model()
-        edge_flux = np.array([
-            np.sum(model[:, 0]),
-            np.sum(model[:, -1]),
-            np.sum(model[0, :]),
-            np.sum(model[-1, :]),
-        ])
-
-        if self.bg_thresh is not None and np.any(edge_flux > self.bg_thresh*self.bg_rms[:, None, None]):
-            newsize = initialization.get_minimal_boxsize(size + 1)
-            dist = (newsize - size) // 2
-            self.bbox.origin = (self.bbox.origin[0], self.bbox.origin[1]-dist, self.bbox.origin[2]-dist)
-            self.bbox.shape = (self.bbox.shape[0], newsize, newsize)
-            self._morph.grow(self.bbox.shape[1:], dist)
-            self.slices = overlapped_slices(self.model_bbox, self.bbox)
-            return True
-        return False
-
     def update(self, it, input_grad):
         """Update the SED and morphology parameters"""
         # Store the input SED so that the morphology can
@@ -496,14 +232,28 @@ class LiteSource:
     A source can have a single component, or multiple components, and each can be
     contained in different bounding boxes.
     """
-    def __init__(self, components):
+    def __init__(self, components, dtype):
         self.components = components
-        self.nbr_components = len(components)
-        self.dtype = self.components[0].get_model().dtype
+        self.dtype = dtype
+
+    @property
+    def n_components(self):
+        """The number of components in this source"""
+        return len(self.components)
+
+    @property
+    def is_null(self):
+        """True if the source does not have any components"""
+        return self.n_components == 0
 
     @property
     def bbox(self):
-        """The minimal bounding box to contain all of this sources components"""
+        """The minimal bounding box to contain all of this sources components
+
+        Null sources have a bounding box with shape `(0,0,0)`
+        """
+        if self.n_components == 0:
+            return Box((0,0,0))
         bbox = self.components[0].bbox
         for component in self.components[1:]:
             bbox = bbox | component.bbox
@@ -515,12 +265,14 @@ class LiteSource:
         This is never called during optimization and is only used
         to generate a model of the source for investigative purposes.
         """
+        if self.n_components == 0:
+            return 0
         if bbox is None:
             bbox = self.bbox
-        model = np.zeros(self.bbox.shape, dtype=self.dtype)
+        model = np.zeros(bbox.shape, dtype=self.dtype)
         for component in self.components:
             slices = overlapped_slices(bbox, component.bbox)
-            model[slices[0]] = component.get_model()[slices[1]]
+            model[slices[0]] += component.get_model()[slices[1]]
         return model
 
     def __str__(self):
@@ -530,35 +282,34 @@ class LiteSource:
         return f"LiteSource<{len(self.components)}>"
 
 
-class LiteBlend:
-    """A single blend.
+class LiteObservation:
+    """A single observation
 
-    This is effectively a combination of the `Blend`, `Observation`, and `Renderer`
-    classes in main scarlet, greatly simplified due to the assumptions that the
-    observations are all resampled onto the same pixel grid and that the
-    `images` contain all of the information for all of the model bands.
-
-    This is still agnostic to the component type, so new custom classes
-    are allowed as long as they posses the `get_model`, `update`, and
-    `resize` methods, but all components should be contained in sources.
-    The only underlying assumption is that all of the components inserted
-    into the model by addition. If the components require a more
-    complicated insertion, for example multiplication of a dust lane,
-    then a new blend class will need to be created.
+    This is effectively a combination of the `Observation` and
+    `Renderer` class from base scarlet, greatly simplified due
+    to the assumptions that the observations are all resampled
+    onto the same pixel grid and that the `images` contain all
+    of the information for all of the model bands.
     """
-    def __init__(self, sources, images, weights, psfs, model_psf=None,
+    def __init__(self, images, variance, weights, psfs, model_psf=None, noise_rms=None,
                  bbox=None, padding=3, convolution_mode="fft"):
-        self.sources = sources
-        self.components = []
-        for source in sources:
-            self.components.extend(source.components)
         self.images = images
+        self.variance = variance
         self.weights = weights
+        # make sure that the images and psfs have the same dtype
+        if psfs.dtype != images.dtype:
+            psfs.dtype = psfs.dtype.astype(images.dtype)
         self.psfs = psfs
+
         self.mode = convolution_mode
+        if noise_rms is None:
+            noise_rms = np.array(np.mean(np.sqrt(variance), axis=(1,2)))
+        self.noise_rms = noise_rms
 
         # Create a difference kernel to convolve the model to the PSF
         # in each band
+        self.model_psf = model_psf
+        self.padding = padding
         if model_psf is not None:
             self.diff_kernel = fft.match_psf(psfs, model_psf, padding=padding)
             # The gradient of a convolution is another convolution,
@@ -572,18 +323,6 @@ class LiteBlend:
             self.bbox = Box(images.shape)
         else:
             self.bbox = bbox
-
-        # Initialzie the iteration count and loss function
-        self.it = 0
-        self.loss = []
-
-    def get_model(self):
-        """Generate a model of the entire blend"""
-        model = np.zeros(self.bbox.shape, dtype=self.images.dtype)
-        for component in self.components:
-            _model = component.get_model()
-            model[component.slices[0]] += _model[component.slices[1]]
-        return model
 
     def convolve(self, image, mode=None, grad=False):
         """Convolve the model into the observed seeing in each band.
@@ -606,6 +345,9 @@ class LiteBlend:
         else:
             kernel = self.diff_kernel
 
+        if kernel is None:
+            return image
+
         if mode is None:
             mode = self.mode
         if mode == "fft":
@@ -619,6 +361,22 @@ class LiteBlend:
         return result
 
     @property
+    def shape(self):
+        """The shape of the iamges, variance, etc."""
+        return self.images.shape
+
+    @property
+    def n_bands(self):
+        """The number of bands in the observation"""
+        return self.images.shape[0]
+
+    @property
+    def dtype(self):
+        """The dtype of the observation is the dtype of the images
+        """
+        return self.images.dtype
+
+    @property
     def convolution_bounds(self):
         """Build the slices needed for convolution in real space
         """
@@ -629,17 +387,130 @@ class LiteBlend:
             )
         return self._convolution_bounds
 
+    def __getitem__(self, i):
+        """Allow the user to slice the observations with python indexing
+        """
+        images = self.images[i]
+        variance = self.variance[i]
+        weights = self.weights[i]
+        psfs = self.psfs[i]
+        noise_rms = self.noise_rms[i]
+
+        if len(images.shape) == 2:
+            images = images[None]
+            variance = variance[None]
+            weights = weights[None]
+            psfs = psfs[None]
+            noise_rms = np.array([noise_rms])
+
+        return LiteObservation(
+            images,
+            variance,
+            weights,
+            psfs,
+            model_psf=self.model_psf,
+            noise_rms=noise_rms,
+            bbox=self.bbox,
+            padding=self.padding,
+            convolution_mode=self.mode,
+        )
+
+
+class LiteBlend:
+    """A single blend.
+
+    This is effectively a combination of the `Blend`, `Observation`, and `Renderer`
+    classes in main scarlet, greatly simplified due to the assumptions that the
+    observations are all resampled onto the same pixel grid and that the
+    `images` contain all of the information for all of the model bands.
+
+    This is still agnostic to the component type, so new custom classes
+    are allowed as long as they posses the `get_model`, `update`, and
+    `resize` methods, but all components should be contained in sources.
+    The only underlying assumption is that all of the components inserted
+    into the model by addition. If the components require a more
+    complicated insertion, for example multiplication of a dust lane,
+    then a new blend class will need to be created.
+    """
+    def __init__(self, sources, observation):
+        """Initialize the class.
+
+        Parameters
+        ----------
+        sources: `list` of `scarlet.lite.LiteSource`
+            The sources to fit.
+        `observation`: `scarlet.lite.LiteObservation`
+            The observation that contains the images,
+            PSF, etc. that are being fit.
+        """
+        self.sources = sources
+        self.components = []
+        for source in sources:
+            self.components.extend(source.components)
+        self.observation = observation
+
+        # Initialzie the iteration count and loss function
+        self.it = 0
+        self.loss = []
+
+    @property
+    def bbox(self):
+        """The bounding box of the entire blend"""
+        return self.observation.bbox
+
+    def get_model(self, convolve=False):
+        """Generate a model of the entire blend"""
+        model = np.zeros(self.bbox.shape, dtype=self.observation.images.dtype)
+        for component in self.components:
+            _model = component.get_model()
+            model[component.slices[0]] += _model[component.slices[1]]
+        if convolve:
+            return self.observation.convolve(model)
+        return model
+
     def grad_logL(self):
         """Gradient of the likelihood wrt the unconvolved model"""
-        model = self.convolve(self.get_model())
+        model = self.get_model(convolve=True)
         # Update the loss
-        self.loss.append(0.5 * -np.sum(self.weights * (self.images - model)**2))
+        self.loss.append(0.5 * -np.sum(self.observation.weights * (self.observation.images - model)**2))
         # Calculate the gradient wrt the model d(logL)/d(model)
-        grad_logL = self.weights * (model - self.images)
-        grad_logL = self.convolve(grad_logL, grad=True)
+        grad_logL = self.observation.weights * (model - self.observation.images)
+        grad_logL = self.observation.convolve(grad_logL, grad=True)
         return grad_logL
 
-    def fit(self, max_iter, e_rel=1e-3, min_iter=1, resize=10):
+    def fit_spectra(self, clip=True):
+        """Fit all of the spectra given their current morphologies
+
+        Parameters
+        ----------
+        clip: `bool`
+            Whether or not to clip components that were not
+            assigned any flux during the fit.
+        """
+        from .initialization import multifit_seds
+
+        morphs = [c.morph for c in self.components]
+        boxes = [c.bbox[1:] for c in self.components]
+        fit_seds = multifit_seds(self.observation, morphs, boxes)
+        for idx, component in enumerate(self.components):
+            component.sed[:] = fit_seds[idx]
+            component.sed[component.sed < 0] = 0
+
+        if clip:
+            components = []
+            # Remove components with no sed or morphology
+            for src in self.sources:
+                _components = []
+                for c in src.components:
+                    if np.any(c.sed) > 0 and np.any(c.morph) > 0:
+                        components.append(c)
+                        _components.append(c)
+                src.components = _components
+            self.components = components
+
+        return self
+
+    def fit(self, max_iter, e_rel=1e-3, min_iter=1, resize=10, fit_spec=None):
         """Fit all of the parameters
 
         Parameters
@@ -655,6 +526,8 @@ class LiteBlend:
             resizable components. If `resize` is `None` then
             no resizing is ever attempted.
         """
+        if fit_spec is None:
+            fit_spec = lambda it, components: False
         it = self.it
         while it < max_iter:
             # Calculate the gradient wrt the on-convolved model
@@ -662,6 +535,8 @@ class LiteBlend:
             # Update each component given the current gradient
             for component in self.components:
                 component.update(it, grad_logL)
+            if fit_spec(it, self.components):
+                self.fit_spectra()
             # Check to see if any components need to be resized
             if resize is not None and it > 0 and it % resize == 0:
                 for component in self.components:
