@@ -76,7 +76,7 @@ class Box:
     def contains(self, p):
         """Whether the box contains a given coordinate `p`
         """
-        if p != self.D:
+        if len(p) != self.D:
             raise ValueError(f"Dimension mismatch in {p} and {self.D}")
 
         for d in range(self.D):
