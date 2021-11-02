@@ -76,7 +76,8 @@ class Box:
     def contains(self, p):
         """Whether the box contains a given coordinate `p`
         """
-        assert len(p) == self.D
+        if p != self.D:
+            raise ValueError(f"Dimension mismatch in {p} and {self.D}")
 
         for d in range(self.D):
             if p[d] < self.origin[d] or p[d] >= self.origin[d] + self.shape[d]:
@@ -180,7 +181,8 @@ class Box:
         result: `Box`
             The smallest rectangular box that contains *both* boxes.
         """
-        assert other.D == self.D
+        if other.D != self.D:
+            raise ValueError(f"Dimension mismatch in the boxes {other} and {self}")
         bounds = []
         for d in range(self.D):
             bounds.append(
@@ -205,7 +207,7 @@ class Box:
             The rectangular box that is in the overlap region
             of both boxes.
         """
-        if(other.D != self.D):
+        if other.D != self.D:
             raise ValueError(f"Dimension mismatch in the boxes {other} and {self}")
         assert other.D == self.D
         bounds = []
