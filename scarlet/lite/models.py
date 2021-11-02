@@ -20,12 +20,15 @@ class LiteComponent:
     component is not `initialized` and must still be initialized by
     another function.
     """
-    def __init__(self, center, bbox, sed=None, morph=None, initialized=False):
+    def __init__(self, center, bbox, sed=None, morph=None, initialized=False,
+                 bg_thresh=0.25, bg_rms=0):
         self._center = center
         self._bbox = bbox
         self._sed = sed
         self._morph = morph
         self.initialized = initialized
+        self.bg_thresh = bg_thresh
+        self.bg_rms = bg_rms
 
     @property
     def center(self):
@@ -103,6 +106,12 @@ class LiteComponent:
             return True
         return False
 
+    def __str__(self):
+        return "LiteComponent"
+
+    def __repr__(self):
+        return "LiteComponent"
+
 
 class LiteFactorizedComponent(LiteComponent):
     """Implementation of a `FactorizedComponent` for simplified observations.
@@ -135,12 +144,10 @@ class LiteFactorizedComponent(LiteComponent):
             Minimum value of the SED or center morpjology pixel.
         """
         # Initialize all of the base attributes
-        super().__init__(center, bbox, sed, morph, initialized=True)
+        super().__init__(center, bbox, sed, morph, initialized=True, bg_thresh=bg_thresh, bg_rms=bg_rms)
         # Initialize the monotonicity constraint
         self.monotonicity = MonotonicityConstraint(neighbor_weight="angle", min_gradient=0)
         self.floor = floor
-        self.bg_rms = bg_rms
-        self.bg_thresh = bg_thresh
         self.model_bbox = model_bbox
 
         # update the parameters

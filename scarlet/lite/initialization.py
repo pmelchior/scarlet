@@ -355,7 +355,10 @@ def init_all_sources_main(observation, detect, centers,
         bbox, morph, sed = bbox, morph, sed = init_main_parameters(
             detect, center, observation, convolved, use_mask, thresh)
 
-        if component_snr >= 2:
+        if morph is None:
+            components = []
+            print(center, morph)
+        elif component_snr >= 2:
             bulge_morph = morph.copy()
             disk_morph = morph
             flux_thresh = percentile / 100
@@ -364,17 +367,29 @@ def init_all_sources_main(observation, detect, centers,
             bulge_morph -= flux_thresh
             bulge_morph[bulge_morph < 0] = 0
 
-            bulge_morph /= np.max(bulge_morph)
-            disk_morph /= np.max(disk_morph)
+            if bulge_morph is None or disk_morph is None:
+                if bulge_morph is None:
+                    if disk_morph is None:
+                        return None
+                    morph = disk_morph
+                else:
+                    morph = bulge_morph
+                # One of the components was null,
+                # so initialize as a single component
+                components = [LiteComponent(center, observation.bbox @ bbox, sed, morph)]
+            else:
+                bulge_morph /= np.max(bulge_morph)
+                disk_morph /= np.max(disk_morph)
 
-            bulge_sed, disk_sed = multifit_seds(observation, [bulge_morph, disk_morph], [bbox, bbox])
+                bulge_sed, disk_sed = multifit_seds(observation, [bulge_morph, disk_morph], [bbox, bbox])
 
-            components = [
-                LiteComponent(center, observation.bbox[0] @ bbox, bulge_sed, bulge_morph),
-                LiteComponent(center, observation.bbox[0] @ bbox, disk_sed, disk_morph),
-            ]
+                components = [
+                    LiteComponent(center, observation.bbox[0] @ bbox, bulge_sed, bulge_morph),
+                    LiteComponent(center, observation.bbox[0] @ bbox, disk_sed, disk_morph),
+                ]
         else:
             components = [LiteComponent(center, observation.bbox[0] @ bbox, sed, morph)]
+        print("components", components)
 
         source = LiteSource(components, observation.dtype)
         sources.append(source)
@@ -474,7 +489,7 @@ def init_wavelet_source(center, nbr_components, init):
     elif nbr_components < 2:
         bbox, morph = init_monotonic_morph(init.detectlets, center, observation.bbox[1:], init.disk_grow)
         if morph is None or np.max(morph) <= 0:
-            return None
+            return LiteSource([], observation.dtype)
 
         sed = init.images[sed_center] / init.convolved[sed_center]
         sed[sed<0] = 0
@@ -516,8 +531,6 @@ def init_wavelet_source(center, nbr_components, init):
             else:
                 logger.debug("cut disk")
 
-            if len(components) == 0:
-                return None
             source = LiteSource(components, observation.dtype)
     return source
 
@@ -560,15 +573,11 @@ def init_all_sources_wavelets(observation, wavelets, centers, min_snr=50, bulge_
     init = WaveletInitParameters(
         observation, wavelets, bulge_slice, disk_slice, bulge_grow, disk_grow, use_psf)
     sources = []
-    skipped = []
-    for idx, center in enumerate(centers):
+    for center in centers:
         snr = np.floor(calculate_snr(observation.images, observation.variance, observation.psfs, center))
         component_snr = snr / min_snr
         source = init_wavelet_source(center, component_snr, init)
-        if source is None:
-            skipped.append(idx)
-        else:
-            sources.append(source)
+        sources.append(source)
     return sources
 
 

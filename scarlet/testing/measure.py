@@ -69,6 +69,7 @@ def measure_blend(
         for f in range(len(filters)):
             measurement[filters[f] + " truth"] = truth[f]
             measurement[filters[f] + " mag"] = flux[f]
+            measurement[filters[f] + " diff"] = truth[f] - flux[f]
 
         measurements.append(measurement)
 
@@ -230,6 +231,7 @@ class Metric:
 all_metrics = {
     "init time": Metric("init time", "time (ms)"),
     "runtime": Metric("runtime", "time/source (ms)"),
+    "total runtime": Metric("total runtime", "time (s)"),
     "iterations": Metric("iterations", "iterations"),
     "init logL": Metric("init logL", "logL"),
     "logL": Metric("logL", "logL"),
