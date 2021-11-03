@@ -252,6 +252,12 @@ class LiteSource:
         return len(self.components)
 
     @property
+    def center(self):
+        if not self.is_null:
+            return self.components[0].center
+        return None
+
+    @property
     def is_null(self):
         """True if the source does not have any components"""
         return self.n_components == 0
@@ -487,14 +493,20 @@ class LiteBlend:
         """The bounding box of the entire blend"""
         return self.observation.bbox
 
-    def get_model(self, convolve=False):
+    def get_model(self, convolve=False, use_flux=False):
         """Generate a model of the entire blend"""
         model = np.zeros(self.bbox.shape, dtype=self.observation.images.dtype)
-        for component in self.components:
-            _model = component.get_model()
-            model[component.slices[0]] += _model[component.slices[1]]
-        if convolve:
-            return self.observation.convolve(model)
+
+        if use_flux:
+            for src in self.sources:
+                slices = overlapped_slices(self.bbox, src.flux_box)
+                model[slices[0]] += src.flux
+        else:
+            for component in self.components:
+                _model = component.get_model()
+                model[component.slices[0]] += _model[component.slices[1]]
+            if convolve:
+                return self.observation.convolve(model)
         return model
 
     def grad_logL(self):
