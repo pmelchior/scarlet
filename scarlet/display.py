@@ -281,6 +281,8 @@ def show_scene(
     add_boxes=False,
     figsize=None,
     linear=True,
+    use_flux=False,
+    box_kwargs=None,
 ):
     """Plot all sources to recreate the scence.
     The functions provides a fast way of evaluating the quality of the entire model,
@@ -308,14 +310,22 @@ def show_scene(
     linear: bool
         Whether or not to display the scene in a single line (`True`) or
         on multiple lines (`False`).
+    use_flux: bool
+        Whether to show the flux redistributed model (`source.flux`) or
+        the model itself (`source.get_model()`) for each source.
     Returns
     -------
     matplotlib figure
     """
+    from scarlet.lite.models import LiteBlend
+
     if show_observed or show_rendered or show_residual:
         assert (
             observation is not None
         ), "Provide matched observation to show observed frame"
+
+    if box_kwargs is None:
+        box_kwargs = {"facecolor": "none", "edgecolor": "w", "lw": 0.5}
 
     panels = sum((show_model, show_observed, show_rendered, show_residual))
     if linear:
@@ -338,23 +348,32 @@ def show_scene(
         if np.all(mask == 0):
             mask = None
 
-    model_frame = sources[0].frame
-    model = np.zeros(model_frame.shape)
-    for src in sources:
-        model += src.get_model(frame=model_frame)
+    if isinstance(sources, LiteBlend):
+        is_lite = True
+        blend = sources
+        sources = blend.sources
+        model = blend.get_model(use_flux=use_flux)
+        bbox = blend.bbox
+    else:
+        is_lite = False
+        model_frame = sources[0].frame
+        bbox = model_frame.bbox
+        model = np.zeros(model_frame.shape)
+        for src in sources:
+            model += src.get_model(frame=model_frame)
 
     panel = 0
     if show_model:
-        extent = get_extent(model_frame.bbox)
+        extent = get_extent(bbox)
         ax[panel].imshow(
-            img_to_rgb(model, norm=norm, channel_map=channel_map),
+            img_to_rgb(model, norm=norm, channel_map=channel_map, mask=mask),
             extent=extent,
             origin="lower",
         )
         ax[panel].set_title("Model")
         panel += 1
 
-    if show_rendered or show_residual:
+    if (show_rendered or show_residual) and not use_flux:
         model = observation.render(model)
         extent = get_extent(observation.bbox)
 
@@ -390,9 +409,8 @@ def show_scene(
     for k, src in enumerate(sources):
         if add_boxes:
             panel = 0
-            box_kwargs = {"facecolor": "none", "edgecolor": "w", "lw": 0.5}
+            extent = get_extent(src.bbox)
             if show_model:
-                extent = get_extent(src.bbox)
                 rect = Rectangle(
                     (extent[0], extent[2]),
                     extent[1] - extent[0],
@@ -404,12 +422,22 @@ def show_scene(
             if observation is not None:
                 start, stop = src.bbox.start[-2:][::-1], src.bbox.stop[-2:][::-1]
                 points = (start, (start[0], stop[1]), stop, (stop[0], start[1]))
-                coords = [
-                    observation.get_pixel(model_frame.get_sky_coord(p)) for p in points
-                ]
-                for panel in range(panel, panels):
-                    poly = Polygon(coords, closed=True, **box_kwargs)
-                    ax[panel].add_artist(poly)
+                if is_lite:
+                    for panel in range(panel, panels):
+                        rect = Rectangle(
+                            (extent[0], extent[2]),
+                            extent[1] - extent[0],
+                            extent[3] - extent[2],
+                            **box_kwargs
+                        )
+                        ax[panel].add_artist(rect)
+                else:
+                    coords = [
+                        observation.get_pixel(model_frame.get_sky_coord(p)) for p in points
+                    ]
+                    for panel in range(panel, panels):
+                        poly = Polygon(coords, closed=True, **box_kwargs)
+                        ax[panel].add_artist(poly)
 
         if add_labels and hasattr(src, "center") and src.center is not None:
             center = src.center
@@ -418,11 +446,15 @@ def show_scene(
                 ax[panel].text(*center[::-1], k, color="w", ha="center", va="center")
                 panel = 1
             if observation is not None:
-                center_ = observation.get_pixel(model_frame.get_sky_coord(center))
-                for panel in range(panel, panels):
-                    ax[panel].text(
-                        *center_[::-1], k, color="w", ha="center", va="center"
-                    )
+                if is_lite:
+                    for panel in range(panel, panels):
+                        ax[panel].text(*center[::-1], k, color="w", ha="center", va="center")
+                else:
+                    center_ = observation.get_pixel(model_frame.get_sky_coord(center))
+                    for panel in range(panel, panels):
+                        ax[panel].text(
+                            *center_[::-1], k, color="w", ha="center", va="center"
+                        )
 
     fig.tight_layout()
     return fig
