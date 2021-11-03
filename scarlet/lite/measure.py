@@ -82,4 +82,4 @@ def weight_sources(blend, mask_footprint=True):
         ratio = numerator / denominator
         ratio[denominator == 0] = 0
         src.flux = ratio*images[slices[0]]
-        src.flux_box = bbox
+        src.flux_box = observation.bbox & bbox

@@ -11,6 +11,7 @@ from ..bbox import overlapped_slices, Box
 from ..renderer import convolve
 from .. import fft, interpolation, initialization
 from ..constraint import  MonotonicityConstraint
+from .utils import insert_image
 
 
 class LiteComponent:
@@ -242,6 +243,8 @@ class LiteSource:
     def __init__(self, components, dtype):
         self.components = components
         self.dtype = dtype
+        self._flux = None
+        self.flux_bbox = None
 
     @property
     def n_components(self):
@@ -266,7 +269,7 @@ class LiteSource:
             bbox = bbox | component.bbox
         return bbox
 
-    def get_model(self, bbox=None):
+    def get_model(self, bbox=None, use_flux=False):
         """Build the model for the source
 
         This is never called during optimization and is only used
@@ -274,6 +277,14 @@ class LiteSource:
         """
         if self.n_components == 0:
             return 0
+
+        if use_flux:
+            # Return the redistributed flux
+            # (calculated by scarlet.lite.measure.weight_sources)
+            if bbox is None:
+                return self.flux
+            return insert_image(bbox, self.flux_box, self.flux)
+
         if bbox is None:
             bbox = self.bbox
         model = np.zeros(bbox.shape, dtype=self.dtype)
@@ -366,6 +377,17 @@ class LiteObservation:
         else:
             raise ValueError(f"mode must be either 'fft' or 'rea', got {mode}")
         return result
+
+    def render(self, model):
+        """Mirror of `Observation.render to make APIs match
+        """
+        return self.convolve(model)
+
+    @property
+    def data(self):
+        """Mirror of `Observation.data` to make APIs match
+        """
+        return self.images
 
     @property
     def shape(self):
@@ -516,6 +538,10 @@ class LiteBlend:
             self.components = components
 
         return self
+
+    @property
+    def log_likelihood(self):
+        return np.array(self.loss)
 
     def fit(self, max_iter, e_rel=1e-3, min_iter=1, resize=10, fit_spec=None):
         """Fit all of the parameters
