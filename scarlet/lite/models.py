@@ -7,6 +7,8 @@
 # a similar log likelihood.
 import numpy as np
 
+from scarlet.lite.measure import weight_sources
+
 from ..bbox import overlapped_slices, Box
 from ..renderer import convolve
 from .. import fft, interpolation, initialization
@@ -555,7 +557,7 @@ class LiteBlend:
     def log_likelihood(self):
         return np.array(self.loss)
 
-    def fit(self, max_iter, e_rel=1e-3, min_iter=1, resize=10, fit_spec=None):
+    def fit(self, max_iter, e_rel=1e-3, min_iter=1, resize=10, reweight=True):
         """Fit all of the parameters
 
         Parameters
@@ -571,8 +573,6 @@ class LiteBlend:
             resizable components. If `resize` is `None` then
             no resizing is ever attempted.
         """
-        if fit_spec is None:
-            fit_spec = lambda it, components: False
         it = self.it
         while it < max_iter:
             # Calculate the gradient wrt the on-convolved model
@@ -580,8 +580,6 @@ class LiteBlend:
             # Update each component given the current gradient
             for component in self.components:
                 component.update(it, grad_logL)
-            if fit_spec(it, self.components):
-                self.fit_spectra()
             # Check to see if any components need to be resized
             if resize is not None and it > 0 and it % resize == 0:
                 for component in self.components:
@@ -592,4 +590,6 @@ class LiteBlend:
                 break
             it += 1
         self.it = it
+        if reweight:
+            weight_sources(self)
         return it, self.loss[-1]

@@ -192,7 +192,7 @@ class AdaproxParameter(LiteParameter):
     TODO: implement other schemes by making `b1` use a list instead of a single value.
     """
     def __init__(self, x, step, grad=None, prox=None, b1=0.9, b2=0.999, eps=1e-8, p=0.25,
-                 m0=None, v0=None, vhat0=None, scheme="amsgrad", max_prox_iter=10, prox_e_rel=1e-6):
+                 m0=None, v0=None, vhat0=None, scheme="amsgrad", max_prox_iter=1, prox_e_rel=1e-6):
         """Initialize the parameter
 
          NOTE:

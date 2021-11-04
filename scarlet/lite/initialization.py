@@ -232,7 +232,8 @@ def init_main_parameters(detect, center, observation,
     if convolved is None:
         # Convolve the morphology to get the exact SED to match the image,
         # accurate to machine precision
-        convolved = observation.convolve(np.repeat(morph[None, :, :], images.shape[0], axis=0), mode="real")
+        _morph = insert_image(observation.bbox[1:], bbox, morph)
+        convolved = observation.convolve(np.repeat(_morph[None, :, :], images.shape[0], axis=0), mode="real")
     sed = images[sed_center] / convolved[sed_center]
     sed[sed<0] = 0
     morph_max = np.max(morph)
@@ -241,7 +242,8 @@ def init_main_parameters(detect, center, observation,
     return bbox, morph, sed
 
 
-def init_adaprox_component(center, bbox, sed, morph, observation, factor=10, bg_thresh=None):
+def init_adaprox_component(center, bbox, sed, morph, observation, factor=10, bg_thresh=None,
+                            max_prox_iter=1):
     """Initialize sed and morph as parameters optimized using adaprox
 
     Parameters
@@ -267,9 +269,10 @@ def init_adaprox_component(center, bbox, sed, morph, observation, factor=10, bg_
     """
     sed = AdaproxParameter(
             sed,
-            step=partial(relative_step, factor=1e-2, minimum=observation.noise_rms/factor)
+            step=partial(relative_step, factor=1e-2, minimum=observation.noise_rms/factor),
+            max_prox_iter=max_prox_iter,
         )
-    morph = AdaproxParameter(morph, step=1e-2)
+    morph = AdaproxParameter(morph, step=1e-2, max_prox_iter=max_prox_iter)
     component = LiteFactorizedComponent(
         sed, morph, center, bbox, observation.bbox, observation.noise_rms, bg_thresh=bg_thresh,
     )
@@ -310,7 +313,7 @@ def init_fista_component(center, bbox, sed, morph, observation, bg_thresh=None):
     return component
 
 
-def init_all_sources_main(observation, detect, centers,
+def init_all_sources_main(observation, centers, detect=None,
         min_snr=50, use_mask=False, percentile=25, thresh=0.5):
     """Initialize all of the sources in a blend into factrized components
 
@@ -345,6 +348,8 @@ def init_all_sources_main(observation, detect, centers,
         The list of sources in the blend.
         This includes null sources that have no components.
     """
+    if detect is None:
+        detect = np.sum(observation.images/(observation.noise_rms**2)[:, None, None], axis=0)
     convolved = observation.convolve(np.repeat(detect[None, :, :], observation.shape[0], axis=0), mode="real")
 
     sources = []
@@ -357,7 +362,6 @@ def init_all_sources_main(observation, detect, centers,
 
         if morph is None:
             components = []
-            print(center, morph)
         elif component_snr >= 2:
             bulge_morph = morph.copy()
             disk_morph = morph
@@ -389,7 +393,6 @@ def init_all_sources_main(observation, detect, centers,
                 ]
         else:
             components = [LiteComponent(center, observation.bbox[0] @ bbox, sed, morph)]
-        print("components", components)
 
         source = LiteSource(components, observation.dtype)
         sources.append(source)
