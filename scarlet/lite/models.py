@@ -324,7 +324,7 @@ class LiteObservation:
         self.weights = weights
         # make sure that the images and psfs have the same dtype
         if psfs.dtype != images.dtype:
-            psfs.dtype = psfs.dtype.astype(images.dtype)
+            psfs = psfs.astype(images.dtype)
         self.psfs = psfs
 
         self.mode = convolution_mode
@@ -554,10 +554,12 @@ class LiteBlend:
         return self
 
     @property
-    def log_likelihood(self):
-        return np.array(self.loss)
+    def log_likelihood(self, model=None):
+        if model is None:
+            return np.array(self.loss)
+        return 0.5 * -np.sum(self.observation.weights * (self.observation.images - model)**2)
 
-    def fit(self, max_iter, e_rel=1e-3, min_iter=1, resize=10, reweight=True):
+    def fit(self, max_iter, e_rel=1e-4, min_iter=1, resize=10, reweight=True):
         """Fit all of the parameters
 
         Parameters

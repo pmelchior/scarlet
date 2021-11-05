@@ -3,7 +3,7 @@ import logging
 import numpy as np
 
 from ..operator import prox_monotonic_mask, prox_uncentered_symmetry, prox_weighted_monotonic
-from ..detect import bounds_to_bbox
+from ..detect import bounds_to_bbox, get_detect_wavelets
 from ..bbox import Box, overlapped_slices
 from ..initialization import trim_morphology
 from ..parameter import relative_step
@@ -407,14 +407,15 @@ class WaveletInitParameters:
     To simplify the API those parameters are all initialized by this class
     and passed to `init_wavelet_source` for each source.
     """
-    def __init__(self, observation, wavelets,
+    def __init__(self, observation,
             bulge_slice=slice(None,2), disk_slice=slice(2, -1),
-            bulge_grow=5, disk_grow=5, use_psf=True):
+            bulge_grow=5, disk_grow=5, use_psf=True, scales=5, wavelets=None):
         """Initialize the parameters.
 
         See `init_all_sources_wavelets` for a description of the parameters.
         """
-        wavelets = wavelets.copy()
+        if wavelets is None:
+            wavelets = get_detect_wavelets(observation.images, observation.variance, scales=scales)
         wavelets[wavelets<0] = 0
         # The detection coadd for single component sources
         detectlets = np.sum(wavelets[:-1], axis=0)
@@ -538,8 +539,8 @@ def init_wavelet_source(center, nbr_components, init):
     return source
 
 
-def init_all_sources_wavelets(observation, wavelets, centers, min_snr=50, bulge_grow=5, disk_grow=5,
-        use_psf=True, bulge_slice=slice(None,2), disk_slice=slice(2, -1)):
+def init_all_sources_wavelets(observation, centers, min_snr=50, bulge_grow=5, disk_grow=5,
+        use_psf=True, bulge_slice=slice(None,2), disk_slice=slice(2, -1), scales=5):
     """Initialize all sources using wavelet detection images.
 
     This does not initialize the SED and morpholgy parameters, so
@@ -574,7 +575,7 @@ def init_all_sources_wavelets(observation, wavelets, centers, min_snr=50, bulge_
         The sources that have been initialized.
     """
     init = WaveletInitParameters(
-        observation, wavelets, bulge_slice, disk_slice, bulge_grow, disk_grow, use_psf)
+        observation, bulge_slice, disk_slice, bulge_grow, disk_grow, use_psf)
     sources = []
     for center in centers:
         snr = np.floor(calculate_snr(observation.images, observation.variance, observation.psfs, center))
@@ -606,16 +607,19 @@ def parameterize_sources(sources, observation, parameterization):
     sources: `list` of `scarlet.lite.LiteSource`
         The input list of sources with their components updated.
     """
+    new_sources = []
     for src in sources:
         components = []
         for c in src.components:
+            # Copy all of the parameters in case the same initialization
+            # variables are wrapped by different parameterizations
             component = parameterization(
-                center=c.center,
-                sed=c.sed,
-                morph=c.morph,
-                bbox=c.bbox,
+                center=tuple([coord for coord in c.center]),
+                sed=c.sed.copy(),
+                morph=c.morph.copy(),
+                bbox=c.bbox.copy(),
                 observation=observation
             )
             components.append(component)
-        src.components = components
-    return sources
+        new_sources.append(LiteSource(components, src.dtype))
+    return new_sources

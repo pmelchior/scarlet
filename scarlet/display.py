@@ -238,8 +238,12 @@ def show_observation(
         assert sky_coords is not None, "Provide sky_coords for labeled objects"
 
         for k, center in enumerate(sky_coords):
-            center_ = observation.get_pixel(center)
-            color = "w" if observation.C > 1 else "r"
+            if hasattr(observation, "get_pixel"):
+                center_ = observation.get_pixel(center)
+                color = "w" if observation.C > 1 else "r"
+            else:
+                center_ = center
+                color = "w" if observation.data.shape[0] > 1 else "r"
             ax[panel].text(*center_[::-1], k, color=color, ha="center", va="center")
 
     panel += 1
@@ -375,7 +379,7 @@ def show_scene(
 
     if (show_rendered or show_residual) and not use_flux:
         model = observation.render(model)
-        extent = get_extent(observation.bbox)
+    extent = get_extent(observation.bbox)
 
     if show_rendered:
         ax[panel].imshow(
