@@ -14,12 +14,6 @@ if [[ "$CONDA_BUILD" == "1" ]]; then
     export EIGEN_INCLUDE=$PREFIX/include/eigen3
 fi
 
-if [ -z "$MACOSX_DEPLOYMENT_TARGET" ]; then
-    MIN_DEPLOYMENT_TARGET=9
-    CFG_DEPLOYMENT_TARGET=$(python -c "import sysconfig; print((sysconfig.get_config_var('MACOSX_DEPLOYMENT_TARGET') or '10.$MIN_DEPLOYMENT_TARGET').split('.')[1])")
-    export MACOSX_DEPLOYMENT_TARGET=10.$((MIN_DEPLOYMENT_TARGET>CFG_DEPLOYMENT_TARGET?MIN_DEPLOYMENT_TARGET:CFG_DEPLOYMENT_TARGET))
-fi
-
 install() {
   PYDEST="$PREFIX/lib/python"
   PYTHONPATH="$PYDEST:$PYTHONPATH" \
