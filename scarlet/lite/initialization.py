@@ -540,7 +540,7 @@ def init_wavelet_source(center, nbr_components, init):
 
 
 def init_all_sources_wavelets(observation, centers, min_snr=50, bulge_grow=5, disk_grow=5,
-        use_psf=True, bulge_slice=slice(None,2), disk_slice=slice(2, -1), scales=5):
+        use_psf=True, bulge_slice=slice(None,2), disk_slice=slice(2, -1), scales=5, wavelets=None):
     """Initialize all sources using wavelet detection images.
 
     This does not initialize the SED and morpholgy parameters, so
@@ -575,7 +575,7 @@ def init_all_sources_wavelets(observation, centers, min_snr=50, bulge_grow=5, di
         The sources that have been initialized.
     """
     init = WaveletInitParameters(
-        observation, bulge_slice, disk_slice, bulge_grow, disk_grow, use_psf)
+        observation, bulge_slice, disk_slice, bulge_grow, disk_grow, use_psf, scales, wavelets)
     sources = []
     for center in centers:
         snr = np.floor(calculate_snr(observation.images, observation.variance, observation.psfs, center))
