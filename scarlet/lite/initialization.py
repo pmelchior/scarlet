@@ -129,6 +129,8 @@ def init_monotonic_morph(detect, center, full_box, grow=0, normalize=True,
 
         # truncate morph at thresh * bg_rms
         morph, bbox = trim_morphology(center, morph, bg_thresh=thresh)
+        if np.max(morph) == 0:
+            return Box((0,0,0)), None
 
     if normalize:
         morph /= np.max(morph)
@@ -225,6 +227,9 @@ def init_main_parameters(detect, center, observation,
         use_mask=use_mask,
         thresh=thresh,
     )
+
+    if morph is None:
+        return bbox, None, None
 
     sed_center = (slice(None), center[0], center[1])
     images = observation.images
@@ -351,6 +356,15 @@ def init_all_sources_main(observation, centers, detect=None,
     if detect is None:
         detect = np.sum(observation.images/(observation.noise_rms**2)[:, None, None], axis=0)
     convolved = observation.convolve(np.repeat(detect[None, :, :], observation.shape[0], axis=0), mode="real")
+    model_psf = observation.model_psf[0]
+    convolved_psf = observation.convolve(
+        np.repeat(observation.model_psf,
+        observation.images.shape[0], axis=0),
+        mode="real"
+    )
+    py = model_psf.shape[0]//2
+    px = model_psf.shape[1]//2
+    psf_sed = convolved_psf[:, py, px]
 
     sources = []
     for center in centers:
@@ -361,7 +375,13 @@ def init_all_sources_main(observation, centers, detect=None,
             detect, center, observation, convolved, use_mask, thresh)
 
         if morph is None:
-            components = []
+            sed_center = (slice(None), center[0], center[1])
+            sed = observation.images[sed_center] / psf_sed
+            sed[sed<0] = 0
+            morph = model_psf.copy()
+            morph = morph/np.max(morph)
+            bbox = Box(model_psf.shape, origin=(center[0]-py, center[1]-px))
+
         elif component_snr >= 2:
             bulge_morph = morph.copy()
             disk_morph = morph
