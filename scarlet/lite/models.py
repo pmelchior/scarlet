@@ -327,6 +327,7 @@ class LiteObservation:
             psfs = psfs.astype(images.dtype)
         self.psfs = psfs
 
+        assert convolution_mode in ["fft", "real"], "convolution_mode must be either 'fft' or 'real'"
         self.mode = convolution_mode
         if noise_rms is None:
             noise_rms = np.array(np.mean(np.sqrt(variance), axis=(1,2)))
@@ -383,7 +384,7 @@ class LiteObservation:
         elif mode == "real":
             result = convolve(image, kernel.image, self.convolution_bounds)
         else:
-            raise ValueError(f"mode must be either 'fft' or 'rea', got {mode}")
+            raise ValueError(f"mode must be either 'fft' or 'real', got {mode}")
         return result
 
     def render(self, model):
