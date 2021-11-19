@@ -381,7 +381,7 @@ def init_all_sources_main(observation, centers, detect=None,
             morph = model_psf.copy()
             morph = morph/np.max(morph)
             bbox = Box(model_psf.shape, origin=(center[0]-py, center[1]-px))
-
+            components = [LiteComponent(center, observation.bbox[0] @ bbox, sed, morph)]
         elif component_snr >= 2:
             bulge_morph = morph.copy()
             disk_morph = morph
