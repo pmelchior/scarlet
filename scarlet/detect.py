@@ -135,12 +135,38 @@ class QuadTreeRegion:
         """
         self.bbox = bbox
         self.sub_regions = sub_regions
+        if boxes is None:
+            boxes = []
         self.boxes = boxes
         self.capacity = capacity
         # Used for debugging
         self.depth = depth
         self.detect = detect
         self.debug = detect is not None
+
+    def footprint_image(self, bbox=None):
+        """Get an image array of all of the footprints in the tree
+        """
+        boxes = self.query(self.bbox)
+
+        if bbox is None:
+            bbox = Box((0,0))
+            for box in boxes:
+                bbox = bbox | box
+
+        footprint = np.zeros(bbox.shape)
+        for box in boxes:
+            full, local = overlapped_slices(bbox, box)
+            footprint[full] += box.footprint.footprint[local]
+        return footprint
+
+    @property
+    def peaks(self):
+        """Generate a list of peaks contained in the tree
+        """
+        for box in self.query(self.bbox):
+            for peak in box.footprint.peaks:
+                yield peak
 
     def add(self, other_box):
         """Add a box to the region.
@@ -241,7 +267,7 @@ class QuadTreeRegion:
         for region in self.sub_regions:
             region.add(other_box)
 
-    def query(self, other_box):
+    def query(self, other_box=None):
         """Return all of the boxes that overlap with a given box
 
         Parameters
@@ -257,6 +283,8 @@ class QuadTreeRegion:
             We use a set instead of a list because some boxes may be in
             multiple sub-regions and we only want to have one copy of each.
         """
+        if other_box is None:
+            other_box = self.bbox
         if self.boxes is not None:
             results = set([box for box in self.boxes if box_intersect(box, other_box)])
         elif self.sub_regions is not None:
