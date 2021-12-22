@@ -119,7 +119,8 @@ class LiteComponent:
 class LiteFactorizedComponent(LiteComponent):
     """Implementation of a `FactorizedComponent` for simplified observations.
     """
-    def __init__(self, sed, morph, center, bbox, model_bbox, bg_rms, bg_thresh=0.25, floor=1e-20):
+    def __init__(self, sed, morph, center, bbox, model_bbox, bg_rms, bg_thresh=0.25, floor=1e-20,
+                 fit_center_radius=1):
         """Initialize the component.
 
         Parameters
@@ -149,7 +150,11 @@ class LiteFactorizedComponent(LiteComponent):
         # Initialize all of the base attributes
         super().__init__(center, bbox, sed, morph, initialized=True, bg_thresh=bg_thresh, bg_rms=bg_rms)
         # Initialize the monotonicity constraint
-        self.monotonicity = MonotonicityConstraint(neighbor_weight="angle", min_gradient=0)
+        self.monotonicity = MonotonicityConstraint(
+            neighbor_weight="angle",
+            min_gradient=0,
+            fit_center_radius=fit_center_radius
+        )
         self.floor = floor
         self.model_bbox = model_bbox
 
