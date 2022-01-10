@@ -440,6 +440,51 @@ def get_detect_wavelets(images, variance, scales=3):
     return M * _coeffs
 
 
+def get_blend_trees(detect):
+    """Get the tree at each wavelet level, and all of the footprints at each level
+
+    Parameters
+    ----------
+    detect: `numpy.ndarray`
+        A 2D image to use for detecting footprints and peaks
+
+    Returns
+    -------
+    trees: `list` of `QuadTreeRegion`
+        A tree at each scale used to match peaks/footprints across scales
+    all_footprints: `lsit` of `list` of `Footprint`
+        A list of all of all of the footprints at each scale.
+
+    """
+    from scarlet.detect_pybind11 import get_footprints
+    all_footprints = []
+
+    for _detect in detect[:-1]:
+        footprints = get_footprints(_detect, min_separation=0, min_area=4, thresh=0)
+        all_footprints.append(footprints)
+
+    trees =[ QuadTreeRegion(Box(detect.shape[-2:]), capacity=10).add_footprints(fps) for fps in all_footprints]
+    return trees, all_footprints
+
+def get_blend_structures(detect):
+    """Get a blend structure at each scale with detected footprints
+
+    Detection is best done at the second scale, which is similar to conventional
+    detection, which typically convolves an image with a gaussian to perform
+    peak detection. The second wavelet scale is equivalent to convolution with
+    a bicubic spline, and then subracting the next wavelet scale, which has the
+    effect of amplifying the center and subtracting the surrounding regions.
+
+
+    """
+    trees, footprints = get_blend_trees(detect)
+    structures = [
+        SingleScaleStructure(2, fp).add_scale_tree(0, trees[0]).add_scale_tree(1, trees[1])
+        for fp in footprints
+    ]
+    return structures
+
+
 def get_blend_structures(detect):
     """Generate a set of structures for the 3rd wavelet scale
 

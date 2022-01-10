@@ -527,7 +527,7 @@ class LiteBlend:
         grad_logL = self.observation.convolve(grad_logL, grad=True)
         return grad_logL
 
-    def fit_spectra(self, clip=True):
+    def fit_spectra(self, clip=False):
         """Fit all of the spectra given their current morphologies
 
         Parameters
@@ -556,6 +556,10 @@ class LiteBlend:
                         _components.append(c)
                 src.components = _components
             self.components = components
+        else:
+            for src in self.sources:
+                for c in src.components:
+                    c.prox_sed(c.sed)
 
         return self
 

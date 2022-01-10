@@ -219,6 +219,8 @@ def deblend_and_measure(
             print(blend_id)
         data = get_blend(blend_id, data_path)
         measurements, observation, sources = deblender(data)
+        for m in measurements:
+            m["blend_id"] = blend_id
         if save_records:
             save_measurements(measurements, set_id, branch, blend_id)
         all_measurements += measurements
