@@ -9,3 +9,4 @@ Tutorials
    tutorials/wavelet_model
    tutorials/multiresolution
    tutorials/lite
+   tutorials/multiscale_deblending
