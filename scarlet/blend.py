@@ -9,7 +9,6 @@ import logging
 
 from .component import CombinedComponent
 from .model import UpdateException
-from .bbox import overlapped_slices
 
 logger = logging.getLogger("scarlet.blend")
 

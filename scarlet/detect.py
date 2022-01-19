@@ -475,7 +475,10 @@ def get_blend_structures(detect):
     a bicubic spline, and then subracting the next wavelet scale, which has the
     effect of amplifying the center and subtracting the surrounding regions.
 
-
+    Parameters
+    ----------
+    detect: `~numpy.ndarray`
+        Array of starlet coefficients (scales+1, height, width)
     """
     trees, footprints = get_blend_trees(detect)
     structures = [

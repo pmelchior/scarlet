@@ -22,6 +22,23 @@ class LiteComponent:
     If `sed` and `morph` are arrays and not `LiteParameter`s then the
     component is not `initialized` and must still be initialized by
     another function.
+
+    Parameters
+    ----------
+    center: `tuple` of `int`
+        Location of the center pixel of the component in the full blend.
+    bbox: `scarlet.bbox.Box`
+        The bounding box for this component
+    sed: `numpy.ndarray`
+        The array of values for the SED `(bands,)`
+    morph: `numpy.ndarray`
+        The `(height, wdidth)` array of values for the morphology.
+    initialized: `bool`
+        Whether or not the component has been initialized.
+    bg_thresh: `float`
+        Level of the background thresh, required by some parameterizations.
+    bg_rms: `float`
+        The RMS of the background, required by some parameterizations.
     """
     def __init__(self, center, bbox, sed=None, morph=None, initialized=False,
                  bg_thresh=0.25, bg_rms=0):
