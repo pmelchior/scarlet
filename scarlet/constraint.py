@@ -187,14 +187,18 @@ class MonotonicityConstraint(Constraint):
     for a description of the other parameters.
     """
 
-    def __init__(self, neighbor_weight="flat", min_gradient=0.1, use_mask=False):
+    def __init__(self, neighbor_weight="flat", min_gradient=0.1, use_mask=False, fit_center_radius=0):
         self.neighbor_weight = neighbor_weight
         self.min_gradient = min_gradient
         self.use_mask = use_mask
+        self.fit_center = fit_center_radius > 0
+        self.fit_center_radius = fit_center_radius
 
     def __call__(self, morph, step):
         shape = morph.shape
         center = (shape[0] // 2, shape[1] // 2)
+        if self.fit_center:
+            center = operator.get_center(morph, center, radius=self.fit_center_radius)
 
         # get prox from the cache
         prox_name = "operator.prox_weighted_monotonic"

@@ -28,6 +28,7 @@ def adjacent_values(
 
 def measure_blend(
     data: Dict[str, np.ndarray], sources: List, filters: Sequence[str],
+    centers: Sequence=None,
 ) -> List[Dict[str, float]]:
     """
     Measure all of the fake sources in a single blend
@@ -43,7 +44,9 @@ def measure_blend(
     import scarlet.measure
 
     # Extract necessary fields from the data
-    centers = data["centers"]
+    if centers is None:
+        centers = data["centers"]
+    centers = np.array(centers)
     matched = data["matched"]
     matched_centers = np.array([[m["y"], m["x"]] for m in matched]).astype(int)
 
@@ -69,6 +72,7 @@ def measure_blend(
         for f in range(len(filters)):
             measurement[filters[f] + " truth"] = truth[f]
             measurement[filters[f] + " mag"] = flux[f]
+            measurement[filters[f] + " diff"] = truth[f] - flux[f]
 
         measurements.append(measurement)
 
@@ -230,6 +234,7 @@ class Metric:
 all_metrics = {
     "init time": Metric("init time", "time (ms)"),
     "runtime": Metric("runtime", "time/source (ms)"),
+    "total runtime": Metric("total runtime", "time (s)"),
     "iterations": Metric("iterations", "iterations"),
     "init logL": Metric("init logL", "logL"),
     "logL": Metric("logL", "logL"),

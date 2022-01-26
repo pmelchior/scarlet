@@ -266,6 +266,21 @@ def starlet_transform(image, scales=None, generation=2, convolve2D=None):
     return starlet
 
 
+def multiband_starlet_transform(image, scales=None, generation=2, convolve2D=None):
+    """Perform a starlet transform of a multiband image.
+
+    See `starlet_transform` for a description of the parameters.
+    """
+    assert len(image.shape) == 3, f"Image should be 3D (bands, height, width), got shape {len(image.shape)}"
+    assert generation in (1, 2), f"generation should be 1 or 2, got {generation}"
+    scales = get_scales(image.shape, scales)
+
+    wavelets = np.empty((scales+1,)+image.shape, dtype=image.dtype)
+    for b, image in enumerate(image):
+        wavelets[:, b] = starlet_transform(image, scales=scales, generation=generation, convolve2D=convolve2D)
+    return wavelets
+
+
 def starlet_reconstruction(starlets, generation=2, convolve2D=None):
     """Reconstruct an image from a dictionary of starlets
 
@@ -294,6 +309,23 @@ def starlet_reconstruction(starlets, generation=2, convolve2D=None):
         cj = convolve2D(c, j)
         c = cj + starlets[j]
     return c
+
+
+def multiband_starlet_reconstruction(starlets, generation=2, convolve2D=None):
+    """Reconstruct a multiband image
+
+    See `starlet_reconstruction` for a description of the
+    remainder of the parameters.
+    """
+    scales, bands, width, height = starlets.shape
+    result = np.array((bands, width, height), dtype=starlets.dtype)
+    for band in bands:
+        result[:, band] = starlet_reconstruction(
+            starlets[:, band],
+            generation=generation,
+            convolve2D=convolve2D
+        )
+    return result
 
 
 def get_multiresolution_support(image, starlets, sigma, K=3, epsilon=1e-1, max_iter=20, image_type="ground"):

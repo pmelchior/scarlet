@@ -135,12 +135,38 @@ class QuadTreeRegion:
         """
         self.bbox = bbox
         self.sub_regions = sub_regions
+        if boxes is None:
+            boxes = []
         self.boxes = boxes
         self.capacity = capacity
         # Used for debugging
         self.depth = depth
         self.detect = detect
         self.debug = detect is not None
+
+    def footprint_image(self, bbox=None):
+        """Get an image array of all of the footprints in the tree
+        """
+        boxes = self.query(self.bbox)
+
+        if bbox is None:
+            bbox = Box((0,0))
+            for box in boxes:
+                bbox = bbox | box
+
+        footprint = np.zeros(bbox.shape)
+        for box in boxes:
+            full, local = overlapped_slices(bbox, box)
+            footprint[full] += box.footprint.footprint[local]
+        return footprint
+
+    @property
+    def peaks(self):
+        """Generate a list of peaks contained in the tree
+        """
+        for box in self.query(self.bbox):
+            for peak in box.footprint.peaks:
+                yield peak
 
     def add(self, other_box):
         """Add a box to the region.
@@ -241,7 +267,7 @@ class QuadTreeRegion:
         for region in self.sub_regions:
             region.add(other_box)
 
-    def query(self, other_box):
+    def query(self, other_box=None):
         """Return all of the boxes that overlap with a given box
 
         Parameters
@@ -257,6 +283,8 @@ class QuadTreeRegion:
             We use a set instead of a list because some boxes may be in
             multiple sub-regions and we only want to have one copy of each.
         """
+        if other_box is None:
+            other_box = self.bbox
         if self.boxes is not None:
             results = set([box for box in self.boxes if box_intersect(box, other_box)])
         elif self.sub_regions is not None:
@@ -412,6 +440,54 @@ def get_detect_wavelets(images, variance, scales=3):
     return M * _coeffs
 
 
+def get_blend_trees(detect):
+    """Get the tree at each wavelet level, and all of the footprints at each level
+
+    Parameters
+    ----------
+    detect: `numpy.ndarray`
+        A 2D image to use for detecting footprints and peaks
+
+    Returns
+    -------
+    trees: `list` of `QuadTreeRegion`
+        A tree at each scale used to match peaks/footprints across scales
+    all_footprints: `lsit` of `list` of `Footprint`
+        A list of all of all of the footprints at each scale.
+
+    """
+    from scarlet.detect_pybind11 import get_footprints
+    all_footprints = []
+
+    for _detect in detect[:-1]:
+        footprints = get_footprints(_detect, min_separation=0, min_area=4, thresh=0)
+        all_footprints.append(footprints)
+
+    trees =[ QuadTreeRegion(Box(detect.shape[-2:]), capacity=10).add_footprints(fps) for fps in all_footprints]
+    return trees, all_footprints
+
+def get_blend_structures(detect):
+    """Get a blend structure at each scale with detected footprints
+
+    Detection is best done at the second scale, which is similar to conventional
+    detection, which typically convolves an image with a gaussian to perform
+    peak detection. The second wavelet scale is equivalent to convolution with
+    a bicubic spline, and then subracting the next wavelet scale, which has the
+    effect of amplifying the center and subtracting the surrounding regions.
+
+    Parameters
+    ----------
+    detect: `~numpy.ndarray`
+        Array of starlet coefficients (scales+1, height, width)
+    """
+    trees, footprints = get_blend_trees(detect)
+    structures = [
+        SingleScaleStructure(2, fp).add_scale_tree(0, trees[0]).add_scale_tree(1, trees[1])
+        for fp in footprints
+    ]
+    return structures
+
+
 def get_blend_structures(detect):
     """Generate a set of structures for the 3rd wavelet scale
 
@@ -426,7 +502,7 @@ def get_blend_structures(detect):
         footprints = get_footprints(_detect, min_separation=0, min_area=4, thresh=0)
         all_footprints.append(footprints)
 
-    low, middle, high = all_footprints
+    low, middle = all_footprints[:2]
     low_tree = QuadTreeRegion(Box(detect.shape[-2:]), capacity=10).add_footprints(low)
     middle_tree = QuadTreeRegion(Box(detect.shape[-2:]), capacity=10).add_footprints(middle)
 
@@ -436,3 +512,61 @@ def get_blend_structures(detect):
     ]
 
     return high_structures, middle_tree
+
+
+def get_peaks(detect=None, images=None, variance=None, bbox=None, scales=3):
+    """Detect all of the peaks in the 2nd wavelet scale
+
+    This is not meant to be a permanent solution, as there are some objects
+    that don't have a detection on the 2nd wavelet scale, however through
+    testing it has been confirmed that this algorithm works better than the
+    LSST science pipelines detection algorithm and is a good replacement
+    until the hierarchical detection tree can be better understood and
+    finalized.
+
+    Parameters
+    ----------
+    detect: `numpy.ndarray`
+        A set of wavelet coefficents used to detect sources.
+        If `detect` is `None` then `images` and `variance`must be specified.
+    images: `numpy.ndarray`
+        The set of 3D images `(band, height, width)` to use for
+        creating the wavelet coefficients.
+        This is ignored if detect is not `None`.
+    variance: `numpy.ndarray`
+        The variance of `images`.
+        This is ignored if detect is not `None`.
+    bbox: `scarlet.bbox.Box`
+        The bounding box for the full image.
+        If this is `None`, then a bounding box that is the shape of `images`
+        with an origin at `(0,0,0)` is used.
+    scales: `int`
+        The number of wavelet scales to use for creating the detection
+        wavelet coefficients.
+        This is ignored if detect is not `None`.
+
+    Returns
+    -------
+    peaks: `list`
+        A list of peaks that have been detected at the 2nd wavelet scale.
+    """
+    if detect is None:
+        if images is None or variance is None or bbox is None:
+            raise ValueError("Must pass either 'detect' or 'images' and 'variance' and 'bbox'")
+        # Get a set of wavelets for detection
+        detect = get_detect_wavelets(images, variance, scales=3)
+
+    if bbox is None:
+        bbox = Box(detect.shape[1:])
+    else:
+        bbox = bbox[1:]
+
+    # Detect a hierarchy of structures in the wavelet coefficients
+    structures, tree = get_blend_structures(detect)
+
+    # Extract all of the peaks from the structures
+    peaks = []
+    for box in tree.query(bbox):
+        for peak in box.footprint.peaks:
+            peaks.append((peak.y, peak.x))
+    return peaks

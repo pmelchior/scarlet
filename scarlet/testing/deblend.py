@@ -74,6 +74,7 @@ def deblend(data: Dict[str, np.ndarray], max_iter: int, e_rel: float):
     measurements = {
         "init time": (t1 - t0) * 1000,
         "runtime": (t2 - t1) * 1000 / len(sources),
+        "total runtime": t2 - t1,
         "iterations": len(blend.loss),
         # log_norm is included in loss, keeping it here for backward compatibility of measurements
         "logL": blend.loss[-1] - log_norm,
