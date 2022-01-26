@@ -48,12 +48,14 @@ class Model(ABC):
 
     @property
     def parameters(self):
-        """List of parameters, including from the children.
+        """List of parameters, including from the children
         """
         return self._parameters + tuple(p for c in self.children for p in c.parameters)
 
     @property
     def children(self):
+        """List of child models
+        """
         return self._children
 
     def __getitem__(self, i):
@@ -66,14 +68,37 @@ class Model(ABC):
         return self._children.__next__()
 
     def get_parameter(self, i, *parameters):
-        # NOTE: index lookup only works if order is not changed by parameter fixing!
-        # check parameters first during optimization
-        if i < len(parameters):
-            return parameters[i]
+        """Access parameters by list index or by name
 
-        # otherwise use self
-        if i < len(self.parameters):
-            return self.parameters[i]
+        Parameters
+        ----------
+        i: int, slice, str
+            Index, slice or name attribute of the requested parameter
+        parameters: tuple
+            Parameters used during optimization. If not set, uses `self`
+
+        Returns
+        -------
+        Matching item or tuple of matching items
+        """
+
+        # NOTE: index lookup only works if order is not changed by parameter fixing!
+        # during optimization: parameters are passed by autograd
+        if parameters:
+            parameters_ = parameters
+        else:
+            parameters_ = self.parameters
+
+        if isinstance(i, (int, slice)):
+            return parameters_[i]
+        elif isinstance(i, str):
+            if parameters:
+                match = tuple(p for p in parameters_ if p._value.name == i)
+            else:
+                match = tuple(p for p in parameters_ if p.name == i)
+            if len(match) == 1:
+                match = match[0]
+            return match
 
         return None
 
@@ -93,6 +118,17 @@ class Model(ABC):
         pass
 
     def get_models_of_children(self, *parameters, **kwargs):
+        """Get realization of all child models
+
+        Parameters
+        ----------
+        parameters: tuple of optimimzation parameters
+
+        Returns
+        -------
+        model: list
+            Realization of the child models, ordered by child index
+        """
         models = []
         # parameters during optimization
         if len(parameters):

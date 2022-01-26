@@ -3,15 +3,7 @@ import logging
 
 from .bbox import Box
 from .cache import Cache
-from .interpolation import interpolate_observation
-from .observation import Observation
 from .renderer import NullRenderer, ConvolutionRenderer
-from .wavelet import Starlet, mad_wavelet
-from . import fft
-from . import measure
-from functools import partial
-from .constraint import PositivityConstraint
-from .parameter import Parameter, relative_step
 
 
 logger = logging.getLogger("scarlet.initialisation")
@@ -103,7 +95,7 @@ def get_pixel_spectrum(sky_coord, observations, correct_psf=False, models=None):
 
         if obs.psf is not None:
             # correct spectrum for PSF-induced change in peak pixel intensity
-            psf_model = obs.psf.get_model()._data
+            psf_model = obs.psf.get_model()
             psf_peak = psf_model.max(axis=(1, 2))
             spectrum /= psf_peak
         elif model is not None:
@@ -220,7 +212,7 @@ def get_minimal_boxsize(size, min_size=21, increment=10):
     return boxsize
 
 
-def trim_morphology(center_index, morph, bg_thresh=0):
+def trim_morphology(center_index, morph, bg_thresh=0, boxsize=None):
     # trim morph to pixels above threshold
     mask = morph > bg_thresh
     morph[~mask] = 0
@@ -241,7 +233,9 @@ def trim_morphology(center_index, morph, bg_thresh=0):
         size = 0
 
     # define new box and cut morphology accordingly
-    boxsize = get_minimal_boxsize(size)
+    if boxsize is None:
+        boxsize = get_minimal_boxsize(size)
+
     bottom = center_index[0] - boxsize // 2
     top = center_index[0] + boxsize // 2 + 1
     left = center_index[1] - boxsize // 2
@@ -323,8 +317,11 @@ def init_all_sources(
     observations,
     thresh=1,
     max_components=1,
+    min_components=1,
     min_snr=50,
     shifting=False,
+    resizing=True,
+    boxsize=None,
     fallback=True,
     silent=False,
     set_spectra=True,
@@ -371,8 +368,11 @@ def init_all_sources(
                 observations,
                 thresh=thresh,
                 max_components=max_components,
+                min_components=min_components,
                 min_snr=min_snr,
                 shifting=shifting,
+                resizing=resizing,
+                boxsize=boxsize,
                 fallback=fallback,
             )
             sources.append(source)
@@ -396,8 +396,11 @@ def init_source(
     observations,
     thresh=1,
     max_components=1,
+    min_components=1,
     min_snr=50,
     shifting=False,
+    resizing=True,
+    boxsize=None,
     fallback=True,
 ):
     """Initialize a Source
@@ -437,12 +440,19 @@ def init_source(
         will continue to subtract one from the number of components
         until it reaches zero (which fits a `CompactExtendedSource`).
         If a point source cannot be fit then the source is skipped.
+    min_components : int
+        The minimum number of components in a source.
+        Only relevent for `fallback=True`.
     min_snr: float
         Mininmum SNR per component to accept the source.
     shifting : bool
         Whether or not to fit the position of a source.
         This is an expensive operation and is typically only used when
         a source is on the edge of the detector.
+    resizing : bool
+        Whether or not to change the size of the source box.
+    boxsize: int or None
+        Spatial size of the source box
     fallback : bool
         Whether to reduce the number of components
         if the model cannot be initialized with `max_components`.
@@ -458,11 +468,13 @@ def init_source(
     if not hasattr(observations, "__iter__"):
         observations = (observations,)
 
-    source_shifting = shifting
     if fallback:
         _, psf_snr = get_psf_spectrum(center, observations, compute_snr=True)
         max_components = np.min(
-            [max_components, np.max([0, np.floor(psf_snr / min_snr).astype("int")])]
+            [
+                max_components,
+                np.max([min_components, np.floor(psf_snr / min_snr).astype("int")]),
+            ]
         )
 
     while max_components >= 0:
@@ -473,12 +485,20 @@ def init_source(
                     center,
                     observations,
                     thresh=thresh,
-                    shifting=source_shifting,
+                    shifting=shifting,
+                    resizing=resizing,
+                    boxsize=boxsize,
                     K=max_components,
                 )
             else:
                 source = ExtendedSource(
-                    frame, center, observations, shifting=source_shifting, compact=True
+                    frame,
+                    center,
+                    observations,
+                    shifting=shifting,
+                    resizing=resizing,
+                    boxsize=boxsize,
+                    compact=True,
                 )
 
             # test if parameters are fine, otherwise throw ArithmeticError
@@ -545,17 +565,30 @@ def set_spectra_to_match(sources, observations):
         # solve the linear inverse problem of the amplitudes in every channel
         # given all the rendered morphologies
         # spectrum = (M^T Sigma^-1 M)^-1 M^T Sigma^-1 * im
-        spectra = np.empty((K, C))
+        spectra = np.zeros((K, C))
         for c in range(C):
             im = images[c].reshape(-1)
             w = weights[c].reshape(-1)
             m = morphs[:, c, :, :].reshape(K, -1)
-            covar = np.linalg.inv((m * w[None, :]) @ m.T)
-            spectra[:, c] = covar @ m @ (im * w)
+            mw = m * w[None, :]
+            # check if all components have nonzero flux in c.
+            # because of convolutions, flux can be outside of the box,
+            # so we need to compare weighted flu with unweighted flux,
+            # which is the same (up to a constant) for constant weights
+            # so we check if *most* of the flux is from pixels with non-zero weight
+            nonzero = np.sum(mw, axis=1) / np.sum(m, axis=1) / np.mean(w) > 0.1
+            nonzero = np.flatnonzero(nonzero)
+            if len(nonzero) == K:
+                covar = np.linalg.inv(mw @ m.T)
+                spectra[:, c] = covar @ m @ (im * w)
+            else:
+                covar = np.linalg.inv(mw[nonzero] @ m[nonzero].T)
+                spectra[nonzero, c] = covar @ m[nonzero] @ (im * w)
 
         for p, spectrum in zip(parameters, spectra):
             obs.renderer.map_channels(p)[:] = spectrum
 
     # enforce constraints
     for p in parameters:
-        p[:] = p.constraint(p, 0)
+        if p.constraint is not None:
+            p[:] = p.constraint(p, 0)

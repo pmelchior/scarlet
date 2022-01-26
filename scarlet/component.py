@@ -180,6 +180,19 @@ class FactorizedComponent(Component):
                 self.bbox = bbox
                 raise e
 
+    @property
+    def spectrum(self):
+        """Extract the spectrum parameter.
+        """
+        return self.parameters[0]
+
+    @property
+    def morphology(self):
+        """Extract the morphology parameter
+        """
+        return self.parameters[1]
+
+
 
 class CubeComponent(Component):
     """A single component in a blend

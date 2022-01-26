@@ -76,7 +76,8 @@ class Box:
     def contains(self, p):
         """Whether the box contains a given coordinate `p`
         """
-        assert len(p) == self.D
+        if len(p) != self.D:
+            raise ValueError(f"Dimension mismatch in {p} and {self.D}")
 
         for d in range(self.D):
             if p[d] < self.origin[d] or p[d] >= self.origin[d] + self.shape[d]:
@@ -147,6 +148,12 @@ class Box:
         return tuple(o + s for o, s in zip(self.origin, self.shape))
 
     @property
+    def center(self):
+        """Tuple of center coordinates
+        """
+        return tuple(o + s / 2 for o, s in zip(self.origin, self.shape))
+
+    @property
     def bounds(self):
         """Bounds of the box
         """
@@ -157,6 +164,15 @@ class Box:
         """Bounds of the box as slices
         """
         return tuple([slice(o, o + s) for o, s in zip(self.origin, self.shape)])
+
+    def grow(self, radius):
+        """Grow the Box by the given radius in each direction
+        """
+        if not hasattr(radius, "__iter__"):
+            radius = [radius]*self.D
+        origin = tuple([self.origin[d]-radius[d] for d in range(self.D)])
+        shape = tuple([self.shape[d]+2*radius[d] for d in range(self.D)])
+        return Box(shape, origin=origin)
 
     def __or__(self, other):
         """Union of two bounding boxes
@@ -171,7 +187,8 @@ class Box:
         result: `Box`
             The smallest rectangular box that contains *both* boxes.
         """
-        assert other.D == self.D
+        if other.D != self.D:
+            raise ValueError(f"Dimension mismatch in the boxes {other} and {self}")
         bounds = []
         for d in range(self.D):
             bounds.append(
@@ -196,6 +213,8 @@ class Box:
             The rectangular box that is in the overlap region
             of both boxes.
         """
+        if other.D != self.D:
+            raise ValueError(f"Dimension mismatch in the boxes {other} and {self}")
         assert other.D == self.D
         bounds = []
         for d in range(self.D):
@@ -252,6 +271,9 @@ class Box:
 
     def __eq__(self, other):
         return self.shape == other.shape and self.origin == other.origin
+
+    def __hash__(self):
+        return hash((self.shape, self.origin))
 
 
 def overlapped_slices(bbox1, bbox2):

@@ -1,9 +1,9 @@
 import autograd.numpy as np
 from autograd.extend import defvjp, primitive
 
-from .frame import Frame
 from .model import Model
 from . import interpolation
+from .parameter import Parameter
 from . import fft
 from .bbox import Box, overlapped_slices
 from scarlet.operators_pybind11 import apply_filter
@@ -13,7 +13,9 @@ class Renderer(Model):
     def __init__(self, data_frame, model_frame, *parameters):
         self.data_frame = data_frame
         self.model_frame = model_frame
+        # mapping of model to data frame channels
         self.channel_map = self.get_channel_map(data_frame, model_frame)
+
         super().__init__(*parameters)
 
     # renderer is a parameterized transformation function
@@ -82,11 +84,14 @@ class Renderer(Model):
 
 
 class NullRenderer(Renderer):
-    def __init__(self):
-        super().__init__(None, None)
+    def __init__(self, data_frame, model_frame):
+        super().__init__(data_frame, model_frame)
 
-    def __call__(self, model, *parameters):
-        return model
+    def get_model(*parameters):
+        def nothing(model):
+            return model
+
+        return nothing
 
 
 @primitive
@@ -152,19 +157,18 @@ def _grad_match_shape(upstream_grad, model, data_frame, slices):
 
     return result
 
-
 defvjp(match_shape, _grad_match_shape)
 
-
 class ConvolutionRenderer(Renderer):
-    def __init__(self, data_frame, model_frame, convolution_type="fft", padding=10):
-        """
-        convolution_type: str
-            The type of convolution to use.
-            - `real`: Use a real space convolution and gradient
-            - `fft`: Use a DFT to do the convolution and gradient
-        """
-        super().__init__(data_frame, model_frame)
+
+    def __init__(self, data_frame, model_frame, *parameters, convolution_type="fft", padding=10, psf_shift=None):
+
+        if psf_shift is not None:
+            psf_shift = Parameter(
+                psf_shift, name="psf_shift", step=1.e-2)
+            parameters = (*parameters, psf_shift)
+
+        super().__init__(data_frame, model_frame, *parameters)
 
         assert convolution_type in [
             "real",
@@ -178,8 +182,8 @@ class ConvolutionRenderer(Renderer):
         ll = np.round(pixel_in_model_frame.min(axis=0)).astype("int")
         ur = np.round(pixel_in_model_frame.max(axis=0)).astype("int") + 1
         bounds = (ll[0], ur[0]), (ll[1], ur[1])
-        data_box = model_frame.bbox[0] @ Box.from_bounds(*bounds)
         # properly treats truncation in both boxes
+        data_box = model_frame.bbox[0] @ Box.from_bounds(*bounds)
         self.slices = overlapped_slices(data_box, model_frame.bbox)
 
         # construct diff kernel
@@ -188,18 +192,6 @@ class ConvolutionRenderer(Renderer):
             model_frame.psf.get_model().astype(model_frame.dtype)
         )
         self.diff_kernel = fft.match_psf(psf_fft, model_psf_fft, padding=padding)
-
-    def get_model(self, *parameters):
-        def transform(model):
-            # restrict to observed channels
-            model_ = self.map_channels(model)
-            # convolve observed channels
-            model_ = self.convolve(model_)
-            # adjust spatial shapes
-            model_ = match_shape(model_, self.data_frame, self.slices)
-            return model_
-
-        return transform
 
     @property
     def convolution_bounds(self):
@@ -212,16 +204,24 @@ class ConvolutionRenderer(Renderer):
             )
         return self._convolution_bounds
 
-    def convolve(self, model, convolution_type=None):
+    def convolve(self, model, convolution_type=None, psf_shift=None):
         """Convolve the model in a single band
         """
         if convolution_type is None:
             convolution_type = self._convolution_type
+        if psf_shift is not None:
+            kernel = fft.shift(self.diff_kernel.image,
+                           psf_shift,
+                           fft_shape=None,
+                           axes=(-2, -1),
+                           return_Fourier=True)
+        else:
+            kernel = self.diff_kernel.image
         if convolution_type == "real":
-            result = convolve(model, self.diff_kernel.image, self.convolution_bounds)
+            result = convolve(model, kernel, self.convolution_bounds)
         elif convolution_type == "fft":
             result = fft.convolve(
-                fft.Fourier(model), self.diff_kernel, axes=(1, 2)
+                fft.Fourier(model), kernel, axes=(1, 2)
             ).image
         else:
             raise ValueError(
@@ -229,7 +229,31 @@ class ConvolutionRenderer(Renderer):
                     convolution_type
                 )
             )
+
         return result
+
+    def __call__(self, model, *parameters):
+        self.transform = self.get_model(*parameters)
+        return self.transform(model, *parameters)
+
+
+    def get_model(self, *parameters):
+
+        def transform(model, *parameters):
+            # restrict to observed channels
+            model_ = self.map_channels(model)
+            #get the shift
+            shift = self.get_parameter("psf_shift", *parameters)
+            if len(shift)==0:
+                shift = None
+            # convolve observed channels
+            model_ = self.convolve(model_, psf_shift=shift)
+            # adjust spatial shapes
+            model_ = match_shape(model_, self.data_frame, self.slices)
+            return model_
+
+
+        return transform
 
 
 class ResolutionRenderer(Renderer):
@@ -274,10 +298,10 @@ class ResolutionRenderer(Renderer):
         )
 
         # Center of the FFT shape for matched diff kernel
-        center_y = np.int(
+        center_y = int(
             self._fft_shape[0] / 2.0 - (self._fft_shape[0] - model_frame.Ny) / 2.0
         ) + ((self._fft_shape[0] % 2) != 0) * ((model_frame.Ny % 2) == 0)
-        center_x = np.int(
+        center_x = int(
             self._fft_shape[1] / 2.0 - (self._fft_shape[1] - model_frame.Nx) / 2.0
         ) - ((self._fft_shape[1] % 2) != 0) * ((model_frame.Nx % 2) == 0)
 

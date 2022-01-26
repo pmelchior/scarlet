@@ -163,6 +163,7 @@ def deblend_and_measure(
     save_residuals: bool = False,
     plot_residuals: bool = False,
     deblender: Callable = None,
+    verbose: bool = False,
 ) -> np.rec.recarray:
     """Deblend an entire test set and store the measurements
 
@@ -213,10 +214,13 @@ def deblend_and_measure(
 
     num_blends = len(blend_ids)
     for bidx, blend_id in enumerate(blend_ids):
-        print("blend {} of {}: {}".format(bidx, num_blends, blend_id))
-        print(blend_id)
+        if verbose:
+            print("blend {} of {}: {}".format(bidx, num_blends, blend_id))
+            print(blend_id)
         data = get_blend(blend_id, data_path)
         measurements, observation, sources = deblender(data)
+        for m in measurements:
+            m["blend_id"] = blend_id
         if save_records:
             save_measurements(measurements, set_id, branch, blend_id)
         all_measurements += measurements

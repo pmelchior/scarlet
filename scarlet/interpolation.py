@@ -1,6 +1,6 @@
 import numpy as np
 from .cache import Cache
-from .wavelet import Starlet
+from .wavelet import apply_wavelet_denoising
 from . import fft
 
 
@@ -540,8 +540,8 @@ def sinc_interp_inplace(image, h_image, h_target, angle, pad_shape=None):
         ]
     )
     ny_hr, nx_hr = (
-        (image.shape[-2] * h_image / h_target).astype(int),
-        (image.shape[-1] * h_image / h_target).astype(int),
+        np.round(image.shape[-2] * h_image / h_target).astype(int),
+        np.round(image.shape[-1] * h_image / h_target).astype(int),
     )
     if (ny_hr % 2) == 0:
         ny_hr += 1
@@ -550,8 +550,8 @@ def sinc_interp_inplace(image, h_image, h_target, angle, pad_shape=None):
     coord_hr = (
         np.array(
             [
-                np.array(range(ny_hr.astype(int))) - (ny_hr - 1) / 2,
-                np.array(range(nx_hr.astype(int))) - (nx_hr - 1) / 2,
+                np.array(range(ny_hr)) - (ny_hr - 1) / 2,
+                np.array(range(nx_hr)) - (nx_hr - 1) / 2,
             ]
         )
         / h_image
@@ -580,14 +580,16 @@ def interpolate_observation(observation, frame, wave_filter=False):
     """
     # Interpolate low resolution data to high resolution
     coord_lr0 = np.array(
-        (np.arange(observation.shape[1]), np.arange(observation.shape[2]),)
+        (np.arange(observation.shape[1]),
+         np.arange(observation.shape[2]),)
     )
-    coord_hr = (np.arange(frame.shape[1]), np.arange(frame.shape[2]))
+    coord_hr = (np.arange(frame.shape[1]),
+                np.arange(frame.shape[2]))
     coord_lr = observation.convert_pixel_to(frame, pixel=coord_lr0.T).T
 
     interp = []
     if wave_filter is True:
-        images = Starlet(observation.data).filter()
+        images = np.array([apply_wavelet_denoising(image) for image in observation.data])
     else:
         images = observation.data
     for image in images:

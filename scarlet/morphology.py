@@ -15,7 +15,7 @@ from .frame import Frame
 from .model import Model, UpdateException
 from .parameter import Parameter, relative_step
 from .psf import PSF
-from .wavelet import Starlet
+from .wavelet import Starlet, starlet_reconstruction, get_multiresolution_support
 from . import fft
 from . import initialization
 
@@ -63,9 +63,13 @@ class ImageMorphology(Morphology):
         2D bounding box for focation of the image in `frame`
     shift: None or `~scarlet.Parameter`
         2D shift parameter (in units of image pixels)
+    resizing: bool
+        Whether to resize the box dynamically
     """
 
-    def __init__(self, frame, image, bbox=None, shift=None, resize=True):
+    def __init__(
+        self, frame, image, bbox=None, shifting=False, shift=None, resizing=True
+    ):
         if isinstance(image, Parameter):
             assert image.name == "image"
         else:
@@ -80,32 +84,35 @@ class ImageMorphology(Morphology):
         else:
             assert bbox.shape == image.shape
 
+        self.resizing = resizing
+        self.shifting = shifting
+
+        # create the shift parameter to allow for dynamic resizing
         if shift is None:
-            parameters = (image,)
+            shift = Parameter(np.zeros(2), name="shift", step=1e-2, fixed=self.shifting)
         else:
             assert shift.shape == (2,)
             if isinstance(shift, Parameter):
                 assert shift.name == "shift"
             else:
                 shift = Parameter(shift, name="shift", step=1e-2)
-            parameters = (image, shift)
 
-        self._resize = resize
+        parameters = (image, shift)
         super().__init__(frame, *parameters, bbox=bbox)
 
     def get_model(self, *parameters):
         image = self.get_parameter(0, *parameters)
         shift = self.get_parameter(1, *parameters)
-        if shift is None:
-            return image
-        else:
-            return fft.shift(image, shift, return_Fourier=False)
+
+        if self.shifting:
+            image = fft.shift(image, shift, return_Fourier=False)
+        return image
 
     def update(self):
         image = self._parameters[0]
         size = max(image.shape)
 
-        if not self._resize or image.fixed:
+        if not self.resizing or image.fixed:
             return
 
         # shrink the box? peel the onion
@@ -255,29 +262,26 @@ class StarletMorphology(Morphology):
             assert frame.bbox[1:].shape == image.shape
             bbox = Box(image.shape)
 
-        # Starlet transform of morphologies (n1,n2) with 4 dimensions: (1,lvl,n1,n2), lvl = wavelet scales
-        self.transform = Starlet(image)
+        # Starlet transform of morphologies (n1,n2) with 3 dimensions: (scales+1,n1,n2)
+        self.transform = Starlet.from_image(image)
         # The starlet transform is the model
         coeffs = self.transform.coefficients
         # wavelet-scale norm
         starlet_norm = self.transform.norm
         # One threshold per wavelet scale: thresh*norm
         thresh_array = np.zeros(coeffs.shape) + threshold
-        thresh_array = (
-            thresh_array * np.array([starlet_norm])[..., np.newaxis, np.newaxis]
-        )
+        thresh_array *= starlet_norm[:, None, None]
         # We don't threshold the last scale
-        thresh_array[:, -1, :, :] = 0
+        thresh_array[-1] = 0
 
-        constraint = ConstraintChain(L0Constraint(thresh_array), PositivityConstraint())
-
+        constraint = ConstraintChain(PositivityConstraint(0), L0Constraint(thresh_array))
         coeffs = Parameter(coeffs, name="coeffs", step=1e-2, constraint=constraint)
         super().__init__(frame, coeffs, bbox=bbox)
 
     def get_model(self, *parameters):
         # Takes the inverse transform of parameters as starlet coefficients
         coeffs = self.get_parameter(0, *parameters)
-        return Starlet(coefficients=coeffs).image[0]
+        return starlet_reconstruction(coeffs)
 
 
 class ExtendedSourceMorphology(ImageMorphology):
@@ -291,6 +295,7 @@ class ExtendedSourceMorphology(ImageMorphology):
         symmetric=False,
         min_grad=0,
         shifting=False,
+        resizing=True,
     ):
         """Non-parametric image morphology designed for galaxies as extended sources.
 
@@ -312,6 +317,8 @@ class ExtendedSourceMorphology(ImageMorphology):
             Minimal radial decline for monotonicity (in units of reference pixel value)
         shifting: `bool`
             Whether or not a subpixel shift is added as optimization parameter
+        resize: bool
+            Whether to resize the box dynamically
         """
 
         constraints = []
@@ -349,7 +356,9 @@ class ExtendedSourceMorphology(ImageMorphology):
             shift = None
         self.shift = shift
 
-        super().__init__(frame, image, bbox=bbox, shift=shift)
+        super().__init__(
+            frame, image, bbox=bbox, shifting=shifting, shift=shift, resizing=resizing
+        )
 
     @property
     def center(self):
