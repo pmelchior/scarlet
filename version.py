@@ -24,7 +24,8 @@ def get_public_version():
         return _version
     except FileNotFoundError:
         msg = ("Could not find either a git repo or pre-installed version." +
-               "This should never happen, please open an issue at www.github.com/pmelchior/scarlet" +
+               "This should never happen unless your version of git is out of date. Please update git." + "
+               "If all else fails, please open an issue at www.github.com/pmelchior/scarlet" +
                "so that it can be corrected.")
         raise Exception(msg)
 
