@@ -61,7 +61,6 @@ class Morphology(Model):
             dist += 1
         newsize = initialization.get_minimal_boxsize(size - 2 * dist)
         if newsize < size:
-            print("shrink_box", image.shape, newsize)
             dist = (size - newsize) // 2
             # adjust bbox
             self.bbox.origin = tuple(o + dist for o in self.bbox.origin)
@@ -159,7 +158,7 @@ class ImageMorphology(Morphology):
         # grow the box?
         # because the PSF moves power across the box, the gradients at the edge
         # accummulate flux from beyond the box
-        if image.m is not None:
+        elif image.m is not None:
             # next adam gradient update
             gu = -image.m / np.sqrt(np.sqrt(ma.masked_equal(image.v, 0))) * image.step
             gu_pull = gu * (image > 0)  # check if model has flux at the edge at all
@@ -175,6 +174,7 @@ class ImageMorphology(Morphology):
             # 0.1 compared to 1 at center
             if np.any(edge_pull > 0.1):
                 # find next larger boxsize
+                size = max(bbox.shape)
                 newsize = initialization.get_minimal_boxsize(size + 1)
                 pad_width = (newsize - size) // 2
 
@@ -257,11 +257,14 @@ class StarletMorphology(Morphology):
         Initial image to construct starlet transform
     bbox: `~scarlet.Box`
         2D bounding box for focation of the image in `frame`
+    monotonic: bool
+        Whether to constrain every starlet scale to be monotonic; otherwise they are
+        hard-thresholded by `threshold`.
     threshold: float
         Lower bound on threshold for all but the last starlet scale
     """
 
-    def __init__(self, frame, image, bbox=None, threshold=0):
+    def __init__(self, frame, image, bbox=None, monotonic=False, threshold=0):
 
         if bbox is None:
             assert frame.bbox[1:].shape == image.shape
@@ -271,17 +274,20 @@ class StarletMorphology(Morphology):
         self.transform = Starlet.from_image(image)
         # The starlet transform is the model
         coeffs = self.transform.coefficients
-        # wavelet-scale norm
-        starlet_norm = self.transform.norm
-        # One threshold per wavelet scale: thresh*norm
-        thresh_array = np.zeros(coeffs.shape) + threshold
-        thresh_array *= starlet_norm[:, None, None]
-        # We don't threshold the last scale
-        thresh_array[-1] = 0
 
-        # constraint = PositivityConstraint(thresh_array)
-        center = tuple(s // 2 for s in bbox.shape)
-        constraint = MonotonicMaskConstraint(center, center_radius=1)
+        if not monotonic:
+            # wavelet-scale norm
+            starlet_norm = self.transform.norm
+            # One threshold per wavelet scale: thresh*norm
+            thresh_array = np.zeros(coeffs.shape) + threshold
+            thresh_array *= starlet_norm[:, None, None]
+            # We don't threshold the last scale
+            thresh_array[-1] = 0
+            constraint = PositivityConstraint(thresh_array)
+        else:
+            center = tuple(s // 2 for s in bbox.shape)
+            constraint = MonotonicMaskConstraint(center, center_radius=1)
+
         coeffs = Parameter(coeffs, name="coeffs", step=1e-2, constraint=constraint)
         super().__init__(frame, coeffs, bbox=bbox)
 
