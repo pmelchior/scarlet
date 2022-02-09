@@ -123,6 +123,7 @@ class ImageMorphology(Morphology):
     def get_model(self, *parameters):
         image = self.get_parameter(0, *parameters)
         shift = self.get_parameter(1, *parameters)
+
         if self.shifting:
             image = fft.shift(image, shift, return_Fourier=False)
         return image
@@ -283,7 +284,9 @@ class StarletMorphology(Morphology):
             thresh_array *= starlet_norm[:, None, None]
             # We don't threshold the last scale
             thresh_array[-1] = 0
-            constraint = PositivityConstraint(thresh_array)
+            constraint = ConstraintChain(
+                PositivityConstraint(0), L0Constraint(thresh_array)
+            )
         else:
             center = tuple(s // 2 for s in bbox.shape)
             constraint = MonotonicMaskConstraint(center, center_radius=1)

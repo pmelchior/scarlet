@@ -43,6 +43,7 @@ from . import initialization
 from . import measure
 from . import operator
 from . import testing
+from . import lite
 
 try:
     from ._version import version
