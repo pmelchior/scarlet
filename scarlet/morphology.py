@@ -271,12 +271,14 @@ class StarletMorphology(Morphology):
             assert frame.bbox[1:].shape == image.shape
             bbox = Box(image.shape)
 
+        self.monotonic = monotonic
+
         # Starlet transform of morphologies (n1,n2) with 3 dimensions: (scales+1,n1,n2)
         self.transform = Starlet.from_image(image)
         # The starlet transform is the model
         coeffs = self.transform.coefficients
 
-        if not monotonic:
+        if not self.monotonic:
             # wavelet-scale norm
             starlet_norm = self.transform.norm
             # One threshold per wavelet scale: thresh*norm
@@ -306,13 +308,14 @@ class StarletMorphology(Morphology):
 
         # shrink the box?
         image = self.get_model()
-        # image = proxmin.operators.prox_soft(image, 0, thresh=1e-6, type="absolute")
         bbox = self.bbox.copy()
         self.shrink_box(image, thresh=1e-8)
         if bbox != self.bbox:
             slice, _ = overlapped_slices(bbox, self.bbox)
             center = tuple(s // 2 for s in self.bbox.shape)
-            constraint = MonotonicMaskConstraint(center, center_radius=1)
+            if self.monotonic:
+                # non-monotonic can keep its constraint as it's independent of size
+                constraint = MonotonicMaskConstraint(center, center_radius=1)
             coeffs = Parameter(
                 coeffs[:, slice[0], slice[1]],
                 name=coeffs.name,
