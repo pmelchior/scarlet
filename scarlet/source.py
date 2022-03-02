@@ -12,6 +12,8 @@ from .morphology import (
     PointSourceMorphology,
     StarletMorphology,
     ExtendedSourceMorphology,
+    GaussianMorphology,
+    SpergelMorphology,
 )
 from .parameter import Parameter, relative_step
 from .spectrum import TabulatedSpectrum
@@ -118,7 +120,110 @@ class PointSource(FactorizedComponent):
             observations = (observations,)
 
         center = model_frame.get_pixel(sky_coord)
+        center = Parameter(center, name="center", step=3e-2)
         morphology = PointSourceMorphology(model_frame, center)
+
+        # get spectrum from peak pixel, correct for PSF
+        spectra = init.get_pixel_spectrum(sky_coord, observations, correct_psf=True)
+        spectrum = np.concatenate(spectra, axis=0)
+        noise_rms = np.concatenate(
+            [np.array(np.mean(obs.noise_rms, axis=(1, 2))) for obs in observations]
+        ).reshape(-1)
+        spectrum = TabulatedSpectrum(model_frame, spectrum, min_step=noise_rms)
+
+        super().__init__(model_frame, spectrum, morphology)
+
+        # retain center as attribute
+        self.center = morphology.center
+
+
+class GaussianSource(FactorizedComponent):
+    """Gassian-shaped source
+
+    Their SEDs are initialized from `observations` at the center pixel.
+    """
+
+    def __init__(self, model_frame, sky_coord, sigma, ellipticity, observations):
+        """Gassian-shaped source intialized with a single pixel SED
+
+        Parameters
+        ----------
+        model_frame: `~scarlet.Frame`
+            The frame of the model
+        sky_coord: tuple
+            Center of the source
+        sigma: float
+            Standard deviation of the Gaussian
+        ellipticity: array or None
+            Two-component ellipticity (e1,e2)
+        observations: instance or list of `~scarlet.Observation`
+            Observation(s) to initialize this source
+        """
+        if not hasattr(observations, "__iter__"):
+            observations = (observations,)
+
+        center = model_frame.get_pixel(sky_coord)
+        center = Parameter(center, name="center", step=3e-2)
+        sigma = Parameter(np.array((sigma,)), name="radius", step=relative_step)
+        if ellipticity is not None:
+            ellipticity = Parameter(ellipticity, name="ellipticity", step=0.01)
+
+        morphology = GaussianMorphology(
+            model_frame, center, sigma, ellipticity=ellipticity
+        )
+
+        # get spectrum from peak pixel, correct for PSF
+        spectra = init.get_pixel_spectrum(sky_coord, observations, correct_psf=True)
+        spectrum = np.concatenate(spectra, axis=0)
+        noise_rms = np.concatenate(
+            [np.array(np.mean(obs.noise_rms, axis=(1, 2))) for obs in observations]
+        ).reshape(-1)
+        spectrum = TabulatedSpectrum(model_frame, spectrum, min_step=noise_rms)
+
+        super().__init__(model_frame, spectrum, morphology)
+
+        # retain center as attribute
+        self.center = morphology.center
+
+
+class SpergelSource(FactorizedComponent):
+    """Source based on the Spergel (2010) profile
+
+    Their SEDs are initialized from `observations` at the center pixel.
+    """
+
+    def __init__(self, model_frame, sky_coord, nu, rhalf, ellipticity, observations):
+        """Spergel (2010) profile source intialized with a single pixel SED
+
+        Parameters
+        ----------
+        model_frame: `~scarlet.Frame`
+            The frame of the model
+        sky_coord: tuple
+            Center of the source
+        nu: float
+            Bessel function order.
+        rhalf: float
+            Half-light radius in frame pixels.
+        ellipticity: array or None
+            Two-component ellipticity (e1,e2)
+        observations: instance or list of `~scarlet.Observation`
+            Observation(s) to initialize this source
+        """
+        if not hasattr(observations, "__iter__"):
+            observations = (observations,)
+
+        center = model_frame.get_pixel(sky_coord)
+        center = Parameter(center, name="center", step=0.01)
+        nu = Parameter(np.array((nu,), dtype="float"), name="nu", step=0.01)
+        rstep = partial(relative_step, factor=0.01)
+        rhalf = Parameter(np.array((rhalf,), dtype="float"), name="radius", step=rstep)
+        if ellipticity is not None:
+            ellipticity = Parameter(ellipticity, name="ellipticity", step=0.01)
+
+        morphology = SpergelMorphology(
+            model_frame, center, nu, rhalf, ellipticity=ellipticity
+        )
 
         # get spectrum from peak pixel, correct for PSF
         spectra = init.get_pixel_spectrum(sky_coord, observations, correct_psf=True)

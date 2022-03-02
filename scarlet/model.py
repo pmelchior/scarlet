@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 
 from .parameter import Parameter
+from autograd.numpy.numpy_boxes import ArrayBox
 
 
 class UpdateException(Exception):
@@ -92,10 +93,16 @@ class Model(ABC):
         if isinstance(i, (int, slice)):
             return parameters_[i]
         elif isinstance(i, str):
-            if parameters:
-                match = tuple(p for p in parameters_ if p._value.name == i)
-            else:
-                match = tuple(p for p in parameters_ if p.name == i)
+            match = tuple(
+                p
+                for p in parameters_
+                if (
+                    (isinstance(p, Parameter) and p.name == i)
+                    or (isinstance(p, ArrayBox) and p._value.name == i)
+                )
+            )
+            if len(match) == 0:
+                return None
             if len(match) == 1:
                 match = match[0]
             return match

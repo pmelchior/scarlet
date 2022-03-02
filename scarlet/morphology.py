@@ -15,7 +15,7 @@ from .constraint import (
 )
 from .frame import Frame
 from .model import Model, UpdateException
-from .parameter import Parameter, relative_step
+from .parameter import Parameter, prepare_param, relative_step
 from .psf import PSF
 from .wavelet import Starlet, starlet_reconstruction, get_multiresolution_support
 from . import fft
@@ -206,6 +206,221 @@ class ImageMorphology(Morphology):
                 raise UpdateException
 
 
+class ProfileMorphology(Morphology):
+    """Morphology from a radial profile
+
+    Parameters
+    ----------
+    frame: `~scarlet.Frame`
+        Characterization of the model
+    func:
+        Radial profile function, signature func(R2, *parameters),
+        where R2 is the squared radius.
+    parameters: list of `~scarlet.Parameter`
+        Parameters for the radial profile. Needs to include at least the following:
+        * "radius": float
+        * "center": 2D float
+        * "ellipticity": 2D float
+    boxsize: int
+        Size of bounding box over which to evaluate the function, in frame pixels
+    """
+
+    def __init__(self, frame, func, *parameters, boxsize=None):
+
+        if boxsize is None:
+            boxsize = 15
+        if boxsize % 2 == 0:
+            boxsize += 1
+        shape = (boxsize, boxsize)
+
+        center = self.get_parameter("center", *parameters)
+        assert center is not None and len(center) >= 2
+        # define bbox around center
+        origin = (
+            int(round(center[-2])) - (boxsize // 2),
+            int(round(center[-1])) - (boxsize // 2),
+        )
+        bbox = Box(shape, origin=origin)
+
+        # retain center attribute
+        self.center = center
+
+        self._Y = np.arange(shape[-2], dtype="float") + origin[-2]
+        self._X = np.arange(shape[-1], dtype="float") + origin[-1]
+
+        self.f = func
+
+        # make sure ellipticity stays in unit circle
+        eps = self.get_parameter("ellipticity", *parameters)
+        eps.prox = self._eps_prox
+
+        super().__init__(frame, *parameters, bbox=bbox)
+
+    def get_model(self, *parameters):
+        center = self.get_parameter("center", *parameters)
+        _Y = self._Y - center[-2]
+        _X = self._X - center[-1]
+
+        e = self.get_parameter("ellipticity", *parameters)
+        if np.all(e == 0) and not parameters:  # need e for gradients even if 0
+            R2 = _Y[:, None] ** 2 + _X[None, :] ** 2
+        else:
+            e1, e2 = e[0], e[1]
+            __X = ((1 - e1) * _X[None, :] - e2 * _Y[:, None]) / np.sqrt(
+                1 - (e1 ** 2 + e2 ** 2)
+            )
+            __Y = (-e2 * _X[None, :] + (1 + e1) * _Y[:, None]) / np.sqrt(
+                1 - (e1 ** 2 + e2 ** 2)
+            )
+            R2 = __Y ** 2 + __X ** 2
+
+        Rp = self.get_parameter("radius", *parameters)
+        R2 /= Rp ** 2
+
+        return self.f(R2, *parameters)
+
+    def _eps_prox(self, x, step):
+        norm2 = (x ** 2).sum()
+        if norm2 > 1:
+            x /= np.sqrt(norm2)
+        return x
+
+
+class GaussianMorphology(ProfileMorphology):
+    """Morphology from a Gaussian radial profile
+
+    Parameters
+    ----------
+    frame: `~scarlet.Frame`
+        Characterization of the model
+    center: array or `~scarlet.Parameter`
+        2D center parameter (in units of frame pixels)
+        If it is to be optimized, it needs to be provided as a full defined `Parameter`.
+    sigma: float or `~scarlet.Parameter`
+        Standard deviation of the Gaussian in frame pixels
+        If it is to be optimized, it needs to be provided as a full defined `Parameter`.
+    ellipticity: array or ~scarlet.Parameter`
+        Two-component ellipticity (e1,e2).
+        If it is to be optimized, it needs to be provided as a full defined `Parameter`.
+    boxsize: int
+        Size of bounding box over which to evaluate the function, in frame pixels
+    """
+
+    def __init__(self, frame, center, sigma, ellipticity=(0, 0), boxsize=None):
+
+        assert len(center) == 2
+        self.center = prepare_param(center, name="center")
+        radius = prepare_param(sigma, name="radius")
+        assert len(ellipticity) == 2
+        ellipticity = prepare_param(ellipticity, name="ellipticity")
+        parameters = (self.center, radius, ellipticity)
+
+        if boxsize is None:
+            boxsize = int(np.ceil(10 * sigma))
+
+        super().__init__(frame, self._f, *parameters, boxsize=boxsize)
+
+    def _f(self, R2, *parameters):
+        return np.exp(-R2 / 2)
+
+
+# we need gamma and kv from scipy.special
+from autograd.scipy.special import gamma
+from scipy.optimize import fsolve
+
+# but kv is not ported to autograd ...
+import scipy.special
+from autograd.extend import primitive, defvjp, defjvp
+
+kv = primitive(scipy.special.kv)
+defvjp(kv, None, lambda ans, n, x: lambda g: g * (-kv(n - 1, x) - kv(n + 1, x)) / 2.0)
+
+
+class SpergelMorphology(ProfileMorphology):
+    """Morphology from a Spergel (2010) radial profile
+
+    Parameters
+    ----------
+    frame: `~scarlet.Frame`
+        Characterization of the model
+    center: array or `~scarlet.Parameter`
+        2D center parameter (in units of frame pixels)
+        If it is to be optimized, it needs to be provided as a full defined `Parameter`.
+    nu: float or `~scarlet.Parameter`
+        Bessel function order.
+        If it is to be optimized, it needs to be provided as a full defined `Parameter`.
+    rhalf: float or `~scarlet.Parameter`
+        Half-light radius in frame pixels.
+        If it is to be optimized, it needs to be provided as a full defined `Parameter`.
+    ellipticity: array or None
+        Two-component ellipticity (e1,e2)
+        If it is to be optimized, it needs to be provided as a full defined `Parameter`.
+    integrate: bool
+        Whether pixel integration is performed
+    boxsize: int
+        Size of bounding box over which to evaluate the function, in frame pixels
+    """
+
+    def __init__(self, frame, center, nu, rhalf, ellipticity=(0, 0), boxsize=None):
+
+        assert len(center) == 2
+        self.center = prepare_param(center, name="center")
+
+        self._minimum_nu = -0.85
+        self._maximum_nu = 4.0
+        assert nu >= self._minimum_nu and nu <= self._maximum_nu
+        nu = prepare_param(nu, name="nu")
+        # make sure nu stays within limits
+        nu.prox = self._nu_prox
+
+        radius = prepare_param(rhalf, name="radius")
+
+        assert len(ellipticity) == 2
+        ellipticity = prepare_param(ellipticity, name="ellipticity")
+        parameters = (self.center, nu, radius, ellipticity)
+
+        if boxsize is None:
+            boxsize = int(np.ceil(10 * rhalf))
+
+        # compute the cnu function
+        # see Table 1 in Spergel (2010) and the sentence below Eqn (8).
+        # _nu = np.linspace(self._minimum_nu,
+        #                   self._maximum_nu,
+        #                   1000)
+        #
+        # def func(x, nu):
+        #     return (1 + nu) * self._f_nu(x, nu + 1) - 0.25
+        #
+        # _cnu = [fsolve(lambda x: func(x, v), x0=0.2)[0] for v in _nu]
+        # self._z = np.polyfit(_nu, _cnu, 4)  # fit a 4th order polynomial
+        # instead of solving this every time, we simply store the result
+        self._z = np.array(
+            [-0.00788962, 0.0735303, -0.27770785, 0.99483285, 1.25227402]
+        )
+
+        super().__init__(frame, self._f, *parameters, boxsize=boxsize)
+
+    def _f(self, R2, *parameters):
+        nu = self.get_parameter("nu", *parameters)
+        cnu = self._cnu(nu)
+
+        x = np.maximum(np.sqrt(R2) * cnu, 1e-2)
+        return self._f_nu(x, nu)
+
+    def _f_nu(self, x, nu):
+        # Eqn 3 in Spergel (2010).
+        # kv is the modified Bessel function of the second kind.
+        # gamma is the gamma function.
+        return (x / 2) ** nu * kv(nu, x) / gamma(nu + 1)
+
+    def _cnu(self, nu):
+        z = self._z
+        return z[0] * nu ** 4 + z[1] * nu ** 3 + z[2] * nu ** 2 + z[3] * nu + z[4]
+
+    def _nu_prox(self, x, step):
+        return max(min(self._maximum_nu, x), self._minimum_nu)
+
+
 class PointSourceMorphology(Morphology):
     """Morphology from a PSF
 
@@ -230,12 +445,7 @@ class PointSourceMorphology(Morphology):
         bbox = self.psf.bbox + shift
 
         # parameters is simply 2D center
-        if isinstance(center, Parameter):
-            assert center.name == "center"
-            self.center = center
-        else:
-            self.center = Parameter(center, name="center", step=3e-2)
-
+        self.center = prepare_param(center, name="center")
         super().__init__(frame, self.center, bbox=bbox)
 
     def get_model(self, *parameters):
