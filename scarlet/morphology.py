@@ -277,7 +277,10 @@ class ProfileMorphology(Morphology):
         Rp = self.get_parameter("radius", *parameters)
         R2 /= Rp ** 2
 
-        return self.f(R2, *parameters)
+        morph = self.f(R2, *parameters)
+        morph /= morph.sum()
+
+        return morph
 
     def _eps_prox(self, x, step):
         norm2 = (x ** 2).sum()
@@ -330,7 +333,7 @@ from scipy.optimize import fsolve
 
 # but kv is not ported to autograd ...
 import scipy.special
-from autograd.extend import primitive, defvjp, defjvp
+from autograd.extend import primitive, defvjp
 
 kv = primitive(scipy.special.kv)
 defvjp(kv, None, lambda ans, n, x: lambda g: g * (-kv(n - 1, x) - kv(n + 1, x)) / 2.0)
