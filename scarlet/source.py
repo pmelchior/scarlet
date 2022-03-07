@@ -163,7 +163,7 @@ class GaussianSource(FactorizedComponent):
             observations = (observations,)
 
         center = model_frame.get_pixel(sky_coord)
-        center = Parameter(center, name="center", step=3e-2)
+        center = Parameter(center, name="center", step=0.01)
         sigma = Parameter(np.array((sigma,)), name="radius", step=relative_step)
         if ellipticity is not None:
             ellipticity = Parameter(ellipticity, name="ellipticity", step=0.01)

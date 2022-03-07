@@ -184,14 +184,13 @@ class FactorizedComponent(Component):
     def spectrum(self):
         """Extract the spectrum parameter.
         """
-        return self.parameters[0]
+        return self.children[0]
 
     @property
     def morphology(self):
         """Extract the morphology parameter
         """
-        return self.parameters[1]
-
+        return self.children[1]
 
 
 class CubeComponent(Component):

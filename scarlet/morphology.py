@@ -19,7 +19,7 @@ from .parameter import Parameter, prepare_param, relative_step
 from .psf import PSF
 from .wavelet import Starlet, starlet_reconstruction, get_multiresolution_support
 from . import fft
-from . import initialization
+from . import initialization as init
 
 
 class Morphology(Model):
@@ -59,7 +59,7 @@ class Morphology(Model):
             and np.all(image[:, -dist - 1] <= thresh)
         ):
             dist += 1
-        newsize = initialization.get_minimal_boxsize(size - 2 * dist)
+        newsize = init.get_minimal_boxsize(size - 2 * dist)
         if newsize < size:
             dist = (size - newsize) // 2
             # adjust bbox
@@ -176,7 +176,7 @@ class ImageMorphology(Morphology):
             if np.any(edge_pull > 0.1):
                 # find next larger boxsize
                 size = max(bbox.shape)
-                newsize = initialization.get_minimal_boxsize(size + 1)
+                newsize = init.get_minimal_boxsize(size + 1)
                 pad_width = (newsize - size) // 2
 
                 # Create new parameter for extended image
@@ -223,36 +223,34 @@ class ProfileMorphology(Morphology):
         * "ellipticity": 2D float
     boxsize: int
         Size of bounding box over which to evaluate the function, in frame pixels
+    resizing: bool
+        Whether to resize the box dynamically
     """
 
-    def __init__(self, frame, func, *parameters, boxsize=None):
+    def __init__(self, frame, func, *parameters, boxsize=None, resize=True):
 
-        if boxsize is None:
-            boxsize = 15
-        if boxsize % 2 == 0:
-            boxsize += 1
-        shape = (boxsize, boxsize)
-
-        center = self.get_parameter("center", *parameters)
-        assert center is not None and len(center) >= 2
-        # define bbox around center
-        origin = (
-            int(round(center[-2])) - (boxsize // 2),
-            int(round(center[-1])) - (boxsize // 2),
-        )
-        bbox = Box(shape, origin=origin)
+        # define radial profile function
+        self.f = func
 
         # retain center attribute
+        center = self.get_parameter("center", *parameters)
         self.center = center
 
-        self._Y = np.arange(shape[-2], dtype="float") + origin[-2]
-        self._X = np.arange(shape[-1], dtype="float") + origin[-1]
+        # get bounding box
+        bbox = self.get_box(*parameters, boxsize=boxsize)
+        self.resizing = resize
 
-        self.f = func
+        # x/y evaluation locations
+        self._Y = np.arange(bbox.shape[-2], dtype="float") + bbox.origin[-2]
+        self._X = np.arange(bbox.shape[-1], dtype="float") + bbox.origin[-1]
+
+        # make sure radius stays positive
+        radius = self.get_parameter("radius", *parameters)
+        radius.constraint = self._radius_prox
 
         # make sure ellipticity stays in unit circle
         eps = self.get_parameter("ellipticity", *parameters)
-        eps.prox = self._eps_prox
+        eps.constraint = self._eps_prox
 
         super().__init__(frame, *parameters, bbox=bbox)
 
@@ -282,10 +280,44 @@ class ProfileMorphology(Morphology):
 
         return morph
 
+    def update(self):
+        if not self.resizing:
+            return
+
+        bbox = self.get_box()
+        if bbox != self.bbox:
+            # adjust bbox
+            self.bbox.origin = bbox.origin
+            self.bbox.shape = bbox.shape
+            # x/y evaluation locations
+            self._Y = np.arange(bbox.shape[-2], dtype="float") + bbox.origin[-2]
+            self._X = np.arange(bbox.shape[-1], dtype="float") + bbox.origin[-1]
+            raise UpdateException
+
+    def get_box(self, *parameters, boxsize=None):
+        if boxsize is None:
+            Rp = self.get_parameter("radius", *parameters)
+            size = 10 * Rp
+            boxsize = init.get_minimal_boxsize(size)
+        shape = (boxsize, boxsize)
+
+        center = self.get_parameter("center", *parameters)
+        assert center is not None and len(center) >= 2
+        # define bbox around center
+        origin = (
+            int(round(center[-2])) - (boxsize // 2),
+            int(round(center[-1])) - (boxsize // 2),
+        )
+        bbox = Box(shape, origin=origin)
+        return bbox
+
+    def _radius_prox(self, x, step):
+        return np.maximum(x, 1e-2)
+
     def _eps_prox(self, x, step):
         norm2 = (x ** 2).sum()
         if norm2 > 1:
-            x /= np.sqrt(norm2)
+            x /= np.sqrt(norm2) * 1.1  # need to get inside of unit circle
         return x
 
 
@@ -370,11 +402,11 @@ class SpergelMorphology(ProfileMorphology):
         self.center = prepare_param(center, name="center")
 
         self._minimum_nu = -0.85
-        self._maximum_nu = 4.0
-        assert nu >= self._minimum_nu and nu <= self._maximum_nu
+        self._maximum_nu = 4.00
         nu = prepare_param(nu, name="nu")
+        assert nu[0] >= self._minimum_nu and nu[0] <= self._maximum_nu
         # make sure nu stays within limits
-        nu.prox = self._nu_prox
+        nu.constraint = self._nu_prox
 
         radius = prepare_param(rhalf, name="radius")
 
@@ -407,7 +439,7 @@ class SpergelMorphology(ProfileMorphology):
         nu = self.get_parameter("nu", *parameters)
         cnu = self._cnu(nu)
 
-        x = np.maximum(np.sqrt(R2) * cnu, 1e-2)
+        x = np.sqrt(R2 + 1e-4) * cnu
         return self._f_nu(x, nu)
 
     def _f_nu(self, x, nu):
@@ -421,7 +453,7 @@ class SpergelMorphology(ProfileMorphology):
         return z[0] * nu ** 4 + z[1] * nu ** 3 + z[2] * nu ** 2 + z[3] * nu + z[4]
 
     def _nu_prox(self, x, step):
-        return max(min(self._maximum_nu, x), self._minimum_nu)
+        return np.maximum(np.minimum(self._maximum_nu, x), self._minimum_nu)
 
 
 class PointSourceMorphology(Morphology):
