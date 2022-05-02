@@ -130,11 +130,13 @@ class Blend(CombinedComponent):
                     l + p for l, p in zip(grad_logL(*X), grad_logP(*X))
                 )
 
-                # step sizes, allow for random skipping of parameters
+                # step sizes
                 _step = lambda *X, it: tuple(
                     x.step(x, it=it) if hasattr(x.step, "__call__") else x.step
                     for x in X
                 )
+
+                # proxes
                 _prox = tuple(x.constraint for x in X)
 
                 # good defaults for adaprox
