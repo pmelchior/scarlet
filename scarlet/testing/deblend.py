@@ -44,7 +44,6 @@ def deblend(data: Dict[str, np.ndarray], max_iter: int, e_rel: float):
         centers,
         observation,
         max_components=2,
-        edge_distance=None,
         min_snr=30,
         thresh=1,
         fallback=True,

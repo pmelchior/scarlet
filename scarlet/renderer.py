@@ -218,7 +218,7 @@ class ConvolutionRenderer(Renderer):
         if convolution_type is None:
             convolution_type = self._convolution_type
         if convolution_type == "real":
-            result = convolve(model, self.diff_kernel.image, self._convolution_bounds)
+            result = convolve(model, self.diff_kernel.image, self.convolution_bounds)
         elif convolution_type == "fft":
             result = fft.convolve(
                 fft.Fourier(model), self.diff_kernel, axes=(1, 2)
