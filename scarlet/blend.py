@@ -8,7 +8,6 @@ import proxmin
 import logging
 
 from .component import CombinedComponent
-from .constraint import Constraint
 from .model import UpdateException
 
 logger = logging.getLogger("scarlet.blend")
@@ -137,14 +136,8 @@ class Blend(CombinedComponent):
                     for x in X
                 )
 
-                # proxes, allow for random skipping
-                _prox = tuple(
-                    lambda Z, step, parameter=x: 0.95 * parameter.constraint(Z, step)
-                    + 0.05 * Z
-                    if parameter.constraint is not None
-                    else Z
-                    for x in X
-                )
+                # proxes
+                _prox = tuple(x.constraint for x in X)
 
                 # good defaults for adaprox
                 scheme = alg_kwargs.pop("scheme", "amsgrad")

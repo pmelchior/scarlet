@@ -241,3 +241,17 @@ class CenterOnConstraint(Constraint):
         center = (shape[0] // 2, shape[1] // 2)
         morph[center] = max(morph[center], self.tiny)
         return morph
+
+
+class LeakyConstraint(Constraint):
+    """Make a constraint leak the original value with a configurable amount:
+
+    Updates `x = (1-leak) * prox(x, step) + leak * x`
+    """
+
+    def __init__(self, constraint, leak=0.05):
+        self.constraint = constraint
+        self.leak = leak
+
+    def __call__(self, x, step):
+        return (1 - self.leak) * self.constraint(x, step) + self.leak * x
