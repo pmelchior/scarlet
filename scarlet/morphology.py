@@ -1,6 +1,7 @@
 import autograd.numpy as np
 import numpy.ma as ma
 import proxmin.operators
+from abc import abstractmethod
 
 from .bbox import Box, overlapped_slices
 from .constraint import (
@@ -276,9 +277,13 @@ class ProfileMorphology(Morphology):
         R2 /= Rp ** 2
 
         morph = self.f(R2, *parameters)
-        morph /= morph.sum()
 
         return morph
+
+    @property
+    @abstractmethod
+    def integral(self):
+        pass
 
     def update(self):
         if not self.resizing:
@@ -357,6 +362,11 @@ class GaussianMorphology(ProfileMorphology):
 
     def _f(self, R2, *parameters):
         return np.exp(-R2 / 2)
+
+    @property
+    def integral(self):
+        radius = self.get_parameter("radius")
+        return 2 * np.pi * radius ** 2
 
 
 # we need gamma and kv from scipy.special
@@ -442,6 +452,13 @@ class SpergelMorphology(ProfileMorphology):
         x = np.sqrt(R2 + 1e-4) * cnu
         return self._f_nu(x, nu)
 
+    @property
+    def integral(self):
+        radius = self.get_parameter("radius")
+        nu = self.get_parameter("nu")
+        cnu = self._cnu(nu)
+        return 2 * np.pi * radius ** 2 / cnu ** 2
+
     def _f_nu(self, x, nu):
         # Eqn 3 in Spergel (2010).
         # kv is the modified Bessel function of the second kind.
@@ -488,6 +505,12 @@ class PointSourceMorphology(Morphology):
         box_center = np.mean(self.bbox.bounds[1:], axis=1)
         offset = center - box_center
         return self.psf.get_model(offset=offset)  # no "internal" PSF parameters here
+
+    @property
+    def integral(self):
+        # silly for Gaussian PSFs, but since the PSFs are not implemented
+        # as ProfileMorphology, we can't analytically integrate
+        return self.psf.get_model().sum()
 
 
 class StarletMorphology(Morphology):

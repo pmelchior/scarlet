@@ -172,12 +172,21 @@ class GaussianSource(FactorizedComponent):
             model_frame, center, sigma, ellipticity=ellipticity
         )
 
-        # get spectrum from peak pixel, correct for PSF
-        spectra = init.get_pixel_spectrum(sky_coord, observations, correct_psf=True)
+        # get spectrum from peak pixel, don't correct for PSF (extended source)
+        spectra = init.get_pixel_spectrum(sky_coord, observations, correct_psf=False)
         spectrum = np.concatenate(spectra, axis=0)
+
+        # get peak pixel value from model
+        vmax = morphology.f(0)
+        spectrum /= vmax
+
+        # noise rms for step sizes
         noise_rms = np.concatenate(
             [np.array(np.mean(obs.noise_rms, axis=(1, 2))) for obs in observations]
         ).reshape(-1)
+        noise_rms /= vmax
+
+        # make spectrum model
         spectrum = TabulatedSpectrum(model_frame, spectrum, min_step=noise_rms)
 
         super().__init__(model_frame, spectrum, morphology)
@@ -225,12 +234,21 @@ class SpergelSource(FactorizedComponent):
             model_frame, center, nu, rhalf, ellipticity=ellipticity
         )
 
-        # get spectrum from peak pixel, correct for PSF
-        spectra = init.get_pixel_spectrum(sky_coord, observations, correct_psf=True)
+        # get spectrum from peak pixel, don't correct for PSF (extended source)
+        spectra = init.get_pixel_spectrum(sky_coord, observations, correct_psf=False)
         spectrum = np.concatenate(spectra, axis=0)
+
+        # get peak pixel value from model
+        vmax = morphology.f(0)
+        spectrum /= vmax
+
+        # noise rms for step sizes
         noise_rms = np.concatenate(
             [np.array(np.mean(obs.noise_rms, axis=(1, 2))) for obs in observations]
         ).reshape(-1)
+        noise_rms /= vmax
+
+        # make spectrum model
         spectrum = TabulatedSpectrum(model_frame, spectrum, min_step=noise_rms)
 
         super().__init__(model_frame, spectrum, morphology)
