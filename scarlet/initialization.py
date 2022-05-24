@@ -93,7 +93,7 @@ def get_pixel_spectrum(sky_coord, observations, correct_psf=False, models=None):
         index = np.round(pixel).astype("int")
         spectrum = obs.data[:, index[0], index[1]].copy()
 
-        if obs.psf is not None:
+        if correct_psf and obs.psf is not None:
             # correct spectrum for PSF-induced change in peak pixel intensity
             psf_model = obs.psf.get_model()
             psf_peak = psf_model.max(axis=(1, 2))

@@ -2,7 +2,7 @@ import autograd.numpy as np
 import autograd.scipy as scipy
 from .bbox import Box
 from .model import Model, abstractmethod
-from .parameter import Parameter
+from .parameter import Parameter, prepare_param
 from .fft import Fourier, shift
 
 
@@ -34,15 +34,6 @@ class PSF(Model):
             A centered PSF model defined by its parameters, shifted by `offset`
         """
         pass
-
-    def prepare_param(self, X, name):
-        if isinstance(X, Parameter):
-            assert X.name == name
-        else:
-            if np.isscalar(X):
-                X = (X,)
-            X = Parameter(np.array(X, dtype="float"), name=name, fixed=True)
-        return X
 
 
 class FunctionPSF(PSF):
@@ -102,7 +93,7 @@ class GaussianPSF(FunctionPSF):
 
     def __init__(self, sigma, integrate=True, boxsize=None):
 
-        sigma = self.prepare_param(sigma, "sigma")
+        sigma = prepare_param(sigma, "sigma", fixed=True)
 
         if boxsize is None:
             boxsize = int(np.ceil(10 * np.max(sigma)))
@@ -172,8 +163,8 @@ class MoffatPSF(FunctionPSF):
 
     def __init__(self, alpha=4.7, beta=1.5, integrate=False, boxsize=None):
 
-        alpha = self.prepare_param(alpha, "alpha")
-        beta = self.prepare_param(beta, "beta")
+        alpha = prepare_param(alpha, "alpha", fixed=True)
+        beta = prepare_param(beta, "beta", fixed=True)
         assert len(alpha) == len(beta)
         assert integrate is False, "In-pixel integration not implemented (yet)!"
 
@@ -198,7 +189,7 @@ class MoffatPSF(FunctionPSF):
         else:
             psfs = np.stack(
                 (
-                    self._f(Y - offset[0], X - offset[1], a, b)
+                    self._f(self._Y - offset[0], self._X - offset[1], a, b)
                     for a, b in zip(alpha, beta)
                 ),
                 axis=0,
@@ -228,7 +219,7 @@ class ImagePSF(PSF):
             image = image.reshape(1, *shape)
 
         image = normalize(image)
-        image = self.prepare_param(image, "image")
+        image = prepare_param(image, "image", fixed=True)
         super().__init__(image)
 
         origin = (0, -(image.shape[1] // 2), -(image.shape[2] // 2))

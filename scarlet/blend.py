@@ -7,6 +7,7 @@ from autograd.extend import defvjp, primitive
 import proxmin
 import logging
 
+from .bbox import overlapped_slices
 from .component import CombinedComponent
 from .model import UpdateException
 
