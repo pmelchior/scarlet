@@ -1,0 +1,45 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: "Melchior"
+  given-names: "Peter"
+  orcid: "https://orcid.org/0000-0002-8873-5065"
+- family-names: "Moolekamp"
+  given-names: "Fred"
+  orcid: "https://orcid.org/0000-0003-0093-4279"
+- family-names: "Moolekamp"
+  given-names: "Fred"
+  orcid: "https://orcid.org/0000-0003-0093-4279"
+title: "scarlet"
+url: "https://github.com/pmelchior/scarlet/"
+preferred-citation:
+  type: article
+  authors:
+    - family-names: "Melchior"
+      given-names: "Peter"
+      orcid: "https://orcid.org/0000-0002-8873-5065"
+    - family-names: "Moolekamp"
+      given-names: "Fred"
+      orcid: "https://orcid.org/0000-0003-0093-4279"
+    - family-names: "Jerdee"
+      given-names: "Maximilian"
+    - family-names: "Armstrong"
+      given-names: "Robert"
+      orcid: "https://orcid.org/0000-0002-6911-1038"
+    - family-names: "Sun"
+      given-names: "Ai-Lei"
+      orcid: "https://orcid.org/0000-0001-6913-9471"
+    - family-names: "Bosch"
+      given-names: "James"
+      orcid: "https://orcid.org/0000-0003-2759-5764"
+    - family-names: "Lupton"
+      given-names: "Robert"
+      orcid: "https://orcid.org/0000-0003-1666-0962"
+  doi: "10.1016/j.ascom.2018.07.001"
+  journal: "Astronomy and Computing"
+  volume: 24
+  start: 129 # First page number
+  end: 142   # Last page number
+  title: "SCARLET: Source separation in multi-band images by Constrained Matrix Factorization"
+  year: 2018
+  month: 7
