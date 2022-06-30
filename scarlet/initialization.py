@@ -295,13 +295,13 @@ def build_initialization_image(observations, spectra=None):
         var = np.array(var)  # L x C x Ny x Nx
         observations[0]._detect = (detect, var)
 
-    _detect, _var = observations[0]._detect
+    detect, var = observations[0]._detect
 
     # get multi-channel image for spectrum matching
     if spectra is None:
-        nonzero = (_var > 0).sum(axis=0)
-        detect = _detect.sum(axis=0) / nonzero
-        var = _var.sum(axis=0) / nonzero
+        nonzero = np.minimum(1, (var > 0).sum(axis=0))
+        detect = detect.sum(axis=0) / nonzero
+        var = var.sum(axis=0) / nonzero
     else:
         # spectrum SNR weighted combination of all observations
         spectrum = []
@@ -312,8 +312,11 @@ def build_initialization_image(observations, spectra=None):
             obs.renderer.map_channels(spectrum_)[:] = spectra[i]
             spectrum.append(spectrum_)
         spectrum = np.stack(spectrum, axis=0)[:, :, None, None]  # L x C x Ny x Nx
-        weight = spectrum / _var
-        detect = (weight * _detect).sum(axis=(0, 1))
+        weight = np.zeros(var.shape)
+        sel = var > 0
+        weight[sel] = 1 / var[sel]
+        weight *= spectrum
+        detect = (weight * detect).sum(axis=(0, 1))
         var = (spectrum * weight).sum(axis=(0, 1))
 
     return detect, np.sqrt(var)
