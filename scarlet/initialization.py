@@ -269,44 +269,55 @@ def build_initialization_image(observations, spectra=None):
         if spectra is not None:
             spectra = (spectra,)
 
-    # only use cache for the unweighted images
-    # otherwise we have one per source!
-    name = "build_initialization_image"
-    key = tuple(observations)
-    if spectra is None:
-        try:
-            return Cache.check(name, key)
-        except KeyError:
-            pass
-
     model_frame = observations[0].model_frame
-    detect = np.zeros(model_frame.shape, dtype=model_frame.dtype)
-    var = np.zeros(model_frame.shape, dtype=model_frame.dtype)
-    for i, obs in enumerate(observations):
 
-        if not isinstance(obs.renderer, (NullRenderer, ConvolutionRenderer)):
-            continue
+    # check if detection images are stored in obs[0]
+    # stoing in an obs avoids using the cache (see issue 256)
+    if not hasattr(observations[0], "_detect"):
+        # if not, map every obs and variance onto the model frame
+        detect, var = [], []
+        for i, obs in enumerate(observations):
 
-        data = obs.data
-        bg_rms = np.mean(obs.noise_rms, axis=(1, 2))
+            # only works on unrotated simple frames
+            if not isinstance(obs.renderer, (NullRenderer, ConvolutionRenderer)):
+                continue
 
-        if spectra is None:
-            spectrum = weights = 1
-        else:
-            spectrum = spectra[i][:, None, None]
-            weights = spectrum / (bg_rms ** 2)[:, None, None]
+            detect_ = np.zeros(model_frame.shape, dtype=model_frame.dtype)
+            var_ = np.zeros(model_frame.shape, dtype=model_frame.dtype)
+            data_slice, model_slice = obs.renderer.slices
+            obs.renderer.map_channels(detect_)[model_slice] += obs.data[data_slice]
+            obs.renderer.map_channels(var_)[model_slice] += (
+                obs.noise_rms[data_slice]
+            ) ** 2
+            detect.append(detect_)
+            var.append(var_)
+        detect = np.array(detect)  # L x C x Ny x Nx
+        var = np.array(var)  # L x C x Ny x Nx
+        observations[0]._detect = (detect, var)
 
-        data_slice, model_slice = obs.renderer.slices
-        obs.renderer.map_channels(detect)[model_slice] += weights * data[data_slice]
-        obs.renderer.map_channels(var)[model_slice] += spectrum * weights
+    detect, var = observations[0]._detect
 
-    if spectra is not None:
-        detect = detect.sum(axis=0)
-        var = var.sum(axis=0)
-
-    # only save the unweighted one
+    # get multi-channel image for spectrum matching
     if spectra is None:
-        Cache.set(name, key, (detect, np.sqrt(var)))
+        nonzero = np.minimum(1, (var > 0).sum(axis=0))
+        detect = detect.sum(axis=0) / nonzero
+        var = var.sum(axis=0) / nonzero
+    else:
+        # spectrum SNR weighted combination of all observations
+        spectrum = []
+        for i, obs in enumerate(observations):
+            if not isinstance(obs.renderer, (NullRenderer, ConvolutionRenderer)):
+                continue
+            spectrum_ = np.zeros(model_frame.C)
+            obs.renderer.map_channels(spectrum_)[:] = spectra[i]
+            spectrum.append(spectrum_)
+        spectrum = np.stack(spectrum, axis=0)[:, :, None, None]  # L x C x Ny x Nx
+        weight = np.zeros(var.shape)
+        sel = var > 0
+        weight[sel] = 1 / var[sel]
+        weight *= spectrum
+        detect = (weight * detect).sum(axis=(0, 1))
+        var = (spectrum * weight).sum(axis=(0, 1))
 
     return detect, np.sqrt(var)
 
