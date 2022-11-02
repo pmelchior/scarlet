@@ -588,7 +588,7 @@ class StarletMorphology(Morphology):
                 coeffs[:, slice[0], slice[1]],
                 name=coeffs.name,
                 prior=coeffs.prior,
-                constraint=constraint,
+                constraint=coeffs.constraint,
                 step=coeffs.step,
                 fixed=coeffs.fixed,
                 m=coeffs.m[:, slice[0], slice[1]] if coeffs.m is not None else None,
