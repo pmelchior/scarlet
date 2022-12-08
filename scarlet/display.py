@@ -99,6 +99,37 @@ class LinearPercentileNorm(LinearMapping):
         vmin, vmax = np.percentile(img, percentiles)
         super().__init__(minimum=vmin, maximum=vmax)
 
+class AsinhAutomaticNorm(AsinhMapping):
+    def __init__(self, observation, channel_map=None, noisefactor=0, percentilemax = 98):
+        """Create norm that is linear between a factor of the image noise level and the upper percentile of img
+        Parameters
+        ----------
+        observation: `~scarlet.Observation`
+            Observation object with weights
+        channel_map: array_like
+            Linear mapping with dimensions (3, channels)
+        noisefactor: float, default = 1
+            Factor to be multiplied by the negative median noise level to set the lower bound
+            below which pixels will be set to 0.
+        percentile: float, default = 98
+            Upper percentile: Pixel values above will be saturated.
+        """
+        import numpy.ma as ma
+        if channel_map==None:
+            channel_map = channels_to_rgb(observation.data.shape[0])
+        data = img_to_3channel(observation.data, channel_map=channel_map)
+        weights = img_to_3channel(observation.weights, channel_map=channel_map)
+        mask = np.sum(weights, axis=0) == 0
+        ny, nx = mask.shape
+        mask = mask.reshape(1, ny, nx)
+        mask = np.repeat(mask, 3, axis=0)
+        data = ma.masked_array(data, mask=mask)
+        weights = ma.masked_array(weights, mask=mask)
+        vmin = -noisefactor * np.max(np.ma.median(1/np.sqrt(weights), axis=(1,2)))
+        vmax = np.max(np.nanpercentile(data, percentilemax,axis=(1,2)))
+        stretch = vmax - vmin
+        beta = stretch / np.sinh(1)
+        super().__init__(minimum=vmin, stretch=stretch, Q=beta)
 
 class AsinhPercentileNorm(AsinhMapping):
     def __init__(self, img, percentiles=[1, 99]):
