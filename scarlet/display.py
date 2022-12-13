@@ -1,5 +1,5 @@
+from abc import ABC, abstractmethod
 import numpy as np
-from astropy.visualization.lupton_rgb import LinearMapping, AsinhMapping
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle, Polygon
 from matplotlib.ticker import MaxNLocator
@@ -69,7 +69,7 @@ def channels_to_rgb(channels):
         channel_map[2, 0] = 1
         channel_map /= 2
     elif channels == 7:
-        channel_map[:, 6] = 2/3.
+        channel_map[:, 6] = 2 / 3.0
         channel_map[0, 5] = 1
         channel_map[0, 4] = 0.667
         channel_map[0, 3] = 0.333
@@ -84,9 +84,57 @@ def channels_to_rgb(channels):
     return channel_map
 
 
-class LinearPercentileNorm(LinearMapping):
+class Norm(ABC):
+    """Norm base class for RGB images"""
+
+    def __init__(self):
+        self._uint8Max = float(np.iinfo(np.uint8).max)
+
+    """Compute total intensity image"""
+
+    def get_intensity(self, im):
+        return np.maximum(0, im).sum(axis=0)
+
+    """Clip image between m and M"""
+
+    def clip(self, im, m, M):
+        return np.maximum(0, np.minimum(im - m, M - m))
+
+    """Convert three-channel image to RGB image with uint8 dtype"""
+
+    def convert_to_uint8(self, im):
+        im_clipped = self.clip(im, 0, 1)
+        uint_im = (im_clipped * self._uint8Max).astype("uint8")
+        im_flipped = uint_im.transpose().swapaxes(0, 1)  # 3 x Ny x Nx -> Ny x Nx x 3
+        return im_flipped
+
+    """Compute RGB image from three-channel image"""
+
+    def make_rgb_image(self, *im):
+        # backwards compatible to astropy Mapping Call
+        return self.convert_to_uint8(self.__call__(np.stack(im, axis=0)))
+
+    """Compute normalized three-channel image"""
+
+    @abstractmethod
+    def __call__(self, im):
+        pass
+
+
+class LinearNorm(Norm):
+    def __init__(self, minimum, maximum):
+        """Linear norm, mapping the interval [minimum, maximum] to [0,1]"""
+        self.m, self.M = minimum, maximum
+        super().__init__()
+
+    def __call__(self, im):
+        return self.clip(im, self.m, self.M) / (self.M - self.m)
+
+
+class LinearPercentileNorm(LinearNorm):
     def __init__(self, img, percentiles=[1, 99]):
-        """Create norm that is linear between lower and upper percentile of img
+        """Norm that is linear between lower and upper percentile of img
+
         Parameters
         ----------
         img: array_like
@@ -99,55 +147,139 @@ class LinearPercentileNorm(LinearMapping):
         vmin, vmax = np.percentile(img, percentiles)
         super().__init__(minimum=vmin, maximum=vmax)
 
-class AsinhAutomaticNorm(AsinhMapping):
-    def __init__(self, observation, channel_map=None, noisefactor=0, percentilemax = 98):
-        """Create norm that is linear between a factor of the image noise level and the upper percentile of img
+
+class AsinhNorm(Norm):
+    def __init__(self, m, M, beta):
+        """Norm that scales with arcsinh(I / beta) between m and M
+
+        See Lupton+(2004) https://ui.adsabs.harvard.edu/abs/2004PASP..116..133L
+
+        Parameters
+        ----------
+        m: float
+            Minimum value to consider
+        M: float
+            Maximum value to consider
+        beta: float
+            Turnover point of arcsinh. Below it norm behaves linear, above
+            it norm approximates ln(2*I)
+        """
+        self.m, self.M, self.beta = m, M, beta
+        self._rgb_max = 1
+        super().__init__()
+
+    def set_rgb_max(self, img, vibrance=0.15):
+        """Set maximum value of normalized image
+
+        Parameters
+        ----------
+        img: array_like
+            Three-channel image
+        vibrance: float
+            Allowance to exceed normalization of three-channel image.
+            Makes images more vibrant but causes slight color shifts in the highlights.
+        """
+        rgb = self.__call__(img)
+        self._rgb_max = rgb[np.isfinite(rgb)].max() / (1 + vibrance)
+
+    def __call__(self, img):
+        m = self.m
+        M = self.M
+        I = self.get_intensity(img)
+        with np.errstate(
+            invalid="ignore", divide="ignore"
+        ):  # n.b. np.where can't and doesn't short-circuit
+            # clip between m and M
+            I_ = self.clip(I - m, 0, M - m)
+
+            # arcsinh scaling from Lupton+(2004)
+            f = np.arcsinh(I_ / self.beta)  # no need to normalize, done below
+            rgb = img / (I / f)[None, :, :]
+
+            # keep rgb between 0 and 1 (with an allowance of self.vibrance)
+            rgb = rgb / self._rgb_max
+
+            return rgb
+
+
+class AsinhPercentileNorm(AsinhNorm):
+    def __init__(self, img, percentiles=[45, 50, 99], vibrance=0.15):
+        """Norm that scales with arcsinh(I / beta) between bottom and top percentile.
+
+        Uses the middle percentile to define the turnover `beta`. The defaults
+        are chosen such that the median (percentile 50) tries to catch emission
+        slightly above the sky level, while the minimum is aiming for the sky
+        intensity itself.
+
+        Parameters
+        ----------
+        img: array_like
+            Image to normalize
+        percentile: array_like, default=[45,50,99]
+            Lower, middle, and upper percentile to consider. Pixel values below will be
+            set to zero, above to one. Asinh turnover is given by middle percentile.
+        vibrance: float
+            Allowance to exceed normalization of three-channel image.
+            Makes images more vibrant but causes slight color shifts in the highlights.
+        """
+        assert len(percentiles) == 3
+        m, beta, M = np.percentile(img, percentiles)
+        super().__init__(m, M, beta)
+        super().set_rgb_max(img, vibrance=vibrance)
+
+
+class AsinhAutomaticNorm(AsinhNorm):
+    def __init__(
+        self,
+        observation,
+        channel_map=None,
+        minimum=0,
+        upper_percentile=99.5,
+        noise_level=1,
+        vibrance=0.15,
+    ):
+        """Norm that scales with arcsinh(I / beta) between `minimum` and
+        `upper_percentile`.
+
+        The turnover `beta` is taken from the at `noise_level` * RMS, where RMS is the
+        total variance of the observations. This norm should automatically create an
+        image scaling that picks out low-surface brightness features and highlights.
+
         Parameters
         ----------
         observation: `~scarlet.Observation`
             Observation object with weights
         channel_map: array_like
             Linear mapping with dimensions (3, channels)
-        noisefactor: float, default = 1
-            Factor to be multiplied by the negative median noise level to set the lower bound
-            below which pixels will be set to 0.
-        percentile: float, default = 98
+        noise_level: float
+            Factor to be multiplied to the total noise RMS to define the turnover point
+        upper_percentile: float
             Upper percentile: Pixel values above will be saturated.
+        vibrance: float
+            Allowance to exceed normalization of three-channel image.
+            Makes images more vibrant but causes slight color shifts in the highlights.
         """
-        import numpy.ma as ma
-        if channel_map==None:
-            channel_map = channels_to_rgb(observation.data.shape[0])
-        data = img_to_3channel(observation.data, channel_map=channel_map)
-        weights = img_to_3channel(observation.weights, channel_map=channel_map)
-        mask = np.sum(weights, axis=0) == 0
-        ny, nx = mask.shape
-        mask = mask.reshape(1, ny, nx)
-        mask = np.repeat(mask, 3, axis=0)
-        data = ma.masked_array(data, mask=mask)
-        weights = ma.masked_array(weights, mask=mask)
-        vmin = -noisefactor * np.max(np.ma.median(1/np.sqrt(weights), axis=(1,2)))
-        vmax = np.max(np.nanpercentile(data, percentilemax,axis=(1,2)))
-        stretch = vmax - vmin
-        beta = stretch / np.sinh(1)
-        super().__init__(minimum=vmin, stretch=stretch, Q=beta)
+        if channel_map is None:
+            channel_map = channels_to_rgb(observation.C)
 
-class AsinhPercentileNorm(AsinhMapping):
-    def __init__(self, img, percentiles=[1, 99]):
-        """Create norm that is linear between lower and upper percentile of img
-        Parameters
-        ----------
-        img: array_like
-            Image to normalize
-        percentile: array_like, default=[1,99]
-            Lower and upper percentile to consider. Pixel values below will be
-            set to zero, above to saturated.
-        """
-        assert len(percentiles) == 2
-        vmin, vmax = np.percentile(img, percentiles)
-        # solution for beta assumes flat spectrum at vmax
-        stretch = vmax - vmin
-        beta = stretch / np.sinh(1)
-        super().__init__(minimum=vmin, stretch=stretch, Q=beta)
+        im3 = img_to_3channel(observation.data, channel_map=channel_map)
+        # TODO: need to mask this
+        var3 = img_to_3channel(1 / observation.weights, channel_map=channel_map)
+
+        # total intensity and variance images
+        I = self.get_intensity(im3)
+        V = self.get_intensity(var3)
+
+        # find upper clipping point
+        (M,) = np.percentile(I.flatten(), [upper_percentile])
+        m = minimum
+
+        # find a good turnover point for arcshinh: ~noise level
+        rms = np.median(np.sqrt(V))
+        beta = rms * noise_level
+
+        super().__init__(m, M, beta)
+        super().set_rgb_max(im3, vibrance=vibrance)
 
 
 def img_to_3channel(img, channel_map=None, fill_value=0):
@@ -191,8 +323,10 @@ def img_to_3channel(img, channel_map=None, fill_value=0):
 
 def img_to_rgb(img, channel_map=None, fill_value=0, norm=None, mask=None):
     """Convert images to normalized RGB.
+
     If normalized values are outside of the range [0..255], they will be
     truncated such as to preserve the corresponding color.
+
     Parameters
     ----------
     img: array_like
@@ -207,17 +341,18 @@ def img_to_rgb(img, channel_map=None, fill_value=0, norm=None, mask=None):
     mask: array_like
         A [0,1] binary mask to apply over the top of the image,
         where pixels with mask==1 are masked out.
+
     Returns
     -------
     rgb: numpy array with dimensions (3, height, width) and dtype uint8
     """
-    RGB = img_to_3channel(img, channel_map=channel_map)
+    im3 = img_to_3channel(img, channel_map=channel_map)
     if norm is None:
-        norm = LinearMapping(image=RGB)
-    rgb = norm.make_rgb_image(*RGB)
+        norm = LinearPercentileNorm(im3)
+    RGB = norm.make_rgb_image(*im3)
     if mask is not None:
-        rgb = np.dstack([rgb, ~mask * 255])
-    return rgb
+        RGB = np.dstack([RGB, ~mask * 255])
+    return RGB
 
 
 panel_size = 4.0
@@ -296,7 +431,9 @@ def show_observation(
             model_box = Box(psf_model.shape) + shift
             model_box.insert_into(psf_image, psf_model)
             # slices = scarlet.box.overlapped_slices
-        ax[panel].imshow(img_to_rgb(psf_image, norm=norm), origin="lower")
+        ax[panel].imshow(
+            img_to_rgb(psf_image, norm=norm, channel_map=channel_map), origin="lower"
+        )
         ax[panel].set_title("PSF")
 
     fig.tight_layout()
@@ -554,14 +691,14 @@ def show_sources(
         if show_model:
             # Show the unrendered model in it's bbox
             extent = get_extent(src.bbox)
-            ax[k-skipped][panel].imshow(
+            ax[k - skipped][panel].imshow(
                 img_to_rgb(model, norm=norm, channel_map=channel_map, mask=model_mask),
                 extent=extent,
                 origin="lower",
             )
-            ax[k-skipped][panel].set_title("Model Source {}".format(k))
+            ax[k - skipped][panel].set_title("Model Source {}".format(k))
             if center is not None and add_markers:
-                ax[k-skipped][panel].plot(*center, "wx", **marker_kwargs)
+                ax[k - skipped][panel].plot(*center, "wx", **marker_kwargs)
             panel += 1
 
         # model in observation frame
@@ -570,36 +707,36 @@ def show_sources(
             model_ = src.get_model(frame=model_frame)
             model_ = observation.render(model_)
             extent = get_extent(observation.bbox)
-            ax[k-skipped][panel].imshow(
+            ax[k - skipped][panel].imshow(
                 img_to_rgb(model_, norm=norm, channel_map=channel_map),
                 extent=extent,
                 origin="lower",
             )
-            ax[k-skipped][panel].set_title("Model Source {} Rendered".format(k))
+            ax[k - skipped][panel].set_title("Model Source {} Rendered".format(k))
 
             if center is not None and add_markers:
                 center_ = observation.get_pixel(model_frame.get_sky_coord(center))
-                ax[k-skipped][panel].plot(*center_, "wx", **marker_kwargs)
+                ax[k - skipped][panel].plot(*center_, "wx", **marker_kwargs)
             if add_boxes:
                 poly = Polygon(box_coords, closed=True, **box_kwargs)
-                ax[k-skipped][panel].add_artist(poly)
+                ax[k - skipped][panel].add_artist(poly)
             panel += 1
 
         if show_observed:
             # Center the observation on the source and display it
             _images = observation.data
-            ax[k-skipped][panel].imshow(
+            ax[k - skipped][panel].imshow(
                 img_to_rgb(_images, norm=norm, channel_map=channel_map),
                 extent=extent,
                 origin="lower",
             )
-            ax[k-skipped][panel].set_title("Observation".format(k))
+            ax[k - skipped][panel].set_title("Observation".format(k))
             if center is not None and add_markers:
                 center_ = observation.get_pixel(model_frame.get_sky_coord(center))
-                ax[k-skipped][panel].plot(*center_, "wx", **marker_kwargs)
+                ax[k - skipped][panel].plot(*center_, "wx", **marker_kwargs)
             if add_boxes:
                 poly = Polygon(box_coords, closed=True, **box_kwargs)
-                ax[k-skipped][panel].add_artist(poly)
+                ax[k - skipped][panel].add_artist(poly)
             panel += 1
 
         if show_spectrum:
@@ -613,13 +750,13 @@ def show_sources(
                 spectra = [model.sum(axis=(1, 2))]
 
             for spectrum in spectra:
-                ax[k-skipped][panel].plot(spectrum)
-            ax[k-skipped][panel].set_xticks(range(len(spectrum)))
+                ax[k - skipped][panel].plot(spectrum)
+            ax[k - skipped][panel].set_xticks(range(len(spectrum)))
             if hasattr(src.frame, "channels") and src.frame.channels is not None:
-                ax[k-skipped][panel].set_xticklabels(src.frame.channels)
-            ax[k-skipped][panel].set_title("Spectrum")
-            ax[k-skipped][panel].set_xlabel("Channel")
-            ax[k-skipped][panel].set_ylabel("Intensity")
+                ax[k - skipped][panel].set_xticklabels(src.frame.channels)
+            ax[k - skipped][panel].set_title("Spectrum")
+            ax[k - skipped][panel].set_xlabel("Channel")
+            ax[k - skipped][panel].set_ylabel("Intensity")
 
     fig.tight_layout()
     return fig
