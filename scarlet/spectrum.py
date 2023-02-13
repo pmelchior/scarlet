@@ -7,7 +7,6 @@ from .constraint import PositivityConstraint
 from .frame import Frame
 from .model import Model
 from .parameter import Parameter, relative_step
-from autograd.numpy.numpy_boxes import ArrayBox
 import autograd
 
 
@@ -75,7 +74,7 @@ class TabulatedSpectrum(Spectrum):
         return spectrum
 
 
-class StaticSpectrum(Spectrum):#TabulatedSpectrum):
+class StaticSpectrum(Spectrum):
     def __init__(self, frame, spectrum, bbox=None, min_step=0, repeats=None):
         if isinstance(spectrum, Parameter):
             assert spectrum.name == "spectrum"

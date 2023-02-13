@@ -23,7 +23,7 @@ class Renderer(Model):
         self.transform = self.get_model(*parameters)
         return self.transform(model)
 
-    def get_channel_map(self, data_frame, model_frame, repeats=None):
+    def get_channel_map(self, data_frame, model_frame):
         """Compute the mapping between channels in the model frame and this observation
 
         Parameters

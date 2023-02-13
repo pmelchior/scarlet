@@ -5,7 +5,7 @@ import sys
 from . import initialization as init
 from . import operator
 from .bbox import Box, overlapped_slices
-from .component import Component, CombinedComponent, StaticComponent, FactorizedComponent
+from .component import Component, CombinedComponent, FactorizedComponent
 from .constraint import CenterOnConstraint, PositivityConstraint
 from .morphology import (
     ImageMorphology,
@@ -910,15 +910,13 @@ class StaticMultiExtendedSource(CombinedComponent):
         
         # find best-fit spectra for each of morph from the observations
         # assumes observations only have that one source in region of the box
-        bands0,bandind = np.unique([obs.channels[0][0] for obs in observations],return_index=True) 
-        #epochs = [obs.channels[0][0] for obs in observations]
+        bands0,bandind = np.unique([obs.channels[0][0] for obs in observations],return_index=True)  
         epochs = np.asarray([obs.channels[0][0] for obs in observations])
         bands = epochs[bandind]
-        repeats0 = np.asarray([np.sum([epochs==b]) for b in bands],dtype=int) 
-        self.repeats = repeats0
-        bandmatch = []
-        spectra = []
-        rms = []
+        repeats = np.asarray([np.sum([epochs==b]) for b in bands],dtype=int) 
+        self.repeats = repeats
+        bandmatch = [] 
+       
         for b in bands:
             bandsingle=[]
             for i,e in enumerate(epochs):
@@ -926,52 +924,30 @@ class StaticMultiExtendedSource(CombinedComponent):
                     bandsingle.append(i)
             bandmatch.append(bandsingle)
         bandmatch = np.asarray(bandmatch) 
-        
-        for bind,b in enumerate(bands):
-            detect_all, std_all = init.build_initialization_image(observations[bandmatch[bind][0]:bandmatch[bind][-1]+1])#, quiescent=True, bands=bands, epochs=epochs)
-       
-            #box_3D = Box((model_frame.C,)) @ bbox
-            #boxed_detect = box_3D.extract_from(detect_all)
-            #boxed_std_all = box_3D.extract_from(std_all)
-
-            box_3D = Box((model_frame.C,)) @ boxes[0]#bandmatch[bind][0]]#0]
-            boxed_detect = box_3D.extract_from(detect_all)
-            boxed_std_all = box_3D.extract_from(std_all)
-            specout = init.get_best_fit_spectrum(morphs, boxed_detect, boxed_std = boxed_std_all)
-            nonzero = np.sum(specout>0,axis=1)
-        
-            spectra.append(np.sum(specout,axis=1)/nonzero)          
-            rms.append(np.median(np.concatenate([np.array(np.mean(obs.noise_rms, axis=(1, 2))) for obs in observations[bandmatch[bind][0]:bandmatch[bind][-1]+1]]
-            ).reshape(-1)))
- 
-        noise_rms = np.concatenate(
-            [np.array(np.mean(obs.noise_rms, axis=(1, 2))) for obs in observations]
-        ).reshape(-1)
-        rms = np.asfarray(rms)
-              
-        detect_all, std_all = init.build_initialization_image(observations)#, quiescent=True, bands=bands, epochs=epochs)
+                     
+        detect_all, std_all = init.build_initialization_image(observations)
         
         box_3D = Box((model_frame.C,)) @ boxes[0]
         boxed_detect = box_3D.extract_from(detect_all)
         boxed_std_all = box_3D.extract_from(std_all)
 
-        spectrum = init.get_best_fit_spectrum(morphs, boxed_detect, boxed_std = boxed_std_all, quiescent=True, bands=bands, epochs=epochs, repeats=repeats0)
-        spectra = np.asarray(spectra) 
-        quiescent = []
+        spectrum = init.get_best_fit_spectrum(morphs, boxed_detect, boxed_std = boxed_std_all) 
+        spectrum = np.asarray(spectrum)
+        medianspectrum=[np.median(spectrum[:,b],axis=1) for b in bandmatch]
         
-        quiescentspectrum = np.asfarray(spectrum)#[:,bandind]) #spectra   
-      
+        noise_rms = np.concatenate(
+            [np.array(np.mean(obs.noise_rms, axis=(1, 2))) for obs in observations]
+        ).reshape(-1)
+        
+        rms = [np.median(noise_rms[b]) for b in bandmatch]
+        quiescentspectrum=np.asfarray(medianspectrum)
+        
         # create one component for each spectrum and morphology
         components = []
         center = model_frame.get_pixel(sky_coord)
         for k in range(K):
-     
-            spectrum = StaticSpectrum(model_frame, quiescentspectrum[:,k], min_step=np.repeat(rms,repeats0)/10.0, repeats=repeats0)
-
-            #spectrum = TabulatedSpectrum(
-            #    model_frame, spectra[k], min_step=noise_rms / 10
-            #)
-            print('symmetric = ',symmetric)
+            spectrum = StaticSpectrum(model_frame, quiescentspectrum[:,k], min_step=rms, repeats=self.repeats)
+            
             morphology = ExtendedSourceMorphology(
                 model_frame,
                 center,

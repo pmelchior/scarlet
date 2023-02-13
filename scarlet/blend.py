@@ -82,7 +82,7 @@ class Blend(CombinedComponent):
         # only for backward compatibility, use log_likelihood instead
         self.loss = []
 
-    def fit(self, max_iter=200, e_rel=1e-3, min_iter=1, noise_factor=0, repeats=None, **alg_kwargs):
+    def fit(self, max_iter=200, e_rel=1e-3, min_iter=1, noise_factor=0, **alg_kwargs):
         """Fit the model for each source to the data
 
         Parameters
@@ -108,7 +108,7 @@ class Blend(CombinedComponent):
                 # but only for non-fixed parameters
                 require_grad = tuple(k for k, x in enumerate(X) if not x.fixed)
                 
-                def expand_grads(*X, func=None, repeats=None): 
+                def expand_grads(*X, func=None): 
                     G = func(*X)
                     expanded = [0.0] * len(X)
                     for k, j in enumerate(require_grad):
@@ -119,7 +119,7 @@ class Blend(CombinedComponent):
                     lambda ans, *args, **kw: lambda g: g
                     ) 
                 grad_logL_func = grad(self._loss_func, require_grad)
-                grad_logL = lambda *X: expand_grads(*X, func=grad_logL_func, repeats=repeats)
+                grad_logL = lambda *X: expand_grads(*X, func=grad_logL_func)
 
                 # same for prior. easier her bc we call them independently
                 grad_logP = lambda *X: tuple(

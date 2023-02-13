@@ -127,7 +127,7 @@ class Observation(Frame):
         # data is immutable, but renderer might be parameterized
         return self.renderer.parameters
 
-    def render(self, model, *parameters, repeats=None):
+    def render(self, model, *parameters):
         """Convolve a model to the observation frame
 
         Parameters
