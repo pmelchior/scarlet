@@ -75,7 +75,7 @@ class Component(Model):
         f: `~scarlet.Frame`
             New frame of the model
         """
-        self._frame = f
+        self._frame = f 
         self._model_frame_slices, self._model_slices = overlapped_slices(
             self._frame.bbox, self._bbox
         )
@@ -107,16 +107,15 @@ class Component(Model):
         if bbox is None or bbox == self.frame.bbox:
             bbox = self.frame.bbox
             frame_slices = self._model_frame_slices
-            model_slices = self._model_slices
-        else:
+            model_slices = self._model_slices 
+        else: 
             frame_slices, model_slices = overlapped_slices(bbox, self.bbox)
 
         result = np.zeros(bbox.shape, dtype=model.dtype)
         result[frame_slices] = model[model_slices]
         return result
 
-
-class FactorizedComponent(Component):
+class StaticComponent(Component):
     """A single component in a blend
 
     Uses the non-parametric factorization Spectrum x Morphology.
@@ -184,6 +183,84 @@ class FactorizedComponent(Component):
     def spectrum(self):
         """Extract the spectrum parameter.
         """
+        return self.children[0]
+
+    @property
+    def morphology(self):
+        """Extract the morphology parameter
+        """
+        return self.children[1]
+
+
+
+class FactorizedComponent(Component):
+    """A single component in a blend
+
+    Uses the non-parametric factorization Spectrum x Morphology.
+
+    Parameters
+    ----------
+    frame: `~scarlet.Frame`
+        The spectral and spatial characteristics of the full model.
+    bbox: `~scarlet.Box`
+        Hyper-spectral bounding box of this component.
+    spectrum: `~scarlet.Spectrum`
+        Parameterization of the spectrum
+    morphology: `~scarlet.Morphology`
+        Parameterization of the morphology.
+    """
+
+    def __init__(self, frame, spectrum, morphology):
+        assert isinstance(spectrum, Spectrum)
+        assert isinstance(morphology, Morphology)
+
+        bbox = spectrum.bbox @ morphology.bbox[-2:]
+
+        super().__init__(frame, children=[spectrum, morphology], bbox=bbox)
+
+    def get_model(self, *parameters, frame=None, repeats=None):
+        """Get the model for this component.
+
+        Parameters
+        ----------
+        parameters: tuple of optimimzation parameters
+
+        frame: `~scarlet.frame.Frame`
+            Frame to project the model into. If `frame` is `None`
+            then the model contained in `bbox` is returned.
+
+        Returns
+        -------
+        model: array
+            (Channels, Height, Width) image of the model
+        """
+        spectrum, morphology = self.get_models_of_children(*parameters)
+        if len(morphology.shape) == 2:
+            model = spectrum[:, None, None] * morphology[None, :, :]
+        elif len(morphology.shape) == 3:
+            model = spectrum[:, None, None] * morphology
+        else:
+            raise AttributeError("morphology must be 2D or 3D")
+       
+        # project the model into frame (if necessary)
+        if frame is not None: 
+            model = self.model_to_box(frame.bbox, model)
+        return model
+
+    def update(self):
+        for child in self.children:
+            try:
+                child.update()
+            except UpdateException as e:
+                spectrum, morphology = self.children 
+                bbox = spectrum.bbox @ morphology.bbox[-2:]
+                self.bbox = bbox
+                raise e
+
+    @property
+    def spectrum(self):
+        """Extract the spectrum parameter.
+        """ 
         return self.children[0]
 
     @property

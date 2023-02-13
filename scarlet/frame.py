@@ -92,6 +92,9 @@ class Frame:
         sky = np.array(sky_coord, dtype=np.float64).reshape(-1, 2)
 
         if self.wcs is not None:
+            #if self.wcs.celestial.naxis==0:
+            #    wcs_ = self.wcs
+            #else:
             wcs_ = self.wcs.celestial  # only use celestial portion
             pixel = np.array(wcs_.world_to_pixel_values(sky)).reshape(-1, 2)
             # y/x instead of x/y:
@@ -114,6 +117,9 @@ class Frame:
         pix = np.array(pixel, dtype=np.float64).reshape(-1, 2)
 
         if self.wcs is not None:
+            #if self.wcs.celestial.naxis==0:
+            #    wcs_ = self.wcs
+            #else:
             wcs_ = self.wcs.celestial  # only use celestial portion
             # x/y instead of y/x:
             pix = np.flip(pix, axis=-1)
@@ -275,13 +281,13 @@ class Frame:
         model_wcs.array_shape = model_box.shape
 
         # recreate the model frame with the correct shape
-        frame_shape = (len(channels), *model_box.shape)
+        frame_shape = (len(channels), *model_box.shape) 
         model_frame = Frame(
             frame_shape, channels=channels, psf=model_psf, wcs=model_wcs
         )
 
         # Match observations to this frame
-        for obs in observations:
+        for obs in observations: 
             obs.match(model_frame)
 
         return model_frame

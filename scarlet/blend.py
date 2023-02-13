@@ -1,5 +1,5 @@
 from functools import partial
-
+import sys
 import numpy.ma as ma
 import autograd.numpy as np
 from autograd import grad
@@ -22,7 +22,7 @@ def _add_models(*models, full_model, slices):
     to insert a model into the full_model in the region where the
     two models overlap.
     """
-    for i in range(len(models)):
+    for i in range(len(models)): 
         full_model[slices[i][0]] += models[i][slices[i][1]]
     return full_model
 
@@ -33,7 +33,7 @@ def _grad_add_models(upstream_grad, *models, full_model, slices, index):
     The full model is just the sum of the models,
     so the gradient is 1 for each model,
     we just have to slice it appropriately.
-    """
+    """ 
     model = models[index]
     full_model_slices = slices[index][0]
     model_slices = slices[index][1]
@@ -82,7 +82,7 @@ class Blend(CombinedComponent):
         # only for backward compatibility, use log_likelihood instead
         self.loss = []
 
-    def fit(self, max_iter=200, e_rel=1e-3, min_iter=1, noise_factor=0, **alg_kwargs):
+    def fit(self, max_iter=200, e_rel=1e-3, min_iter=1, noise_factor=0, repeats=None, **alg_kwargs):
         """Fit the model for each source to the data
 
         Parameters
@@ -98,25 +98,28 @@ class Blend(CombinedComponent):
         """
         it = 0
         self._noise_factor = noise_factor
-        while it < max_iter:
+        
+        while it < max_iter: 
             try:
                 X = self.parameters + tuple(
                     p for obs in self.observations for p in obs.parameters
-                )
-
+                ) 
                 # compute the backward gradients
                 # but only for non-fixed parameters
                 require_grad = tuple(k for k, x in enumerate(X) if not x.fixed)
-
-                def expand_grads(*X, func=None):
+                
+                def expand_grads(*X, func=None, repeats=None): 
                     G = func(*X)
                     expanded = [0.0] * len(X)
                     for k, j in enumerate(require_grad):
                         expanded[j] = G[k]
                     return expanded
-
+                defvjp(
+                    np.asarray,
+                    lambda ans, *args, **kw: lambda g: g
+                    ) 
                 grad_logL_func = grad(self._loss_func, require_grad)
-                grad_logL = lambda *X: expand_grads(*X, func=grad_logL_func)
+                grad_logL = lambda *X: expand_grads(*X, func=grad_logL_func, repeats=repeats)
 
                 # same for prior. easier her bc we call them independently
                 grad_logP = lambda *X: tuple(
@@ -130,13 +133,12 @@ class Blend(CombinedComponent):
                 _grad = lambda *X: tuple(
                     l + p for l, p in zip(grad_logL(*X), grad_logP(*X))
                 )
-
+                
                 # step sizes
                 _step = lambda *X, it: tuple(
                     x.step(x, it=it) if hasattr(x.step, "__call__") else x.step
                     for x in X
                 )
-
                 # proxes
                 _prox = tuple(x.constraint for x in X)
 
@@ -151,7 +153,7 @@ class Blend(CombinedComponent):
                 )
 
                 # do we have a current state of the optimizer to warm start?
-                for x in X:
+                for x in X: 
                     if x.m is None:
                         x.m = np.zeros(x.shape)
                     if x.v is None:
@@ -161,7 +163,7 @@ class Blend(CombinedComponent):
                 M = tuple(x.m for x in X)
                 V = tuple(x.v for x in X)
                 Vhat = tuple(x.vhat for x in X)
-
+                
                 proxmin.adaprox(
                     X,
                     _grad,
@@ -177,8 +179,8 @@ class Blend(CombinedComponent):
                     V=V,
                     Vhat=Vhat,
                     **alg_kwargs
-                )
-
+                ) 
+                
                 logger.info(
                     "scarlet ran for {0} iterations to logL = {1}".format(
                         len(self.log_likelihood), self.log_likelihood[-1]
@@ -214,7 +216,7 @@ class Blend(CombinedComponent):
 
         # boxed models of every source
         models = self.get_models_of_children(*parameters, frame=None)
-
+       
         if frame is None:
             frame = self.frame
 
@@ -227,7 +229,7 @@ class Blend(CombinedComponent):
             slices = tuple(
                 overlapped_slices(frame.bbox, src.bbox) for src in self.sources
             )
-
+       
         # We have to declare the function that inserts sources
         # into the blend with autograd.
         # This has to be done each time we fit a blend,
@@ -237,8 +239,8 @@ class Blend(CombinedComponent):
             _add_models,
             *([partial(_grad_add_models, index=k) for k in range(len(self.sources))])
         )
-
-        full_model = np.zeros(frame.shape, dtype=frame.dtype)
+         
+        full_model = np.zeros(frame.shape, dtype=frame.dtype) 
         full_model = _add_models(*models, full_model=full_model, slices=slices)
 
         return full_model
@@ -257,20 +259,19 @@ class Blend(CombinedComponent):
         return -np.array(self.loss)
 
     def _loss_func(self, *parameters):
-        n_params = len(self.parameters)
-        model = self.get_model(*parameters[:n_params], frame=self.frame)
-
-        # Caculate the total loss function from all of the observations
+        n_params = len(self.parameters) 
+        model = self.get_model(*parameters[:n_params], frame=self.frame) 
+        
+        # Calculate the total loss function from all of the observations
         total_loss = 0
-        for observation in self.observations:
-            n_obs_params = len(observation.parameters)
-            obs_params = parameters[n_params : n_params + n_obs_params]
+        for i,observation in enumerate(self.observations):
+            n_obs_params = len(observation.parameters) 
+            obs_params = parameters[n_params : n_params + n_obs_params]  
             total_loss = total_loss - observation.get_log_likelihood(
                 model, *obs_params, noise_factor=self._noise_factor
             )
             n_params += n_obs_params
-
-        self.loss.append(total_loss._value)
+        self.loss.append(total_loss._value) 
         return total_loss
 
     def _callback(self, *parameters, it=None, e_rel=1e-3, callback=None, min_iter=1):

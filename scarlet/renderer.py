@@ -15,7 +15,7 @@ class Renderer(Model):
         self.model_frame = model_frame
         # mapping of model to data frame channels
         self.channel_map = self.get_channel_map(data_frame, model_frame)
-
+                
         super().__init__(*parameters)
 
     # renderer is a parameterized transformation function
@@ -23,7 +23,7 @@ class Renderer(Model):
         self.transform = self.get_model(*parameters)
         return self.transform(model)
 
-    def get_channel_map(self, data_frame, model_frame):
+    def get_channel_map(self, data_frame, model_frame, repeats=None):
         """Compute the mapping between channels in the model frame and this observation
 
         Parameters
@@ -37,17 +37,17 @@ class Renderer(Model):
             None for identical channels in both frames; slice for concatenated channels;
             array for linear mapping of model channels onto observation channels
         """
-
-        if list(data_frame.channels) == list(model_frame.channels):
+        
+        if list(data_frame.channels) == list(model_frame.channels):  
             return None
-
+        
         channel_map = [
             list(model_frame.channels).index(c) for c in list(data_frame.channels)
-        ]
+        ]  
         min_channel = min(channel_map)
         max_channel = max(channel_map)
         if max_channel + 1 - min_channel == len(channel_map):
-            channel_map = slice(min_channel, max_channel + 1)
+            channel_map = slice(min_channel, max_channel + 1)  
         return channel_map
 
         # full-fledged linear mixing model to allow for spectrophotometry later
@@ -63,7 +63,7 @@ class Renderer(Model):
             #   combination of obs and model channels
         return channel_map
 
-    def map_channels(self, model):
+    def map_channels(self, model, repeats=None):
         """Map to model channels onto the observation channels
 
         Parameters
@@ -75,10 +75,13 @@ class Renderer(Model):
         -------
         obs_model: array
             `model` mapped onto the observation channels
-        """
+        """  
         if self.channel_map is None:
             return model
         if isinstance(self.channel_map, slice):
+            if repeats is not None:
+                chans = np.repeat(range(len(repeats)),repeats) 
+                return model[slice(min(chans[self.channel_map]),max(chans[self.channel_map])+1)] 
             return model[self.channel_map]
         return np.dot(self.channel_map, model)
 
@@ -87,7 +90,7 @@ class NullRenderer(Renderer):
     def __init__(self, data_frame, model_frame):
         super().__init__(data_frame, model_frame)
 
-    def get_model(*parameters):
+    def get_model(*parameters): 
         def nothing(model):
             return model
 
@@ -177,7 +180,7 @@ class ConvolutionRenderer(Renderer):
             parameters = (*parameters, psf_shift)
 
         super().__init__(data_frame, model_frame, *parameters)
-
+    
         assert convolution_type in [
             "real",
             "fft",
@@ -246,8 +249,8 @@ class ConvolutionRenderer(Renderer):
 
     def get_model(self, *parameters):
         def transform(model, *parameters):
-            # restrict to observed channels
-            model_ = self.map_channels(model)
+            # restrict to observed channels 
+            model_ = self.map_channels(model) 
             # get the shift
             shift = self.get_parameter("psf_shift", *parameters)
             # convolve observed channels
@@ -267,13 +270,11 @@ class ResolutionRenderer(Renderer):
         # check if data is rotated wrt to model_frame
         self.angle, self.h = interpolation.get_angles(data_frame.wcs, model_frame.wcs)
         self.isrot = (np.abs(self.angle[1]) ** 2) > np.finfo(float).eps
-
         # Get pixel coordinates alinged with x and y axes  of this observation
-        # in model frame
+        # in model frame 
         lr_shape = data_frame.shape[1:]
-        pixels = np.stack((np.arange(lr_shape[0]), np.arange(lr_shape[1])), axis=1)
-        coord_hr = data_frame.convert_pixel_to(model_frame, pixel=pixels)
-
+        pixels = np.stack((np.arange(lr_shape[0]), np.arange(lr_shape[1])), axis=1) 
+        coord_hr = data_frame.convert_pixel_to(model_frame, pixel=pixels) 
         # TODO: should coords define a _slices_for_model/data?
         # lr_inside_hr = model_frame.bbox.contains(coord_hr)
 
@@ -307,7 +308,7 @@ class ResolutionRenderer(Renderer):
         center_x = int(
             self._fft_shape[1] / 2.0 - (self._fft_shape[1] - model_frame.Nx) / 2.0
         ) - ((self._fft_shape[1] % 2) != 0) * ((model_frame.Nx % 2) == 0)
-
+      
         # Compute the shifts of all LR pixels into centered HR coord
         # 1 ) aligned case
         if not self.isrot:
@@ -318,23 +319,23 @@ class ResolutionRenderer(Renderer):
             self.other_shifts = np.copy(self.shifts)
         # 2) rotated case
         else:
-            # Unrotated coordinates:
+            # Unrotated coordinates: 
             Y_unrot = (
                 (coord_hr[:, 0] - center_y) * self.angle[0]
                 - (coord_hr[:, 1] - center_x) * self.angle[1]
-            ).reshape(lr_shape)
+            ).reshape(lr_shape[0])
             X_unrot = (
                 (coord_hr[:, 1] - center_x) * self.angle[0]
                 + (coord_hr[:, 0] - center_y) * self.angle[1]
-            ).reshape(lr_shape)
-
+            ).reshape(lr_shape[1])
+           
             # Removing redundancy
-            self.Y_unrot = Y_unrot[:, 0]
-            self.X_unrot = X_unrot[0, :]
-
+            self.Y_unrot = Y_unrot#[:, 0]
+            self.X_unrot = X_unrot#[0, :]
+         
             if self.small_axis:
                 self.shifts = np.array(
-                    [self.Y_unrot * self.angle[0], self.Y_unrot * self.angle[1]]
+                    [self.Y_unrot * self.angle[0], self.Y_unrot * self.angle[1],]
                 )
                 self.other_shifts = np.array(
                     [-self.angle[1] * self.X_unrot, self.angle[0] * self.X_unrot,]
@@ -397,7 +398,7 @@ class ResolutionRenderer(Renderer):
 
         # Interpolation of the low res psf
         # TODO: isn't that just inverse of self.angle, self.h?
-        angle, h_ratio = interpolation.get_angles(wcs_hr, wcs_lr)
+        angle, h_ratio = interpolation.get_angles(wcs_hr, wcs_lr) 
         psf_lr_hr = interpolation.sinc_interp_inplace(
             psf_lr, h_lr, h_hr, angle, pad_shape=pad_shape
         )

@@ -45,7 +45,7 @@ class Model(ABC):
             assert isinstance(children, Model)
             self._children = tuple(children)
 
-        self.check_parameters()
+        #self.check_parameters()
 
     @property
     def parameters(self):

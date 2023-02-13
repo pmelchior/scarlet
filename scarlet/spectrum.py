@@ -1,10 +1,14 @@
 from functools import partial
+import numpy as mp
+import autograd.numpy as np
 
 from .bbox import Box
 from .constraint import PositivityConstraint
 from .frame import Frame
 from .model import Model
 from .parameter import Parameter, relative_step
+from autograd.numpy.numpy_boxes import ArrayBox
+import autograd
 
 
 class Spectrum(Model):
@@ -27,7 +31,7 @@ class Spectrum(Model):
         assert isinstance(bbox, Box)
         self.bbox = bbox
         super().__init__(*parameters)
-
+        
 
 class TabulatedSpectrum(Spectrum):
     """Spectrum from a array/table
@@ -67,5 +71,36 @@ class TabulatedSpectrum(Spectrum):
         super().__init__(frame, spectrum, bbox=bbox)
 
     def get_model(self, *parameters):
-        spectrum = self.get_parameter(0, *parameters)
+        spectrum = self.get_parameter(0, *parameters) 
         return spectrum
+
+
+class StaticSpectrum(Spectrum):#TabulatedSpectrum):
+    def __init__(self, frame, spectrum, bbox=None, min_step=0, repeats=None):
+        if isinstance(spectrum, Parameter):
+            assert spectrum.name == "spectrum"
+        else:
+            # slightly positive values
+            self.constraint = PositivityConstraint(zero=1e-20)
+            # steps of 1% of mean amplitude, minimum set by noise_rms 
+            self.step = partial(relative_step, factor=1e-2, minimum=min_step)
+            self.specind = mp.repeat(mp.arange(len(list(spectrum))),repeats)
+            multiepochspectrum = np.repeat(spectrum, repeats)
+             
+            spectrum = Parameter(
+                    spectrum, name="staticspectrum", step=self.step, constraint=self.constraint
+            )
+            
+            self.repeats=repeats
+       
+        if bbox is None: 
+            bbox = Box(multiepochspectrum.shape)
+        else:
+            assert bbox.shape == multiepochspectrum.shape
+
+        super().__init__(frame, spectrum, bbox=bbox)
+
+    def get_model(self, *parameters):        
+        spectrum = self.get_parameter(0, *parameters)        
+        return np.asarray(spectrum)[self.specind]
+       

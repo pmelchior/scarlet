@@ -33,13 +33,15 @@ from .source import (
     PointSource,
     CompactExtendedSource,
     SingleExtendedSource,
-    MultiExtendedSource,
+    MultiExtendedSource, 
+    StaticSource,
+    StaticMultiExtendedSource,
     ExtendedSource,
     StarletSource,
     GaussianSource,
     SpergelSource,
 )
-from .spectrum import Spectrum, TabulatedSpectrum
+from .spectrum import Spectrum, TabulatedSpectrum, StaticSpectrum
 from .wavelet import Starlet
 from . import detect
 from . import display

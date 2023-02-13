@@ -73,16 +73,16 @@ class Observation(Frame):
         Returns
         -------
         None
-        """
+        """ 
         self.model_frame = model_frame
-
+        
         # check dtype consistency
         if self.dtype != model_frame.dtype:
             self.dtype = model_frame.dtype
             self.data = self.data.astype(model_frame.dtype)
             if type(self.weights) is np.ndarray:
                 self.weights = self.weights.astype(model_frame.dtype)
-
+        
         # choose the renderer
         if renderer is None:
             if self.psf is model_frame.psf:
@@ -109,8 +109,7 @@ class Observation(Frame):
                         self.renderer = ResolutionRenderer(self, model_frame)
         else:
             assert isinstance(renderer, Renderer)
-            self.renderer = renderer
-
+            self.renderer = renderer 
         return self
 
     @property
@@ -128,7 +127,7 @@ class Observation(Frame):
         # data is immutable, but renderer might be parameterized
         return self.renderer.parameters
 
-    def render(self, model, *parameters):
+    def render(self, model, *parameters, repeats=None):
         """Convolve a model to the observation frame
 
         Parameters
@@ -157,10 +156,10 @@ class Observation(Frame):
         -------
         logL: float
         """
-        model_ = self.render(model, *parameters)
+        model_ = self.render(model, *parameters)  
         data_ = self.data
         weights_ = self.weights
-
+        
         # noise injection to soften the gradient
         if noise_factor > 0:
             noise = np.random.normal(loc=0, scale=self.noise_rms)

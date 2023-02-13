@@ -376,12 +376,17 @@ def mk_shifter(shape, real=False):
 
 
 def get_affine(wcs):
+ 
     try:
         model_affine = wcs.wcs.pc
     except AttributeError:
-        model_affine = wcs.cd
+        try:
+            model_affine = wcs.wcs.cd
+        except AttributeError:
+            model_affine = wcs.cd
 
     return model_affine
+
 
 
 def get_pixel_size(model_affine):
@@ -416,7 +421,6 @@ def get_angles(frame_wcs, model_wcs):
     # normalisation
     self_framevector /= np.sum(self_framevector ** 2) ** 0.5
     model_framevector /= np.sum(model_framevector ** 2) ** 0.5
-
     # sin of the angle between datasets (normalised cross product)
     sin_rot = np.cross(self_framevector, model_framevector)
     # cos of the angle. (normalised scalar product)
@@ -531,7 +535,7 @@ def sinc_interp_inplace(image, h_image, h_target, angle, pad_shape=None):
     if pad_shape is not None:
         # Padding. This is never explicitelly undone in this function on purpose. Proceed with caution.
         image = fft._pad(image, pad_shape, axes=[-2, -1])
-
+   
     ny_lr, nx_lr = image.shape[-2:]
     coord_lr = np.array(
         [
@@ -539,6 +543,7 @@ def sinc_interp_inplace(image, h_image, h_target, angle, pad_shape=None):
             np.array(range(nx_lr)) - (nx_lr - 1) / 2,
         ]
     )
+   
     ny_hr, nx_hr = (
         np.round(image.shape[-2] * h_image / h_target).astype(int),
         np.round(image.shape[-1] * h_image / h_target).astype(int),
@@ -556,7 +561,7 @@ def sinc_interp_inplace(image, h_image, h_target, angle, pad_shape=None):
         )
         / h_image
         * h_target
-    )
+    ) 
     return sinc_interp(image, coord_hr, coord_lr, angle=angle)
 
 
@@ -565,7 +570,7 @@ def interpolate_observation(observation, frame, wave_filter=False):
     and returns the interpolated images.
 
     Paramters
-    ---------
+    --------
     observation: `scarlet.Observation` object
         observation with images to interpolate
     frame: `scarlet.Frame` object

@@ -1,15 +1,15 @@
 import numpy as np
 import logging
-
+import pdb
 from .bbox import Box
 from .cache import Cache
 from .renderer import NullRenderer, ConvolutionRenderer
-
+from .parameter import Parameter
 
 logger = logging.getLogger("scarlet.initialisation")
 
 
-def get_best_fit_spectrum(morph, images):
+def get_best_fit_spectrum(morph, images, boxed_std=None, quiescent=False, bands=None, epochs=None, repeats=None):
     """Calculate best fitting spectra for one or multiple morphologies.
 
     Solves min_A ||img - AS||^2 for the spectrum matrix A,
@@ -35,18 +35,47 @@ def get_best_fit_spectrum(morph, images):
         morphs = (morph,)
 
     K = len(morphs)
-    C = images.shape[0]
-    im = images.reshape(C, -1)
+    #print('quiescent',quiescent) 
+    if quiescent:
+        C = images.shape[0]#len(bands)
+        imout=[]
+        for r,b in zip(repeats,bands):
+            inds=np.argwhere(np.asarray(epochs)==b)[:,0]#&(np.sum(images,axis=(1,2))>0))[:,0] 
+            #nonzero = np.minimum(1, boxed_std[inds] > 0).sum(axis=0) 
+            im = np.average(images[inds],axis=0) #*len(inds)#/ np.max(nonzero)*1.5#*2#len(inds) #*len(epochs)
+            imout.append(np.asarray(r*[im]))
+        imout = np.concatenate(imout)#np.asarray(imout)     
+        im = imout.reshape(C, -1) #This was commented out, no np.asarray before, and below section was not commented out
+    else:
+        C = images.shape[0]
+        im = images.reshape(C, -1)
+    ''' 
+    if quiescent: 
+        specout = [] 
+        for im in imout:
+            im = np.asarray(im)
+            C = im.shape[0]
+            im = im.reshape(C, -1)
 
+            if K == 1:
+                morph = morphs[0].reshape(-1)
+                specout.append((np.dot(im, morph) / np.dot(morph, morph))[0])
+            else:
+                morph = np.array(morphs).reshape(K, -1) 
+                specout.append(np.dot(np.linalg.inv(np.dot(morph, morph.T)), np.dot(morph, im.T))[:,0])
+        return specout
+    else:
+    '''
+   
     if K == 1:
         morph = morphs[0].reshape(-1)
         return np.dot(im, morph) / np.dot(morph, morph)
     else:
-        morph = np.array(morphs).reshape(K, -1)
+        morph = np.array(morphs).reshape(K, -1) 
         return np.dot(np.linalg.inv(np.dot(morph, morph.T)), np.dot(morph, im.T))
 
 
-def get_pixel_spectrum(sky_coord, observations, correct_psf=False, models=None):
+def get_pixel_spectrum(sky_coord, observations, correct_psf=False, models=None, quiescent=False):
     """Get the spectrum at `sky_coord` in `observation`.
 
     Yields the spectrum of a single-pixel source with flux 1 in every channel,
@@ -245,7 +274,7 @@ def trim_morphology(center_index, morph, bg_thresh=0, boxsize=None):
     return morph, bbox
 
 
-def build_initialization_image(observations, spectra=None):
+def build_initialization_image(observations, spectra=None, quiescent=False, bands=None, epochs=None):
     """Build a spectrum-weighted image from all observations.
 
     Parameters
@@ -273,37 +302,74 @@ def build_initialization_image(observations, spectra=None):
 
     # check if detection images are stored in obs[0]
     # stoing in an obs avoids using the cache (see issue 256)
-    if not hasattr(observations[0], "_detect"):
+    if quiescent==False or not hasattr(observations[0], "_detect"):
         # if not, map every obs and variance onto the model frame
+        
         detect, var = [], []
-        for i, obs in enumerate(observations):
+        if not quiescent:
+            for i, obs in enumerate(observations):
 
-            # only works on unrotated simple frames
-            if not isinstance(obs.renderer, (NullRenderer, ConvolutionRenderer)):
-                continue
+                # only works on unrotated simple frames
+                if not isinstance(obs.renderer, (NullRenderer, ConvolutionRenderer)): 
+                    continue
 
-            detect_ = np.zeros(model_frame.shape, dtype=model_frame.dtype)
-            var_ = np.zeros(model_frame.shape, dtype=model_frame.dtype)
-            data_slice, model_slice = obs.renderer.slices
-            obs.renderer.map_channels(detect_)[model_slice] += obs.data[data_slice]
-            obs.renderer.map_channels(var_)[model_slice] += (
-                obs.noise_rms[data_slice]
-            ) ** 2
-            detect.append(detect_)
-            var.append(var_)
-        detect = np.array(detect)  # L x C x Ny x Nx
-        var = np.array(var)  # L x C x Ny x Nx
+                detect_ = np.zeros(model_frame.shape, dtype=model_frame.dtype)
+                var_ = np.zeros(model_frame.shape, dtype=model_frame.dtype)
+                data_slice, model_slice = obs.renderer.slices
+                obs.renderer.map_channels(detect_)[model_slice] += obs.data[data_slice]
+                obs.renderer.map_channels(var_)[model_slice] += (
+                    obs.noise_rms[data_slice]
+                ) ** 2
+                detect.append(detect_)
+                var.append(var_)
+            detect = np.asarray(detect)
+            var = np.asarray(var)
+        else: 
+            for b in bands:
+                inds=np.argwhere(np.asarray(epochs)==b)[:,0]
+                detectb=[]
+                varb=[]
+                for i, obs in enumerate(np.asarray(observations)[inds]):
+                    # only works on unrotated simple frames
+                    #if not isinstance(obs.renderer, (NullRenderer, ConvolutionRenderer)):
+                    #    continue
+
+                    detect_ = np.zeros(model_frame.shape, dtype=model_frame.dtype)
+                    var_ = np.zeros(model_frame.shape, dtype=model_frame.dtype)
+                    data_slice, model_slice = obs.renderer.slices
+                    obs.renderer.map_channels(detect_)[model_slice] += obs.data[data_slice]
+                    obs.renderer.map_channels(var_)[model_slice] += (
+                        obs.noise_rms[data_slice]
+                    ) ** 2
+
+                    detectb.append(detect_)
+                    varb.append(var_)
+                nonzero = np.minimum(1, (np.asarray(varb) > 0).sum(axis=1))
+                
+                detectbsum = np.sum(np.array(detectb), axis = 1) / nonzero  # L x C x Ny x Nx
+                varbsum = np.sum(np.array(varb), axis = 1) / nonzero # L x C x Ny x Nx
+
+                #nonzero = np.minimum(1, (varb > 0).sum(axis=0))
+                #detectbsum = detectb.sum(axis=0) / nonzero
+                #varbsum = varb.sum(axis=0) / nonzero
+       
+                detect.append(detectbsum)
+                var.append(varbsum)
+
+            detect = np.vstack(detect)  # L x C x Ny x Nx
+            var = np.vstack(var)  # L x C x Ny x Nx
         observations[0]._detect = (detect, var)
-
+        
     detect, var = observations[0]._detect
-
+   
     # get multi-channel image for spectrum matching
-    if spectra is None:
-        nonzero = np.minimum(1, (var > 0).sum(axis=0))
-        detect = detect.sum(axis=0) / nonzero
-        var = var.sum(axis=0) / nonzero
-    else:
-        # spectrum SNR weighted combination of all observations
+    if spectra is None and quiescent == False:
+        nonzero = np.minimum(np.ones(var[0].shape), (var > 0).sum(axis=0))
+        nonzero[nonzero==0] = 1  
+        detect = detect.sum(axis=0) / nonzero 
+        var = var.sum(axis=0) / nonzero 
+    
+    elif quiescent == True:
         spectrum = []
         for i, obs in enumerate(observations):
             if not isinstance(obs.renderer, (NullRenderer, ConvolutionRenderer)):
@@ -311,12 +377,34 @@ def build_initialization_image(observations, spectra=None):
             spectrum_ = np.zeros(model_frame.C)
             obs.renderer.map_channels(spectrum_)[:] = spectra[i]
             spectrum.append(spectrum_)
-        spectrum = np.stack(spectrum, axis=0)[:, :, None, None]  # L x C x Ny x Nx
+        
+        spectrum = np.sum(np.stack(spectrum, axis=0)[:, :, None, None],axis=1)  # L x C x Ny x Nx
+        
         weight = np.zeros(var.shape)
         sel = var > 0
         weight[sel] = 1 / var[sel]
         weight *= spectrum
         detect = (weight * detect).sum(axis=(0, 1))
+        
+        var = (spectrum * weight).sum(axis=(0, 1))
+
+
+    else:
+        # spectrum SNR weighted combination of all observations 
+        spectrum = []
+        for i, obs in enumerate(observations):
+            if not isinstance(obs.renderer, (NullRenderer, ConvolutionRenderer)):
+                continue
+            spectrum_ = np.zeros(model_frame.C)
+            obs.renderer.map_channels(spectrum_)[:] = spectra[i]
+            spectrum.append(spectrum_)  
+        spectrum = np.stack(spectrum, axis=0)[:, :, None, None]  # L x C x Ny x Nx
+        weight = np.zeros(var.shape)
+        sel = var > 0 #& (~np.isnan(var)) 
+        weight[sel] = 1 / var[sel]
+        weight *= spectrum
+        detect = (weight * detect).sum(axis=(0, 1))
+
         var = (spectrum * weight).sum(axis=(0, 1))
 
     return detect, np.sqrt(var)
@@ -527,7 +615,7 @@ def init_source(
         return source
 
 
-def set_spectra_to_match(sources, observations):
+def set_spectra_to_match(sources, observations, repeats=None):
     """Sets the spectra of any `FactorizedComponent` to match the Observations.
 
     Computes the best-fit amplitude of the rendered model of the sources in every
@@ -541,14 +629,12 @@ def set_spectra_to_match(sources, observations):
     """
 
     from .component import FactorizedComponent, CombinedComponent
-
+    from .source import StaticSource, StaticMultiExtendedSource
     if not hasattr(observations, "__iter__"):
         observations = (observations,)
-    model_frame = observations[0].model_frame
-
-    for obs in observations:
-
-        # extract model for every component
+    
+    for i,obs in enumerate(observations): 
+        model_frame = observations[i].model_frame
         morphs = []
         parameters = []
         for src in sources:
@@ -556,18 +642,23 @@ def set_spectra_to_match(sources, observations):
                 components = src.children
             else:
                 components = (src,)
-            for c in components:
+            for c in components: 
                 if isinstance(c, FactorizedComponent):
-                    p = c.parameters[0]
-                    if not p.fixed:
-                        obs.renderer.map_channels(p)[:] = 1
-                        parameters.append(p)
+                    p = c.parameters[0] 
+                    if not p.fixed: 
+                        if isinstance(src,StaticSource) or isinstance(src,StaticMultiExtendedSource):
+                            obs.renderer.map_channels(p,repeats=repeats)[:] = 1
+                        else:
+                            obs.renderer.map_channels(p)[:] = 1
+
+                        parameters.append(p)  
                         model_ = obs.render(c.get_model(frame=model_frame))
                         morphs.append(model_)
-
+        
+    
         morphs = np.array(morphs)
         K = len(morphs)
-
+        
         images = obs.data
         weights = obs.weights
         C = obs.C
@@ -595,11 +686,19 @@ def set_spectra_to_match(sources, observations):
             else:
                 covar = np.linalg.inv(mw[nonzero] @ m[nonzero].T)
                 spectra[nonzero, c] = covar @ m[nonzero] @ (im * w)
-
-        for p, spectrum in zip(parameters, spectra):
-            obs.renderer.map_channels(p)[:] = spectrum
-
+        
+        for src, p, spectrum in zip(sources, parameters, spectra): 
+            if np.sum(np.isnan(spectrum))>0:
+                spectrum[np.isnan(spectrum)]=1e-5
+                print('Replacing nans with small number')
+          
+            components = (src,) 
+            if isinstance(src,StaticSource) or isinstance(src,StaticMultiExtendedSource):
+                obs.renderer.map_channels(p,repeats=repeats)[:] = spectrum 
+            else:
+                obs.renderer.map_channels(p)[:] = spectrum 
+                           
     # enforce constraints
-    for p in parameters:
+    for p in parameters: 
         if p.constraint is not None:
             p[:] = p.constraint(p, 0)

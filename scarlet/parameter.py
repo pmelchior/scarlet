@@ -51,9 +51,11 @@ class Parameter(np.ndarray):
         v=None,
         vhat=None,
         fixed=False,
+        repeats=None
     ):
         obj = np.asarray(array, dtype=array.dtype).view(cls)
         obj.name = name
+        obj.repeats = repeats
         if prior is not None:
             assert isinstance(prior, Prior)
         obj.prior = prior
@@ -73,6 +75,7 @@ class Parameter(np.ndarray):
     def __array_finalize__(self, obj):
         if obj is None:
             return
+        self.repeats = getattr(obj, "repeats", None)
         self.name = getattr(obj, "name", "unnamed")
         self.prior = getattr(obj, "prior", None)
         self.constraint = getattr(obj, "constraint", None)
@@ -121,7 +124,6 @@ def prepare_param(X, name, fixed=True, step=None):
             X = (X,)
         X = Parameter(np.array(X, dtype="float"), name=name, fixed=fixed, step=step)
     return X
-
 
 def relative_step(X, it, factor=0.1, minimum=0, axis=None):
     """Step size set at `factor` times the mean of `X` in direction `axis`

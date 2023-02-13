@@ -486,18 +486,19 @@ class PointSourceMorphology(Morphology):
         2D center parameter (in units of frame pixels)
     """
 
-    def __init__(self, frame, center):
+    def __init__(self, frame, center, shiftmultiple=1):
 
         assert frame.psf is not None and isinstance(frame.psf, PSF)
         self.psf = frame.psf
 
         # define bbox
-        pixel_center = tuple(np.round(center).astype("int"))
+        #pixel_center = tuple(np.round(center).astype("int"))
+        pixel_center = tuple((shiftmultiple*np.round(center/shiftmultiple)).astype("int"))
         shift = (0, *pixel_center)
-        bbox = self.psf.bbox + shift
+        bbox = self.psf.bbox + shiftmultiple*shift
 
         # parameters is simply 2D center
-        self.center = prepare_param(center, name="center")
+        self.center = prepare_param(center, name="center",step=0.1)
         super().__init__(frame, self.center, bbox=bbox)
 
     def get_model(self, *parameters):
@@ -511,7 +512,6 @@ class PointSourceMorphology(Morphology):
         # silly for Gaussian PSFs, but since the PSFs are not implemented
         # as ProfileMorphology, we can't analytically integrate
         return self.psf.get_model().sum()
-
 
 class StarletMorphology(Morphology):
     """Morphology from a starlet representation of an image
@@ -616,6 +616,7 @@ class ExtendedSourceMorphology(ImageMorphology):
         min_grad=0,
         shifting=False,
         resizing=True,
+        shiftmultiple=1,
     ):
         """Non-parametric image morphology designed for galaxies as extended sources.
 
@@ -668,8 +669,8 @@ class ExtendedSourceMorphology(ImageMorphology):
         ]
         morph_constraint = ConstraintChain(*constraints)
         image = Parameter(image, name="image", step=1e-2, constraint=morph_constraint)
-
         self.pixel_center = np.round(center).astype("int")
+        #self.pixel_center = (shiftmultiple*np.round(center/shiftmultiple)).astype("int")
         if shifting:
             shift = Parameter(center - self.pixel_center, name="shift", step=1e-1)
         else:
