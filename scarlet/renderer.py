@@ -322,29 +322,29 @@ class ResolutionRenderer(Renderer):
             Y_unrot = (
                 (coord_hr[:, 0] - center_y) * self.angle[0]
                 - (coord_hr[:, 1] - center_x) * self.angle[1]
-            ).reshape(lr_shape)
+            ).reshape(lr_shape[0])
             X_unrot = (
                 (coord_hr[:, 1] - center_x) * self.angle[0]
                 + (coord_hr[:, 0] - center_y) * self.angle[1]
-            ).reshape(lr_shape)
+            ).reshape(lr_shape[1])
 
             # Removing redundancy
-            self.Y_unrot = Y_unrot[:, 0]
-            self.X_unrot = X_unrot[0, :]
+            self.Y_unrot = Y_unrot
+            self.X_unrot = X_unrot
 
             if self.small_axis:
                 self.shifts = np.array(
-                    [self.Y_unrot * self.angle[0], self.Y_unrot * self.angle[1]]
+                    [self.Y_unrot * self.angle[0], -self.Y_unrot * self.angle[1],]
                 )
                 self.other_shifts = np.array(
-                    [-self.angle[1] * self.X_unrot, self.angle[0] * self.X_unrot,]
+                    [self.angle[1] * self.X_unrot, self.angle[0] * self.X_unrot,]
                 )
             else:
                 self.shifts = np.array(
-                    [-self.angle[1] * self.X_unrot, self.angle[0] * self.X_unrot,]
+                    [self.angle[1] * self.X_unrot, self.angle[0] * self.X_unrot,]
                 )
                 self.other_shifts = np.array(
-                    [self.Y_unrot * self.angle[0], self.Y_unrot * self.angle[1],]
+                    [self.Y_unrot * self.angle[0], -self.Y_unrot * self.angle[1],]
                 )
 
             axes = (1, 2)
