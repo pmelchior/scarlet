@@ -375,7 +375,8 @@ def show_scene(
         if np.all(mask == 0):
             mask = None
 
-    model_frame = sources[0].frame
+    model_frame = observation.model_frame#sources[0].frame
+    
     model = np.zeros(model_frame.shape)
     for src in sources:
         model += src.get_model(frame=model_frame)
@@ -626,6 +627,142 @@ def show_sources(
             ax[k-skipped][panel].set_title("Spectrum")
             ax[k-skipped][panel].set_xlabel("Channel")
             ax[k-skipped][panel].set_ylabel("Intensity")
+
+    fig.tight_layout()
+    return fig
+
+
+def show_scarlet2_scene(
+    sources,
+    observation=None,
+    norm=None,
+    model=None,
+    frame=None,
+    channel_map=None,
+    show_observed=False,
+    show_rendered=False,
+    show_residual=False,
+    add_labels=True,
+    add_boxes=False,
+    figsize=None,
+    linear=True,
+):
+    """Plot all sources to recreate the scence.
+    The functions provides a fast way of evaluating the quality of the entire model,
+    i.e. the combination of all scences that seek to fit the observation.
+    Parameters
+    ----------
+    sources: list of source models
+    observation: `~scarlet.Observation`
+    norm: norm to compress image intensity to the range [0,255]
+    channel_map: array_like
+        Linear mapping with dimensions (3, channels)
+    show_model: bool
+        Whether the model is shown in the model frame
+    show_observed: bool
+        Whether the observation is shown
+    show_rendered: bool
+        Whether the model, rendered to match the observation, is shown
+    show_residual: bool
+        Whether the residuals between rendered model and observation is shown
+    add_label: bool
+        Whether each source is labeled with its numerical index in the source list
+    add_boxes: bool
+        Whether each source box is shown
+            figsize: matplotlib figsize argument
+    linear: bool
+        Whether or not to display the scene in a single line (`True`) or        on multiple lines (`False`).
+    Returns
+    -------
+    matplotlib figure
+    """
+    if show_observed or show_rendered or show_residual:
+        assert (
+            observation is not None
+        ), "Provide matched observation to show observed frame"
+
+    panels = sum((show_observed, show_rendered, show_residual))
+    if linear:
+        if figsize is None:
+            figsize = (panel_size * panels, panel_size)
+        fig, ax = plt.subplots(1, panels, figsize=figsize)
+    else:
+        columns = int(np.ceil(panels / 2))
+        if figsize is None:
+            figsize = (panel_size * columns, panel_size * 2)
+        fig = plt.figure(figsize=figsize)
+        ax = [fig.add_subplot(2, columns, n + 1) for n in range(panels)]
+    if not hasattr(ax, "__iter__"):
+        ax = (ax,)
+
+    # Mask any pixels with zero weight in all bands
+    if observation is not None:
+        mask = np.sum(observation.weights, axis=0) == 0
+        # if there are no masked pixels, do not use a mask
+        if np.all(mask == 0):
+            mask = None
+
+    model_frame = frame#sources[0].frame
+    #model = np.zeros(model_frame.shape)
+    #for src in sources:
+    #    model += src.get_model(frame=model_frame)
+
+    panel = 0
+    extent = get_extent(frame.bbox)
+
+    if show_rendered:
+        norm_ = LinearPercentileNorm(observation.data,percentiles=[1,99])
+
+        ax[panel].imshow(
+            img_to_rgb(model, norm=norm_, channel_map=channel_map, mask=mask),
+            extent=extent,
+            origin="lower",
+        )
+        ax[panel].set_title("Model Rendered")
+        panel += 1
+
+    if show_observed:
+        norm_ = LinearPercentileNorm(observation.data, percentiles=[1,99])
+
+        ax[panel].imshow(
+            img_to_rgb(observation.data, norm=norm_, channel_map=channel_map, mask=mask),
+            extent=extent,
+            origin="lower",
+        )
+        ax[panel].set_title("Observation")
+        panel += 1
+
+    if show_residual:
+        residual = observation.data - model
+        norm_ = LinearPercentileNorm(residual)
+        ax[panel].imshow(
+            img_to_rgb(residual, norm=norm_, channel_map=channel_map, mask=mask),
+            extent=extent,
+            origin="lower",
+        )
+        ax[panel].set_title("Residual")
+        panel += 1
+    if show_residual:
+        residual = observation.data - model
+        norm_ = LinearPercentileNorm(residual)
+        ax[panel].imshow(
+            img_to_rgb(residual, norm=norm_, channel_map=channel_map, mask=mask),
+            extent=extent,
+            origin="lower",
+        )
+        ax[panel].set_title("Residual")
+        panel += 1
+
+    for k, src in enumerate(sources):
+        if add_labels and hasattr(src, "center") and src.center is not None:
+            center = src.center
+            panel = 0
+            if observation is not None:
+                center_ = frame.get_pixel(model_frame.get_sky_coord(center))
+                for panel in range(panel, panels):
+                    ax[panel].text(
+                        *center_[::-1], k, color="w", ha="center", va="center"
+                    )
 
     fig.tight_layout()
     return fig
