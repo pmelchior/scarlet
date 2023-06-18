@@ -742,17 +742,7 @@ def show_scarlet2_scene(
         )
         ax[panel].set_title("Residual")
         panel += 1
-    if show_residual:
-        residual = observation.data - model
-        norm_ = LinearPercentileNorm(residual)
-        ax[panel].imshow(
-            img_to_rgb(residual, norm=norm_, channel_map=channel_map, mask=mask),
-            extent=extent,
-            origin="lower",
-        )
-        ax[panel].set_title("Residual")
-        panel += 1
-
+    
     for k, src in enumerate(sources):
         if add_labels and hasattr(src, "center") and src.center is not None:
             center = src.center
