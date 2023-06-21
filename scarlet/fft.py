@@ -152,17 +152,17 @@ def _get_fft_shape(im_or_shape1, im_or_shape2, padding=3, axes=None, max=False):
 
     shape += padding
     # Use the next fastest shape in each dimension
-    shape = [fftpack.helper.next_fast_len(s) for s in shape]
+    shape = [fftpack.next_fast_len(s) for s in shape]
 
     # autograd.numpy.fft does not currently work
     # if the last dimension is odd
     while shape[-1] % 2 != 0:
         shape[-1] += 1
-        shape[-1] = fftpack.helper.next_fast_len(shape[-1])
+        shape[-1] = fftpack.next_fast_len(shape[-1])
     if shape2[-2] % 2 == 0:
         while shape[-2] % 2 != 0:
             shape[-2] += 1
-            shape[-2] = fftpack.helper.next_fast_len(shape[-2])
+            shape[-2] = fftpack.next_fast_len(shape[-2])
 
     return shape
 
