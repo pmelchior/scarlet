@@ -711,10 +711,10 @@ def show_scarlet2_scene(
     extent = get_extent(frame.bbox)
 
     if show_rendered:
-        norm_ = LinearPercentileNorm(observation.data,percentiles=[1,99])
+        #norm_ = LinearPercentileNorm(observation.data,percentiles=[1,99])
 
         ax[panel].imshow(
-            img_to_rgb(model, norm=norm_, channel_map=channel_map, mask=mask),
+            img_to_rgb(model, norm=norm, channel_map=channel_map, mask=mask),
             extent=extent,
             origin="lower",
         )
@@ -722,10 +722,10 @@ def show_scarlet2_scene(
         panel += 1
 
     if show_observed:
-        norm_ = LinearPercentileNorm(observation.data, percentiles=[1,99])
+        #norm_ = LinearPercentileNorm(observation.data, percentiles=[1,99])
 
         ax[panel].imshow(
-            img_to_rgb(observation.data, norm=norm_, channel_map=channel_map, mask=mask),
+            img_to_rgb(observation.data, norm=norm, channel_map=channel_map, mask=mask),
             extent=extent,
             origin="lower",
         )
