@@ -281,6 +281,7 @@ def show_scene(
     show_observed=False,
     show_rendered=False,
     show_residual=False,
+    extent=None,
     add_labels=True,
     add_boxes=False,
     figsize=None,
@@ -349,9 +350,10 @@ def show_scene(
 
     panel = 0
     if show_model:
-        extent = get_extent(model_frame.bbox)
+        if extent is None:
+            extent = get_extent(model_frame.bbox) 
         ax[panel].imshow(
-            img_to_rgb(model, norm=norm, channel_map=channel_map),
+                img_to_rgb(model[:,extent[0]:extent[1],extent[2]:extent[3]], norm=norm, channel_map=channel_map),
             extent=extent,
             origin="lower",
         )
@@ -360,11 +362,12 @@ def show_scene(
 
     if show_rendered or show_residual:
         model = observation.render(model)
-        extent = get_extent(observation.bbox)
+        if extent is None:
+            extent = get_extent(observation.bbox)
 
     if show_rendered:
         ax[panel].imshow(
-            img_to_rgb(model, norm=norm, channel_map=channel_map, mask=mask),
+            img_to_rgb(model[:,extent[0]:extent[1],extent[2]:extent[3]], norm=norm, channel_map=channel_map, mask=mask),
             extent=extent,
             origin="lower",
         )
@@ -373,7 +376,7 @@ def show_scene(
 
     if show_observed:
         ax[panel].imshow(
-            img_to_rgb(observation.data, norm=norm, channel_map=channel_map, mask=mask),
+            img_to_rgb(observation.data[:,extent[0]:extent[1],extent[2]:extent[3]], norm=norm, channel_map=channel_map, mask=mask),
             extent=extent,
             origin="lower",
         )
@@ -384,7 +387,7 @@ def show_scene(
         residual = observation.data - model
         norm_ = LinearPercentileNorm(residual)
         ax[panel].imshow(
-            img_to_rgb(residual, norm=norm_, channel_map=channel_map, mask=mask),
+            img_to_rgb(residual[:,extent[0]:extent[1],extent[2]:extent[3]], norm=norm_, channel_map=channel_map, mask=mask),
             extent=extent,
             origin="lower",
         )
@@ -445,6 +448,7 @@ def show_sources(
     show_observed=False,
     show_rendered=False,
     show_spectrum=True,
+    extentobs=None,
     figsize=None,
     model_mask=None,
     add_markers=True,
@@ -523,8 +527,9 @@ def show_sources(
         if show_model:
             # Show the unrendered model in it's bbox
             extent = get_extent(src.bbox)
+            norm_ = LinearPercentileNorm(model,percentiles=[0.1,99.9])
             ax[k-skipped][panel].imshow(
-                img_to_rgb(model, norm=norm, channel_map=channel_map, mask=model_mask),
+                img_to_rgb(model, norm=norm_, channel_map=channel_map, mask=model_mask),
                 extent=extent,
                 origin="lower",
             )
@@ -538,16 +543,21 @@ def show_sources(
             # Center and show the rendered model
             model_ = src.get_model(frame=model_frame)
             model_ = observation.render(model_)
-            extent = get_extent(observation.bbox)
+            norm_ = LinearPercentileNorm(model_,percentiles=[0.1,99.9])
+            if extentobs==None:
+                extent = get_extent(observation.bbox)
+            else:
+                extent = extentobs
             ax[k-skipped][panel].imshow(
-                img_to_rgb(model_, norm=norm, channel_map=channel_map),
+                img_to_rgb(model_[:,extent[0]:extent[1],extent[2]:extent[3]], norm=norm, channel_map=channel_map),
                 extent=extent,
                 origin="lower",
             )
             ax[k-skipped][panel].set_title("Model Source {} Rendered".format(k))
 
             if center is not None and add_markers:
-                center_ = observation.get_pixel(model_frame.get_sky_coord(center))
+                center_ = observation.get_pixel(model_frame.get_sky_coord(center)) 
+                
                 ax[k-skipped][panel].plot(*center_, "wx", **marker_kwargs)
             if add_boxes:
                 poly = Polygon(box_coords, closed=True, **box_kwargs)
@@ -556,15 +566,19 @@ def show_sources(
 
         if show_observed:
             # Center the observation on the source and display it
+            if extentobs==None:
+                extent = get_extent(observation.bbox)
+            else:
+                extent = extentobs 
             _images = observation.data
             ax[k-skipped][panel].imshow(
-                img_to_rgb(_images, norm=norm, channel_map=channel_map),
+                img_to_rgb(_images[:,extent[0]:extent[1],extent[2]:extent[3]], norm=norm, channel_map=channel_map),
                 extent=extent,
                 origin="lower",
             )
             ax[k-skipped][panel].set_title("Observation".format(k))
             if center is not None and add_markers:
-                center_ = observation.get_pixel(model_frame.get_sky_coord(center))
+                center_ = observation.get_pixel(model_frame.get_sky_coord(center)) 
                 ax[k-skipped][panel].plot(*center_, "wx", **marker_kwargs)
             if add_boxes:
                 poly = Polygon(box_coords, closed=True, **box_kwargs)
