@@ -61,9 +61,8 @@ class NullSource(Component):
 class RandomSource(FactorizedComponent):
     """Sources with uniform random morphology and sed.
 
-    For cases with no well-defined spatial shape, this source initializes
-    a uniform random field and (optionally) matches the SED to match a given
-    observation.
+    For cases with no well-defined spatial shape, this source initializes the morphology and the spectrum as a uniform
+    random.
     """
 
     def __init__(self, model_frame, observations=None):
@@ -73,21 +72,14 @@ class RandomSource(FactorizedComponent):
         ----------
         model_frame: `~scarlet.Frame`
             The frame of the model
-        observations: instance or list of `~scarlet.Observation`
-            Observation to initialize the SED of the source
         """
         C, Ny, Nx = model_frame.bbox.shape
         image = np.random.rand(Ny, Nx)
         morphology = ImageMorphology(model_frame, image)
 
-        if observations is None:
-            spectrum = np.random.rand(C)
-        else:
-            spectrum = init.get_best_fit_spectrum(image[None], observations)[0]
-
-        # default is step=1e-2, using larger steps here becaus SED is probably uncertain
+        # default is step=1e-2, using larger steps of 0.1 here because SED is very uncertain
         spectrum = Parameter(
-            spectrum,
+            np.random.rand(C),
             name="spectrum",
             step=partial(relative_step, factor=1e-1),
             constraint=PositivityConstraint(),
@@ -124,8 +116,7 @@ class PointSource(FactorizedComponent):
         morphology = PointSourceMorphology(model_frame, center)
 
         # get spectrum from peak pixel, correct for PSF
-        spectra = init.get_pixel_spectrum(sky_coord, observations, correct_psf=True)
-        spectrum = np.concatenate(spectra, axis=0)
+        spectrum = init.get_pixel_spectrum(sky_coord, observations, correct_psf=True)
         noise_rms = np.concatenate(
             [np.array(np.mean(obs.noise_rms, axis=(1, 2))) for obs in observations]
         ).reshape(-1)
@@ -173,8 +164,7 @@ class GaussianSource(FactorizedComponent):
         )
 
         # get spectrum from peak pixel, don't correct for PSF (extended source)
-        spectra = init.get_pixel_spectrum(sky_coord, observations, correct_psf=False)
-        spectrum = np.concatenate(spectra, axis=0)
+        spectrum = init.get_pixel_spectrum(sky_coord, observations, correct_psf=False)
 
         # get peak pixel value from model
         vmax = morphology.f(0)
@@ -235,8 +225,7 @@ class SpergelSource(FactorizedComponent):
         )
 
         # get spectrum from peak pixel, don't correct for PSF (extended source)
-        spectra = init.get_pixel_spectrum(sky_coord, observations, correct_psf=False)
-        spectrum = np.concatenate(spectra, axis=0)
+        spectrum = init.get_pixel_spectrum(sky_coord, observations, correct_psf=False)
 
         # get peak pixel value from model
         vmax = morphology.f(0)
@@ -310,8 +299,7 @@ class CompactExtendedSource(FactorizedComponent):
         )
 
         # get spectrum from peak pixel, correct for PSF
-        spectra = init.get_pixel_spectrum(sky_coord, observations, correct_psf=True)
-        spectrum = np.concatenate(spectra, axis=0)
+        spectrum = init.get_pixel_spectrum(sky_coord, observations, correct_psf=True)
         spectrum /= morph.sum()
         noise_rms = np.concatenate(
             [np.array(np.mean(obs.noise_rms, axis=(1, 2))) for obs in observations]
@@ -392,7 +380,7 @@ class SingleExtendedSource(FactorizedComponent):
         The model is initialized from `observations` with a symmetric and
         monotonic profile and a spectrum from its peak pixel.
 
-        During optimization it enforces positivitiy for spectrum and morphology,
+        During optimization it enforces positivity for spectrum and morphology,
         as well as monotonicity of the morphology.
 
         Parameters
@@ -409,9 +397,9 @@ class SingleExtendedSource(FactorizedComponent):
         compact: `bool`
             Initialize with the shape of a point source
         shifting: `bool`
-            Whether or not a subpixel shift is added as optimization parameter
+            Whether a subpixel shift is added as optimization parameter
         resizing : bool
-            Whether or not to change the size of the source box.
+            Whether to change the size of the source box.
         boxsize: int or None
             Spatial size of the source box
         """
@@ -420,7 +408,12 @@ class SingleExtendedSource(FactorizedComponent):
 
         # get center pixel spectrum
         # this is from convolved image: weighs higher emission *and* narrow PSF
-        spectra = init.get_pixel_spectrum(sky_coord, observations)
+        spectra = init.get_pixel_spectrum(sky_coord, observations, concat=False)
+        noise_rms = np.concatenate(
+            [np.array(np.mean(obs.noise_rms, axis=(1, 2))) for obs in observations]
+        ).reshape(-1)
+        spectrum = np.concatenate(spectra).reshape(-1)
+        spectrum = TabulatedSpectrum(model_frame, spectrum, min_step=noise_rms)
 
         # initialize morphology
         # compute optimal SNR coadd for detection
@@ -450,17 +443,6 @@ class SingleExtendedSource(FactorizedComponent):
             shifting=shifting,
             resizing=resizing,
         )
-
-        # find best-fit spectra for morph from init coadd
-        # assumes img only has that source in region of the box
-        detect_all, std_all = init.build_initialization_image(observations)
-        box_3D = Box((model_frame.C,)) @ bbox
-        boxed_detect = box_3D.extract_from(detect_all)
-        spectrum = init.get_best_fit_spectrum((morph,), boxed_detect)
-        noise_rms = np.concatenate(
-            [np.array(np.mean(obs.noise_rms, axis=(1, 2))) for obs in observations]
-        ).reshape(-1)
-        spectrum = TabulatedSpectrum(model_frame, spectrum, min_step=noise_rms)
 
         # set up model with its parameters
         super().__init__(model_frame, spectrum, morphology)
@@ -639,8 +621,7 @@ class MultiExtendedSource(CombinedComponent):
     sets the inside to the perimeter value, creating a flat distribution inside.
     The subsequent component(s) is/are set to the difference between the flattened
     and the overall morphology.
-    The SED for all components is calculated as the best fit of the multi-component
-    morphology to the multi-channel image in the region of the source.
+    The SED for all components are initialized from the peak pixel, i.e. they are the same.
     """
 
     def __init__(
@@ -696,29 +677,23 @@ class MultiExtendedSource(CombinedComponent):
         source = ExtendedSource(
             model_frame, sky_coord, observations, thresh=thresh, boxsize=boxsize
         )
-        _, morphology = source.children
+        spectrum, morphology = source.children
+        spectrum = spectrum.get_parameter(0)._data
         morphs, boxes = self.init_morphs(morphology, flux_percentiles)
-
-        # find best-fit spectra for each of morph from the observations
-        # assumes observations only have that one source in region of the box
-        detect_all, std_all = init.build_initialization_image(observations)
-        box_3D = Box((model_frame.C,)) @ boxes[0]
-        boxed_detect = box_3D.extract_from(detect_all)
-        spectra = init.get_best_fit_spectrum(morphs, boxed_detect)
-        noise_rms = np.concatenate(
-            [np.array(np.mean(obs.noise_rms, axis=(1, 2))) for obs in observations]
-        ).reshape(-1)
 
         # create one component for each spectrum and morphology
         components = []
         center = model_frame.get_pixel(sky_coord)
+        noise_rms = np.concatenate(
+            [np.array(np.mean(obs.noise_rms, axis=(1, 2))) for obs in observations]
+        ).reshape(-1)
         for k in range(K):
 
-            spectrum = TabulatedSpectrum(
-                model_frame, spectra[k], min_step=noise_rms / 10
+            spectrum_ = TabulatedSpectrum(
+                model_frame, spectrum.copy(), min_step=noise_rms / 10
             )
 
-            morphology = ExtendedSourceMorphology(
+            morphology_ = ExtendedSourceMorphology(
                 model_frame,
                 center,
                 morphs[k],
@@ -729,8 +704,8 @@ class MultiExtendedSource(CombinedComponent):
                 shifting=shifting,
                 resizing=resizing,
             )
-            self.center = morphology.center
-            component = FactorizedComponent(model_frame, spectrum, morphology)
+            self.center = morphology_.center
+            component = FactorizedComponent(model_frame, spectrum_, morphology_)
             components.append(component)
 
         super().__init__(components)

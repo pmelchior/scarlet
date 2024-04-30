@@ -9,44 +9,9 @@ from .renderer import NullRenderer, ConvolutionRenderer
 logger = logging.getLogger("scarlet.initialisation")
 
 
-def get_best_fit_spectrum(morph, images):
-    """Calculate best fitting spectra for one or multiple morphologies.
-
-    Solves min_A ||img - AS||^2 for the spectrum matrix A,
-    assuming that the images only contain a single source.
-
-    Parameters
-    ----------
-    morph: array or list thereof
-        Morphology for each component in the source
-    images: array
-        images to get the spectrum amplitude from
-
-    Returns
-    -------
-    spectrum: `~numpy.array`
-    """
-
-    if isinstance(morph, (list, tuple)) or (
-        isinstance(morph, np.ndarray) and len(morph.shape) == 3
-    ):
-        morphs = morph
-    else:
-        morphs = (morph,)
-
-    K = len(morphs)
-    C = images.shape[0]
-    im = images.reshape(C, -1)
-
-    if K == 1:
-        morph = morphs[0].reshape(-1)
-        return np.dot(im, morph) / np.dot(morph, morph)
-    else:
-        morph = np.array(morphs).reshape(K, -1)
-        return np.dot(np.linalg.inv(np.dot(morph, morph.T)), np.dot(morph, im.T))
-
-
-def get_pixel_spectrum(sky_coord, observations, correct_psf=False, models=None):
+def get_pixel_spectrum(
+    sky_coord, observations, correct_psf=False, models=None, concat=True
+):
     """Get the spectrum at `sky_coord` in `observation`.
 
     Yields the spectrum of a single-pixel source with flux 1 in every channel,
@@ -68,16 +33,17 @@ def get_pixel_spectrum(sky_coord, observations, correct_psf=False, models=None):
         If PSF shape variations in the observations should be corrected.
     models: instance or list of arrays
         Rendered models for this source in every observation
+    concat: bool
+        Whether spectra from multiple observations are flattened
 
     Returns
     -------
-    spectrum: `~numpy.array` or list thereof
+    spectrum: `~numpy.array`
     """
     if models is not None:
         assert correct_psf is False
 
     if not hasattr(observations, "__iter__"):
-        single = True
         observations = (observations,)
         models = (models,)
     else:
@@ -85,7 +51,6 @@ def get_pixel_spectrum(sky_coord, observations, correct_psf=False, models=None):
             assert len(models) == len(observations)
         else:
             models = (None,) * len(observations)
-        single = False
 
     spectra = []
     for obs, model in zip(observations, models):
@@ -114,12 +79,13 @@ def get_pixel_spectrum(sky_coord, observations, correct_psf=False, models=None):
             else:
                 logger.info(msg)
 
-    if single:
-        return spectra[0]
+    if concat:
+        spectra = np.concatenate(spectra).reshape(-1)
+
     return spectra
 
 
-def get_psf_spectrum(sky_coord, observations, compute_snr=False):
+def get_psf_spectrum(sky_coord, observations, compute_snr=False, concat=True):
     """Get spectrum for a point source at `sky_coord` in `observation`
 
     Equivalent to point source photometry for isolated sources. For extended source,
@@ -137,17 +103,16 @@ def get_psf_spectrum(sky_coord, observations, compute_snr=False):
         Observation to extract the spectrum from.
     compute_snr: bool
         Whether the compute the SNR of a PSF at `sky_coord`
+    concat: bool
+        Whether spectra from multiple observations are flattened
 
     Returns
     -------
-    spectrum: ~numpy.array` or list thereof
+    spectrum: ~numpy.array`
     """
 
     if not hasattr(observations, "__iter__"):
-        single = True
         observations = (observations,)
-    else:
-        single = False
 
     spectra = []
     if compute_snr:
@@ -196,8 +161,8 @@ def get_psf_spectrum(sky_coord, observations, compute_snr=False):
             else:
                 logger.info(msg)
 
-    if single:
-        spectra = spectra[0]
+    if concat:
+        spectra = np.concatenate(spectra).reshape(-1)
 
     if compute_snr:
         snr = np.sum(snr_num) / np.sqrt(np.sum(snr_denom))
@@ -254,12 +219,12 @@ def build_initialization_image(observations, spectra=None):
         Every observation with a suitable renderer will contribute to the initialization image, according to the noise level of its data
     spectra: list of array
         for every observation: spectrum at the center of the source
-        If not set, returns the detection image in all channels, instead of averaging.
+        If not set, assumes flat spectrum
 
     Returns
     -------
     image: array
-        image created by weighting all of the channels by SED
+        image created by weighting all of the channels by spectrum
     std: float
         the effective noise standard deviation of `image`
     """
@@ -268,6 +233,7 @@ def build_initialization_image(observations, spectra=None):
         observations = (observations,)
         if spectra is not None:
             spectra = (spectra,)
+    assert len(observations) == len(spectra)
 
     model_frame = observations[0].model_frame
 
@@ -297,27 +263,24 @@ def build_initialization_image(observations, spectra=None):
 
     detect, var = observations[0]._detect
 
-    # get multi-channel image for spectrum matching
-    if spectra is None:
-        nonzero = np.minimum(1, (var > 0).sum(axis=0))
-        detect = detect.sum(axis=0) / nonzero
-        var = var.sum(axis=0) / nonzero
-    else:
-        # spectrum SNR weighted combination of all observations
-        spectrum = []
-        for i, obs in enumerate(observations):
-            if not isinstance(obs.renderer, (NullRenderer, ConvolutionRenderer)):
-                continue
-            spectrum_ = np.zeros(model_frame.C)
+    # spectrum SNR weighted combination of all observations
+    spectrum = []
+    for i, obs in enumerate(observations):
+        if not isinstance(obs.renderer, (NullRenderer, ConvolutionRenderer)):
+            continue
+        spectrum_ = np.zeros(model_frame.C)
+        if spectra[i] is not None:
             obs.renderer.map_channels(spectrum_)[:] = spectra[i]
-            spectrum.append(spectrum_)
-        spectrum = np.stack(spectrum, axis=0)[:, :, None, None]  # L x C x Ny x Nx
-        weight = np.zeros(var.shape)
-        sel = var > 0
-        weight[sel] = 1 / var[sel]
-        weight *= spectrum
-        detect = (weight * detect).sum(axis=(0, 1))
-        var = (spectrum * weight).sum(axis=(0, 1))
+        else:
+            obs.renderer.map_channels(spectrum_)[:] = 1
+        spectrum.append(spectrum_)
+    spectrum = np.stack(spectrum, axis=0)[:, :, None, None]  # L x C x Ny x Nx
+    weight = np.zeros(var.shape)
+    sel = var > 0
+    weight[sel] = 1 / var[sel]
+    weight *= spectrum
+    detect = (weight * detect).sum(axis=(0, 1))
+    var = (spectrum * weight).sum(axis=(0, 1))
 
     return detect, np.sqrt(var)
 
