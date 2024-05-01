@@ -508,50 +508,53 @@ def set_spectra_to_match(sources, observations):
         observations = (observations,)
     model_frame = observations[0].model_frame
 
-    for obs in observations:
-        # extract model for every component
-        morphs = []
-        parameters = []
-        update_of = []
-        for i, src in enumerate(sources):
-            if isinstance(src, CombinedComponent):
-                components = src.children
-            else:
-                components = (src,)
-            for j, c in enumerate(components):
-                p = c.get_parameter(
-                    "spectrum"
-                )  # returns None of c doesn't have parameter "spectrum"
-                parameters.append(p)
-                model = obs.render(c.get_model(frame=model_frame))
-                # correct for different flux in channels to have flat-spectrum component
-                if p is not None:
-                    model /= obs.renderer.map_channels(p)[:, None, None]
-                # check for models with identical initializations, see #282
-                # if duplicate: remove morph[k] from linear fit, but keep track of parameters[k]
-                # to set spectrum later: update_of: component index -> updated spectrum index
-                K_ = len(morphs)
-                update_of.append(K_)
-                for l in range(K_):
-                    if np.allclose(model, morphs[l]):
-                        update_of[-1] = l
-                        message = f"Source {i}, Component {j} has a model identical to another component.\n"
-                        message += "This is likely not intended, and the source/component should be deleted. "
-                        message += "Spectra will be identical."
-                        logger.warning(message)
-                if update_of[-1] == K_:
-                    morphs.append(model)
-        morphs = np.array(morphs)
+    # extract multi-channel model for every non-degenerate component
+    parameters = []
+    update_of = []
+    models = []
+    for i, src in enumerate(sources):
+        if isinstance(src, CombinedComponent):
+            components = src.children
+        else:
+            components = (src,)
 
+        for j, c in enumerate(components):
+            p = c.get_parameter(
+                "spectrum"
+            )  # returns None of c doesn't have parameter "spectrum"
+            parameters.append(p)
+            # correct for different flux in channels to have flat-spectrum component
+            if p is not None and not p.fixed:
+                p[:] = 1
+            model = c.get_model(frame=model_frame)
+
+            # check for models with identical initializations, see #282
+            # if duplicate: remove morph[k] from linear fit, but keep track of parameters[k]
+            # to set spectrum later: update_of: component index -> updated spectrum index
+            K_ = len(models)
+            update_of.append(K_)
+            for l in range(K_):
+                if np.allclose(model, models[l]):
+                    update_of[-1] = l
+                    message = f"Source {i}, Component {j} has a model identical to another component.\n"
+                    message += "This is likely not intended, and the source/component should be deleted. "
+                    message += "Spectra will be identical."
+                    logger.warning(message)
+            if update_of[-1] == K_:
+                models.append(model)
+    models = np.array(models)
+    K = len(parameters)
+    K_ = len(models)
+
+    for obs in observations:
         # independent channels, no mixing
         # solve the linear inverse problem of the amplitudes in every channel
         # given all the rendered morphologies
         # spectrum = (M^T Sigma^-1 M)^-1 M^T Sigma^-1 * im
-        K = len(parameters)
-        K_ = len(morphs)
         C = obs.C
         images = obs.data
         weights = obs.weights
+        morphs = np.stack([obs.render(model) for model in models], axis=0)
         spectra = np.zeros((K_, C))
         for c in range(C):
             im = images[c].reshape(-1)
@@ -574,12 +577,9 @@ def set_spectra_to_match(sources, observations):
 
         # update the parameters with the best-fit spectrum solution
         for k, p in enumerate(parameters):
-            if p is None:
-                continue
-            if p.fixed:
-                continue
-            l = update_of[k]
-            obs.renderer.map_channels(p)[:] = spectra[l]
+            if p is not None and not p.fixed:
+                l = update_of[k]
+                obs.renderer.map_channels(p)[:] = spectra[l]
 
     # enforce constraints
     for p in parameters:
