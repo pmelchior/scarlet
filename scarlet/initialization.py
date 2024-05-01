@@ -216,29 +216,28 @@ def build_initialization_image(observations, spectra=None):
     Parameters
     ----------
     observations: list of `~scarlet.observation.Observation`
-        Every observation with a suitable renderer will contribute to the initialization image, according to the noise level of its data
-    spectra: list of array
-        for every observation: spectrum at the center of the source
-        If not set, assumes flat spectrum
+        Every observation with a suitable renderer will contribute to the initialization image,
+        according to its noise level.
+    spectra: list of arrays
+        for every observation: source spectrum to optimize for. If not set, assumes flat spectrum.
 
     Returns
     -------
     image: array
-        image created by weighting all of the channels by spectrum
-    std: float
+        image created by weighting all channels by spectrum
+    std: array
         the effective noise standard deviation of `image`
     """
 
     if not hasattr(observations, "__iter__"):
         observations = (observations,)
-        if spectra is not None:
-            spectra = (spectra,)
+        spectra = (spectra,)
     assert len(observations) == len(spectra)
 
     model_frame = observations[0].model_frame
 
     # check if detection images are stored in obs[0]
-    # stoing in an obs avoids using the cache (see issue 256)
+    # storing in an obs avoids using the cache (see issue 256)
     if not hasattr(observations[0], "_detect"):
         # if not, map every obs and variance onto the model frame
         detect, var = [], []
@@ -510,59 +509,79 @@ def set_spectra_to_match(sources, observations):
     model_frame = observations[0].model_frame
 
     for obs in observations:
-
         # extract model for every component
         morphs = []
         parameters = []
-        for src in sources:
+        update_of = []
+        for i, src in enumerate(sources):
             if isinstance(src, CombinedComponent):
                 components = src.children
             else:
                 components = (src,)
-            for c in components:
-                if isinstance(c, FactorizedComponent):
-                    p = c.parameters[0]
-                    if not p.fixed:
-                        obs.renderer.map_channels(p)[:] = 1
-                        parameters.append(p)
-                        model_ = obs.render(c.get_model(frame=model_frame))
-                        morphs.append(model_)
-
+            for j, c in enumerate(components):
+                p = c.get_parameter(
+                    "spectrum"
+                )  # returns None of c doesn't have parameter "spectrum"
+                parameters.append(p)
+                model = obs.render(c.get_model(frame=model_frame))
+                # correct for different flux in channels to have flat-spectrum component
+                if p is not None:
+                    model /= obs.renderer.map_channels(p)[:, None, None]
+                # check for models with identical initializations, see #282
+                # if duplicate: remove morph[k] from linear fit, but keep track of parameters[k]
+                # to set spectrum later: update_of: component index -> updated spectrum index
+                K_ = len(morphs)
+                update_of.append(K_)
+                for l in range(K_):
+                    if np.allclose(model, morphs[l]):
+                        update_of[-1] = l
+                        message = f"Source {i}, Component {j} has a model identical to another component.\n"
+                        message += "This is likely not intended, and the source/component should be deleted. "
+                        message += "Spectra will be identical."
+                        logger.warning(message)
+                if update_of[-1] == K_:
+                    morphs.append(model)
         morphs = np.array(morphs)
-        K = len(morphs)
-
-        images = obs.data
-        weights = obs.weights
-        C = obs.C
 
         # independent channels, no mixing
         # solve the linear inverse problem of the amplitudes in every channel
         # given all the rendered morphologies
         # spectrum = (M^T Sigma^-1 M)^-1 M^T Sigma^-1 * im
-        spectra = np.zeros((K, C))
+        K = len(parameters)
+        K_ = len(morphs)
+        C = obs.C
+        images = obs.data
+        weights = obs.weights
+        spectra = np.zeros((K_, C))
         for c in range(C):
             im = images[c].reshape(-1)
             w = weights[c].reshape(-1)
-            m = morphs[:, c, :, :].reshape(K, -1)
+            m = morphs[:, c, :, :].reshape(K_, -1)
             mw = m * w[None, :]
             # check if all components have nonzero flux in c.
-            # because of convolutions, flux can be outside of the box,
-            # so we need to compare weighted flu with unweighted flux,
-            # which is the same (up to a constant) for constant weights
+            # because of convolutions, flux can be outside the box,
+            # so we need to compare weighted flux with unweighted flux,
+            # which is the same (up to a constant) for constant weights.
             # so we check if *most* of the flux is from pixels with non-zero weight
             nonzero = np.sum(mw, axis=1) / np.sum(m, axis=1) / np.mean(w) > 0.1
             nonzero = np.flatnonzero(nonzero)
-            if len(nonzero) == K:
+            if len(nonzero) == K_:
                 covar = np.linalg.inv(mw @ m.T)
                 spectra[:, c] = covar @ m @ (im * w)
             else:
                 covar = np.linalg.inv(mw[nonzero] @ m[nonzero].T)
                 spectra[nonzero, c] = covar @ m[nonzero] @ (im * w)
 
-        for p, spectrum in zip(parameters, spectra):
-            obs.renderer.map_channels(p)[:] = spectrum
+        # update the parameters with the best-fit spectrum solution
+        for k, p in enumerate(parameters):
+            if p is None:
+                continue
+            if p.fixed:
+                continue
+            l = update_of[k]
+            obs.renderer.map_channels(p)[:] = spectra[l]
 
     # enforce constraints
     for p in parameters:
-        if p.constraint is not None:
+        if p is not None and p.constraint is not None:
             p[:] = p.constraint(p, 0)
