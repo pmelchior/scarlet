@@ -1,5 +1,5 @@
 # Simple workflow for deploying static content to GitHub Pages
-name: Deploy static content to Pages
+name: Deploy Sphinx Docs to Pages
 
 on:
   # Runs on pushes targeting the default branch
@@ -35,6 +35,7 @@ jobs:
       - name: Sphinx Build
         uses: ammaraskar/sphinx-action@master
         with:
+          pre-build-command: "apt-get update -y && apt-get install -y nbconvert mistune"
           build-command: "make docs"
           docs-folder: "docs/"
       - name: Upload artifact
