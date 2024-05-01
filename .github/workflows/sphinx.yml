@@ -35,7 +35,7 @@ jobs:
       - name: Sphinx Build
         uses: ammaraskar/sphinx-action@master
         with:
-          pre-build-command: "apt-get update -y && apt-get install -y nbconvert mistune"
+          pre-build-command: "apt-get update -y && apt-get install -y nbconvert mistune nbsphinx"
           build-command: "make docs"
           docs-folder: "docs/"
       - name: Upload artifact
