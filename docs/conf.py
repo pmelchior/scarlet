@@ -59,7 +59,7 @@ master_doc = "index"
 
 # General information about the project.
 project = "scarlet"
-copyright = "2018-2021, Fred Moolekamp and Peter Melchior"
+copyright = "2018-2024, Fred Moolekamp and Peter Melchior"
 author = "Fred Moolekamp and Peter Melchior"
 
 # The version info for the project you're documenting, acts as replacement for
