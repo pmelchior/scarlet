@@ -306,7 +306,7 @@ def init_all_sources(
     model will be kept, otherwise one component is removed and the source reinitialized.
     If a source cannot be initialized, its index is returned in `skipped`.
 
-    See `~init_sources` for a description of the arguments
+    See `~init_source` for a description of the arguments
 
     Parameters
     ----------
@@ -404,8 +404,7 @@ def init_source(
         The `Observation` that contains the images, weights, and PSF
         used to generate the model.
     thresh : `float`
-        Fraction of the background to use as a threshold for
-        each pixel in the initialization
+        Multiple of the backround RMS used as a flux cutoff for morphology initialization
     max_components : int
         The maximum number of components in a source.
         If `fallback` is `True` then when
@@ -417,7 +416,9 @@ def init_source(
         The minimum number of components in a source.
         Only relevent for `fallback=True`.
     min_snr: float
-        Mininmum SNR per component to accept the source.
+        Mininmum SNR per component of a multi-component source.
+        If fallback=True, every component needs to have at least min_snr, otherwise the component number will be reduced
+        At last resort, the component is initialized with a PointSource morphology
     shifting : bool
         Whether or not to fit the position of a source.
         This is an expensive operation and is typically only used when
