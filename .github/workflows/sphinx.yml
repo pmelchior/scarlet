@@ -35,13 +35,14 @@ jobs:
       - name: Setup python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.8'
           cache: 'pip' # caching pip dependencies
+          cache-dependency-path: '**/setup.py'
       - run: pip install -e .
       - name: Sphinx Build
         uses: ammaraskar/sphinx-action@master
         with:
-          pre-build-command: "apt-get update -y && apt-get install -y nbconvert mistune nbsphinx"
+          pre-build-command: "apt-get update -y && apt-get install -y nbconvert mistune nbsphinx numpydoc"
           build-command: "make docs"
           docs-folder: "docs/"
       - name: Upload artifact
