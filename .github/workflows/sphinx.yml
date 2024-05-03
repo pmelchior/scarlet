@@ -44,7 +44,7 @@ jobs:
       - name: Sphinx Build
         uses: ammaraskar/sphinx-action@master
         with:
-          pre-build-command: "pip install jinja2==3.0.0 nbconvert mistune nbsphinx numpydoc ipython"
+          pre-build-command: "pip install sphinx>=6.0.0 jinja2==3.0.0 nbconvert mistune nbsphinx numpydoc ipython"
           build-command: "make html"
           docs-folder: "docs/"
       - name: Upload artifact
