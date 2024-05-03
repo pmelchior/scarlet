@@ -32,6 +32,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - run: git fetch --tags
       - name: Setup python
         uses: actions/setup-python@v5
         with:
