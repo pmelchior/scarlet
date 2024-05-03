@@ -39,11 +39,12 @@ jobs:
           python-version: '3.8'
           cache: 'pip' # caching pip dependencies
           cache-dependency-path: '**/setup.py'
+      - run: pip install numpy scipy astropy pybind11 proxmin peigen autograd
       - run: pip install -e .
       - name: Sphinx Build
         uses: ammaraskar/sphinx-action@master
         with:
-          pre-build-command: "apt-get update -y && apt-get install -y nbconvert mistune nbsphinx numpydoc"
+          pre-build-command: "pip install nbconvert mistune nbsphinx numpydoc"
           build-command: "make docs"
           docs-folder: "docs/"
       - name: Upload artifact
