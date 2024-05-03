@@ -40,12 +40,12 @@ jobs:
           cache: 'pip' # caching pip dependencies
           cache-dependency-path: '**/setup.py'
       - run: pip install numpy scipy astropy pybind11 proxmin peigen autograd
-      - run: pip install -e .
+      - run: python setup.py install
       - name: Sphinx Build
         uses: ammaraskar/sphinx-action@master
         with:
           pre-build-command: "pip install nbconvert mistune nbsphinx numpydoc"
-          build-command: "make docs"
+          build-command: "make html"
           docs-folder: "docs/"
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
