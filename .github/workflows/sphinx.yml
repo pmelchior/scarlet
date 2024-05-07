@@ -41,8 +41,8 @@ jobs:
           cache-dependency-path: '**/setup.py'
       - run: python -m pip install --upgrade pip setuptools
       - run: pip install numpy scipy astropy pybind11 proxmin peigen autograd
-      - name: Test numpy import
-        run: python -c "import numpy; print(numpy.__version__)"
+      - name: Test pybind11 import
+        run: python -c "import pybind11; print(pybind11.__version__)"
       - run: pip install .
       - name: Test scarlet import
         run: python -c "import scarlet; print(scarlet.__version__)"
