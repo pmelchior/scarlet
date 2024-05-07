@@ -1,18 +1,16 @@
-
 <!DOCTYPE html>
 
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
 
     <title>scarlet.blend &#8212; scarlet  documentation</title>
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="../_static/alabaster.css" />
     <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
-    <script src="../_static/jquery.js"></script>
-    <script src="../_static/underscore.js"></script>
     <script src="../_static/doctools.js"></script>
+    <script src="../_static/sphinx_highlight.js"></script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <link rel="canonical" href="api/api/scarlet.blend.html" />
     <link rel="index" title="Index" href="../genindex.html" />
@@ -77,7 +75,7 @@
     </form>
     </div>
 </div>
-<script>$('#searchbox').show(0);</script>
+<script>document.getElementById('searchbox').style.display = "block"</script>
         </div>
       </div>
       <div class="documentwrapper">
@@ -87,16 +85,16 @@
           <div class="body" role="main">
             
   <section id="module-scarlet.blend">
-<span id="scarlet-blend"></span><h1>scarlet.blend<a class="headerlink" href="#module-scarlet.blend" title="Permalink to this headline">¶</a></h1>
+<span id="scarlet-blend"></span><h1>scarlet.blend<a class="headerlink" href="#module-scarlet.blend" title="Permalink to this heading">¶</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="scarlet.blend.Blend">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">scarlet.blend.</span></span><span class="sig-name descname"><span class="pre">Blend</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sources</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">observations</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/blend.html#Blend"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.blend.Blend" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="scarlet.component.html#scarlet.component.CombinedComponent" title="scarlet.component.CombinedComponent"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.component.CombinedComponent</span></code></a></p>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">scarlet.blend.</span></span><span class="sig-name descname"><span class="pre">Blend</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sources</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">observations</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/blend.html#Blend"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.blend.Blend" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="scarlet.component.html#scarlet.component.CombinedComponent" title="scarlet.component.CombinedComponent"><code class="xref py py-class docutils literal notranslate"><span class="pre">CombinedComponent</span></code></a></p>
 <p>The blended scene</p>
 <p>The class represents a scene as collection of and provides the functions to
 fit it to data.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Attributes</dt>
+<dt class="field-odd">Attributes<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
 <dt><a class="reference internal" href="#scarlet.blend.Blend.bbox" title="scarlet.blend.Blend.bbox"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bbox</span></code></a></dt><dd><p>Bounding box of the blend</p>
 </dd>
@@ -112,11 +110,7 @@ fit it to data.</p>
 </dd>
 </dl>
 <p class="rubric">Methods</p>
-<table class="longtable docutils align-default">
-<colgroup>
-<col style="width: 10%" />
-<col style="width: 90%" />
-</colgroup>
+<table class="autosummary longtable docutils align-default">
 <tbody>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">check_parameters</span></code>()</p></td>
 <td><p>Check that all parameters have finite elements</p></td>
@@ -143,7 +137,7 @@ fit it to data.</p>
 </table>
 <dl class="py property">
 <dt class="sig sig-object py" id="scarlet.blend.Blend.bbox">
-<em class="property"><span class="pre">property</span> </em><span class="sig-name descname"><span class="pre">bbox</span></span><a class="headerlink" href="#scarlet.blend.Blend.bbox" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">bbox</span></span><a class="headerlink" href="#scarlet.blend.Blend.bbox" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bounding box of the blend</p>
 </dd></dl>
 
@@ -152,7 +146,7 @@ fit it to data.</p>
 <span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">max_iter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">200</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">e_rel</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.001</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_iter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">noise_factor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">alg_kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/blend.html#Blend.fit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.blend.Blend.fit" title="Permalink to this definition">¶</a></dt>
 <dd><p>Fit the model for each source to the data</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
 <dt><strong>max_iter: int</strong></dt><dd><p>Maximum number of iterations if the algorithm doesn’t converge</p>
 </dd>
@@ -172,14 +166,14 @@ fit it to data.</p>
 <span class="sig-name descname"><span class="pre">get_model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">parameters</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frame</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/blend.html#Blend.get_model"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.blend.Blend.get_model" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get the model of the entire blend</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
 <dt><strong>parameters: tuple of optimization parameters</strong></dt><dd></dd>
 <dt><strong>frame:  `scarlet.Frame`</strong></dt><dd><p>Alternative Frame to project the model into</p>
 </dd>
 </dl>
 </dd>
-<dt class="field-even">Returns</dt>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><dl class="simple">
 <dt>model: array</dt><dd><p>(Bands, Height, Width) data cube</p>
 </dd>
@@ -190,12 +184,12 @@ fit it to data.</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="scarlet.blend.Blend.log_likelihood">
-<em class="property"><span class="pre">property</span> </em><span class="sig-name descname"><span class="pre">log_likelihood</span></span><a class="headerlink" href="#scarlet.blend.Blend.log_likelihood" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">log_likelihood</span></span><a class="headerlink" href="#scarlet.blend.Blend.log_likelihood" title="Permalink to this definition">¶</a></dt>
 <dd><p>Log likelihood at each iteration</p>
 <p>The fitting method computes and sums the negative log-likelihood for the each
 observation given the current model as loss function for the optimization.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Returns</dt>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
 <dt>log_likelihood: array of (positive) log-likelihood</dt><dd></dd>
 </dl>
@@ -215,11 +209,11 @@ observation given the current model as loss function for the optimization.</p>
     <div class="clearer"></div>
   </div>
     <div class="footer">
-      &copy;2018-2021, Fred Moolekamp and Peter Melchior.
+      &copy;2018-2024, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.1.2</a>
-      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 7.0.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.13</a>
       
       |
       <a href="../_sources/api/scarlet.blend.rst"

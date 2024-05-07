@@ -1,18 +1,16 @@
-
 <!DOCTYPE html>
 
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
 
     <title>Tutorials &#8212; scarlet  documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css" />
     <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-    <script src="_static/jquery.js"></script>
-    <script src="_static/underscore.js"></script>
     <script src="_static/doctools.js"></script>
+    <script src="_static/sphinx_highlight.js"></script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <link rel="canonical" href="api/tutorials.html" />
     <link rel="index" title="Index" href="genindex.html" />
@@ -43,6 +41,8 @@
 <li class="toctree-l2"><a class="reference internal" href="tutorials/point_source.html">Point Source Tutorial</a></li>
 <li class="toctree-l2"><a class="reference internal" href="tutorials/wavelet_model.html">Starlet Tutorial: Modeling a Low Surface Brightness Galaxy</a></li>
 <li class="toctree-l2"><a class="reference internal" href="tutorials/multiresolution.html">Multi-Resolution Tutorial</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/lite.html">Scarlet Lite Tutorial</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/multiscale_deblending.html">Multiscale deblending tutorial</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="api/scarlet.html">API Documentation</a></li>
@@ -58,7 +58,7 @@
     </form>
     </div>
 </div>
-<script>$('#searchbox').show(0);</script>
+<script>document.getElementById('searchbox').style.display = "block"</script>
         </div>
       </div>
       <div class="documentwrapper">
@@ -68,7 +68,7 @@
           <div class="body" role="main">
             
   <section id="tutorials">
-<h1>Tutorials<a class="headerlink" href="#tutorials" title="Permalink to this headline">¶</a></h1>
+<h1>Tutorials<a class="headerlink" href="#tutorials" title="Permalink to this heading">¶</a></h1>
 <div class="toctree-wrapper compound">
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="tutorials/display.html">Displaying Scenes</a><ul>
@@ -101,6 +101,20 @@
 <li class="toctree-l2"><a class="reference internal" href="tutorials/multiresolution.html#Fit-Model">Fit Model</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/lite.html">Scarlet Lite Tutorial</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/lite.html#Design">Design</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/lite.html#Initialization">Initialization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/lite.html#Fitting">Fitting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/lite.html#Displaying-the-results">Displaying the results</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/multiscale_deblending.html">Multiscale deblending tutorial</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/multiscale_deblending.html#Load-a-test-dataset">Load a test dataset</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/multiscale_deblending.html#Vanilla-scarlet-lite">Vanilla scarlet lite</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/multiscale_deblending.html#Using-wavelets-to-calculate-the-loss-function">Using wavelets to calculate the loss function</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/multiscale_deblending.html#Use-source-models-with-wavelet-coefficients">Use source models with wavelet coefficients</a></li>
+</ul>
+</li>
 </ul>
 </div>
 </section>
@@ -113,11 +127,11 @@
     <div class="clearer"></div>
   </div>
     <div class="footer">
-      &copy;2018-2021, Fred Moolekamp and Peter Melchior.
+      &copy;2018-2024, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.1.2</a>
-      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 7.0.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.13</a>
       
       |
       <a href="_sources/tutorials.rst"

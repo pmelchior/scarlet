@@ -1,21 +1,20 @@
-
 <!DOCTYPE html>
 
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
 
     <title>Starlet Tutorial: Modeling a Low Surface Brightness Galaxy &#8212; scarlet  documentation</title>
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="../_static/alabaster.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/nbsphinx-code-cells.css" />
     <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
-    <script src="../_static/jquery.js"></script>
-    <script src="../_static/underscore.js"></script>
     <script src="../_static/doctools.js"></script>
+    <script src="../_static/sphinx_highlight.js"></script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
-    <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "document", "processHtmlClass": "math|output_area"}}</script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <link rel="canonical" href="api/tutorials/wavelet_model.html" />
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
@@ -45,6 +44,8 @@
 <li class="toctree-l2"><a class="reference internal" href="point_source.html">Point Source Tutorial</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">Starlet Tutorial: Modeling a Low Surface Brightness Galaxy</a></li>
 <li class="toctree-l2"><a class="reference internal" href="multiresolution.html">Multi-Resolution Tutorial</a></li>
+<li class="toctree-l2"><a class="reference internal" href="lite.html">Scarlet Lite Tutorial</a></li>
+<li class="toctree-l2"><a class="reference internal" href="multiscale_deblending.html">Multiscale deblending tutorial</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../api/scarlet.html">API Documentation</a></li>
@@ -60,7 +61,7 @@
     </form>
     </div>
 </div>
-<script>$('#searchbox').show(0);</script>
+<script>document.getElementById('searchbox').style.display = "block"</script>
         </div>
       </div>
       <div class="documentwrapper">
@@ -69,267 +70,18 @@
 
           <div class="body" role="main">
             
-  
-<style>
-/* CSS for nbsphinx extension */
-
-/* remove conflicting styling from Sphinx themes */
-div.nbinput.container div.prompt *,
-div.nboutput.container div.prompt *,
-div.nbinput.container div.input_area pre,
-div.nboutput.container div.output_area pre,
-div.nbinput.container div.input_area .highlight,
-div.nboutput.container div.output_area .highlight {
-    border: none;
-    padding: 0;
-    margin: 0;
-    box-shadow: none;
-}
-
-div.nbinput.container > div[class*=highlight],
-div.nboutput.container > div[class*=highlight] {
-    margin: 0;
-}
-
-div.nbinput.container div.prompt *,
-div.nboutput.container div.prompt * {
-    background: none;
-}
-
-div.nboutput.container div.output_area .highlight,
-div.nboutput.container div.output_area pre {
-    background: unset;
-}
-
-div.nboutput.container div.output_area div.highlight {
-    color: unset;  /* override Pygments text color */
-}
-
-/* avoid gaps between output lines */
-div.nboutput.container div[class*=highlight] pre {
-    line-height: normal;
-}
-
-/* input/output containers */
-div.nbinput.container,
-div.nboutput.container {
-    display: -webkit-flex;
-    display: flex;
-    align-items: flex-start;
-    margin: 0;
-    width: 100%;
-}
-@media (max-width: 540px) {
-    div.nbinput.container,
-    div.nboutput.container {
-        flex-direction: column;
-    }
-}
-
-/* input container */
-div.nbinput.container {
-    padding-top: 5px;
-}
-
-/* last container */
-div.nblast.container {
-    padding-bottom: 5px;
-}
-
-/* input prompt */
-div.nbinput.container div.prompt pre {
-    color: #307FC1;
-}
-
-/* output prompt */
-div.nboutput.container div.prompt pre {
-    color: #BF5B3D;
-}
-
-/* all prompts */
-div.nbinput.container div.prompt,
-div.nboutput.container div.prompt {
-    width: 4.5ex;
-    padding-top: 5px;
-    position: relative;
-    user-select: none;
-}
-
-div.nbinput.container div.prompt > div,
-div.nboutput.container div.prompt > div {
-    position: absolute;
-    right: 0;
-    margin-right: 0.3ex;
-}
-
-@media (max-width: 540px) {
-    div.nbinput.container div.prompt,
-    div.nboutput.container div.prompt {
-        width: unset;
-        text-align: left;
-        padding: 0.4em;
-    }
-    div.nboutput.container div.prompt.empty {
-        padding: 0;
-    }
-
-    div.nbinput.container div.prompt > div,
-    div.nboutput.container div.prompt > div {
-        position: unset;
-    }
-}
-
-/* disable scrollbars on prompts */
-div.nbinput.container div.prompt pre,
-div.nboutput.container div.prompt pre {
-    overflow: hidden;
-}
-
-/* input/output area */
-div.nbinput.container div.input_area,
-div.nboutput.container div.output_area {
-    -webkit-flex: 1;
-    flex: 1;
-    overflow: auto;
-}
-@media (max-width: 540px) {
-    div.nbinput.container div.input_area,
-    div.nboutput.container div.output_area {
-        width: 100%;
-    }
-}
-
-/* input area */
-div.nbinput.container div.input_area {
-    border: 1px solid #e0e0e0;
-    border-radius: 2px;
-    /*background: #f5f5f5;*/
-}
-
-/* override MathJax center alignment in output cells */
-div.nboutput.container div[class*=MathJax] {
-    text-align: left !important;
-}
-
-/* override sphinx.ext.imgmath center alignment in output cells */
-div.nboutput.container div.math p {
-    text-align: left;
-}
-
-/* standard error */
-div.nboutput.container div.output_area.stderr {
-    background: #fdd;
-}
-
-/* ANSI colors */
-.ansi-black-fg { color: #3E424D; }
-.ansi-black-bg { background-color: #3E424D; }
-.ansi-black-intense-fg { color: #282C36; }
-.ansi-black-intense-bg { background-color: #282C36; }
-.ansi-red-fg { color: #E75C58; }
-.ansi-red-bg { background-color: #E75C58; }
-.ansi-red-intense-fg { color: #B22B31; }
-.ansi-red-intense-bg { background-color: #B22B31; }
-.ansi-green-fg { color: #00A250; }
-.ansi-green-bg { background-color: #00A250; }
-.ansi-green-intense-fg { color: #007427; }
-.ansi-green-intense-bg { background-color: #007427; }
-.ansi-yellow-fg { color: #DDB62B; }
-.ansi-yellow-bg { background-color: #DDB62B; }
-.ansi-yellow-intense-fg { color: #B27D12; }
-.ansi-yellow-intense-bg { background-color: #B27D12; }
-.ansi-blue-fg { color: #208FFB; }
-.ansi-blue-bg { background-color: #208FFB; }
-.ansi-blue-intense-fg { color: #0065CA; }
-.ansi-blue-intense-bg { background-color: #0065CA; }
-.ansi-magenta-fg { color: #D160C4; }
-.ansi-magenta-bg { background-color: #D160C4; }
-.ansi-magenta-intense-fg { color: #A03196; }
-.ansi-magenta-intense-bg { background-color: #A03196; }
-.ansi-cyan-fg { color: #60C6C8; }
-.ansi-cyan-bg { background-color: #60C6C8; }
-.ansi-cyan-intense-fg { color: #258F8F; }
-.ansi-cyan-intense-bg { background-color: #258F8F; }
-.ansi-white-fg { color: #C5C1B4; }
-.ansi-white-bg { background-color: #C5C1B4; }
-.ansi-white-intense-fg { color: #A1A6B2; }
-.ansi-white-intense-bg { background-color: #A1A6B2; }
-
-.ansi-default-inverse-fg { color: #FFFFFF; }
-.ansi-default-inverse-bg { background-color: #000000; }
-
-.ansi-bold { font-weight: bold; }
-.ansi-underline { text-decoration: underline; }
-
-
-div.nbinput.container div.input_area div[class*=highlight] > pre,
-div.nboutput.container div.output_area div[class*=highlight] > pre,
-div.nboutput.container div.output_area div[class*=highlight].math,
-div.nboutput.container div.output_area.rendered_html,
-div.nboutput.container div.output_area > div.output_javascript,
-div.nboutput.container div.output_area:not(.rendered_html) > img{
-    padding: 5px;
-    margin: 0;
-}
-
-/* fix copybtn overflow problem in chromium (needed for 'sphinx_copybutton') */
-div.nbinput.container div.input_area > div[class^='highlight'],
-div.nboutput.container div.output_area > div[class^='highlight']{
-    overflow-y: hidden;
-}
-
-/* hide copybtn icon on prompts (needed for 'sphinx_copybutton') */
-.prompt a.copybtn {
-    display: none;
-}
-
-/* Some additional styling taken form the Jupyter notebook CSS */
-div.rendered_html table {
-  border: none;
-  border-collapse: collapse;
-  border-spacing: 0;
-  color: black;
-  font-size: 12px;
-  table-layout: fixed;
-}
-div.rendered_html thead {
-  border-bottom: 1px solid black;
-  vertical-align: bottom;
-}
-div.rendered_html tr,
-div.rendered_html th,
-div.rendered_html td {
-  text-align: right;
-  vertical-align: middle;
-  padding: 0.5em 0.5em;
-  line-height: normal;
-  white-space: normal;
-  max-width: none;
-  border: none;
-}
-div.rendered_html th {
-  font-weight: bold;
-}
-div.rendered_html tbody tr:nth-child(odd) {
-  background: #f5f5f5;
-}
-div.rendered_html tbody tr:hover {
-  background: rgba(66, 165, 245, 0.2);
-}
-</style>
-<section id="Starlet-Tutorial:-Modeling-a-Low-Surface-Brightness-Galaxy">
-<h1>Starlet Tutorial: Modeling a Low Surface Brightness Galaxy<a class="headerlink" href="#Starlet-Tutorial:-Modeling-a-Low-Surface-Brightness-Galaxy" title="Permalink to this headline">¶</a></h1>
+  <section id="Starlet-Tutorial:-Modeling-a-Low-Surface-Brightness-Galaxy">
+<h1>Starlet Tutorial: Modeling a Low Surface Brightness Galaxy<a class="headerlink" href="#Starlet-Tutorial:-Modeling-a-Low-Surface-Brightness-Galaxy" title="Permalink to this heading">¶</a></h1>
 <p>This tutorial goes through a case where the default <code class="docutils literal notranslate"><span class="pre">ExtendedSource</span></code> models will struggle: a complex low surface brightness galaxy.</p>
 <section id="A-word-on-starlets">
-<h2>A word on starlets<a class="headerlink" href="#A-word-on-starlets" title="Permalink to this headline">¶</a></h2>
+<h2>A word on starlets<a class="headerlink" href="#A-word-on-starlets" title="Permalink to this heading">¶</a></h2>
 <p>Starlets have the flexibility to represent any pixelated 2-D profile. We take advantage of this property and use starlets to model sources with features that are too complex to be modeled with only assumptions of symmetry or monotonicity, such as irregular galaxies and spiral galaxies.</p>
 <p>But first, the usual incantation:</p>
 <div class="nbinput nblast docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
-<span></span><span class="c1"># Import Packages and setup</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Import Packages and setup</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">scarlet</span>
 <span class="kn">import</span> <span class="nn">astropy.io.fits</span> <span class="k">as</span> <span class="nn">fits</span>
@@ -345,14 +97,13 @@ div.rendered_html tbody tr:hover {
 </div>
 </div>
 <section id="Load-and-Display-Data">
-<h3>Load and Display Data<a class="headerlink" href="#Load-and-Display-Data" title="Permalink to this headline">¶</a></h3>
+<h3>Load and Display Data<a class="headerlink" href="#Load-and-Display-Data" title="Permalink to this heading">¶</a></h3>
 <p>We load the data set (an image cube with 5 bands).</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
-<span></span><span class="c1"># Load the sample images</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Load the sample images</span>
 <span class="n">data</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="s2">&quot;../../data/lsbg.pkl&quot;</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">))</span>
 <span class="n">images</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;images&quot;</span><span class="p">]</span>
 <span class="n">filters</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;channels&quot;</span><span class="p">]</span>
@@ -370,32 +121,23 @@ div.rendered_html tbody tr:hover {
 </pre></div>
 </div>
 </div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area stderr docutils container">
-<div class="highlight"><pre>
-WARNING: FITSFixedWarning: The WCS transformation has more axes (2) than the image it is associated with (0) [astropy.wcs.wcs]
-</pre></div></div>
-</div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/tutorials_wavelet_model_4_1.png" src="../_images/tutorials_wavelet_model_4_1.png" />
+<img alt="../_images/tutorials_wavelet_model_4_0.png" src="../_images/tutorials_wavelet_model_4_0.png" />
 </div>
 </div>
 </section>
 </section>
 <section id="Define-Model-Frame-and-Observation">
-<h2>Define Model Frame and Observation<a class="headerlink" href="#Define-Model-Frame-and-Observation" title="Permalink to this headline">¶</a></h2>
+<h2>Define Model Frame and Observation<a class="headerlink" href="#Define-Model-Frame-and-Observation" title="Permalink to this heading">¶</a></h2>
 <p>With this we can fully specify the <code class="docutils literal notranslate"><span class="pre">Frame</span></code> and <code class="docutils literal notranslate"><span class="pre">Observation</span></code>:</p>
 <div class="nbinput nblast docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
-<span></span><span class="n">model_psf</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">GaussianPSF</span><span class="p">(</span><span class="n">sigma</span> <span class="o">=</span> <span class="mf">0.8</span><span class="p">)</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">model_psf</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">GaussianPSF</span><span class="p">(</span><span class="n">sigma</span> <span class="o">=</span> <span class="mf">0.8</span><span class="p">)</span>
 
 <span class="n">model_frame</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">Frame</span><span class="p">(</span>
     <span class="n">images</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span>
@@ -411,14 +153,13 @@ WARNING: FITSFixedWarning: The WCS transformation has more axes (2) than the ima
 </div>
 </section>
 <section id="Detection-Catalog">
-<h2>Detection Catalog<a class="headerlink" href="#Detection-Catalog" title="Permalink to this headline">¶</a></h2>
+<h2>Detection Catalog<a class="headerlink" href="#Detection-Catalog" title="Permalink to this heading">¶</a></h2>
 <p>Because we don’t have a detection catalog, we need to build one. To avoid issues with merging peaks from different scales and false peaks at the lowest scale, we use the second scale for detection. We could use <code class="docutils literal notranslate"><span class="pre">detect</span> <span class="pre">=</span> <span class="pre">scarlet.detect.get_detect_wavelets(images,</span> <span class="pre">variance=0.1,</span> <span class="pre">scales=3)</span></code> to build a single band detection image, but we expand that method here to illustrate how to use starlet transforms in scarlet.</p>
 <div class="nbinput nblast docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
-<span></span><span class="c1"># Create a detection image by summing the images in all bands</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Create a detection image by summing the images in all bands</span>
 <span class="c1"># (a more rigorous approach would be to create a chi^2 coadd).</span>
 <span class="n">detect_image</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">images</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
 <span class="c1"># Define a rough standard deviation for the image.</span>
@@ -439,14 +180,13 @@ WARNING: FITSFixedWarning: The WCS transformation has more axes (2) than the ima
 </pre></div>
 </div>
 </div>
-<p>We created two different sets of wavelet coefficents above. The first is the set of wavelet coeffiecients in the first three scales (and the residual image with lower frequency flux) and second is only those coefficients that are determined to be “significant” according to the algorithm in Starck et al. 2011.</p>
+<p>We created two different sets of wavelet coefficents above. The first is the set of wavelet coeffiecients in the first three scales (and the residual image with lower frequency flux) and second is only those coefficients that are determined to be “significant” according to the algorithm in Starck et al. 2011.</p>
 <p>Below we view both sets of coefficents, and compare the reconstruction of the full set of wavelet coefficients with the input image.</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
-<span></span><span class="c1"># Display the detection coefficients</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Display the detection coefficients</span>
 <span class="n">lvl</span> <span class="o">=</span> <span class="n">detect</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span> <span class="o">=</span> <span class="p">(</span><span class="n">lvl</span><span class="o">*</span><span class="mi">5</span><span class="o">+</span><span class="mi">5</span><span class="p">,</span><span class="mi">5</span><span class="p">))</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">suptitle</span><span class="p">(</span><span class="s1">&#39;Wavelet coefficients&#39;</span><span class="p">)</span>
@@ -524,8 +264,7 @@ WARNING: FITSFixedWarning: The WCS transformation has more axes (2) than the ima
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
-<span></span><span class="kn">from</span> <span class="nn">scarlet.detect_pybind11</span> <span class="kn">import</span> <span class="n">get_footprints</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">scarlet.detect_pybind11</span> <span class="kn">import</span> <span class="n">get_footprints</span>
 
 <span class="c1"># Calculate isolated footprints and their maxima</span>
 <span class="c1"># in the 2nd wavelet scale.</span>
@@ -557,15 +296,14 @@ WARNING: FITSFixedWarning: The WCS transformation has more axes (2) than the ima
 </div>
 </div>
 <section id="Model-with-Starlet-Components">
-<h3>Model with Starlet Components<a class="headerlink" href="#Model-with-Starlet-Components" title="Permalink to this headline">¶</a></h3>
+<h3>Model with Starlet Components<a class="headerlink" href="#Model-with-Starlet-Components" title="Permalink to this heading">¶</a></h3>
 <p>The extended diffuse emission wasn’t detected as level 2 as a distinct single peak. Instead, we have a collection of many peaks, some of which are likely part of the LSB, but it’s hard to tell from a visual inspection.</p>
 <p>We’ll model every detected peak as <code class="docutils literal notranslate"><span class="pre">ExtendedSource</span></code> and add a <code class="docutils literal notranslate"><span class="pre">StarletSource</span></code> to pick up the diffuse emission. In a second step below, we’ll merge source that have very similar color to the diffuse light.</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
-<span></span><span class="n">centers</span> <span class="o">=</span> <span class="p">[(</span><span class="n">peak</span><span class="o">.</span><span class="n">y</span><span class="p">,</span> <span class="n">peak</span><span class="o">.</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">peak</span> <span class="ow">in</span> <span class="n">peaks</span><span class="p">]</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">centers</span> <span class="o">=</span> <span class="p">[(</span><span class="n">peak</span><span class="o">.</span><span class="n">y</span><span class="p">,</span> <span class="n">peak</span><span class="o">.</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">peak</span> <span class="ow">in</span> <span class="n">peaks</span><span class="p">]</span>
 <span class="n">sources</span><span class="p">,</span> <span class="n">skipped</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">initialization</span><span class="o">.</span><span class="n">init_all_sources</span><span class="p">(</span><span class="n">model_frame</span><span class="p">,</span>
                                                            <span class="n">centers</span><span class="p">,</span>
                                                            <span class="n">observation</span><span class="p">,</span>
@@ -595,14 +333,13 @@ No flux in morphology model for source at (135, 189)
 </section>
 </section>
 <section id="Create-and-Fit-Model">
-<h2>Create and Fit Model<a class="headerlink" href="#Create-and-Fit-Model" title="Permalink to this headline">¶</a></h2>
+<h2>Create and Fit Model<a class="headerlink" href="#Create-and-Fit-Model" title="Permalink to this heading">¶</a></h2>
 <p>The <code class="docutils literal notranslate"><span class="pre">Blend</span></code> class represents the sources as a tree and has the machinery to fit all of the sources to the given images. In this example the code is set to run for a maximum of 200 iterations, but will end early if the likelihood and all of the constraints converge.</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
-<span></span><span class="n">blend</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">Blend</span><span class="p">(</span><span class="n">sources</span><span class="p">,</span> <span class="n">observation</span><span class="p">)</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">blend</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">Blend</span><span class="p">(</span><span class="n">sources</span><span class="p">,</span> <span class="n">observation</span><span class="p">)</span>
 <span class="o">%</span><span class="k">time</span> it, logL = blend.fit(200, e_rel=1e-6)
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;scarlet ran for </span><span class="si">{</span><span class="n">it</span><span class="si">}</span><span class="s2"> iterations to logL = </span><span class="si">{</span><span class="n">logL</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 <span class="n">scarlet</span><span class="o">.</span><span class="n">display</span><span class="o">.</span><span class="n">show_likelihood</span><span class="p">(</span><span class="n">blend</span><span class="p">)</span>
@@ -615,9 +352,9 @@ No flux in morphology model for source at (135, 189)
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-CPU times: user 37 s, sys: 1.67 s, total: 38.7 s
-Wall time: 38.7 s
-scarlet ran for 200 iterations to logL = -169688.37993673192
+CPU times: user 6 s, sys: 438 ms, total: 6.43 s
+Wall time: 6.51 s
+scarlet ran for 68 iterations to logL = -169726.5444346594
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">
@@ -629,14 +366,13 @@ scarlet ran for 200 iterations to logL = -169688.37993673192
 </div>
 </section>
 <section id="View-Full-Scene">
-<h2>View Full Scene<a class="headerlink" href="#View-Full-Scene" title="Permalink to this headline">¶</a></h2>
+<h2>View Full Scene<a class="headerlink" href="#View-Full-Scene" title="Permalink to this heading">¶</a></h2>
 <p>We use <code class="docutils literal notranslate"><span class="pre">scarlet.display.show_scene</span></code> to render the entire scene. It shows model and data with the same <span class="math notranslate nohighlight">\(sinh^{-1}\)</span> stretch and the residuals with a linear stretch.</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
-<span></span><span class="n">scarlet</span><span class="o">.</span><span class="n">display</span><span class="o">.</span><span class="n">show_scene</span><span class="p">(</span><span class="n">sources</span><span class="p">,</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">scarlet</span><span class="o">.</span><span class="n">display</span><span class="o">.</span><span class="n">show_scene</span><span class="p">(</span><span class="n">sources</span><span class="p">,</span>
                            <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">,</span>
                            <span class="n">observation</span><span class="o">=</span><span class="n">observation</span><span class="p">,</span>
                            <span class="n">show_rendered</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
@@ -656,14 +392,13 @@ scarlet ran for 200 iterations to logL = -169688.37993673192
 </div>
 </section>
 <section id="View-Source-Models">
-<h2>View Source Models<a class="headerlink" href="#View-Source-Models" title="Permalink to this headline">¶</a></h2>
+<h2>View Source Models<a class="headerlink" href="#View-Source-Models" title="Permalink to this heading">¶</a></h2>
 <p>We now inspect the model for each source, in its original frame and in its observed frame by leveraging the <code class="docutils literal notranslate"><span class="pre">show_sources</span></code> method:</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
-<span></span><span class="n">scarlet</span><span class="o">.</span><span class="n">display</span><span class="o">.</span><span class="n">show_sources</span><span class="p">(</span><span class="n">sources</span><span class="p">,</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">scarlet</span><span class="o">.</span><span class="n">display</span><span class="o">.</span><span class="n">show_sources</span><span class="p">(</span><span class="n">sources</span><span class="p">,</span>
                              <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">,</span>
                              <span class="n">observation</span><span class="o">=</span><span class="n">observation</span><span class="p">,</span>
                              <span class="n">show_rendered</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
@@ -683,18 +418,17 @@ scarlet ran for 200 iterations to logL = -169688.37993673192
 </div>
 </section>
 <section id="Subtracting-the-LSBG-components">
-<h2>Subtracting the LSBG components<a class="headerlink" href="#Subtracting-the-LSBG-components" title="Permalink to this headline">¶</a></h2>
+<h2>Subtracting the LSBG components<a class="headerlink" href="#Subtracting-the-LSBG-components" title="Permalink to this heading">¶</a></h2>
 <p>Inspecting the source models above we see that the <code class="docutils literal notranslate"><span class="pre">StarletSource</span></code> indeed picked up a lot of the diffuse emission, but that several other sources have very similar spectrum to the LSB. We’ll find them and combine their models to form what we think is the entire LSB galaxy, peaks as well as diffuse emission:</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
-<span></span><span class="c1"># find all sources with very similar colors to the Starlet source of the diffuse emission</span>
-<span class="n">spectrum</span> <span class="o">=</span> <span class="n">sources</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">spectrum</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># find all sources with very similar colors to the Starlet source of the diffuse emission</span>
+<span class="n">spectrum</span> <span class="o">=</span> <span class="n">sources</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">spectrum</span><span class="o">.</span><span class="n">get_parameter</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
 <span class="n">C</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">sources</span><span class="p">))</span>
 <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="n">src</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">sources</span><span class="p">):</span>
-    <span class="n">spectrum_</span> <span class="o">=</span> <span class="n">src</span><span class="o">.</span><span class="n">spectrum</span>
+    <span class="n">spectrum_</span> <span class="o">=</span> <span class="n">src</span><span class="o">.</span><span class="n">spectrum</span><span class="o">.</span><span class="n">get_parameter</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
     <span class="c1"># cosine similarity</span>
     <span class="n">C</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">spectrum</span> <span class="o">@</span> <span class="n">spectrum_</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">spectrum</span> <span class="o">@</span> <span class="n">spectrum</span><span class="p">)</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">spectrum_</span> <span class="o">@</span> <span class="n">spectrum_</span><span class="p">)</span>
 
@@ -742,11 +476,11 @@ scarlet ran for 200 iterations to logL = -169688.37993673192
     <div class="clearer"></div>
   </div>
     <div class="footer">
-      &copy;2018-2021, Fred Moolekamp and Peter Melchior.
+      &copy;2018-2024, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.1.2</a>
-      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 7.0.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.13</a>
       
       |
       <a href="../_sources/tutorials/wavelet_model.ipynb"

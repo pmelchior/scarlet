@@ -1,21 +1,20 @@
-
 <!DOCTYPE html>
 
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
 
     <title>Quick Start Guide &#8212; scarlet  documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css" />
+    <link rel="stylesheet" type="text/css" href="_static/nbsphinx-code-cells.css" />
     <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-    <script src="_static/jquery.js"></script>
-    <script src="_static/underscore.js"></script>
     <script src="_static/doctools.js"></script>
+    <script src="_static/sphinx_highlight.js"></script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
-    <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "document", "processHtmlClass": "math|output_area"}}</script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <link rel="canonical" href="api/0-quickstart.html" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -61,7 +60,7 @@
     </form>
     </div>
 </div>
-<script>$('#searchbox').show(0);</script>
+<script>document.getElementById('searchbox').style.display = "block"</script>
         </div>
       </div>
       <div class="documentwrapper">
@@ -70,263 +69,14 @@
 
           <div class="body" role="main">
             
-  
-<style>
-/* CSS for nbsphinx extension */
-
-/* remove conflicting styling from Sphinx themes */
-div.nbinput.container div.prompt *,
-div.nboutput.container div.prompt *,
-div.nbinput.container div.input_area pre,
-div.nboutput.container div.output_area pre,
-div.nbinput.container div.input_area .highlight,
-div.nboutput.container div.output_area .highlight {
-    border: none;
-    padding: 0;
-    margin: 0;
-    box-shadow: none;
-}
-
-div.nbinput.container > div[class*=highlight],
-div.nboutput.container > div[class*=highlight] {
-    margin: 0;
-}
-
-div.nbinput.container div.prompt *,
-div.nboutput.container div.prompt * {
-    background: none;
-}
-
-div.nboutput.container div.output_area .highlight,
-div.nboutput.container div.output_area pre {
-    background: unset;
-}
-
-div.nboutput.container div.output_area div.highlight {
-    color: unset;  /* override Pygments text color */
-}
-
-/* avoid gaps between output lines */
-div.nboutput.container div[class*=highlight] pre {
-    line-height: normal;
-}
-
-/* input/output containers */
-div.nbinput.container,
-div.nboutput.container {
-    display: -webkit-flex;
-    display: flex;
-    align-items: flex-start;
-    margin: 0;
-    width: 100%;
-}
-@media (max-width: 540px) {
-    div.nbinput.container,
-    div.nboutput.container {
-        flex-direction: column;
-    }
-}
-
-/* input container */
-div.nbinput.container {
-    padding-top: 5px;
-}
-
-/* last container */
-div.nblast.container {
-    padding-bottom: 5px;
-}
-
-/* input prompt */
-div.nbinput.container div.prompt pre {
-    color: #307FC1;
-}
-
-/* output prompt */
-div.nboutput.container div.prompt pre {
-    color: #BF5B3D;
-}
-
-/* all prompts */
-div.nbinput.container div.prompt,
-div.nboutput.container div.prompt {
-    width: 4.5ex;
-    padding-top: 5px;
-    position: relative;
-    user-select: none;
-}
-
-div.nbinput.container div.prompt > div,
-div.nboutput.container div.prompt > div {
-    position: absolute;
-    right: 0;
-    margin-right: 0.3ex;
-}
-
-@media (max-width: 540px) {
-    div.nbinput.container div.prompt,
-    div.nboutput.container div.prompt {
-        width: unset;
-        text-align: left;
-        padding: 0.4em;
-    }
-    div.nboutput.container div.prompt.empty {
-        padding: 0;
-    }
-
-    div.nbinput.container div.prompt > div,
-    div.nboutput.container div.prompt > div {
-        position: unset;
-    }
-}
-
-/* disable scrollbars on prompts */
-div.nbinput.container div.prompt pre,
-div.nboutput.container div.prompt pre {
-    overflow: hidden;
-}
-
-/* input/output area */
-div.nbinput.container div.input_area,
-div.nboutput.container div.output_area {
-    -webkit-flex: 1;
-    flex: 1;
-    overflow: auto;
-}
-@media (max-width: 540px) {
-    div.nbinput.container div.input_area,
-    div.nboutput.container div.output_area {
-        width: 100%;
-    }
-}
-
-/* input area */
-div.nbinput.container div.input_area {
-    border: 1px solid #e0e0e0;
-    border-radius: 2px;
-    /*background: #f5f5f5;*/
-}
-
-/* override MathJax center alignment in output cells */
-div.nboutput.container div[class*=MathJax] {
-    text-align: left !important;
-}
-
-/* override sphinx.ext.imgmath center alignment in output cells */
-div.nboutput.container div.math p {
-    text-align: left;
-}
-
-/* standard error */
-div.nboutput.container div.output_area.stderr {
-    background: #fdd;
-}
-
-/* ANSI colors */
-.ansi-black-fg { color: #3E424D; }
-.ansi-black-bg { background-color: #3E424D; }
-.ansi-black-intense-fg { color: #282C36; }
-.ansi-black-intense-bg { background-color: #282C36; }
-.ansi-red-fg { color: #E75C58; }
-.ansi-red-bg { background-color: #E75C58; }
-.ansi-red-intense-fg { color: #B22B31; }
-.ansi-red-intense-bg { background-color: #B22B31; }
-.ansi-green-fg { color: #00A250; }
-.ansi-green-bg { background-color: #00A250; }
-.ansi-green-intense-fg { color: #007427; }
-.ansi-green-intense-bg { background-color: #007427; }
-.ansi-yellow-fg { color: #DDB62B; }
-.ansi-yellow-bg { background-color: #DDB62B; }
-.ansi-yellow-intense-fg { color: #B27D12; }
-.ansi-yellow-intense-bg { background-color: #B27D12; }
-.ansi-blue-fg { color: #208FFB; }
-.ansi-blue-bg { background-color: #208FFB; }
-.ansi-blue-intense-fg { color: #0065CA; }
-.ansi-blue-intense-bg { background-color: #0065CA; }
-.ansi-magenta-fg { color: #D160C4; }
-.ansi-magenta-bg { background-color: #D160C4; }
-.ansi-magenta-intense-fg { color: #A03196; }
-.ansi-magenta-intense-bg { background-color: #A03196; }
-.ansi-cyan-fg { color: #60C6C8; }
-.ansi-cyan-bg { background-color: #60C6C8; }
-.ansi-cyan-intense-fg { color: #258F8F; }
-.ansi-cyan-intense-bg { background-color: #258F8F; }
-.ansi-white-fg { color: #C5C1B4; }
-.ansi-white-bg { background-color: #C5C1B4; }
-.ansi-white-intense-fg { color: #A1A6B2; }
-.ansi-white-intense-bg { background-color: #A1A6B2; }
-
-.ansi-default-inverse-fg { color: #FFFFFF; }
-.ansi-default-inverse-bg { background-color: #000000; }
-
-.ansi-bold { font-weight: bold; }
-.ansi-underline { text-decoration: underline; }
-
-
-div.nbinput.container div.input_area div[class*=highlight] > pre,
-div.nboutput.container div.output_area div[class*=highlight] > pre,
-div.nboutput.container div.output_area div[class*=highlight].math,
-div.nboutput.container div.output_area.rendered_html,
-div.nboutput.container div.output_area > div.output_javascript,
-div.nboutput.container div.output_area:not(.rendered_html) > img{
-    padding: 5px;
-    margin: 0;
-}
-
-/* fix copybtn overflow problem in chromium (needed for 'sphinx_copybutton') */
-div.nbinput.container div.input_area > div[class^='highlight'],
-div.nboutput.container div.output_area > div[class^='highlight']{
-    overflow-y: hidden;
-}
-
-/* hide copybtn icon on prompts (needed for 'sphinx_copybutton') */
-.prompt a.copybtn {
-    display: none;
-}
-
-/* Some additional styling taken form the Jupyter notebook CSS */
-div.rendered_html table {
-  border: none;
-  border-collapse: collapse;
-  border-spacing: 0;
-  color: black;
-  font-size: 12px;
-  table-layout: fixed;
-}
-div.rendered_html thead {
-  border-bottom: 1px solid black;
-  vertical-align: bottom;
-}
-div.rendered_html tr,
-div.rendered_html th,
-div.rendered_html td {
-  text-align: right;
-  vertical-align: middle;
-  padding: 0.5em 0.5em;
-  line-height: normal;
-  white-space: normal;
-  max-width: none;
-  border: none;
-}
-div.rendered_html th {
-  font-weight: bold;
-}
-div.rendered_html tbody tr:nth-child(odd) {
-  background: #f5f5f5;
-}
-div.rendered_html tbody tr:hover {
-  background: rgba(66, 165, 245, 0.2);
-}
-</style>
-<section id="Quick-Start-Guide">
-<h1>Quick Start Guide<a class="headerlink" href="#Quick-Start-Guide" title="Permalink to this headline">¶</a></h1>
+  <section id="Quick-Start-Guide">
+<h1>Quick Start Guide<a class="headerlink" href="#Quick-Start-Guide" title="Permalink to this heading">¶</a></h1>
 <p>This tutorial shows how to quickly get started using <em>scarlet</em> to model an hyperspectral image cube. For a more in-depth introduction to <em>scarlet</em>, read the <a class="reference internal" href="1-concepts.html"><span class="doc">Core Concepts</span></a> or the <a class="reference external" href="api/index.rst">API Documentation</a>.</p>
 <div class="nbinput nblast docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
-<span></span><span class="c1"># Import Packages and setup</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Import Packages and setup</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">scarlet</span>
 
@@ -340,14 +90,13 @@ div.rendered_html tbody tr:hover {
 </div>
 </div>
 <section id="Load-and-Display-Data">
-<h2>Load and Display Data<a class="headerlink" href="#Load-and-Display-Data" title="Permalink to this headline">¶</a></h2>
+<h2>Load and Display Data<a class="headerlink" href="#Load-and-Display-Data" title="Permalink to this heading">¶</a></h2>
 <p>We load an example data set (here an image cube with 5 bands) <em>and</em> a detection catalog. If such a catalog is not available, packages like <a class="reference external" href="http://sep.readthedocs.io/">SEP</a> and <a class="reference external" href="https://photutils.readthedocs.io/en/stable/">photutils</a> will happily generate one, but for this example we use part of the detection catalog generated by the <a class="reference external" href="https://github.com/lsst">LSST DM stack</a>.</p>
 <div class="nbinput nblast docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
-<span></span><span class="c1"># Load the sample images</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Load the sample images</span>
 <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">&quot;../data/hsc_cosmos_35.npz&quot;</span><span class="p">)</span>
 <span class="n">images</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;images&quot;</span><span class="p">]</span>
 <span class="n">filters</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;filters&quot;</span><span class="p">]</span>
@@ -362,14 +111,13 @@ div.rendered_html tbody tr:hover {
 <p>Coordinates in <em>scarlet</em> are given in the C/numpy notation (y,x) as opposed to the more conventional mathematical (x,y) ordering.</p>
 </div>
 <section id="Display-Image-Cube">
-<h3>Display Image Cube<a class="headerlink" href="#Display-Image-Cube" title="Permalink to this headline">¶</a></h3>
+<h3>Display Image Cube<a class="headerlink" href="#Display-Image-Cube" title="Permalink to this heading">¶</a></h3>
 <p>This is an example of how to display an RGB image from an image cube of multiband data. In this case the image uses a <span class="math notranslate nohighlight">\(sinh^{-1}\)</span> function to normalize the flux in each filter consistently to create an RGB image.</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
-<span></span><span class="kn">from</span> <span class="nn">scarlet.display</span> <span class="kn">import</span> <span class="n">AsinhMapping</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">scarlet.display</span> <span class="kn">import</span> <span class="n">AsinhMapping</span>
 
 <span class="n">stretch</span> <span class="o">=</span> <span class="mf">0.2</span>
 <span class="n">Q</span> <span class="o">=</span> <span class="mi">10</span>
@@ -391,7 +139,7 @@ div.rendered_html tbody tr:hover {
 </section>
 </section>
 <section id="Define-Model-Frame-and-Observation">
-<h2>Define Model Frame and Observation<a class="headerlink" href="#Define-Model-Frame-and-Observation" title="Permalink to this headline">¶</a></h2>
+<h2>Define Model Frame and Observation<a class="headerlink" href="#Define-Model-Frame-and-Observation" title="Permalink to this heading">¶</a></h2>
 <p>A <code class="docutils literal notranslate"><span class="pre">Frame</span></code> in <em>scarlet</em> is a description of the hyperspectral cube of the model or the observations. Think of it as the metadata, what aspects of the sky are described here. At the least, a <code class="docutils literal notranslate"><span class="pre">Frame</span></code> holds the <code class="docutils literal notranslate"><span class="pre">shape</span></code> of the cube, for which we use the convention <code class="docutils literal notranslate"><span class="pre">(C,</span> <span class="pre">Ny,</span> <span class="pre">Nx)</span></code> for the number of elements in 3 dimensions: <code class="docutils literal notranslate"><span class="pre">C</span></code> for the number of bands/channels and <code class="docutils literal notranslate"><span class="pre">Ny,</span> <span class="pre">Nx</span></code> for the number of pixels at every channel.</p>
 <p>An <code class="docutils literal notranslate"><span class="pre">Observation</span></code> combines a <code class="docutils literal notranslate"><span class="pre">Frame</span></code> with several data units, similar to header-data arrangement in FITS files. In addition to the actual science image cube, you can and often must provide weights for all elements in the data cube, an image cube of the PSF model (one image for all or one for each channel), an <code class="docutils literal notranslate"><span class="pre">astropy.WCS</span></code> structure to translate from pixel to sky coordinates, and labels for all channels. The reason for specifying them is to enable the code to internally map from the model
 frame, in which you seek to fit a model, to the observed data frame.</p>
@@ -404,8 +152,7 @@ frame, in which you seek to fit a model, to the observed data frame.</p>
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
-<span></span><span class="n">model_psf</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">GaussianPSF</span><span class="p">(</span><span class="n">sigma</span><span class="o">=</span><span class="p">(</span><span class="mf">0.8</span><span class="p">,)</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="n">filters</span><span class="p">))</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">model_psf</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">GaussianPSF</span><span class="p">(</span><span class="n">sigma</span><span class="o">=</span><span class="p">(</span><span class="mf">0.8</span><span class="p">,)</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="n">filters</span><span class="p">))</span>
 </pre></div>
 </div>
 </div>
@@ -414,8 +161,7 @@ frame, in which you seek to fit a model, to the observed data frame.</p>
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
-<span></span><span class="n">model_frame</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">Frame</span><span class="p">(</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">model_frame</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">Frame</span><span class="p">(</span>
     <span class="n">images</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span>
     <span class="n">psf</span><span class="o">=</span><span class="n">model_psf</span><span class="p">,</span>
     <span class="n">channels</span><span class="o">=</span><span class="n">filters</span><span class="p">)</span>
@@ -428,7 +174,7 @@ frame, in which you seek to fit a model, to the observed data frame.</p>
 </pre></div>
 </div>
 </div>
-<p>The last command calls the <code class="docutils literal notranslate"><span class="pre">match</span></code> method to compute e.g. PSF difference kernel and filter transformations.</p>
+<p>The last command calls the <code class="docutils literal notranslate"><span class="pre">match</span></code> method to compute e.g. PSF difference kernel and filter transformations.</p>
 <p>We generally recommend this pattern: 1. define model frame 2. construct observation 3. match it to the model frame</p>
 <p>Steps 2 and 3 are combined above using a fluent pattern.</p>
 <p>We can now make use of the convenience function <code class="docutils literal notranslate"><span class="pre">scarlet.display.show_observation</span></code> to plot observations as RGB images, with individual sources labeled at their position on the sky. It can also show the PSF in the same scaling.</p>
@@ -436,8 +182,7 @@ frame, in which you seek to fit a model, to the observed data frame.</p>
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
-<span></span><span class="n">scarlet</span><span class="o">.</span><span class="n">display</span><span class="o">.</span><span class="n">show_observation</span><span class="p">(</span><span class="n">observation</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">,</span> <span class="n">sky_coords</span><span class="o">=</span><span class="n">centers</span><span class="p">,</span> <span class="n">show_psf</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">scarlet</span><span class="o">.</span><span class="n">display</span><span class="o">.</span><span class="n">show_observation</span><span class="p">(</span><span class="n">observation</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">,</span> <span class="n">sky_coords</span><span class="o">=</span><span class="n">centers</span><span class="p">,</span> <span class="n">show_psf</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </pre></div>
 </div>
@@ -449,10 +194,10 @@ frame, in which you seek to fit a model, to the observed data frame.</p>
 <img alt="_images/0-quickstart_15_0.png" src="_images/0-quickstart_15_0.png" />
 </div>
 </div>
-<p>Since we use a trivial <code class="docutils literal notranslate"><span class="pre">wcs</span></code> in this <code class="docutils literal notranslate"><span class="pre">Observation</span></code>, all coordinates are already in image pixels, otherwise RA/Dec pairs are expected as sky coordinates. Also:</p>
+<p>Since we use a trivial <code class="docutils literal notranslate"><span class="pre">wcs</span></code> in this <code class="docutils literal notranslate"><span class="pre">Observation</span></code>, all coordinates are already in image pixels, otherwise RA/Dec pairs are expected as sky coordinates.</p>
 </section>
 <section id="Initialize-sources">
-<h2>Initialize sources<a class="headerlink" href="#Initialize-sources" title="Permalink to this headline">¶</a></h2>
+<h2>Initialize sources<a class="headerlink" href="#Initialize-sources" title="Permalink to this heading">¶</a></h2>
 <p>You now need to define sources that are going to be fit. The full model, which we will call <code class="docutils literal notranslate"><span class="pre">Blend</span></code>, is a collection of those sources. We provide several pre-built source types, e.g.:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">RandomSource</span></code> fits per-band amplitude and non-parametric morphology starting from uniform random draws for both.</p></li>
@@ -465,8 +210,7 @@ frame, in which you seek to fit a model, to the observed data frame.</p>
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
-<span></span><span class="n">sources</span><span class="p">,</span> <span class="n">skipped</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">initialization</span><span class="o">.</span><span class="n">init_all_sources</span><span class="p">(</span><span class="n">model_frame</span><span class="p">,</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">sources</span><span class="p">,</span> <span class="n">skipped</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">initialization</span><span class="o">.</span><span class="n">init_all_sources</span><span class="p">(</span><span class="n">model_frame</span><span class="p">,</span>
                                                            <span class="n">centers</span><span class="p">,</span>
                                                            <span class="n">observation</span><span class="p">,</span>
                                                            <span class="n">max_components</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
@@ -498,62 +242,26 @@ frame, in which you seek to fit a model, to the observed data frame.</p>
 </div>
 <p>We can see that this method chooses multiple (here 2) extended components for the first three sources, a single extended component for sources 3 and 5, and compact ones for the rest.</p>
 <p>If we know something about the scene, we might want to customize the modeling. Let’s assume that we know that object 0 is a star. We could just replace that source with a <code class="docutils literal notranslate"><span class="pre">PointSource</span></code>, but for clarity we rebuild the entire source list, making one change for source 0 and accepting everything else from the default initialization above:</p>
-<div class="nbinput docutils container">
+<p>sources = [] for k,center in enumerate(centers): if k == 0: new_source = scarlet.PointSource(model_frame, center, observation) elif k in [1, 2]: new_source = scarlet.ExtendedSource(model_frame, center, observation, K=2) elif k in [3, 5]: new_source = scarlet.ExtendedSource(model_frame, center, observation, K=1) else: new_source = scarlet.ExtendedSource(model_frame, center, observation, compact=True) sources.append(new_source)</p>
+<p>for k, src in enumerate(sources): print (f”{k}: {src.__class__.__name__}”)</p>
+<p>These sources are initialized independently, with spectra taken from their peak position in the observations. We can make another sweep and determine their spectra such that their superposition best matches the observation. Above, this was done for use by the option <code class="docutils literal notranslate"><span class="pre">set_specta=True</span></code>. But we can call the linear solver directly:</p>
+<div class="nbinput nblast docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
-<span></span><span class="n">sources</span> <span class="o">=</span> <span class="p">[]</span>
-<span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">center</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">centers</span><span class="p">):</span>
-    <span class="k">if</span> <span class="n">k</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-        <span class="n">new_source</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">PointSource</span><span class="p">(</span><span class="n">model_frame</span><span class="p">,</span> <span class="n">center</span><span class="p">,</span> <span class="n">observation</span><span class="p">)</span>
-    <span class="k">elif</span> <span class="n">k</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">]:</span>
-        <span class="n">new_source</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">ExtendedSource</span><span class="p">(</span><span class="n">model_frame</span><span class="p">,</span> <span class="n">center</span><span class="p">,</span> <span class="n">observation</span><span class="p">,</span> <span class="n">K</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
-    <span class="k">elif</span> <span class="n">k</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">]:</span>
-         <span class="n">new_source</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">ExtendedSource</span><span class="p">(</span><span class="n">model_frame</span><span class="p">,</span> <span class="n">center</span><span class="p">,</span> <span class="n">observation</span><span class="p">,</span> <span class="n">K</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-    <span class="k">else</span><span class="p">:</span>
-         <span class="n">new_source</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">ExtendedSource</span><span class="p">(</span><span class="n">model_frame</span><span class="p">,</span> <span class="n">center</span><span class="p">,</span> <span class="n">observation</span><span class="p">,</span> <span class="n">compact</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-    <span class="n">sources</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">new_source</span><span class="p">)</span>
-
-<span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">src</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">sources</span><span class="p">):</span>
-    <span class="nb">print</span> <span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">src</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-</pre></div>
-</div>
-</div>
-<div class="nboutput nblast docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<div class="highlight"><pre>
-0: PointSource
-1: MultiExtendedSource
-2: MultiExtendedSource
-3: SingleExtendedSource
-4: CompactExtendedSource
-5: SingleExtendedSource
-6: CompactExtendedSource
-</pre></div></div>
-</div>
-<p>These source are initialized independently, and their spectra, i.e. the amplitudes in every channel, assume that they are isolated. We can make another sweep and determine their spectra so that their superposition best matches the observation. Above, this was done for use by the option <code class="docutils literal notranslate"><span class="pre">set_specta=True</span></code>. But we can call the linear solver directly:</p>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
-<span></span><span class="n">scarlet</span><span class="o">.</span><span class="n">initialization</span><span class="o">.</span><span class="n">set_spectra_to_match</span><span class="p">(</span><span class="n">sources</span><span class="p">,</span> <span class="n">observation</span><span class="p">)</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">scarlet</span><span class="o">.</span><span class="n">initialization</span><span class="o">.</span><span class="n">set_spectra_to_match</span><span class="p">(</span><span class="n">sources</span><span class="p">,</span> <span class="n">observation</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
 </section>
 <section id="Create-and-Fit-Model">
-<h2>Create and Fit Model<a class="headerlink" href="#Create-and-Fit-Model" title="Permalink to this headline">¶</a></h2>
-<p>The <code class="docutils literal notranslate"><span class="pre">Blend</span></code> class holds the list of sources and has the machinery to fit them to the given images. In this example the code is set to run for a maximum of 100 iterations, but will end early if the likelihood and all of the constraints converge.</p>
+<h2>Create and Fit Model<a class="headerlink" href="#Create-and-Fit-Model" title="Permalink to this heading">¶</a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">Blend</span></code> class holds the list of sources and has the machinery to fit them to the given images. In this example the code is set to run for a maximum of 100 iterations, but will end early if the likelihood and all the constraints converge.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
-<span></span><span class="n">blend</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">Blend</span><span class="p">(</span><span class="n">sources</span><span class="p">,</span> <span class="n">observation</span><span class="p">)</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">blend</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">Blend</span><span class="p">(</span><span class="n">sources</span><span class="p">,</span> <span class="n">observation</span><span class="p">)</span>
 <span class="o">%</span><span class="k">time</span> it, logL = blend.fit(100, e_rel=1e-4)
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;scarlet ran for </span><span class="si">{</span><span class="n">it</span><span class="si">}</span><span class="s2"> iterations to logL = </span><span class="si">{</span><span class="n">logL</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 <span class="n">scarlet</span><span class="o">.</span><span class="n">display</span><span class="o">.</span><span class="n">show_likelihood</span><span class="p">(</span><span class="n">blend</span><span class="p">)</span>
@@ -566,9 +274,9 @@ frame, in which you seek to fit a model, to the observed data frame.</p>
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-CPU times: user 1.66 s, sys: 76 ms, total: 1.73 s
-Wall time: 1.73 s
-scarlet ran for 65 iterations to logL = 30530.925075272906
+CPU times: user 662 ms, sys: 22.8 ms, total: 685 ms
+Wall time: 706 ms
+scarlet ran for 50 iterations to logL = 30371.82193877243
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">
@@ -580,16 +288,15 @@ scarlet ran for 65 iterations to logL = 30530.925075272906
 </div>
 </section>
 <section id="Interact-with-Results">
-<h2>Interact with Results<a class="headerlink" href="#Interact-with-Results" title="Permalink to this headline">¶</a></h2>
+<h2>Interact with Results<a class="headerlink" href="#Interact-with-Results" title="Permalink to this heading">¶</a></h2>
 <section id="View-Full-Scene">
-<h3>View Full Scene<a class="headerlink" href="#View-Full-Scene" title="Permalink to this headline">¶</a></h3>
+<h3>View Full Scene<a class="headerlink" href="#View-Full-Scene" title="Permalink to this heading">¶</a></h3>
 <p>We could use <code class="docutils literal notranslate"><span class="pre">scarlet.display.show_scene</span></code> to render to entire scene, but it’s instructive to see how the model and the comparison to observations is performed. First we load the model for the entire scene, render it in the observation frame, and compute its residuals. We then show model and data with the same <span class="math notranslate nohighlight">\(sinh^{-1}\)</span> stretch and the residuals with a linear stretch.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
-<span></span><span class="c1"># Compute model</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Compute model</span>
 <span class="n">model</span> <span class="o">=</span> <span class="n">blend</span><span class="o">.</span><span class="n">get_model</span><span class="p">()</span>
 <span class="c1"># Render it in the observed frame</span>
 <span class="n">model_</span> <span class="o">=</span> <span class="n">observation</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
@@ -629,14 +336,13 @@ scarlet ran for 65 iterations to logL = 30530.925075272906
 </div>
 </section>
 <section id="View-Source-Models">
-<h3>View Source Models<a class="headerlink" href="#View-Source-Models" title="Permalink to this headline">¶</a></h3>
+<h3>View Source Models<a class="headerlink" href="#View-Source-Models" title="Permalink to this heading">¶</a></h3>
 <p>We will now inspect the model for each source, in its original frame and in its observed frame by leveraging the <code class="docutils literal notranslate"><span class="pre">show_sources</span></code> method:</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
-<span></span><span class="n">scarlet</span><span class="o">.</span><span class="n">display</span><span class="o">.</span><span class="n">show_sources</span><span class="p">(</span><span class="n">sources</span><span class="p">,</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">scarlet</span><span class="o">.</span><span class="n">display</span><span class="o">.</span><span class="n">show_sources</span><span class="p">(</span><span class="n">sources</span><span class="p">,</span>
                              <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">,</span>
                              <span class="n">observation</span><span class="o">=</span><span class="n">observation</span><span class="p">,</span>
                              <span class="n">show_model</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
@@ -659,14 +365,13 @@ scarlet ran for 65 iterations to logL = 30530.925075272906
 <p>We can see that each source “lives” in a smaller box and is then placed into the larger scene. The model of object 0 assumes the simple Gaussian shape of the model PSF, which is the internal representation of a point source. Source 1 uses the freedom of the 2-compoent model to represent a slightly redder core; the difference in spectrum is clearly noticeable.</p>
 </section>
 <section id="Measure-Fluxes">
-<h3>Measure Fluxes<a class="headerlink" href="#Measure-Fluxes" title="Permalink to this headline">¶</a></h3>
+<h3>Measure Fluxes<a class="headerlink" href="#Measure-Fluxes" title="Permalink to this heading">¶</a></h3>
 <p>The color information in these plots stems from the per-band amplitude, which are computed from the hyperspectral model by integrating over the morphology. The source spectra plots in the right panels above have done exactly that. The convention of these fluxes is given by the units and ordering of the original data cube. In the case of multi-component sources, the fluxes of all components are combined.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
-<span></span><span class="nb">print</span> <span class="p">(</span><span class="s2">&quot;----------------- </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">filters</span><span class="p">))</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span> <span class="p">(</span><span class="s2">&quot;----------------- </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">filters</span><span class="p">))</span>
 <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">src</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">sources</span><span class="p">):</span>
     <span class="nb">print</span> <span class="p">(</span><span class="s2">&quot;Source </span><span class="si">{}</span><span class="s2">, Fluxes: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">measure</span><span class="o">.</span><span class="n">flux</span><span class="p">(</span><span class="n">src</span><span class="p">)))</span>
 </pre></div>
@@ -678,26 +383,25 @@ scarlet ran for 65 iterations to logL = 30530.925075272906
 <div class="output_area docutils container">
 <div class="highlight"><pre>
 ----------------- [&#39;g&#39; &#39;r&#39; &#39;i&#39; &#39;z&#39; &#39;y&#39;]
-Source 0, Fluxes: [167.14172363 263.94549561 320.41348267 346.61026001 369.69799805]
-Source 1, Fluxes: [ 74.91217191 216.66745705 387.72689315 520.83001445 647.37950636]
-Source 2, Fluxes: [ 8.44557912 12.7026115  24.6722313  30.99244574 40.22146014]
-Source 3, Fluxes: [ 9.2624846  10.82984195 12.59139969 14.28860925 16.0568967 ]
-Source 4, Fluxes: [5.00683385 5.05397656 5.78394048 5.5215815  5.16199838]
-Source 5, Fluxes: [1.30034993 1.21313027 2.11418213 3.18399065 5.41741162]
-Source 6, Fluxes: [2.79095238 2.38079386 2.64154205 3.22819056 4.9924668 ]
+Source 0, Fluxes: [167.53129002 264.99694475 320.85668577 347.16224875 374.60743885]
+Source 1, Fluxes: [ 75.20066394 213.41260579 382.51691677 518.98311381 646.4901738 ]
+Source 2, Fluxes: [ 8.32385126 14.05450517 27.37449382 34.06289295 41.5183003 ]
+Source 3, Fluxes: [ 8.53207009 10.15608496 11.37306792 13.45834823 15.90049206]
+Source 4, Fluxes: [5.17893922 5.0111677  5.60966035 5.15088369 4.5988445 ]
+Source 5, Fluxes: [1.46472715 1.34983023 2.08462937 2.8836367  3.92074657]
+Source 6, Fluxes: [2.91625798 2.48162727 2.69534285 3.3909824  5.01191201]
 </pre></div></div>
 </div>
-<p>Other measurements (e.g. <code class="docutils literal notranslate"><span class="pre">centroid</span></code>) are also implemented. The measurement approach is also easily extendable. The source models are generated in the model frame (which is the best-fit representation of the full hyperspectral <code class="docutils literal notranslate"><span class="pre">Frame</span></code>), from which any measurement can directly be made without having to deal with noise, PSF convolution, overlapping sources, etc.</p>
+<p>Other measurements (e.g. <code class="docutils literal notranslate"><span class="pre">centroid</span></code>) are also implemented. The measurement approach is also easily extendable. The source models are generated in the model frame (which is the best-fit representation of the full hyperspectral <code class="docutils literal notranslate"><span class="pre">Frame</span></code>), from which any measurement can directly be made without having to deal with noise, PSF convolution, overlapping sources, etc.</p>
 </section>
 <section id="Save-and-Re-Use-Model">
-<h3>Save and Re-Use Model<a class="headerlink" href="#Save-and-Re-Use-Model" title="Permalink to this headline">¶</a></h3>
+<h3>Save and Re-Use Model<a class="headerlink" href="#Save-and-Re-Use-Model" title="Permalink to this heading">¶</a></h3>
 <p>To preserve the model for posterity, individual sources or lists of sources can be serialized with the <code class="docutils literal notranslate"><span class="pre">pickle</span></code> library:</p>
 <div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
-<span></span><span class="kn">import</span> <span class="nn">pickle</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pickle</span>
 <span class="n">fp</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;hsc_cosmos_35.sca&quot;</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span>
 <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">sources</span><span class="p">,</span> <span class="n">fp</span><span class="p">)</span>
 <span class="n">fp</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
@@ -710,11 +414,10 @@ Source 6, Fluxes: [2.79095238 2.38079386 2.64154205 3.22819056 4.9924668 ]
 </div>
 <p>The pickled file can be reopened in the same way. Every source can be utilized as before.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
-<span></span><span class="n">fp</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;hsc_cosmos_35.sca&quot;</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">fp</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;hsc_cosmos_35.sca&quot;</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span>
 <span class="n">sources_</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">fp</span><span class="p">)</span>
 <span class="n">fp</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
 
@@ -733,11 +436,10 @@ Source 6, Fluxes: [2.79095238 2.38079386 2.64154205 3.22819056 4.9924668 ]
 <p>However, if we want to refit some data with this model, we have to recreate a <code class="docutils literal notranslate"><span class="pre">Blend</span></code> instance.</p>
 <p>We will now add two more sources to account for the largest residuals we have seen above. As we don’t know their location accurately, we allow the fitter to shift/recenter the sources.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
-<span></span><span class="c1"># add two sources at their approximate locations</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># add two sources at their approximate locations</span>
 <span class="n">model_frame_</span> <span class="o">=</span> <span class="n">sources_</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">frame</span>
 <span class="n">yx</span> <span class="o">=</span> <span class="p">(</span><span class="mf">14.</span><span class="p">,</span> <span class="mf">44.</span><span class="p">)</span>
 <span class="n">new_source</span> <span class="o">=</span> <span class="n">scarlet</span><span class="o">.</span><span class="n">ExtendedSource</span><span class="p">(</span><span class="n">model_frame_</span><span class="p">,</span> <span class="n">yx</span><span class="p">,</span> <span class="n">observation</span><span class="p">,</span> <span class="n">compact</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">shifting</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -761,9 +463,9 @@ Source 6, Fluxes: [2.79095238 2.38079386 2.64154205 3.22819056 4.9924668 ]
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-CPU times: user 134 ms, sys: 72 µs, total: 134 ms
-Wall time: 134 ms
-scarlet ran for 4 iterations to logL = 31270.685721964197
+CPU times: user 812 ms, sys: 18.5 ms, total: 830 ms
+Wall time: 845 ms
+scarlet ran for 53 iterations to logL = 31740.68718897289
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">
@@ -775,11 +477,10 @@ scarlet ran for 4 iterations to logL = 31270.685721964197
 </div>
 <p>We can see that logL is slightly higher than before. Let’s have a look at the new model:</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
-<span></span><span class="n">scarlet</span><span class="o">.</span><span class="n">display</span><span class="o">.</span><span class="n">show_scene</span><span class="p">(</span><span class="n">sources_</span><span class="p">,</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">scarlet</span><span class="o">.</span><span class="n">display</span><span class="o">.</span><span class="n">show_scene</span><span class="p">(</span><span class="n">sources_</span><span class="p">,</span>
                            <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">,</span>
                            <span class="n">observation</span><span class="o">=</span><span class="n">observation</span><span class="p">,</span>
                            <span class="n">show_rendered</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
@@ -809,11 +510,11 @@ scarlet ran for 4 iterations to logL = 31270.685721964197
     <div class="clearer"></div>
   </div>
     <div class="footer">
-      &copy;2018-2021, Fred Moolekamp and Peter Melchior.
+      &copy;2018-2024, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.1.2</a>
-      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 7.0.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.13</a>
       
       |
       <a href="_sources/0-quickstart.ipynb"

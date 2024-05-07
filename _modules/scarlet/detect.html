@@ -1,7 +1,6 @@
-
 <!DOCTYPE html>
 
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -9,9 +8,8 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css" />
     <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
-    <script src="../../_static/jquery.js"></script>
-    <script src="../../_static/underscore.js"></script>
     <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/sphinx_highlight.js"></script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <link rel="canonical" href="api/_modules/scarlet/detect.html" />
     <link rel="index" title="Index" href="../../genindex.html" />
@@ -49,7 +47,7 @@
     </form>
     </div>
 </div>
-<script>$('#searchbox').show(0);</script>
+<script>document.getElementById('searchbox').style.display = "block"</script>
         </div>
       </div>
       <div class="documentwrapper">
@@ -74,7 +72,7 @@
 
 
 <div class="viewcode-block" id="bounds_to_bbox"><a class="viewcode-back" href="../../api/scarlet.detect.html#scarlet.detect.bounds_to_bbox">[docs]</a><span class="k">def</span> <span class="nf">bounds_to_bbox</span><span class="p">(</span><span class="n">bounds</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Convert the bounds of a Footprint into a Box</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Convert the bounds of a Footprint into a Box</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -88,7 +86,7 @@
 
 
 <div class="viewcode-block" id="box_intersect"><a class="viewcode-back" href="../../api/scarlet.detect.html#scarlet.detect.box_intersect">[docs]</a><span class="k">def</span> <span class="nf">box_intersect</span><span class="p">(</span><span class="n">box1</span><span class="p">,</span> <span class="n">box2</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Check if two boxes overlap</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Check if two boxes overlap</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -105,7 +103,7 @@
 
 
 <div class="viewcode-block" id="footprint_intersect"><a class="viewcode-back" href="../../api/scarlet.detect.html#scarlet.detect.footprint_intersect">[docs]</a><span class="k">def</span> <span class="nf">footprint_intersect</span><span class="p">(</span><span class="n">footprint1</span><span class="p">,</span> <span class="n">box1</span><span class="p">,</span> <span class="n">footprint2</span><span class="p">,</span> <span class="n">box2</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Check if two footprints overlap</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Check if two footprints overlap</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -127,7 +125,7 @@
 
 
 <div class="viewcode-block" id="draw_box"><a class="viewcode-back" href="../../api/scarlet.detect.html#scarlet.detect.draw_box">[docs]</a><span class="k">def</span> <span class="nf">draw_box</span><span class="p">(</span><span class="n">box</span><span class="p">,</span> <span class="n">ax</span><span class="p">,</span> <span class="n">color</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Draw a box on an axis</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Draw a box on an axis</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -144,7 +142,7 @@
     <span class="n">ax</span><span class="o">.</span><span class="n">add_patch</span><span class="p">(</span><span class="n">rect</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="draw_region"><a class="viewcode-back" href="../../api/scarlet.detect.html#scarlet.detect.draw_region">[docs]</a><span class="k">def</span> <span class="nf">draw_region</span><span class="p">(</span><span class="n">region</span><span class="p">,</span> <span class="n">ax</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Draw a QuadTreeRegion in a plot</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Draw a QuadTreeRegion in a plot</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -160,7 +158,7 @@
             <span class="n">draw_region</span><span class="p">(</span><span class="n">sub</span><span class="p">,</span> <span class="n">ax</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="draw_footprint_box"><a class="viewcode-back" href="../../api/scarlet.detect.html#scarlet.detect.draw_footprint_box">[docs]</a><span class="k">def</span> <span class="nf">draw_footprint_box</span><span class="p">(</span><span class="n">footprint</span><span class="p">,</span> <span class="n">ax</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Draw a scarlet Footprint in a plot</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Draw a scarlet Footprint in a plot</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -174,11 +172,11 @@
 
 
 <div class="viewcode-block" id="QuadTreeRegion"><a class="viewcode-back" href="../../api/scarlet.detect.html#scarlet.detect.QuadTreeRegion">[docs]</a><span class="k">class</span> <span class="nc">QuadTreeRegion</span><span class="p">:</span>
-    <span class="sd">&quot;&quot;&quot;An implementation of a QuadTree that inserts boxes as opposed to points</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;An implementation of a QuadTree that inserts boxes as opposed to points</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bbox</span><span class="p">,</span> <span class="n">capacity</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">sub_regions</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">boxes</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">depth</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
                  <span class="n">detect</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Initialize a new QuadTreeRegion instance.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize a new QuadTreeRegion instance.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -196,6 +194,8 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">bbox</span> <span class="o">=</span> <span class="n">bbox</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">sub_regions</span> <span class="o">=</span> <span class="n">sub_regions</span>
+        <span class="k">if</span> <span class="n">boxes</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">boxes</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">boxes</span> <span class="o">=</span> <span class="n">boxes</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">capacity</span> <span class="o">=</span> <span class="n">capacity</span>
         <span class="c1"># Used for debugging</span>
@@ -203,8 +203,32 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">detect</span> <span class="o">=</span> <span class="n">detect</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">debug</span> <span class="o">=</span> <span class="n">detect</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
 
+<div class="viewcode-block" id="QuadTreeRegion.footprint_image"><a class="viewcode-back" href="../../api/scarlet.detect.html#scarlet.detect.QuadTreeRegion.footprint_image">[docs]</a>    <span class="k">def</span> <span class="nf">footprint_image</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get an image array of all of the footprints in the tree</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">boxes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bbox</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">bbox</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">bbox</span> <span class="o">=</span> <span class="n">Box</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">))</span>
+            <span class="k">for</span> <span class="n">box</span> <span class="ow">in</span> <span class="n">boxes</span><span class="p">:</span>
+                <span class="n">bbox</span> <span class="o">=</span> <span class="n">bbox</span> <span class="o">|</span> <span class="n">box</span>
+
+        <span class="n">footprint</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">bbox</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">box</span> <span class="ow">in</span> <span class="n">boxes</span><span class="p">:</span>
+            <span class="n">full</span><span class="p">,</span> <span class="n">local</span> <span class="o">=</span> <span class="n">overlapped_slices</span><span class="p">(</span><span class="n">bbox</span><span class="p">,</span> <span class="n">box</span><span class="p">)</span>
+            <span class="n">footprint</span><span class="p">[</span><span class="n">full</span><span class="p">]</span> <span class="o">+=</span> <span class="n">box</span><span class="o">.</span><span class="n">footprint</span><span class="o">.</span><span class="n">footprint</span><span class="p">[</span><span class="n">local</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">footprint</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">peaks</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate a list of peaks contained in the tree</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">box</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bbox</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">peak</span> <span class="ow">in</span> <span class="n">box</span><span class="o">.</span><span class="n">footprint</span><span class="o">.</span><span class="n">peaks</span><span class="p">:</span>
+                <span class="k">yield</span> <span class="n">peak</span>
+
 <div class="viewcode-block" id="QuadTreeRegion.add"><a class="viewcode-back" href="../../api/scarlet.detect.html#scarlet.detect.QuadTreeRegion.add">[docs]</a>    <span class="k">def</span> <span class="nf">add</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other_box</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Add a box to the region.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Add a box to the region.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -233,7 +257,7 @@
                 <span class="bp">self</span><span class="o">.</span><span class="n">_add_to_sub_regions</span><span class="p">(</span><span class="n">other_box</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="QuadTreeRegion.add_footprints"><a class="viewcode-back" href="../../api/scarlet.detect.html#scarlet.detect.QuadTreeRegion.add_footprints">[docs]</a>    <span class="k">def</span> <span class="nf">add_footprints</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">footprints</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Add bounding boxes for a list of scarlet footprints.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Add bounding boxes for a list of scarlet footprints.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -247,7 +271,7 @@
         <span class="k">return</span> <span class="bp">self</span></div>
 
 <div class="viewcode-block" id="QuadTreeRegion.split"><a class="viewcode-back" href="../../api/scarlet.detect.html#scarlet.detect.QuadTreeRegion.split">[docs]</a>    <span class="k">def</span> <span class="nf">split</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Sub-divide this region into 4 sub-regions.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Sub-divide this region into 4 sub-regions.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">height</span><span class="p">,</span> <span class="n">width</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bbox</span><span class="o">.</span><span class="n">shape</span>
         <span class="n">h2</span> <span class="o">=</span> <span class="n">height</span> <span class="o">//</span> <span class="mi">2</span>
@@ -292,7 +316,7 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">_add_to_sub_regions</span><span class="p">(</span><span class="n">box</span><span class="p">)</span></div>
 
     <span class="k">def</span> <span class="nf">_add_to_sub_regions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other_box</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Add a box to all of the sub-regions of this region</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Add a box to all of the sub-regions of this region</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -302,8 +326,8 @@
         <span class="k">for</span> <span class="n">region</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">sub_regions</span><span class="p">:</span>
             <span class="n">region</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">other_box</span><span class="p">)</span>
 
-<div class="viewcode-block" id="QuadTreeRegion.query"><a class="viewcode-back" href="../../api/scarlet.detect.html#scarlet.detect.QuadTreeRegion.query">[docs]</a>    <span class="k">def</span> <span class="nf">query</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other_box</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Return all of the boxes that overlap with a given box</span>
+<div class="viewcode-block" id="QuadTreeRegion.query"><a class="viewcode-back" href="../../api/scarlet.detect.html#scarlet.detect.QuadTreeRegion.query">[docs]</a>    <span class="k">def</span> <span class="nf">query</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other_box</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return all of the boxes that overlap with a given box</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -318,6 +342,8 @@
 <span class="sd">            We use a set instead of a list because some boxes may be in</span>
 <span class="sd">            multiple sub-regions and we only want to have one copy of each.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">other_box</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">other_box</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bbox</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">boxes</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">results</span> <span class="o">=</span> <span class="nb">set</span><span class="p">([</span><span class="n">box</span> <span class="k">for</span> <span class="n">box</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">boxes</span> <span class="k">if</span> <span class="n">box_intersect</span><span class="p">(</span><span class="n">box</span><span class="p">,</span> <span class="n">other_box</span><span class="p">)])</span>
         <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">sub_regions</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -331,7 +357,7 @@
 
 
 <div class="viewcode-block" id="SingleScaleStructure"><a class="viewcode-back" href="../../api/scarlet.detect.html#scarlet.detect.SingleScaleStructure">[docs]</a><span class="k">class</span> <span class="nc">SingleScaleStructure</span><span class="p">:</span>
-    <span class="sd">&quot;&quot;&quot;A structure at a single scale with quadtrees to lookup child boxes</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A structure at a single scale with quadtrees to lookup child boxes</span>
 <span class="sd">    at different scales.</span>
 
 <span class="sd">    Using the terminology from Starck et al. 2011 we refere to a connected</span>
@@ -350,7 +376,7 @@
 <span class="sd">        of `Peak`s as values.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scale</span><span class="p">,</span> <span class="n">footprint</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Initialize the SingleScaleStructure</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize the SingleScaleStructure</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -366,7 +392,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_all_peaks</span> <span class="o">=</span> <span class="kc">None</span>
 
 <div class="viewcode-block" id="SingleScaleStructure.add_footprint"><a class="viewcode-back" href="../../api/scarlet.detect.html#scarlet.detect.SingleScaleStructure.add_footprint">[docs]</a>    <span class="k">def</span> <span class="nf">add_footprint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scale</span><span class="p">,</span> <span class="n">footprint</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Add a footprint to the strcuture</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Add a footprint to the strcuture</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -382,7 +408,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_all_peaks</span> <span class="o">=</span> <span class="kc">None</span></div>
 
 <div class="viewcode-block" id="SingleScaleStructure.add_scale_tree"><a class="viewcode-back" href="../../api/scarlet.detect.html#scarlet.detect.SingleScaleStructure.add_scale_tree">[docs]</a>    <span class="k">def</span> <span class="nf">add_scale_tree</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scale</span><span class="p">,</span> <span class="n">tree</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Add all of the footprints from a region at a different scale</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Add all of the footprints from a region at a different scale</span>
 <span class="sd">        that overlap with this structure.</span>
 
 <span class="sd">        Parameters</span>
@@ -398,7 +424,7 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">all_peaks</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;All of the peaks contained in this Structure</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;All of the peaks contained in this Structure</span>
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
@@ -419,7 +445,7 @@
 
 
 <div class="viewcode-block" id="get_wavelets"><a class="viewcode-back" href="../../api/scarlet.detect.html#scarlet.detect.get_wavelets">[docs]</a><span class="k">def</span> <span class="nf">get_wavelets</span><span class="p">(</span><span class="n">images</span><span class="p">,</span> <span class="n">variance</span><span class="p">,</span> <span class="n">scales</span><span class="o">=</span><span class="mi">3</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Calculate wavelet coefficents given a set of images and their variances</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate wavelet coefficents given a set of images and their variances</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -451,7 +477,7 @@
 
 
 <div class="viewcode-block" id="get_detect_wavelets"><a class="viewcode-back" href="../../api/scarlet.detect.html#scarlet.detect.get_detect_wavelets">[docs]</a><span class="k">def</span> <span class="nf">get_detect_wavelets</span><span class="p">(</span><span class="n">images</span><span class="p">,</span> <span class="n">variance</span><span class="p">,</span> <span class="n">scales</span><span class="o">=</span><span class="mi">3</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Get an array of wavelet coefficents to use for detection</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Get an array of wavelet coefficents to use for detection</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    images: array-like</span>
@@ -473,8 +499,56 @@
     <span class="k">return</span> <span class="n">M</span> <span class="o">*</span> <span class="n">_coeffs</span></div>
 
 
+<div class="viewcode-block" id="get_blend_trees"><a class="viewcode-back" href="../../api/scarlet.detect.html#scarlet.detect.get_blend_trees">[docs]</a><span class="k">def</span> <span class="nf">get_blend_trees</span><span class="p">(</span><span class="n">detect</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Get the tree at each wavelet level, and all of the footprints at each level</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    detect: `numpy.ndarray`</span>
+<span class="sd">        A 2D image to use for detecting footprints and peaks</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    trees: `list` of `QuadTreeRegion`</span>
+<span class="sd">        A tree at each scale used to match peaks/footprints across scales</span>
+<span class="sd">    all_footprints: `lsit` of `list` of `Footprint`</span>
+<span class="sd">        A list of all of all of the footprints at each scale.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span> <span class="nn">scarlet.detect_pybind11</span> <span class="kn">import</span> <span class="n">get_footprints</span>
+    <span class="n">all_footprints</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">for</span> <span class="n">_detect</span> <span class="ow">in</span> <span class="n">detect</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
+        <span class="n">footprints</span> <span class="o">=</span> <span class="n">get_footprints</span><span class="p">(</span><span class="n">_detect</span><span class="p">,</span> <span class="n">min_separation</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">min_area</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">thresh</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">all_footprints</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">footprints</span><span class="p">)</span>
+
+    <span class="n">trees</span> <span class="o">=</span><span class="p">[</span> <span class="n">QuadTreeRegion</span><span class="p">(</span><span class="n">Box</span><span class="p">(</span><span class="n">detect</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">:]),</span> <span class="n">capacity</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span><span class="o">.</span><span class="n">add_footprints</span><span class="p">(</span><span class="n">fps</span><span class="p">)</span> <span class="k">for</span> <span class="n">fps</span> <span class="ow">in</span> <span class="n">all_footprints</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">trees</span><span class="p">,</span> <span class="n">all_footprints</span></div>
+
+<span class="k">def</span> <span class="nf">get_blend_structures</span><span class="p">(</span><span class="n">detect</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Get a blend structure at each scale with detected footprints</span>
+
+<span class="sd">    Detection is best done at the second scale, which is similar to conventional</span>
+<span class="sd">    detection, which typically convolves an image with a gaussian to perform</span>
+<span class="sd">    peak detection. The second wavelet scale is equivalent to convolution with</span>
+<span class="sd">    a bicubic spline, and then subracting the next wavelet scale, which has the</span>
+<span class="sd">    effect of amplifying the center and subtracting the surrounding regions.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    detect: `~numpy.ndarray`</span>
+<span class="sd">        Array of starlet coefficients (scales+1, height, width)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">trees</span><span class="p">,</span> <span class="n">footprints</span> <span class="o">=</span> <span class="n">get_blend_trees</span><span class="p">(</span><span class="n">detect</span><span class="p">)</span>
+    <span class="n">structures</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">SingleScaleStructure</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">fp</span><span class="p">)</span><span class="o">.</span><span class="n">add_scale_tree</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">trees</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">add_scale_tree</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">trees</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="k">for</span> <span class="n">fp</span> <span class="ow">in</span> <span class="n">footprints</span>
+    <span class="p">]</span>
+    <span class="k">return</span> <span class="n">structures</span>
+
+
 <div class="viewcode-block" id="get_blend_structures"><a class="viewcode-back" href="../../api/scarlet.detect.html#scarlet.detect.get_blend_structures">[docs]</a><span class="k">def</span> <span class="nf">get_blend_structures</span><span class="p">(</span><span class="n">detect</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Generate a set of structures for the 3rd wavelet scale</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate a set of structures for the 3rd wavelet scale</span>
 
 <span class="sd">    This is a convenience function to generate a hierarchy connecting</span>
 <span class="sd">    all of the footprints at lower scales to the higher scale structures</span>
@@ -487,7 +561,7 @@
         <span class="n">footprints</span> <span class="o">=</span> <span class="n">get_footprints</span><span class="p">(</span><span class="n">_detect</span><span class="p">,</span> <span class="n">min_separation</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">min_area</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">thresh</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
         <span class="n">all_footprints</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">footprints</span><span class="p">)</span>
 
-    <span class="n">low</span><span class="p">,</span> <span class="n">middle</span><span class="p">,</span> <span class="n">high</span> <span class="o">=</span> <span class="n">all_footprints</span>
+    <span class="n">low</span><span class="p">,</span> <span class="n">middle</span> <span class="o">=</span> <span class="n">all_footprints</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span>
     <span class="n">low_tree</span> <span class="o">=</span> <span class="n">QuadTreeRegion</span><span class="p">(</span><span class="n">Box</span><span class="p">(</span><span class="n">detect</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">:]),</span> <span class="n">capacity</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span><span class="o">.</span><span class="n">add_footprints</span><span class="p">(</span><span class="n">low</span><span class="p">)</span>
     <span class="n">middle_tree</span> <span class="o">=</span> <span class="n">QuadTreeRegion</span><span class="p">(</span><span class="n">Box</span><span class="p">(</span><span class="n">detect</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">:]),</span> <span class="n">capacity</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span><span class="o">.</span><span class="n">add_footprints</span><span class="p">(</span><span class="n">middle</span><span class="p">)</span>
 
@@ -497,6 +571,64 @@
     <span class="p">]</span>
 
     <span class="k">return</span> <span class="n">high_structures</span><span class="p">,</span> <span class="n">middle_tree</span></div>
+
+
+<div class="viewcode-block" id="get_peaks"><a class="viewcode-back" href="../../api/scarlet.detect.html#scarlet.detect.get_peaks">[docs]</a><span class="k">def</span> <span class="nf">get_peaks</span><span class="p">(</span><span class="n">detect</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">images</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">variance</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">scales</span><span class="o">=</span><span class="mi">3</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Detect all of the peaks in the 2nd wavelet scale</span>
+
+<span class="sd">    This is not meant to be a permanent solution, as there are some objects</span>
+<span class="sd">    that don&#39;t have a detection on the 2nd wavelet scale, however through</span>
+<span class="sd">    testing it has been confirmed that this algorithm works better than the</span>
+<span class="sd">    LSST science pipelines detection algorithm and is a good replacement</span>
+<span class="sd">    until the hierarchical detection tree can be better understood and</span>
+<span class="sd">    finalized.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    detect: `numpy.ndarray`</span>
+<span class="sd">        A set of wavelet coefficents used to detect sources.</span>
+<span class="sd">        If `detect` is `None` then `images` and `variance`must be specified.</span>
+<span class="sd">    images: `numpy.ndarray`</span>
+<span class="sd">        The set of 3D images `(band, height, width)` to use for</span>
+<span class="sd">        creating the wavelet coefficients.</span>
+<span class="sd">        This is ignored if detect is not `None`.</span>
+<span class="sd">    variance: `numpy.ndarray`</span>
+<span class="sd">        The variance of `images`.</span>
+<span class="sd">        This is ignored if detect is not `None`.</span>
+<span class="sd">    bbox: `scarlet.bbox.Box`</span>
+<span class="sd">        The bounding box for the full image.</span>
+<span class="sd">        If this is `None`, then a bounding box that is the shape of `images`</span>
+<span class="sd">        with an origin at `(0,0,0)` is used.</span>
+<span class="sd">    scales: `int`</span>
+<span class="sd">        The number of wavelet scales to use for creating the detection</span>
+<span class="sd">        wavelet coefficients.</span>
+<span class="sd">        This is ignored if detect is not `None`.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    peaks: `list`</span>
+<span class="sd">        A list of peaks that have been detected at the 2nd wavelet scale.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">detect</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">images</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">variance</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">bbox</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Must pass either &#39;detect&#39; or &#39;images&#39; and &#39;variance&#39; and &#39;bbox&#39;&quot;</span><span class="p">)</span>
+        <span class="c1"># Get a set of wavelets for detection</span>
+        <span class="n">detect</span> <span class="o">=</span> <span class="n">get_detect_wavelets</span><span class="p">(</span><span class="n">images</span><span class="p">,</span> <span class="n">variance</span><span class="p">,</span> <span class="n">scales</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">bbox</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">bbox</span> <span class="o">=</span> <span class="n">Box</span><span class="p">(</span><span class="n">detect</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">bbox</span> <span class="o">=</span> <span class="n">bbox</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+
+    <span class="c1"># Detect a hierarchy of structures in the wavelet coefficients</span>
+    <span class="n">structures</span><span class="p">,</span> <span class="n">tree</span> <span class="o">=</span> <span class="n">get_blend_structures</span><span class="p">(</span><span class="n">detect</span><span class="p">)</span>
+
+    <span class="c1"># Extract all of the peaks from the structures</span>
+    <span class="n">peaks</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">box</span> <span class="ow">in</span> <span class="n">tree</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">bbox</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">peak</span> <span class="ow">in</span> <span class="n">box</span><span class="o">.</span><span class="n">footprint</span><span class="o">.</span><span class="n">peaks</span><span class="p">:</span>
+            <span class="n">peaks</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">peak</span><span class="o">.</span><span class="n">y</span><span class="p">,</span> <span class="n">peak</span><span class="o">.</span><span class="n">x</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">peaks</span></div>
 </pre></div>
 
           </div>
@@ -506,11 +638,11 @@
     <div class="clearer"></div>
   </div>
     <div class="footer">
-      &copy;2018-2021, Fred Moolekamp and Peter Melchior.
+      &copy;2018-2024, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.1.2</a>
-      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 7.0.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.13</a>
       
     </div>
 

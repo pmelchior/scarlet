@@ -1,18 +1,16 @@
-
 <!DOCTYPE html>
 
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
 
     <title>scarlet.constraint &#8212; scarlet  documentation</title>
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="../_static/alabaster.css" />
     <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
-    <script src="../_static/jquery.js"></script>
-    <script src="../_static/underscore.js"></script>
     <script src="../_static/doctools.js"></script>
+    <script src="../_static/sphinx_highlight.js"></script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <link rel="canonical" href="api/api/scarlet.constraint.html" />
     <link rel="index" title="Index" href="../genindex.html" />
@@ -77,7 +75,7 @@
     </form>
     </div>
 </div>
-<script>$('#searchbox').show(0);</script>
+<script>document.getElementById('searchbox').style.display = "block"</script>
         </div>
       </div>
       <div class="documentwrapper">
@@ -87,18 +85,14 @@
           <div class="body" role="main">
             
   <section id="module-scarlet.constraint">
-<span id="scarlet-constraint"></span><h1>scarlet.constraint<a class="headerlink" href="#module-scarlet.constraint" title="Permalink to this headline">¶</a></h1>
+<span id="scarlet-constraint"></span><h1>scarlet.constraint<a class="headerlink" href="#module-scarlet.constraint" title="Permalink to this heading">¶</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="scarlet.constraint.CenterOnConstraint">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">scarlet.constraint.</span></span><span class="sig-name descname"><span class="pre">CenterOnConstraint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tiny</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-06</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/constraint.html#CenterOnConstraint"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.constraint.CenterOnConstraint" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#scarlet.constraint.Constraint" title="scarlet.constraint.Constraint"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.constraint.Constraint</span></code></a></p>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">scarlet.constraint.</span></span><span class="sig-name descname"><span class="pre">CenterOnConstraint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tiny</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-06</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/constraint.html#CenterOnConstraint"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.constraint.CenterOnConstraint" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#scarlet.constraint.Constraint" title="scarlet.constraint.Constraint"><code class="xref py py-class docutils literal notranslate"><span class="pre">Constraint</span></code></a></p>
 <p>Sets the center pixel to a tiny non-zero value</p>
 <p class="rubric">Methods</p>
-<table class="longtable docutils align-default">
-<colgroup>
-<col style="width: 10%" />
-<col style="width: 90%" />
-</colgroup>
+<table class="autosummary longtable docutils align-default">
 <tbody>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">__call__</span></code>(morph, step)</p></td>
 <td><p>Proximal mapping</p></td>
@@ -109,8 +103,8 @@
 
 <dl class="py class">
 <dt class="sig sig-object py" id="scarlet.constraint.Constraint">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">scarlet.constraint.</span></span><span class="sig-name descname"><span class="pre">Constraint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/constraint.html#Constraint"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.constraint.Constraint" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.9)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">scarlet.constraint.</span></span><span class="sig-name descname"><span class="pre">Constraint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/constraint.html#Constraint"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.constraint.Constraint" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>Constraint base class</p>
 <p>Constraints encode expected properties of the solution.
 Mathematically, they are the consequence of adding potentially
@@ -125,11 +119,7 @@ of the penalty function.</p>
 <p>For reference, every operator of the <cite>proxmin</cite> package yields a valid
 <cite>Constraint</cite>.</p>
 <p class="rubric">Methods</p>
-<table class="longtable docutils align-default">
-<colgroup>
-<col style="width: 10%" />
-<col style="width: 90%" />
-</colgroup>
+<table class="autosummary longtable docutils align-default">
 <tbody>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">__call__</span></code>(X, step)</p></td>
 <td><p>Proximal mapping</p></td>
@@ -140,13 +130,13 @@ of the penalty function.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="scarlet.constraint.ConstraintChain">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">scarlet.constraint.</span></span><span class="sig-name descname"><span class="pre">ConstraintChain</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">constraints</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">repeat</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/constraint.html#ConstraintChain"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.constraint.ConstraintChain" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.9)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">scarlet.constraint.</span></span><span class="sig-name descname"><span class="pre">ConstraintChain</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">constraints</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">repeat</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/constraint.html#ConstraintChain"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.constraint.ConstraintChain" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>An ordered list of <a href="#id1"><span class="problematic" id="id2">`</span></a>Constraint`s.</p>
 <p>Uses the concept of alternating projections onto convex sets to find
 solutions that are feasible according to a list of constraints.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
 <dt><strong>constraints: list of `Constraint`</strong></dt><dd></dd>
 <dt><strong>repeat: int</strong></dt><dd><p>How often the constrain chain is repeated to ensure feasibility</p>
@@ -155,11 +145,7 @@ solutions that are feasible according to a list of constraints.</p>
 </dd>
 </dl>
 <p class="rubric">Methods</p>
-<table class="longtable docutils align-default">
-<colgroup>
-<col style="width: 10%" />
-<col style="width: 90%" />
-</colgroup>
+<table class="autosummary longtable docutils align-default">
 <tbody>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">__call__</span></code>(X, step)</p></td>
 <td><p>Call self as a function.</p></td>
@@ -170,14 +156,10 @@ solutions that are feasible according to a list of constraints.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="scarlet.constraint.L0Constraint">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">scarlet.constraint.</span></span><span class="sig-name descname"><span class="pre">L0Constraint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">thresh</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'absolute'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/constraint.html#L0Constraint"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.constraint.L0Constraint" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#scarlet.constraint.Constraint" title="scarlet.constraint.Constraint"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.constraint.Constraint</span></code></a></p>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">scarlet.constraint.</span></span><span class="sig-name descname"><span class="pre">L0Constraint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">thresh</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'absolute'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/constraint.html#L0Constraint"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.constraint.L0Constraint" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#scarlet.constraint.Constraint" title="scarlet.constraint.Constraint"><code class="xref py py-class docutils literal notranslate"><span class="pre">Constraint</span></code></a></p>
 <p class="rubric">Methods</p>
-<table class="longtable docutils align-default">
-<colgroup>
-<col style="width: 10%" />
-<col style="width: 90%" />
-</colgroup>
+<table class="autosummary longtable docutils align-default">
 <tbody>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">__call__</span></code>(X, step)</p></td>
 <td><p>Proximal mapping</p></td>
@@ -188,14 +170,10 @@ solutions that are feasible according to a list of constraints.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="scarlet.constraint.L1Constraint">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">scarlet.constraint.</span></span><span class="sig-name descname"><span class="pre">L1Constraint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">thresh</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'absolute'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/constraint.html#L1Constraint"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.constraint.L1Constraint" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#scarlet.constraint.Constraint" title="scarlet.constraint.Constraint"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.constraint.Constraint</span></code></a></p>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">scarlet.constraint.</span></span><span class="sig-name descname"><span class="pre">L1Constraint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">thresh</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'absolute'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/constraint.html#L1Constraint"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.constraint.L1Constraint" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#scarlet.constraint.Constraint" title="scarlet.constraint.Constraint"><code class="xref py py-class docutils literal notranslate"><span class="pre">Constraint</span></code></a></p>
 <p class="rubric">Methods</p>
-<table class="longtable docutils align-default">
-<colgroup>
-<col style="width: 10%" />
-<col style="width: 90%" />
-</colgroup>
+<table class="autosummary longtable docutils align-default">
 <tbody>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">__call__</span></code>(X, step)</p></td>
 <td><p>Proximal mapping</p></td>
@@ -205,16 +183,28 @@ solutions that are feasible according to a list of constraints.</p>
 </dd></dl>
 
 <dl class="py class">
+<dt class="sig sig-object py" id="scarlet.constraint.LeakyConstraint">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">scarlet.constraint.</span></span><span class="sig-name descname"><span class="pre">LeakyConstraint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">constraint</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">leak</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.05</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/constraint.html#LeakyConstraint"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.constraint.LeakyConstraint" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#scarlet.constraint.Constraint" title="scarlet.constraint.Constraint"><code class="xref py py-class docutils literal notranslate"><span class="pre">Constraint</span></code></a></p>
+<p>Make a constraint leak the original value with a configurable amount:</p>
+<p>Updates <cite>x = (1-leak) * prox(x, step) + leak * x</cite></p>
+<p class="rubric">Methods</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">__call__</span></code>(x, step)</p></td>
+<td><p>Proximal mapping</p></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="py class">
 <dt class="sig sig-object py" id="scarlet.constraint.MonotonicMaskConstraint">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">scarlet.constraint.</span></span><span class="sig-name descname"><span class="pre">MonotonicMaskConstraint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">center</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">center_radius</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">variance</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_iter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/constraint.html#MonotonicMaskConstraint"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.constraint.MonotonicMaskConstraint" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#scarlet.constraint.Constraint" title="scarlet.constraint.Constraint"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.constraint.Constraint</span></code></a></p>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">scarlet.constraint.</span></span><span class="sig-name descname"><span class="pre">MonotonicMaskConstraint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">center</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">center_radius</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">variance</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_iter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/constraint.html#MonotonicMaskConstraint"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.constraint.MonotonicMaskConstraint" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#scarlet.constraint.Constraint" title="scarlet.constraint.Constraint"><code class="xref py py-class docutils literal notranslate"><span class="pre">Constraint</span></code></a></p>
 <p>Make morphology monotonic by branching from the center</p>
 <p class="rubric">Methods</p>
-<table class="longtable docutils align-default">
-<colgroup>
-<col style="width: 10%" />
-<col style="width: 90%" />
-</colgroup>
+<table class="autosummary longtable docutils align-default">
 <tbody>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">__call__</span></code>(morph, step)</p></td>
 <td><p>Proximal mapping</p></td>
@@ -225,17 +215,13 @@ solutions that are feasible according to a list of constraints.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="scarlet.constraint.MonotonicityConstraint">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">scarlet.constraint.</span></span><span class="sig-name descname"><span class="pre">MonotonicityConstraint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">neighbor_weight</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'flat'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_gradient</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_mask</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/constraint.html#MonotonicityConstraint"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.constraint.MonotonicityConstraint" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#scarlet.constraint.Constraint" title="scarlet.constraint.Constraint"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.constraint.Constraint</span></code></a></p>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">scarlet.constraint.</span></span><span class="sig-name descname"><span class="pre">MonotonicityConstraint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">neighbor_weight</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'flat'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_gradient</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_mask</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fit_center_radius</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/constraint.html#MonotonicityConstraint"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.constraint.MonotonicityConstraint" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#scarlet.constraint.Constraint" title="scarlet.constraint.Constraint"><code class="xref py py-class docutils literal notranslate"><span class="pre">Constraint</span></code></a></p>
 <p>Make morphology monotonically decrease from the center</p>
 <p>See <cite>~scarlet.operator.prox_monotonic</cite>
 for a description of the other parameters.</p>
 <p class="rubric">Methods</p>
-<table class="longtable docutils align-default">
-<colgroup>
-<col style="width: 10%" />
-<col style="width: 90%" />
-</colgroup>
+<table class="autosummary longtable docutils align-default">
 <tbody>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">__call__</span></code>(morph, step)</p></td>
 <td><p>Proximal mapping</p></td>
@@ -246,14 +232,10 @@ for a description of the other parameters.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="scarlet.constraint.NormalizationConstraint">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">scarlet.constraint.</span></span><span class="sig-name descname"><span class="pre">NormalizationConstraint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'sum'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/constraint.html#NormalizationConstraint"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.constraint.NormalizationConstraint" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#scarlet.constraint.Constraint" title="scarlet.constraint.Constraint"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.constraint.Constraint</span></code></a></p>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">scarlet.constraint.</span></span><span class="sig-name descname"><span class="pre">NormalizationConstraint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'sum'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/constraint.html#NormalizationConstraint"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.constraint.NormalizationConstraint" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#scarlet.constraint.Constraint" title="scarlet.constraint.Constraint"><code class="xref py py-class docutils literal notranslate"><span class="pre">Constraint</span></code></a></p>
 <p class="rubric">Methods</p>
-<table class="longtable docutils align-default">
-<colgroup>
-<col style="width: 10%" />
-<col style="width: 90%" />
-</colgroup>
+<table class="autosummary longtable docutils align-default">
 <tbody>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">__call__</span></code>(X, step)</p></td>
 <td><p>Proximal mapping</p></td>
@@ -264,15 +246,11 @@ for a description of the other parameters.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="scarlet.constraint.PositivityConstraint">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">scarlet.constraint.</span></span><span class="sig-name descname"><span class="pre">PositivityConstraint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">zero</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/constraint.html#PositivityConstraint"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.constraint.PositivityConstraint" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#scarlet.constraint.Constraint" title="scarlet.constraint.Constraint"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.constraint.Constraint</span></code></a></p>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">scarlet.constraint.</span></span><span class="sig-name descname"><span class="pre">PositivityConstraint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">zero</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/constraint.html#PositivityConstraint"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.constraint.PositivityConstraint" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#scarlet.constraint.Constraint" title="scarlet.constraint.Constraint"><code class="xref py py-class docutils literal notranslate"><span class="pre">Constraint</span></code></a></p>
 <p>Allow only values not smaller than <cite>zero</cite>.</p>
 <p class="rubric">Methods</p>
-<table class="longtable docutils align-default">
-<colgroup>
-<col style="width: 10%" />
-<col style="width: 90%" />
-</colgroup>
+<table class="autosummary longtable docutils align-default">
 <tbody>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">__call__</span></code>(X, step)</p></td>
 <td><p>Proximal mapping</p></td>
@@ -283,17 +261,13 @@ for a description of the other parameters.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="scarlet.constraint.SymmetryConstraint">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">scarlet.constraint.</span></span><span class="sig-name descname"><span class="pre">SymmetryConstraint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">strength</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/constraint.html#SymmetryConstraint"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.constraint.SymmetryConstraint" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#scarlet.constraint.Constraint" title="scarlet.constraint.Constraint"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.constraint.Constraint</span></code></a></p>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">scarlet.constraint.</span></span><span class="sig-name descname"><span class="pre">SymmetryConstraint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">strength</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/constraint.html#SymmetryConstraint"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.constraint.SymmetryConstraint" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#scarlet.constraint.Constraint" title="scarlet.constraint.Constraint"><code class="xref py py-class docutils literal notranslate"><span class="pre">Constraint</span></code></a></p>
 <p>Make the source symmetric about its center</p>
 <p>See <cite>~scarlet.operator.prox_uncentered_symmetry</cite>
 for a description of the parameters.</p>
 <p class="rubric">Methods</p>
-<table class="longtable docutils align-default">
-<colgroup>
-<col style="width: 10%" />
-<col style="width: 90%" />
-</colgroup>
+<table class="autosummary longtable docutils align-default">
 <tbody>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">__call__</span></code>(morph, step)</p></td>
 <td><p>Proximal mapping</p></td>
@@ -304,8 +278,8 @@ for a description of the parameters.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="scarlet.constraint.ThresholdConstraint">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">scarlet.constraint.</span></span><span class="sig-name descname"><span class="pre">ThresholdConstraint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/constraint.html#ThresholdConstraint"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.constraint.ThresholdConstraint" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#scarlet.constraint.Constraint" title="scarlet.constraint.Constraint"><code class="xref py py-class docutils literal notranslate"><span class="pre">scarlet.constraint.Constraint</span></code></a></p>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">scarlet.constraint.</span></span><span class="sig-name descname"><span class="pre">ThresholdConstraint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/constraint.html#ThresholdConstraint"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.constraint.ThresholdConstraint" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#scarlet.constraint.Constraint" title="scarlet.constraint.Constraint"><code class="xref py py-class docutils literal notranslate"><span class="pre">Constraint</span></code></a></p>
 <p>Set a cutoff threshold for pixels below the noise</p>
 <p>Use the log histogram of pixel values to determine when the
 source is fitting noise. This function works well to prevent
@@ -315,11 +289,7 @@ does not work as well.</p>
 <p>The region that contains flux above the threshold is contained
 in <cite>component.bboxes[“thresh”]</cite>.</p>
 <p class="rubric">Methods</p>
-<table class="longtable docutils align-default">
-<colgroup>
-<col style="width: 10%" />
-<col style="width: 90%" />
-</colgroup>
+<table class="autosummary longtable docutils align-default">
 <tbody>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">__call__</span></code>(X, step)</p></td>
 <td><p>Proximal mapping</p></td>
@@ -347,11 +317,11 @@ in <cite>component.bboxes[“thresh”]</cite>.</p>
     <div class="clearer"></div>
   </div>
     <div class="footer">
-      &copy;2018-2021, Fred Moolekamp and Peter Melchior.
+      &copy;2018-2024, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.1.2</a>
-      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 7.0.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.13</a>
       
       |
       <a href="../_sources/api/scarlet.constraint.rst"

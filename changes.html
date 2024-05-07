@@ -1,18 +1,16 @@
-
 <!DOCTYPE html>
 
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
 
     <title>1.1 (2020-07-14) &#8212; scarlet  documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css" />
     <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-    <script src="_static/jquery.js"></script>
-    <script src="_static/underscore.js"></script>
     <script src="_static/doctools.js"></script>
+    <script src="_static/sphinx_highlight.js"></script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <link rel="canonical" href="api/changes.html" />
     <link rel="index" title="Index" href="genindex.html" />
@@ -50,7 +48,7 @@
     </form>
     </div>
 </div>
-<script>$('#searchbox').show(0);</script>
+<script>document.getElementById('searchbox').style.display = "block"</script>
         </div>
       </div>
       <div class="documentwrapper">
@@ -60,9 +58,9 @@
           <div class="body" role="main">
             
   <section id="id1">
-<h1>1.1 (2020-07-14)<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h1>
+<h1>1.1 (2020-07-14)<a class="headerlink" href="#id1" title="Permalink to this heading">¶</a></h1>
 <section id="general">
-<h2>General<a class="headerlink" href="#general" title="Permalink to this headline">¶</a></h2>
+<h2>General<a class="headerlink" href="#general" title="Permalink to this heading">¶</a></h2>
 <ul class="simple">
 <li><p>Introduction of <cite>Spectrum</cite> and <cite>Morphology</cite> classes (both inherited from <cite>Factor</cite>) to modularize <cite>FactorizedComponent</cite>. They implement <cite>get_model</cite> member functions which create the representation of the spectrum and morphology model from whatever it uses as parameters.</p></li>
 <li><p><cite>Component.sed</cite> has been renamed to <cite>Component.spectrum</cite>.</p></li>
@@ -72,7 +70,7 @@
 </ul>
 </section>
 <section id="new-features">
-<h2>New Features<a class="headerlink" href="#new-features" title="Permalink to this headline">¶</a></h2>
+<h2>New Features<a class="headerlink" href="#new-features" title="Permalink to this heading">¶</a></h2>
 <ul class="simple">
 <li><p>One can now e.g. combine a custom spectrum model with an existing <cite>PointSourceMorphology</cite>.</p></li>
 <li><p><cite>Box</cite> can now be sliced for lower dimensional subset; two Boxes can be combined with <cite>&#64;</cite> to create a higher-dimensional box.</p></li>
@@ -81,9 +79,9 @@
 </section>
 </section>
 <section id="id2">
-<h1>1.0 (2019-12-22)<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h1>
+<h1>1.0 (2019-12-22)<a class="headerlink" href="#id2" title="Permalink to this heading">¶</a></h1>
 <section id="id3">
-<h2>General<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h2>
+<h2>General<a class="headerlink" href="#id3" title="Permalink to this heading">¶</a></h2>
 <ul class="simple">
 <li><p>Complete overhaul of the modeling code. It now allows for arbitrary <cite>Parameter</cite>
 instances to generate a source model (e.g. point-source or Sersic fitting).</p></li>
@@ -94,7 +92,7 @@ each element of an optimization parameter.</p></li>
 </ul>
 </section>
 <section id="id4">
-<h2>New Features<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h2>
+<h2>New Features<a class="headerlink" href="#id4" title="Permalink to this heading">¶</a></h2>
 <ul class="simple">
 <li><p><cite>Prior</cite> can now be attached to a <cite>Parameter</cite> and its gradient will be added to likelihood gradients.</p></li>
 <li><p><cite>PointSource</cite> performs optimization of centroid position and flux assuming the model PSF.</p></li>
@@ -106,7 +104,7 @@ each element of an optimization parameter.</p></li>
 </ul>
 </section>
 <section id="api-changes">
-<h2>API Changes<a class="headerlink" href="#api-changes" title="Permalink to this headline">¶</a></h2>
+<h2>API Changes<a class="headerlink" href="#api-changes" title="Permalink to this heading">¶</a></h2>
 <ul class="simple">
 <li><p><cite>Frame</cite> and <cite>Observation</cite> strongly prefer all arguments (<cite>weights</cite>, <cite>psfs</cite>, <cite>channels</cite>, <cite>wcs</cite>) to be set.</p></li>
 <li><p><cite>Frame.psfs</cite> (or <cite>Observation.Frame.psfs</cite>) now stores a <cite>PSF</cite> object, and the <cite>PSF.image</cite> method needs to be called
@@ -117,9 +115,9 @@ to access the PSF image cube.</p></li>
 </section>
 </section>
 <section id="id5">
-<h1>0.5 (2019-06-26)<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h1>
+<h1>0.5 (2019-06-26)<a class="headerlink" href="#id5" title="Permalink to this heading">¶</a></h1>
 <section id="id6">
-<h2>General<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h2>
+<h2>General<a class="headerlink" href="#id6" title="Permalink to this heading">¶</a></h2>
 <ul class="simple">
 <li><p>Completely restructured code, including using <cite>autograd</cite> package to calculate gradients.</p></li>
 <li><p>PSF convolutions are now performed on the model of the entire blend as opposed to
@@ -130,7 +128,7 @@ centering algorithm, such as centroiding or the <cite>scarlet.update.fix_pixel_c
 </ul>
 </section>
 <section id="id7">
-<h2>New Features<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h2>
+<h2>New Features<a class="headerlink" href="#id7" title="Permalink to this heading">¶</a></h2>
 <ul class="simple">
 <li><p>Multi-resolution deblending.</p></li>
 <li><p>A <cite>BoundingBox</cite> container to define rectangular regions in the pixel grid, a <cite>trim</cite> function
@@ -155,7 +153,7 @@ resolutions.</p></li>
 </ul>
 </section>
 <section id="id8">
-<h2>API Changes<a class="headerlink" href="#id8" title="Permalink to this headline">¶</a></h2>
+<h2>API Changes<a class="headerlink" href="#id8" title="Permalink to this heading">¶</a></h2>
 <ul class="simple">
 <li><p><cite>Scene</cite> is a is a confusing name and has been renamed to <cite>Frame</cite>.</p></li>
 <li><p><cite>Observation.get_model</cite> is a confusing name and has been renamed to <cite>Observation.render</cite>.</p></li>
@@ -182,16 +180,16 @@ require a center, such as symmetry and monotonicity, can use the new <cite>uncen
 </section>
 </section>
 <section id="id9">
-<h1>0.45 (2019-3-27)<a class="headerlink" href="#id9" title="Permalink to this headline">¶</a></h1>
+<h1>0.45 (2019-3-27)<a class="headerlink" href="#id9" title="Permalink to this heading">¶</a></h1>
 <section id="id10">
-<h2>General<a class="headerlink" href="#id10" title="Permalink to this headline">¶</a></h2>
+<h2>General<a class="headerlink" href="#id10" title="Permalink to this heading">¶</a></h2>
 <ul class="simple">
 <li><p>Tests have been added for the <cite>operator</cite>, <cite>constraint</cite>, <cite>resample</cite>, and <cite>transformation</cite>
 modules. Tests are run on Travis CI with each new build.</p></li>
 </ul>
 </section>
 <section id="id11">
-<h2>New Features<a class="headerlink" href="#id11" title="Permalink to this headline">¶</a></h2>
+<h2>New Features<a class="headerlink" href="#id11" title="Permalink to this heading">¶</a></h2>
 <ul class="simple">
 <li><p>Convolutions can now be done in Fourier space and/or real
 space by setting the <cite>use_fft</cite> option in <cite>config.Config</cite>.</p></li>
@@ -203,15 +201,15 @@ bilinear, cubic spline, and Lanczos algorithms.</p></li>
 </section>
 </section>
 <section id="id12">
-<h1>0.4 (2019-2-15)<a class="headerlink" href="#id12" title="Permalink to this headline">¶</a></h1>
+<h1>0.4 (2019-2-15)<a class="headerlink" href="#id12" title="Permalink to this heading">¶</a></h1>
 <section id="id13">
-<h2>General<a class="headerlink" href="#id13" title="Permalink to this headline">¶</a></h2>
+<h2>General<a class="headerlink" href="#id13" title="Permalink to this heading">¶</a></h2>
 <ul class="simple">
 <li><p>Dropped python 2 support</p></li>
 </ul>
 </section>
 <section id="id14">
-<h2>New Features<a class="headerlink" href="#id14" title="Permalink to this headline">¶</a></h2>
+<h2>New Features<a class="headerlink" href="#id14" title="Permalink to this heading">¶</a></h2>
 <ul class="simple">
 <li><p>Initialization of <cite>PointSource</cite>, <cite>ExtendedSource</cite>, and
 <cite>MultiComponentSource</cite> now take <cite>normalization</cite> as an
@@ -227,7 +225,7 @@ to an approximation (the default) used for speed.</p></li>
 </ul>
 </section>
 <section id="id15">
-<h2>API Changes<a class="headerlink" href="#id15" title="Permalink to this headline">¶</a></h2>
+<h2>API Changes<a class="headerlink" href="#id15" title="Permalink to this heading">¶</a></h2>
 <ul class="simple">
 <li><p>The default value of the <cite>Config</cite> parameter <cite>accelerated</cite>
 is now <cite>False</cite>. This was done because in some cases
@@ -240,7 +238,7 @@ in each band.</p></li>
 </ul>
 </section>
 <section id="bug-fixes">
-<h2>Bug Fixes<a class="headerlink" href="#bug-fixes" title="Permalink to this headline">¶</a></h2>
+<h2>Bug Fixes<a class="headerlink" href="#bug-fixes" title="Permalink to this heading">¶</a></h2>
 <ul class="simple">
 <li><p>Monotonicity would break if the bounding box for a <cite>Source</cite> was not odd.
 The shape is now forced to be odd when the <cite>Source</cite> is initialized.</p></li>
@@ -252,7 +250,7 @@ binary installs (like the LSST-DM stack).</p></li>
 </ul>
 </section>
 <section id="other-changes-and-additions">
-<h2>Other Changes and Additions<a class="headerlink" href="#other-changes-and-additions" title="Permalink to this headline">¶</a></h2>
+<h2>Other Changes and Additions<a class="headerlink" href="#other-changes-and-additions" title="Permalink to this heading">¶</a></h2>
 <ul class="simple">
 <li><p>The names of the sub modules <cite>operators</cite>, <cite>constraints</cite>, <cite>transformations</cite>,
 have been changed to the singular <cite>operator</cite>, <cite>constraint</cite>, <cite>transformation</cite>.</p></li>
@@ -274,11 +272,11 @@ to have more complicated objects and improving the internal interface to them.</
     <div class="clearer"></div>
   </div>
     <div class="footer">
-      &copy;2018-2021, Fred Moolekamp and Peter Melchior.
+      &copy;2018-2024, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.1.2</a>
-      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 7.0.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.13</a>
       
       |
       <a href="_sources/changes.rst"

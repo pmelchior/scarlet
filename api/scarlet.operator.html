@@ -1,18 +1,16 @@
-
 <!DOCTYPE html>
 
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
 
     <title>scarlet.operator &#8212; scarlet  documentation</title>
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="../_static/alabaster.css" />
     <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
-    <script src="../_static/jquery.js"></script>
-    <script src="../_static/underscore.js"></script>
     <script src="../_static/doctools.js"></script>
+    <script src="../_static/sphinx_highlight.js"></script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <link rel="canonical" href="api/api/scarlet.operator.html" />
     <link rel="index" title="Index" href="../genindex.html" />
@@ -77,7 +75,7 @@
     </form>
     </div>
 </div>
-<script>$('#searchbox').show(0);</script>
+<script>document.getElementById('searchbox').style.display = "block"</script>
         </div>
       </div>
       <div class="documentwrapper">
@@ -87,10 +85,10 @@
           <div class="body" role="main">
             
   <section id="module-scarlet.operator">
-<span id="scarlet-operator"></span><h1>scarlet.operator<a class="headerlink" href="#module-scarlet.operator" title="Permalink to this headline">¶</a></h1>
+<span id="scarlet-operator"></span><h1>scarlet.operator<a class="headerlink" href="#module-scarlet.operator" title="Permalink to this heading">¶</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="scarlet.operator.diagonalizeArray">
-<span class="sig-prename descclassname"><span class="pre">scarlet.operator.</span></span><span class="sig-name descname"><span class="pre">diagonalizeArray</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">arr</span></em>, <em class="sig-param"><span class="pre">shape=None</span></em>, <em class="sig-param"><span class="pre">dtype=&lt;class</span> <span class="pre">'numpy.float64'&gt;</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/operator.html#diagonalizeArray"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.operator.diagonalizeArray" title="Permalink to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">scarlet.operator.</span></span><span class="sig-name descname"><span class="pre">diagonalizeArray</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shape=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype=&lt;class</span> <span class="pre">'numpy.float64'&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/operator.html#diagonalizeArray"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.operator.diagonalizeArray" title="Permalink to this definition">¶</a></dt>
 <dd><p>Convert an array to a matrix that compares each pixel to its neighbors
 Given an array with length N, create an 8xN array, where each row will be a
 diagonal in a diagonalized array. Each column in this matrix is a row in the larger
@@ -105,7 +103,7 @@ or the angle of the vector to the peak.
 
 <dl class="py function">
 <dt class="sig sig-object py" id="scarlet.operator.diagonalsToSparse">
-<span class="sig-prename descclassname"><span class="pre">scarlet.operator.</span></span><span class="sig-name descname"><span class="pre">diagonalsToSparse</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">diagonals</span></em>, <em class="sig-param"><span class="pre">shape</span></em>, <em class="sig-param"><span class="pre">dtype=&lt;class</span> <span class="pre">'numpy.float64'&gt;</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/operator.html#diagonalsToSparse"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.operator.diagonalsToSparse" title="Permalink to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">scarlet.operator.</span></span><span class="sig-name descname"><span class="pre">diagonalsToSparse</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">diagonals</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shape</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype=&lt;class</span> <span class="pre">'numpy.float64'&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/operator.html#diagonalsToSparse"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.operator.diagonalsToSparse" title="Permalink to this definition">¶</a></dt>
 <dd><p>Convert a diagonalized array into a sparse diagonal matrix
 <code class="docutils literal notranslate"><span class="pre">diagonalizeArray</span></code> creates an 8xN array representing the bands that describe the
 interactions of a pixel with its neighbors. This function takes that 8xN array and converts
@@ -156,7 +154,7 @@ in the center of the source. This may be off by a pixel or two,
 so we search for the correct center before applying
 monotonic_tree.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
 <dt><strong>image: array-like</strong></dt><dd><p>The image of the source.</p>
 </dd>
@@ -167,7 +165,7 @@ for a higher flux value.</p>
 </dd>
 </dl>
 </dd>
-<dt class="field-even">Returns</dt>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><dl class="simple">
 <dt>new_center: (int, int)</dt><dd><p>The true center of the source.</p>
 </dd>
@@ -243,7 +241,7 @@ then transformed back to real space.</p>
 <span class="sig-prename descclassname"><span class="pre">scarlet.operator.</span></span><span class="sig-name descname"><span class="pre">prox_monotonic_mask</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">step</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">center</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">center_radius</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">variance</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_iter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/operator.html#prox_monotonic_mask"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.operator.prox_monotonic_mask" title="Permalink to this definition">¶</a></dt>
 <dd><p>Apply monotonicity from any path from the center</p>
 <dl class="field-list">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl>
 <dt><strong>X: array-like</strong></dt><dd><p>The input image that the mask is created for.</p>
 </dd>
@@ -293,7 +291,7 @@ the level of symmetry required for a component</p>
 <dd><p>Symmetry with off-center peak</p>
 <p>Symmetrize X for all pixels with a symmetric partner.</p>
 <dl class="field-list">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl>
 <dt><strong>X: array</strong></dt><dd><p>The parameter to update.</p>
 </dd>
@@ -334,7 +332,7 @@ This parameter is only used when <cite>algorithm = “soft”</cite>.</p>
 </dd>
 </dl>
 </dd>
-<dt class="field-even">Returns</dt>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><dl class="simple">
 <dt>result: <cite>function</cite></dt><dd><p>The update function based on the specified parameters.</p>
 </dd>
@@ -348,7 +346,7 @@ This parameter is only used when <cite>algorithm = “soft”</cite>.</p>
 <span class="sig-prename descclassname"><span class="pre">scarlet.operator.</span></span><span class="sig-name descname"><span class="pre">prox_weighted_monotonic</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">shape</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">neighbor_weight</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'flat'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_gradient</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">center</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/operator.html#prox_weighted_monotonic"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.operator.prox_weighted_monotonic" title="Permalink to this definition">¶</a></dt>
 <dd><p>Build the prox_monotonic operator</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
 <dt><strong>neighbor_weight: [‘flat’, ‘angle’, ‘nearest’]</strong></dt><dd><p>Which weighting scheme to average all neighbor pixels towards <cite>center</cite>
 as reference for the monotonicty test.</p>
@@ -361,7 +359,7 @@ will force the pixel to zero.</p>
 </dd>
 </dl>
 </dd>
-<dt class="field-even">Returns</dt>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><dl class="simple">
 <dt>result: <cite>function</cite></dt><dd><p>The monotonicity function.</p>
 </dd>
@@ -372,7 +370,7 @@ will force the pixel to zero.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="scarlet.operator.proximal_disk_sed">
-<span class="sig-prename descclassname"><span class="pre">scarlet.operator.</span></span><span class="sig-name descname"><span class="pre">proximal_disk_sed</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">X</span></em>, <em class="sig-param"><span class="pre">step</span></em>, <em class="sig-param"><span class="pre">peaks</span></em>, <em class="sig-param"><span class="pre">algorithm=&lt;function</span> <span class="pre">project_disk_sed_mean&gt;</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/operator.html#proximal_disk_sed"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.operator.proximal_disk_sed" title="Permalink to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">scarlet.operator.</span></span><span class="sig-name descname"><span class="pre">proximal_disk_sed</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">step</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">peaks</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">algorithm=&lt;function</span> <span class="pre">project_disk_sed_mean&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/scarlet/operator.html#proximal_disk_sed"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#scarlet.operator.proximal_disk_sed" title="Permalink to this definition">¶</a></dt>
 <dd><p>Ensure that each disk SED is bluer than the bulge SED</p>
 </dd></dl>
 
@@ -386,7 +384,7 @@ of each pixel, sorted by radial distance from
 the center, which need not be in the center
 of the image.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
 <dt><strong>shape: `tuple`</strong></dt><dd><p>Shape (y,x) of the source frame.</p>
 </dd>
@@ -394,7 +392,7 @@ of the image.</p>
 </dd>
 </dl>
 </dd>
-<dt class="field-even">Returns</dt>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><dl class="simple">
 <dt>didx: <cite>~numpy.array</cite></dt><dd><p>Indices of elements in an image with shape <cite>shape</cite>,
 sorted by distance from the center.</p>
@@ -412,7 +410,7 @@ sorted by distance from the center.</p>
 sense outside of a centered box. This operator only updates
 the portion of <cite>X</cite> inside the centered region.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
 <dt><strong>X: array</strong></dt><dd><p>The parameter to update.</p>
 </dd>
@@ -448,11 +446,11 @@ new hyperplane</p>
     <div class="clearer"></div>
   </div>
     <div class="footer">
-      &copy;2018-2021, Fred Moolekamp and Peter Melchior.
+      &copy;2018-2024, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.1.2</a>
-      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 7.0.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.13</a>
       
       |
       <a href="../_sources/api/scarlet.operator.rst"

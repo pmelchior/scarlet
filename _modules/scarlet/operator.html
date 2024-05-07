@@ -1,7 +1,6 @@
-
 <!DOCTYPE html>
 
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -9,9 +8,8 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css" />
     <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
-    <script src="../../_static/jquery.js"></script>
-    <script src="../../_static/underscore.js"></script>
     <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/sphinx_highlight.js"></script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <link rel="canonical" href="api/_modules/scarlet/operator.html" />
     <link rel="index" title="Index" href="../../genindex.html" />
@@ -49,7 +47,7 @@
     </form>
     </div>
 </div>
-<script>$('#searchbox').show(0);</script>
+<script>document.getElementById('searchbox').style.display = "block"</script>
         </div>
       </div>
       <div class="documentwrapper">
@@ -69,7 +67,7 @@
 
 
 <div class="viewcode-block" id="sort_by_radius"><a class="viewcode-back" href="../../api/scarlet.operator.html#scarlet.operator.sort_by_radius">[docs]</a><span class="k">def</span> <span class="nf">sort_by_radius</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="n">center</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Sort indices distance from the center</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Sort indices distance from the center</span>
 
 <span class="sd">    Given a shape, calculate the distance of each</span>
 <span class="sd">    pixel from the center and return the indices</span>
@@ -110,7 +108,7 @@
 
 
 <span class="k">def</span> <span class="nf">_prox_weighted_monotonic</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">step</span><span class="p">,</span> <span class="n">weights</span><span class="p">,</span> <span class="n">didx</span><span class="p">,</span> <span class="n">offsets</span><span class="p">,</span> <span class="n">min_gradient</span><span class="o">=</span><span class="mf">0.1</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Force an intensity profile to be monotonic based on weighting neighbors</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Force an intensity profile to be monotonic based on weighting neighbors</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">operators_pybind11</span>
 
@@ -121,7 +119,7 @@
 
 
 <div class="viewcode-block" id="prox_weighted_monotonic"><a class="viewcode-back" href="../../api/scarlet.operator.html#scarlet.operator.prox_weighted_monotonic">[docs]</a><span class="k">def</span> <span class="nf">prox_weighted_monotonic</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="n">neighbor_weight</span><span class="o">=</span><span class="s2">&quot;flat&quot;</span><span class="p">,</span> <span class="n">min_gradient</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">center</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Build the prox_monotonic operator</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Build the prox_monotonic operator</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -158,7 +156,7 @@
 
 
 <div class="viewcode-block" id="get_center"><a class="viewcode-back" href="../../api/scarlet.operator.html#scarlet.operator.get_center">[docs]</a><span class="k">def</span> <span class="nf">get_center</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">center</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Search around a location for the maximum flux</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Search around a location for the maximum flux</span>
 
 <span class="sd">    For monotonicity it is important to start at the brightest pixel</span>
 <span class="sd">    in the center of the source. This may be off by a pixel or two,</span>
@@ -191,7 +189,7 @@
 
 
 <div class="viewcode-block" id="prox_monotonic_mask"><a class="viewcode-back" href="../../api/scarlet.operator.html#scarlet.operator.prox_monotonic_mask">[docs]</a><span class="k">def</span> <span class="nf">prox_monotonic_mask</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">step</span><span class="p">,</span> <span class="n">center</span><span class="p">,</span> <span class="n">center_radius</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">variance</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">max_iter</span><span class="o">=</span><span class="mi">3</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Apply monotonicity from any path from the center</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Apply monotonicity from any path from the center</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -242,7 +240,7 @@
 
 
 <div class="viewcode-block" id="prox_cone"><a class="viewcode-back" href="../../api/scarlet.operator.html#scarlet.operator.prox_cone">[docs]</a><span class="k">def</span> <span class="nf">prox_cone</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">step</span><span class="p">,</span> <span class="n">G</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Exact projection of components of X onto cone defined by Gx &gt;= 0&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Exact projection of components of X onto cone defined by Gx &gt;= 0&quot;&quot;&quot;</span>
     <span class="n">k</span><span class="p">,</span> <span class="n">n</span> <span class="o">=</span> <span class="n">X</span><span class="o">.</span><span class="n">shape</span>
     <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">k</span><span class="p">):</span>
         <span class="n">Y</span> <span class="o">=</span> <span class="n">X</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
@@ -266,7 +264,7 @@
 
 
 <div class="viewcode-block" id="uncentered_operator"><a class="viewcode-back" href="../../api/scarlet.operator.html#scarlet.operator.uncentered_operator">[docs]</a><span class="k">def</span> <span class="nf">uncentered_operator</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="n">center</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">fill</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Only apply the operator on a centered patch</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Only apply the operator on a centered patch</span>
 
 <span class="sd">    In some cases, for example symmetry, an operator might not make</span>
 <span class="sd">    sense outside of a centered box. This operator only updates</span>
@@ -322,7 +320,7 @@
 
 
 <div class="viewcode-block" id="prox_sdss_symmetry"><a class="viewcode-back" href="../../api/scarlet.operator.html#scarlet.operator.prox_sdss_symmetry">[docs]</a><span class="k">def</span> <span class="nf">prox_sdss_symmetry</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">step</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;SDSS/HSC symmetry operator</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;SDSS/HSC symmetry operator</span>
 
 <span class="sd">    This function uses the *minimum* of the two</span>
 <span class="sd">    symmetric pixels in the update.</span>
@@ -333,7 +331,7 @@
 
 
 <div class="viewcode-block" id="prox_soft_symmetry"><a class="viewcode-back" href="../../api/scarlet.operator.html#scarlet.operator.prox_soft_symmetry">[docs]</a><span class="k">def</span> <span class="nf">prox_soft_symmetry</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">step</span><span class="p">,</span> <span class="n">strength</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Soft version of symmetry</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Soft version of symmetry</span>
 <span class="sd">    Using a `strength` that varies from 0 to 1,</span>
 <span class="sd">    with 0 meaning no symmetry enforced at all and</span>
 <span class="sd">    1  being completely symmetric, the user can customize</span>
@@ -355,7 +353,7 @@
 
 
 <div class="viewcode-block" id="prox_kspace_symmetry"><a class="viewcode-back" href="../../api/scarlet.operator.html#scarlet.operator.prox_kspace_symmetry">[docs]</a><span class="k">def</span> <span class="nf">prox_kspace_symmetry</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">step</span><span class="p">,</span> <span class="n">shift</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">10</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Symmetry in Fourier Space</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Symmetry in Fourier Space</span>
 
 <span class="sd">    This algorithm by Nate Lust uses the fact that throwing</span>
 <span class="sd">    away the imaginary part in Fourier space leaves a symmetric</span>
@@ -396,7 +394,7 @@
 <div class="viewcode-block" id="prox_uncentered_symmetry"><a class="viewcode-back" href="../../api/scarlet.operator.html#scarlet.operator.prox_uncentered_symmetry">[docs]</a><span class="k">def</span> <span class="nf">prox_uncentered_symmetry</span><span class="p">(</span>
     <span class="n">X</span><span class="p">,</span> <span class="n">step</span><span class="p">,</span> <span class="n">center</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">algorithm</span><span class="o">=</span><span class="s2">&quot;kspace&quot;</span><span class="p">,</span> <span class="n">fill</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">shift</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">strength</span><span class="o">=</span><span class="mf">0.5</span>
 <span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Symmetry with off-center peak</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Symmetry with off-center peak</span>
 
 <span class="sd">    Symmetrize X for all pixels with a symmetric partner.</span>
 
@@ -462,17 +460,17 @@
 
 
 <div class="viewcode-block" id="proj"><a class="viewcode-back" href="../../api/scarlet.operator.html#scarlet.operator.proj">[docs]</a><span class="k">def</span> <span class="nf">proj</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">B</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Returns the projection of A onto the hyper-plane defined by B&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Returns the projection of A onto the hyper-plane defined by B&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">A</span> <span class="o">-</span> <span class="p">(</span><span class="n">A</span> <span class="o">*</span> <span class="n">B</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">*</span> <span class="n">B</span> <span class="o">/</span> <span class="p">(</span><span class="n">B</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span></div>
 
 
 <div class="viewcode-block" id="proj_dist"><a class="viewcode-back" href="../../api/scarlet.operator.html#scarlet.operator.proj_dist">[docs]</a><span class="k">def</span> <span class="nf">proj_dist</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">B</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Returns length of projection of A onto B&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Returns length of projection of A onto B&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="p">(</span><span class="n">A</span> <span class="o">*</span> <span class="n">B</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">/</span> <span class="p">(</span><span class="n">B</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">**</span> <span class="mf">0.5</span></div>
 
 
 <div class="viewcode-block" id="use_relevant_dim"><a class="viewcode-back" href="../../api/scarlet.operator.html#scarlet.operator.use_relevant_dim">[docs]</a><span class="k">def</span> <span class="nf">use_relevant_dim</span><span class="p">(</span><span class="n">Y</span><span class="p">,</span> <span class="n">Q</span><span class="p">,</span> <span class="n">Vs</span><span class="p">,</span> <span class="n">index</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Uses relevant dimension to reduce problem dimensionality (projects everything onto the</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Uses relevant dimension to reduce problem dimensionality (projects everything onto the</span>
 <span class="sd">    new hyperplane&quot;&quot;&quot;</span>
     <span class="n">projector</span> <span class="o">=</span> <span class="n">Vs</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
     <span class="k">del</span> <span class="n">Vs</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
@@ -484,7 +482,7 @@
 
 
 <div class="viewcode-block" id="find_relevant_dim"><a class="viewcode-back" href="../../api/scarlet.operator.html#scarlet.operator.find_relevant_dim">[docs]</a><span class="k">def</span> <span class="nf">find_relevant_dim</span><span class="p">(</span><span class="n">Y</span><span class="p">,</span> <span class="n">Q</span><span class="p">,</span> <span class="n">Vs</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Finds a dimension relevant to the problem by &#39;raycasting&#39; from Y to Q&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Finds a dimension relevant to the problem by &#39;raycasting&#39; from Y to Q&quot;&quot;&quot;</span>
     <span class="n">max_t</span> <span class="o">=</span> <span class="mi">0</span>
     <span class="n">index</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
     <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">Vs</span><span class="p">)):</span>
@@ -501,7 +499,7 @@
 
 
 <div class="viewcode-block" id="find_Q"><a class="viewcode-back" href="../../api/scarlet.operator.html#scarlet.operator.find_Q">[docs]</a><span class="k">def</span> <span class="nf">find_Q</span><span class="p">(</span><span class="n">Vs</span><span class="p">,</span> <span class="n">n</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Finds a Q that is within the solution space that can act as an appropriate target</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Finds a Q that is within the solution space that can act as an appropriate target</span>
 <span class="sd">    (could be rigorously constructed later)&quot;&quot;&quot;</span>
     <span class="n">res</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
     <span class="n">res</span><span class="p">[</span><span class="nb">int</span><span class="p">((</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)]</span> <span class="o">=</span> <span class="n">n</span>
@@ -509,7 +507,7 @@
 
 
 <div class="viewcode-block" id="project_disk_sed_mean"><a class="viewcode-back" href="../../api/scarlet.operator.html#scarlet.operator.project_disk_sed_mean">[docs]</a><span class="k">def</span> <span class="nf">project_disk_sed_mean</span><span class="p">(</span><span class="n">bulge_sed</span><span class="p">,</span> <span class="n">disk_sed</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Project the disk SED onto the space where it is bluer</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Project the disk SED onto the space where it is bluer</span>
 
 <span class="sd">    For the majority of observed galaxies, it appears that</span>
 <span class="sd">    the difference between the bulge and the disk SEDs is</span>
@@ -534,7 +532,7 @@
 
 
 <div class="viewcode-block" id="project_disk_sed"><a class="viewcode-back" href="../../api/scarlet.operator.html#scarlet.operator.project_disk_sed">[docs]</a><span class="k">def</span> <span class="nf">project_disk_sed</span><span class="p">(</span><span class="n">bulge_sed</span><span class="p">,</span> <span class="n">disk_sed</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Project the disk SED onto the space where it is bluer</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Project the disk SED onto the space where it is bluer</span>
 
 <span class="sd">    For the majority of observed galaxies, it appears that</span>
 <span class="sd">    the difference between the bulge and the disk SEDs is</span>
@@ -559,7 +557,7 @@
 
 
 <div class="viewcode-block" id="proximal_disk_sed"><a class="viewcode-back" href="../../api/scarlet.operator.html#scarlet.operator.proximal_disk_sed">[docs]</a><span class="k">def</span> <span class="nf">proximal_disk_sed</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">step</span><span class="p">,</span> <span class="n">peaks</span><span class="p">,</span> <span class="n">algorithm</span><span class="o">=</span><span class="n">project_disk_sed_mean</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Ensure that each disk SED is bluer than the bulge SED</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Ensure that each disk SED is bluer than the bulge SED</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">for</span> <span class="n">peak</span> <span class="ow">in</span> <span class="n">peaks</span><span class="o">.</span><span class="n">peaks</span><span class="p">:</span>
         <span class="k">if</span> <span class="s2">&quot;disk&quot;</span> <span class="ow">in</span> <span class="n">peak</span><span class="o">.</span><span class="n">components</span> <span class="ow">and</span> <span class="s2">&quot;bulge&quot;</span> <span class="ow">in</span> <span class="n">peak</span><span class="o">.</span><span class="n">components</span><span class="p">:</span>
@@ -571,7 +569,7 @@
 
 
 <div class="viewcode-block" id="getOffsets"><a class="viewcode-back" href="../../api/scarlet.operator.html#scarlet.operator.getOffsets">[docs]</a><span class="k">def</span> <span class="nf">getOffsets</span><span class="p">(</span><span class="n">width</span><span class="p">,</span> <span class="n">coords</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Get the offset and slices for a sparse band diagonal array</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Get the offset and slices for a sparse band diagonal array</span>
 <span class="sd">    For an operator that interacts with its neighbors we want a band diagonal matrix,</span>
 <span class="sd">    where each row describes the 8 pixels that are neighbors for the reference pixel</span>
 <span class="sd">    (the diagonal). Regardless of the operator, these 8 bands are always the same,</span>
@@ -589,7 +587,7 @@
 
 
 <div class="viewcode-block" id="diagonalizeArray"><a class="viewcode-back" href="../../api/scarlet.operator.html#scarlet.operator.diagonalizeArray">[docs]</a><span class="k">def</span> <span class="nf">diagonalizeArray</span><span class="p">(</span><span class="n">arr</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Convert an array to a matrix that compares each pixel to its neighbors</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Convert an array to a matrix that compares each pixel to its neighbors</span>
 <span class="sd">    Given an array with length N, create an 8xN array, where each row will be a</span>
 <span class="sd">    diagonal in a diagonalized array. Each column in this matrix is a row in the larger</span>
 <span class="sd">    NxN matrix used for an operator, except that this 2D array only contains the values</span>
@@ -634,7 +632,7 @@
 
 
 <div class="viewcode-block" id="diagonalsToSparse"><a class="viewcode-back" href="../../api/scarlet.operator.html#scarlet.operator.diagonalsToSparse">[docs]</a><span class="k">def</span> <span class="nf">diagonalsToSparse</span><span class="p">(</span><span class="n">diagonals</span><span class="p">,</span> <span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Convert a diagonalized array into a sparse diagonal matrix</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Convert a diagonalized array into a sparse diagonal matrix</span>
 <span class="sd">    ``diagonalizeArray`` creates an 8xN array representing the bands that describe the</span>
 <span class="sd">    interactions of a pixel with its neighbors. This function takes that 8xN array and converts</span>
 <span class="sd">    it into a sparse diagonal matrix.</span>
@@ -650,7 +648,7 @@
 
 
 <div class="viewcode-block" id="getRadialMonotonicWeights"><a class="viewcode-back" href="../../api/scarlet.operator.html#scarlet.operator.getRadialMonotonicWeights">[docs]</a><span class="k">def</span> <span class="nf">getRadialMonotonicWeights</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="n">neighbor_weight</span><span class="o">=</span><span class="s2">&quot;flat&quot;</span><span class="p">,</span> <span class="n">center</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Create the weights used for the Radial Monotonicity Operator</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Create the weights used for the Radial Monotonicity Operator</span>
 <span class="sd">    This version of the radial monotonicity operator selects all of the pixels closer to the peak</span>
 <span class="sd">    for each pixel and weights their flux based on their alignment with a vector from the pixel</span>
 <span class="sd">    to the peak. In order to quickly create this using sparse matrices, its construction is a bit opaque.</span>
@@ -735,11 +733,11 @@
     <div class="clearer"></div>
   </div>
     <div class="footer">
-      &copy;2018-2021, Fred Moolekamp and Peter Melchior.
+      &copy;2018-2024, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.1.2</a>
-      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 7.0.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.13</a>
       
     </div>
 

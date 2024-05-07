@@ -1,24 +1,22 @@
-
 <!DOCTYPE html>
 
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
 
     <title>API Documentation &#8212; scarlet  documentation</title>
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="../_static/alabaster.css" />
     <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
-    <script src="../_static/jquery.js"></script>
-    <script src="../_static/underscore.js"></script>
     <script src="../_static/doctools.js"></script>
+    <script src="../_static/sphinx_highlight.js"></script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <link rel="canonical" href="api/api/scarlet.html" />
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="scarlet.bbox" href="scarlet.bbox.html" />
-    <link rel="prev" title="Multi-Resolution Tutorial" href="../tutorials/multiresolution.html" />
+    <link rel="prev" title="Multiscale deblending tutorial" href="../tutorials/multiscale_deblending.html" />
    
   <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
   
@@ -77,7 +75,7 @@
     </form>
     </div>
 </div>
-<script>$('#searchbox').show(0);</script>
+<script>document.getElementById('searchbox').style.display = "block"</script>
         </div>
       </div>
       <div class="documentwrapper">
@@ -87,32 +85,422 @@
           <div class="body" role="main">
             
   <section id="api-documentation">
-<h1>API Documentation<a class="headerlink" href="#api-documentation" title="Permalink to this headline">¶</a></h1>
+<h1>API Documentation<a class="headerlink" href="#api-documentation" title="Permalink to this heading">¶</a></h1>
 <div class="toctree-wrapper compound">
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="scarlet.bbox.html">scarlet.bbox</a></li>
-<li class="toctree-l1"><a class="reference internal" href="scarlet.blend.html">scarlet.blend</a></li>
-<li class="toctree-l1"><a class="reference internal" href="scarlet.cache.html">scarlet.cache</a></li>
-<li class="toctree-l1"><a class="reference internal" href="scarlet.component.html">scarlet.component</a></li>
-<li class="toctree-l1"><a class="reference internal" href="scarlet.constraint.html">scarlet.constraint</a></li>
-<li class="toctree-l1"><a class="reference internal" href="scarlet.detect.html">scarlet.detect</a></li>
-<li class="toctree-l1"><a class="reference internal" href="scarlet.display.html">scarlet.display</a></li>
-<li class="toctree-l1"><a class="reference internal" href="scarlet.fft.html">scarlet.fft</a></li>
-<li class="toctree-l1"><a class="reference internal" href="scarlet.frame.html">scarlet.frame</a></li>
-<li class="toctree-l1"><a class="reference internal" href="scarlet.initialization.html">scarlet.initialization</a></li>
-<li class="toctree-l1"><a class="reference internal" href="scarlet.interpolation.html">scarlet.interpolation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="scarlet.measure.html">scarlet.measure</a></li>
-<li class="toctree-l1"><a class="reference internal" href="scarlet.model.html">scarlet.model</a></li>
-<li class="toctree-l1"><a class="reference internal" href="scarlet.morphology.html">scarlet.morphology</a></li>
-<li class="toctree-l1"><a class="reference internal" href="scarlet.observation.html">scarlet.observation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="scarlet.operator.html">scarlet.operator</a></li>
-<li class="toctree-l1"><a class="reference internal" href="scarlet.parameter.html">scarlet.parameter</a></li>
-<li class="toctree-l1"><a class="reference internal" href="scarlet.prior.html">scarlet.prior</a></li>
-<li class="toctree-l1"><a class="reference internal" href="scarlet.psf.html">scarlet.psf</a></li>
-<li class="toctree-l1"><a class="reference internal" href="scarlet.renderer.html">scarlet.renderer</a></li>
-<li class="toctree-l1"><a class="reference internal" href="scarlet.source.html">scarlet.source</a></li>
-<li class="toctree-l1"><a class="reference internal" href="scarlet.spectrum.html">scarlet.spectrum</a></li>
-<li class="toctree-l1"><a class="reference internal" href="scarlet.wavelet.html">scarlet.wavelet</a></li>
+<li class="toctree-l1"><a class="reference internal" href="scarlet.bbox.html">scarlet.bbox</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.bbox.html#scarlet.bbox.Box"><code class="docutils literal notranslate"><span class="pre">Box</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.bbox.html#scarlet.bbox.Box.D"><code class="docutils literal notranslate"><span class="pre">Box.D</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.bbox.html#scarlet.bbox.Box.bounds"><code class="docutils literal notranslate"><span class="pre">Box.bounds</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.bbox.html#scarlet.bbox.Box.center"><code class="docutils literal notranslate"><span class="pre">Box.center</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.bbox.html#scarlet.bbox.Box.contains"><code class="docutils literal notranslate"><span class="pre">Box.contains()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.bbox.html#scarlet.bbox.Box.copy"><code class="docutils literal notranslate"><span class="pre">Box.copy()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.bbox.html#scarlet.bbox.Box.extract_from"><code class="docutils literal notranslate"><span class="pre">Box.extract_from()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.bbox.html#scarlet.bbox.Box.from_bounds"><code class="docutils literal notranslate"><span class="pre">Box.from_bounds()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.bbox.html#scarlet.bbox.Box.from_data"><code class="docutils literal notranslate"><span class="pre">Box.from_data()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.bbox.html#scarlet.bbox.Box.grow"><code class="docutils literal notranslate"><span class="pre">Box.grow()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.bbox.html#scarlet.bbox.Box.insert_into"><code class="docutils literal notranslate"><span class="pre">Box.insert_into()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.bbox.html#scarlet.bbox.Box.slices"><code class="docutils literal notranslate"><span class="pre">Box.slices</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.bbox.html#scarlet.bbox.Box.start"><code class="docutils literal notranslate"><span class="pre">Box.start</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.bbox.html#scarlet.bbox.Box.stop"><code class="docutils literal notranslate"><span class="pre">Box.stop</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.bbox.html#scarlet.bbox.overlapped_slices"><code class="docutils literal notranslate"><span class="pre">overlapped_slices()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="scarlet.blend.html">scarlet.blend</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.blend.html#scarlet.blend.Blend"><code class="docutils literal notranslate"><span class="pre">Blend</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.blend.html#scarlet.blend.Blend.bbox"><code class="docutils literal notranslate"><span class="pre">Blend.bbox</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.blend.html#scarlet.blend.Blend.fit"><code class="docutils literal notranslate"><span class="pre">Blend.fit()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.blend.html#scarlet.blend.Blend.get_model"><code class="docutils literal notranslate"><span class="pre">Blend.get_model()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.blend.html#scarlet.blend.Blend.log_likelihood"><code class="docutils literal notranslate"><span class="pre">Blend.log_likelihood</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="scarlet.cache.html">scarlet.cache</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.cache.html#scarlet.cache.Cache"><code class="docutils literal notranslate"><span class="pre">Cache</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.cache.html#scarlet.cache.Cache.check"><code class="docutils literal notranslate"><span class="pre">Cache.check()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.cache.html#scarlet.cache.Cache.set"><code class="docutils literal notranslate"><span class="pre">Cache.set()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="scarlet.component.html">scarlet.component</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.component.html#scarlet.component.CombinedComponent"><code class="docutils literal notranslate"><span class="pre">CombinedComponent</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.component.html#scarlet.component.CombinedComponent.get_model"><code class="docutils literal notranslate"><span class="pre">CombinedComponent.get_model()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.component.html#scarlet.component.CombinedComponent.update"><code class="docutils literal notranslate"><span class="pre">CombinedComponent.update()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.component.html#scarlet.component.Component"><code class="docutils literal notranslate"><span class="pre">Component</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.component.html#scarlet.component.Component.bbox"><code class="docutils literal notranslate"><span class="pre">Component.bbox</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.component.html#scarlet.component.Component.frame"><code class="docutils literal notranslate"><span class="pre">Component.frame</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.component.html#scarlet.component.Component.model_to_box"><code class="docutils literal notranslate"><span class="pre">Component.model_to_box()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.component.html#scarlet.component.CubeComponent"><code class="docutils literal notranslate"><span class="pre">CubeComponent</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.component.html#scarlet.component.CubeComponent.get_model"><code class="docutils literal notranslate"><span class="pre">CubeComponent.get_model()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.component.html#scarlet.component.FactorizedComponent"><code class="docutils literal notranslate"><span class="pre">FactorizedComponent</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.component.html#scarlet.component.FactorizedComponent.get_model"><code class="docutils literal notranslate"><span class="pre">FactorizedComponent.get_model()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.component.html#scarlet.component.FactorizedComponent.morphology"><code class="docutils literal notranslate"><span class="pre">FactorizedComponent.morphology</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.component.html#scarlet.component.FactorizedComponent.spectrum"><code class="docutils literal notranslate"><span class="pre">FactorizedComponent.spectrum</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.component.html#scarlet.component.FactorizedComponent.update"><code class="docutils literal notranslate"><span class="pre">FactorizedComponent.update()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="scarlet.constraint.html">scarlet.constraint</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.constraint.html#scarlet.constraint.CenterOnConstraint"><code class="docutils literal notranslate"><span class="pre">CenterOnConstraint</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.constraint.html#scarlet.constraint.Constraint"><code class="docutils literal notranslate"><span class="pre">Constraint</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.constraint.html#scarlet.constraint.ConstraintChain"><code class="docutils literal notranslate"><span class="pre">ConstraintChain</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.constraint.html#scarlet.constraint.L0Constraint"><code class="docutils literal notranslate"><span class="pre">L0Constraint</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.constraint.html#scarlet.constraint.L1Constraint"><code class="docutils literal notranslate"><span class="pre">L1Constraint</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.constraint.html#scarlet.constraint.LeakyConstraint"><code class="docutils literal notranslate"><span class="pre">LeakyConstraint</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.constraint.html#scarlet.constraint.MonotonicMaskConstraint"><code class="docutils literal notranslate"><span class="pre">MonotonicMaskConstraint</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.constraint.html#scarlet.constraint.MonotonicityConstraint"><code class="docutils literal notranslate"><span class="pre">MonotonicityConstraint</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.constraint.html#scarlet.constraint.NormalizationConstraint"><code class="docutils literal notranslate"><span class="pre">NormalizationConstraint</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.constraint.html#scarlet.constraint.PositivityConstraint"><code class="docutils literal notranslate"><span class="pre">PositivityConstraint</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.constraint.html#scarlet.constraint.SymmetryConstraint"><code class="docutils literal notranslate"><span class="pre">SymmetryConstraint</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.constraint.html#scarlet.constraint.ThresholdConstraint"><code class="docutils literal notranslate"><span class="pre">ThresholdConstraint</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.constraint.html#scarlet.constraint.ThresholdConstraint.threshold"><code class="docutils literal notranslate"><span class="pre">ThresholdConstraint.threshold()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="scarlet.detect.html">scarlet.detect</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.detect.html#scarlet.detect.QuadTreeRegion"><code class="docutils literal notranslate"><span class="pre">QuadTreeRegion</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.detect.html#scarlet.detect.QuadTreeRegion.add"><code class="docutils literal notranslate"><span class="pre">QuadTreeRegion.add()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.detect.html#scarlet.detect.QuadTreeRegion.add_footprints"><code class="docutils literal notranslate"><span class="pre">QuadTreeRegion.add_footprints()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.detect.html#scarlet.detect.QuadTreeRegion.footprint_image"><code class="docutils literal notranslate"><span class="pre">QuadTreeRegion.footprint_image()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.detect.html#scarlet.detect.QuadTreeRegion.peaks"><code class="docutils literal notranslate"><span class="pre">QuadTreeRegion.peaks</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.detect.html#scarlet.detect.QuadTreeRegion.query"><code class="docutils literal notranslate"><span class="pre">QuadTreeRegion.query()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.detect.html#scarlet.detect.QuadTreeRegion.split"><code class="docutils literal notranslate"><span class="pre">QuadTreeRegion.split()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.detect.html#scarlet.detect.SingleScaleStructure"><code class="docutils literal notranslate"><span class="pre">SingleScaleStructure</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.detect.html#scarlet.detect.SingleScaleStructure.add_footprint"><code class="docutils literal notranslate"><span class="pre">SingleScaleStructure.add_footprint()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.detect.html#scarlet.detect.SingleScaleStructure.add_scale_tree"><code class="docutils literal notranslate"><span class="pre">SingleScaleStructure.add_scale_tree()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.detect.html#scarlet.detect.SingleScaleStructure.all_peaks"><code class="docutils literal notranslate"><span class="pre">SingleScaleStructure.all_peaks</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.detect.html#scarlet.detect.bounds_to_bbox"><code class="docutils literal notranslate"><span class="pre">bounds_to_bbox()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.detect.html#scarlet.detect.box_intersect"><code class="docutils literal notranslate"><span class="pre">box_intersect()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.detect.html#scarlet.detect.draw_box"><code class="docutils literal notranslate"><span class="pre">draw_box()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.detect.html#scarlet.detect.draw_footprint_box"><code class="docutils literal notranslate"><span class="pre">draw_footprint_box()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.detect.html#scarlet.detect.draw_region"><code class="docutils literal notranslate"><span class="pre">draw_region()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.detect.html#scarlet.detect.footprint_intersect"><code class="docutils literal notranslate"><span class="pre">footprint_intersect()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.detect.html#scarlet.detect.get_blend_structures"><code class="docutils literal notranslate"><span class="pre">get_blend_structures()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.detect.html#scarlet.detect.get_blend_trees"><code class="docutils literal notranslate"><span class="pre">get_blend_trees()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.detect.html#scarlet.detect.get_detect_wavelets"><code class="docutils literal notranslate"><span class="pre">get_detect_wavelets()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.detect.html#scarlet.detect.get_peaks"><code class="docutils literal notranslate"><span class="pre">get_peaks()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.detect.html#scarlet.detect.get_wavelets"><code class="docutils literal notranslate"><span class="pre">get_wavelets()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="scarlet.display.html">scarlet.display</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.display.html#scarlet.display.AsinhPercentileNorm"><code class="docutils literal notranslate"><span class="pre">AsinhPercentileNorm</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.display.html#scarlet.display.LinearPercentileNorm"><code class="docutils literal notranslate"><span class="pre">LinearPercentileNorm</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.display.html#scarlet.display.channels_to_rgb"><code class="docutils literal notranslate"><span class="pre">channels_to_rgb()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.display.html#scarlet.display.get_extent"><code class="docutils literal notranslate"><span class="pre">get_extent()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.display.html#scarlet.display.img_to_3channel"><code class="docutils literal notranslate"><span class="pre">img_to_3channel()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.display.html#scarlet.display.img_to_rgb"><code class="docutils literal notranslate"><span class="pre">img_to_rgb()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.display.html#scarlet.display.show_likelihood"><code class="docutils literal notranslate"><span class="pre">show_likelihood()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.display.html#scarlet.display.show_observation"><code class="docutils literal notranslate"><span class="pre">show_observation()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.display.html#scarlet.display.show_scene"><code class="docutils literal notranslate"><span class="pre">show_scene()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.display.html#scarlet.display.show_sources"><code class="docutils literal notranslate"><span class="pre">show_sources()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="scarlet.fft.html">scarlet.fft</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.fft.html#scarlet.fft.Fourier"><code class="docutils literal notranslate"><span class="pre">Fourier</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.fft.html#scarlet.fft.Fourier.fft"><code class="docutils literal notranslate"><span class="pre">Fourier.fft()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.fft.html#scarlet.fft.Fourier.from_fft"><code class="docutils literal notranslate"><span class="pre">Fourier.from_fft()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.fft.html#scarlet.fft.Fourier.image"><code class="docutils literal notranslate"><span class="pre">Fourier.image</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.fft.html#scarlet.fft.Fourier.shape"><code class="docutils literal notranslate"><span class="pre">Fourier.shape</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.fft.html#scarlet.fft.convolve"><code class="docutils literal notranslate"><span class="pre">convolve()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.fft.html#scarlet.fft.match_psf"><code class="docutils literal notranslate"><span class="pre">match_psf()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.fft.html#scarlet.fft.shift"><code class="docutils literal notranslate"><span class="pre">shift()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="scarlet.frame.html">scarlet.frame</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.frame.html#scarlet.frame.Frame"><code class="docutils literal notranslate"><span class="pre">Frame</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.frame.html#scarlet.frame.Frame.C"><code class="docutils literal notranslate"><span class="pre">Frame.C</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.frame.html#scarlet.frame.Frame.Nx"><code class="docutils literal notranslate"><span class="pre">Frame.Nx</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.frame.html#scarlet.frame.Frame.Ny"><code class="docutils literal notranslate"><span class="pre">Frame.Ny</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.frame.html#scarlet.frame.Frame.bbox"><code class="docutils literal notranslate"><span class="pre">Frame.bbox</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.frame.html#scarlet.frame.Frame.convert_pixel_to"><code class="docutils literal notranslate"><span class="pre">Frame.convert_pixel_to()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.frame.html#scarlet.frame.Frame.from_observations"><code class="docutils literal notranslate"><span class="pre">Frame.from_observations()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.frame.html#scarlet.frame.Frame.get_pixel"><code class="docutils literal notranslate"><span class="pre">Frame.get_pixel()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.frame.html#scarlet.frame.Frame.get_sky_coord"><code class="docutils literal notranslate"><span class="pre">Frame.get_sky_coord()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.frame.html#scarlet.frame.Frame.psf"><code class="docutils literal notranslate"><span class="pre">Frame.psf</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.frame.html#scarlet.frame.Frame.shape"><code class="docutils literal notranslate"><span class="pre">Frame.shape</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="scarlet.initialization.html">scarlet.initialization</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.initialization.html#scarlet.initialization.build_initialization_image"><code class="docutils literal notranslate"><span class="pre">build_initialization_image()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.initialization.html#scarlet.initialization.get_minimal_boxsize"><code class="docutils literal notranslate"><span class="pre">get_minimal_boxsize()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.initialization.html#scarlet.initialization.get_pixel_spectrum"><code class="docutils literal notranslate"><span class="pre">get_pixel_spectrum()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.initialization.html#scarlet.initialization.get_psf_spectrum"><code class="docutils literal notranslate"><span class="pre">get_psf_spectrum()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.initialization.html#scarlet.initialization.init_all_sources"><code class="docutils literal notranslate"><span class="pre">init_all_sources()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.initialization.html#scarlet.initialization.init_source"><code class="docutils literal notranslate"><span class="pre">init_source()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.initialization.html#scarlet.initialization.set_spectra_to_match"><code class="docutils literal notranslate"><span class="pre">set_spectra_to_match()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.initialization.html#scarlet.initialization.trim_morphology"><code class="docutils literal notranslate"><span class="pre">trim_morphology()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="scarlet.interpolation.html">scarlet.interpolation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.interpolation.html#scarlet.interpolation.apply_2D_trapezoid_rule"><code class="docutils literal notranslate"><span class="pre">apply_2D_trapezoid_rule()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.interpolation.html#scarlet.interpolation.bilinear"><code class="docutils literal notranslate"><span class="pre">bilinear()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.interpolation.html#scarlet.interpolation.catmull_rom"><code class="docutils literal notranslate"><span class="pre">catmull_rom()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.interpolation.html#scarlet.interpolation.common_projections"><code class="docutils literal notranslate"><span class="pre">common_projections()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.interpolation.html#scarlet.interpolation.cubic_spline"><code class="docutils literal notranslate"><span class="pre">cubic_spline()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.interpolation.html#scarlet.interpolation.get_affine"><code class="docutils literal notranslate"><span class="pre">get_affine()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.interpolation.html#scarlet.interpolation.get_angles"><code class="docutils literal notranslate"><span class="pre">get_angles()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.interpolation.html#scarlet.interpolation.get_common_padding"><code class="docutils literal notranslate"><span class="pre">get_common_padding()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.interpolation.html#scarlet.interpolation.get_filter_bounds"><code class="docutils literal notranslate"><span class="pre">get_filter_bounds()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.interpolation.html#scarlet.interpolation.get_filter_coords"><code class="docutils literal notranslate"><span class="pre">get_filter_coords()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.interpolation.html#scarlet.interpolation.get_pixel_size"><code class="docutils literal notranslate"><span class="pre">get_pixel_size()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.interpolation.html#scarlet.interpolation.get_projection_slices"><code class="docutils literal notranslate"><span class="pre">get_projection_slices()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.interpolation.html#scarlet.interpolation.get_psf_size"><code class="docutils literal notranslate"><span class="pre">get_psf_size()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.interpolation.html#scarlet.interpolation.get_separable_kernel"><code class="docutils literal notranslate"><span class="pre">get_separable_kernel()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.interpolation.html#scarlet.interpolation.interpolate_observation"><code class="docutils literal notranslate"><span class="pre">interpolate_observation()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.interpolation.html#scarlet.interpolation.lanczos"><code class="docutils literal notranslate"><span class="pre">lanczos()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.interpolation.html#scarlet.interpolation.mitchel_netravali"><code class="docutils literal notranslate"><span class="pre">mitchel_netravali()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.interpolation.html#scarlet.interpolation.mk_shifter"><code class="docutils literal notranslate"><span class="pre">mk_shifter()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.interpolation.html#scarlet.interpolation.project_image"><code class="docutils literal notranslate"><span class="pre">project_image()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.interpolation.html#scarlet.interpolation.quintic_spline"><code class="docutils literal notranslate"><span class="pre">quintic_spline()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.interpolation.html#scarlet.interpolation.sinc2D"><code class="docutils literal notranslate"><span class="pre">sinc2D()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.interpolation.html#scarlet.interpolation.sinc_interp"><code class="docutils literal notranslate"><span class="pre">sinc_interp()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.interpolation.html#scarlet.interpolation.sinc_interp_inplace"><code class="docutils literal notranslate"><span class="pre">sinc_interp_inplace()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.interpolation.html#scarlet.interpolation.subsample_function"><code class="docutils literal notranslate"><span class="pre">subsample_function()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="scarlet.measure.html">scarlet.measure</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.measure.html#scarlet.measure.centroid"><code class="docutils literal notranslate"><span class="pre">centroid()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.measure.html#scarlet.measure.flux"><code class="docutils literal notranslate"><span class="pre">flux()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.measure.html#scarlet.measure.max_pixel"><code class="docutils literal notranslate"><span class="pre">max_pixel()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.measure.html#scarlet.measure.moments"><code class="docutils literal notranslate"><span class="pre">moments()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.measure.html#scarlet.measure.snr"><code class="docutils literal notranslate"><span class="pre">snr()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="scarlet.model.html">scarlet.model</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.model.html#scarlet.model.Model"><code class="docutils literal notranslate"><span class="pre">Model</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.model.html#scarlet.model.Model.check_parameters"><code class="docutils literal notranslate"><span class="pre">Model.check_parameters()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.model.html#scarlet.model.Model.children"><code class="docutils literal notranslate"><span class="pre">Model.children</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.model.html#scarlet.model.Model.get_model"><code class="docutils literal notranslate"><span class="pre">Model.get_model()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.model.html#scarlet.model.Model.get_models_of_children"><code class="docutils literal notranslate"><span class="pre">Model.get_models_of_children()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.model.html#scarlet.model.Model.get_parameter"><code class="docutils literal notranslate"><span class="pre">Model.get_parameter()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.model.html#scarlet.model.Model.parameters"><code class="docutils literal notranslate"><span class="pre">Model.parameters</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.model.html#scarlet.model.Model.update"><code class="docutils literal notranslate"><span class="pre">Model.update()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.model.html#scarlet.model.UpdateException"><code class="docutils literal notranslate"><span class="pre">UpdateException</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="scarlet.morphology.html">scarlet.morphology</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.morphology.html#scarlet.morphology.ExtendedSourceMorphology"><code class="docutils literal notranslate"><span class="pre">ExtendedSourceMorphology</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.morphology.html#scarlet.morphology.ExtendedSourceMorphology.center"><code class="docutils literal notranslate"><span class="pre">ExtendedSourceMorphology.center</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.morphology.html#scarlet.morphology.GaussianMorphology"><code class="docutils literal notranslate"><span class="pre">GaussianMorphology</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.morphology.html#scarlet.morphology.GaussianMorphology.integral"><code class="docutils literal notranslate"><span class="pre">GaussianMorphology.integral</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.morphology.html#scarlet.morphology.ImageMorphology"><code class="docutils literal notranslate"><span class="pre">ImageMorphology</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.morphology.html#scarlet.morphology.ImageMorphology.get_model"><code class="docutils literal notranslate"><span class="pre">ImageMorphology.get_model()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.morphology.html#scarlet.morphology.ImageMorphology.update"><code class="docutils literal notranslate"><span class="pre">ImageMorphology.update()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.morphology.html#scarlet.morphology.Morphology"><code class="docutils literal notranslate"><span class="pre">Morphology</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.morphology.html#scarlet.morphology.Morphology.shrink_box"><code class="docutils literal notranslate"><span class="pre">Morphology.shrink_box()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.morphology.html#scarlet.morphology.PointSourceMorphology"><code class="docutils literal notranslate"><span class="pre">PointSourceMorphology</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.morphology.html#scarlet.morphology.PointSourceMorphology.get_model"><code class="docutils literal notranslate"><span class="pre">PointSourceMorphology.get_model()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.morphology.html#scarlet.morphology.PointSourceMorphology.integral"><code class="docutils literal notranslate"><span class="pre">PointSourceMorphology.integral</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.morphology.html#scarlet.morphology.ProfileMorphology"><code class="docutils literal notranslate"><span class="pre">ProfileMorphology</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.morphology.html#scarlet.morphology.ProfileMorphology.get_box"><code class="docutils literal notranslate"><span class="pre">ProfileMorphology.get_box()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.morphology.html#scarlet.morphology.ProfileMorphology.get_model"><code class="docutils literal notranslate"><span class="pre">ProfileMorphology.get_model()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.morphology.html#scarlet.morphology.ProfileMorphology.integral"><code class="docutils literal notranslate"><span class="pre">ProfileMorphology.integral</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.morphology.html#scarlet.morphology.ProfileMorphology.update"><code class="docutils literal notranslate"><span class="pre">ProfileMorphology.update()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.morphology.html#scarlet.morphology.SpergelMorphology"><code class="docutils literal notranslate"><span class="pre">SpergelMorphology</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.morphology.html#scarlet.morphology.SpergelMorphology.integral"><code class="docutils literal notranslate"><span class="pre">SpergelMorphology.integral</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.morphology.html#scarlet.morphology.StarletMorphology"><code class="docutils literal notranslate"><span class="pre">StarletMorphology</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.morphology.html#scarlet.morphology.StarletMorphology.get_model"><code class="docutils literal notranslate"><span class="pre">StarletMorphology.get_model()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.morphology.html#scarlet.morphology.StarletMorphology.update"><code class="docutils literal notranslate"><span class="pre">StarletMorphology.update()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="scarlet.observation.html">scarlet.observation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.observation.html#scarlet.observation.Observation"><code class="docutils literal notranslate"><span class="pre">Observation</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.observation.html#scarlet.observation.Observation.get_log_likelihood"><code class="docutils literal notranslate"><span class="pre">Observation.get_log_likelihood()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.observation.html#scarlet.observation.Observation.log_norm"><code class="docutils literal notranslate"><span class="pre">Observation.log_norm</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.observation.html#scarlet.observation.Observation.match"><code class="docutils literal notranslate"><span class="pre">Observation.match()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.observation.html#scarlet.observation.Observation.noise_rms"><code class="docutils literal notranslate"><span class="pre">Observation.noise_rms</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.observation.html#scarlet.observation.Observation.parameters"><code class="docutils literal notranslate"><span class="pre">Observation.parameters</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.observation.html#scarlet.observation.Observation.render"><code class="docutils literal notranslate"><span class="pre">Observation.render()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="scarlet.operator.html">scarlet.operator</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.operator.html#scarlet.operator.diagonalizeArray"><code class="docutils literal notranslate"><span class="pre">diagonalizeArray()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.operator.html#scarlet.operator.diagonalsToSparse"><code class="docutils literal notranslate"><span class="pre">diagonalsToSparse()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.operator.html#scarlet.operator.find_Q"><code class="docutils literal notranslate"><span class="pre">find_Q()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.operator.html#scarlet.operator.find_relevant_dim"><code class="docutils literal notranslate"><span class="pre">find_relevant_dim()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.operator.html#scarlet.operator.getOffsets"><code class="docutils literal notranslate"><span class="pre">getOffsets()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.operator.html#scarlet.operator.getRadialMonotonicWeights"><code class="docutils literal notranslate"><span class="pre">getRadialMonotonicWeights()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.operator.html#scarlet.operator.get_center"><code class="docutils literal notranslate"><span class="pre">get_center()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.operator.html#scarlet.operator.proj"><code class="docutils literal notranslate"><span class="pre">proj()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.operator.html#scarlet.operator.proj_dist"><code class="docutils literal notranslate"><span class="pre">proj_dist()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.operator.html#scarlet.operator.project_disk_sed"><code class="docutils literal notranslate"><span class="pre">project_disk_sed()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.operator.html#scarlet.operator.project_disk_sed_mean"><code class="docutils literal notranslate"><span class="pre">project_disk_sed_mean()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.operator.html#scarlet.operator.prox_cone"><code class="docutils literal notranslate"><span class="pre">prox_cone()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.operator.html#scarlet.operator.prox_kspace_symmetry"><code class="docutils literal notranslate"><span class="pre">prox_kspace_symmetry()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.operator.html#scarlet.operator.prox_monotonic_mask"><code class="docutils literal notranslate"><span class="pre">prox_monotonic_mask()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.operator.html#scarlet.operator.prox_sdss_symmetry"><code class="docutils literal notranslate"><span class="pre">prox_sdss_symmetry()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.operator.html#scarlet.operator.prox_soft_symmetry"><code class="docutils literal notranslate"><span class="pre">prox_soft_symmetry()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.operator.html#scarlet.operator.prox_uncentered_symmetry"><code class="docutils literal notranslate"><span class="pre">prox_uncentered_symmetry()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.operator.html#scarlet.operator.prox_weighted_monotonic"><code class="docutils literal notranslate"><span class="pre">prox_weighted_monotonic()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.operator.html#scarlet.operator.proximal_disk_sed"><code class="docutils literal notranslate"><span class="pre">proximal_disk_sed()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.operator.html#scarlet.operator.sort_by_radius"><code class="docutils literal notranslate"><span class="pre">sort_by_radius()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.operator.html#scarlet.operator.uncentered_operator"><code class="docutils literal notranslate"><span class="pre">uncentered_operator()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.operator.html#scarlet.operator.use_relevant_dim"><code class="docutils literal notranslate"><span class="pre">use_relevant_dim()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="scarlet.parameter.html">scarlet.parameter</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.parameter.html#scarlet.parameter.Parameter"><code class="docutils literal notranslate"><span class="pre">Parameter</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.parameter.html#scarlet.parameter.Parameter.is_finite"><code class="docutils literal notranslate"><span class="pre">Parameter.is_finite</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.parameter.html#scarlet.parameter.prepare_param"><code class="docutils literal notranslate"><span class="pre">prepare_param()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.parameter.html#scarlet.parameter.relative_step"><code class="docutils literal notranslate"><span class="pre">relative_step()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="scarlet.prior.html">scarlet.prior</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.prior.html#scarlet.prior.Prior"><code class="docutils literal notranslate"><span class="pre">Prior</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.prior.html#scarlet.prior.Prior.grad"><code class="docutils literal notranslate"><span class="pre">Prior.grad()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="scarlet.psf.html">scarlet.psf</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.psf.html#scarlet.psf.FunctionPSF"><code class="docutils literal notranslate"><span class="pre">FunctionPSF</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.psf.html#scarlet.psf.FunctionPSF.expand_dims"><code class="docutils literal notranslate"><span class="pre">FunctionPSF.expand_dims()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.psf.html#scarlet.psf.GaussianPSF"><code class="docutils literal notranslate"><span class="pre">GaussianPSF</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.psf.html#scarlet.psf.GaussianPSF.get_model"><code class="docutils literal notranslate"><span class="pre">GaussianPSF.get_model()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.psf.html#scarlet.psf.ImagePSF"><code class="docutils literal notranslate"><span class="pre">ImagePSF</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.psf.html#scarlet.psf.ImagePSF.get_model"><code class="docutils literal notranslate"><span class="pre">ImagePSF.get_model()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.psf.html#scarlet.psf.MoffatPSF"><code class="docutils literal notranslate"><span class="pre">MoffatPSF</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.psf.html#scarlet.psf.MoffatPSF.get_model"><code class="docutils literal notranslate"><span class="pre">MoffatPSF.get_model()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.psf.html#scarlet.psf.PSF"><code class="docutils literal notranslate"><span class="pre">PSF</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.psf.html#scarlet.psf.PSF.get_model"><code class="docutils literal notranslate"><span class="pre">PSF.get_model()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.psf.html#scarlet.psf.normalize"><code class="docutils literal notranslate"><span class="pre">normalize()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="scarlet.renderer.html">scarlet.renderer</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.renderer.html#scarlet.renderer.ConvolutionRenderer"><code class="docutils literal notranslate"><span class="pre">ConvolutionRenderer</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.renderer.html#scarlet.renderer.ConvolutionRenderer.convolution_bounds"><code class="docutils literal notranslate"><span class="pre">ConvolutionRenderer.convolution_bounds</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.renderer.html#scarlet.renderer.ConvolutionRenderer.convolve"><code class="docutils literal notranslate"><span class="pre">ConvolutionRenderer.convolve()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.renderer.html#scarlet.renderer.ConvolutionRenderer.get_model"><code class="docutils literal notranslate"><span class="pre">ConvolutionRenderer.get_model()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.renderer.html#scarlet.renderer.NullRenderer"><code class="docutils literal notranslate"><span class="pre">NullRenderer</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.renderer.html#scarlet.renderer.NullRenderer.get_model"><code class="docutils literal notranslate"><span class="pre">NullRenderer.get_model()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.renderer.html#scarlet.renderer.Renderer"><code class="docutils literal notranslate"><span class="pre">Renderer</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.renderer.html#scarlet.renderer.Renderer.get_channel_map"><code class="docutils literal notranslate"><span class="pre">Renderer.get_channel_map()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.renderer.html#scarlet.renderer.Renderer.map_channels"><code class="docutils literal notranslate"><span class="pre">Renderer.map_channels()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.renderer.html#scarlet.renderer.ResolutionRenderer"><code class="docutils literal notranslate"><span class="pre">ResolutionRenderer</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.renderer.html#scarlet.renderer.ResolutionRenderer.build_diffkernel"><code class="docutils literal notranslate"><span class="pre">ResolutionRenderer.build_diffkernel()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.renderer.html#scarlet.renderer.ResolutionRenderer.get_model"><code class="docutils literal notranslate"><span class="pre">ResolutionRenderer.get_model()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.renderer.html#scarlet.renderer.ResolutionRenderer.sinc_shift"><code class="docutils literal notranslate"><span class="pre">ResolutionRenderer.sinc_shift()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="scarlet.source.html">scarlet.source</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.source.html#scarlet.source.CompactExtendedSource"><code class="docutils literal notranslate"><span class="pre">CompactExtendedSource</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.source.html#scarlet.source.CompactExtendedSource.init_morph"><code class="docutils literal notranslate"><span class="pre">CompactExtendedSource.init_morph()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.source.html#scarlet.source.ExtendedSource"><code class="docutils literal notranslate"><span class="pre">ExtendedSource()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.source.html#scarlet.source.GaussianSource"><code class="docutils literal notranslate"><span class="pre">GaussianSource</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.source.html#scarlet.source.MultiExtendedSource"><code class="docutils literal notranslate"><span class="pre">MultiExtendedSource</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.source.html#scarlet.source.MultiExtendedSource.init_morphs"><code class="docutils literal notranslate"><span class="pre">MultiExtendedSource.init_morphs()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.source.html#scarlet.source.NullSource"><code class="docutils literal notranslate"><span class="pre">NullSource</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.source.html#scarlet.source.NullSource.get_model"><code class="docutils literal notranslate"><span class="pre">NullSource.get_model()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.source.html#scarlet.source.PointSource"><code class="docutils literal notranslate"><span class="pre">PointSource</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.source.html#scarlet.source.RandomSource"><code class="docutils literal notranslate"><span class="pre">RandomSource</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.source.html#scarlet.source.SingleExtendedSource"><code class="docutils literal notranslate"><span class="pre">SingleExtendedSource</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.source.html#scarlet.source.SingleExtendedSource.init_morph"><code class="docutils literal notranslate"><span class="pre">SingleExtendedSource.init_morph()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.source.html#scarlet.source.SpergelSource"><code class="docutils literal notranslate"><span class="pre">SpergelSource</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.source.html#scarlet.source.StarletSource"><code class="docutils literal notranslate"><span class="pre">StarletSource</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.source.html#scarlet.source.StarletSource.from_source"><code class="docutils literal notranslate"><span class="pre">StarletSource.from_source()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.source.html#scarlet.source.append_docs_from"><code class="docutils literal notranslate"><span class="pre">append_docs_from()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="scarlet.spectrum.html">scarlet.spectrum</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.spectrum.html#scarlet.spectrum.Spectrum"><code class="docutils literal notranslate"><span class="pre">Spectrum</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.spectrum.html#scarlet.spectrum.TabulatedSpectrum"><code class="docutils literal notranslate"><span class="pre">TabulatedSpectrum</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.spectrum.html#scarlet.spectrum.TabulatedSpectrum.get_model"><code class="docutils literal notranslate"><span class="pre">TabulatedSpectrum.get_model()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="scarlet.wavelet.html">scarlet.wavelet</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.wavelet.html#scarlet.wavelet.InputError"><code class="docutils literal notranslate"><span class="pre">InputError</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.wavelet.html#scarlet.wavelet.Starlet"><code class="docutils literal notranslate"><span class="pre">Starlet</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.wavelet.html#scarlet.wavelet.Starlet.coefficients"><code class="docutils literal notranslate"><span class="pre">Starlet.coefficients</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.wavelet.html#scarlet.wavelet.Starlet.convolve2D"><code class="docutils literal notranslate"><span class="pre">Starlet.convolve2D</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.wavelet.html#scarlet.wavelet.Starlet.from_coefficients"><code class="docutils literal notranslate"><span class="pre">Starlet.from_coefficients()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.wavelet.html#scarlet.wavelet.Starlet.from_image"><code class="docutils literal notranslate"><span class="pre">Starlet.from_image()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.wavelet.html#scarlet.wavelet.Starlet.generation"><code class="docutils literal notranslate"><span class="pre">Starlet.generation</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.wavelet.html#scarlet.wavelet.Starlet.image"><code class="docutils literal notranslate"><span class="pre">Starlet.image</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.wavelet.html#scarlet.wavelet.Starlet.norm"><code class="docutils literal notranslate"><span class="pre">Starlet.norm</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="scarlet.wavelet.html#scarlet.wavelet.Starlet.scales"><code class="docutils literal notranslate"><span class="pre">Starlet.scales</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.wavelet.html#scarlet.wavelet.apply_wavelet_denoising"><code class="docutils literal notranslate"><span class="pre">apply_wavelet_denoising()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.wavelet.html#scarlet.wavelet.get_multiresolution_support"><code class="docutils literal notranslate"><span class="pre">get_multiresolution_support()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.wavelet.html#scarlet.wavelet.get_scales"><code class="docutils literal notranslate"><span class="pre">get_scales()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.wavelet.html#scarlet.wavelet.multiband_starlet_reconstruction"><code class="docutils literal notranslate"><span class="pre">multiband_starlet_reconstruction()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.wavelet.html#scarlet.wavelet.multiband_starlet_transform"><code class="docutils literal notranslate"><span class="pre">multiband_starlet_transform()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.wavelet.html#scarlet.wavelet.starlet_reconstruction"><code class="docutils literal notranslate"><span class="pre">starlet_reconstruction()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="scarlet.wavelet.html#scarlet.wavelet.starlet_transform"><code class="docutils literal notranslate"><span class="pre">starlet_transform()</span></code></a></li>
+</ul>
+</li>
 </ul>
 </div>
 </section>
@@ -125,11 +513,11 @@
     <div class="clearer"></div>
   </div>
     <div class="footer">
-      &copy;2018-2021, Fred Moolekamp and Peter Melchior.
+      &copy;2018-2024, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.1.2</a>
-      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 7.0.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.13</a>
       
       |
       <a href="../_sources/api/scarlet.rst"

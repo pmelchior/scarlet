@@ -1,7 +1,6 @@
-
 <!DOCTYPE html>
 
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -9,9 +8,8 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css" />
     <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
-    <script src="../../_static/jquery.js"></script>
-    <script src="../../_static/underscore.js"></script>
     <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/sphinx_highlight.js"></script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <link rel="canonical" href="api/_modules/scarlet/psf.html" />
     <link rel="index" title="Index" href="../../genindex.html" />
@@ -49,7 +47,7 @@
     </form>
     </div>
 </div>
-<script>$('#searchbox').show(0);</script>
+<script>document.getElementById('searchbox').style.display = "block"</script>
         </div>
       </div>
       <div class="documentwrapper">
@@ -63,12 +61,12 @@
 <span class="kn">import</span> <span class="nn">autograd.scipy</span> <span class="k">as</span> <span class="nn">scipy</span>
 <span class="kn">from</span> <span class="nn">.bbox</span> <span class="kn">import</span> <span class="n">Box</span>
 <span class="kn">from</span> <span class="nn">.model</span> <span class="kn">import</span> <span class="n">Model</span><span class="p">,</span> <span class="n">abstractmethod</span>
-<span class="kn">from</span> <span class="nn">.parameter</span> <span class="kn">import</span> <span class="n">Parameter</span>
+<span class="kn">from</span> <span class="nn">.parameter</span> <span class="kn">import</span> <span class="n">Parameter</span><span class="p">,</span> <span class="n">prepare_param</span>
 <span class="kn">from</span> <span class="nn">.fft</span> <span class="kn">import</span> <span class="n">Fourier</span><span class="p">,</span> <span class="n">shift</span>
 
 
 <div class="viewcode-block" id="normalize"><a class="viewcode-back" href="../../api/scarlet.psf.html#scarlet.psf.normalize">[docs]</a><span class="k">def</span> <span class="nf">normalize</span><span class="p">(</span><span class="n">image</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Normalize to PSF image in every band to unity</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Normalize to PSF image in every band to unity</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">sums</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">Parameter</span><span class="p">):</span>
@@ -81,7 +79,7 @@
 <div class="viewcode-block" id="PSF"><a class="viewcode-back" href="../../api/scarlet.psf.html#scarlet.psf.PSF">[docs]</a><span class="k">class</span> <span class="nc">PSF</span><span class="p">(</span><span class="n">Model</span><span class="p">):</span>
 <div class="viewcode-block" id="PSF.get_model"><a class="viewcode-back" href="../../api/scarlet.psf.html#scarlet.psf.PSF.get_model">[docs]</a>    <span class="nd">@abstractmethod</span>
     <span class="k">def</span> <span class="nf">get_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">parameter</span><span class="p">,</span> <span class="n">offset</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Get the PSF realization</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get the PSF realization</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -94,20 +92,11 @@
 <span class="sd">        result: array</span>
 <span class="sd">            A centered PSF model defined by its parameters, shifted by `offset`</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">pass</span></div>
-
-<div class="viewcode-block" id="PSF.prepare_param"><a class="viewcode-back" href="../../api/scarlet.psf.html#scarlet.psf.PSF.prepare_param">[docs]</a>    <span class="k">def</span> <span class="nf">prepare_param</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">Parameter</span><span class="p">):</span>
-            <span class="k">assert</span> <span class="n">X</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="n">name</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isscalar</span><span class="p">(</span><span class="n">X</span><span class="p">):</span>
-                <span class="n">X</span> <span class="o">=</span> <span class="p">(</span><span class="n">X</span><span class="p">,)</span>
-            <span class="n">X</span> <span class="o">=</span> <span class="n">Parameter</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;float&quot;</span><span class="p">),</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">fixed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">X</span></div></div>
+        <span class="k">pass</span></div></div>
 
 
 <div class="viewcode-block" id="FunctionPSF"><a class="viewcode-back" href="../../api/scarlet.psf.html#scarlet.psf.FunctionPSF">[docs]</a><span class="k">class</span> <span class="nc">FunctionPSF</span><span class="p">(</span><span class="n">PSF</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Base class for PSFs with functional forms.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Base class for PSFs with functional forms.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -115,7 +104,7 @@
 <span class="sd">        Optimization parameters. Can be fixed.</span>
 <span class="sd">    integrate: bool</span>
 <span class="sd">        Whether pixel integration is performed</span>
-<span class="sd">    boxsize: Box</span>
+<span class="sd">    boxsize: int</span>
 <span class="sd">        Size of bounding box over which to evaluate the function, in frame pixels</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
@@ -148,7 +137,7 @@
 
 
 <div class="viewcode-block" id="GaussianPSF"><a class="viewcode-back" href="../../api/scarlet.psf.html#scarlet.psf.GaussianPSF">[docs]</a><span class="k">class</span> <span class="nc">GaussianPSF</span><span class="p">(</span><span class="n">FunctionPSF</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Circular Gaussian Function</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Circular Gaussian Function</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -157,13 +146,13 @@
 <span class="sd">        If the width is to be optimized, provide a full defined `Parameter`.</span>
 <span class="sd">    integrate: bool</span>
 <span class="sd">        Whether pixel integration is performed</span>
-<span class="sd">    boxsize: Box</span>
+<span class="sd">    boxsize: int</span>
 <span class="sd">        Size of bounding box over which to evaluate the function, in frame pixels</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sigma</span><span class="p">,</span> <span class="n">integrate</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">boxsize</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 
-        <span class="n">sigma</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prepare_param</span><span class="p">(</span><span class="n">sigma</span><span class="p">,</span> <span class="s2">&quot;sigma&quot;</span><span class="p">)</span>
+        <span class="n">sigma</span> <span class="o">=</span> <span class="n">prepare_param</span><span class="p">(</span><span class="n">sigma</span><span class="p">,</span> <span class="s2">&quot;sigma&quot;</span><span class="p">,</span> <span class="n">fixed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="n">boxsize</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">boxsize</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="mi">10</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">sigma</span><span class="p">)))</span>
@@ -213,7 +202,7 @@
 
 
 <div class="viewcode-block" id="MoffatPSF"><a class="viewcode-back" href="../../api/scarlet.psf.html#scarlet.psf.MoffatPSF">[docs]</a><span class="k">class</span> <span class="nc">MoffatPSF</span><span class="p">(</span><span class="n">FunctionPSF</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Symmetric 2D Moffat function</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Symmetric 2D Moffat function</span>
 
 <span class="sd">    .. math::</span>
 
@@ -233,8 +222,8 @@
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">4.7</span><span class="p">,</span> <span class="n">beta</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> <span class="n">integrate</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">boxsize</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 
-        <span class="n">alpha</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prepare_param</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="s2">&quot;alpha&quot;</span><span class="p">)</span>
-        <span class="n">beta</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prepare_param</span><span class="p">(</span><span class="n">beta</span><span class="p">,</span> <span class="s2">&quot;beta&quot;</span><span class="p">)</span>
+        <span class="n">alpha</span> <span class="o">=</span> <span class="n">prepare_param</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="s2">&quot;alpha&quot;</span><span class="p">,</span> <span class="n">fixed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">beta</span> <span class="o">=</span> <span class="n">prepare_param</span><span class="p">(</span><span class="n">beta</span><span class="p">,</span> <span class="s2">&quot;beta&quot;</span><span class="p">,</span> <span class="n">fixed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">alpha</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">beta</span><span class="p">)</span>
         <span class="k">assert</span> <span class="n">integrate</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">,</span> <span class="s2">&quot;In-pixel integration not implemented (yet)!&quot;</span>
 
@@ -259,7 +248,7 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="n">psfs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span>
                 <span class="p">(</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">_f</span><span class="p">(</span><span class="n">Y</span> <span class="o">-</span> <span class="n">offset</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">X</span> <span class="o">-</span> <span class="n">offset</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_f</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_Y</span> <span class="o">-</span> <span class="n">offset</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">_X</span> <span class="o">-</span> <span class="n">offset</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span>
                     <span class="k">for</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">)</span>
                 <span class="p">),</span>
                 <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
@@ -273,7 +262,7 @@
 
 
 <div class="viewcode-block" id="ImagePSF"><a class="viewcode-back" href="../../api/scarlet.psf.html#scarlet.psf.ImagePSF">[docs]</a><span class="k">class</span> <span class="nc">ImagePSF</span><span class="p">(</span><span class="n">PSF</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Image PSF</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Image PSF</span>
 
 <span class="sd">    Creates a PSF model from a image of the centered PSF.</span>
 
@@ -289,7 +278,7 @@
             <span class="n">image</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="o">*</span><span class="n">shape</span><span class="p">)</span>
 
         <span class="n">image</span> <span class="o">=</span> <span class="n">normalize</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
-        <span class="n">image</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prepare_param</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="s2">&quot;image&quot;</span><span class="p">)</span>
+        <span class="n">image</span> <span class="o">=</span> <span class="n">prepare_param</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="s2">&quot;image&quot;</span><span class="p">,</span> <span class="n">fixed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
 
         <span class="n">origin</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">//</span> <span class="mi">2</span><span class="p">),</span> <span class="o">-</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">//</span> <span class="mi">2</span><span class="p">))</span>
@@ -311,11 +300,11 @@
     <div class="clearer"></div>
   </div>
     <div class="footer">
-      &copy;2018-2021, Fred Moolekamp and Peter Melchior.
+      &copy;2018-2024, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.1.2</a>
-      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 7.0.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.13</a>
       
     </div>
 

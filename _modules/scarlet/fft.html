@@ -1,7 +1,6 @@
-
 <!DOCTYPE html>
 
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -9,9 +8,8 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css" />
     <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
-    <script src="../../_static/jquery.js"></script>
-    <script src="../../_static/underscore.js"></script>
     <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/sphinx_highlight.js"></script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <link rel="canonical" href="api/_modules/scarlet/fft.html" />
     <link rel="index" title="Index" href="../../genindex.html" />
@@ -49,7 +47,7 @@
     </form>
     </div>
 </div>
-<script>$('#searchbox').show(0);</script>
+<script>document.getElementById('searchbox').style.display = "block"</script>
         </div>
       </div>
       <div class="documentwrapper">
@@ -68,7 +66,7 @@
 
 
 <span class="k">def</span> <span class="nf">_centered</span><span class="p">(</span><span class="n">arr</span><span class="p">,</span> <span class="n">newshape</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Return the center newshape portion of the array.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the center newshape portion of the array.</span>
 
 <span class="sd">    Note: If the array shape is odd and the target is even,</span>
 <span class="sd">    the center of `arr` is shifted to the center-right</span>
@@ -99,7 +97,7 @@
 
 <span class="nd">@primitive</span>
 <span class="k">def</span> <span class="nf">fast_zero_pad</span><span class="p">(</span><span class="n">arr</span><span class="p">,</span> <span class="n">pad_width</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Fast version of numpy.pad when `mode=&quot;constant&quot;`</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Fast version of numpy.pad when `mode=&quot;constant&quot;`</span>
 
 <span class="sd">    Executing `numpy.pad` with zeros is ~1000 times slower</span>
 <span class="sd">    because it doesn&#39;t make use of the `zeros` method for padding.</span>
@@ -128,7 +126,7 @@
 
 
 <span class="k">def</span> <span class="nf">_fast_zero_pad_grad</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">arr</span><span class="p">,</span> <span class="n">pad_width</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Gradient for fast_zero_pad</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Gradient for fast_zero_pad</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">slices</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span>
         <span class="p">[</span><span class="nb">slice</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">s</span> <span class="o">-</span> <span class="n">end</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span><span class="p">,</span> <span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">pad_width</span><span class="p">)]</span>
@@ -141,7 +139,7 @@
 
 
 <span class="k">def</span> <span class="nf">_pad</span><span class="p">(</span><span class="n">arr</span><span class="p">,</span> <span class="n">newshape</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;constant&quot;</span><span class="p">,</span> <span class="n">constant_values</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Pad an array to fit into newshape</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Pad an array to fit into newshape</span>
 
 <span class="sd">    Pad `arr` with zeros to fit into newshape,</span>
 <span class="sd">    which uses the `np.fft.fftshift` convention of moving</span>
@@ -175,7 +173,7 @@
 
 
 <span class="k">def</span> <span class="nf">_get_fft_shape</span><span class="p">(</span><span class="n">im_or_shape1</span><span class="p">,</span> <span class="n">im_or_shape2</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Return the fast fft shapes for each spatial axis</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the fast fft shapes for each spatial axis</span>
 
 <span class="sd">    Calculate the fast fft shape for each dimension in</span>
 <span class="sd">    axes.</span>
@@ -213,23 +211,23 @@
 
     <span class="n">shape</span> <span class="o">+=</span> <span class="n">padding</span>
     <span class="c1"># Use the next fastest shape in each dimension</span>
-    <span class="n">shape</span> <span class="o">=</span> <span class="p">[</span><span class="n">fftpack</span><span class="o">.</span><span class="n">helper</span><span class="o">.</span><span class="n">next_fast_len</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">shape</span><span class="p">]</span>
+    <span class="n">shape</span> <span class="o">=</span> <span class="p">[</span><span class="n">fftpack</span><span class="o">.</span><span class="n">next_fast_len</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">shape</span><span class="p">]</span>
 
     <span class="c1"># autograd.numpy.fft does not currently work</span>
     <span class="c1"># if the last dimension is odd</span>
     <span class="k">while</span> <span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
         <span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
-        <span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">fftpack</span><span class="o">.</span><span class="n">helper</span><span class="o">.</span><span class="n">next_fast_len</span><span class="p">(</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">fftpack</span><span class="o">.</span><span class="n">next_fast_len</span><span class="p">(</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
     <span class="k">if</span> <span class="n">shape2</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
         <span class="k">while</span> <span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
             <span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
-            <span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">fftpack</span><span class="o">.</span><span class="n">helper</span><span class="o">.</span><span class="n">next_fast_len</span><span class="p">(</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">])</span>
+            <span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">fftpack</span><span class="o">.</span><span class="n">next_fast_len</span><span class="p">(</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">])</span>
 
     <span class="k">return</span> <span class="n">shape</span>
 
 
 <div class="viewcode-block" id="Fourier"><a class="viewcode-back" href="../../api/scarlet.fft.html#scarlet.fft.Fourier">[docs]</a><span class="k">class</span> <span class="nc">Fourier</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;An array that stores its Fourier Transform</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;An array that stores its Fourier Transform</span>
 
 <span class="sd">    The `Fourier` class is used for images that will make</span>
 <span class="sd">    use of their Fourier Transform multiple times.</span>
@@ -240,7 +238,7 @@
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">image_fft</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Initialize the object</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize the object</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -260,7 +258,7 @@
 
 <div class="viewcode-block" id="Fourier.from_fft"><a class="viewcode-back" href="../../api/scarlet.fft.html#scarlet.fft.Fourier.from_fft">[docs]</a>    <span class="nd">@staticmethod</span>
     <span class="k">def</span> <span class="nf">from_fft</span><span class="p">(</span><span class="n">image_fft</span><span class="p">,</span> <span class="n">fft_shape</span><span class="p">,</span> <span class="n">image_shape</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Generate a new Fourier object from an FFT dictionary</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate a new Fourier object from an FFT dictionary</span>
 
 <span class="sd">        If the fft of an image has been generated but not its</span>
 <span class="sd">        real space image (for example when creating a convolution kernel),</span>
@@ -305,16 +303,16 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">image</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;The real space image&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The real space image&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_image</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">shape</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;The shape of the real space image&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The shape of the real space image&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_image</span><span class="o">.</span><span class="n">shape</span>
 
 <div class="viewcode-block" id="Fourier.fft"><a class="viewcode-back" href="../../api/scarlet.fft.html#scarlet.fft.Fourier.fft">[docs]</a>    <span class="k">def</span> <span class="nf">fft</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fft_shape</span><span class="p">,</span> <span class="n">axes</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;The FFT of an image for a given `fft_shape` along desired `axes`</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The FFT of an image for a given `fft_shape` along desired `axes`</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="nb">iter</span><span class="p">(</span><span class="n">axes</span><span class="p">)</span>
@@ -375,7 +373,7 @@
 
 
 <span class="k">def</span> <span class="nf">_kspace_operation</span><span class="p">(</span><span class="n">image1</span><span class="p">,</span> <span class="n">image2</span><span class="p">,</span> <span class="n">padding</span><span class="p">,</span> <span class="n">op</span><span class="p">,</span> <span class="n">shape</span><span class="p">,</span> <span class="n">axes</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Combine two images in k-space using a given `operator`</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Combine two images in k-space using a given `operator`</span>
 
 <span class="sd">    `image1` and `image2` are required to be `Fourier` objects and</span>
 <span class="sd">    `op` should be an operator (either `operator.mul` for a convolution</span>
@@ -393,7 +391,7 @@
 
 
 <div class="viewcode-block" id="match_psf"><a class="viewcode-back" href="../../api/scarlet.fft.html#scarlet.fft.match_psf">[docs]</a><span class="k">def</span> <span class="nf">match_psf</span><span class="p">(</span><span class="n">psf1</span><span class="p">,</span> <span class="n">psf2</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">),</span> <span class="n">return_Fourier</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Calculate the difference kernel to match psf1 to psf2</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate the difference kernel to match psf1 to psf2</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -427,7 +425,7 @@
 
 
 <div class="viewcode-block" id="convolve"><a class="viewcode-back" href="../../api/scarlet.fft.html#scarlet.fft.convolve">[docs]</a><span class="k">def</span> <span class="nf">convolve</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">kernel</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">),</span> <span class="n">return_Fourier</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Convolve image with a kernel</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Convolve image with a kernel</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -496,11 +494,11 @@
     <div class="clearer"></div>
   </div>
     <div class="footer">
-      &copy;2018-2021, Fred Moolekamp and Peter Melchior.
+      &copy;2018-2024, Fred Moolekamp and Peter Melchior.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.1.2</a>
-      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 7.0.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.13</a>
       
     </div>
 
