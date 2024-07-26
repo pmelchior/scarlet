@@ -374,15 +374,15 @@ def mk_shifter(shape, real=False):
     Cache.set(name, key, shifters)
     return shifters
 
-
 def get_affine(wcs):
     try:
         model_affine = wcs.wcs.pc
     except AttributeError:
-        model_affine = wcs.cd
-
+        try:
+            model_affine = wcs.cd
+        except AttributeError:
+            model_affine = wcs.wcs.cd
     return model_affine
-
 
 def get_pixel_size(model_affine):
     """ Extracts the pixel size from a wcs
